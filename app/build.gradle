@@ -1,0 +1,68 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 33
+    buildToolsVersion "30.0.3"
+
+    defaultConfig {
+        applicationId "com.simon.harmonichackernews"
+        minSdkVersion 23
+        targetSdkVersion 33
+        versionCode 43
+        versionName "1.8"
+
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+allprojects {
+    repositories {
+        maven { url "https://jitpack.io" }
+    }
+}
+
+dependencies {
+
+    implementation "androidx.lifecycle:lifecycle-viewmodel:2.5.1"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1"
+
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+    implementation 'androidx.appcompat:appcompat:1.5.1'
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
+    implementation "androidx.browser:browser:1.4.0"
+    implementation "androidx.cardview:cardview:1.0.0"
+    implementation "androidx.fragment:fragment:1.5.4"
+    implementation 'androidx.preference:preference:1.2.0'
+    implementation "androidx.security:security-crypto:1.1.0-alpha04"
+    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
+    implementation 'androidx.webkit:webkit:1.5.0'
+    implementation "androidx.activity:activity:1.7.0-alpha02"
+
+    //implementation 'org.jsoup:jsoup:1.11.1'
+
+    implementation 'com.google.android.material:material:1.8.0-alpha02'
+
+    implementation 'com.android.volley:volley:1.2.1'
+    implementation 'org.sufficientlysecure:html-textview:4.0'
+    implementation "com.squareup.okhttp3:okhttp:4.8.1"
+    implementation 'com.squareup.okhttp:okhttp-urlconnection:2.7.5'
+    implementation 'com.facebook.shimmer:shimmer:0.5.0'
+    implementation 'com.squareup.picasso:picasso:2.8'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.7.10'
+
+    //debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.4'
+}
+

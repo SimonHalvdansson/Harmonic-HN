@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="storyColorNormal" format="reference"/>
+    <attr name="storyColorDisabled" format="reference"/>
+    <attr name="textColorHighlighted" format="reference"/>
+    <attr name="textColorDefault" format="reference"/>
+    <attr name="textColorDisabled" format="reference"/>
+    <attr name="commentDividerColor" format="reference"/>
+    <attr name="drawableColor" format="reference"/>
+    <attr name="dropdownColor" format="reference"/>
+    <attr name="opCommentColor" format="reference"/>
+    <attr name="selfCommentColor" format="reference"/>
+    <attr name="commentCountIndicatorColor" format="reference"/>
+
+    <declare-styleable name="SwipeBackLayout">
+        <attr name="swipeBackFactor" format="float"/>
+        <attr name="maskAlpha" format="integer"/>
+        <attr name="isSwipeFromEdge" format="boolean"/>
+        <attr name="directionMode">
+            <enum name="left" value="1" />
+            <enum name="right" value="2" />
+            <enum name="top" value="4" />
+            <enum name="bottom" value="8" />
+        </attr>
+    </declare-styleable>
+</resources>

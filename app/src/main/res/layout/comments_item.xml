@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_height="wrap_content"
+    android:layout_width="match_parent"
+    android:orientation="horizontal">
+
+    <View
+        android:id="@+id/comment_indent_indicator"
+        android:layout_width="2.5dp"
+        android:layout_marginRight="8dp"
+        android:layout_height="match_parent"    />
+
+    <LinearLayout
+        android:padding="4dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:paddingBottom="2dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/comment_by"
+                android:textColor="?attr/storyColorDisabled"
+                android:fontFamily="@font/product_sans"
+                tools:text="eanzenberg"
+                android:textSize="13sp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"    />
+
+            <TextView
+                android:id="@+id/comment_by_time"
+                android:textColor="?attr/storyColorDisabled"
+                android:fontFamily="@font/product_sans"
+                tools:text="  •  7 hrs ago"
+                android:textSize="13sp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"    />
+
+            <LinearLayout
+                android:gravity="right"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:id="@+id/comment_hidden_count"
+                    android:fontFamily="@font/product_sans"
+                    tools:text="+3"
+                    android:background="@drawable/further_comments_drawable"
+                    android:paddingLeft="5dp"
+                    android:paddingRight="5dp"
+                    android:paddingTop="1dp"
+                    android:paddingBottom="1dp"
+                    android:textColor="@android:color/white"
+                    android:textSize="12sp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"    />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <org.sufficientlysecure.htmltextview.HtmlTextView
+            android:id="@+id/comment_body"
+            android:fontFamily="@font/product_sans"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="15sp"
+            tools:text="Yes, I've come to the same conclusion. When interviewing ML engineers, I prefer to know they are exceptional programmers with passable knowledge of ML than the other way around. If they haven't learned to be good software engineers it's improbable they will in the future, but ML can be learned. In fact a ML team needs a large number of regular software engineers, there's a lot of non-ML code to work on, such as labelling interfaces, data pipelines and CI/CD for models."
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"    />
+
+    </LinearLayout>
+</LinearLayout>

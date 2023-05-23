@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="comments_header_text_size">13dp</dimen>
+    <dimen name="comments_header_action_padding">9dp</dimen>
+</resources>

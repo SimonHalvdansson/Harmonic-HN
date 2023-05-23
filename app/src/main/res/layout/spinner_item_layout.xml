@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="?attr/dropdownColor"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        style="?android:attr/spinnerDropDownItemStyle"
+        android:id="@+id/selection_dropdown_item_textview"
+        android:singleLine="true"
+        android:layout_width="match_parent"
+        android:fontFamily="@font/product_sans_bold"
+        android:textSize="19sp"
+        android:textColor="?attr/storyColorNormal"
+        android:layout_height="wrap_content"
+        android:background="?selectableItemBackground"
+        android:padding="12dp"
+        android:ellipsize="marquee"/>
+
+</LinearLayout>

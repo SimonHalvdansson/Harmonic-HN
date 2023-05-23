@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/welcome_scroll_view"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <LinearLayout
+        android:paddingLeft="@dimen/single_view_side_margin"
+        android:paddingRight="@dimen/single_view_side_margin"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:paddingTop="24dp"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <ImageView
+                android:layout_gravity="center_vertical"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginRight="16dp"
+                android:src="@mipmap/ic_launcher_round" />
+
+            <TextView
+                android:textColor="?attr/storyColorNormal"
+                android:textStyle="bold"
+                android:fontFamily="@font/product_sans"
+                android:textSize="28sp"
+                android:text="Welcome to Harmonic for Hacker News!"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+        </LinearLayout>
+
+        <TextView
+            android:paddingTop="16dp"
+            android:paddingBottom="20dp"
+            android:textSize="16sp"
+            android:fontFamily="@font/product_sans"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Before we get started, you can change some layout options here to customize the app to your liking."/>
+
+        <TextView
+            android:textColor="?attr/textColorDisabled"
+            android:text="Preview:"
+            android:fontFamily="@font/product_sans"
+            android:textStyle="bold"
+            android:textSize="13dp"
+            android:textAllCaps="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <include
+            layout="@layout/story_list_item"/>
+
+        <TextView
+            android:layout_marginTop="16dp"
+            android:text="Theme:"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:textColor="?attr/storyColorNormal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/product_sans" />
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                style="?attr/materialButtonOutlinedStyle"
+                android:id="@+id/welcome_button_material_dark"
+                android:textColor="?attr/storyColorNormal"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_marginRight="8dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:tag="material_dark"
+                android:text="Material You (dark)"/>
+
+            <Button
+                style="?attr/materialButtonOutlinedStyle"
+                android:id="@+id/welcome_button_material_light"
+                android:textColor="?attr/storyColorNormal"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_marginLeft="8dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:tag="material_light"
+                android:text="Material You (light)"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                style="?attr/materialButtonOutlinedStyle"
+                android:id="@+id/welcome_button_dark"
+                android:textColor="?attr/storyColorNormal"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:tag="dark"
+                android:text="Dark"/>
+
+            <Button
+                style="?attr/materialButtonOutlinedStyle"
+                android:id="@+id/welcome_button_gray"
+                android:textColor="?attr/storyColorNormal"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="8dp"
+                android:layout_marginRight="8dp"
+                android:layout_gravity="right"
+                android:tag="gray"
+                android:text="Gray"/>
+
+            <Button
+                style="?attr/materialButtonOutlinedStyle"
+                android:id="@+id/welcome_button_black"
+                android:textColor="?attr/storyColorNormal"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:tag="amoled"
+                android:text="Black"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                style="?attr/materialButtonOutlinedStyle"
+                android:id="@+id/welcome_button_light"
+                android:textColor="?attr/storyColorNormal"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_marginRight="8dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:tag="light"
+                android:text="Light"/>
+
+            <Button
+                style="?attr/materialButtonOutlinedStyle"
+                android:id="@+id/welcome_button_white"
+                android:textColor="?attr/storyColorNormal"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_marginLeft="8dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:tag="white"
+                android:text="White"/>
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_marginTop="16dp"
+            android:text="Quick settings:"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:textColor="?attr/storyColorNormal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/product_sans" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/welcome_switch_thumbnails"
+            android:drawableLeft="@drawable/ic_action_web"
+            android:drawablePadding="14dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/product_sans"
+            android:textSize="16sp"
+            android:checked="true"
+            android:text="Thumbnails"   />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/welcome_switch_points"
+            android:drawableLeft="@drawable/ic_action_thumbs"
+            android:drawablePadding="14dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/product_sans"
+            android:textSize="16sp"
+            android:checked="true"
+            android:text="Points"   />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/welcome_switch_index"
+            android:drawableLeft="@drawable/ic_action_index"
+            android:drawablePadding="14dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/product_sans"
+            android:textSize="16sp"
+            android:checked="false"
+            android:text="Indices"   />
+
+        <TextView
+            android:visibility="gone"
+            android:text="There's many more settings to choose from such as nighttime themes, font changes and filters"
+            android:fontFamily="@font/product_sans"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:onClick="done"
+            app:icon="@drawable/ic_action_check"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="8dp"
+            android:text="Done"/>
+
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Harmonic</string>
+    <!-- HN Jobs gets remove in code if hideJobs == true -->
+    <string-array name="sorting_options">
+        <item>Top Stories</item>
+        <item>Last 24 hours</item>
+        <item>Last 48 hours</item>
+        <item>Last week</item>
+        <item>New Stories</item>
+        <item>Best Stories</item>
+        <item>Ask HN</item>
+        <item>Show HN</item>
+        <item>HN Jobs</item>
+        <item>Bookmarks</item>
+    </string-array>
+
+    <string-array name="search_sorting_options">
+        <item>Popularity</item>
+        <item>Recent</item>
+    </string-array>
+
+    <string-array name="search_sorting_timescale">
+        <item>All time</item>
+        <item>Last year</item>
+        <item>Last month</item>
+        <item>Last week</item>
+        <item>Last 24 hours</item>
+    </string-array>
+</resources>

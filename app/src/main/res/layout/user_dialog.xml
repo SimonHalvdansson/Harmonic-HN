@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/user_error"
+            android:visibility="gone"
+            android:orientation="vertical"
+            android:layout_marginTop="36dp"
+            android:layout_marginBottom="36dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:gravity="center"
+                android:paddingTop="24dp"
+                android:paddingBottom="6dp"
+                android:paddingRight="24dp"
+                android:paddingLeft="24dp"
+                android:fontFamily="@font/product_sans"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="?attr/storyColorNormal"
+                android:text="Loading failed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"    />
+
+            <Button
+                android:layout_gravity="center_horizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+                app:icon="@drawable/ic_action_refresh"
+                android:id="@+id/user_retry"
+                android:textColor="?attr/storyColorNormal"
+                android:text="Retry"    />
+
+        </LinearLayout>
+
+        <ProgressBar
+            tools:visibility="gone"
+            android:id="@+id/user_loading"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="60dp"
+            android:minWidth="60dp" />
+
+        <LinearLayout
+            android:id="@+id/user_container"
+            android:visibility="gone"
+            tools:visibility="visible"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/user_name"
+                android:fontFamily="@font/product_sans_bold"
+                android:textColor="?attr/storyColorNormal"
+                android:textSize="28sp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="intrepidher"/>
+
+            <TextView
+                android:id="@+id/user_meta"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/product_sans"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:textColor="?attr/textColorDefault"
+                android:text="Karma: 466  •  Created: Oct 18, 2019"/>
+
+            <org.sufficientlysecure.htmltextview.HtmlTextView
+                android:id="@+id/user_about"
+                android:textColor="?attr/textColorDefault"
+                tools:text="Electrical engineer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/product_sans" />
+
+            <Button
+                android:layout_marginTop="8dp"
+                style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+                app:icon="@drawable/ic_action_open_new"
+                android:id="@+id/user_submissions_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/storyColorNormal"
+                tools:text="Submissions" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

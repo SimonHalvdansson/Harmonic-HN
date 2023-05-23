@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:id="@+id/compose_container"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <TextView
+        android:id="@+id/compose_top_comment"
+        android:paddingTop="16dp"
+        android:paddingBottom="10dp"
+        android:textSize="20sp"
+        android:textColor="?attr/storyColorNormal"
+        android:textStyle="bold"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:text="Commenting on &quot;Firefox was never enough&quot;" />
+
+    <ScrollView
+        android:id="@+id/compose_replying_scrollview"
+        android:layout_width="match_parent"
+        android:layout_height="180dp">
+
+        <org.sufficientlysecure.htmltextview.HtmlTextView
+            android:id="@+id/compose_replying_text"
+            android:paddingTop="16dp"
+            android:paddingBottom="10dp"
+            android:textSize="16sp"
+            android:textColor="?attr/storyColorNormal"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="Replying to aysbd's comment:\n\nLorem impus dolor sit amet." />
+
+    </ScrollView>
+
+    <View
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginBottom="10dp"
+        android:background="#445"
+        android:layout_width="match_parent"
+        android:layout_height="1dp" />
+
+    <androidx.appcompat.widget.AppCompatEditText
+        android:paddingLeft="16dp"
+        android:imeOptions="normal"
+        android:paddingRight="16dp"
+        android:id="@+id/compose_edittext"
+        android:hint="Type here..."
+        android:background="@null"
+        android:fontFamily="@font/product_sans"
+        android:gravity="top"
+        android:inputType="textCapSentences|textMultiLine"
+        android:layout_width="match_parent"
+        android:layout_weight="1"
+        android:layout_height="0dp"    />
+
+    <View
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginTop="8dp"
+        android:background="#445"
+        android:layout_width="match_parent"
+        android:layout_height="1dp" />
+
+    <RelativeLayout
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:paddingBottom="8dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Button
+            android:onClick="infoClick"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/storyColorNormal"
+            android:layout_toLeftOf="@id/compose_submit"
+            android:layout_marginRight="16dp"
+            style="?attr/materialButtonOutlinedStyle"
+            android:text="Formatting"/>
+
+        <Button
+            android:id="@+id/compose_submit"
+            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            app:icon="@drawable/ic_action_send"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:onClick="submit"
+            android:text="Submit" />
+
+    </RelativeLayout>
+
+
+
+</LinearLayout>

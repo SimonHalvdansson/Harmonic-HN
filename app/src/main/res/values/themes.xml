@@ -1,0 +1,182 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="AppThemeMaterialDark" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="storyColorNormal">@color/darkStoryColorNormal</item>
+        <item name="storyColorDisabled">@color/darkStoryColorDisabled</item>
+        <item name="textColorHighlighted">@color/darkTextColorHighlighted</item>
+        <item name="textColorDefault">@color/darkTextColorDefault</item>
+        <item name="textColorDisabled">@color/darkTextColorDisabled</item>
+        <item name="commentDividerColor">@color/darkDividerColor</item>
+        <item name="drawableColor">@color/darkDrawableColor</item>
+        <item name="dropdownColor">@color/material_you_neutral_800</item>
+        <item name="opCommentColor">@color/darkOpCommentColor</item>
+        <item name="selfCommentColor">@color/darkSelfCommentColor</item>
+        <item name="commentCountIndicatorColor">@color/material_you_600</item>
+
+        <item name="android:windowBackground">@color/material_you_neutral_900</item>
+        <item name="colorControlHighlight">#40ffffff</item>
+
+        <item name="colorPrimary">@color/material_you_third_400</item>
+        <item name="colorPrimaryContainer">@color/material_you_third_700</item>
+
+        <item name="popupMenuBackground">@drawable/popup_dark_background_material</item>
+        <item name="snackbarTextViewStyle">@style/snackbarTextStyle</item>
+        <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
+        <item name="android:statusBarColor">@color/material_you_neutral_900</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialDark</item>
+    </style>
+
+    <style name="AppTheme" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="storyColorNormal">@color/darkStoryColorNormal</item>
+        <item name="storyColorDisabled">@color/darkStoryColorDisabled</item>
+        <item name="textColorHighlighted">@color/darkTextColorHighlighted</item>
+        <item name="textColorDefault">@color/darkTextColorDefault</item>
+        <item name="textColorDisabled">@color/darkTextColorDisabled</item>
+        <item name="commentDividerColor">@color/darkDividerColor</item>
+        <item name="drawableColor">@color/darkDrawableColor</item>
+        <item name="dropdownColor">@color/darkerBackground</item>
+        <item name="opCommentColor">@color/darkOpCommentColor</item>
+        <item name="selfCommentColor">@color/darkSelfCommentColor</item>
+        <item name="commentCountIndicatorColor">@color/colorPrimaryDark</item>
+
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
+
+        <item name="android:windowBackground">@color/background</item>
+        <item name="colorControlHighlight">#40ffffff</item>
+
+        <item name="popupMenuBackground">@drawable/popup_dark_background</item>
+        <item name="snackbarTextViewStyle">@style/snackbarTextStyle</item>
+        <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
+        <item name="android:statusBarColor">@color/statusBarColor</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialog</item>
+    </style>
+
+    <style name="AppThemeAmoledDark" parent="AppTheme">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="dropdownColor">@android:color/black</item>
+
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogAmoledDark</item>
+    </style>
+
+    <style name="AppThemeGray" parent="AppTheme">
+        <item name="android:windowBackground">@color/grayBackground</item>
+        <item name="android:statusBarColor">@color/grayStatusBarColor</item>
+
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogGray</item>
+    </style>
+
+    <style name="AppThemeLight" parent="Theme.Material3.Light.NoActionBar">
+        <item name="storyColorNormal">@color/lightStoryColorNormal</item>
+        <item name="storyColorDisabled">@color/lightStoryColorDisabled</item>
+        <item name="textColorHighlighted">@color/lightTextColorHighlighted</item>
+        <item name="textColorDefault">@color/lightTextColorDefault</item>
+        <item name="textColorDisabled">@color/lightTextColorDisabled</item>
+        <item name="commentDividerColor">@color/lightDividerColor</item>
+        <item name="drawableColor">@color/lightDrawableColor</item>
+        <item name="dropdownColor">@color/lightBackground</item>
+        <item name="opCommentColor">@color/lightOpCommentColor</item>
+        <item name="selfCommentColor">@color/lightSelfCommentColor</item>
+        <item name="commentCountIndicatorColor">@color/colorPrimaryDark</item>
+
+        <item name="colorPrimary">@color/colorPrimaryGreen</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryGreen</item>
+        <item name="colorAccent">@color/colorPrimaryGreen</item>
+        <item name="colorPrimaryContainer">@color/colorPrimaryGreenLighter</item>
+
+        <item name="android:windowBackground">@color/lightBackground</item>
+        <item name="colorControlHighlight">#20000000</item>
+        <item name="snackbarTextViewStyle">@style/snackbarTextStyleLight</item>
+        <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
+        <item name="android:statusBarColor">@color/lightStatusBarColor</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogLight</item>
+    </style>
+
+    <style name="AppThemeMaterialLight" parent="Theme.Material3.Light.NoActionBar">
+        <item name="storyColorNormal">@color/lightStoryColorNormal</item>
+        <item name="storyColorDisabled">@color/lightStoryColorDisabled</item>
+        <item name="textColorHighlighted">@color/lightTextColorHighlighted</item>
+        <item name="textColorDefault">@color/lightTextColorDefault</item>
+        <item name="textColorDisabled">@color/lightTextColorDisabled</item>
+        <item name="commentDividerColor">@color/lightDividerColor</item>
+        <item name="drawableColor">@color/lightDrawableColor</item>
+        <item name="dropdownColor">@color/material_you_neutral_50</item>
+        <item name="opCommentColor">@color/lightOpCommentColor</item>
+        <item name="selfCommentColor">@color/lightSelfCommentColor</item>
+        <item name="commentCountIndicatorColor">@color/material_you_600</item>
+        <item name="popupMenuBackground">@drawable/popup_background_material</item>
+
+        <item name="colorPrimary">@color/material_you_third_400</item>
+        <item name="colorPrimaryContainer">@color/material_you_third_700</item>
+
+        <item name="android:windowBackground">@color/material_you_neutral_100</item>
+
+        <item name="colorControlHighlight">#20000000</item>
+        <item name="snackbarTextViewStyle">@style/snackbarTextStyleLight</item>
+        <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
+        <item name="android:statusBarColor">@color/material_you_neutral_100</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialLight</item>
+    </style>
+
+    <style name="AppThemeWhite" parent="@style/AppThemeLight">
+        <item name="android:windowBackground">@color/whiteBackground</item>
+        <item name="android:statusBarColor">@color/whiteStatusBarColor</item>
+
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogWhite</item>
+    </style>
+
+
+
+
+    <style name="Theme.Swipe.Back.NoActionBar" parent="AppTheme">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+    <style name="ThemeSwipeBackNoActionBarMaterialDark" parent="AppThemeMaterialDark">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+    <style name="ThemeSwipeBackNoActionBarAmoledDark" parent="AppThemeAmoledDark">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+    <style name="ThemeSwipeBackNoActionBarGray" parent="AppThemeGray">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+    <style name="ThemeSwipeBackNoActionBarLight" parent="@style/AppThemeLight">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="ThemeSwipeBackNoActionBarMaterialLight" parent="@style/AppThemeMaterialLight">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="ThemeSwipeBackNoActionBarWhite" parent="@style/AppThemeWhite">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+</resources>

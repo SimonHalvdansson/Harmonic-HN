@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="single_view_side_margin">100dp</dimen>
+    <dimen name="comments_header_top_padding">32dp</dimen>
+    <dimen name="comments_header_action_padding">64dp</dimen>
+</resources>

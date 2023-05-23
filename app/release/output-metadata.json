@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "artifactType": {
+    "type": "APK",
+    "kind": "Directory"
+  },
+  "applicationId": "com.simon.harmonichackernews",
+  "variantName": "processReleaseResources",
+  "elements": [
+    {
+      "type": "SINGLE",
+      "filters": [],
+      "versionCode": 32,
+      "versionName": "1.6.8 POPUP TESTING",
+      "outputFile": "app-release.apk"
+    }
+  ]
+}

@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/stories_header_container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="38dp"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:orientation="vertical"
+    android:paddingBottom="24dp">
+    <!-- Above paddings are not respected, set in code -->
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:id="@+id/stories_header_spinner_container"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content">
+
+            <Spinner
+                android:layout_marginTop="2dp"
+                android:layout_marginRight="-10dp"
+                android:id="@+id/stories_header_spinner"
+                android:dropDownVerticalOffset="49dp"
+                app:backgroundTint="?attr/textColorDefault"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"    />
+
+        </LinearLayout>
+
+        <EditText
+            android:visibility="gone"
+            android:focusable="true"
+            android:drawableLeft="@drawable/ic_action_search"
+            android:id="@+id/stories_header_search_edittext"
+            android:drawablePadding="6dp"
+            android:hint="Search posts"
+            android:fontFamily="@font/product_sans"
+            android:singleLine="true"
+            android:imeOptions="actionSearch"
+            android:inputType="textCapSentences"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="56dp"    />
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_marginTop="-2dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <ImageButton
+                android:id="@+id/stories_header_search_button"
+                android:layout_marginEnd="-4dp"
+                android:src="@drawable/ic_action_search"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_marginTop="4dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"    />
+
+            <ImageButton
+                android:id="@+id/stories_header_more"
+                android:layout_marginEnd="-12dp"
+                android:src="@drawable/ic_action_more"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_marginTop="4dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"    />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/stories_header_search_options"
+        android:paddingTop="8dp"
+        android:visibility="gone"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_marginRight="10dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:hint="Sorting">
+
+            <AutoCompleteTextView
+                android:id="@+id/search_dropdown_popularity_recent_textview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="none" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:hint="Time">
+
+            <AutoCompleteTextView
+                android:id="@+id/search_dropdown_timescale_textview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="none" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/stories_header_search_empty_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="56dp"
+        android:orientation="vertical">
+
+        <ImageView
+            android:src="@drawable/ic_action_search"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"    />
+
+        <TextView
+            android:visibility="visible"
+            android:gravity="center"
+            android:paddingTop="4dp"
+            android:paddingBottom="36dp"
+            android:fontFamily="@font/product_sans"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="?attr/textColorHighlighted"
+            android:text="Search for stories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"    />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/stories_header_no_bookmarks"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="56dp"
+        android:orientation="vertical">
+
+        <ImageView
+            android:src="@drawable/ic_action_bookmark_border"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"    />
+
+        <TextView
+            android:gravity="center"
+            android:paddingTop="4dp"
+            android:paddingBottom="36dp"
+            android:fontFamily="@font/product_sans"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="?attr/textColorHighlighted"
+            android:text="No bookmarks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"    />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/stories_header_loading_failed"
+        android:layout_marginTop="48dp"
+        android:layout_marginBottom="48dp"
+        android:layout_width="match_parent"
+        android:orientation="vertical"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:gravity="center"
+            android:paddingTop="24dp"
+            android:paddingBottom="6dp"
+            android:paddingRight="24dp"
+            android:paddingLeft="24dp"
+            android:fontFamily="@font/product_sans"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="?attr/textColorHighlighted"
+            android:text="Loading failed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"    />
+
+        <Button
+            android:layout_gravity="center_horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            style="@style/Widget.Material3.Button.ElevatedButton"
+            app:icon="@drawable/ic_action_refresh"
+            android:textColor="?attr/storyColorNormal"
+            android:id="@+id/stories_header_retry_button"
+            android:text="Retry"    />
+
+    </LinearLayout>
+
+</LinearLayout>

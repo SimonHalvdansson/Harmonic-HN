@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.simon.harmonichackernews">
+
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <queries>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
+
+    <application
+        android:usesCleartextTraffic="true"
+        android:resizeableActivity="true"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/AppTheme">
+        <activity
+            android:name=".SettingsActivity"
+            android:theme="@style/Theme.Swipe.Back.NoActionBar"
+            android:configChanges="orientation|screenSize"/>
+        <activity
+            android:name=".WelcomeActivity"
+            android:configChanges="orientation|screenSize"/>
+        <activity
+            android:name=".SubmissionsActivity"
+            android:theme="@style/Theme.Swipe.Back.NoActionBar"
+            android:configChanges="orientation|screenSize"/>
+        <activity
+            android:name=".AboutActivity"
+            android:theme="@style/Theme.Swipe.Back.NoActionBar"
+            android:configChanges="orientation|screenSize"/>
+        <activity
+            android:name=".ComposeActivity"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize"/>
+        <activity
+            android:name=".CommentsActivity"
+            android:configChanges="orientation|screenSize"
+            android:theme="@style/Theme.Swipe.Back.NoActionBar"
+            android:exported="true">
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="news.ycombinator.com"
+                    android:pathPrefix="/item"
+                    android:scheme="https" />
+            </intent-filter>
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="news.ycombinator.com"
+                    android:pathPrefix="/item"
+                    android:scheme="http" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!--
+        <activity
+            android:name=".UserDialogActivity"
+            android:theme="@style/AppDialogTheme"
+            android:exported="true">
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="news.ycombinator.com"
+                    android:pathPrefix="/user"
+                    android:scheme="https" />
+            </intent-filter>
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="news.ycombinator.com"
+                    android:pathPrefix="/user"
+                    android:scheme="http" />
+            </intent-filter>
+        </activity>-->
+    </application>
+
+</manifest>

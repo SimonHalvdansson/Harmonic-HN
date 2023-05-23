@@ -1,0 +1,67 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/submissions_comment_header"
+        android:textSize="13sp"
+        android:paddingBottom="4dp"
+        android:textStyle="bold"
+        android:textColor="?attr/textColorDisabled"
+        android:fontFamily="@font/product_sans"
+        tools:text="On 'We found and fixed' a rare race condition in our sessions handling':"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <org.sufficientlysecure.htmltextview.HtmlTextView
+        android:id="@+id/submissions_comment_body"
+        android:ellipsize="end"
+        android:maxLines="12"
+        android:textSize="15sp"
+        tools:text="> While our log analysis, conducted from March 5 through March 8, confirmed that this was a rare issue, it could not rule out the possibility that a session had been incorrectly returned but then never used. This was not a risk we were willing to take, given the potential impact of even one of these incorrectly returned sessions being used.\n\n It is funny how they make it seem like they are super cautious. When in fact they had no other choice than do it when you rephrase the problem as 'there were maybe some people who got the admin right of the github account of some of our customers'"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="?attr/storyColorNormal"
+        android:fontFamily="@font/product_sans"/>
+
+    <LinearLayout
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Button
+            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            android:id="@+id/submissions_comment_button_story"
+            android:textColor="?attr/storyColorNormal"
+            android:text="Story"
+            app:icon="@drawable/ic_action_news"
+            app:iconTint="?attr/storyColorNormal"
+            android:layout_marginRight="4dp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"/>
+
+        <Button
+            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            android:id="@+id/submissions_comment_button_replies"
+            android:textColor="?attr/storyColorNormal"
+            app:icon="@drawable/ic_action_reply"
+            app:iconTint="?attr/storyColorNormal"
+            android:text="Replies"
+            android:layout_marginLeft="4dp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"/>
+
+
+    </LinearLayout>
+
+</LinearLayout>

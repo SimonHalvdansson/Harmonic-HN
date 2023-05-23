@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout android:layout_height="match_parent"
+    android:layout_width="match_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <LinearLayout
+        android:paddingRight="@dimen/extra_pane_padding"
+        android:id="@+id/comments_empty"
+        android:visibility="gone"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingTop="180dp"
+        android:orientation="vertical">
+
+        <ImageView
+            android:layout_gravity="center_horizontal"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginBottom="6dp"
+            android:src="@drawable/ic_action_news" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="26sp"
+            android:text="Open a story"
+            android:textStyle="bold"
+            android:textColor="?attr/textColorHighlighted"
+            android:fontFamily="@font/product_sans"
+            android:layout_gravity="center_horizontal"  />
+
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/webview_container"
+        android:layout_marginBottom="68dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/webview_download"
+            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            app:icon="@drawable/ic_action_download"
+            android:visibility="gone"
+            android:textColor="?attr/storyColorNormal"
+            android:text="Download file"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"/>
+
+        <WebView
+            android:id="@+id/comments_webview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/webview_progress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:paddingRight="@dimen/extra_pane_padding"
+        android:id="@+id/comments_bottom_sheet"
+        app:behavior_hideable="false"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
+        android:elevation="16dp"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                android:id="@+id/comments_swipe_refresh"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/comments_recyclerview_swipe"
+                    tools:listitem="@layout/comments_item"
+                    android:clipToPadding="false"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"       />
+
+            </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/comments_recyclerview"
+                tools:listitem="@layout/comments_item"
+                android:clipToPadding="false"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"       />
+
+            <LinearLayout
+                android:visibility="gone"
+                android:id="@+id/comments_scroll_navigation"
+                android:elevation="8dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/scrolling_helper_background"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <ImageButton
+                    android:id="@+id/comments_scroll_previous"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_action_caret_up_white"
+                    android:layout_marginLeft="2dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"/>
+
+                <ImageView
+                    android:id="@+id/comments_scroll_icon"
+                    android:layout_marginLeft="10dp"
+                    android:layout_marginRight="10dp"
+                    android:layout_marginTop="6dp"
+                    android:src="@drawable/ic_action_explore_white"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"    />
+
+                <ImageButton
+                    android:id="@+id/comments_scroll_next"
+                    android:background="?selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_action_caret_down_white"
+                    android:layout_marginRight="2dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"/>
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

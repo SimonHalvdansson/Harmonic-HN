@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DesignSurface">
+    <option name="filePathToZoomLevelMap">
+      <map>
+        <entry key="..\:/Users/Simon/.gradle/caches/transforms-3/02e0bd612fca2a22099e175f45d3c7d6/transformed/appcompat-1.4.1/res/layout/abc_alert_dialog_material.xml" value="0.3334758443779393" />
+        <entry key="..\:/Users/Simon/.gradle/caches/transforms-3/33578d17674070bd4e4f033b5746b522/transformed/material-1.6.0-alpha02/res/layout/m3_alert_dialog.xml" value="0.3334758443779393" />
+        <entry key="..\:/Users/Simon/.gradle/caches/transforms-3/33578d17674070bd4e4f033b5746b522/transformed/material-1.6.0-alpha02/res/layout/mtrl_alert_dialog.xml" value="0.3334758443779393" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_browser.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_clear.xml" value="0.314" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_colors.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_comment.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_compact.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_copy.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_dark_mode.xml" value="0.352" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_explore.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_explore_white.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_external_browser.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_feedback.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_filter.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_font.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_horizontal_split.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_index.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_info.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_invert.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_link.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_more.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_night.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_pdf.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_pending.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_search.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_share.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_style.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_subject.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_swipe.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_text.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_thumbs.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_thumbs_up.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_time.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_user.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_web.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable-anydpi/ic_action_work_off.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/further_comments_drawable.xml" value="0.3715" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/ic_action_check.xml" value="0.314" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/ic_action_download.xml" value="0.352" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/ic_action_hand.xml" value="0.352" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/ic_action_news.xml" value="0.23" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/ic_action_newspaper.xml" value="0.23" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/ic_action_open_new.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/ic_action_select.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/ic_action_send.xml" value="0.314" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/ic_action_skip.xml" value="0.4055" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/ic_action_thumb_down.xml" value="0.495" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/ic_action_whatshot.xml" value="0.23" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/popup_background_material.xml" value="0.352" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/popup_dark_background.xml" value="0.352" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/drawable/popup_dark_background_material.xml" value="0.352" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout-sw720dp/activity_main.xml" value="0.3439207650273224" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/activity_about.xml" value="0.3109375" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/activity_comments.xml" value="0.2206435436690347" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/activity_compose.xml" value="0.3109375" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/activity_main.xml" value="0.40625" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/activity_settings.xml" value="0.4514749893116717" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/activity_submissions.xml" value="0.36938862761864044" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/activity_user.xml" value="0.40625" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/activity_welcome.xml" value="0.3109375" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/comments_header.xml" value="0.3109375" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/comments_item.xml" value="0.30440359127832406" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/formatting_dialog.xml" value="0.40625" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/fragment_comments.xml" value="0.4514749893116717" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/fragment_stories.xml" value="0.40625" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/login_dialog.xml" value="0.40625" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/search_option_list_item.xml" value="0.371260199456029" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/select_text_dialog.xml" value="0.30440359127832406" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/spinner_item_layout.xml" value="0.3428815733219325" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/spinner_top_layout.xml" value="0.30440359127832406" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/stories_header.xml" value="0.40625" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/story_list_item.xml" value="0.3472348141432457" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/story_list_item_left.xml" value="0.2206435436690347" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/submissions_comment.xml" value="0.4514749893116717" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/submissions_header.xml" value="0.36938862761864044" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/layout/user_dialog.xml" value="0.3069687900812313" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/menu/comments_more_menu.xml" value="0.30440359127832406" />
+        <entry key="..\:/Users/Simon/Documents/GitHub/Harmonic-Hacker-News/app/src/main/res/xml/root_preferences.xml" value="0.409375" />
+      </map>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" project-jdk-name="1.8" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/build/classes" />
+  </component>
+  <component name="ProjectType">
+    <option name="id" value="Android" />
+  </component>
+</project>

@@ -1,0 +1,100 @@
+<resources>
+    <string-array name="font_size_entries">
+        <item>Smaller (13 sp)</item>
+        <item>Small (14 sp)</item>
+        <item>Standard (15 sp)</item>
+        <item>Large (16 sp)</item>
+        <item>Larger (17 sp)</item>
+        <item>Largest (18 sp)</item>
+    </string-array>
+
+    <string-array name="font_size_values">
+        <item>13</item>
+        <item>14</item>
+        <item>15</item>
+        <item>16</item>
+        <item>17</item>
+        <item>18</item>
+    </string-array>
+
+    <string-array name="theme_entries">
+        <item>Dark</item>
+        <item>Material You (dark)</item>
+        <item>Gray</item>
+        <item>Black</item>
+        <item>Light</item>
+        <item>Material You (light)</item>
+        <item>White</item>
+    </string-array>
+
+    <string-array name="theme_values">
+        <item>dark</item>
+        <item>material_dark</item>
+        <item>gray</item>
+        <item>amoled</item>
+        <item>light</item>
+        <item>material_light</item>
+        <item>white</item>
+    </string-array>
+
+    <string-array name="font_entries">
+        <item>Product sans (default)</item>
+        <item>Device default</item>
+        <item>Verdana (sans serif)</item>
+        <item>JetBrains Mono (monospace)</item>
+        <item>Georgia (serif)</item>
+        <item>Roboto slab (serif)</item>
+    </string-array>
+
+    <string-array name="font_values">
+        <item>productsans</item>
+        <item>devicedefault</item>
+        <item>verdana</item>
+        <item>jetbrainsmono</item>
+        <item>georgia</item>
+        <item>robotoslab</item>
+    </string-array>
+
+    <string-array name="preload_entries">
+        <item>Always</item>
+        <item>Only on WiFi</item>
+        <item>Never</item>
+    </string-array>
+
+    <string-array name="preload_values">
+        <item>always</item>
+        <item>onlywifi</item>
+        <item>never</item>
+    </string-array>
+
+    <string-array name="hotness_entries">
+        <item>Never</item>
+        <item>Points + comments > 100</item>
+        <item>Points + comments > 200</item>
+        <item>Points + comments > 300</item>
+        <item>Points + comments > 400</item>
+    </string-array>
+
+    <string-array name="hotness_values">
+        <item>-1</item>
+        <item>100</item>
+        <item>200</item>
+        <item>300</item>
+        <item>400</item>
+    </string-array>
+
+    <string-array name="months">
+        <item>Jan</item>
+        <item>Feb</item>
+        <item>Mar</item>
+        <item>April</item>
+        <item>May</item>
+        <item>June</item>
+        <item>July</item>
+        <item>Aug</item>
+        <item>Sep</item>
+        <item>Oct</item>
+        <item>Nov</item>
+        <item>Dec</item>
+    </string-array>
+</resources>

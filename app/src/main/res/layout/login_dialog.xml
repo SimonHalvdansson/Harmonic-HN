@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <LinearLayout
+        android:animateLayoutChanges="true"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="24dp"
+        android:paddingLeft="24dp"
+        android:paddingRight="24dp"
+        android:paddingBottom="16dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:textSize="29sp"
+            android:textStyle="bold"
+            android:textColor="?attr/storyColorNormal"
+            android:text="Log in to Hacker News"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_width="match_parent">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:hint="Username"
+                android:id="@+id/login_dialog_username"
+                android:inputType="text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"    />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_marginTop="10dp"
+            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            app:endIconMode="password_toggle">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:layout_height="wrap_content"
+                android:layout_width="match_parent"
+                android:id="@+id/login_dialog_password"
+                android:hint="Password"
+                android:inputType="textPassword" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:layout_marginTop="20dp"
+            android:textSize="13sp"
+            android:layout_marginBottom="4dp"
+            android:text="Your information is only saved locally and used for API calls."
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/login_dialog_more_info"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="How does it work?" />
+
+        <LinearLayout
+            android:layout_marginTop="4dp"
+            android:visibility="gone"
+            android:id="@+id/login_dialog_info_container"
+            android:orientation="vertical"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:textSize="13sp"
+                android:text="Since Hacker News does not supply an official API for actions which require login, this app can not authenticate once and obtain a secret token to use for the future. Instead, actions which require login are performed by sending HTTPS requests to URL:s of the form"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <TextView
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:text="https://news.ycombinator.com/vote?acct=username&amp;pw=password&amp;id=123..."
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <TextView
+                android:textSize="13sp"
+                android:text="which means your password must be stored on your device. It is done so encrypted using AES-256 GCM with management carried out by Google's AndroidX Security library and are ONLY used in HTTPS requests in the form of the above to news.ycombinator.com."
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+        </LinearLayout>
+
+        <RelativeLayout
+            android:layout_marginTop="20dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/login_dialog_cancel"
+                android:text="Cancel"
+                android:textColor="?attr/storyColorNormal"
+                android:layout_marginRight="8dp"
+                android:layout_toLeftOf="@id/login_dialog_save"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"    />
+
+            <Button
+                android:id="@+id/login_dialog_save"
+                style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+                app:icon="@drawable/ic_action_check"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:enabled="false"
+                android:text="Save" />
+
+        </RelativeLayout>
+
+    </LinearLayout>
+
+</ScrollView>
+
