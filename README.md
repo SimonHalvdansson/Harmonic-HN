@@ -1,4 +1,5 @@
-<p align="center"> <img src="harmonic-25-percent.png" /> </p>
+<a href="https://github.com/SimonHalvdansson/Harmonic-HN#readme">
+<p align="center"> <img src="harmonic-25-percent.png" alt="Harmonic for Hacker News" /> </p>
 
 # Harmonic for Hacker News
 
