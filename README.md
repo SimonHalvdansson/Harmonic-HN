@@ -1,3 +1,5 @@
+<p align="center"> <img src="harmonic-25-percent.png" /> </p>
+
 # Harmonic for Hacker News
 
 Harmonic for Hacker News is an Android Hacker News client which is meant to be modern, fast and well thought out. You can find it on Google Play for download.
