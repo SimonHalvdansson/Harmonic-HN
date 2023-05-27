@@ -156,9 +156,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             if (storyViewHolder.story.loaded || storyViewHolder.story.loadingFailed) {
                 if (!TextUtils.isEmpty(storyViewHolder.story.pdfTitle)) {
-                    SpannableStringBuilder sb = new SpannableStringBuilder(Html.fromHtml(storyViewHolder.story.pdfTitle) + " ");
+                    Spanned htmlString = Html.fromHtml(storyViewHolder.story.pdfTitle);
+                    SpannableStringBuilder sb = new SpannableStringBuilder(htmlString + " ");
                     ImageSpan imageSpan = new ImageSpan(ctx, storyViewHolder.story.clicked ? R.drawable.ic_action_pdf_clicked : R.drawable.ic_action_pdf);
-                    sb.setSpan(imageSpan, storyViewHolder.story.pdfTitle.length(), storyViewHolder.story.pdfTitle.length() + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    sb.setSpan(imageSpan, sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
                     storyViewHolder.titleView.setText(sb);
                 } else {
