@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.view.View;
 
 import androidx.preference.PreferenceManager;
@@ -28,6 +29,9 @@ public class ThemeUtils {
     public static void setupTheme(Activity activity, boolean swipeBack, boolean specialFlags) {
         String theme = getPreferredTheme(activity);
         switch (theme) {
+            case "material_daynight":
+                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarMaterialDayNight : R.style.AppThemeMaterialDayNight);
+                break;
             case "material_dark":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarMaterialDark : R.style.AppThemeMaterialDark);
                 break;
@@ -59,7 +63,16 @@ public class ThemeUtils {
 
     public static boolean isDarkMode(Context ctx) {
         String theme = getPreferredTheme(ctx);
+        if (theme.equals("material_daynight")) {
+            return uiModeNight(ctx);
+        }
         return theme.equals("amoled") || theme.equals("dark") || theme.equals("gray") || theme.equals("material_dark");
+    }
+
+    public static boolean uiModeNight(Context ctx) {
+        int currentNightMode = ctx.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        boolean isNight = currentNightMode == Configuration.UI_MODE_NIGHT_YES;
+        return isNight;
     }
 
     public static int getBackgroundColorResource(Context ctx) {
@@ -77,6 +90,8 @@ public class ThemeUtils {
                 return R.color.material_you_neutral_900;
             case "material_light":
                 return R.color.material_you_neutral_100;
+            case "material_daynight":
+                return uiModeNight(ctx) ? R.color.material_you_neutral_900 : R.color.material_you_neutral_100;
             default:
                 return R.color.background;
         }
