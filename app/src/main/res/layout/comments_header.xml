@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/comment_sheet_container"
     tools:context=".CommentsActivity"
     tools:background="@color/background"
     android:layout_height="wrap_content"

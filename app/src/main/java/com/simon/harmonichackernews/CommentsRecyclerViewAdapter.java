@@ -701,6 +701,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             });
 
             LinearLayout sheetButtonsContainer = view.findViewById(R.id.comment_sheet_buttons_container);
+            LinearLayout sheetContainer = view.findViewById(R.id.comment_sheet_container);
+            if (Utils.shouldUseTransparentStatusBar(mView.getContext())) {
+                sheetContainer.setPadding(0, showExpand ? Utils.getStatusBarHeight(view.getResources()) : 0, 0, 0);
+            } else {
+                sheetContainer.setPadding(0, 0, 0, 0);
+            }
             BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
                 @Override
                 public void onStateChanged(@NonNull View bottomSheet, int newState) {
@@ -713,6 +719,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     sheetButtonsContainer.setAlpha((1-slideOffset)*(1-slideOffset)*(1-slideOffset));
                     sheetButtonsContainer.getLayoutParams().height = Math.round((1-slideOffset) * (Utils.pxFromDp(view.getResources(), 32) + Utils.getNavigationBarHeight((Activity) view.getContext())));
                     sheetButtonsContainer.requestLayout();
+                    if (Utils.shouldUseTransparentStatusBar(mView.getContext())) {
+                        sheetContainer.setPadding(0, (int) ((slideOffset) * Utils.getStatusBarHeight(bottomSheet.getResources())), 0, 0);
+                    }
                 }
             });
 
@@ -722,10 +731,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     sheetButtonsContainer.setAlpha(0f);
                     sheetButtonsContainer.getLayoutParams().height = 0;
                     sheetButtonsContainer.requestLayout();
+                    if (Utils.shouldUseTransparentStatusBar(mView.getContext())) {
+                        sheetContainer.setPadding(0, Utils.getStatusBarHeight(view.getResources()), 0, 0);
+                    } else {
+                        sheetContainer.setPadding(0, 0, 0, 0);
+                    }
                 } else {
                     //make sure we set correct height when starting on the webview
                     sheetButtonsContainer.getLayoutParams().height = Utils.pxFromDpInt(view.getResources(), 32) + Utils.getNavigationBarHeight((Activity) userLayoutParent.getContext());
                     sheetButtonsContainer.requestLayout();
+                    sheetContainer.setPadding(0, 0, 0, 0);
                 }
             } else {
                 moreLayoutParent.setVisibility(View.GONE);

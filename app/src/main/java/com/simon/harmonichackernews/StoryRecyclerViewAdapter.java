@@ -254,7 +254,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             if (compactHeader) {
                 headerViewHolder.container.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 20), 0, Utils.pxFromDpInt(ctx.getResources(), 10));
             } else {
-                headerViewHolder.container.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 40), 0, Utils.pxFromDpInt(ctx.getResources(), 26));
+                headerViewHolder.container.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 40) + Utils.getStatusBarHeight(ctx.getResources()), 0, Utils.pxFromDpInt(ctx.getResources(), 26));
             }
 
             headerViewHolder.moreButton.setVisibility(searching ? View.GONE : View.VISIBLE);
