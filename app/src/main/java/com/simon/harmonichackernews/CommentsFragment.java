@@ -278,12 +278,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         swipeRefreshLayout.setOnRefreshListener(this::refreshComments);
 
-        if (Utils.shouldUseTransparentStatusBar(getContext())) {
-            swipeRefreshLayout.setProgressViewOffset(
-                    false,
-                    swipeRefreshLayout.getProgressViewStartOffset() + Utils.getStatusBarHeight(getResources()),
-                    swipeRefreshLayout.getProgressViewEndOffset() + Utils.getStatusBarHeight(getResources()));
-        }
+        swipeRefreshLayout.setProgressViewOffset(
+                false,
+                swipeRefreshLayout.getProgressViewStartOffset() + Utils.getStatusBarHeight(getResources()),
+                swipeRefreshLayout.getProgressViewEndOffset() + Utils.getStatusBarHeight(getResources()));
 
         // this is how much the bottom sheet sticks up by default and also decides height of webview
         int bottomSheetMargin = Utils.pxFromDpInt(getResources(), 68) + Utils.getNavigationBarHeight(requireActivity());

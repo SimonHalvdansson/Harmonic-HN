@@ -77,12 +77,10 @@ public class SubmissionsActivity extends AppCompatActivity {
 
         swipeRefreshLayout.setOnRefreshListener(this::loadSubmissions);
 
-        if (Utils.shouldUseTransparentStatusBar(this)) {
-            swipeRefreshLayout.setProgressViewOffset(
-                    false,
-                    swipeRefreshLayout.getProgressViewStartOffset() + Utils.getStatusBarHeight(getResources()),
-                    swipeRefreshLayout.getProgressViewEndOffset() + Utils.getStatusBarHeight(getResources()));
-        }
+        swipeRefreshLayout.setProgressViewOffset(
+                false,
+                swipeRefreshLayout.getProgressViewStartOffset() + Utils.getStatusBarHeight(getResources()),
+                swipeRefreshLayout.getProgressViewEndOffset() + Utils.getStatusBarHeight(getResources()));
 
         RecyclerView recyclerView = findViewById(R.id.submissions_recyclerview);
 
