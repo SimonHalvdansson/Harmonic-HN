@@ -504,6 +504,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public SubmissionsHeaderViewHolder(View view) {
             super(view);
             headerText = view.findViewById(R.id.submissions_header_text);
+            headerText.setPadding(
+                    headerText.getPaddingLeft(),
+                    headerText.getPaddingTop() + Utils.getStatusBarHeight(view.getResources()),
+                    headerText.getPaddingRight(),
+                    headerText.getPaddingBottom());
         }
     }
 
