@@ -106,7 +106,15 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             int karma = jsonObject.getInt("karma");
                             Calendar cal = Calendar.getInstance();
                             cal.setTime(new Date(jsonObject.getInt("created") * 1000L));
-                            JSONArray submitted = jsonObject.getJSONArray("submitted");
+
+                            // Users who have never submitted before do not receive this key as part of their response.
+                            JSONArray submitted = null;
+                            if (jsonObject.has("submitted")) {
+                                submitted = jsonObject.getJSONArray("submitted");
+                            } else {
+                                submitted = new JSONArray();
+                                jsonObject.put("submitted", submitted);
+                            }
 
                             if (submitted.length() == 0) {
                                 submissionsButton.setVisibility(View.GONE);
