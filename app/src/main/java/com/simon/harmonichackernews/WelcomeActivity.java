@@ -15,7 +15,6 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -33,6 +32,7 @@ public class WelcomeActivity extends AppCompatActivity {
         ImageView favicon = findViewById(R.id.story_meta_favicon);
         TextView index = findViewById(R.id.story_index);
         TextView meta = findViewById(R.id.story_meta);
+        Button materialDaynightButton = findViewById(R.id.welcome_button_material_daynight);
         Button materialDarkButton = findViewById(R.id.welcome_button_material_dark);
         Button materialLightButton = findViewById(R.id.welcome_button_material_light);
         Button darkButton = findViewById(R.id.welcome_button_dark);
@@ -81,6 +81,7 @@ public class WelcomeActivity extends AppCompatActivity {
             }
         };
 
+        materialDaynightButton.setOnClickListener(buttonClickListener);
         materialDarkButton.setOnClickListener(buttonClickListener);
         materialLightButton.setOnClickListener(buttonClickListener);
         darkButton.setOnClickListener(buttonClickListener);
