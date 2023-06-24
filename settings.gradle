@@ -1,2 +1,9 @@
+pluginManagement {
+    repositories {
+        google()
+        gradlePluginPortal()
+    }
+}
+
 include ':app'
 rootProject.name = "Harmonic Hacker News"
