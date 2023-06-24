@@ -3,13 +3,6 @@ plugins {
     id('com.android.application') version '7.3.1' apply false
 }
 
-allprojects {
-    repositories {
-        google()
-        jcenter()
-    }
-}
-
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
