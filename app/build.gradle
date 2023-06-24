@@ -4,6 +4,7 @@ android {
     compileSdkVersion 33
     buildToolsVersion "30.0.3"
 
+    namespace "com.simon.harmonichackernews"
     defaultConfig {
         applicationId "com.simon.harmonichackernews"
         minSdkVersion 23
