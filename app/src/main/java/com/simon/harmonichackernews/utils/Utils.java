@@ -493,11 +493,7 @@ public class Utils {
     }
 
     public static int getPreferredCommentTextSize(Context ctx) {
-        String sizeString =  PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_comment_text_size", "15");
-        if (sizeString == null) {
-            sizeString = "15";
-        }
-        return Integer.parseInt(sizeString);
+        return Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_comment_text_size", "15"));
     }
 
     public static String getTimeAgo(long time) {
