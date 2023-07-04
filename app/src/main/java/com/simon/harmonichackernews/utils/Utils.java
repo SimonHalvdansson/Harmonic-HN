@@ -183,18 +183,10 @@ public class Utils {
     }
 
     public static void saveStringToSharedPreferences(Context ctx, String key, String text) {
-        saveStringToSharedPreferences(ctx, key, text, false);
-    }
-
-    public static void saveStringToSharedPreferences(Context ctx, String key, String text, boolean sync) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
 
-        if (sync) {
-            editor.putString(key, text).apply();
-        } else {
-            editor.putString(key, text).commit();
-        }
+        editor.putString(key, text).apply();
     }
 
     public static String readStringFromSharedPreferences(Context ctx, String key) {
@@ -308,7 +300,7 @@ public class Utils {
             }
         }
 
-        saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_BOOKMARKS, sb.toString(), true);
+        saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_BOOKMARKS, sb.toString());
     }
 
     public static void addBookmark(Context ctx, int id) {
@@ -732,10 +724,10 @@ public class Utils {
     }
     
     public static void setNighttimeHours(int fromHour, int fromMinute, int toHour, int toMinute, Context ctx) {
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_HOUR, fromHour + "", true);
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_MINUTE, fromMinute + "", true);
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_HOUR, toHour + "", true);
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_MINUTE, toMinute + "", true);
+        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_HOUR, fromHour + "");
+        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_MINUTE, fromMinute + "");
+        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_HOUR, toHour + "");
+        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_MINUTE, toMinute + "");
     }
 
     public static int[] getNighttimeHours(Context ctx) {
