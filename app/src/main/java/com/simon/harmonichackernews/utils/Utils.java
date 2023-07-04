@@ -479,7 +479,7 @@ public class Utils {
 
     public static boolean shouldUseTransparentStatusBar(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_transparent_status_bar", true);
+        return prefs.getBoolean("pref_transparent_status_bar", false);
     }
 
     public static boolean shouldUseSpecialNighttimeTheme(Context ctx) {

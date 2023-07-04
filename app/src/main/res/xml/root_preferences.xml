@@ -95,7 +95,7 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_transparent_status_bar"
-            app:defaultValue="true"
+            app:defaultValue="false"
             app:icon="@drawable/ic_action_visibility"
             app:title="Transparent Status Bar"    />
 
