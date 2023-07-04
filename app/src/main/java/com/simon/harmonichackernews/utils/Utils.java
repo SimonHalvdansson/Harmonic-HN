@@ -427,6 +427,11 @@ public class Utils {
         return prefs.getBoolean("pref_webview", true);
     }
 
+    public static boolean shouldEnableFoldableSupport(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return prefs.getBoolean("pref_foldable_support", false);
+    }
+
     public static String shouldPreloadWebView(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return prefs.getString("pref_preload_webview", "never");

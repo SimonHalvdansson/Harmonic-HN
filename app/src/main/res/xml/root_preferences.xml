@@ -92,6 +92,13 @@
             app:icon="@drawable/ic_action_hand"
             app:title="Left align comments button"    />
 
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_foldable_support"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_tablet"
+            app:title="Enable foldable support"   />
+
         <DropDownPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_whatshot"

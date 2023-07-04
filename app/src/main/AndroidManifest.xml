@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.simon.harmonichackernews">
+  xmlns:tools="http://schemas.android.com/tools"
+  package="com.simon.harmonichackernews">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -19,6 +20,10 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/AppTheme">
+        <property
+          android:name="android.window.PROPERTY_ACTIVITY_EMBEDDING_SPLITS_ENABLED"
+          android:value="true" />
+
         <activity
             android:name=".SettingsActivity"
             android:theme="@style/Theme.Swipe.Back.NoActionBar"
@@ -76,6 +81,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity android:name=".SplitPlaceholderActivity" />
         <!--
         <activity
             android:name=".UserDialogActivity"
@@ -104,6 +111,16 @@
                     android:scheme="http" />
             </intent-filter>
         </activity>-->
+
+        <provider
+          android:name="androidx.startup.InitializationProvider"
+          android:authorities="${applicationId}.androidx-startup"
+          android:exported="false"
+          tools:node="merge">
+            <meta-data
+              android:name="${applicationId}.utils.FoldableSplitInitializer"
+              android:value="androidx.startup" />
+        </provider>
     </application>
 
 </manifest>
