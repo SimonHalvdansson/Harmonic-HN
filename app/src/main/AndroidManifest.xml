@@ -118,7 +118,7 @@
           android:exported="false"
           tools:node="merge">
             <meta-data
-              android:name="${applicationId}.utils.FoldableSplitInitializer"
+              android:name="com.simon.harmonichackernews.utils.FoldableSplitInitializer"
               android:value="androidx.startup" />
         </provider>
     </application>
