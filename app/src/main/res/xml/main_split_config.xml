@@ -3,7 +3,7 @@
   xmlns:window="http://schemas.android.com/apk/res-auto">
 
   <SplitPairRule
-    window:splitRatio="0.4"
+    window:splitRatio="0.5"
     window:splitLayoutDirection="locale"
     window:splitMinWidthDp="840"
     window:splitMaxAspectRatioInPortrait="alwaysAllow"
@@ -17,7 +17,7 @@
 
   <SplitPlaceholderRule
     window:placeholderActivityName=".SplitPlaceholderActivity"
-    window:splitRatio="0.4"
+    window:splitRatio="0.5"
     window:splitLayoutDirection="locale"
     window:splitMinWidthDp="840"
     window:splitMaxAspectRatioInPortrait="alwaysAllow"
