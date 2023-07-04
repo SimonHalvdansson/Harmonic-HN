@@ -16,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
@@ -58,6 +59,10 @@ public class SettingsActivity extends AppCompatActivity {
         }
 
         ThemeUtils.setupTheme(this, true);
+
+        if (Utils.shouldUseTransparentStatusBar(this)) {
+            getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.statusBarColorTransparent));
+        }
 
         setContentView(R.layout.activity_settings);
         SwipeBackLayout swipeBackLayout = findViewById(R.id.swipeBackLayout);
@@ -159,6 +164,17 @@ public class SettingsActivity extends AppCompatActivity {
 
             findPreference("pref_thumbnails").setEnabled(!compact);
             findPreference("pref_thumbnails").getIcon().setAlpha(compact ? 120 : 255);
+
+            findPreference("pref_transparent_status_bar").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                    Intent intent = new Intent(getContext(), SettingsActivity.class);
+                    intent.putExtra(EXTRA_REQUEST_RESTART, true);
+                    requireContext().startActivity(intent);
+                    requireActivity().finish();
+                    return true;
+                }
+            });
 
             boolean integratedWebview = Utils.shouldUseIntegratedWebView(getContext());
             findPreference("pref_preload_webview").setEnabled(integratedWebview);
@@ -385,7 +401,7 @@ public class SettingsActivity extends AppCompatActivity {
         @Override
         public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
             super.onViewCreated(view, savedInstanceState);
-            getListView().setPadding(0,0,0,Utils.getNavigationBarHeight(getActivity()));
+            getListView().setPadding(0, Utils.getStatusBarHeight(getResources()), 0, Utils.getNavigationBarHeight(getActivity()));
         }
 
         private void updateTimedRangeSummary() {
@@ -412,7 +428,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void updatePadding() {
         int extraPadding = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
-        findViewById(R.id.settings_linear_layout).setPadding(extraPadding, Utils.getStatusBarHeight(getResources()), extraPadding, 0);
+        findViewById(R.id.settings_linear_layout).setPadding(extraPadding, 0, extraPadding, 0);
     }
 
     @Override

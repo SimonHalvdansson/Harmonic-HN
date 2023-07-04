@@ -12,3 +12,12 @@ The purpose of open-sourcing Harmonic is thus mainly to enable interested users 
 <a href="https://play.google.com/store/apps/details?id=com.simon.harmonichackernews">
 <img src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png" alt="Get it on Google Play" height="80">
 </a>
+
+# Features
+
+* Basic account functionality: log in, vote, comment, and submit
+* Dark theme
+* Browser choice: integrated or system browser
+* Key word filtering of stories
+* Option of "clearing clicked stories" to hide stories you've seen
+* Ability to export bookmarks to a text file

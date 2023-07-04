@@ -1,0 +1,30 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: build --warning-mode all
+
+      - name: Upload apks
+        uses: actions/upload-artifact@v3
+        with:
+          name: apks
+          path: app/build/outputs/apk

@@ -13,3 +13,4 @@
 .externalNativeBuild
 .cxx
 *.pepk
+.idea/deploymentTargetDropDown.xml

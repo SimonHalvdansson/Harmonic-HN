@@ -75,11 +75,23 @@
             android:layout_height="wrap_content">
 
             <Button
+                android:id="@+id/welcome_button_material_daynight"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:layout_weight="1"
+                android:tag="material_daynight"
+                android:text="Material You (auto)"
+                android:textColor="?attr/storyColorNormal" />
+
+            <Button
                 style="?attr/materialButtonOutlinedStyle"
                 android:id="@+id/welcome_button_material_dark"
                 android:textColor="?attr/storyColorNormal"
                 android:layout_width="0dp"
                 android:layout_weight="1"
+                android:layout_marginLeft="8dp"
                 android:layout_marginRight="8dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="right"
@@ -92,7 +104,6 @@
                 android:textColor="?attr/storyColorNormal"
                 android:layout_width="0dp"
                 android:layout_weight="1"
-                android:layout_marginLeft="8dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="right"
                 android:tag="material_light"

@@ -98,6 +98,13 @@
             app:defaultValue="false"
             app:icon="@drawable/ic_action_tablet"
             app:title="Enable foldable support"   />
+      
+      <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_transparent_status_bar"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_visibility"
+            app:title="Transparent Status Bar"    />
 
         <DropDownPreference
             app:singleLineTitle="false"

@@ -1,9 +1,12 @@
-apply plugin: 'com.android.application'
+plugins {
+    id('com.android.application')
+}
 
 android {
     compileSdkVersion 33
-    buildToolsVersion "30.0.3"
+    buildToolsVersion "34.0.0"
 
+    namespace "com.simon.harmonichackernews"
     defaultConfig {
         applicationId "com.simon.harmonichackernews"
         minSdkVersion 23
@@ -28,18 +31,11 @@ android {
     }
 }
 
-allprojects {
-    repositories {
-        maven { url "https://jitpack.io" }
-    }
-}
-
 dependencies {
 
     implementation "androidx.lifecycle:lifecycle-viewmodel:2.5.1"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1"
 
-    implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation 'androidx.appcompat:appcompat:1.5.1'
     implementation 'androidx.recyclerview:recyclerview:1.2.1'
     implementation "androidx.browser:browser:1.4.0"

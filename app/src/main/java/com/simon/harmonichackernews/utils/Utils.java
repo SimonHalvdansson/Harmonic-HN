@@ -183,18 +183,10 @@ public class Utils {
     }
 
     public static void saveStringToSharedPreferences(Context ctx, String key, String text) {
-        saveStringToSharedPreferences(ctx, key, text, false);
-    }
-
-    public static void saveStringToSharedPreferences(Context ctx, String key, String text, boolean sync) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
 
-        if (sync) {
-            editor.putString(key, text).apply();
-        } else {
-            editor.putString(key, text).commit();
-        }
+        editor.putString(key, text).apply();
     }
 
     public static String readStringFromSharedPreferences(Context ctx, String key) {
@@ -308,7 +300,7 @@ public class Utils {
             }
         }
 
-        saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_BOOKMARKS, sb.toString(), true);
+        saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_BOOKMARKS, sb.toString());
     }
 
     public static void addBookmark(Context ctx, int id) {
@@ -482,6 +474,11 @@ public class Utils {
         return prefs.getBoolean("pref_left_align", false);
     }
 
+    public static boolean shouldUseTransparentStatusBar(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return prefs.getBoolean("pref_transparent_status_bar", false);
+    }
+
     public static boolean shouldUseSpecialNighttimeTheme(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return prefs.getBoolean("pref_special_nighttime", false);
@@ -493,11 +490,7 @@ public class Utils {
     }
 
     public static int getPreferredCommentTextSize(Context ctx) {
-        String sizeString =  PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_comment_text_size", "15");
-        if (sizeString == null) {
-            sizeString = "15";
-        }
-        return Integer.parseInt(sizeString);
+        return Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_comment_text_size", "15"));
     }
 
     public static String getTimeAgo(long time) {
@@ -736,10 +729,10 @@ public class Utils {
     }
     
     public static void setNighttimeHours(int fromHour, int fromMinute, int toHour, int toMinute, Context ctx) {
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_HOUR, fromHour + "", true);
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_MINUTE, fromMinute + "", true);
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_HOUR, toHour + "", true);
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_MINUTE, toMinute + "", true);
+        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_HOUR, fromHour + "");
+        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_MINUTE, fromMinute + "");
+        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_HOUR, toHour + "");
+        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_MINUTE, toMinute + "");
     }
 
     public static int[] getNighttimeHours(Context ctx) {

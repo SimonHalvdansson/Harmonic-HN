@@ -2,6 +2,7 @@ package com.simon.harmonichackernews;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentContainerView;
 import androidx.fragment.app.FragmentTransaction;
 
@@ -32,6 +33,10 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
 
         ThemeUtils.setupTheme(this, true);
 
+        if (Utils.shouldUseTransparentStatusBar(this)) {
+            getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.statusBarColorTransparent));
+        }
+
         setContentView(R.layout.activity_comments);
 
         CommentsFragment fragment = new CommentsFragment();
@@ -44,7 +49,7 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
         this.splitChangeHandler = new SplitChangeHandler(this, swipeBackLayout);
 
         FragmentContainerView fragmentContainerView = findViewById(R.id.comment_fragment_container_view);
-        fragmentContainerView.setPadding(0, Utils.getStatusBarHeight(getResources()), 0, 0);
+        fragmentContainerView.setPadding(0, Utils.shouldUseTransparentStatusBar(this) ? 0 : Utils.getStatusBarHeight(getResources()), 0, 0);
 
         swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
             @Override
