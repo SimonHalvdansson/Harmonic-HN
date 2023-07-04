@@ -12,6 +12,7 @@ import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.simon.harmonichackernews.data.Story;
@@ -33,11 +34,11 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
 
         ThemeUtils.setupTheme(this);
 
-        setContentView(R.layout.activity_main);
-
-        if (!Utils.isTablet(this)) {
-            findViewById(R.id.main_fragment_stories_container).setPadding(0, Utils.getStatusBarHeight(getResources()), 0, 0);
+        if (Utils.shouldUseTransparentStatusBar(this)) {
+            getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.statusBarColorTransparent));
         }
+
+        setContentView(R.layout.activity_main);
 
         updateFragmentLayout();
     }
@@ -90,7 +91,11 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
             findViewById(R.id.main_fragment_stories_container).setLayoutParams(params);
 
             int extraPadding = getResources().getDimensionPixelSize(R.dimen.extra_pane_padding);
-            findViewById(R.id.main_fragments_container).setPadding(extraPadding, Utils.getStatusBarHeight(getResources()), 0, 0);
+            if (Utils.shouldUseTransparentStatusBar(this)) {
+                findViewById(R.id.main_fragments_container).setPadding(extraPadding, 0, 0, 0);
+            } else {
+                findViewById(R.id.main_fragments_container).setPadding(extraPadding, Utils.getStatusBarHeight(getResources()), 0, 0);
+            }
         }
     }
 }

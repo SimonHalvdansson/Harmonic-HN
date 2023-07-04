@@ -9,6 +9,7 @@ import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -47,10 +48,14 @@ public class SubmissionsActivity extends AppCompatActivity {
 
         ThemeUtils.setupTheme(this, true);
 
+        if (Utils.shouldUseTransparentStatusBar(this)) {
+            getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.statusBarColorTransparent));
+        }
+
         setContentView(R.layout.activity_submissions);
 
         SwipeBackLayout swipeBackLayout = findViewById(R.id.swipeBackLayout);
-        swipeBackLayout.setPadding(0, Utils.getStatusBarHeight(getResources()), 0, 0);
+        swipeBackLayout.setPadding(0, 0, 0, 0);
 
         swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
             @Override
@@ -71,6 +76,11 @@ public class SubmissionsActivity extends AppCompatActivity {
         swipeRefreshLayout.setBackgroundResource(ThemeUtils.getBackgroundColorResource(this));
 
         swipeRefreshLayout.setOnRefreshListener(this::loadSubmissions);
+
+        swipeRefreshLayout.setProgressViewOffset(
+                false,
+                swipeRefreshLayout.getProgressViewStartOffset() + Utils.getStatusBarHeight(getResources()),
+                swipeRefreshLayout.getProgressViewEndOffset() + Utils.getStatusBarHeight(getResources()));
 
         RecyclerView recyclerView = findViewById(R.id.submissions_recyclerview);
 
@@ -152,7 +162,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         super.onConfigurationChanged(newConfig);
         if (Utils.isTablet(this)) {
             int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
-            swipeRefreshLayout.setPadding(sideMargin, 0, sideMargin, 0);
+            swipeRefreshLayout.setPadding(sideMargin, Utils.getStatusBarHeight(getResources()), sideMargin, 0);
         }
     }
 

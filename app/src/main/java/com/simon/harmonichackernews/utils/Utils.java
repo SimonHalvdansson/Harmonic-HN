@@ -477,6 +477,11 @@ public class Utils {
         return prefs.getBoolean("pref_left_align", false);
     }
 
+    public static boolean shouldUseTransparentStatusBar(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return prefs.getBoolean("pref_transparent_status_bar", false);
+    }
+
     public static boolean shouldUseSpecialNighttimeTheme(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return prefs.getBoolean("pref_special_nighttime", false);

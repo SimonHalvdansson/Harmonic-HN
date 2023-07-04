@@ -5,6 +5,7 @@
     <color name="colorAccent">#ffde03</color>
 
     <color name="statusBarColor">@color/background</color>
+    <color name="statusBarColorTransparent">@android:color/transparent</color>
 
     <color name="grayStatusBarColor">@color/grayBackground</color>
 
