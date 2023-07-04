@@ -1,5 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
+    <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialLight"></style>
+
     <style name="AppThemeMaterialDark" parent="Theme.Material3.Dark.NoActionBar">
         <item name="storyColorNormal">@color/darkStoryColorNormal</item>
         <item name="storyColorDisabled">@color/darkStoryColorDisabled</item>
@@ -144,6 +146,8 @@
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
     </style>
+
+    <style name="ThemeSwipeBackNoActionBarMaterialDayNight" parent="ThemeSwipeBackNoActionBarMaterialLight"></style>
 
     <style name="ThemeSwipeBackNoActionBarMaterialDark" parent="AppThemeMaterialDark">
         <item name="android:windowIsTranslucent">true</item>

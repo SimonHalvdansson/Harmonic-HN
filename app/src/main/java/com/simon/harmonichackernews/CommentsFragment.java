@@ -135,6 +135,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private LinearProgressIndicator progressIndicator;
     private LinearLayout bottomSheet;
     private WebView webView;
+    private FrameLayout webViewContainer;
     private MaterialButton downloadButton;
     private boolean showNavButtons = false;
     private boolean showWebsite = false;
@@ -264,7 +265,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerViewRegular = view.findViewById(R.id.comments_recyclerview);
         recyclerViewSwipe = view.findViewById(R.id.comments_recyclerview_swipe);
         bottomSheet = view.findViewById(R.id.comments_bottom_sheet);
-        FrameLayout webViewContainer = view.findViewById(R.id.webview_container);
+        webViewContainer = view.findViewById(R.id.webview_container);
 
         if (story.title == null) {
             //Empty view for tablets
@@ -682,43 +683,66 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         if (adapter != null) {
-            if (adapter.collapseParent != Utils.shouldCollapseParent(getContext())) {
+            Context ctx = getContext();
+            boolean updateHeader = false;
+            boolean updateComments = false;
+
+            if (adapter.collapseParent != Utils.shouldCollapseParent(ctx)) {
                 adapter.collapseParent = !adapter.collapseParent;
-                adapter.notifyItemRangeChanged(1, comments.size());
+                updateComments = true;
             }
 
-            if (adapter.showThumbnail != Utils.shouldShowThumbnails(getContext())) {
+            if (adapter.showThumbnail != Utils.shouldShowThumbnails(ctx)) {
                 adapter.showThumbnail = !adapter.showThumbnail;
+                updateHeader = true;
+            }
+
+            if (adapter.preferredTextSize != Utils.getPreferredCommentTextSize(ctx)) {
+                adapter.preferredTextSize = Utils.getPreferredCommentTextSize(ctx);
+                updateHeader = true;
+                updateComments = true;
+            }
+
+            if (adapter.monochromeCommentDepthIndicators != Utils.shouldUseMonochromeCommentDepthIndicators(ctx)) {
+                adapter.monochromeCommentDepthIndicators = Utils.shouldUseMonochromeCommentDepthIndicators(ctx);
+                updateComments = true;
+            }
+
+            if (!adapter.font.equals(Utils.getPreferredFont(ctx))) {
+                adapter.font = Utils.getPreferredFont(ctx);
+                updateHeader = true;
+                updateComments = true;
+            }
+
+            if (adapter.showTopLevelDepthIndicator != Utils.shouldShowTopLevelDepthIndicator(ctx)) {
+                adapter.showTopLevelDepthIndicator = Utils.shouldShowTopLevelDepthIndicator(ctx);
+                updateComments = true;
+            }
+
+            if (adapter.showExpand != Utils.shouldShowWebviewExpandButton(ctx)) {
+                adapter.showExpand = Utils.shouldShowWebviewExpandButton(ctx);
+                updateHeader = true;
+            }
+
+            if (adapter.darkThemeActive != ThemeUtils.isDarkMode(ctx)) {
+                adapter.darkThemeActive = ThemeUtils.isDarkMode(ctx);
+                updateHeader = true;
+                updateComments = true;
+
+                // darkThemeActive might change because the system changed from day to night mode.
+                // In that case, we'll need to update the sheet and webview background color since
+                // that will have changed too.
+                if (bottomSheet != null) {
+                    bottomSheet.setBackgroundColor(ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx)));
+                }
+                if (webViewContainer != null){
+                    webViewContainer.setBackgroundColor(ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx)));
+                }
+            }
+            if (updateHeader) {
                 adapter.notifyItemChanged(0);
             }
-
-            if (adapter.preferredTextSize != Utils.getPreferredCommentTextSize(getContext())) {
-                adapter.preferredTextSize = Utils.getPreferredCommentTextSize(getContext());
-                adapter.notifyItemRangeChanged(0, comments.size());
-            }
-
-            if (adapter.monochromeCommentDepthIndicators != Utils.shouldUseMonochromeCommentDepthIndicators(getContext())) {
-                adapter.monochromeCommentDepthIndicators = Utils.shouldUseMonochromeCommentDepthIndicators(getContext());
-                adapter.notifyItemRangeChanged(1, comments.size());
-            }
-
-            if (!adapter.font.equals(Utils.getPreferredFont(getContext()))) {
-                adapter.font = Utils.getPreferredFont(getContext());
-                adapter.notifyItemRangeChanged(0, comments.size());
-            }
-
-            if (adapter.showTopLevelDepthIndicator != Utils.shouldShowTopLevelDepthIndicator(getContext())) {
-                adapter.showTopLevelDepthIndicator = Utils.shouldShowTopLevelDepthIndicator(getContext());
-                adapter.notifyItemRangeChanged(1, comments.size());
-            }
-
-            if (adapter.showExpand != Utils.shouldShowWebviewExpandButton(getContext())) {
-                adapter.showExpand = Utils.shouldShowWebviewExpandButton(getContext());
-                adapter.notifyItemChanged(0);
-            }
-
-            if (adapter.darkThemeActive != ThemeUtils.isDarkMode(getContext())) {
-                adapter.darkThemeActive = ThemeUtils.isDarkMode(getContext());
+            if (updateComments) {
                 adapter.notifyItemRangeChanged(1, comments.size());
             }
         }

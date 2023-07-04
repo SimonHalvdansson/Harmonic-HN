@@ -1,0 +1,7 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialDark"></style>
+
+    <style name="ThemeSwipeBackNoActionBarMaterialDayNight" parent="ThemeSwipeBackNoActionBarMaterialDark"></style>
+
+</resources>
