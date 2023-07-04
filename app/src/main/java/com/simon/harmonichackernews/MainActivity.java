@@ -91,7 +91,11 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
             findViewById(R.id.main_fragment_stories_container).setLayoutParams(params);
 
             int extraPadding = getResources().getDimensionPixelSize(R.dimen.extra_pane_padding);
-            findViewById(R.id.main_fragments_container).setPadding(extraPadding, Utils.getStatusBarHeight(getResources()), 0, 0);
+            if (Utils.shouldUseTransparentStatusBar(this)) {
+                findViewById(R.id.main_fragments_container).setPadding(extraPadding, 0, 0, 0);
+            } else {
+                findViewById(R.id.main_fragments_container).setPadding(extraPadding, Utils.getStatusBarHeight(getResources()), 0, 0);
+            }
         }
     }
 }
