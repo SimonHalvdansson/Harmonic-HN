@@ -251,10 +251,14 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             final MainHeaderViewHolder headerViewHolder = (MainHeaderViewHolder) holder;
             final Context ctx = headerViewHolder.itemView.getContext();
 
+
+            //if trans add status bar height, only needed for tablets but I don't quite know why...
+            int extraTop = (Utils.shouldUseTransparentStatusBar(ctx) && Utils.isTablet(ctx)) ? Utils.getStatusBarHeight(ctx.getResources()) : 0;
+
             if (compactHeader) {
-                headerViewHolder.container.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 20), 0, Utils.pxFromDpInt(ctx.getResources(), 10));
+                headerViewHolder.container.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 20) + extraTop, 0, Utils.pxFromDpInt(ctx.getResources(), 10));
             } else {
-                headerViewHolder.container.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 40) + Utils.getStatusBarHeight(ctx.getResources()), 0, Utils.pxFromDpInt(ctx.getResources(), 26));
+                headerViewHolder.container.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 40) + Utils.getStatusBarHeight(ctx.getResources()) + extraTop, 0, Utils.pxFromDpInt(ctx.getResources(), 26));
             }
 
             headerViewHolder.moreButton.setVisibility(searching ? View.GONE : View.VISIBLE);

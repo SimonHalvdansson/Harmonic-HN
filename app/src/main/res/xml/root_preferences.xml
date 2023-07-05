@@ -97,7 +97,7 @@
             app:key="pref_transparent_status_bar"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_visibility"
-            app:title="Transparent Status Bar"    />
+            app:title="Transparent status bar"    />
 
         <DropDownPreference
             app:singleLineTitle="false"

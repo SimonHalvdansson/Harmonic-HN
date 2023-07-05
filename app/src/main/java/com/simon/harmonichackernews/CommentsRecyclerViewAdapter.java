@@ -702,11 +702,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             LinearLayout sheetButtonsContainer = view.findViewById(R.id.comment_sheet_buttons_container);
             LinearLayout sheetContainer = view.findViewById(R.id.comment_sheet_container);
-            if (Utils.shouldUseTransparentStatusBar(mView.getContext())) {
-                sheetContainer.setPadding(0, showExpand ? Utils.getStatusBarHeight(view.getResources()) : 0, 0, 0);
-            } else {
-                sheetContainer.setPadding(0, 0, 0, 0);
-            }
             BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
                 @Override
                 public void onStateChanged(@NonNull View bottomSheet, int newState) {

@@ -44,7 +44,11 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
 
         swipeBackLayout = findViewById(R.id.swipeBackLayout);
         FragmentContainerView fragmentContainerView = findViewById(R.id.comment_fragment_container_view);
-        fragmentContainerView.setPadding(0, Utils.shouldUseTransparentStatusBar(this) ? 0 : Utils.getStatusBarHeight(getResources()), 0, 0);
+        //this -4.8dp is very dirty, however without it the padding is larger than the status bar
+        //so we keep it for now. It might be related to some behavior of ConstraintLayout
+        //or BottomSheet.
+        //5dp is what works on my my OnePlus 9 Pro but it might not be universal...
+        fragmentContainerView.setPadding(0, Utils.shouldUseTransparentStatusBar(this) ? 0 : Utils.getStatusBarHeight(getResources())-Utils.pxFromDpInt(getResources(), 5), 0, 0);
 
         swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
             @Override

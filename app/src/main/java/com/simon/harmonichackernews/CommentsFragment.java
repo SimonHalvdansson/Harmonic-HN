@@ -293,7 +293,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         webViewContainer.setLayoutParams(params);
 
-        webViewContainer.setPadding(0, Utils.getStatusBarHeight(getResources()), 0, 0);
+        webViewContainer.setPadding(0, Utils.shouldUseTransparentStatusBar(getContext()) ? Utils.getStatusBarHeight(getResources()) : 0, 0, 0);
 
         if (!showWebsite) {
             BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
