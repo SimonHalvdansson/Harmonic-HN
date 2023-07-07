@@ -94,6 +94,13 @@
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
+            app:key="pref_foldable_support"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_tablet"
+            app:title="Enable foldable support"   />
+      
+      <SwitchPreferenceCompat
+            app:singleLineTitle="false"
             app:key="pref_transparent_status_bar"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_visibility"

@@ -46,6 +46,9 @@ dependencies {
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
     implementation 'androidx.webkit:webkit:1.5.0'
     implementation "androidx.activity:activity:1.7.0-alpha02"
+    implementation "androidx.window:window:1.1.0-beta02"
+    implementation "androidx.window:window-java:1.1.0-beta02"
+    implementation 'androidx.startup:startup-runtime:1.1.1'
 
     //implementation 'org.jsoup:jsoup:1.11.1'
 
@@ -57,7 +60,7 @@ dependencies {
     implementation 'com.squareup.okhttp:okhttp-urlconnection:2.7.5'
     implementation 'com.facebook.shimmer:shimmer:0.5.0'
     implementation 'com.squareup.picasso:picasso:2.8'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.7.10'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.21'
 
     //debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.4'
 }

@@ -22,6 +22,7 @@ import com.gw.swipeback.SwipeBackLayout;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.VolleyOkHttp3StackInterceptors;
+import com.simon.harmonichackernews.utils.SplitChangeHandler;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -39,6 +40,7 @@ public class SubmissionsActivity extends AppCompatActivity {
     private LinearLayoutManager linearLayoutManager;
     private RequestQueue queue;
     private SwipeRefreshLayout swipeRefreshLayout;
+    private SplitChangeHandler splitChangeHandler;
 
     private int loadedTo = 0;
 
@@ -55,6 +57,8 @@ public class SubmissionsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_submissions);
 
         SwipeBackLayout swipeBackLayout = findViewById(R.id.swipeBackLayout);
+        splitChangeHandler = new SplitChangeHandler(this, swipeBackLayout);
+
         swipeBackLayout.setPadding(0, 0, 0, 0);
 
         swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
@@ -217,5 +221,11 @@ public class SubmissionsActivity extends AppCompatActivity {
     public void onBackPressed() {
         super.onBackPressed();
         overridePendingTransition(0, R.anim.activity_out_animation);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        splitChangeHandler.teardown();
     }
 }

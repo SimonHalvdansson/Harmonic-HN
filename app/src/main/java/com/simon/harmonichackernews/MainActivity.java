@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -55,6 +56,10 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
 
         bundle.putInt(CommentsFragment.EXTRA_FORWARD, pos - lastPosition);
         bundle.putBoolean(CommentsFragment.EXTRA_SHOW_WEBSITE, showWebsite);
+
+        if (FoldableSplitInitializer.isSplitSupported(this)) {
+            bundle.putBoolean(CommentsActivity.PREVENT_BACK, true);
+        }
 
         lastPosition = pos;
 

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources
+  xmlns:window="http://schemas.android.com/apk/res-auto">
+
+  <SplitPairRule
+    window:splitRatio="0.5"
+    window:splitLayoutDirection="locale"
+    window:splitMinWidthDp="840"
+    window:splitMaxAspectRatioInPortrait="alwaysAllow"
+    window:finishPrimaryWithSecondary="never"
+    window:finishSecondaryWithPrimary="always"
+    window:clearTop="true">
+    <SplitPairFilter
+      window:primaryActivityName=".MainActivity"
+      window:secondaryActivityName=".CommentsActivity"/>
+  </SplitPairRule>
+
+  <SplitPlaceholderRule
+    window:placeholderActivityName=".SplitPlaceholderActivity"
+    window:splitRatio="0.5"
+    window:splitLayoutDirection="locale"
+    window:splitMinWidthDp="840"
+    window:splitMaxAspectRatioInPortrait="alwaysAllow"
+    window:stickyPlaceholder="false">
+    <ActivityFilter
+      window:activityName=".MainActivity"/>
+  </SplitPlaceholderRule>
+
+  <ActivityRule
+    window:alwaysExpand="true">
+    <ActivityFilter
+      window:activityName=".SettingsActivity"/>
+  </ActivityRule>
+  <ActivityRule
+    window:alwaysExpand="true">
+    <ActivityFilter
+      window:activityName=".WelcomeActivity"/>
+  </ActivityRule>
+  <ActivityRule
+    window:alwaysExpand="true">
+    <ActivityFilter
+      window:activityName=".AboutActivity"/>
+  </ActivityRule>
+</resources>
