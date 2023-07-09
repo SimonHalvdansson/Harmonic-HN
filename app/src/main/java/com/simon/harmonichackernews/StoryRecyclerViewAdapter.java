@@ -223,13 +223,14 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.titleShimmer.setVisibility(View.GONE);
                 storyViewHolder.metaShimmer.setVisibility(View.GONE);
                 storyViewHolder.titleView.setVisibility(View.VISIBLE);
-                storyViewHolder.metaContainer.setVisibility(compactView ? View.GONE : View.VISIBLE);
+                storyViewHolder.metaView.setVisibility(compactView ? View.GONE : View.VISIBLE);
                 storyViewHolder.commentsView.setVisibility(compactView ? View.GONE : View.VISIBLE);
                 storyViewHolder.metaFavicon.setVisibility(thumbnails ? View.VISIBLE : View.GONE);
 
                 if (storyViewHolder.story.loadingFailed) {
                     storyViewHolder.titleView.setText("Loading failed, click to retry");
-                    storyViewHolder.metaContainer.setVisibility(View.GONE);
+                    storyViewHolder.metaView.setVisibility(View.GONE);
+                    storyViewHolder.metaFavicon.setVisibility(View.GONE);
                     storyViewHolder.commentsView.setVisibility(View.GONE);
                 }
 
@@ -240,7 +241,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.titleShimmer.setVisibility(View.VISIBLE);
                 storyViewHolder.metaShimmer.setVisibility(compactView ? View.GONE : View.VISIBLE);
                 storyViewHolder.titleView.setVisibility(View.GONE);
-                storyViewHolder.metaContainer.setVisibility(View.GONE);
+                storyViewHolder.metaView.setVisibility(View.GONE);
+                storyViewHolder.metaFavicon.setVisibility(View.GONE);
                 storyViewHolder.commentsView.setText(null);
                 storyViewHolder.linkLayoutView.setClickable(false);
                 storyViewHolder.commentLayoutView.setClickable(false);
@@ -342,7 +344,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final ImageView commentsIcon;
         public final LinearLayout titleShimmer;
         public final View metaShimmer;
-        public final LinearLayout metaContainer;
         public final ImageView metaFavicon;
         public final TextView indexTextView;
 
@@ -353,7 +354,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             mView = view;
             titleView = view.findViewById(R.id.story_title);
             metaView = view.findViewById(R.id.story_meta);
-            metaContainer = view.findViewById(R.id.story_meta_container);
             commentsView = view.findViewById(R.id.story_comments);
             linkLayoutView = view.findViewById(R.id.story_link_layout);
             commentLayoutView = view.findViewById(R.id.story_comment_layout);
