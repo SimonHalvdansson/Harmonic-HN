@@ -16,24 +16,12 @@
         android:layout_weight="1"
         android:orientation="horizontal">
 
-        <TextView
-            android:visibility="gone"
-            android:layout_marginLeft="-7dp"
-            android:layout_marginRight="-15dp"
-            android:paddingTop="2.2dp"
-            android:id="@+id/story_index"
-            android:textColor="?attr/storyColorNormal"
-            android:layout_width="43dp"
-            android:gravity="center"
-            android:layout_height="wrap_content"
-            android:textSize="16dp"
-            android:text="3." />
-
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="?attr/selectableItemBackground"
-            android:paddingBottom="10dp">
+            android:paddingBottom="10dp"
+            android:clipToPadding="false">
 
             <com.facebook.shimmer.ShimmerFrameLayout
                 android:layout_width="wrap_content"
@@ -75,6 +63,30 @@
                 android:layout_height="30dp"
                 android:layout_margin="16dp"
                 android:background="?attr/colorPrimary"/>
+
+            <LinearLayout
+                android:id="@+id/story_index_container"
+                android:visibility="gone"
+                android:layout_width="22.5dp"
+                android:layout_height="22.5dp"
+                android:layout_marginTop="-21dp"
+                android:layout_marginLeft="19.75dp"
+                android:layout_below="@id/story_meta_favicon"
+                android:background="@drawable/indices_background"
+                android:elevation="3dp"
+                android:orientation="vertical">
+
+            <TextView
+                android:visibility="gone"
+                android:id="@+id/story_index"
+                android:textColor="?attr/storyColorNormal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textStyle="bold"
+                android:text="3" />
+            </LinearLayout>
 
 
             <TextView
