@@ -135,7 +135,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             storyViewHolder.story = stories.get(position);
             if (showIndex) {
-                storyViewHolder.indexTextView.setText(position + ".");
+                storyViewHolder.indexTextView.setText(position + (leftAlign ? "." : ""));
 
                 if (storyViewHolder.story.clicked) {
                     storyViewHolder.indexTextView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorDisabled));
@@ -144,15 +144,16 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
 
                 if (position < 100) {
-                    storyViewHolder.indexTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
-                    storyViewHolder.indexTextView.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 2.2f), 0, 0);
+                    storyViewHolder.indexTextView.setTextSize(leftAlign ? TypedValue.COMPLEX_UNIT_DIP : TypedValue.COMPLEX_UNIT_SP, leftAlign ? 16 : 11);
+                    if (leftAlign) {storyViewHolder.indexTextView.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 2.2f), 0, 0);}
                 } else {
-                    storyViewHolder.indexTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-                    storyViewHolder.indexTextView.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 5.3f), 0, 0);
+                    storyViewHolder.indexTextView.setTextSize(leftAlign ? TypedValue.COMPLEX_UNIT_DIP : TypedValue.COMPLEX_UNIT_SP, leftAlign ? 13 : 9);
+                    if (leftAlign){storyViewHolder.indexTextView.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 5.3f), 0, 0);}
                 }
             }
 
             storyViewHolder.indexTextView.setVisibility(showIndex ? View.VISIBLE : View.GONE);
+            if(!leftAlign){storyViewHolder.indexContainer.setVisibility(showIndex ? View.VISIBLE : View.GONE);}
 
             if (storyViewHolder.story.loaded || storyViewHolder.story.loadingFailed) {
                 if (!TextUtils.isEmpty(storyViewHolder.story.pdfTitle)) {
@@ -202,12 +203,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
                 storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment);
 
-                FontUtils.setTypeface(storyViewHolder.titleView, true, 17.5f, 18, 16, 17, 17, 18);
+                FontUtils.setTypeface(storyViewHolder.titleView, true, 16f, 16, 16, 17, 17, 18);
                 FontUtils.setTypeface(storyViewHolder.metaView, false, 13, 13, 12, 12, 13, 13);
                 FontUtils.setTypeface(storyViewHolder.commentsView, true, 14, 13, 13, 14, 14, 14);
 
                 if (storyViewHolder.story.clicked && type != getBookmarksIndex(ctx)) {
                     storyViewHolder.titleView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorDisabled));
+                    storyViewHolder.titleView.setTypeface(null, Typeface.NORMAL);
                     storyViewHolder.commentsIcon.setAlpha(0.6f);
                     storyViewHolder.metaFavicon.setAlpha(0.6f);
                     storyViewHolder.commentsView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.textColorDisabled));
@@ -222,14 +224,16 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
                 storyViewHolder.titleShimmer.setVisibility(View.GONE);
                 storyViewHolder.metaShimmer.setVisibility(View.GONE);
+                if(!leftAlign && showIndex){storyViewHolder.indexContainer.setVisibility(View.VISIBLE);}
                 storyViewHolder.titleView.setVisibility(View.VISIBLE);
-                storyViewHolder.metaContainer.setVisibility(compactView ? View.GONE : View.VISIBLE);
+                storyViewHolder.metaView.setVisibility(compactView ? View.GONE : View.VISIBLE);
                 storyViewHolder.commentsView.setVisibility(compactView ? View.GONE : View.VISIBLE);
                 storyViewHolder.metaFavicon.setVisibility(thumbnails ? View.VISIBLE : View.GONE);
 
                 if (storyViewHolder.story.loadingFailed) {
                     storyViewHolder.titleView.setText("Loading failed, click to retry");
-                    storyViewHolder.metaContainer.setVisibility(View.GONE);
+                    storyViewHolder.metaView.setVisibility(View.GONE);
+                    storyViewHolder.metaFavicon.setVisibility(View.GONE);
                     storyViewHolder.commentsView.setVisibility(View.GONE);
                 }
 
@@ -239,8 +243,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentsIcon.setImageResource(R.drawable.ic_action_comment);
                 storyViewHolder.titleShimmer.setVisibility(View.VISIBLE);
                 storyViewHolder.metaShimmer.setVisibility(compactView ? View.GONE : View.VISIBLE);
+                if(!leftAlign && showIndex){storyViewHolder.indexContainer.setVisibility(View.GONE);}
                 storyViewHolder.titleView.setVisibility(View.GONE);
-                storyViewHolder.metaContainer.setVisibility(View.GONE);
+                storyViewHolder.metaView.setVisibility(View.GONE);
+                storyViewHolder.metaFavicon.setVisibility(View.GONE);
                 storyViewHolder.commentsView.setText(null);
                 storyViewHolder.linkLayoutView.setClickable(false);
                 storyViewHolder.commentLayoutView.setClickable(false);
@@ -342,9 +348,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final ImageView commentsIcon;
         public final LinearLayout titleShimmer;
         public final View metaShimmer;
-        public final LinearLayout metaContainer;
         public final ImageView metaFavicon;
         public final TextView indexTextView;
+
+        public final LinearLayout indexContainer;
 
         public Story story;
 
@@ -353,7 +360,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             mView = view;
             titleView = view.findViewById(R.id.story_title);
             metaView = view.findViewById(R.id.story_meta);
-            metaContainer = view.findViewById(R.id.story_meta_container);
             commentsView = view.findViewById(R.id.story_comments);
             linkLayoutView = view.findViewById(R.id.story_link_layout);
             commentLayoutView = view.findViewById(R.id.story_comment_layout);
@@ -362,6 +368,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             metaShimmer = view.findViewById(R.id.story_title_shimmer_meta);
             metaFavicon = view.findViewById(R.id.story_meta_favicon);
             indexTextView = view.findViewById(R.id.story_index);
+            indexContainer = view.findViewById(R.id.story_index_container);
 
             linkLayoutView.setOnClickListener(view1 -> linkClickListener.onItemClick(getAdapterPosition()));
             commentLayoutView.setOnClickListener(view12 -> commentClickListener.onItemClick(getAdapterPosition()));
