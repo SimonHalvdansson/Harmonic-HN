@@ -43,6 +43,7 @@ import java.util.Set;
 public class SettingsActivity extends AppCompatActivity {
 
     private static boolean requestRestart = false;
+    private static boolean requestFullRestart = false;
     public final static String EXTRA_REQUEST_RESTART = "EXTRA_REQUEST_RESTART";
 
     @Override
@@ -50,6 +51,7 @@ public class SettingsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         requestRestart = false;
+        requestFullRestart = false;
         if (getIntent() != null) {
             if (getIntent().getBooleanExtra(EXTRA_REQUEST_RESTART, false)) {
                 requestRestart = true;
@@ -134,6 +136,15 @@ public class SettingsActivity extends AppCompatActivity {
                     findPreference("pref_thumbnails").setEnabled(!(boolean) newValue);
                     findPreference("pref_thumbnails").getIcon().setAlpha((boolean) newValue ? 120 : 255);
 
+                    return true;
+                }
+            });
+
+            findPreference("pref_foldable_support").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                    requestRestart = true;
+                    requestFullRestart = true;
                     return true;
                 }
             });
@@ -426,6 +437,9 @@ public class SettingsActivity extends AppCompatActivity {
             Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
+            if (requestFullRestart) {
+                Runtime.getRuntime().exit(0);
+            }
         } else {
             super.onBackPressed();
             overridePendingTransition(0, R.anim.activity_out_animation);

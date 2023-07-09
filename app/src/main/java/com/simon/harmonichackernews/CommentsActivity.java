@@ -15,14 +15,17 @@ import android.view.WindowManager;
 import android.widget.Toast;
 
 import com.gw.swipeback.SwipeBackLayout;
+import com.simon.harmonichackernews.utils.SplitChangeHandler;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 public class CommentsActivity extends AppCompatActivity implements CommentsFragment.BottomSheetFragmentCallback {
+    public static String PREVENT_BACK = "PREVENT_BACK";
 
     private boolean disableSwipeAtWeb;
     private boolean disableSwipeAtComments;
     private SwipeBackLayout swipeBackLayout;
+    private SplitChangeHandler splitChangeHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +46,8 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
         transaction.commit();
 
         swipeBackLayout = findViewById(R.id.swipeBackLayout);
+        this.splitChangeHandler = new SplitChangeHandler(this, swipeBackLayout);
+
         FragmentContainerView fragmentContainerView = findViewById(R.id.comment_fragment_container_view);
         //this -4.8dp is very dirty, however without it the padding is larger than the status bar
         //so we keep it for now. It might be related to some behavior of ConstraintLayout
@@ -77,10 +82,21 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
 
     @Override
     public void onSwitchView(boolean isAtWebView) {
+        if (splitChangeHandler.isWithinSplit() && getIntent() != null) {
+            swipeBackLayout.setActive(!getIntent().getBooleanExtra(PREVENT_BACK, false));
+            return;
+        }
+
         if (isAtWebView) {
             swipeBackLayout.setActive(!disableSwipeAtWeb);
         } else {
             swipeBackLayout.setActive(!disableSwipeAtComments);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        splitChangeHandler.teardown();
     }
 }
