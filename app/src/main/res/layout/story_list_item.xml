@@ -82,20 +82,14 @@
                 android:layout_width="match_parent"
                 android:text="New algorithm breaks speed limit for solving linear equations"
                 android:layout_height="wrap_content"
-                android:textSize="17.5sp"
                 android:textColor="?attr/storyColorNormal"
-                android:fontFamily="@font/product_sans"
                 android:layout_gravity="center_vertical"
                 android:layout_toEndOf="@id/story_meta_favicon"
                 android:paddingTop="10dp"
                 android:paddingEnd="16dp"
-                android:maxLines="2"
                 android:textStyle="bold"
                 android:textAppearance="?attr/textAppearanceSubtitle1"/>
 
-                    android:textColor="?attr/textColorDefault"
-                    android:fontFamily="@font/product_sans"
-                    android:textSize="13sp" />
             <TextView
                 android:id="@+id/story_meta"
                 android:layout_width="match_parent"
