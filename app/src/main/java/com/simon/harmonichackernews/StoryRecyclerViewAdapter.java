@@ -202,12 +202,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
                 storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment);
 
-                FontUtils.setTypeface(storyViewHolder.titleView, true, 17.5f, 18, 16, 17, 17, 18);
+                FontUtils.setTypeface(storyViewHolder.titleView, true, 16f, 16, 16, 17, 17, 18);
                 FontUtils.setTypeface(storyViewHolder.metaView, false, 13, 13, 12, 12, 13, 13);
                 FontUtils.setTypeface(storyViewHolder.commentsView, true, 14, 13, 13, 14, 14, 14);
 
                 if (storyViewHolder.story.clicked && type != getBookmarksIndex(ctx)) {
                     storyViewHolder.titleView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorDisabled));
+                    storyViewHolder.titleView.setTypeface(null, Typeface.NORMAL);
                     storyViewHolder.commentsIcon.setAlpha(0.6f);
                     storyViewHolder.metaFavicon.setAlpha(0.6f);
                     storyViewHolder.commentsView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.textColorDisabled));

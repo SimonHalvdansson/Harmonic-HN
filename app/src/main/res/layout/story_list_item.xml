@@ -101,6 +101,7 @@
                 android:paddingEnd="16dp"
                 android:layout_marginTop="2dp"
                 android:maxLines="1"
+                android:textColor="?attr/textColorDefault"
                 android:textAppearance="?attr/textAppearanceBody2"/>
         </RelativeLayout>
     </LinearLayout>
