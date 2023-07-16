@@ -1,18 +1,17 @@
 package com.simon.harmonichackernews.utils;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import android.view.View;
+import android.view.Window;
 
+import androidx.core.view.WindowCompat;
 import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.R;
 
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -52,12 +51,12 @@ public class ThemeUtils {
                 break;
         }
 
+	Window window = activity.getWindow();
+        WindowCompat.getInsetsController(window, window.getDecorView())
+                .setAppearanceLightStatusBars(!isDarkMode(activity));
+
         if (specialFlags) {
-            if (isDarkMode(activity)) {
-                activity.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
-            } else {
-                activity.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-            }
+            WindowCompat.setDecorFitsSystemWindows(window, false);
         }
     }
 
