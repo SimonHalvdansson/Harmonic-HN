@@ -51,7 +51,7 @@ public class ThemeUtils {
                 break;
         }
 
-	Window window = activity.getWindow();
+	    Window window = activity.getWindow();
         WindowCompat.getInsetsController(window, window.getDecorView())
                 .setAppearanceLightStatusBars(!isDarkMode(activity));
 
