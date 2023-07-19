@@ -107,15 +107,10 @@ public class StoriesFragment extends Fragment {
         recyclerView.setAdapter(adapter);
 
         CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) updateContainer.getLayoutParams();
-        params.bottomMargin = Utils.getNavigationBarHeight(getActivity()) + Utils.pxFromDpInt(getResources(), 8);
+        params.bottomMargin = Utils.getNavigationBarHeight(getResources()) + Utils.pxFromDpInt(getResources(), 8);
         updateContainer.setLayoutParams(params);
 
-        updateButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                attemptRefresh();
-            }
-        });
+        updateButton.setOnClickListener((v) -> attemptRefresh());
 
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 

@@ -42,7 +42,7 @@ public class AboutActivity extends AppCompatActivity {
 
         ScrollView scrollView = findViewById(R.id.about_scroll_view);
         scrollView.setBackgroundResource(ThemeUtils.getBackgroundColorResource(this));
-        scrollView.setPadding(0, Utils.getStatusBarHeight(getResources()), 0, Utils.getNavigationBarHeight(this));
+        scrollView.setPadding(0, Utils.getStatusBarHeight(getResources()), 0, Utils.getNavigationBarHeight(getResources()));
 
         ((TextView) findViewById(R.id.about_version)).setText("Version " + BuildConfig.VERSION_NAME);
     }

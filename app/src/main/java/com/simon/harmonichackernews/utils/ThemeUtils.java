@@ -70,8 +70,7 @@ public class ThemeUtils {
 
     public static boolean uiModeNight(Context ctx) {
         int currentNightMode = ctx.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        boolean isNight = currentNightMode == Configuration.UI_MODE_NIGHT_YES;
-        return isNight;
+        return currentNightMode == Configuration.UI_MODE_NIGHT_YES;
     }
 
     public static int getBackgroundColorResource(Context ctx) {

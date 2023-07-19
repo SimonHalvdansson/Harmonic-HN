@@ -22,6 +22,7 @@ import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Window;
 import android.webkit.URLUtil;
 import android.widget.Toast;
 
@@ -30,6 +31,9 @@ import androidx.browser.customtabs.CustomTabColorSchemeParams;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.content.ContextCompat;
 import androidx.core.util.Pair;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.R;
@@ -768,9 +772,7 @@ public class Utils {
         return 0;
     }
 
-    public static int getNavigationBarHeight(Activity activity) {
-        Resources res = activity.getResources();
-
+    public static int getNavigationBarHeight(Resources res) {
         int resourceId = res.getIdentifier("navigation_bar_height", "dimen", "android");
         if (resourceId > 0) {
             return res.getDimensionPixelSize(resourceId);

@@ -49,8 +49,11 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
 import androidx.core.util.Pair;
+import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
@@ -148,6 +151,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean initializedWebView = false;
     private String username;
     private Story story;
+
+    private int bottomSheetMargin;
 
     public CommentsFragment() {
         super(R.layout.fragment_comments);
@@ -285,13 +290,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 swipeRefreshLayout.getProgressViewEndOffset() + Utils.getStatusBarHeight(getResources()));
 
         // this is how much the bottom sheet sticks up by default and also decides height of webview
-        int bottomSheetMargin = Utils.pxFromDpInt(getResources(), 68) + Utils.getNavigationBarHeight(requireActivity());
+        //We want to watch for navigation bar height changes (tablets on Android 12L can cause
+        // these)
 
-        BottomSheetBehavior.from(bottomSheet).setPeekHeight(bottomSheetMargin);
-        CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        params.setMargins(0,0, 0, bottomSheetMargin);
+        ViewCompat.setOnApplyWindowInsetsListener(view, new OnApplyWindowInsetsListener() {
+            @NonNull
+            @Override
+            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                updateBottomSheetMargin(insets.bottom);
 
-        webViewContainer.setLayoutParams(params);
+                return windowInsets;
+            }
+        });
+
+        updateBottomSheetMargin(Utils.getNavigationBarHeight(getResources()));
 
         webViewContainer.setPadding(0, Utils.shouldUseTransparentStatusBar(getContext()) ? Utils.getStatusBarHeight(getResources()) : 0, 0, 0);
 
@@ -326,7 +339,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         scrollNavigation = view.findViewById(R.id.comments_scroll_navigation);
         FrameLayout.LayoutParams scrollParams = (FrameLayout.LayoutParams) scrollNavigation.getLayoutParams();
-        scrollParams.setMargins(0,0,0, Utils.getNavigationBarHeight(getActivity()) + Utils.pxFromDpInt(getResources(), 16));
+        scrollParams.setMargins(0,0,0, Utils.getNavigationBarHeight(getResources()) + Utils.pxFromDpInt(getResources(), 16));
 
         showNavButtons = Utils.shouldShowNavigationButtons(getContext());
         updateNavigationVisibility();
@@ -376,6 +389,25 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         if (cachedResponse != null) {
             handleJsonResponse(story.id, cachedResponse,false, false);
+        }
+    }
+
+    private void updateBottomSheetMargin(int navbarHeight) {
+        /*
+        * Here's the deal; peek height sets how much the bottom sheet should peek up with. In
+        * order to make it so that the text doesn't show underneath the transparent navbar we
+        * need to push it down by 2*navbar to offset the longer peak + the larger see-through area
+        * */
+        int standardMargin = Utils.pxFromDpInt(getResources(), Utils.isTablet(requireContext()) ? 80 : 68);
+
+        BottomSheetBehavior.from(bottomSheet).setPeekHeight(standardMargin + navbarHeight);
+        CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        params.setMargins(0,0, 0, standardMargin + 2 * navbarHeight);
+
+        webViewContainer.setLayoutParams(params);
+
+        if (adapter != null) {
+            adapter.navbarHeight = navbarHeight;
         }
     }
 
@@ -516,7 +548,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
-        recyclerView.setPadding(0,0,0, Utils.getNavigationBarHeight(getActivity()) + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard));
+        recyclerView.setPadding(0,0,0, Utils.getNavigationBarHeight(getResources()) + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard));
         recyclerView.setAdapter(adapter);
 
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_ITEM, 100);

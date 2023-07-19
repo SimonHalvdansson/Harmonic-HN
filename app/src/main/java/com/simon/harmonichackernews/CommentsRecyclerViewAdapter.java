@@ -32,7 +32,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
@@ -89,6 +92,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private boolean isTablet;
     public boolean darkThemeActive;
     public String font;
+
+    public int navbarHeight = 0;
 
     public static final int TYPE_HEADER = 0;
     public static final int TYPE_ITEM = 1;
@@ -527,7 +532,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout actionsContainer;
         public final Button retryButton;
         public final LinearLayout pollLayout;
-
         public final LinearLayout headerView;
 
         public HeaderViewHolder(View view) {
@@ -570,6 +574,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
             sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
             actionsContainer = view.findViewById(R.id.comments_header_actions_container);
+
+            final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 
             retryButton.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -712,7 +718,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 public void onSlide(@NonNull View bottomSheet, float slideOffset) {
                     //0 when small, 1 when opened
                     sheetButtonsContainer.setAlpha((1-slideOffset)*(1-slideOffset)*(1-slideOffset));
-                    sheetButtonsContainer.getLayoutParams().height = Math.round((1-slideOffset) * (Utils.pxFromDp(view.getResources(), 32) + Utils.getNavigationBarHeight((Activity) view.getContext())));
+                    sheetButtonsContainer.getLayoutParams().height = Math.round((1-slideOffset) * (SHEET_ITEM_HEIGHT + navbarHeight));
                     sheetButtonsContainer.requestLayout();
                     if (Utils.shouldUseTransparentStatusBar(mView.getContext())) {
                         sheetContainer.setPadding(0, (int) ((slideOffset) * Utils.getStatusBarHeight(bottomSheet.getResources())), 0, 0);
@@ -733,7 +739,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     }
                 } else {
                     //make sure we set correct height when starting on the webview
-                    sheetButtonsContainer.getLayoutParams().height = Utils.pxFromDpInt(view.getResources(), 32) + Utils.getNavigationBarHeight((Activity) userLayoutParent.getContext());
+                    sheetButtonsContainer.getLayoutParams().height = SHEET_ITEM_HEIGHT + navbarHeight;
                     sheetButtonsContainer.requestLayout();
                     sheetContainer.setPadding(0, 0, 0, 0);
                 }
