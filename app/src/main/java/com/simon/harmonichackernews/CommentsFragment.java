@@ -393,7 +393,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void updateBottomSheetMargin(int navbarHeight) {
-
         int standardMargin = Utils.pxFromDpInt(getResources(), Utils.isTablet(requireContext()) ? 81 : 68);
 
         BottomSheetBehavior.from(bottomSheet).setPeekHeight(standardMargin + navbarHeight);

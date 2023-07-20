@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.view.Window;
 
 import androidx.core.view.WindowCompat;
@@ -51,7 +53,7 @@ public class ThemeUtils {
                 break;
         }
 
-	    Window window = activity.getWindow();
+        Window window = activity.getWindow();
         WindowCompat.getInsetsController(window, window.getDecorView())
                 .setAppearanceLightStatusBars(!isDarkMode(activity));
 
