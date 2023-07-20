@@ -501,6 +501,11 @@ public class Utils {
         return prefs.getBoolean("pref_special_nighttime", false);
     }
 
+    public static boolean shouldUseCommentsAnimation(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return prefs.getBoolean("pref_comments_animation", true);
+    }
+
     public static boolean shouldUseAlgolia(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return prefs.getBoolean("pref_algolia_api", true);

@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
 
     int lastPosition = 0;
     public OnBackPressedCallback backPressedCallback;
+    String activeTheme = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,7 +42,7 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
             finish();
         }
 
-        ThemeUtils.setupTheme(this);
+        activeTheme = ThemeUtils.setupTheme(this);
 
         setContentView(R.layout.activity_main);
 
@@ -64,6 +65,16 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
         getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
 
         backPressedCallback.setEnabled(false);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (!activeTheme.equals(ThemeUtils.getPreferredTheme(this))) {
+            finish();
+            startActivity(new Intent(this, MainActivity.class));
+            finish();
+        }
     }
 
     @Override

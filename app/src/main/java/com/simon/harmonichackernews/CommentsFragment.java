@@ -543,6 +543,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
+        if (!Utils.shouldUseCommentsAnimation(getContext())) {
+            recyclerView.setItemAnimator(null);
+        }
+
         recyclerView.setPadding(0,0,0, Utils.getNavigationBarHeight(getResources()) + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard));
         recyclerView.setAdapter(adapter);
 
@@ -558,11 +562,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
                if (callback != null) {
-                    if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
-                        callback.onSwitchView(true);
-                    } else {
-                        callback.onSwitchView(false);
-                    }
+                   callback.onSwitchView(newState == BottomSheetBehavior.STATE_COLLAPSED);
                 }
             }
 
@@ -697,11 +697,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             }
         });
-    }
-
-    public void updateTabletPadding() {
-        //this is
-
     }
 
     @Override
