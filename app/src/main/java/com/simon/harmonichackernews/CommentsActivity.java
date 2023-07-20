@@ -1,8 +1,10 @@
 package com.simon.harmonichackernews;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.os.BuildCompat;
 import androidx.fragment.app.FragmentContainerView;
 import androidx.fragment.app.FragmentTransaction;
 
@@ -13,6 +15,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Toast;
+import android.window.OnBackInvokedDispatcher;
 
 import com.gw.swipeback.SwipeBackLayout;
 import com.simon.harmonichackernews.utils.SplitChangeHandler;
@@ -68,13 +71,17 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
 
         disableSwipeAtWeb = Utils.shouldDisableWebviewSwipeBack(getApplicationContext());
         disableSwipeAtComments = Utils.shouldDisableCommentsSwipeBack(getApplicationContext());
+
+        OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                finish();
+                overridePendingTransition(0, R.anim.activity_out_animation);
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
     }
 
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        overridePendingTransition(0, R.anim.activity_out_animation);
-    }
 
     @Override
     public void onSwitchView(boolean isAtWebView) {

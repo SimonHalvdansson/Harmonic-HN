@@ -12,7 +12,9 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import android.widget.LinearLayout;
+import android.window.OnBackInvokedCallback;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,6 +30,7 @@ import com.simon.harmonichackernews.utils.Utils;
 public class MainActivity extends AppCompatActivity implements StoriesFragment.StoryClickListener {
 
     int lastPosition = 0;
+    public OnBackPressedCallback backPressedCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +50,20 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
         if (Utils.justUpdated(this)) {
             showUpdateDialog();
         }
+
+        backPressedCallback = new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                final StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
+
+                if (fragment != null) {
+                    fragment.exitSearch();
+                }
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
+
+        backPressedCallback.setEnabled(false);
     }
 
     @Override
@@ -80,15 +97,6 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
             startActivity(intent);
 
             overridePendingTransition(R.anim.activity_in_animation, 0);
-        }
-    }
-
-    @Override
-    public void onBackPressed() {
-        final StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
-
-        if (fragment == null || !fragment.exitSearch()) {
-            super.onBackPressed();
         }
     }
 

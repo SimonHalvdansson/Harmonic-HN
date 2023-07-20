@@ -531,6 +531,10 @@ public class StoriesFragment extends Fragment {
         hideUpdateButton();
         adapter.notifyItemChanged(0);
 
+        if (getActivity() != null && getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).backPressedCallback.setEnabled(adapter.searching);
+        }
+
         if (adapter.searching) {
             //cancel all ongoing
             queue.cancelAll(request -> true);
@@ -539,7 +543,6 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemRangeRemoved(1, stories.size() + 1);
             stories.clear();
             stories.add(new Story());
-
         } else {
             int size = stories.size();
             if (size > 1) {
