@@ -60,10 +60,6 @@ public class SettingsActivity extends AppCompatActivity {
 
         ThemeUtils.setupTheme(this, true);
 
-        if (Utils.shouldUseTransparentStatusBar(this)) {
-            getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.statusBarColorTransparent));
-        }
-
         setContentView(R.layout.activity_settings);
         SwipeBackLayout swipeBackLayout = findViewById(R.id.swipeBackLayout);
 

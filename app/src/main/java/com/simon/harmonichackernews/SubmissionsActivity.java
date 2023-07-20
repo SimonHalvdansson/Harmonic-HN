@@ -50,10 +50,6 @@ public class SubmissionsActivity extends AppCompatActivity {
 
         ThemeUtils.setupTheme(this, true);
 
-        if (Utils.shouldUseTransparentStatusBar(this)) {
-            getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.statusBarColorTransparent));
-        }
-
         setContentView(R.layout.activity_submissions);
 
         SwipeBackLayout swipeBackLayout = findViewById(R.id.swipeBackLayout);

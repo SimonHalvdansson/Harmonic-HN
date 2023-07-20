@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.view.Window;
 
+import androidx.core.content.ContextCompat;
 import androidx.core.view.WindowCompat;
 import androidx.preference.PreferenceManager;
 
@@ -59,6 +60,10 @@ public class ThemeUtils {
 
         if (specialFlags) {
             WindowCompat.setDecorFitsSystemWindows(window, false);
+        }
+
+        if (Utils.shouldUseTransparentStatusBar(activity)) {
+            window.setStatusBarColor(ContextCompat.getColor(activity, R.color.statusBarColorTransparent));
         }
     }
 

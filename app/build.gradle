@@ -11,8 +11,8 @@ android {
         applicationId "com.simon.harmonichackernews"
         minSdkVersion 23
         targetSdkVersion 34
-        versionCode 43
-        versionName "1.8"
+        versionCode 44
+        versionName "1.9"
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }

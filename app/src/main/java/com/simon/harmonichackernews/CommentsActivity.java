@@ -33,10 +33,6 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
 
         ThemeUtils.setupTheme(this, true);
 
-        if (Utils.shouldUseTransparentStatusBar(this)) {
-            getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.statusBarColorTransparent));
-        }
-
         setContentView(R.layout.activity_comments);
 
         CommentsFragment fragment = new CommentsFragment();
