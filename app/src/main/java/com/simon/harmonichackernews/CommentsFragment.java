@@ -393,16 +393,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void updateBottomSheetMargin(int navbarHeight) {
-        /*
-        * Here's the deal; peek height sets how much the bottom sheet should peek up with. In
-        * order to make it so that the text doesn't show underneath the transparent navbar we
-        * need to push it down by 2*navbar to offset the longer peak + the larger see-through area
-        * */
-        int standardMargin = Utils.pxFromDpInt(getResources(), Utils.isTablet(requireContext()) ? 80 : 68);
+
+        int standardMargin = Utils.pxFromDpInt(getResources(), Utils.isTablet(requireContext()) ? 81 : 68);
 
         BottomSheetBehavior.from(bottomSheet).setPeekHeight(standardMargin + navbarHeight);
         CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        params.setMargins(0,0, 0, standardMargin + 2 * navbarHeight);
+        params.setMargins(0,0, 0, standardMargin + navbarHeight);
 
         webViewContainer.setLayoutParams(params);
 
