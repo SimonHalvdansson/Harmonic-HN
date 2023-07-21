@@ -709,7 +709,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                         sheetContainer.setPadding(0, (int) ((slideOffset) * Utils.getStatusBarHeight(bottomSheet.getResources())), 0, 0);
                     }
 
-                    float headerAlpha = Math.min(1, slideOffset*slideOffset*30);
+                    float headerAlpha = Math.min(1, slideOffset*slideOffset*20);
                     actionsContainer.setAlpha(headerAlpha);
                     headerView.setAlpha(headerAlpha);
                 }
