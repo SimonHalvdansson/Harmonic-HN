@@ -7,7 +7,7 @@
     <style name="AppThemeLightBase" parent="Theme.Material3.Light.NoActionBar"></style>
     <style name="AppThemeMaterialLightBase" parent="Theme.Material3.Light.NoActionBar"></style>
 
-    <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialLightBase"></style>
+    <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialLight"></style>
 
     <style name="AppThemeMaterialDark" parent="@style/AppThemeMaterialDarkBase">
         <item name="storyColorNormal">@color/darkStoryColorNormal</item>
