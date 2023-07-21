@@ -121,11 +121,11 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml("<b>Version 1.9.1:</b><br>" +
-                        "- Fixed compact header padding" +
-                        "- Fixed dark WebView, the API was significantly changed" +
-                        "- Added a setting to disable comment animations" +
-                        "- Added initial support for Android 14's predictive back gesture" +
-                        "- Updated bottom sheet animation slightly" +
+                        "- Fixed compact header padding<br>" +
+                        "- Fixed dark WebView, the API was significantly changed<br>" +
+                        "- Added a setting to disable comment animations<br>" +
+                        "- Added initial support for Android 14's predictive back gesture<br>" +
+                        "- Updated bottom sheet animation slightly<br>" +
                         "- Updated dependencies" +
                         "<br>" +
                         "<br>" +
