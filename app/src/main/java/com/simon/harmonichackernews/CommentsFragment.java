@@ -434,7 +434,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 Utils.shouldUseMonochromeCommentDepthIndicators(getContext()),
                 Utils.shouldShowNavigationButtons(getContext()),
                 Utils.getPreferredFont(getContext()),
-                isFeatureSupported(WebViewFeature.FORCE_DARK),// || isFeatureSupported(Web),
+                isFeatureSupported(WebViewFeature.FORCE_DARK) || WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING),
                 Utils.shouldShowTopLevelDepthIndicator(getContext()),
                 Utils.shouldShowWebviewExpandButton(getContext()),
                 ThemeUtils.isDarkMode(getContext()));
