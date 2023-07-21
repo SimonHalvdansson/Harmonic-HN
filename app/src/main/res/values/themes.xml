@@ -1,8 +1,16 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialLight"></style>
+    <!-- These base themes are so that we can tell the app that android:isLightTheme="false"
+    which enables us to use darkened webview again!-->
+    <style name="AppThemeBase" parent="Theme.Material3.Dark.NoActionBar"></style>
+    <style name="AppThemeMaterialDarkBase" parent="Theme.Material3.Dark.NoActionBar"></style>
+    <style name="AppThemeLightBase" parent="Theme.Material3.Light.NoActionBar"></style>
+    <style name="AppThemeMaterialLightBase" parent="Theme.Material3.Light.NoActionBar"></style>
 
-    <style name="AppThemeMaterialDark" parent="Theme.Material3.Dark.NoActionBar">
+
+    <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialLightBase"></style>
+
+    <style name="AppThemeMaterialDark" parent="AppThemeMaterialDarkBase">
         <item name="storyColorNormal">@color/darkStoryColorNormal</item>
         <item name="storyColorDisabled">@color/darkStoryColorDisabled</item>
         <item name="textColorHighlighted">@color/darkTextColorHighlighted</item>
@@ -30,7 +38,7 @@
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialDark</item>
     </style>
 
-    <style name="AppTheme" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="AppTheme" parent="AppThemeBase">
         <item name="storyColorNormal">@color/darkStoryColorNormal</item>
         <item name="storyColorDisabled">@color/darkStoryColorDisabled</item>
         <item name="textColorHighlighted">@color/darkTextColorHighlighted</item>
@@ -76,7 +84,7 @@
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogGray</item>
     </style>
 
-    <style name="AppThemeLight" parent="Theme.Material3.Light.NoActionBar">
+    <style name="AppThemeLight" parent="AppThemeLightBase">
         <item name="storyColorNormal">@color/lightStoryColorNormal</item>
         <item name="storyColorDisabled">@color/lightStoryColorDisabled</item>
         <item name="textColorHighlighted">@color/lightTextColorHighlighted</item>
@@ -104,7 +112,7 @@
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogLight</item>
     </style>
 
-    <style name="AppThemeMaterialLight" parent="Theme.Material3.Light.NoActionBar">
+    <style name="AppThemeMaterialLight" parent="AppThemeMaterialLightBase">
         <item name="storyColorNormal">@color/lightStoryColorNormal</item>
         <item name="storyColorDisabled">@color/lightStoryColorDisabled</item>
         <item name="textColorHighlighted">@color/lightTextColorHighlighted</item>
@@ -132,13 +140,12 @@
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialLight</item>
     </style>
 
-    <style name="AppThemeWhite" parent="@style/AppThemeLight">
+    <style name="AppThemeWhite" parent="@style/AppThemeLightBase">
         <item name="android:windowBackground">@color/whiteBackground</item>
         <item name="android:statusBarColor">@color/whiteStatusBarColor</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogWhite</item>
     </style>
-
 
 
 
@@ -149,7 +156,7 @@
 
     <style name="ThemeSwipeBackNoActionBarMaterialDayNight" parent="ThemeSwipeBackNoActionBarMaterialLight"></style>
 
-    <style name="ThemeSwipeBackNoActionBarMaterialDark" parent="AppThemeMaterialDark">
+    <style name="ThemeSwipeBackNoActionBarMaterialDark" parent="AppThemeMaterialDarkBase">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
     </style>

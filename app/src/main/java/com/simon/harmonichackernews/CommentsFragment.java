@@ -32,6 +32,7 @@ import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
@@ -46,6 +47,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
@@ -103,6 +105,8 @@ import java.util.List;
 import okhttp3.Call;
 
 import static android.content.Context.DOWNLOAD_SERVICE;
+import static androidx.webkit.WebViewFeature.FORCE_DARK_STRATEGY;
+import static androidx.webkit.WebViewFeature.isFeatureSupported;
 
 public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener {
 
@@ -430,7 +434,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 Utils.shouldUseMonochromeCommentDepthIndicators(getContext()),
                 Utils.shouldShowNavigationButtons(getContext()),
                 Utils.getPreferredFont(getContext()),
-                WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK),
+                isFeatureSupported(WebViewFeature.FORCE_DARK),// || isFeatureSupported(Web),
                 Utils.shouldShowTopLevelDepthIndicator(getContext()),
                 Utils.shouldShowWebviewExpandButton(getContext()),
                 ThemeUtils.isDarkMode(getContext()));
@@ -503,19 +507,22 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_INVERT:
-
-
-                        if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+                        //this whole thing should only be visible for SDK_INT larger than Q (29)
+                        //We first check the "new" version of dark mode, algorithmic darkening
+                        // this requires the isDarkMode thing to be true for the theme which we
+                        // have set
+                        if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), !WebSettingsCompat.isAlgorithmicDarkeningAllowed(webView.getSettings()));
+                        } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+                            //I don't know why but this seems to always be true whenever we
+                            //are at or above android 10
                             if (WebSettingsCompat.getForceDark(webView.getSettings()) == WebSettingsCompat.FORCE_DARK_ON) {
                                 WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_OFF);
                             } else {
                                 WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_ON);
                             }
-                        } else if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), !WebSettingsCompat.isAlgorithmicDarkeningAllowed(webView.getSettings()));
-                            }
                         }
+
                         break;
                 }
             }
@@ -623,7 +630,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
-        if (matchWebviewTheme && WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK) && ThemeUtils.isDarkMode(getContext())) {
+        if (matchWebviewTheme && isFeatureSupported(WebViewFeature.FORCE_DARK) && ThemeUtils.isDarkMode(getContext())) {
             WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_ON);
         }
     }
