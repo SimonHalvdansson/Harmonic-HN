@@ -630,9 +630,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
-        if (matchWebviewTheme && isFeatureSupported(WebViewFeature.FORCE_DARK) && ThemeUtils.isDarkMode(getContext())) {
-            WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_ON);
+        if (matchWebviewTheme && ThemeUtils.isDarkMode(getContext())) {
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), true);
+            } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+                WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_ON);
+            }
         }
+
+
     }
 
     private void loadUrl(String url) {

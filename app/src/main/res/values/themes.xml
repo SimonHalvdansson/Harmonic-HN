@@ -7,10 +7,9 @@
     <style name="AppThemeLightBase" parent="Theme.Material3.Light.NoActionBar"></style>
     <style name="AppThemeMaterialLightBase" parent="Theme.Material3.Light.NoActionBar"></style>
 
-
     <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialLightBase"></style>
 
-    <style name="AppThemeMaterialDark" parent="AppThemeMaterialDarkBase">
+    <style name="AppThemeMaterialDark" parent="@style/AppThemeMaterialDarkBase">
         <item name="storyColorNormal">@color/darkStoryColorNormal</item>
         <item name="storyColorDisabled">@color/darkStoryColorDisabled</item>
         <item name="textColorHighlighted">@color/darkTextColorHighlighted</item>
@@ -156,7 +155,7 @@
 
     <style name="ThemeSwipeBackNoActionBarMaterialDayNight" parent="ThemeSwipeBackNoActionBarMaterialLight"></style>
 
-    <style name="ThemeSwipeBackNoActionBarMaterialDark" parent="AppThemeMaterialDarkBase">
+    <style name="ThemeSwipeBackNoActionBarMaterialDark" parent="@style/AppThemeMaterialDark">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
     </style>
