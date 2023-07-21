@@ -20,15 +20,15 @@ import java.util.Date;
 
 public class ThemeUtils {
 
-    public static String setupTheme(Activity activity) {
-        return setupTheme(activity, false, true);
+    public static void setupTheme(Activity activity) {
+        setupTheme(activity, false, true);
     }
 
-    public static String setupTheme(Activity activity, boolean swipeBack) {
-        return setupTheme(activity, swipeBack, true);
+    public static void setupTheme(Activity activity, boolean swipeBack) {
+        setupTheme(activity, swipeBack, true);
     }
 
-    public static String setupTheme(Activity activity, boolean swipeBack, boolean specialFlags) {
+    public static void setupTheme(Activity activity, boolean swipeBack, boolean specialFlags) {
         String theme = getPreferredTheme(activity);
         switch (theme) {
             case "material_daynight":
@@ -65,8 +65,6 @@ public class ThemeUtils {
         if (Utils.shouldUseTransparentStatusBar(activity)) {
             window.setStatusBarColor(ContextCompat.getColor(activity, R.color.statusBarColorTransparent));
         }
-
-        return theme;
     }
 
     public static boolean isDarkMode(Context ctx) {
