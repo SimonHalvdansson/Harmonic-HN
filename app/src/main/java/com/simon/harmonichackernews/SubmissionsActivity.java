@@ -7,6 +7,7 @@ import android.view.View;
 
 import android.widget.LinearLayout;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -152,6 +153,15 @@ public class SubmissionsActivity extends AppCompatActivity {
             }
         });
 
+        OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                finish();
+                overridePendingTransition(0, R.anim.activity_out_animation);
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
+
         recyclerView.setAdapter(adapter);
 
         loadSubmissions();
@@ -211,12 +221,6 @@ public class SubmissionsActivity extends AppCompatActivity {
         });
 
         queue.add(stringRequest);
-    }
-
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        overridePendingTransition(0, R.anim.activity_out_animation);
     }
 
     @Override

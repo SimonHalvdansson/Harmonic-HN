@@ -12,6 +12,7 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -72,14 +73,7 @@ public class SettingsActivity extends AppCompatActivity {
             @Override
             public void onViewSwipeFinished(View mView, boolean isEnd) {
                 if (isEnd) {
-                    if (requestRestart) {
-                        Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                        startActivity(intent);
-                    } else {
-                        finish();
-                        overridePendingTransition(0, 0);
-                    }
+                    handleExit(true);
                 }
             }
         });
@@ -93,6 +87,14 @@ public class SettingsActivity extends AppCompatActivity {
                 .beginTransaction()
                 .replace(R.id.settings, new SettingsFragment())
                 .commit();
+
+        OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                handleExit(false);
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
     }
 
     public static class SettingsFragment extends PreferenceFragmentCompat {
@@ -427,8 +429,7 @@ public class SettingsActivity extends AppCompatActivity {
         findViewById(R.id.settings_linear_layout).setPadding(extraPadding, 0, extraPadding, 0);
     }
 
-    @Override
-    public void onBackPressed() {
+    private void handleExit(boolean fromSwipe) {
         if (requestRestart) {
             Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -437,8 +438,8 @@ public class SettingsActivity extends AppCompatActivity {
                 Runtime.getRuntime().exit(0);
             }
         } else {
-            super.onBackPressed();
-            overridePendingTransition(0, R.anim.activity_out_animation);
+            finish();
+            overridePendingTransition(0, fromSwipe ? 0 : R.anim.activity_out_animation);
         }
     }
 }
