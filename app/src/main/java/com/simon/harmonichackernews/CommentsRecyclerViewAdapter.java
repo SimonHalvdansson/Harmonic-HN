@@ -708,6 +708,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     if (Utils.shouldUseTransparentStatusBar(mView.getContext())) {
                         sheetContainer.setPadding(0, (int) ((slideOffset) * Utils.getStatusBarHeight(bottomSheet.getResources())), 0, 0);
                     }
+
+                    float headerAlpha = Math.min(1, slideOffset*slideOffset*30);
+                    actionsContainer.setAlpha(headerAlpha);
+                    headerView.setAlpha(headerAlpha);
                 }
             });
 

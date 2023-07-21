@@ -122,8 +122,10 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml("<b>Version 1.9.1:</b><br>" +
                         "- Fixed compact header padding" +
+                        "- Fixed dark WebView, the API was significantly changed" +
                         "- Added a setting to disable comment animations" +
                         "- Added initial support for Android 14's predictive back gesture" +
+                        "- Updated bottom sheet animation slightly" +
                         "- Updated dependencies" +
                         "<br>" +
                         "<br>" +

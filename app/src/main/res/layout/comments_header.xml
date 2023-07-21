@@ -334,8 +334,6 @@
         </LinearLayout>
     </LinearLayout>
 
-
-
     <LinearLayout
         android:id="@+id/comments_header_actions_container"
         android:paddingLeft="@dimen/comments_header_action_padding"
