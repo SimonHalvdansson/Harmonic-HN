@@ -674,9 +674,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     sheetButtonsContainer.setAlpha((1-slideOffset)*(1-slideOffset)*(1-slideOffset));
                     sheetButtonsContainer.getLayoutParams().height = Math.round((1-slideOffset) * (SHEET_ITEM_HEIGHT + navbarHeight));
                     sheetButtonsContainer.requestLayout();
-                    if (Utils.shouldUseTransparentStatusBar(mView.getContext())) {
-                        sheetContainer.setPadding(0, (int) ((slideOffset) * Utils.getStatusBarHeight(bottomSheet.getResources())), 0, 0);
-                    }
+                    sheetContainer.setPadding(0, (int) ((slideOffset) * Utils.getStatusBarHeight(bottomSheet.getResources())), 0, 0);
 
                     float headerAlpha = Math.min(1, slideOffset*slideOffset*20);
                     actionsContainer.setAlpha(headerAlpha);
@@ -690,11 +688,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     sheetButtonsContainer.setAlpha(0f);
                     sheetButtonsContainer.getLayoutParams().height = 0;
                     sheetButtonsContainer.requestLayout();
-                    if (Utils.shouldUseTransparentStatusBar(mView.getContext())) {
-                        sheetContainer.setPadding(0, Utils.getStatusBarHeight(view.getResources()), 0, 0);
-                    } else {
-                        sheetContainer.setPadding(0, 0, 0, 0);
-                    }
+                    sheetContainer.setPadding(0, Utils.getStatusBarHeight(view.getResources()), 0, 0);
                 } else {
                     //make sure we set correct height when starting on the webview
                     sheetButtonsContainer.getLayoutParams().height = SHEET_ITEM_HEIGHT + navbarHeight;
