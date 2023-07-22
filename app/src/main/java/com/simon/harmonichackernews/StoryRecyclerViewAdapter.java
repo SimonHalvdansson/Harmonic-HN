@@ -252,9 +252,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             final Context ctx = headerViewHolder.itemView.getContext();
 
             if (compactHeader) {
-                headerViewHolder.container.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 20) + Utils.getStatusBarHeight(ctx.getResources()), 0, Utils.pxFromDpInt(ctx.getResources(), 10));
+                headerViewHolder.container.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 20), 0, Utils.pxFromDpInt(ctx.getResources(), 10));
             } else {
-                headerViewHolder.container.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 40) + Utils.getStatusBarHeight(ctx.getResources()), 0, Utils.pxFromDpInt(ctx.getResources(), 26));
+                headerViewHolder.container.setPadding(0, Utils.pxFromDpInt(ctx.getResources(), 40), 0, Utils.pxFromDpInt(ctx.getResources(), 26));
             }
 
             headerViewHolder.moreButton.setVisibility(searching ? View.GONE : View.VISIBLE);
@@ -504,11 +504,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public SubmissionsHeaderViewHolder(View view) {
             super(view);
             headerText = view.findViewById(R.id.submissions_header_text);
-            headerText.setPadding(
-                    headerText.getPaddingLeft(),
-                    headerText.getPaddingTop() + Utils.getStatusBarHeight(view.getResources()),
-                    headerText.getPaddingRight(),
-                    headerText.getPaddingBottom());
         }
     }
 

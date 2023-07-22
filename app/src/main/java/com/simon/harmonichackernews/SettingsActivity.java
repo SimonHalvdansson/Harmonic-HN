@@ -9,6 +9,7 @@ import android.text.TextUtils;
 import android.text.format.DateFormat;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -21,6 +22,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
@@ -396,10 +398,12 @@ public class SettingsActivity extends AppCompatActivity {
             }
         }
 
+        @NonNull
         @Override
-        public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-            super.onViewCreated(view, savedInstanceState);
-            getListView().setPadding(0, Utils.getStatusBarHeight(getResources()), 0, Utils.getNavigationBarHeight(getResources()));
+        public RecyclerView onCreateRecyclerView(@NonNull LayoutInflater inflater, @NonNull ViewGroup parent, @Nullable Bundle savedInstanceState) {
+            RecyclerView recycler = super.onCreateRecyclerView(inflater, parent, savedInstanceState);
+            recycler.setFitsSystemWindows(true);
+            return recycler;
         }
 
         private void updateTimedRangeSummary() {
