@@ -139,7 +139,7 @@
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialLight</item>
     </style>
 
-    <style name="AppThemeWhite" parent="@style/AppThemeLightBase">
+    <style name="AppThemeWhite" parent="@style/AppThemeLight">
         <item name="android:windowBackground">@color/whiteBackground</item>
         <item name="android:statusBarColor">@color/whiteStatusBarColor</item>
 

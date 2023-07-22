@@ -120,7 +120,10 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml("<b>Version 1.9.1:</b><br>" +
+                .setMessage(Html.fromHtml("<b>Version 1.9.2:</b><br>" +
+                        "- Fixed white theme" +
+                        "<br><br>" +
+                        "<b>Version 1.9.1:</b><br>" +
                         "- Fixed compact header padding<br>" +
                         "- Fixed dark WebView, the API was significantly changed<br>" +
                         "- Added a setting to disable comment animations<br>" +
