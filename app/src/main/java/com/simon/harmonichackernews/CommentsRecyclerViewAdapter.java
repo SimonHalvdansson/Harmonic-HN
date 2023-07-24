@@ -699,6 +699,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 moreLayoutParent.setVisibility(View.GONE);
                 sheetButtonsContainer.setVisibility(View.GONE);
                 view.findViewById(R.id.comments_sheet_handle).setVisibility(View.GONE);
+                sheetContainer.setPadding(0, Utils.getStatusBarHeight(view.getResources()), 0, 0);
             }
         }
     }
