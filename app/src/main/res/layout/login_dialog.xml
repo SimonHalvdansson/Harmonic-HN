@@ -25,7 +25,7 @@
             android:layout_height="wrap_content"/>
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:layout_width="match_parent">
@@ -41,7 +41,7 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_marginTop="10dp"
             android:layout_height="wrap_content"
             android:layout_width="match_parent"
