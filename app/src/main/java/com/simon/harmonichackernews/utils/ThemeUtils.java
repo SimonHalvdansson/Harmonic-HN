@@ -1,18 +1,20 @@
 package com.simon.harmonichackernews.utils;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import android.view.View;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.view.Window;
 
+import androidx.core.content.ContextCompat;
+import androidx.core.view.WindowCompat;
 import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.R;
 
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -52,12 +54,16 @@ public class ThemeUtils {
                 break;
         }
 
+        Window window = activity.getWindow();
+        WindowCompat.getInsetsController(window, window.getDecorView())
+                .setAppearanceLightStatusBars(!isDarkMode(activity));
+
         if (specialFlags) {
-            if (isDarkMode(activity)) {
-                activity.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
-            } else {
-                activity.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-            }
+            WindowCompat.setDecorFitsSystemWindows(window, false);
+        }
+
+        if (Utils.shouldUseTransparentStatusBar(activity)) {
+            window.setStatusBarColor(ContextCompat.getColor(activity, R.color.statusBarColorTransparent));
         }
     }
 
@@ -71,8 +77,7 @@ public class ThemeUtils {
 
     public static boolean uiModeNight(Context ctx) {
         int currentNightMode = ctx.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        boolean isNight = currentNightMode == Configuration.UI_MODE_NIGHT_YES;
-        return isNight;
+        return currentNightMode == Configuration.UI_MODE_NIGHT_YES;
     }
 
     public static int getBackgroundColorResource(Context ctx) {

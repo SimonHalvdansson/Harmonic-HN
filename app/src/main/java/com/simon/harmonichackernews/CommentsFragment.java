@@ -32,6 +32,7 @@ import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
@@ -46,11 +47,15 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
 import androidx.core.util.Pair;
+import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
@@ -100,6 +105,8 @@ import java.util.List;
 import okhttp3.Call;
 
 import static android.content.Context.DOWNLOAD_SERVICE;
+import static androidx.webkit.WebViewFeature.FORCE_DARK_STRATEGY;
+import static androidx.webkit.WebViewFeature.isFeatureSupported;
 
 public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener {
 
@@ -148,6 +155,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean initializedWebView = false;
     private String username;
     private Story story;
+
+    private int bottomSheetMargin;
 
     public CommentsFragment() {
         super(R.layout.fragment_comments);
@@ -285,13 +294,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 swipeRefreshLayout.getProgressViewEndOffset() + Utils.getStatusBarHeight(getResources()));
 
         // this is how much the bottom sheet sticks up by default and also decides height of webview
-        int bottomSheetMargin = Utils.pxFromDpInt(getResources(), 68) + Utils.getNavigationBarHeight(requireActivity());
+        //We want to watch for navigation bar height changes (tablets on Android 12L can cause
+        // these)
 
-        BottomSheetBehavior.from(bottomSheet).setPeekHeight(bottomSheetMargin);
-        CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        params.setMargins(0,0, 0, bottomSheetMargin);
+        ViewCompat.setOnApplyWindowInsetsListener(view, new OnApplyWindowInsetsListener() {
+            @NonNull
+            @Override
+            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                updateBottomSheetMargin(insets.bottom);
 
-        webViewContainer.setLayoutParams(params);
+                return windowInsets;
+            }
+        });
+
+        updateBottomSheetMargin(Utils.getNavigationBarHeight(getResources()));
 
         webViewContainer.setPadding(0, Utils.shouldUseTransparentStatusBar(getContext()) ? Utils.getStatusBarHeight(getResources()) : 0, 0, 0);
 
@@ -326,7 +343,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         scrollNavigation = view.findViewById(R.id.comments_scroll_navigation);
         FrameLayout.LayoutParams scrollParams = (FrameLayout.LayoutParams) scrollNavigation.getLayoutParams();
-        scrollParams.setMargins(0,0,0, Utils.getNavigationBarHeight(getActivity()) + Utils.pxFromDpInt(getResources(), 16));
+        scrollParams.setMargins(0,0,0, Utils.getNavigationBarHeight(getResources()) + Utils.pxFromDpInt(getResources(), 16));
 
         showNavButtons = Utils.shouldShowNavigationButtons(getContext());
         updateNavigationVisibility();
@@ -379,6 +396,20 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
+    private void updateBottomSheetMargin(int navbarHeight) {
+        int standardMargin = Utils.pxFromDpInt(getResources(), Utils.isTablet(requireContext()) ? 81 : 68);
+
+        BottomSheetBehavior.from(bottomSheet).setPeekHeight(standardMargin + navbarHeight);
+        CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        params.setMargins(0,0, 0, standardMargin + navbarHeight);
+
+        webViewContainer.setLayoutParams(params);
+
+        if (adapter != null) {
+            adapter.navbarHeight = navbarHeight;
+        }
+    }
+
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
@@ -403,7 +434,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 Utils.shouldUseMonochromeCommentDepthIndicators(getContext()),
                 Utils.shouldShowNavigationButtons(getContext()),
                 Utils.getPreferredFont(getContext()),
-                WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK),
+                isFeatureSupported(WebViewFeature.FORCE_DARK) || WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING),
                 Utils.shouldShowTopLevelDepthIndicator(getContext()),
                 Utils.shouldShowWebviewExpandButton(getContext()),
                 ThemeUtils.isDarkMode(getContext()));
@@ -476,19 +507,22 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_INVERT:
-
-
-                        if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+                        //this whole thing should only be visible for SDK_INT larger than Q (29)
+                        //We first check the "new" version of dark mode, algorithmic darkening
+                        // this requires the isDarkMode thing to be true for the theme which we
+                        // have set
+                        if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), !WebSettingsCompat.isAlgorithmicDarkeningAllowed(webView.getSettings()));
+                        } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+                            //I don't know why but this seems to always be true whenever we
+                            //are at or above android 10
                             if (WebSettingsCompat.getForceDark(webView.getSettings()) == WebSettingsCompat.FORCE_DARK_ON) {
                                 WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_OFF);
                             } else {
                                 WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_ON);
                             }
-                        } else if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), !WebSettingsCompat.isAlgorithmicDarkeningAllowed(webView.getSettings()));
-                            }
                         }
+
                         break;
                 }
             }
@@ -516,7 +550,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
-        recyclerView.setPadding(0,0,0, Utils.getNavigationBarHeight(getActivity()) + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard));
+        if (!Utils.shouldUseCommentsAnimation(getContext())) {
+            recyclerView.setItemAnimator(null);
+        }
+
+        recyclerView.setPadding(0,0,0, Utils.getNavigationBarHeight(getResources()) + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard));
         recyclerView.setAdapter(adapter);
 
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_ITEM, 100);
@@ -531,11 +569,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
                if (callback != null) {
-                    if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
-                        callback.onSwitchView(true);
-                    } else {
-                        callback.onSwitchView(false);
-                    }
+                   callback.onSwitchView(newState == BottomSheetBehavior.STATE_COLLAPSED);
                 }
             }
 
@@ -596,9 +630,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
-        if (matchWebviewTheme && WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK) && ThemeUtils.isDarkMode(getContext())) {
-            WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_ON);
+        if (matchWebviewTheme && ThemeUtils.isDarkMode(getContext())) {
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), true);
+            } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+                WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_ON);
+            }
         }
+
+
     }
 
     private void loadUrl(String url) {
@@ -670,11 +710,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             }
         });
-    }
-
-    public void updateTabletPadding() {
-        //this is
-
     }
 
     @Override

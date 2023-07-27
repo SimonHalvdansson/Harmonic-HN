@@ -19,7 +19,9 @@ public class SplitChangeHandler {
    public SplitChangeHandler(Activity activity, SwipeBackLayout swipeBackLayout) {
       this.splitCallbackAdapter = new SplitControllerCallbackAdapter(SplitController.getInstance(activity));
       this.layout = swipeBackLayout;
-      swipeBackLayout.setBackgroundColor(ContextCompat.getColor(activity, ThemeUtils.getBackgroundColorResource(activity)));
+      //Note: I (Simon) removed this line as swipeBack needs a transparent background in
+      //order to display the activity behind it
+      //swipeBackLayout.setBackgroundColor(ContextCompat.getColor(activity, ThemeUtils.getBackgroundColorResource(activity)));
 
       splitCallbackAdapter.addSplitListener(
           activity,

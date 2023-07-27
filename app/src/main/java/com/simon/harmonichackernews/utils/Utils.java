@@ -17,11 +17,13 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Window;
 import android.webkit.URLUtil;
 import android.widget.Toast;
 
@@ -30,8 +32,13 @@ import androidx.browser.customtabs.CustomTabColorSchemeParams;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.content.ContextCompat;
 import androidx.core.util.Pair;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.preference.PreferenceManager;
 
+import com.simon.harmonichackernews.BuildConfig;
+import com.simon.harmonichackernews.MainActivity;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.data.Story;
@@ -72,6 +79,7 @@ public class Utils {
     public final static String KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS";
     public final static String KEY_SHARED_PREFERENCES_BOOKMARKS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_BOOKMARKS";
     public final static String KEY_SHARED_PREFERENCES_FIRST_TIME = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FIRST_TIME";
+    public final static String KEY_SHARED_PREFERENCES_LAST_VERSION = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION";
     public final static String GLOBAL_SHARED_PREFERENCES_KEY = "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY";
 
     public final static String KEY_NIGHTTIME_FROM_HOUR = "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_HOUR";
@@ -359,6 +367,15 @@ public class Utils {
         return false;
     }
 
+    public static boolean justUpdated(Context ctx) {
+        SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
+        if (BuildConfig.VERSION_CODE > sharedPref.getInt(KEY_SHARED_PREFERENCES_LAST_VERSION, -1)) {
+            sharedPref.edit().putInt(KEY_SHARED_PREFERENCES_LAST_VERSION, BuildConfig.VERSION_CODE).apply();
+            return true;
+        }
+        return false;
+    }
+
     public static boolean shouldShowPoints(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return prefs.getBoolean("pref_show_points", true);
@@ -482,6 +499,11 @@ public class Utils {
     public static boolean shouldUseSpecialNighttimeTheme(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return prefs.getBoolean("pref_special_nighttime", false);
+    }
+
+    public static boolean shouldUseCommentsAnimation(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return prefs.getBoolean("pref_comments_animation", true);
     }
 
     public static boolean shouldUseAlgolia(Context ctx) {
@@ -768,9 +790,7 @@ public class Utils {
         return 0;
     }
 
-    public static int getNavigationBarHeight(Activity activity) {
-        Resources res = activity.getResources();
-
+    public static int getNavigationBarHeight(Resources res) {
         int resourceId = res.getIdentifier("navigation_bar_height", "dimen", "android");
         if (resourceId > 0) {
             return res.getDimensionPixelSize(resourceId);

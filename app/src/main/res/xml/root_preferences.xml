@@ -254,6 +254,13 @@
             app:icon="@drawable/ic_action_swipe"
             app:title="Disable swipe back from comments"    />
 
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_comments_animation"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_animation"
+            app:title="Animate comments"    />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="General">

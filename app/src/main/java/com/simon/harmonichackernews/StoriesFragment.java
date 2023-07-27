@@ -107,15 +107,10 @@ public class StoriesFragment extends Fragment {
         recyclerView.setAdapter(adapter);
 
         CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) updateContainer.getLayoutParams();
-        params.bottomMargin = Utils.getNavigationBarHeight(getActivity()) + Utils.pxFromDpInt(getResources(), 8);
+        params.bottomMargin = Utils.getNavigationBarHeight(getResources()) + Utils.pxFromDpInt(getResources(), 8);
         updateContainer.setLayoutParams(params);
 
-        updateButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                attemptRefresh();
-            }
-        });
+        updateButton.setOnClickListener((v) -> attemptRefresh());
 
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 
@@ -536,6 +531,10 @@ public class StoriesFragment extends Fragment {
         hideUpdateButton();
         adapter.notifyItemChanged(0);
 
+        if (getActivity() != null && getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).backPressedCallback.setEnabled(adapter.searching);
+        }
+
         if (adapter.searching) {
             //cancel all ongoing
             queue.cancelAll(request -> true);
@@ -544,7 +543,6 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemRangeRemoved(1, stories.size() + 1);
             stories.clear();
             stories.add(new Story());
-
         } else {
             int size = stories.size();
             if (size > 1) {

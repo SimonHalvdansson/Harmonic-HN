@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  xmlns:tools="http://schemas.android.com/tools"
-  package="com.simon.harmonichackernews">
+  xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -13,6 +12,7 @@
     </queries>
 
     <application
+        android:enableOnBackInvokedCallback="true"
         android:usesCleartextTraffic="true"
         android:resizeableActivity="true"
         android:allowBackup="true"
@@ -37,8 +37,10 @@
             android:configChanges="orientation|screenSize"/>
         <activity
             android:name=".AboutActivity"
+            android:enableOnBackInvokedCallback="true"
             android:theme="@style/Theme.Swipe.Back.NoActionBar"
-            android:configChanges="orientation|screenSize"/>
+            android:configChanges="orientation|screenSize"
+            tools:targetApi="tiramisu" />
         <activity
             android:name=".ComposeActivity"
             android:windowSoftInputMode="adjustResize"
@@ -83,34 +85,6 @@
         </activity>
 
         <activity android:name=".SplitPlaceholderActivity" />
-        <!--
-        <activity
-            android:name=".UserDialogActivity"
-            android:theme="@style/AppDialogTheme"
-            android:exported="true">
-            <intent-filter android:label="@string/app_name">
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:host="news.ycombinator.com"
-                    android:pathPrefix="/user"
-                    android:scheme="https" />
-            </intent-filter>
-            <intent-filter android:label="@string/app_name">
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:host="news.ycombinator.com"
-                    android:pathPrefix="/user"
-                    android:scheme="http" />
-            </intent-filter>
-        </activity>-->
 
         <provider
           android:name="androidx.startup.InitializationProvider"

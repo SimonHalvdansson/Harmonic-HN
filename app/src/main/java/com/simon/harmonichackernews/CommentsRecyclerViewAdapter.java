@@ -4,21 +4,16 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.res.Resources;
-import android.graphics.Typeface;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ImageSpan;
 import android.util.DisplayMetrics;
-import android.util.Log;
-import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -28,12 +23,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
-import androidx.core.content.res.ResourcesCompat;
 import androidx.core.view.ViewCompat;
-import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -43,7 +34,6 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
-import com.gw.swipeback.tools.Util;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
@@ -58,8 +48,6 @@ import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.util.List;
 import java.util.Objects;
-
-import okhttp3.Response;
 
 public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -89,6 +77,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private boolean isTablet;
     public boolean darkThemeActive;
     public String font;
+
+    public int navbarHeight = 0;
 
     public static final int TYPE_HEADER = 0;
     public static final int TYPE_ITEM = 1;
@@ -210,7 +200,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 for (int i = 0; i < story.pollOptionArrayList.size(); i++) {
                     PollOption pollOption = story.pollOptionArrayList.get(i);
                     if (pollOption.loaded) {
-                        MaterialButton materialButton = new MaterialButton(ctx, null, R.attr.materialButtonOutlinedStyle);
+                        MaterialButton materialButton = new MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
                         materialButton.setText(pollOption.text + " (" + pollOption.points + (pollOption.points == 1 ? " point" : " points") + ")");
 
                         materialButton.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorNormal));
@@ -527,7 +517,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout actionsContainer;
         public final Button retryButton;
         public final LinearLayout pollLayout;
-
         public final LinearLayout headerView;
 
         public HeaderViewHolder(View view) {
@@ -570,6 +559,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
             sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
             actionsContainer = view.findViewById(R.id.comments_header_actions_container);
+
+            final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 
             retryButton.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -712,11 +703,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 public void onSlide(@NonNull View bottomSheet, float slideOffset) {
                     //0 when small, 1 when opened
                     sheetButtonsContainer.setAlpha((1-slideOffset)*(1-slideOffset)*(1-slideOffset));
-                    sheetButtonsContainer.getLayoutParams().height = Math.round((1-slideOffset) * (Utils.pxFromDp(view.getResources(), 32) + Utils.getNavigationBarHeight((Activity) view.getContext())));
+                    sheetButtonsContainer.getLayoutParams().height = Math.round((1-slideOffset) * (SHEET_ITEM_HEIGHT + navbarHeight));
                     sheetButtonsContainer.requestLayout();
                     if (Utils.shouldUseTransparentStatusBar(mView.getContext())) {
                         sheetContainer.setPadding(0, (int) ((slideOffset) * Utils.getStatusBarHeight(bottomSheet.getResources())), 0, 0);
                     }
+
+                    float headerAlpha = Math.min(1, slideOffset*slideOffset*20);
+                    actionsContainer.setAlpha(headerAlpha);
+                    headerView.setAlpha(headerAlpha);
                 }
             });
 
@@ -733,7 +728,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     }
                 } else {
                     //make sure we set correct height when starting on the webview
-                    sheetButtonsContainer.getLayoutParams().height = Utils.pxFromDpInt(view.getResources(), 32) + Utils.getNavigationBarHeight((Activity) userLayoutParent.getContext());
+                    sheetButtonsContainer.getLayoutParams().height = SHEET_ITEM_HEIGHT + navbarHeight;
                     sheetButtonsContainer.requestLayout();
                     sheetContainer.setPadding(0, 0, 0, 0);
                 }

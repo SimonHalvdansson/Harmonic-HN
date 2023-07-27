@@ -2,7 +2,6 @@
 
     <style name="ThemeOverlay.App.MaterialAlertDialogMaterialDark" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="colorSurface">@color/material_you_neutral_900</item>
-
     </style>
 
     <style name="ThemeOverlay.App.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">

@@ -21,6 +21,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -105,6 +106,27 @@ public class ComposeActivity extends AppCompatActivity {
                 submitButton.setEnabled(!TextUtils.isEmpty(editable.toString()));
             }
         });
+
+        OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (TextUtils.isEmpty(editText.getText().toString())) {
+                    finish();
+                } else {
+                    AlertDialog dialog = new MaterialAlertDialogBuilder(editText.getContext())
+                            .setTitle("Discard draft?")
+                            .setMessage("It will not be saved")
+                            .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int whichButton) {
+                                    finish();
+                                }})
+                            .setNegativeButton("Cancel", null).create();
+
+                    dialog.show();
+                }
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
     }
 
     @Override
@@ -120,24 +142,6 @@ public class ComposeActivity extends AppCompatActivity {
             layout.height = Math.round(dp160);
         }
         replyingScrollView.setLayoutParams(layout);
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (TextUtils.isEmpty(editText.getText().toString())) {
-            super.onBackPressed();
-        } else {
-            AlertDialog dialog = new MaterialAlertDialogBuilder(this)
-                    .setTitle("Discard draft?")
-                    .setMessage("It will not be saved")
-                    .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int whichButton) {
-                            finish();
-                        }})
-                    .setNegativeButton("Cancel", null).create();
-
-            dialog.show();
-        }
     }
 
     public void infoClick(View view) {

@@ -90,7 +90,7 @@ public class WelcomeActivity extends AppCompatActivity {
         lightButton.setOnClickListener(buttonClickListener);
         whiteButton.setOnClickListener(buttonClickListener);
 
-        scrollView.setPadding(0, Utils.getStatusBarHeight(getResources()), 0, Utils.getNavigationBarHeight(this));
+        scrollView.setPadding(0, Utils.getStatusBarHeight(getResources()), 0, Utils.getNavigationBarHeight(getResources()));
     }
 
     @SuppressLint("ApplySharedPref")
