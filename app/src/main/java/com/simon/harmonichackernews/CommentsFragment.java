@@ -959,9 +959,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     int id = item.getItemId();
 
                     if (id == R.id.menu_link) {
-                        startActivity(ShareUtils.getShareIntent(adapter.story.url, adapter.story.title));
+                        startActivity(ShareUtils.getShareIntent(adapter.story.url));
                     } else if (id == R.id.menu_hacker_news_link) {
-                        startActivity(ShareUtils.getShareIntent("https://news.ycombinator.com/item?id=" + adapter.story.id, adapter.story.title));
+                        startActivity(ShareUtils.getShareIntent("https://news.ycombinator.com/item?id=" + adapter.story.id));
                     }
 
                     return true;
@@ -971,7 +971,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             inflater.inflate(R.menu.share_menu, popup.getMenu());
             popup.show();
         } else {
-            startActivity(ShareUtils.getShareIntent(adapter.story.url, adapter.story.title));
+            startActivity(ShareUtils.getShareIntent(adapter.story.url));
         }
     }
 
