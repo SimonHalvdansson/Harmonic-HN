@@ -446,20 +446,20 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentIndentIndicator = view.findViewById(R.id.comment_indent_indicator);
 
             mView.setOnLongClickListener(view13 -> {
-                commentLongClickListener.onItemClick(comment, getAdapterPosition(), view13);
+                commentLongClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), view13);
                 return true;
             });
 
             commentBody.setOnLongClickListener(view14 -> {
-                commentLongClickListener.onItemClick(comment, getAdapterPosition(), view14);
+                commentLongClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), view14);
                 return true;
             });
 
             mView.setOnClickListener(view1 ->
-                    commentClickListener.onItemClick(comment, getAdapterPosition(), view1));
+                    commentClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), view1));
 
             commentBody.setOnClickListener(view12 ->
-                    commentClickListener.onItemClick(comment, getAdapterPosition(), view12));
+                    commentClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), view12));
 
             commentBody.setOnClickATagListener(new OnClickATagListener() {
                 @Override

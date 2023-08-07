@@ -363,8 +363,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             metaFavicon = view.findViewById(R.id.story_meta_favicon);
             indexTextView = view.findViewById(R.id.story_index);
 
-            linkLayoutView.setOnClickListener(view1 -> linkClickListener.onItemClick(getAdapterPosition()));
-            commentLayoutView.setOnClickListener(view12 -> commentClickListener.onItemClick(getAdapterPosition()));
+            linkLayoutView.setOnClickListener(view1 -> linkClickListener.onItemClick(getAbsoluteAdapterPosition()));
+            commentLayoutView.setOnClickListener(view12 -> commentClickListener.onItemClick(getAbsoluteAdapterPosition()));
         }
     }
 
@@ -541,14 +541,20 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    commentStoryClickListener.onItemClick(getAdapterPosition());
+                    int pos = getAbsoluteAdapterPosition();
+                    if (pos != RecyclerView.NO_POSITION) {
+                        commentStoryClickListener.onItemClick(getAbsoluteAdapterPosition());
+                    }
                 }
             });
 
             repliesButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    commentRepliesClickListener.onItemClick(getAdapterPosition());
+                    int pos = getAbsoluteAdapterPosition();
+                    if (pos != RecyclerView.NO_POSITION) {
+                        commentRepliesClickListener.onItemClick(getAbsoluteAdapterPosition());
+                    }
                 }
             });
         }

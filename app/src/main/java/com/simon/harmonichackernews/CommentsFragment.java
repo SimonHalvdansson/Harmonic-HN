@@ -610,7 +610,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                                         String contentDisposition, String mimetype,
                                         long contentLength) {
 
-                if (!TextUtils.isEmpty(mimetype) && mimetype.equals(PDF_MIME_TYPE)) {
+                if (!TextUtils.isEmpty(mimetype) && mimetype.equals(PDF_MIME_TYPE) && (url.startsWith("http://") || url.startsWith("https://"))) {
                     downloadPdf(url, contentDisposition, mimetype, webView.getContext());
                 } else {
                     showDownloadButton(url, contentDisposition, mimetype);
@@ -637,7 +637,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_ON);
             }
         }
-
 
     }
 
@@ -797,6 +796,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             queue.cancelAll(request -> true);
             queue.stop();
         }
+        destroyWebView();
+    }
+
+    public void destroyWebView() {
+        //nuclear
+        webViewContainer.removeAllViews();
+        webView.clearHistory();
+        webView.clearCache(true);
+        webView.loadUrl("about:blank");
+        webView.onPause();
+        webView.removeAllViews();
+        webView.destroyDrawingCache();
+        webView.pauseTimers();
+        webView.destroy();
+        webView = null;
     }
 
     @Override
