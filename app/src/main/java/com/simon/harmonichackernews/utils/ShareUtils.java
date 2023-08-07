@@ -4,6 +4,8 @@ import android.content.Intent;
 
 public class ShareUtils {
 
+    private final static String SHARE_BASE_URL = "https://news.ycombinator.com/item?id=";
+
     /**
      * Creates a share intent for sharing content.
      *
@@ -20,14 +22,13 @@ public class ShareUtils {
     }
 
     /**
-     * Creates a share intent for sharing content with a custom title.
+     * Creates a share intent for sharing content by id.
      *
-     * @param content The content to be shared.
-     * @param title   The custom title for the shared content.
+     * @param id ID of the content to be shared.
      * @return A share intent with the provided content and title.
      */
-    public static Intent getShareIntent(String content, String title) {
-        return getShareIntent(title + " - " + content);
+    public static Intent getShareIntent(int id) {
+        return getShareIntent(SHARE_BASE_URL + id);
     }
 
 }

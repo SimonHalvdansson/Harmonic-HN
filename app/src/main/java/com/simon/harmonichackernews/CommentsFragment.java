@@ -961,7 +961,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     if (id == R.id.menu_link) {
                         startActivity(ShareUtils.getShareIntent(adapter.story.url));
                     } else if (id == R.id.menu_hacker_news_link) {
-                        startActivity(ShareUtils.getShareIntent("https://news.ycombinator.com/item?id=" + adapter.story.id));
+                        startActivity(ShareUtils.getShareIntent(adapter.story.id));
                     }
 
                     return true;
@@ -1198,7 +1198,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                         break;
                     case 1: //share comment
-                        ctx.startActivity(ShareUtils.getShareIntent("https://news.ycombinator.com/item?id=" + comment.id, "Comment by " + comment.by));
+                        ctx.startActivity(ShareUtils.getShareIntent(comment.id));
 
                         break;
                     case 2: // copy text
