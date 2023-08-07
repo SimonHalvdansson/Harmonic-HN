@@ -331,8 +331,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 //only compute if visible, LayoutParams are reset inside here for depth
                 holder.itemView.setVisibility(View.VISIBLE);
 
-                float d = ctx.getResources().getDisplayMetrics().density;
-
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 
                 DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -342,17 +340,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     width /= 2;
                 }
 
-                //16 is base padding, then add 14 for each comment
+                //16 is base padding, then add 13 for each comment
                 params.setMargins(
-                        Math.min(Math.round(d * 16 + d * 13 * (itemViewHolder.comment.depth)), Math.round(((float) width) * 0.6f)),
-                        Math.round(d * (itemViewHolder.comment.depth > 0 && !collapseParent ? 10 : 6)),
-                        Math.round(d * 16),
-                        Math.round(d * 6));
+                        Math.min(Utils.pxFromDpInt(ctx.getResources(), 16 + 13 * itemViewHolder.comment.depth), Math.round(((float) width) * 0.6f)),
+                        Utils.pxFromDpInt(ctx.getResources(), itemViewHolder.comment.depth > 0 && !collapseParent ? 10 : 6),
+                        Utils.pxFromDpInt(ctx.getResources(), 16),
+                        Utils.pxFromDpInt(ctx.getResources(), 16));
                 itemViewHolder.mView.setLayoutParams(params);
-
-                if (!itemViewHolder.comment.expanded && collapseParent) {
-                    itemViewHolder.commentBody.setVisibility(View.GONE);
-                }
 
                 if (itemViewHolder.comment.depth == 0 && !showTopLevelDepthIndicator) {
                     itemViewHolder.commentIndentIndicator.setVisibility(View.GONE);
@@ -367,7 +361,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     }
                 }
 
-                if (itemViewHolder.comment.text != null) {
+                if (!itemViewHolder.comment.text.isEmpty()) {
                     itemViewHolder.commentBody.setHtml(itemViewHolder.comment.text);
 
                     FontUtils.setTypeface(itemViewHolder.commentBody, false, preferredTextSize);
@@ -395,10 +389,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
                 itemViewHolder.commentByTime.setTypeface(FontUtils.activeRegular);
 
+                itemViewHolder.commentBody.setVisibility( (!itemViewHolder.comment.expanded && collapseParent) ? View.GONE : View.VISIBLE);
+
                 if (itemViewHolder.comment.expanded) {
                     // if expanded, there's no need to show the subcommentcount
                     itemViewHolder.commentHiddenCount.setVisibility(View.INVISIBLE);
-                    itemViewHolder.commentBody.setVisibility(View.VISIBLE);
                 } else {
                     // if not expanded, only show (and set text) if subCommentCount > 0
                     int subCommentCount = getIndexOfLastChild(itemViewHolder.comment.depth, position) - position;

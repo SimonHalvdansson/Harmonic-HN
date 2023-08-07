@@ -120,7 +120,11 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml("<b>Version 1.9.2:</b><br>" +
+                .setMessage(Html.fromHtml("<b>Version 1.9.3:</b><br>" +
+                        "- Sharing now only shares URL" +
+                        "- Increased maximum number of loaded submissions" +
+                        "<br><br>" +
+                        "<b>Version 1.9.2:</b><br>" +
                         "- Fixed white theme" +
                         "<br><br>" +
                         "<b>Version 1.9.1:</b><br>" +
