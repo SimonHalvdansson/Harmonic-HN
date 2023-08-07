@@ -189,7 +189,7 @@ public class SubmissionsActivity extends AppCompatActivity {
 
     private void loadSubmissions() {
         swipeRefreshLayout.setRefreshing(true);
-        String url = "https://hn.algolia.com/api/v1/search_by_date?tags=author_" + getIntent().getStringExtra(KEY_USER) + "&hitsPerPage=500";
+        String url = "https://hn.algolia.com/api/v1/search_by_date?tags=author_" + getIntent().getStringExtra(KEY_USER) + "&hitsPerPage=999";
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
