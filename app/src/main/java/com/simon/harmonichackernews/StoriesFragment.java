@@ -69,7 +69,8 @@ public class StoriesFragment extends Fragment {
     private int currentType = 0;
 
     long lastLoaded = 0;
-    long lastCommentClick = 0;
+    long lastClick = 0;
+    private final static long CLICK_INTERVAL = 350;
 
     public StoriesFragment() {
         super(R.layout.fragment_stories);
@@ -179,6 +180,13 @@ public class StoriesFragment extends Fragment {
 
             if (alwaysOpenComments) {
                 clickedComments(position);
+                return;
+            }
+
+            long now = System.currentTimeMillis();
+            if (now - lastClick > CLICK_INTERVAL) {
+                lastClick = now;
+            } else {
                 return;
             }
 
@@ -323,8 +331,8 @@ public class StoriesFragment extends Fragment {
     private void clickedComments(int position) {
         //prevent double clicks
         long now = System.currentTimeMillis();
-        if (now - lastCommentClick > 400) {
-            lastCommentClick = now;
+        if (now - lastClick > CLICK_INTERVAL) {
+            lastClick = now;
         } else {
             return;
         }
@@ -463,68 +471,73 @@ public class StoriesFragment extends Fragment {
 
         lastLoaded = System.currentTimeMillis();
 
-        //if not bookmark, then try to load
-        if (currentType != getBookmarksIndex()) {
-            // Request a string response from the provided URL.
-            StringRequest stringRequest = new StringRequest(Request.Method.GET, hnUrls[currentType == 0 ? 0 : currentType - 3],
-                    response -> {
-                        swipeRefreshLayout.setRefreshing(false);
-                        try {
-                            JSONArray jsonArray = new JSONArray(response);
+        if (currentType == getBookmarksIndex()) {
+            //lets load bookmarks instead - or rather add empty stories with correct id:s and start loading them
+            adapter.notifyItemRangeRemoved(1, stories.size() + 1);
+            loadedTo = 0;
 
-                            loadedTo = 0;
+            stories.clear();
+            stories.add(new Story());
 
-                            adapter.notifyItemRangeRemoved(1, stories.size()+1);
+            ArrayList<Bookmark> bookmarks = Utils.loadBookmarks(getContext(), true);
 
-                            stories.clear();
-                            stories.add(new Story());
+            for (int i = 0; i < bookmarks.size(); i++) {
+                Story s = new Story("Loading...", bookmarks.get(i).id, false, false);
 
-                            for (int i = 0; i < jsonArray.length(); i++) {
-                                int id = Integer.parseInt(jsonArray.get(i).toString());
-                                Story s = new Story("Loading...", id, false, clickedIds.contains(id));
+                stories.add(s);
+                adapter.notifyItemInserted( i + 1);
+                if (i < 20) {
+                    loadStory(stories.get(i + 1), 0);
+                }
+            }
 
-                                stories.add(s);
-                                adapter.notifyItemInserted(1+i);
-                            }
-
-                            adapter.loadingFailed = false;
-                            adapter.notifyItemChanged(0);
-
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    }, error -> {
-                swipeRefreshLayout.setRefreshing(false);
-                adapter.loadingFailed = true;
-                adapter.notifyItemChanged(0);
-            });
-
-            queue.add(stringRequest);
+            adapter.notifyItemChanged(0);
+            swipeRefreshLayout.setRefreshing(false);
 
             return;
         }
 
-        //lets load bookmarks instead - or rather add empty stories with correct id:s and start loading them
-        adapter.notifyItemRangeRemoved(1, stories.size() + 1);
-        loadedTo = 0;
+        // Request a string response from the provided URL.
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, hnUrls[currentType == 0 ? 0 : currentType - 3],
+                response -> {
+                    swipeRefreshLayout.setRefreshing(false);
+                    try {
+                        JSONArray jsonArray = new JSONArray(response);
 
-        stories.clear();
-        stories.add(new Story());
+                        loadedTo = 0;
 
-        ArrayList<Bookmark> bookmarks = Utils.loadBookmarks(getContext(), true);
+                        adapter.notifyItemRangeRemoved(1, stories.size()+1);
 
-        for (int i = 0; i < bookmarks.size(); i++) {
-            Story s = new Story("Loading...", bookmarks.get(i).id, false, false);
+                        stories.clear();
+                        stories.add(new Story());
 
-            stories.add(s);
-            adapter.notifyItemInserted( i + 1);
-            if (i < 20) {
-                loadStory(stories.get(i + 1), 0);
-            }
-        }
+                        for (int i = 0; i < jsonArray.length(); i++) {
+                            int id = Integer.parseInt(jsonArray.get(i).toString());
+                            Story s = new Story("Loading...", id, false, clickedIds.contains(id));
+                            //let's try to fill this with old information if possible
 
-        adapter.notifyItemChanged(0);
-        swipeRefreshLayout.setRefreshing(false);
+                            String cachedResponse = Utils.loadCachedStory(getContext(), id);
+                            if (cachedResponse != null && !cachedResponse.equals(JSONParser.ALGOLIA_ERROR_STRING)) {
+                                JSONParser.updateStoryWithAlgoliaResponse(s, cachedResponse);
+                            }
+
+                            stories.add(s);
+                            adapter.notifyItemInserted(1+i);
+                        }
+
+                        adapter.loadingFailed = false;
+                        adapter.notifyItemChanged(0);
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }, error -> {
+            swipeRefreshLayout.setRefreshing(false);
+            adapter.loadingFailed = true;
+            adapter.notifyItemChanged(0);
+        });
+
+        queue.add(stringRequest);
     }
 
     private void updateSearchStatus() {

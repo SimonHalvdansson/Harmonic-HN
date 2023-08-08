@@ -128,8 +128,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static String PDF_MIME_TYPE = "application/pdf";
     private final static String PDF_LOADER_URL = "file:///android_asset/pdf/index.html";
 
-    private final static String ALGOLIA_ERROR_STRING = "{\"status\":404,\"error\":\"Not Found\"}";
-
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
     private RequestQueue queue;
@@ -915,7 +913,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         // This is what we get if the Algolia API has not indexed the post,
         // we should attempt to show the user an option to switch API:s in this
         // server error case
-        if (response.equals(ALGOLIA_ERROR_STRING)) {
+        if (response.equals(JSONParser.ALGOLIA_ERROR_STRING)) {
             adapter.loadingFailed = true;
             adapter.loadingFailedServerError = true;
             adapter.notifyItemChanged(0);

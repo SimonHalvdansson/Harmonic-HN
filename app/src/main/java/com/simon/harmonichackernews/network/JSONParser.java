@@ -17,6 +17,8 @@ import java.util.List;
 
 public class JSONParser {
 
+    public final static String ALGOLIA_ERROR_STRING = "{\"status\":404,\"error\":\"Not Found\"}";
+
     public static List<Story> algoliaJsonToStories(String response) throws JSONException {
         List<Story> stories = new ArrayList<>();
 
@@ -419,6 +421,39 @@ public class JSONParser {
             for (int i = 0; i < children.length(); i++) {
                 readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, depth + 1, prioTop);
             }
+        }
+    }
+
+    public static boolean updateStoryWithAlgoliaResponse(Story story, String response) {
+        try {
+            JSONObject item = new JSONObject(response);
+
+            //for comment count we need to manually count
+            JSONArray children = item.getJSONArray("children");
+
+            story.descendants = children.length();
+
+            story.time = item.getInt("created_at_i");
+            story.title = item.getString("title");
+
+            story.isLink = item.has("url") && !item.getString("url").equals("null") && !item.getString("url").equals("");
+            story.time = item.getInt("created_at_i");
+
+            if (story.isLink) {
+                story.url = item.getString("url");
+            } else {
+                story.url = "https://news.ycombinator.com/item?id=" + story.id;
+            }
+
+            updatePdfProperties(story);
+
+            story.score = item.optInt("points", 0);
+            story.by = item.getString("author");
+
+            return true;
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return false;
         }
     }
 

@@ -118,6 +118,10 @@ public class Utils {
         Log.d("TAG", "" + b);
     }
 
+    public static void toast(String s, Context ctx) {
+        Toast.makeText(ctx, s, Toast.LENGTH_SHORT).show();
+    }
+
     public static String getDomainName(String url) throws Exception {
         if (url.endsWith("#")) {
             url = url.substring(0, url.length()-1);

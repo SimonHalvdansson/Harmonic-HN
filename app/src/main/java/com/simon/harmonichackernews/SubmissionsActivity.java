@@ -98,7 +98,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                 Utils.shouldShowPoints(this),
                 Utils.shouldUseCompactView(this),
                 Utils.shouldShowThumbnails(this),
-                Utils.shouldShowIndex(this),
+                false,
                 Utils.shouldHideJobs(this),
                 Utils.shouldUseCompactHeader(this),
                 Utils.shouldUseLeftAlign(this),
