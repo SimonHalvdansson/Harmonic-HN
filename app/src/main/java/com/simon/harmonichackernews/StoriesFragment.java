@@ -262,8 +262,6 @@ public class StoriesFragment extends Fragment {
 
         long timeDiff = System.currentTimeMillis() - lastLoaded;
 
-        showUpdateButton();
-
         // if more than 1 hr
         if (timeDiff > 1000*60*60 && !adapter.searching && currentType != getBookmarksIndex() && !currentTypeIsAlgolia()) {
             showUpdateButton();
