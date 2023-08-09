@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -616,26 +617,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             });
 
-            sheetBackButton.setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View view) {
-                    Toast.makeText(view.getContext(), "Back", Toast.LENGTH_SHORT).show();
-                    return false;
-                }
-            });
-
             sheetRefreshButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_REFRESH, view);
-                }
-            });
-
-            sheetRefreshButton.setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View view) {
-                    Toast.makeText(view.getContext(), "Refresh", Toast.LENGTH_SHORT).show();
-                    return false;
                 }
             });
 
@@ -646,14 +631,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             });
 
-            sheetExpandButton.setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View view) {
-                    Toast.makeText(view.getContext(), "Expand", Toast.LENGTH_SHORT).show();
-                    return false;
-                }
-            });
-
             sheetInvertButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
@@ -661,13 +638,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             });
 
-            sheetInvertButton.setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View view) {
-                    Toast.makeText(view.getContext(), "Invert colors", Toast.LENGTH_SHORT).show();
-                    return false;
-                }
-            });
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                sheetBackButton.setTooltipText("Back");
+                sheetRefreshButton.setTooltipText("Refresh");
+                sheetExpandButton.setTooltipText("Expand");
+                sheetInvertButton.setTooltipText("Invert colors");
+            }
 
             if (!showInvert) {
                 view.findViewById(R.id.comments_sheet_container_invert).setVisibility(View.GONE);
