@@ -345,7 +345,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                         Math.min(Utils.pxFromDpInt(ctx.getResources(), 16 + 13 * itemViewHolder.comment.depth), Math.round(((float) width) * 0.6f)),
                         Utils.pxFromDpInt(ctx.getResources(), itemViewHolder.comment.depth > 0 && !collapseParent ? 10 : 6),
                         Utils.pxFromDpInt(ctx.getResources(), 16),
-                        Utils.pxFromDpInt(ctx.getResources(), 16));
+                        Utils.pxFromDpInt(ctx.getResources(), 6));
                 itemViewHolder.mView.setLayoutParams(params);
 
                 if (itemViewHolder.comment.depth == 0 && !showTopLevelDepthIndicator) {
@@ -469,7 +469,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
 
             });
-
         }
     }
 
