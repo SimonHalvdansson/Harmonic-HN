@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews;
 
+import android.animation.AnimatorListenerAdapter;
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
@@ -10,6 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
+import android.view.animation.PathInterpolator;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -257,6 +261,8 @@ public class StoriesFragment extends Fragment {
         alwaysOpenComments = Utils.shouldAlwaysOpenComments(getContext());
 
         long timeDiff = System.currentTimeMillis() - lastLoaded;
+
+        showUpdateButton();
 
         // if more than 1 hr
         if (timeDiff > 1000*60*60 && !adapter.searching && currentType != getBookmarksIndex() && !currentTypeIsAlgolia()) {
@@ -639,25 +645,32 @@ public class StoriesFragment extends Fragment {
 
     private void hideUpdateButton() {
         if (updateContainer.getVisibility() == View.VISIBLE) {
-            AlphaAnimation anim = new AlphaAnimation(1.0f, 0.0f);
-            anim.setDuration(300);
-            anim.setRepeatMode(Animation.REVERSE);
-            updateContainer.startAnimation(anim);
 
-            anim.setAnimationListener(new Animation.AnimationListener() {
-                @Override
-                public void onAnimationStart(Animation animation) {
-                }
+            float endYPosition = getResources().getDisplayMetrics().heightPixels-updateContainer.getY() + updateContainer.getHeight() + Utils.getNavigationBarHeight(getResources());
+            PathInterpolator pathInterpolator = new PathInterpolator(0.3f, 0f, 0.8f, 0.15f);
 
+            ObjectAnimator yAnimator = ObjectAnimator.ofFloat(updateContainer, "translationY", endYPosition);
+            yAnimator.setDuration(200);
+
+            yAnimator.setInterpolator(pathInterpolator);
+
+            ObjectAnimator alphaAnimator = ObjectAnimator.ofFloat(updateContainer, "alpha", 1.0f, 0.0f);
+            alphaAnimator.setDuration(300);
+            alphaAnimator.setInterpolator(pathInterpolator);
+
+            AnimatorSet animatorSet = new AnimatorSet();
+            animatorSet.playTogether(yAnimator, alphaAnimator);
+
+            animatorSet.addListener(new AnimatorListenerAdapter() {
                 @Override
-                public void onAnimationEnd(Animation animation) {
+                public void onAnimationEnd(android.animation.Animator animation) {
                     updateContainer.setVisibility(View.GONE);
-                }
-
-                @Override
-                public void onAnimationRepeat(Animation animation) {
+                    updateContainer.setTranslationY(0);
+                    updateContainer.setAlpha(1f);
                 }
             });
+
+            animatorSet.start();
         }
     }
 
