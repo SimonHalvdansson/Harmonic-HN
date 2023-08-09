@@ -161,14 +161,11 @@ public class Utils {
         Set<String> emptyBackup = new HashSet<>();
         Set<String> stringSet = sharedPref.getStringSet(key, emptyBackup);
 
-        if (stringSet != null) {
-            Set<Integer> intSet = new HashSet<>(stringSet.size());
-            for (String string : stringSet) {
-                intSet.add(Integer.parseInt(string));
-            }
-            return intSet;
+        Set<Integer> intSet = new HashSet<>(stringSet.size());
+        for (String string : stringSet) {
+            intSet.add(Integer.parseInt(string));
         }
-        return null;
+        return intSet;
     }
 
     public static void saveIntSetToSharedPreferences(Context ctx, String key, Set<Integer> set) {

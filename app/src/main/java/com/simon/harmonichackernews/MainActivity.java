@@ -122,6 +122,11 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml("<b>Version 1.9.3:</b><br>" +
                         "- Sharing now only shares URL" +
+                        "- Experimental fix to WebView memory leak" +
+                        "- Fixed crash when loading submissions" +
+                        "- Fixed PDF viewer crash" +
+                        "- Added partial caching of post titles" +
+                        "- New animation for \"Tap to update\" button" +
                         "- Increased maximum number of loaded submissions" +
                         "<br><br>" +
                         "<b>Version 1.9.2:</b><br>" +

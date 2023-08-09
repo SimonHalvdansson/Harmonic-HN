@@ -38,6 +38,7 @@
                 android:layout_marginBottom="5dp"
                 android:clickable="true"
                 android:focusable="true"
+                android:tooltipText="Back"
                 android:layout_centerHorizontal="true"
                 android:background="?selectableItemBackgroundBorderless"
                 android:layout_width="60dp"
@@ -66,6 +67,7 @@
                 android:layout_marginBottom="5dp"
                 android:clickable="true"
                 android:focusable="true"
+                android:tooltipText="Refresh"
                 android:background="?selectableItemBackgroundBorderless"
                 android:layout_width="60dp"
                 android:layout_height="wrap_content">
@@ -93,6 +95,7 @@
                 android:layout_marginBottom="5dp"
                 android:clickable="true"
                 android:focusable="true"
+                android:tooltipText="Expand"
                 android:background="?selectableItemBackgroundBorderless"
                 android:layout_width="60dp"
                 android:layout_height="wrap_content">
@@ -146,6 +149,7 @@
                 android:layout_marginBottom="5dp"
                 android:clickable="true"
                 android:focusable="true"
+                android:tooltipText="Invert colors"
                 android:background="?selectableItemBackgroundBorderless"
                 android:layout_width="60dp"
                 android:layout_height="wrap_content">
@@ -595,7 +599,6 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="?attr/commentDividerColor"/>
-
 
     <com.google.android.material.progressindicator.CircularProgressIndicator
         android:id="@+id/comments_header_loading"
