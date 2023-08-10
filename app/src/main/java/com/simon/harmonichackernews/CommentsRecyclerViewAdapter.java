@@ -24,6 +24,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.TooltipCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.FragmentManager;
@@ -638,12 +639,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             });
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                sheetBackButton.setTooltipText("Back");
-                sheetRefreshButton.setTooltipText("Refresh");
-                sheetExpandButton.setTooltipText("Expand");
-                sheetInvertButton.setTooltipText("Invert colors");
-            }
+	    TooltipCompat.setTooltipText(sheetBackButton, "Back");
+            TooltipCompat.setTooltipText(sheetRefreshButton, "Refresh");
+            TooltipCompat.setTooltipText(sheetExpandButton, "Expand");
+            TooltipCompat.setTooltipText(sheetInvertButton, "Invert colors");
 
             if (!showInvert) {
                 view.findViewById(R.id.comments_sheet_container_invert).setVisibility(View.GONE);
