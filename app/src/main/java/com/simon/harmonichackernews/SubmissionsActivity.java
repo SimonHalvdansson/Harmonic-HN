@@ -75,11 +75,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         swipeRefreshLayout.setBackgroundResource(ThemeUtils.getBackgroundColorResource(this));
 
         swipeRefreshLayout.setOnRefreshListener(this::loadSubmissions);
-
-        swipeRefreshLayout.setProgressViewOffset(
-                false,
-                swipeRefreshLayout.getProgressViewStartOffset() + Utils.getStatusBarHeight(getResources()),
-                swipeRefreshLayout.getProgressViewEndOffset() + Utils.getStatusBarHeight(getResources()));
+        Utils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
         RecyclerView recyclerView = findViewById(R.id.submissions_recyclerview);
 

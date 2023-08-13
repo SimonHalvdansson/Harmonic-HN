@@ -285,11 +285,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         swipeRefreshLayout.setOnRefreshListener(this::refreshComments);
-
-        swipeRefreshLayout.setProgressViewOffset(
-                false,
-                swipeRefreshLayout.getProgressViewStartOffset() + Utils.getStatusBarHeight(getResources()),
-                swipeRefreshLayout.getProgressViewEndOffset() + Utils.getStatusBarHeight(getResources()));
+        Utils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
         // this is how much the bottom sheet sticks up by default and also decides height of webview
         //We want to watch for navigation bar height changes (tablets on Android 12L can cause

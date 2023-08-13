@@ -34,8 +34,10 @@ import androidx.core.content.ContextCompat;
 import androidx.core.util.Pair;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.preference.PreferenceManager;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.simon.harmonichackernews.BuildConfig;
 import com.simon.harmonichackernews.MainActivity;
@@ -799,4 +801,30 @@ public class Utils {
         return 0;
     }
 
+    /**
+     * Sets up {@link SwipeRefreshLayout}'s progress view position to depend on status bar.
+     * <p>
+     * The view's starting position is always just outside the visible area,
+     * i.e. with transparent status bar it is just outside the screen and with
+     * non-transparent status bar it is just to the top of status bar's bottom edge.
+     * <p>
+     * The view's end position is always the same distance from the status bar's bottom edge.
+     * Thus the distance between start and end position depends on the status bar transparency.
+     * The distance is equal to the default one when status bar is non-transparent and
+     * {@code default + status bar} when status bar is transparent.
+     */
+    public static void setUpSwipeRefreshWithStatusBarOffset(SwipeRefreshLayout layout) {
+        int start = layout.getProgressViewStartOffset();
+        int end = layout.getProgressViewEndOffset();
+
+        ViewCompat.setOnApplyWindowInsetsListener(layout, (v, insets) -> {
+            int top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
+            if (shouldUseTransparentStatusBar(layout.getContext())) {
+                layout.setProgressViewOffset(false, start, end + top);
+            } else {
+                layout.setProgressViewOffset(false, start + top, end + top);
+            }
+            return insets;
+        });
+    }
 }
