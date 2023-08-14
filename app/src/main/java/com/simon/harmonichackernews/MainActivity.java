@@ -117,13 +117,15 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml("<b>Version 1.9.3:</b><br>" +
-                        "- Sharing now only shares URL" +
-                        "- Experimental fix to WebView memory leak" +
-                        "- Fixed crash when loading submissions" +
-                        "- Fixed PDF viewer crash" +
-                        "- Added partial caching of post titles" +
-                        "- New animation for \"Tap to update\" button" +
-                        "- Increased maximum number of loaded submissions" +
+                        "- Sharing now only shares URL<br>" +
+                        "- Experimental fix to WebView memory leak<br>" +
+                        "- Fixed crash when loading submissions<br>" +
+                        "- Fixed PDF viewer crash<br>" +
+                        "- Added partial caching of post titles<br>" +
+                        "- New animation for \"Tap to update\" button<br>" +
+                        "- Increased maximum number of loaded submissions<br>" +
+                        "- Fixed error while opening submissions<br>" +
+                        "- Reworked padding system throughout the app (thanks AppearamidGuy)" +
                         "<br><br>" +
                         "<b>Version 1.9.2:</b><br>" +
                         "- Fixed white theme" +
