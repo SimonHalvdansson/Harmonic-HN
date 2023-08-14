@@ -40,7 +40,6 @@ public class WelcomeActivity extends AppCompatActivity {
         Button blackButton = findViewById(R.id.welcome_button_black);
         Button lightButton = findViewById(R.id.welcome_button_light);
         Button whiteButton = findViewById(R.id.welcome_button_white);
-        ScrollView scrollView = findViewById(R.id.welcome_scroll_view);
 
         favicon.setImageResource(R.drawable.quanta);
 
@@ -89,8 +88,6 @@ public class WelcomeActivity extends AppCompatActivity {
         blackButton.setOnClickListener(buttonClickListener);
         lightButton.setOnClickListener(buttonClickListener);
         whiteButton.setOnClickListener(buttonClickListener);
-
-        scrollView.setPadding(0, Utils.getStatusBarHeight(getResources()), 0, Utils.getNavigationBarHeight(getResources()));
     }
 
     @SuppressLint("ApplySharedPref")

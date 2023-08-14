@@ -1,49 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/stories_swipe_refresh"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <androidx.coordinatorlayout.widget.CoordinatorLayout
-        android:clipToPadding="false"
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/stories_swipe_refresh"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/stories_recyclerview"
-            android:paddingBottom="64dp"
-            android:clipToPadding="false"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:fitsSystemWindows="true"
+            android:clipToPadding="false"
             tools:listitem="@layout/story_list_item" />
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-        <LinearLayout
-            android:id="@+id/stories_update_container"
-            android:foreground="?selectableItemBackgroundBorderless"
-            android:elevation="8dp"
-            android:layout_marginBottom="24dp"
-            android:paddingLeft="4dp"
-            android:paddingRight="4dp"
-            android:background="@drawable/scrolling_helper_background"
-            android:layout_gravity="bottom|center_horizontal"
-            android:layout_width="wrap_content"
-            android:layout_height="44dp">
+    <LinearLayout
+        android:id="@+id/stories_update_container"
+        android:foreground="?selectableItemBackgroundBorderless"
+        android:elevation="8dp"
+        android:layout_marginBottom="24dp"
+        android:paddingLeft="4dp"
+        android:paddingRight="4dp"
+        android:background="@drawable/scrolling_helper_background"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="44dp">
 
-            <Button
-                android:id="@+id/stories_update_button"
-                android:textAllCaps="false"
-                android:text="Tap to update"
-                android:fontFamily="@font/product_sans"
-                android:textColor="#fff"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="?selectableItemBackgroundBorderless"/>
+        <Button
+            android:id="@+id/stories_update_button"
+            android:textAllCaps="false"
+            android:text="Tap to update"
+            android:fontFamily="@font/product_sans"
+            android:textColor="#fff"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?selectableItemBackgroundBorderless"/>
 
-        </LinearLayout>
+    </LinearLayout>
 
-    </androidx.coordinatorlayout.widget.CoordinatorLayout>
-
-</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

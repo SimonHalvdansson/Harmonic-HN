@@ -56,8 +56,6 @@ public class SubmissionsActivity extends AppCompatActivity {
         SwipeBackLayout swipeBackLayout = findViewById(R.id.swipeBackLayout);
         splitChangeHandler = new SplitChangeHandler(this, swipeBackLayout);
 
-        swipeBackLayout.setPadding(0, 0, 0, 0);
-
         swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
             @Override
             public void onViewPositionChanged(View mView, float swipeBackFraction, float swipeBackFactor) {
@@ -77,11 +75,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         swipeRefreshLayout.setBackgroundResource(ThemeUtils.getBackgroundColorResource(this));
 
         swipeRefreshLayout.setOnRefreshListener(this::loadSubmissions);
-
-        swipeRefreshLayout.setProgressViewOffset(
-                false,
-                swipeRefreshLayout.getProgressViewStartOffset() + Utils.getStatusBarHeight(getResources()),
-                swipeRefreshLayout.getProgressViewEndOffset() + Utils.getStatusBarHeight(getResources()));
+        Utils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
         RecyclerView recyclerView = findViewById(R.id.submissions_recyclerview);
 
@@ -172,7 +166,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         super.onConfigurationChanged(newConfig);
         if (Utils.isTablet(this)) {
             int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
-            swipeRefreshLayout.setPadding(sideMargin, Utils.getStatusBarHeight(getResources()), sideMargin, 0);
+            swipeRefreshLayout.setPadding(sideMargin, 0, sideMargin, 0);
         }
     }
 

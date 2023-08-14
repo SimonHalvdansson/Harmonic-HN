@@ -22,6 +22,7 @@
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/submissions_recyclerview"
             tools:listitem="@layout/story_list_item"
+            android:fitsSystemWindows="true"
             android:clipToPadding="false"
             android:layout_width="match_parent"
             android:layout_height="match_parent"       />

@@ -52,19 +52,6 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
         swipeBackLayout = findViewById(R.id.swipeBackLayout);
         this.splitChangeHandler = new SplitChangeHandler(this, swipeBackLayout);
 
-        FragmentContainerView fragmentContainerView = findViewById(R.id.comment_fragment_container_view);
-
-        ViewCompat.setOnApplyWindowInsetsListener(fragmentContainerView, new OnApplyWindowInsetsListener() {
-            @NonNull
-            @Override
-            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
-                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-                fragmentContainerView.setPadding(0, Utils.shouldUseTransparentStatusBar(getApplicationContext()) ? 0 :insets.top, 0, 0);
-
-                return windowInsets;
-            }
-        });
-
         swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
             @Override
             public void onViewPositionChanged(View mView, float swipeBackFraction, float swipeBackFactor) {

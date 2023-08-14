@@ -13,7 +13,8 @@
     <ScrollView
         android:id="@+id/about_scroll_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="true">
         <LinearLayout
             android:paddingLeft="@dimen/single_view_side_margin"
             android:paddingRight="@dimen/single_view_side_margin"

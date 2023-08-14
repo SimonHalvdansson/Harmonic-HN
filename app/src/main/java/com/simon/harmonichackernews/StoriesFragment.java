@@ -97,12 +97,9 @@ public class StoriesFragment extends Fragment {
         swipeRefreshLayout = view.findViewById(R.id.stories_swipe_refresh);
         updateContainer = view.findViewById(R.id.stories_update_container);
         Button updateButton = view.findViewById(R.id.stories_update_button);
-        swipeRefreshLayout.setOnRefreshListener(this::attemptRefresh);
 
-        swipeRefreshLayout.setProgressViewOffset(
-                false,
-                swipeRefreshLayout.getProgressViewStartOffset() + Utils.getStatusBarHeight(getResources()),
-                swipeRefreshLayout.getProgressViewEndOffset() + Utils.getStatusBarHeight(getResources()));
+        swipeRefreshLayout.setOnRefreshListener(this::attemptRefresh);
+        Utils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
         linearLayoutManager = new LinearLayoutManager(getContext());
         recyclerView.setLayoutManager(linearLayoutManager);
