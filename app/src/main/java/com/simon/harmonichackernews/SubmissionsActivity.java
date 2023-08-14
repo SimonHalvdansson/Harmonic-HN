@@ -122,7 +122,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                     if (Utils.shouldUseIntegratedWebView(getApplicationContext())) {
                         openComments(story, true);
                     } else {
-                        Utils.launchCustomTab(getApplicationContext(), story.url);
+                        Utils.launchCustomTab(SubmissionsActivity.this, story.url);
                     }
                 } else {
                     openComments(story, false);
@@ -180,7 +180,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         Bundle bundle = story.toBundle();
         bundle.putBoolean(CommentsFragment.EXTRA_SHOW_WEBSITE, showWebsite);
 
-        Intent intent = new Intent(getApplicationContext(), CommentsActivity.class);
+        Intent intent = new Intent(SubmissionsActivity.this, CommentsActivity.class);
         intent.putExtras(bundle);
         startActivity(intent);
 

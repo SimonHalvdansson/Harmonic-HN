@@ -438,7 +438,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 ThemeUtils.isDarkMode(getContext()));
 
         adapter.setOnHeaderClickListener(story1 -> {
-            Utils.launchCustomTab(getContext(), story1.url);
+            Utils.launchCustomTab(getActivity(), story1.url);
         });
 
         adapter.setOnCommentClickListener((comment, index, commentView) -> {
@@ -702,7 +702,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     Toast.makeText(getContext(), "Downloading...", Toast.LENGTH_LONG).show();
                 } catch (Exception e) {
                     Toast.makeText(getContext(), "Failed to download, opening in browser", Toast.LENGTH_LONG).show();
-                    Utils.launchInExternalBrowser(getContext(), url);
+                    Utils.launchInExternalBrowser(getActivity(), url);
                 }
 
             }
@@ -1010,7 +1010,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     ArchiveOrgUrlGetter.getArchiveUrl(story.url, getContext(), new ArchiveOrgUrlGetter.GetterCallback() {
                         @Override
                         public void onSuccess(String url) {
-                            Utils.launchCustomTab(getContext(), url);
+                            Utils.launchCustomTab(getActivity(), url);
                         }
 
                         @Override
@@ -1232,7 +1232,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         htmlTextView.setOnClickATagListener(new OnClickATagListener() {
                             @Override
                             public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                                Utils.launchCustomTab(widget.getContext(), href);
+                                Utils.launchCustomTab(getActivity(), href);
                                 return true;
                             }
                         });
