@@ -22,6 +22,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.graphics.Insets;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -108,9 +112,19 @@ public class StoriesFragment extends Fragment {
         setupAdapter();
         recyclerView.setAdapter(adapter);
 
-        CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) updateContainer.getLayoutParams();
-        params.bottomMargin = Utils.getNavigationBarHeight(getResources()) + Utils.pxFromDpInt(getResources(), 8);
-        updateContainer.setLayoutParams(params);
+        ViewCompat.setOnApplyWindowInsetsListener(view, new OnApplyWindowInsetsListener() {
+            @NonNull
+            @Override
+            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+                CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) updateContainer.getLayoutParams();
+                params.bottomMargin = insets.bottom + Utils.pxFromDpInt(getResources(), 8);
+                updateContainer.setLayoutParams(params);
+
+                return windowInsets;
+            }
+        });
 
         updateButton.setOnClickListener((v) -> attemptRefresh());
 
