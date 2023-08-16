@@ -46,9 +46,10 @@ public class JSONParser {
             } else {
                 story.url = "https://news.ycombinator.com/item?id=" + story.id;
                 story.isLink = false;
-                if (hit.has("story_text")) {
-                    story.text = hit.getString("story_text");
-                }
+            }
+
+            if (hit.has("story_text") && !hit.getString("story_text").equals("null")) {
+                story.text = hit.getString("story_text");
             }
 
             if (hit.getJSONArray("_tags").get(0).equals("comment")) {
@@ -56,8 +57,7 @@ public class JSONParser {
                 story.text = hit.getString("comment_text");
                 story.commentMasterTitle = hit.getString("story_title");
                 story.commentMasterId = hit.getInt("story_id");
-                String url = hit.getString("story_url");
-                if (!url.equals("null")) {
+                if (!hit.getString("story_url").equals("null")) {
                     story.commentMasterUrl = hit.getString("story_url");
                     story.isLink = true;
                 } else {
@@ -136,9 +136,10 @@ public class JSONParser {
         } else {
             story.url = "https://news.ycombinator.com/item?id=" + story.id;
             story.isLink = false;
-            if (jsonObject.has("text")) {
-                story.text = preprocessHtml(jsonObject.getString("text"));
-            }
+        }
+
+        if (jsonObject.has("text")) {
+            story.text = preprocessHtml(jsonObject.getString("text"));
         }
 
         updatePdfProperties(story);

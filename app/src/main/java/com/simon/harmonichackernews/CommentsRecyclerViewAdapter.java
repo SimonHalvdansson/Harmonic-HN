@@ -171,29 +171,22 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         final Context ctx = holder.itemView.getContext();
         if (holder instanceof HeaderViewHolder) {
-            //Header stuff
             final HeaderViewHolder headerViewHolder = (HeaderViewHolder) holder;
 
-            String topLine = "";
-
-            if (story.isLink) {
-                headerViewHolder.linkImage.setVisibility(View.VISIBLE);
-                headerViewHolder.headerView.setClickable(true);
-                if (story.url != null) {
-                    try {
-                        topLine = "(" + Utils.getDomainName(story.url) + ")";
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+            if (story.isLink && story.url != null) {
+                try {
+                    headerViewHolder.urlView.setText("(" + Utils.getDomainName(story.url) + ")");
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            } else {
-                //when not a link, we're looking at a text post probably
-                headerViewHolder.linkImage.setVisibility(View.GONE);
-                headerViewHolder.headerView.setClickable(false);
+            }
 
-                if (story.text != null) {
-                    topLine = story.text;
-                }
+            headerViewHolder.headerView.setClickable(story.isLink);
+            headerViewHolder.linkImage.setVisibility(story.isLink ? View.VISIBLE : View.GONE);
+            headerViewHolder.textView.setVisibility(story.text == null ? View.GONE : View.VISIBLE);
+
+            if (story.text != null) {
+                headerViewHolder.textView.setHtml(story.text);
             }
 
             if (story.pollOptionArrayList != null) {
@@ -240,15 +233,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.metaBy.setText(story.by);
             }
 
-            if (story.isLink) {
-                headerViewHolder.urlView.setText(topLine);
-            } else {
-                headerViewHolder.textView.setHtml(topLine);
-            }
-
             headerViewHolder.metaContainer.setVisibility(story.loaded ? View.VISIBLE : View.GONE);
             headerViewHolder.urlView.setVisibility(story.isLink ? View.VISIBLE : View.GONE);
-            headerViewHolder.textView.setVisibility(story.isLink ? View.GONE : View.VISIBLE);
             headerViewHolder.metaVotes.setVisibility(story.isComment ? View.GONE : View.VISIBLE);
             headerViewHolder.metaVotesIcon.setVisibility(story.isComment ? View.GONE : View.VISIBLE);
 
