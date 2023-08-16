@@ -125,7 +125,8 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
                         "- New animation for \"Tap to update\" button<br>" +
                         "- Increased maximum number of loaded submissions<br>" +
                         "- Fixed error while opening submissions<br>" +
-                        "- Reworked padding system throughout the app (thanks AppearamidGuy)" +
+                        "- Reworked padding system throughout the app (thanks AppearamidGuy)<br>" +
+                        "- Added support for combined text/link posts (thanks Jonas Wunderlich)" +
                         "<br><br>" +
                         "<b>Version 1.9.2:</b><br>" +
                         "- Fixed white theme" +
