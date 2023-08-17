@@ -44,7 +44,7 @@ import android.widget.TextView;
  * <p/>
  * From https://gist.github.com/pyricau/3424004 with fix from comments
  */
-public class JellyBeanSpanFixTextView extends TextView {
+public class JellyBeanSpanFixTextView extends androidx.appcompat.widget.AppCompatTextView {
 
     private static class FixingResult {
         public final boolean fixed;
