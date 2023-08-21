@@ -1214,7 +1214,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         ClipData clip = ClipData.newPlainText("Hacker News comment", Html.fromHtml(comment.text));
                         clipboard.setPrimaryClip(clip);
 
-                        Toast.makeText(ctx, "Text copied to clipboard", Toast.LENGTH_SHORT).show();
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                            Toast.makeText(ctx, "Text copied to clipboard", Toast.LENGTH_SHORT).show();
+                        }
 
                         break;
                     case 3: //select text
