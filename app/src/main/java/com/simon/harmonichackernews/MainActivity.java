@@ -126,7 +126,8 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
                         "- Increased maximum number of loaded submissions<br>" +
                         "- Fixed error while opening submissions<br>" +
                         "- Reworked padding system throughout the app (thanks AppearamidGuy)<br>" +
-                        "- Added support for combined text/link posts (thanks Jonas Wunderlich)" +
+                        "- Added support for combined text/link posts (thanks Jonas Wunderlich)<br>" +
+                        "- Better WebView intent handling" +
                         "<br><br>" +
                         "<b>Version 1.9.2:</b><br>" +
                         "- Fixed white theme" +
