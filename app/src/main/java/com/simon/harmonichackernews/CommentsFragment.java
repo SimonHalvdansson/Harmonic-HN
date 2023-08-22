@@ -99,6 +99,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -597,7 +598,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         webView.getSettings().setDatabaseEnabled(true);
         webView.getSettings().setUseWideViewPort(true);
         webView.getSettings().setLoadWithOverviewMode(true);
-
+        
         webView.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String userAgent,
@@ -1287,8 +1288,30 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            view.loadUrl(url);
-            return true;
+            if (url.startsWith("intent://")) {
+                try {
+                    Context context = view.getContext();
+                    Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+
+                    // First, try to use the fallback URL (browser version of Play Store)
+                    String fallbackUrl = intent.getStringExtra("browser_fallback_url");
+                    if (fallbackUrl != null) {
+                        webView.loadUrl(fallbackUrl);
+                        return true; // Indicate that we're handling this URL
+                    } else {
+                        // If no valid fallback URL, then check if the intent can be resolved (Play Store app is installed)
+                        if (intent.resolveActivity(context.getPackageManager()) != null) {
+                            context.startActivity(intent);
+                            return true; // Indicate that we're handling this URL
+                        }
+                    }
+                } catch (URISyntaxException e) {
+                    // Handle the error
+                    return false; // Indicate that we're not handling this URL
+                }
+            }
+
+            return false;
         }
 
         @Override
