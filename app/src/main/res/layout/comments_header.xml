@@ -200,6 +200,7 @@
                     android:layout_weight="1">
 
                     <LinearLayout
+                        android:id="@+id/comments_header_link_info_container"
                         android:layout_marginTop="3dp"
                         android:orientation="horizontal"
                         android:layout_width="match_parent"

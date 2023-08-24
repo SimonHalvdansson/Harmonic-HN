@@ -123,6 +123,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_SCORE = "com.simon.harmonichackernews.EXTRA_SCORE";
     public final static String EXTRA_TEXT = "com.simon.harmonichackernews.EXTRA_TEXT";
     public final static String EXTRA_IS_LINK = "com.simon.harmonichackernews.EXTRA_IS_LINK";
+    public final static String EXTRA_IS_COMMENT = "com.simon.harmonichackernews.EXTRA_IS_COMMENT";
+
     public final static String EXTRA_FORWARD = "com.simon.harmonichackernews.EXTRA_FORWARD";
     public final static String EXTRA_SHOW_WEBSITE = "com.simon.harmonichackernews.EXTRA_SHOW_WEBSITE";
 
@@ -184,6 +186,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             story.score = bundle.getInt(EXTRA_SCORE, 0);
             story.text = bundle.getString(EXTRA_TEXT);
             story.isLink = bundle.getBoolean(EXTRA_IS_LINK, true);
+            story.isComment = bundle.getBoolean(EXTRA_IS_COMMENT, false);
             story.loaded = true;
 
             if (Utils.isTablet(requireContext())) {

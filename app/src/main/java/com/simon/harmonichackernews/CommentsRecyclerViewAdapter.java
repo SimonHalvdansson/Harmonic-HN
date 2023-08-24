@@ -182,7 +182,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
 
             headerViewHolder.headerView.setClickable(story.isLink);
-            headerViewHolder.linkImage.setVisibility(story.isLink ? View.VISIBLE : View.GONE);
+            headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : View.GONE);
             headerViewHolder.textView.setVisibility(story.text == null ? View.GONE : View.VISIBLE);
 
             if (story.text != null) {
@@ -257,7 +257,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             int actionContainerPadding = Math.round(headerViewHolder.actionsContainer.getResources().getDimension(R.dimen.comments_header_action_padding));
             headerViewHolder.actionsContainer.setPadding(actionContainerPadding, 0, actionContainerPadding, 0);
 
-            headerViewHolder.favicon.setVisibility(showThumbnail && !story.isComment && story.isLink ? View.VISIBLE : View.GONE);
+            headerViewHolder.favicon.setVisibility(showThumbnail ? View.VISIBLE : View.GONE);
+            headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
+
             if (showThumbnail && !TextUtils.isEmpty(story.url)) {
                 try {
                     Picasso.get()
@@ -497,6 +499,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout sheetExpandButton;
         public final RelativeLayout sheetInvertButton;
         public final LinearLayout actionsContainer;
+        public final LinearLayout linkInfoContainer;
         public final Button retryButton;
         public final LinearLayout pollLayout;
         public final LinearLayout headerView;
@@ -524,6 +527,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             bookmarkIcon = view.findViewById(R.id.comment_button_bookmark);
             favicon = view.findViewById(R.id.comments_header_favicon);
+            linkInfoContainer = view.findViewById(R.id.comments_header_link_info_container);
             userLayout = view.findViewById(R.id.comments_layout_user);
             userLayoutParent = view.findViewById(R.id.comments_layout_user_parent);
             commentLayout = view.findViewById(R.id.comments_layout_comment);

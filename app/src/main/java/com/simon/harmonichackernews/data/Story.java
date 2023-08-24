@@ -70,6 +70,7 @@ public class Story {
         bundle.putInt(CommentsFragment.EXTRA_SCORE, score);
         bundle.putString(CommentsFragment.EXTRA_TEXT, text);
         bundle.putBoolean(CommentsFragment.EXTRA_IS_LINK, isLink);
+        bundle.putBoolean(CommentsFragment.EXTRA_IS_COMMENT, isComment);
 
         return bundle;
     }
