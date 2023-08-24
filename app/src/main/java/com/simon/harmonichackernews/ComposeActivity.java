@@ -17,6 +17,7 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,7 +27,14 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.view.ContextThemeWrapper;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.graphics.Insets;
 import androidx.core.text.TextUtilsCompat;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsAnimationCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -35,6 +43,8 @@ import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 import org.sufficientlysecure.htmltextview.HtmlTextView;
+
+import java.util.List;
 
 import okhttp3.Response;
 
@@ -67,6 +77,8 @@ public class ComposeActivity extends AppCompatActivity {
         replyingTextView = findViewById(R.id.compose_replying_text);
         replyingScrollView = findViewById(R.id.compose_replying_scrollview);
         topCommentTextView = findViewById(R.id.compose_top_comment);
+        LinearLayout bottomContainer = findViewById(R.id.compose_bottom_container);
+        LinearLayout container = findViewById(R.id.compose_container);
 
         Intent intent = getIntent();
         id = intent.getIntExtra(EXTRA_ID, -1);
@@ -107,6 +119,71 @@ public class ComposeActivity extends AppCompatActivity {
             }
         });
 
+        WindowCompat.setDecorFitsSystemWindows(getWindow(),false);
+
+        ViewCompat.setOnApplyWindowInsetsListener(container, new OnApplyWindowInsetsListener() {
+            @NonNull
+            @Override
+            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
+
+                bottomContainer.setPadding(0, 0, 0, insets.bottom);
+                container.setPadding(0, insets.top, 0, 0);
+
+                return windowInsets;
+            }
+        });
+
+        ViewCompat.setWindowInsetsAnimationCallback(
+                bottomContainer,
+                new WindowInsetsAnimationCompat.Callback(WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_STOP) {
+                    @NonNull
+                    @Override
+                    public WindowInsetsCompat onProgress(
+                            @NonNull WindowInsetsCompat insets,
+                            @NonNull List<WindowInsetsAnimationCompat> runningAnimations
+                    ) {
+                        WindowInsetsAnimationCompat imeAnimation = null;
+                        for (WindowInsetsAnimationCompat animation : runningAnimations) {
+                            if ((animation.getTypeMask() & WindowInsetsCompat.Type.ime()) != 0) {
+                                imeAnimation = animation;
+                                break;
+                            }
+                        }
+                        if (imeAnimation != null) {
+                            // Offset the view based on the interpolated fraction of the IME animation.
+                            bottomContainer.setTranslationY(-(startBottom - endBottom)
+                                    * (1 - imeAnimation.getInterpolatedFraction()));
+                        }
+
+                        return insets;
+                    }
+
+                    float startBottom;
+
+                    @Override
+                    public void onPrepare(
+                            @NonNull WindowInsetsAnimationCompat animation
+                    ) {
+
+                        startBottom = bottomContainer.getPaddingBottom();
+                        Utils.log(startBottom);
+                    }
+
+                    float endBottom;
+
+                    @NonNull
+                    @Override
+                    public WindowInsetsAnimationCompat.BoundsCompat onStart(
+                            @NonNull WindowInsetsAnimationCompat animation,
+                            @NonNull WindowInsetsAnimationCompat.BoundsCompat bounds
+                    ) {
+                        endBottom = bottomContainer.getPaddingBottom();
+                        Utils.log(endBottom);
+                        return bounds;
+                    }
+                });
+
         OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -115,7 +192,6 @@ public class ComposeActivity extends AppCompatActivity {
                 } else {
                     AlertDialog dialog = new MaterialAlertDialogBuilder(editText.getContext())
                             .setTitle("Discard draft?")
-                            .setMessage("It will not be saved")
                             .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int whichButton) {
                                     finish();
@@ -134,12 +210,12 @@ public class ComposeActivity extends AppCompatActivity {
         super.onConfigurationChanged(newConfig);
         //Make sure scrollview never takes up more than 1/3 of screen height
         ViewGroup.LayoutParams layout = replyingScrollView.getLayoutParams();
-        float dp160 = Utils.pxFromDp(getResources(), 160);
+        int dp160 = Utils.pxFromDpInt(getResources(), 160);
         int screenHeightThird = Resources.getSystem().getDisplayMetrics().heightPixels / 3;
         if (dp160 > screenHeightThird) {
             layout.height = screenHeightThird;
         } else {
-            layout.height = Math.round(dp160);
+            layout.height = dp160;
         }
         replyingScrollView.setLayoutParams(layout);
     }

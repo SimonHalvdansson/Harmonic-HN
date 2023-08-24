@@ -116,6 +116,10 @@ public class Utils {
         Log.d("TAG", "" + i);
     }
 
+    public static void log(float i) {
+        Log.d("TAG", "" + i);
+    }
+
     public static void log(boolean b) {
         Log.d("TAG", "" + b);
     }

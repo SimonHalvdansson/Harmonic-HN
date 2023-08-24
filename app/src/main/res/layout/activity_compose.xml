@@ -61,44 +61,50 @@
         android:layout_weight="1"
         android:layout_height="0dp"    />
 
-    <View
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_marginBottom="8dp"
-        android:layout_marginTop="8dp"
-        android:background="#445"
-        android:layout_width="match_parent"
-        android:layout_height="1dp" />
-
-    <RelativeLayout
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
-        android:paddingBottom="8dp"
+    <LinearLayout
+        android:id="@+id/compose_bottom_container"
+        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <Button
-            android:onClick="infoClick"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="?attr/storyColorNormal"
-            android:layout_toLeftOf="@id/compose_submit"
+        <View
+            android:layout_marginLeft="16dp"
             android:layout_marginRight="16dp"
-            style="?attr/materialButtonOutlinedStyle"
-            android:text="Formatting"/>
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="8dp"
+            android:background="#445"
+            android:layout_width="match_parent"
+            android:layout_height="1dp" />
 
-        <Button
-            android:id="@+id/compose_submit"
-            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
-            app:icon="@drawable/ic_action_send"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentRight="true"
-            android:onClick="submit"
-            android:text="Submit" />
+        <RelativeLayout
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
-    </RelativeLayout>
+            <Button
+                android:onClick="infoClick"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/storyColorNormal"
+                android:layout_toLeftOf="@id/compose_submit"
+                android:layout_marginRight="16dp"
+                style="?attr/materialButtonOutlinedStyle"
+                android:text="Formatting"/>
 
+            <Button
+                android:id="@+id/compose_submit"
+                style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+                app:icon="@drawable/ic_action_send"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:onClick="submit"
+                android:text="Submit" />
 
+        </RelativeLayout>
+
+    </LinearLayout>
 
 </LinearLayout>
