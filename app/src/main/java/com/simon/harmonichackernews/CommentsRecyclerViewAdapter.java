@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Build;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
@@ -454,7 +455,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentBody.setOnClickATagListener(new OnClickATagListener() {
                 @Override
                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                    Utils.launchCustomTab(widget.getContext(), href);
+                    Utils.openLinkMaybeHN(widget.getContext(), href);
                     return true;
                 }
 

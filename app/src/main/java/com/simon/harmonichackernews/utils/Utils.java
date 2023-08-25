@@ -40,6 +40,7 @@ import androidx.preference.PreferenceManager;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.simon.harmonichackernews.BuildConfig;
+import com.simon.harmonichackernews.CommentsActivity;
 import com.simon.harmonichackernews.MainActivity;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
@@ -831,4 +832,39 @@ public class Utils {
             return insets;
         });
     }
+
+    public static void openLinkMaybeHN(Context context, String href) {
+        Uri uri = Uri.parse(href);
+
+        // Validate the scheme (http or https)
+        String scheme = uri.getScheme();
+        if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
+            // Validate the host and path
+            if ("news.ycombinator.com".equalsIgnoreCase(uri.getHost()) && "/item".equals(uri.getPath())) {
+                String sId = uri.getQueryParameter("id");
+
+                // Check if id parameter is valid
+                if (sId != null && !sId.isEmpty() && TextUtils.isDigitsOnly(sId)) {
+                    int id = Integer.parseInt(sId);
+                    openCommentsActivity(id, context);
+                    return;
+                }
+            }
+        }
+
+
+
+        Utils.launchCustomTab(context, href);
+    }
+
+    public static void openCommentsActivity(int id, Context context) {
+        Uri uri = Uri.parse("https://news.ycombinator.com/item").buildUpon()
+                .appendQueryParameter("id", String.valueOf(id))
+                .build();
+
+        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        intent.setClass(context, CommentsActivity.class);
+        context.startActivity(intent);
+    }
+
 }

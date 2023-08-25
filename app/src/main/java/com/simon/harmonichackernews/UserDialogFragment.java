@@ -146,7 +146,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             aboutTextview.setOnClickATagListener(new OnClickATagListener() {
                                 @Override
                                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                                    Utils.launchCustomTab(widget.getContext(), href);
+                                    Utils.openLinkMaybeHN(widget.getContext(), href);
                                     return true;
                                 }
                             });

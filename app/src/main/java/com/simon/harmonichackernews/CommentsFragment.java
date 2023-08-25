@@ -157,8 +157,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private String username;
     private Story story;
 
-    private int bottomSheetMargin;
-
     public CommentsFragment() {
         super(R.layout.fragment_comments);
     }
@@ -1234,7 +1232,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         htmlTextView.setOnClickATagListener(new OnClickATagListener() {
                             @Override
                             public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                                Utils.launchCustomTab(getActivity(), href);
+                                Utils.openLinkMaybeHN(getActivity(), href);
                                 return true;
                             }
                         });
