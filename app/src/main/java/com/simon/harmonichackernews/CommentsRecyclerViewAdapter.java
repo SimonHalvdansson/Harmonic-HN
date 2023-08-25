@@ -218,13 +218,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
 
             if (!TextUtils.isEmpty(story.pdfTitle)) {
-                SpannableStringBuilder sb = new SpannableStringBuilder(Html.fromHtml(story.pdfTitle) + " ");
+                SpannableStringBuilder sb = new SpannableStringBuilder(story.pdfTitle + " ");
                 ImageSpan imageSpan = new ImageSpan(ctx, R.drawable.ic_action_pdf_large);
                 sb.setSpan(imageSpan, story.pdfTitle.length(), story.pdfTitle.length() + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
                 headerViewHolder.titleView.setText(sb);
             } else {
-                headerViewHolder.titleView.setText(Html.fromHtml(story.title));
+                headerViewHolder.titleView.setText(story.title);
             }
 
             if (story.loaded) {

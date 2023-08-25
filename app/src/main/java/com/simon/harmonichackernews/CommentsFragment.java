@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.DownloadManager;
 import android.content.ClipData;
@@ -584,7 +585,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (blockAds && TextUtils.isEmpty(Utils.adservers)) {
             Utils.loadAdservers(getResources());
         }
-        webView.setBackgroundColor(Color.TRANSPARENT);
+
         webView.setWebViewClient(new MyWebViewClient());
         if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(requireContext())) || showWebsite) {
             loadUrl(story.url);
@@ -634,6 +635,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         }
 
+        webView.setBackgroundColor(Color.TRANSPARENT);
     }
 
     private void loadUrl(String url) {
@@ -1283,9 +1285,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     public class MyWebViewClient extends WebViewClient {
 
+        private boolean firstLoadDone = false;
+
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
+            firstLoadDone = true;
             webView.setBackgroundColor(Color.WHITE);
         }
 
