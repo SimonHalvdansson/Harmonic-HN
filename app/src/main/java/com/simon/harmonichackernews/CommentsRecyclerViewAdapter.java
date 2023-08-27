@@ -73,6 +73,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean showNavigationBar;
     public boolean showInvert;
     public boolean showExpand;
+    public boolean webViewDeviceBack;
     public boolean integratedWebview;
     public boolean showTopLevelDepthIndicator;
     public String username;
@@ -131,6 +132,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        boolean shouldShowInvert,
                                        boolean shouldShowTopLevelDepthIndicator,
                                        boolean shouldShowExpand,
+                                       boolean shouldUseDeviceBack,
                                        boolean darkTheme) {
         integratedWebview = useIntegratedWebview;
         bottomSheet = sheet;
@@ -147,6 +149,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         showInvert = shouldShowInvert;
         showTopLevelDepthIndicator = shouldShowTopLevelDepthIndicator;
         showExpand = shouldShowExpand;
+        webViewDeviceBack = shouldUseDeviceBack;
         darkThemeActive = darkTheme;
     }
 

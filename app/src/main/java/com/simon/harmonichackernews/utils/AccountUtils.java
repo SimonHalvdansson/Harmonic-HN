@@ -27,11 +27,11 @@ public class AccountUtils {
     private static final String MASTER_KEY_ALIAS = "_androidx_security_master_key_harmonic_";
 
     public static String getAccountUsername(Context ctx) {
-        return Utils.readStringFromSharedPreferences(ctx, KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME);
+        return SettingsUtils.readStringFromSharedPreferences(ctx, KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME);
     }
 
     public static void setAccountUsername(Context ctx, String username) {
-        Utils.saveStringToSharedPreferences(ctx, KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME, username);
+        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME, username);
     }
 
     public static Pair<String, String> getAccountDetails(Context ctx) {

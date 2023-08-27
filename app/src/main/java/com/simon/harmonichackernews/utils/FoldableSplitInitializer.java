@@ -21,7 +21,7 @@ public class FoldableSplitInitializer implements Initializer<RuleController> {
          return ruleController;
       }
 
-      setFoldableSupport(context, Utils.shouldEnableFoldableSupport(context));
+      setFoldableSupport(context, SettingsUtils.shouldEnableFoldableSupport(context));
       return ruleController;
    }
 

@@ -56,7 +56,6 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_show_points"
-            app:summary="On stories screen"
             app:defaultValue="true"
             app:icon="@drawable/ic_action_thumbs"
             app:title="Show story points"    />
@@ -177,6 +176,14 @@
             app:defaultValue="true"
             app:icon="@drawable/ic_action_arrow_up"
             app:title="Show expand button in bottom sheet"    />
+
+        <SwitchPreferenceCompat
+            app:isPreferenceVisible="false"
+            app:singleLineTitle="false"
+            app:key="pref_webview_device_back"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_back"
+            app:title="Use device back for WebView back"    />
 
     </PreferenceCategory>
 

@@ -23,6 +23,7 @@ import com.gw.swipeback.SwipeBackLayout;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.VolleyOkHttp3StackInterceptors;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.SplitChangeHandler;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -89,14 +90,14 @@ public class SubmissionsActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(linearLayoutManager);
 
         adapter = new StoryRecyclerViewAdapter(submissions,
-                Utils.shouldShowPoints(this),
-                Utils.shouldUseCompactView(this),
-                Utils.shouldShowThumbnails(this),
+                SettingsUtils.shouldShowPoints(this),
+                SettingsUtils.shouldUseCompactView(this),
+                SettingsUtils.shouldShowThumbnails(this),
                 false,
-                Utils.shouldHideJobs(this),
-                Utils.shouldUseCompactHeader(this),
-                Utils.shouldUseLeftAlign(this),
-                Utils.getPreferredHotness(this),
+                SettingsUtils.shouldHideJobs(this),
+                SettingsUtils.shouldUseCompactHeader(this),
+                SettingsUtils.shouldUseLeftAlign(this),
+                SettingsUtils.getPreferredHotness(this),
                 getIntent().getStringExtra(KEY_USER));
 
         adapter.setOnRefreshListener(this::loadSubmissions);
@@ -113,7 +114,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                 Story story = submissions.get(position);
 
                 if (story.isLink) {
-                    if (Utils.shouldUseIntegratedWebView(getApplicationContext())) {
+                    if (SettingsUtils.shouldUseIntegratedWebView(getApplicationContext())) {
                         openComments(story, true);
                     } else {
                         Utils.launchCustomTab(SubmissionsActivity.this, story.url);

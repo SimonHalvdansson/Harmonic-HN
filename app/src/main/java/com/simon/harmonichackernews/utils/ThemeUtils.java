@@ -62,7 +62,7 @@ public class ThemeUtils {
             WindowCompat.setDecorFitsSystemWindows(window, false);
         }
 
-        if (Utils.shouldUseTransparentStatusBar(activity)) {
+        if (SettingsUtils.shouldUseTransparentStatusBar(activity)) {
             window.setStatusBarColor(ContextCompat.getColor(activity, R.color.statusBarColorTransparent));
         }
     }
@@ -104,7 +104,7 @@ public class ThemeUtils {
 
     public static String getPreferredTheme(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        if (Utils.shouldUseSpecialNighttimeTheme(ctx)) {
+        if (SettingsUtils.shouldUseSpecialNighttimeTheme(ctx)) {
             //check time
             Date currentTimeDate = Calendar.getInstance().getTime();
             int[] nighttimeHours = Utils.getNighttimeHours(ctx);

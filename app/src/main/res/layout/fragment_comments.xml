@@ -105,7 +105,7 @@
                 android:layout_height="match_parent"       />
 
             <LinearLayout
-                android:visibility="visible"
+                android:visibility="gone"
                 android:id="@+id/comments_scroll_navigation"
                 android:elevation="8dp"
                 android:layout_marginBottom="16dp"

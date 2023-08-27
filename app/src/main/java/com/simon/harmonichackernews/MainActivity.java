@@ -116,7 +116,10 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml("<b>Version 1.9.4:</b><br>" +
+                .setMessage(Html.fromHtml("<b>Version 1.9.5:</b><br>" +
+                        "- Fixed comment navigation buttons always visible<br>" +
+                        "<br>" +
+                        "<b>Version 1.9.4:</b><br>" +
                         "- A white background now fades in behind the WebView after 2 seconds to better handle transparent websites<br>" +
                         "- Fixed scroll issue with comment navigation buttons<br>" +
                         "- Improved internal link handling<br>" +

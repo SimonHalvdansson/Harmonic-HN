@@ -30,6 +30,7 @@ import com.google.android.material.timepicker.MaterialTimePicker;
 import com.google.android.material.timepicker.TimeFormat;
 import com.gw.swipeback.SwipeBackLayout;
 import com.simon.harmonichackernews.data.Bookmark;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -117,11 +118,8 @@ public class SettingsActivity extends AppCompatActivity {
             findPreference("pref_special_nighttime").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {
-                    findPreference("pref_theme_nighttime").setEnabled((boolean) newValue);
-                    findPreference("pref_theme_nighttime").getIcon().setAlpha((boolean) newValue ? 255 : 120);
-
-                    findPreference("pref_theme_timed_range").setEnabled((boolean) newValue);
-                    findPreference("pref_theme_timed_range").getIcon().setAlpha((boolean) newValue ? 255 : 120);
+                    changePrefStatus(findPreference("pref_theme_nighttime"), (boolean) newValue);
+                    changePrefStatus(findPreference("pref_theme_timed_range"), (boolean) newValue);
 
                     return true;
                 }
@@ -130,11 +128,8 @@ public class SettingsActivity extends AppCompatActivity {
             findPreference("pref_compact_view").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {
-                    findPreference("pref_show_points").setEnabled(!(boolean) newValue);
-                    findPreference("pref_show_points").getIcon().setAlpha((boolean) newValue ? 120 : 255);
-
-                    findPreference("pref_thumbnails").setEnabled(!(boolean) newValue);
-                    findPreference("pref_thumbnails").getIcon().setAlpha((boolean) newValue ? 120 : 255);
+                    changePrefStatus(findPreference("pref_show_points"), !(boolean) newValue);
+                    changePrefStatus(findPreference("pref_thumbnails"), !(boolean) newValue);
 
                     return true;
                 }
@@ -149,21 +144,15 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
-            boolean specialNighttimeTheme = Utils.shouldUseSpecialNighttimeTheme(getContext());
-            findPreference("pref_theme_nighttime").setEnabled((boolean) specialNighttimeTheme);
-            findPreference("pref_theme_nighttime").getIcon().setAlpha((boolean) specialNighttimeTheme ? 255 : 120);
+            boolean specialNighttimeTheme = SettingsUtils.shouldUseSpecialNighttimeTheme(getContext());
+            changePrefStatus(findPreference("pref_theme_nighttime"), specialNighttimeTheme);
+            changePrefStatus(findPreference("pref_theme_timed_range"), specialNighttimeTheme);
 
-            findPreference("pref_theme_timed_range").setEnabled((boolean) specialNighttimeTheme);
-            findPreference("pref_theme_timed_range").getIcon().setAlpha((boolean) specialNighttimeTheme ? 255 : 120);
+            boolean compact = SettingsUtils.shouldUseCompactView(getContext());
 
+            changePrefStatus(findPreference("pref_show_points"), !compact);
+            changePrefStatus(findPreference("pref_thumbnails"), !compact);
 
-            boolean compact = Utils.shouldUseCompactView(getContext());
-
-            findPreference("pref_show_points").setEnabled(!compact);
-            findPreference("pref_show_points").getIcon().setAlpha(compact ? 120 : 255);
-
-            findPreference("pref_thumbnails").setEnabled(!compact);
-            findPreference("pref_thumbnails").getIcon().setAlpha(compact ? 120 : 255);
 
             findPreference("pref_transparent_status_bar").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
@@ -176,21 +165,19 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
-            boolean integratedWebview = Utils.shouldUseIntegratedWebView(getContext());
-            findPreference("pref_preload_webview").setEnabled(integratedWebview);
-            findPreference("pref_preload_webview").getIcon().setAlpha(integratedWebview ? 255 : 120);
+            boolean integratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
+            String[] webViewPrefs = {
+                    "pref_preload_webview",
+                    "pref_webview_match_theme",
+                    "pref_webview_adblock",
+                    "pref_webview_disable_swipeback",
+                    "pref_webview_show_expand",
+                    "pref_webview_device_back"
+            };
 
-            findPreference("pref_webview_match_theme").setEnabled(integratedWebview);
-            findPreference("pref_webview_match_theme").getIcon().setAlpha(integratedWebview ? 255 : 120);
-
-            findPreference("pref_webview_adblock").setEnabled(integratedWebview);
-            findPreference("pref_webview_adblock").getIcon().setAlpha(integratedWebview ? 255 : 120);
-
-            findPreference("pref_webview_disable_swipeback").setEnabled(integratedWebview);
-            findPreference("pref_webview_disable_swipeback").getIcon().setAlpha(integratedWebview ? 255 : 120);
-
-            findPreference("pref_webview_show_expand").setEnabled(integratedWebview);
-            findPreference("pref_webview_show_expand").getIcon().setAlpha(integratedWebview ? 255 : 120);
+            for (String webViewPref : webViewPrefs) {
+                changePrefStatus(findPreference(webViewPref), integratedWebview);
+            }
 
             findPreference("pref_about").setSummary("Version " + BuildConfig.VERSION_NAME);
 
@@ -199,20 +186,9 @@ public class SettingsActivity extends AppCompatActivity {
             findPreference("pref_webview").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {
-                    findPreference("pref_preload_webview").setEnabled((boolean) newValue);
-                    findPreference("pref_preload_webview").getIcon().setAlpha((boolean) newValue ? 255 : 120);
-
-                    findPreference("pref_webview_match_theme").setEnabled((boolean) newValue);
-                    findPreference("pref_webview_match_theme").getIcon().setAlpha((boolean) newValue ? 255 : 120);
-
-                    findPreference("pref_webview_adblock").setEnabled((boolean) newValue);
-                    findPreference("pref_webview_adblock").getIcon().setAlpha((boolean) newValue ? 255 : 120);
-
-                    findPreference("pref_webview_disable_swipeback").setEnabled((boolean) newValue);
-                    findPreference("pref_webview_disable_swipeback").getIcon().setAlpha((boolean) newValue ? 255 : 120);
-
-                    findPreference("pref_webview_show_expand").setEnabled((boolean) newValue);
-                    findPreference("pref_webview_show_expand").getIcon().setAlpha((boolean) newValue ? 255 : 120);
+                    for (String webViewPref : webViewPrefs) {
+                        changePrefStatus(findPreference(webViewPref), (boolean) newValue);
+                    }
 
                     return true;
                 }
@@ -269,7 +245,7 @@ public class SettingsActivity extends AppCompatActivity {
                 @Override
                 public boolean onPreferenceClick(Preference preference) {
 
-                    String textToSave = Utils.readStringFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS);
+                    String textToSave = SettingsUtils.readStringFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS);
 
                     if (TextUtils.isEmpty(textToSave)) {
                         Snackbar.make(
@@ -309,14 +285,12 @@ public class SettingsActivity extends AppCompatActivity {
             findPreference("pref_clear_clicked_stories").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
                 public boolean onPreferenceClick(Preference preference) {
-                    Set<Integer> set = Utils.readIntSetFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS);
+                    Set<Integer> set = SettingsUtils.readIntSetFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS);
                     int oldCount = 0;
 
-                    if (set != null) {
-                        oldCount = set.size();
-                    }
+                    oldCount = set.size();
 
-                    Utils.saveIntSetToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS, new HashSet<>(0));
+                    SettingsUtils.saveIntSetToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS, new HashSet<>(0));
                     requestRestart = true;
 
                     Snackbar snackbar = Snackbar.make(
@@ -374,7 +348,7 @@ public class SettingsActivity extends AppCompatActivity {
                         Utils.writeInFile(
                                 getContext(),
                                 data.getData(),
-                                Utils.readStringFromSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS));
+                                SettingsUtils.readStringFromSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS));
                     } catch (Exception e) {
                         Toast.makeText(getContext(), "Write error", Toast.LENGTH_SHORT).show();
                         e.printStackTrace();
@@ -385,7 +359,7 @@ public class SettingsActivity extends AppCompatActivity {
                         ArrayList<Bookmark> bookmarks = Utils.loadBookmarks(true, content);
                         if (bookmarks.size() > 0) {
                             //save the new bookmarks
-                            Utils.saveStringToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS, content);
+                            SettingsUtils.saveStringToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS, content);
                             Toast.makeText(getContext(), "Loaded " + bookmarks.size() + " bookmarks", Toast.LENGTH_SHORT).show();
                         } else {
                             Toast.makeText(getContext(), "File contained no bookmarks", Toast.LENGTH_SHORT).show();
@@ -418,6 +392,13 @@ public class SettingsActivity extends AppCompatActivity {
                 Date dateTo = new Date(0, 0, 0, nighttimeHours[2], nighttimeHours[3]);
 
                 findPreference("pref_theme_timed_range").setSummary(df.format(dateFrom) + " - " + df.format(dateTo));
+            }
+        }
+
+        private void changePrefStatus(Preference pref, boolean newStatus) {
+            if (pref != null) {
+                pref.setEnabled(newStatus);
+                pref.getIcon().setAlpha(newStatus ? 255 : 120);
             }
         }
     }

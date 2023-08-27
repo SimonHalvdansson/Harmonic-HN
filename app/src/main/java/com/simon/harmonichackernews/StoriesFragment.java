@@ -41,6 +41,7 @@ import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.VolleyOkHttp3StackInterceptors;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryUpdate;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -88,7 +89,7 @@ public class StoriesFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         inflater.inflate(R.layout.fragment_stories, container, false);
-        clickedIds = Utils.readIntSetFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS);
+        clickedIds = SettingsUtils.readIntSetFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS);
 
         return super.onCreateView(inflater, container, savedInstanceState);
     }
@@ -181,14 +182,14 @@ public class StoriesFragment extends Fragment {
 
     private void setupAdapter() {
         adapter = new StoryRecyclerViewAdapter(stories,
-                Utils.shouldShowPoints(getContext()),
-                Utils.shouldUseCompactView(getContext()),
-                Utils.shouldShowThumbnails(getContext()),
-                Utils.shouldShowIndex(getContext()),
-                Utils.shouldHideJobs(getContext()),
-                Utils.shouldUseCompactHeader(getContext()),
-                Utils.shouldUseLeftAlign(getContext()),
-                Utils.getPreferredHotness(getContext()),
+                SettingsUtils.shouldShowPoints(getContext()),
+                SettingsUtils.shouldUseCompactView(getContext()),
+                SettingsUtils.shouldShowThumbnails(getContext()),
+                SettingsUtils.shouldShowIndex(getContext()),
+                SettingsUtils.shouldHideJobs(getContext()),
+                SettingsUtils.shouldUseCompactHeader(getContext()),
+                SettingsUtils.shouldUseLeftAlign(getContext()),
+                SettingsUtils.getPreferredHotness(getContext()),
                 null);
 
         adapter.setOnLinkClickListener(position -> {
@@ -214,7 +215,7 @@ public class StoriesFragment extends Fragment {
                 clickedIds.add(story.id);
 
                 if (story.isLink) {
-                    if (Utils.shouldUseIntegratedWebView(getContext())) {
+                    if (SettingsUtils.shouldUseIntegratedWebView(getContext())) {
                         openComments(story, position, true);
                     } else {
                         Utils.launchCustomTab(getContext(), story.url);
@@ -271,8 +272,8 @@ public class StoriesFragment extends Fragment {
         super.onResume();
 
         filterWords = Utils.getFilterWords(getContext());
-        hideJobs = Utils.shouldHideJobs(getContext());
-        alwaysOpenComments = Utils.shouldAlwaysOpenComments(getContext());
+        hideJobs = SettingsUtils.shouldHideJobs(getContext());
+        alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(getContext());
 
         long timeDiff = System.currentTimeMillis() - lastLoaded;
 
@@ -281,48 +282,48 @@ public class StoriesFragment extends Fragment {
             showUpdateButton();
         }
 
-        if (adapter.showPoints != Utils.shouldShowPoints(getContext())) {
+        if (adapter.showPoints != SettingsUtils.shouldShowPoints(getContext())) {
             adapter.showPoints = !adapter.showPoints;
             adapter.notifyItemRangeChanged(1, stories.size());
         }
 
-        if (adapter.compactView != Utils.shouldUseCompactView(getContext())) {
+        if (adapter.compactView != SettingsUtils.shouldUseCompactView(getContext())) {
             adapter.compactView = !adapter.compactView;
             adapter.notifyItemRangeChanged(1, stories.size());
         }
 
-        if (adapter.thumbnails != Utils.shouldShowThumbnails(getContext())) {
+        if (adapter.thumbnails != SettingsUtils.shouldShowThumbnails(getContext())) {
             adapter.thumbnails = !adapter.thumbnails;
             adapter.notifyItemRangeChanged(1, stories.size());
         }
 
-        if (adapter.showIndex != Utils.shouldShowIndex(getContext())) {
+        if (adapter.showIndex != SettingsUtils.shouldShowIndex(getContext())) {
             adapter.showIndex = !adapter.showIndex;
             adapter.notifyItemRangeChanged(1, stories.size());
         }
 
-        if (adapter.leftAlign != Utils.shouldUseLeftAlign(getContext())) {
+        if (adapter.leftAlign != SettingsUtils.shouldUseLeftAlign(getContext())) {
             adapter.leftAlign = !adapter.leftAlign;
             setupAdapter();
             recyclerView.setAdapter(adapter);
         }
 
-        if (TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(Utils.getPreferredFont(getContext()))) {
+        if (TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(SettingsUtils.getPreferredFont(getContext()))) {
             FontUtils.init(getContext());
             adapter.notifyItemRangeChanged(0, stories.size());
         }
 
-        if (adapter.compactHeader != Utils.shouldUseCompactHeader(getContext())) {
-            adapter.compactHeader = Utils.shouldUseCompactHeader(getContext());
+        if (adapter.compactHeader != SettingsUtils.shouldUseCompactHeader(getContext())) {
+            adapter.compactHeader = SettingsUtils.shouldUseCompactHeader(getContext());
             adapter.notifyItemChanged(0);
         }
 
-        if (adapter.hotness != Utils.getPreferredHotness(getContext())) {
-            adapter.hotness = Utils.getPreferredHotness(getContext());
+        if (adapter.hotness != SettingsUtils.getPreferredHotness(getContext())) {
+            adapter.hotness = SettingsUtils.getPreferredHotness(getContext());
             adapter.notifyItemRangeChanged(1, stories.size());
         }
 
-        if (adapter.hideJobs != Utils.shouldHideJobs(getContext())) {
+        if (adapter.hideJobs != SettingsUtils.shouldHideJobs(getContext())) {
             adapter.type = 0;
             currentType = 0;
             adapter.hideJobs = !adapter.hideJobs;
@@ -334,7 +335,7 @@ public class StoriesFragment extends Fragment {
     @Override
     public void onPause() {
         super.onPause();
-        Utils.saveIntSetToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS, clickedIds);
+        SettingsUtils.saveIntSetToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS, clickedIds);
     }
 
     @Override

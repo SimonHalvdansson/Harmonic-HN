@@ -23,6 +23,7 @@ import android.widget.Toast;
 import android.window.OnBackInvokedDispatcher;
 
 import com.gw.swipeback.SwipeBackLayout;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.SplitChangeHandler;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -67,8 +68,8 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
             }
         });
 
-        disableSwipeAtWeb = Utils.shouldDisableWebviewSwipeBack(getApplicationContext());
-        disableSwipeAtComments = Utils.shouldDisableCommentsSwipeBack(getApplicationContext());
+        disableSwipeAtWeb = SettingsUtils.shouldDisableWebviewSwipeBack(getApplicationContext());
+        disableSwipeAtComments = SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext());
 
         OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
             @Override

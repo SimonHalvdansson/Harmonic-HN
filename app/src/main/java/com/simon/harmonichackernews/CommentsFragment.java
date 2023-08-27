@@ -83,6 +83,7 @@ import com.simon.harmonichackernews.network.VolleyOkHttp3StackInterceptors;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.utils.FileDownloader;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ShareUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -261,12 +262,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             callback = (BottomSheetFragmentCallback) getActivity();
         }
 
-        prefIntegratedWebview = Utils.shouldUseIntegratedWebView(getContext());
+        prefIntegratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
 
         integratedWebview = prefIntegratedWebview && story.isLink;
-        preloadWebview = Utils.shouldPreloadWebView(getContext());
-        matchWebviewTheme = Utils.shouldMatchWebViewTheme(getContext());
-        blockAds = Utils.shouldBlockAds(getContext());
+        preloadWebview = SettingsUtils.shouldPreloadWebView(getContext());
+        matchWebviewTheme = SettingsUtils.shouldMatchWebViewTheme(getContext());
+        blockAds = SettingsUtils.shouldBlockAds(getContext());
 
         webView = view.findViewById(R.id.comments_webview);
         downloadButton = view.findViewById(R.id.webview_download);
@@ -354,7 +355,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
-        showNavButtons = Utils.shouldShowNavigationButtons(getContext());
+        showNavButtons = SettingsUtils.shouldShowNavigationButtons(getContext());
         updateNavigationVisibility();
 
         ImageButton scrollPrev = view.findViewById(R.id.comments_scroll_previous);
@@ -424,16 +425,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 requireActivity().getSupportFragmentManager(),
                 comments,
                 story,
-                Utils.shouldCollapseParent(getContext()),
-                Utils.shouldShowThumbnails(getContext()),
+                SettingsUtils.shouldCollapseParent(getContext()),
+                SettingsUtils.shouldShowThumbnails(getContext()),
                 username,
-                Utils.getPreferredCommentTextSize(getContext()),
-                Utils.shouldUseMonochromeCommentDepthIndicators(getContext()),
-                Utils.shouldShowNavigationButtons(getContext()),
-                Utils.getPreferredFont(getContext()),
+                SettingsUtils.getPreferredCommentTextSize(getContext()),
+                SettingsUtils.shouldUseMonochromeCommentDepthIndicators(getContext()),
+                SettingsUtils.shouldShowNavigationButtons(getContext()),
+                SettingsUtils.getPreferredFont(getContext()),
                 isFeatureSupported(WebViewFeature.FORCE_DARK) || WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING),
-                Utils.shouldShowTopLevelDepthIndicator(getContext()),
-                Utils.shouldShowWebviewExpandButton(getContext()),
+                SettingsUtils.shouldShowTopLevelDepthIndicator(getContext()),
+                SettingsUtils.shouldShowWebviewExpandButton(getContext()),
+                SettingsUtils.shouldUseWebViewDeviceBack(getContext()),
                 ThemeUtils.isDarkMode(getContext()));
 
         adapter.setOnHeaderClickListener(story1 -> {
@@ -479,7 +481,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_BACK:
-                        if (webView.canGoBack()) {
+                        if (webView.canGoBack() && !adapter.webViewDeviceBack) {
                             if (downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
                                 webView.setVisibility(View.VISIBLE);
                                 downloadButton.setVisibility(View.GONE);
@@ -547,7 +549,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
-        if (!Utils.shouldUseCommentsAnimation(getContext())) {
+        if (!SettingsUtils.shouldUseCommentsAnimation(getContext())) {
             recyclerView.setItemAnimator(null);
         }
 
@@ -752,40 +754,45 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             boolean updateHeader = false;
             boolean updateComments = false;
 
-            if (adapter.collapseParent != Utils.shouldCollapseParent(ctx)) {
+            if (adapter.collapseParent != SettingsUtils.shouldCollapseParent(ctx)) {
                 adapter.collapseParent = !adapter.collapseParent;
                 updateComments = true;
             }
 
-            if (adapter.showThumbnail != Utils.shouldShowThumbnails(ctx)) {
+            if (adapter.showThumbnail != SettingsUtils.shouldShowThumbnails(ctx)) {
                 adapter.showThumbnail = !adapter.showThumbnail;
                 updateHeader = true;
             }
 
-            if (adapter.preferredTextSize != Utils.getPreferredCommentTextSize(ctx)) {
-                adapter.preferredTextSize = Utils.getPreferredCommentTextSize(ctx);
+            if (adapter.preferredTextSize != SettingsUtils.getPreferredCommentTextSize(ctx)) {
+                adapter.preferredTextSize = SettingsUtils.getPreferredCommentTextSize(ctx);
                 updateHeader = true;
                 updateComments = true;
             }
 
-            if (adapter.monochromeCommentDepthIndicators != Utils.shouldUseMonochromeCommentDepthIndicators(ctx)) {
-                adapter.monochromeCommentDepthIndicators = Utils.shouldUseMonochromeCommentDepthIndicators(ctx);
+            if (adapter.monochromeCommentDepthIndicators != SettingsUtils.shouldUseMonochromeCommentDepthIndicators(ctx)) {
+                adapter.monochromeCommentDepthIndicators = SettingsUtils.shouldUseMonochromeCommentDepthIndicators(ctx);
                 updateComments = true;
             }
 
-            if (!adapter.font.equals(Utils.getPreferredFont(ctx))) {
-                adapter.font = Utils.getPreferredFont(ctx);
+            if (!adapter.font.equals(SettingsUtils.getPreferredFont(ctx))) {
+                adapter.font = SettingsUtils.getPreferredFont(ctx);
                 updateHeader = true;
                 updateComments = true;
             }
 
-            if (adapter.showTopLevelDepthIndicator != Utils.shouldShowTopLevelDepthIndicator(ctx)) {
-                adapter.showTopLevelDepthIndicator = Utils.shouldShowTopLevelDepthIndicator(ctx);
+            if (adapter.showTopLevelDepthIndicator != SettingsUtils.shouldShowTopLevelDepthIndicator(ctx)) {
+                adapter.showTopLevelDepthIndicator = SettingsUtils.shouldShowTopLevelDepthIndicator(ctx);
                 updateComments = true;
             }
 
-            if (adapter.showExpand != Utils.shouldShowWebviewExpandButton(ctx)) {
-                adapter.showExpand = Utils.shouldShowWebviewExpandButton(ctx);
+            if (adapter.showExpand != SettingsUtils.shouldShowWebviewExpandButton(ctx)) {
+                adapter.showExpand = SettingsUtils.shouldShowWebviewExpandButton(ctx);
+                updateHeader = true;
+            }
+
+            if (adapter.webViewDeviceBack != SettingsUtils.shouldUseWebViewDeviceBack(ctx)) {
+                adapter.webViewDeviceBack = SettingsUtils.shouldUseWebViewDeviceBack(ctx);
                 updateHeader = true;
             }
 
@@ -1063,7 +1070,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         }
 
-        if (!Utils.shouldBlockAds(getContext())) {
+        if (!SettingsUtils.shouldBlockAds(getContext())) {
             MenuItem menuItem2 = popup.getMenu().getItem(2);
             if (menuItem2.getItemId() == R.id.menu_adblock) {
                 menuItem2.setVisible(false);

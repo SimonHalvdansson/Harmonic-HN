@@ -77,24 +77,25 @@ import static androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_C
 
 public class Utils {
 
-    public final static String KEY_SHARED_PREFERENCES_CLICKED_IDS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CLICKED_IDS";
-    public final static String KEY_SHARED_PREFERENCES_CACHED_STORY = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORY";
-    public final static String KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS";
-    public final static String KEY_SHARED_PREFERENCES_BOOKMARKS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_BOOKMARKS";
-    public final static String KEY_SHARED_PREFERENCES_FIRST_TIME = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FIRST_TIME";
-    public final static String KEY_SHARED_PREFERENCES_LAST_VERSION = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION";
-    public final static String GLOBAL_SHARED_PREFERENCES_KEY = "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY";
-
-    public final static String KEY_NIGHTTIME_FROM_HOUR = "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_HOUR";
-    public final static String KEY_NIGHTTIME_FROM_MINUTE = "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_MINUTE";
-    public final static String KEY_NIGHTTIME_TO_HOUR = "com.simon.harmonichackernews.KEY_NIGHTTIME_TO_HOUR";
-    public final static String KEY_NIGHTTIME_TO_MINUTE = "com.simon.harmonichackernews.KEY_NIGHTTIME_TO_MINUTE";
-
     private static final long SECOND_MILLIS = 1000;
     private static final long MINUTE_MILLIS = 60 * SECOND_MILLIS;
     private static final long HOUR_MILLIS = 60 * MINUTE_MILLIS;
     private static final long DAY_MILLIS = 24 * HOUR_MILLIS;
     private static final long YEAR_MILLIS = 365 * DAY_MILLIS;
+
+    public final static String KEY_SHARED_PREFERENCES_CLICKED_IDS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CLICKED_IDS";
+    public final static String KEY_SHARED_PREFERENCES_CACHED_STORY = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORY";
+    public final static String KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS";
+    public final static String GLOBAL_SHARED_PREFERENCES_KEY = "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY";
+
+    public final static String KEY_SHARED_PREFERENCES_BOOKMARKS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_BOOKMARKS";
+    public final static String KEY_SHARED_PREFERENCES_FIRST_TIME = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FIRST_TIME";
+    public final static String KEY_SHARED_PREFERENCES_LAST_VERSION = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION";
+
+    public final static String KEY_NIGHTTIME_FROM_HOUR = "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_HOUR";
+    public final static String KEY_NIGHTTIME_FROM_MINUTE = "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_MINUTE";
+    public final static String KEY_NIGHTTIME_TO_HOUR = "com.simon.harmonichackernews.KEY_NIGHTTIME_TO_HOUR";
+    public final static String KEY_NIGHTTIME_TO_MINUTE = "com.simon.harmonichackernews.KEY_NIGHTTIME_TO_MINUTE";
 
     public final static String URL_TOP = "https://hacker-news.firebaseio.com/v0/topstories.json";
     public final static String URL_NEW = "https://hacker-news.firebaseio.com/v0/newstories.json";
@@ -163,62 +164,10 @@ public class Utils {
         AsyncTask.execute(r);
     }
 
-    public static Set<Integer> readIntSetFromSharedPreferences(Context ctx, String key) {
-        SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        Set<String> emptyBackup = new HashSet<>();
-        Set<String> stringSet = sharedPref.getStringSet(key, emptyBackup);
-
-        Set<Integer> intSet = new HashSet<>(stringSet.size());
-        for (String string : stringSet) {
-            intSet.add(Integer.parseInt(string));
-        }
-        return intSet;
-    }
-
-    public static void saveIntSetToSharedPreferences(Context ctx, String key, Set<Integer> set) {
-        Set<String> stringSet = new HashSet<>(set.size());
-
-        for (Integer integer : set) {
-            stringSet.add(integer.toString());
-        }
-
-        saveStringSetToSharedPreferences(ctx, key, stringSet);
-    }
-
-    public static Set<String> readStringSetFromSharedPreferences(Context ctx, String key) {
-        SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        Set<String> emptyBackup = new HashSet<>();
-        return sharedPref.getStringSet(key, emptyBackup);
-    }
-
-    public static void saveStringSetToSharedPreferences(Context ctx, String key, Set<String> set) {
-        SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
-
-        editor.putStringSet(key, set).apply();
-    }
-
-    public static void saveStringToSharedPreferences(Context ctx, String key, String text) {
-        SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
-
-        editor.putString(key, text).apply();
-    }
-
-    public static String readStringFromSharedPreferences(Context ctx, String key) {
-        SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        return sharedPref.getString(key, null);
-    }
-
-    public static String readStringFromSharedPreferences(Context ctx, String key, String fallback) {
-        SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        return sharedPref.getString(key, fallback);
-    }
-
     public static void cacheStory(Context ctx, int id, String data) {
-        saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id, data);
+        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id, data);
 
-        Set<String> cachedStories = Utils.readStringSetFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
+        Set<String> cachedStories = SettingsUtils.readStringSetFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
 
         if (cachedStories == null) {
             cachedStories = new HashSet<>();
@@ -252,15 +201,15 @@ public class Utils {
             ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE).edit().remove(KEY_SHARED_PREFERENCES_CACHED_STORY + oldestId).apply();
         }
 
-        Utils.saveStringSetToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS, cachedStories);
+        SettingsUtils.saveStringSetToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS, cachedStories);
     }
 
     public static String loadCachedStory(Context ctx, int id) {
-        return readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id);
+        return SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id);
     }
 
     public static ArrayList<Bookmark> loadBookmarks(Context ctx, boolean sorted) {
-        return loadBookmarks(sorted, readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_BOOKMARKS));
+        return loadBookmarks(sorted, SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_BOOKMARKS));
     }
 
     public static ArrayList<Bookmark> loadBookmarks(boolean sorted, String bookmarksString) {
@@ -316,7 +265,7 @@ public class Utils {
             }
         }
 
-        saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_BOOKMARKS, sb.toString());
+        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_BOOKMARKS, sb.toString());
     }
 
     public static void addBookmark(Context ctx, int id) {
@@ -368,7 +317,7 @@ public class Utils {
 
     public static boolean isFirstAppStart(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true) && Utils.readIntSetFromSharedPreferences(ctx, Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS).size() == 0) {
+        if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true) && SettingsUtils.readIntSetFromSharedPreferences(ctx, Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS).size() == 0) {
             sharedPref.edit().putBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, false).apply();
             return true;
         }
@@ -384,144 +333,7 @@ public class Utils {
         return false;
     }
 
-    public static boolean shouldShowPoints(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_show_points", true);
-    }
 
-    public static boolean shouldUseCompactView(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_compact_view", false);
-    }
-
-    public static boolean shouldShowThumbnails(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_thumbnails", true);
-    }
-
-    public static boolean shouldCollapseParent(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_collapse_parent", false);
-    }
-
-    public static boolean shouldShowIndex(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_show_index", false);
-    }
-
-    public static boolean shouldShowNavigationButtons(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_scroll_navigation", false);
-    }
-
-    public static boolean shouldHideJobs(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_hide_jobs", false);
-    }
-
-    public static int getPreferredHotness(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return Integer.parseInt(prefs.getString("pref_hotness", "-1"));
-    }
-
-    public static String getPreferredFont(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getString("pref_font", "productsans");
-    }
-
-    public static boolean shouldUseExternalBrowser(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_external_browser", false);
-    }
-
-    public static boolean shouldUseMonochromeCommentDepthIndicators(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_monochrome_comment_depth", false);
-    }
-
-    public static boolean shouldUseIntegratedWebView(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_webview", true);
-    }
-
-    public static boolean shouldEnableFoldableSupport(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_foldable_support", false);
-    }
-
-    public static String shouldPreloadWebView(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getString("pref_preload_webview", "never");
-    }
-
-    public static boolean shouldMatchWebViewTheme(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_webview_match_theme", false);
-    }
-
-    public static boolean shouldBlockAds(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_webview_adblock", true);
-    }
-
-    public static boolean shouldDisableWebviewSwipeBack(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_webview_disable_swipeback", true);
-    }
-
-    public static boolean shouldDisableCommentsSwipeBack(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_comments_disable_swipeback", false);
-    }
-
-    public static boolean shouldShowTopLevelDepthIndicator(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_top_level_thread_indicators", false);
-    }
-
-    public static boolean shouldAlwaysOpenComments(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_always_open_comments", false);
-    }
-
-    public static boolean shouldShowWebviewExpandButton(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_webview_show_expand", true);
-    }
-
-    public static boolean shouldUseCompactHeader(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_compact_header", false);
-    }
-
-    public static boolean shouldUseLeftAlign(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_left_align", false);
-    }
-
-    public static boolean shouldUseTransparentStatusBar(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_transparent_status_bar", false);
-    }
-
-    public static boolean shouldUseSpecialNighttimeTheme(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_special_nighttime", false);
-    }
-
-    public static boolean shouldUseCommentsAnimation(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_comments_animation", true);
-    }
-
-    public static boolean shouldUseAlgolia(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_algolia_api", true);
-    }
-
-    public static int getPreferredCommentTextSize(Context ctx) {
-        return Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_comment_text_size", "15"));
-    }
 
     public static String getTimeAgo(long time) {
         return getTimeAgo(time, false);
@@ -577,7 +389,7 @@ public class Utils {
 
     public static void launchCustomTab(Context ctx, String url, boolean shareable) {
         if (url != null) {
-            if (Utils.shouldUseExternalBrowser(ctx) || !isCustomTabSupported(ctx)) {
+            if (SettingsUtils.shouldUseExternalBrowser(ctx) || !isCustomTabSupported(ctx)) {
                 launchInExternalBrowser(ctx, url);
             } else {
                 try {
@@ -759,18 +571,18 @@ public class Utils {
     }
     
     public static void setNighttimeHours(int fromHour, int fromMinute, int toHour, int toMinute, Context ctx) {
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_HOUR, fromHour + "");
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_MINUTE, fromMinute + "");
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_HOUR, toHour + "");
-        saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_MINUTE, toMinute + "");
+        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_HOUR, fromHour + "");
+        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_MINUTE, fromMinute + "");
+        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_HOUR, toHour + "");
+        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_TO_MINUTE, toMinute + "");
     }
 
     public static int[] getNighttimeHours(Context ctx) {
         return new int[] {
-                Integer.parseInt(readStringFromSharedPreferences(ctx, KEY_NIGHTTIME_FROM_HOUR, "21")),
-                Integer.parseInt(readStringFromSharedPreferences(ctx, KEY_NIGHTTIME_FROM_MINUTE, "0")),
-                Integer.parseInt(readStringFromSharedPreferences(ctx, KEY_NIGHTTIME_TO_HOUR, "6")),
-                Integer.parseInt(readStringFromSharedPreferences(ctx, KEY_NIGHTTIME_TO_MINUTE, "0"))
+                Integer.parseInt(SettingsUtils.readStringFromSharedPreferences(ctx, KEY_NIGHTTIME_FROM_HOUR, "21")),
+                Integer.parseInt(SettingsUtils.readStringFromSharedPreferences(ctx, KEY_NIGHTTIME_FROM_MINUTE, "0")),
+                Integer.parseInt(SettingsUtils.readStringFromSharedPreferences(ctx, KEY_NIGHTTIME_TO_HOUR, "6")),
+                Integer.parseInt(SettingsUtils.readStringFromSharedPreferences(ctx, KEY_NIGHTTIME_TO_MINUTE, "0"))
         };
     }
 
@@ -824,7 +636,7 @@ public class Utils {
 
         ViewCompat.setOnApplyWindowInsetsListener(layout, (v, insets) -> {
             int top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
-            if (shouldUseTransparentStatusBar(layout.getContext())) {
+            if (SettingsUtils.shouldUseTransparentStatusBar(layout.getContext())) {
                 layout.setProgressViewOffset(false, start, end + top);
             } else {
                 layout.setProgressViewOffset(false, start + top, end + top);

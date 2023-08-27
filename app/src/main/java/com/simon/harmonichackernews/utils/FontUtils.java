@@ -17,7 +17,7 @@ public class FontUtils {
     public static String font;
 
     public static void init(Context ctx) {
-        font = Utils.getPreferredFont(ctx);
+        font = SettingsUtils.getPreferredFont(ctx);
 
         switch (font) {
             case "productsans":
