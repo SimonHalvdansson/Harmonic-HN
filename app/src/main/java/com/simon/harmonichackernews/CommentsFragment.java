@@ -158,6 +158,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private String username;
     private Story story;
 
+    private int topInset;
+
     public CommentsFragment() {
         super(R.layout.fragment_comments);
     }
@@ -339,8 +341,20 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         username = AccountUtils.getAccountUsername(getContext());
 
         scrollNavigation = view.findViewById(R.id.comments_scroll_navigation);
-        FrameLayout.LayoutParams scrollParams = (FrameLayout.LayoutParams) scrollNavigation.getLayoutParams();
-        scrollParams.setMargins(0,0,0, Utils.getNavigationBarHeight(getResources()) + Utils.pxFromDpInt(getResources(), 16));
+        ViewCompat.setOnApplyWindowInsetsListener(scrollNavigation, new OnApplyWindowInsetsListener() {
+            @NonNull
+            @Override
+            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
+
+                FrameLayout.LayoutParams scrollParams = (FrameLayout.LayoutParams) scrollNavigation.getLayoutParams();
+                scrollParams.setMargins(0,0,0, insets.bottom + Utils.pxFromDpInt(getResources(), 16));
+
+                topInset = insets.top;
+
+                return windowInsets;
+            }
+        });
 
         showNavButtons = Utils.shouldShowNavigationButtons(getContext());
         updateNavigationVisibility();
@@ -349,37 +363,25 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         ImageButton scrollNext = view.findViewById(R.id.comments_scroll_next);
         ImageView scrollIcon = view.findViewById(R.id.comments_scroll_icon);
 
+        RecyclerView.SmoothScroller smoothScroller = new LinearSmoothScroller(requireContext()) {
+            @Override protected int getVerticalSnapPreference() {
+                return LinearSmoothScroller.SNAP_TO_START;
+            }
+
+            @Override
+            public int calculateDyToMakeVisible(View view, int snapPreference) {
+                int standardDy = super.calculateDyToMakeVisible(view, snapPreference);
+                return standardDy + topInset;
+            }
+        };
+
         scrollIcon.setOnClickListener(null);
 
-        scrollPrev.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View view) {
-                scrollTop();
-                return true;
-            }
-        });
+        scrollNext.setOnClickListener((v) -> scrollNext(smoothScroller));
+        scrollNext.setOnLongClickListener(v -> {scrollLast(smoothScroller); return true;});
 
-        scrollPrev.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                scrollPrevious();
-            }
-        });
-
-        scrollNext.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                scrollNext();
-            }
-        });
-
-        scrollNext.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View view) {
-                scrollLast();
-                return true;
-            }
-        });
+        scrollPrev.setOnClickListener((v) -> scrollPrevious(smoothScroller));
+        scrollPrev.setOnLongClickListener(v -> {scrollTop(); return true;});
 
         initializeRecyclerView();
 
@@ -552,6 +554,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         recyclerView.setPadding(0,0,0, Utils.getNavigationBarHeight(getResources()) + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard));
+
+        ViewCompat.setOnApplyWindowInsetsListener(recyclerView, new OnApplyWindowInsetsListener() {
+            @NonNull
+            @Override
+            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+                recyclerView.setPadding(0,0,0, insets.bottom + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard));
+
+                return windowInsets;
+            }
+        });
+
         recyclerView.setAdapter(adapter);
 
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_ITEM, 100);
@@ -1076,49 +1091,62 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    private void scrollPrevious() {
+    private void scrollPrevious(RecyclerView.SmoothScroller smoothScroller) {
         LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
         if (layoutManager != null) {
             int firstVisible = layoutManager.findFirstVisibleItemPosition();
 
             int toScrollTo = 0;
 
-            for (int i = 0; i < firstVisible; i++) {
-                if (comments.get(i).depth == 0 || i == 0) {
-                    toScrollTo = i;
-                }
-            }
-
-            recyclerView.smoothScrollToPosition(toScrollTo);
-        }
-    }
-
-    public void scrollNext() {
-        LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-        if (layoutManager != null) {
-            int firstVisible = layoutManager.findFirstVisibleItemPosition();
-            int toScrollTo = firstVisible;
-
-            for (int i = firstVisible + 1; i < comments.size(); i++) {
+            for (int i = firstVisible; i >=0; i--) {
                 if (comments.get(i).depth == 0) {
                     toScrollTo = i;
                     break;
                 }
             }
 
-            RecyclerView.SmoothScroller smoothScroller = new LinearSmoothScroller(requireContext()) {
-                @Override protected int getVerticalSnapPreference() {
-                    return LinearSmoothScroller.SNAP_TO_START;
-                }
-            };
-
             smoothScroller.setTargetPosition(toScrollTo);
             layoutManager.startSmoothScroll(smoothScroller);
-
         }
     }
 
-    private void scrollLast() {
+    public void scrollNext(RecyclerView.SmoothScroller smoothScroller) {
+        LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+        if (layoutManager != null) {
+            /*
+            * Ideally, we want to use LayoutManager..findFirstVisibleItemPosition(); as I strongly
+            * suspect that this is faster than our home grown solution
+            * findTrueFirstVisibleItemPosition(layoutManager) - hence we need this logic to handle
+            * the special case where the first visible position is 0 when the standard solution
+            * does not work (due to window insets).
+            * */
+
+            int firstVisible = layoutManager.findFirstVisibleItemPosition();
+            int toScrollTo = firstVisible+1;
+
+            int searchOffset = 2;
+
+            if (firstVisible == 0) {
+                firstVisible = findTrueFirstVisibleItemPosition(layoutManager);
+                toScrollTo = firstVisible;
+                searchOffset = 1;
+            }
+
+            for (int i = firstVisible + searchOffset; i < comments.size(); i++) {
+                if (comments.get(i).depth == 0) {
+                    toScrollTo = i;
+                    break;
+                }
+            }
+
+            smoothScroller.setTargetPosition(toScrollTo);
+            layoutManager.startSmoothScroll(smoothScroller);
+        }
+    }
+
+
+
+    private void scrollLast(RecyclerView.SmoothScroller smoothScroller) {
         LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
         if (layoutManager != null) {
             int firstVisible = layoutManager.findFirstVisibleItemPosition();
@@ -1130,15 +1158,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             }
 
-            RecyclerView.SmoothScroller smoothScroller = new LinearSmoothScroller(requireContext()) {
-                @Override protected int getVerticalSnapPreference() {
-                    return LinearSmoothScroller.SNAP_TO_START;
-                }
-            };
-
             smoothScroller.setTargetPosition(toScrollTo);
             layoutManager.startSmoothScroll(smoothScroller);
         }
+    }
+
+    private int findTrueFirstVisibleItemPosition(LinearLayoutManager layoutManager) {
+        final int offset = topInset;
+        int childCount = layoutManager.getChildCount();
+        for (int i = 0; i < childCount; i++) {
+            View child = layoutManager.getChildAt(i);
+            if (child != null && child.getTop() + offset >= 0) {
+                return layoutManager.getPosition(child);
+            }
+        }
+        return layoutManager.findFirstVisibleItemPosition();
     }
 
     private void updateNavigationVisibility() {

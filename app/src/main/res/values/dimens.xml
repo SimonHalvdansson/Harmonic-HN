@@ -2,7 +2,7 @@
 <resources>
     <!--<dimen name="design_snackbar_padding_vertical">8dp</dimen>-->
     <dimen name="comments_bottom_standard">16dp</dimen>
-    <dimen name="comments_bottom_navigation">56dp</dimen>
+    <dimen name="comments_bottom_navigation">60dp</dimen>
     <dimen name="single_view_side_margin">0dp</dimen>
     <dimen name="extra_pane_padding">0dp</dimen>
     <dimen name="comments_header_top_padding">24dp</dimen>

@@ -98,7 +98,7 @@
                 android:layout_height="match_parent"       />
 
             <LinearLayout
-                android:visibility="gone"
+                android:visibility="visible"
                 android:id="@+id/comments_scroll_navigation"
                 android:elevation="8dp"
                 android:layout_marginBottom="16dp"
@@ -112,14 +112,14 @@
                     android:background="?selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_action_caret_up_white"
                     android:layout_marginLeft="2dp"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"/>
+                    android:layout_width="48dp"
+                    android:layout_height="44dp"/>
 
                 <ImageView
                     android:id="@+id/comments_scroll_icon"
                     android:layout_marginLeft="10dp"
                     android:layout_marginRight="10dp"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="8dp"
                     android:src="@drawable/ic_action_explore_white"
                     android:layout_width="28dp"
                     android:layout_height="28dp"    />
@@ -129,8 +129,8 @@
                     android:background="?selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_action_caret_down_white"
                     android:layout_marginRight="2dp"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"/>
+                    android:layout_width="48dp"
+                    android:layout_height="44dp"/>
             </LinearLayout>
         </FrameLayout>
     </LinearLayout>
