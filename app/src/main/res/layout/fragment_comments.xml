@@ -39,6 +39,13 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <View
+            android:id="@+id/comments_webview_backdrop"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/white"
+            android:alpha="0" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/webview_download"
             style="@style/Widget.Material3.Button.OutlinedButton.Icon"

@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews;
 
-import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.DownloadManager;
 import android.content.ClipData;
@@ -33,7 +32,6 @@ import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
-import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
@@ -48,7 +46,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
@@ -107,7 +104,6 @@ import java.util.List;
 import okhttp3.Call;
 
 import static android.content.Context.DOWNLOAD_SERVICE;
-import static androidx.webkit.WebViewFeature.FORCE_DARK_STRATEGY;
 import static androidx.webkit.WebViewFeature.isFeatureSupported;
 
 public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener {
@@ -145,6 +141,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private LinearLayout bottomSheet;
     private WebView webView;
     private FrameLayout webViewContainer;
+    private View webViewBackdrop;
     private MaterialButton downloadButton;
     private boolean showNavButtons = false;
     private boolean showWebsite = false;
@@ -278,6 +275,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerViewSwipe = view.findViewById(R.id.comments_recyclerview_swipe);
         bottomSheet = view.findViewById(R.id.comments_bottom_sheet);
         webViewContainer = view.findViewById(R.id.webview_container);
+        webViewBackdrop = view.findViewById(R.id.comments_webview_backdrop);
 
         if (story.title == null) {
             //Empty view for tablets
@@ -651,6 +649,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         webView.setBackgroundColor(Color.TRANSPARENT);
+
+        webViewBackdrop.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (webViewBackdrop != null) {
+                    webViewBackdrop.animate()
+                            .alpha(1f)
+                            .setDuration(300)
+                            .start();
+                }
+
+            }
+        }, 2000); // Start the animation after 1 second
     }
 
     private void loadUrl(String url) {
@@ -1319,13 +1330,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     public class MyWebViewClient extends WebViewClient {
 
-        private boolean firstLoadDone = false;
-
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
-            firstLoadDone = true;
             webView.setBackgroundColor(Color.WHITE);
+            webViewBackdrop.setVisibility(View.GONE);
         }
 
         @Override
