@@ -126,7 +126,10 @@ public class StoriesFragment extends Fragment {
             }
         });
 
-        updateButton.setOnClickListener((v) -> attemptRefresh());
+        updateButton.setOnClickListener((v) -> {
+            attemptRefresh();
+            recyclerView.smoothScrollToPosition(0);
+        });
 
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 

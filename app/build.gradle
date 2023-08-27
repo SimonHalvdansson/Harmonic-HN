@@ -9,8 +9,8 @@ android {
         applicationId "com.simon.harmonichackernews"
         minSdkVersion 23
         targetSdkVersion 34
-        versionCode 47
-        versionName "1.9.3"
+        versionCode 48
+        versionName "1.9.4"
         compileSdk 34
         buildToolsVersion = "34.0.0"
 
@@ -49,7 +49,7 @@ dependencies {
     implementation "androidx.security:security-crypto:1.1.0-alpha06"
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
     implementation 'androidx.webkit:webkit:1.7.0'
-    implementation "androidx.activity:activity:1.8.0-alpha06"
+    implementation "androidx.activity:activity:1.8.0-alpha07"
     implementation "androidx.window:window:1.1.0"
     implementation "androidx.window:window-java:1.1.0"
     implementation 'androidx.startup:startup-runtime:1.1.1'

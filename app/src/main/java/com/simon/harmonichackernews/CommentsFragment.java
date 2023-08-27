@@ -1155,8 +1155,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-
-
     private void scrollLast(RecyclerView.SmoothScroller smoothScroller) {
         LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
         if (layoutManager != null) {

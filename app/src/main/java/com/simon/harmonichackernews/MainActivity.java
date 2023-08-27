@@ -117,10 +117,12 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml("<b>Version 1.9.4:</b><br>" +
+                        "- A white background now fades in behind the WebView after 2 seconds to better handle transparent websites<br>" +
+                        "- Fixed scroll issue with comment navigation buttons<br>" +
                         "- Improved internal link handling<br>" +
                         "- Better parsing of post titles<br>" +
                         "- Animated keyboard when composing comments<br>" +
-                        "<br><br>" +
+                        "<br>" +
                         "<b>Version 1.9.3:</b><br>" +
                         "- Sharing now only shares URL<br>" +
                         "- Experimental fix to WebView memory leak<br>" +
@@ -132,8 +134,8 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
                         "- Fixed error while opening submissions<br>" +
                         "- Reworked padding system throughout the app (thanks AppearamidGuy)<br>" +
                         "- Added support for combined text/link posts (thanks Jonas Wunderlich)<br>" +
-                        "- Better WebView intent handling" +
-                        "<br><br>" +
+                        "- Better WebView intent handling<br>" +
+                        "<br>" +
                         "<b>Version 1.9.2:</b><br>" +
                         "- Fixed white theme" +
                         "<br><br>" +
@@ -143,8 +145,7 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
                         "- Added a setting to disable comment animations<br>" +
                         "- Added initial support for Android 14's predictive back gesture<br>" +
                         "- Updated bottom sheet animation slightly<br>" +
-                        "- Updated dependencies" +
-                        "<br>" +
+                        "- Updated dependencies<br>" +
                         "<br>" +
                         "<b>Version 1.9:</b><br>" +
                         "In case you missed it, Harmonic is now open source! There have already been a bunch of nice pull requests (see below), feel free to check out the repo! <br><br>" +
