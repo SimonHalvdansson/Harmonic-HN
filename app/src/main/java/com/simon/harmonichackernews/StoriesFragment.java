@@ -44,6 +44,7 @@ import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryUpdate;
 import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.utils.ViewUtils;
 
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
@@ -104,7 +105,7 @@ public class StoriesFragment extends Fragment {
         Button updateButton = view.findViewById(R.id.stories_update_button);
 
         swipeRefreshLayout.setOnRefreshListener(this::attemptRefresh);
-        Utils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
+        ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
         linearLayoutManager = new LinearLayoutManager(getContext());
         recyclerView.setLayoutManager(linearLayoutManager);
@@ -126,6 +127,7 @@ public class StoriesFragment extends Fragment {
                 return windowInsets;
             }
         });
+        ViewUtils.requestApplyInsetsWhenAttached(view);
 
         updateButton.setOnClickListener((v) -> {
             attemptRefresh();
@@ -659,7 +661,7 @@ public class StoriesFragment extends Fragment {
     private void hideUpdateButton() {
         if (updateContainer.getVisibility() == View.VISIBLE) {
 
-            float endYPosition = getResources().getDisplayMetrics().heightPixels-updateContainer.getY() + updateContainer.getHeight() + Utils.getNavigationBarHeight(getResources());
+            float endYPosition = getResources().getDisplayMetrics().heightPixels-updateContainer.getY() + updateContainer.getHeight() + ViewUtils.getNavigationBarHeight(getResources());
             PathInterpolator pathInterpolator = new PathInterpolator(0.3f, 0f, 0.8f, 0.15f);
 
             ObjectAnimator yAnimator = ObjectAnimator.ofFloat(updateContainer, "translationY", endYPosition);
