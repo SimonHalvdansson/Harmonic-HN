@@ -651,6 +651,7 @@ public class StoriesFragment extends Fragment {
     public boolean exitSearch() {
         if (adapter.searching) {
             adapter.searching = false;
+            adapter.lastSearch = "";
             updateSearchStatus();
             return true;
         }
