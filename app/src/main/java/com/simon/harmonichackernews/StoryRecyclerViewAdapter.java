@@ -88,6 +88,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public int type = 0;
     public boolean searching = false;
 
+    public String lastSearch = "";
+
     public StoryRecyclerViewAdapter(List<Story> items,
                                     boolean shouldShowPoints,
                                     boolean shouldUseCompactView,
@@ -270,6 +272,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             if (searching) {
                 headerViewHolder.searchEditText.requestFocus();
+                headerViewHolder.searchEditText.setText(lastSearch);
+                headerViewHolder.searchEditText.setSelection(lastSearch.length());
 
                 headerViewHolder.searchEmptyContainer.setVisibility(stories.size() == 1 ? View.VISIBLE : View.GONE);
                 headerViewHolder.noBookmarksLayout.setVisibility(View.GONE);
@@ -467,6 +471,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         imm.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0);
                     } else {
                         imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                        lastSearch = "";
                     }
                 }
             });
