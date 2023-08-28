@@ -1,13 +1,15 @@
 package com.simon.harmonichackernews.utils;
 
 import android.app.Activity;
+
 import androidx.annotation.OptIn;
-import androidx.core.content.ContextCompat;
 import androidx.window.embedding.SplitAttributes.SplitType;
 import androidx.window.embedding.SplitController;
 import androidx.window.embedding.SplitInfo;
 import androidx.window.java.embedding.SplitControllerCallbackAdapter;
+
 import com.gw.swipeback.SwipeBackLayout;
+
 import java.util.List;
 
 @OptIn(markerClass = androidx.window.core.ExperimentalWindowApi.class)

@@ -1,12 +1,15 @@
 package com.simon.harmonichackernews.utils;
 
 import android.content.Context;
+
 import androidx.annotation.NonNull;
 import androidx.startup.Initializer;
 import androidx.window.embedding.RuleController;
 import androidx.window.embedding.SplitController;
 import androidx.window.embedding.SplitController.SplitSupportStatus;
+
 import com.simon.harmonichackernews.R;
+
 import java.util.Collections;
 import java.util.List;
 

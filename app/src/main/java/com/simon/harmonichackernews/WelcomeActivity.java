@@ -9,7 +9,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -17,7 +16,6 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.simon.harmonichackernews.utils.ThemeUtils;
-import com.simon.harmonichackernews.utils.Utils;
 
 public class WelcomeActivity extends AppCompatActivity {
 
