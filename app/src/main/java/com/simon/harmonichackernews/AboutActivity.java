@@ -3,7 +3,6 @@ package com.simon.harmonichackernews;
 
 import android.os.Bundle;
 import android.view.View;
-
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -11,7 +10,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.gw.swipeback.SwipeBackLayout;
 import com.simon.harmonichackernews.utils.ThemeUtils;
-import com.simon.harmonichackernews.utils.Utils;
 
 public class AboutActivity extends AppCompatActivity {
 

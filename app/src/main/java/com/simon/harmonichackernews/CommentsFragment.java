@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews;
 
+import static android.content.Context.DOWNLOAD_SERVICE;
+import static androidx.webkit.WebViewFeature.isFeatureSupported;
+
 import android.annotation.SuppressLint;
 import android.app.DownloadManager;
 import android.content.ClipData;
@@ -104,9 +107,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import okhttp3.Call;
-
-import static android.content.Context.DOWNLOAD_SERVICE;
-import static androidx.webkit.WebViewFeature.isFeatureSupported;
 
 public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener {
 

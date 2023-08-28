@@ -2,20 +2,16 @@ package com.simon.harmonichackernews.network;
 
 import android.content.Context;
 import android.os.Handler;
-import android.util.Log;
 import android.widget.Toast;
 
 import androidx.core.util.Pair;
 import androidx.fragment.app.FragmentManager;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.StringRequest;
 import com.simon.harmonichackernews.utils.AccountUtils;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.util.Objects;
 
 import okhttp3.Call;

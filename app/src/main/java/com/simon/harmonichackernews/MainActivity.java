@@ -3,22 +3,16 @@ package com.simon.harmonichackernews;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
-
 import android.net.Uri;
 import android.os.Bundle;
-
 import android.text.Html;
-import android.view.View;
 import android.view.ViewGroup;
-
 import android.widget.LinearLayout;
-import android.window.OnBackInvokedCallback;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
