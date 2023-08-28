@@ -399,6 +399,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         if (adapter != null) {
             adapter.navbarHeight = navbarHeight;
+            adapter.notifyItemChanged(0);
         }
     }
 

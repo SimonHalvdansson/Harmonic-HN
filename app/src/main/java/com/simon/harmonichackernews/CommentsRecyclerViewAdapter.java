@@ -553,88 +553,30 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 
-            retryButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    retryListener.onRetry();
-                }
-            });
+            retryButton.setOnClickListener((v) -> retryListener.onRetry());
 
             serverErrorSwitchApiButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     //This switches off the algolia API
                     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(view.getContext());
-                    prefs.edit().putBoolean("pref_algolia_api", false).commit();
+                    prefs.edit().putBoolean("pref_algolia_api", false).apply();
 
                     Toast.makeText(view.getContext(), "Deactivated Algolia API, this can be switch back in the settings. Try reloading", Toast.LENGTH_LONG).show();
                 }
             });
 
-            userLayout.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_USER, null);
-                }
-            });
+            userLayout.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_USER, null));
+            commentLayout.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_COMMENT, null));
+            voteLayout.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_VOTE, view));
+            shareLayout.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_SHARE, view));
+            moreLayout.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_MORE, view));
+            sheetBackButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_BACK, view));
+            sheetRefreshButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_REFRESH, view));
+            sheetExpandButton.setOnClickListener((v) ->headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_EXPAND, view));
+            sheetInvertButton.setOnClickListener((v) ->headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_INVERT, view));
 
-            commentLayout.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_COMMENT, null);
-                }
-            });
-
-            voteLayout.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_VOTE, view);
-                }
-            });
-
-            shareLayout.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_SHARE, view);
-                }
-            });
-
-            moreLayout.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_MORE, view);
-                }
-            });
-
-            sheetBackButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_BACK, view);
-                }
-            });
-
-            sheetRefreshButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_REFRESH, view);
-                }
-            });
-
-            sheetExpandButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_EXPAND, view);
-                }
-            });
-
-            sheetInvertButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_INVERT, view);
-                }
-            });
-
-	    TooltipCompat.setTooltipText(sheetBackButton, "Back");
+	        TooltipCompat.setTooltipText(sheetBackButton, "Back");
             TooltipCompat.setTooltipText(sheetRefreshButton, "Refresh");
             TooltipCompat.setTooltipText(sheetExpandButton, "Expand");
             TooltipCompat.setTooltipText(sheetInvertButton, "Invert colors");
@@ -660,7 +602,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
                 @Override
                 public void onStateChanged(@NonNull View bottomSheet, int newState) {
-
                 }
 
                 @Override
