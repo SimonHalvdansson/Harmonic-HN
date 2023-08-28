@@ -41,6 +41,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.utils.ViewUtils;
 
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 
@@ -133,6 +134,7 @@ public class ComposeActivity extends AppCompatActivity {
                 return windowInsets;
             }
         });
+        ViewUtils.requestApplyInsetsWhenAttached(container);
 
         ViewCompat.setWindowInsetsAnimationCallback(
                 bottomContainer,

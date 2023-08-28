@@ -87,6 +87,7 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ShareUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.utils.ViewUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -282,7 +283,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         swipeRefreshLayout.setOnRefreshListener(this::refreshComments);
-        Utils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
+        ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
         // this is how much the bottom sheet sticks up by default and also decides height of webview
         //We want to watch for navigation bar height changes (tablets on Android 12L can cause
@@ -298,10 +299,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 return windowInsets;
             }
         });
+        ViewUtils.requestApplyInsetsWhenAttached(view);
 
-        updateBottomSheetMargin(Utils.getNavigationBarHeight(getResources()));
-
-        webViewContainer.setPadding(0, Utils.getStatusBarHeight(getResources()), 0, 0);
+        webViewContainer.setPadding(0, ViewUtils.getStatusBarHeight(getResources()), 0, 0);
 
         if (!showWebsite) {
             BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
@@ -347,6 +347,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 return windowInsets;
             }
         });
+        ViewUtils.requestApplyInsetsWhenAttached(scrollNavigation);
 
         showNavButtons = SettingsUtils.shouldShowNavigationButtons(getContext());
         updateNavigationVisibility();
@@ -546,8 +547,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             recyclerView.setItemAnimator(null);
         }
 
-        recyclerView.setPadding(0,0,0, Utils.getNavigationBarHeight(getResources()) + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard));
-
         ViewCompat.setOnApplyWindowInsetsListener(recyclerView, new OnApplyWindowInsetsListener() {
             @NonNull
             @Override
@@ -559,6 +558,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 return windowInsets;
             }
         });
+        ViewUtils.requestApplyInsetsWhenAttached(recyclerView);
 
         recyclerView.setAdapter(adapter);
 

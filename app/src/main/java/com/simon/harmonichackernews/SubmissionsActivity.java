@@ -27,6 +27,7 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.SplitChangeHandler;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.utils.ViewUtils;
 
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONException;
@@ -76,7 +77,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         swipeRefreshLayout.setBackgroundResource(ThemeUtils.getBackgroundColorResource(this));
 
         swipeRefreshLayout.setOnRefreshListener(this::loadSubmissions);
-        Utils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
+        ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
         RecyclerView recyclerView = findViewById(R.id.submissions_recyclerview);
 
