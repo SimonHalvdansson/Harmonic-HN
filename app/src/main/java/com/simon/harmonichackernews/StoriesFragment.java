@@ -592,6 +592,7 @@ public class StoriesFragment extends Fragment {
 
     private void search(String query, boolean relevance, String age) {
         lastSearch = query;
+        adapter.lastSearch = query;
         lastSearchRelevance = relevance;
         lastSearchAge = age;
 
