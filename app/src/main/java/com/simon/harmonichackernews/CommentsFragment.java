@@ -1410,15 +1410,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (mRandomAccessFile == null) {
                     mRandomAccessFile = new RandomAccessFile(mFile, "r");
                 }
-                if (mRandomAccessFile != null) {
-                    final int bufferSize = (int)(end - begin);
-                    byte[] data = new byte[bufferSize];
-                    mRandomAccessFile.seek(begin);
-                    mRandomAccessFile.read(data);
-                    return Base64.encodeToString(data, Base64.DEFAULT);
-                } else {
-                    return "";
-                }
+                final int bufferSize = (int) (end - begin);
+                byte[] data = new byte[bufferSize];
+                mRandomAccessFile.seek(begin);
+                mRandomAccessFile.read(data);
+                return Base64.encodeToString(data, Base64.DEFAULT);
             } catch (IOException e) {
                 Log.e("Exception", e.toString());
                 return "";
