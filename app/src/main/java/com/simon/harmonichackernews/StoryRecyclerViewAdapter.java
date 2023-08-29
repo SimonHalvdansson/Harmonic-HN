@@ -582,10 +582,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         storiesSearchListener = searchListener;
     }
 
-
     public interface SearchListener {
         void onQueryTextSubmit(String query, boolean relevance, String age);
-
         void onSearchStatusChanged();
     }
 
