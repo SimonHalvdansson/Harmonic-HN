@@ -53,7 +53,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private ClickListener commentStoryClickListener;
     private SearchListener storiesSearchListener;
     private RefreshListener refreshListener;
-    private RefreshEnabler refreshEnabler;
     private View.OnClickListener moreClickListener;
     private final boolean atSubmissions;
     private final String submitter;
@@ -451,7 +450,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 @Override
                 public void onClick(View view) {
                     searching = !searching;
-                    refreshEnabler.enable(!searching);
                     storiesSearchListener.onSearchStatusChanged();
 
                     InputMethodManager imm = (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -487,7 +485,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storiesSearchListener.onQueryTextSubmit(searchEditText.getText().toString(), popRecAuto.getText().equals("Popularity"), timeScaleAuto.getText().toString());
         }
     }
-
 
 
     public class SubmissionsHeaderViewHolder extends RecyclerView.ViewHolder {
@@ -585,9 +582,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         storiesSearchListener = searchListener;
     }
 
-    public void setRefreshEnabler(RefreshEnabler refreshEnabler) {
-        this.refreshEnabler = refreshEnabler;
-    }
 
     public interface SearchListener {
         void onQueryTextSubmit(String query, boolean relevance, String age);
@@ -597,9 +591,5 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     public interface RefreshListener {
         void onRefresh();
-    }
-
-    public interface RefreshEnabler {
-        void enable(boolean enabled);
     }
 }

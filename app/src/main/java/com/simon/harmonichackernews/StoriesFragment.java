@@ -244,12 +244,6 @@ public class StoriesFragment extends Fragment {
                 attemptRefresh();
             }
         });
-        adapter.setRefreshEnabler(new StoryRecyclerViewAdapter.RefreshEnabler() {
-            @Override
-            public void enable(boolean enabled) {
-                swipeRefreshLayout.setEnabled(enabled);
-            }
-        });
 
         adapter.setSearchListener(new StoryRecyclerViewAdapter.SearchListener() {
             @Override
@@ -572,6 +566,8 @@ public class StoriesFragment extends Fragment {
         if (getActivity() != null && getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).backPressedCallback.setEnabled(adapter.searching);
         }
+
+        swipeRefreshLayout.setEnabled(!adapter.searching)
 
         if (adapter.searching) {
             //cancel all ongoing
