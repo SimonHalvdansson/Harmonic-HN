@@ -178,7 +178,6 @@
             app:title="Show expand button in bottom sheet"    />
 
         <SwitchPreferenceCompat
-            app:isPreferenceVisible="false"
             app:singleLineTitle="false"
             app:key="pref_webview_device_back"
             app:defaultValue="false"

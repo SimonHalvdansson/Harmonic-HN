@@ -54,17 +54,7 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
 
         disableSwipeAtWeb = SettingsUtils.shouldDisableWebviewSwipeBack(getApplicationContext());
         disableSwipeAtComments = SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext());
-
-        OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                finish();
-                overridePendingTransition(0, R.anim.activity_out_animation);
-            }
-        };
-        getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
     }
-
 
     @Override
     public void onSwitchView(boolean isAtWebView) {

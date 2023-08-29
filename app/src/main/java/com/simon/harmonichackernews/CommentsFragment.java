@@ -46,6 +46,7 @@ import android.widget.ListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -282,6 +283,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
 
+        OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (SettingsUtils.shouldUseWebViewDeviceBack(getContext()) && webView.canGoBack()) {
+                    webView.goBack();
+                    return;
+                }
+                requireActivity().finish();
+                requireActivity().overridePendingTransition(0, R.anim.activity_out_animation);
+            }
+        };
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), backPressedCallback);
+
         swipeRefreshLayout.setOnRefreshListener(this::refreshComments);
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
@@ -430,7 +444,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 isFeatureSupported(WebViewFeature.FORCE_DARK) || WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING),
                 SettingsUtils.shouldShowTopLevelDepthIndicator(getContext()),
                 SettingsUtils.shouldShowWebviewExpandButton(getContext()),
-                SettingsUtils.shouldUseWebViewDeviceBack(getContext()),
                 ThemeUtils.isDarkMode(getContext()));
 
         adapter.setOnHeaderClickListener(story1 -> {
@@ -476,7 +489,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_BACK:
-                        if (webView.canGoBack() && !adapter.webViewDeviceBack) {
+                        if (webView.canGoBack() && !SettingsUtils.shouldUseWebViewDeviceBack(getContext())) {
                             if (downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
                                 webView.setVisibility(View.VISIBLE);
                                 downloadButton.setVisibility(View.GONE);
@@ -782,11 +795,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             if (adapter.showExpand != SettingsUtils.shouldShowWebviewExpandButton(ctx)) {
                 adapter.showExpand = SettingsUtils.shouldShowWebviewExpandButton(ctx);
-                updateHeader = true;
-            }
-
-            if (adapter.webViewDeviceBack != SettingsUtils.shouldUseWebViewDeviceBack(ctx)) {
-                adapter.webViewDeviceBack = SettingsUtils.shouldUseWebViewDeviceBack(ctx);
                 updateHeader = true;
             }
 
