@@ -829,7 +829,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         webViewContainer.removeAllViews();
         webView.clearHistory();
         webView.clearCache(true);
-        webView.loadUrl("about:blank");
         webView.onPause();
         webView.removeAllViews();
         webView.destroyDrawingCache();
