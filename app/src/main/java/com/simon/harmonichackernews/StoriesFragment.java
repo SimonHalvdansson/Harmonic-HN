@@ -567,7 +567,7 @@ public class StoriesFragment extends Fragment {
             ((MainActivity) getActivity()).backPressedCallback.setEnabled(adapter.searching);
         }
 
-        swipeRefreshLayout.setEnabled(!adapter.searching)
+        swipeRefreshLayout.setEnabled(!adapter.searching);
 
         if (adapter.searching) {
             //cancel all ongoing
@@ -655,7 +655,6 @@ public class StoriesFragment extends Fragment {
         if (adapter.searching) {
             adapter.searching = false;
             adapter.lastSearch = "";
-            swipeRefreshLayout.setEnabled(true);
             updateSearchStatus();
             return true;
         }
