@@ -464,6 +464,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         adapter.setOnHeaderActionClickListener(new CommentsRecyclerViewAdapter.HeaderActionClickListener() {
             @Override
+            @SuppressWarnings("deprecation")
             public void onActionClicked(int flag, View clickedView) {
                 switch (flag) {
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_USER:
@@ -579,6 +580,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
 
     @SuppressLint({"RequiresFeature", "SetJavaScriptEnabled"})
+    @SuppressWarnings("deprecation")
     private void initializeWebView() {
         initializedWebView = true;
         BottomSheetBehavior.from(bottomSheet).setDraggable(true);
@@ -730,7 +732,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     request.allowScanningByMediaScanner();
                     request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
                     request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, URLUtil.guessFileName(url, contentDisposition, mimetype));
-                    DownloadManager dm = (DownloadManager) getContext().getSystemService(DOWNLOAD_SERVICE);
+                    DownloadManager dm = (DownloadManager) view.getContext().getSystemService(DOWNLOAD_SERVICE);
                     dm.enqueue(request);
                     Toast.makeText(getContext(), "Downloading...", Toast.LENGTH_LONG).show();
                 } catch (Exception e) {
@@ -755,7 +757,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         if (adapter != null) {
-            Context ctx = getContext();
+            Context ctx = requireContext();
             boolean updateHeader = false;
             boolean updateComments = false;
 
@@ -848,12 +850,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (recyclerView != null) {
             recyclerView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
                 @Override
-                public void onViewAttachedToWindow(View v) {
+                public void onViewAttachedToWindow(@NonNull View v) {
                     // no-op
                 }
 
                 @Override
-                public void onViewDetachedFromWindow(View v) {
+                public void onViewDetachedFromWindow(@NonNull View v) {
                     recyclerView.setAdapter(null);
                 }
             });
