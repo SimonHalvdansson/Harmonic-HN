@@ -110,7 +110,13 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml("<b>Version 1.9.5:</b><br>" +
+                .setMessage(Html.fromHtml("<b>Version 1.9.6:</b><br>" +
+                        "- Increased stability of WebView (thanks AppearamidGuy and flofriday)<br>" +
+                        "- Added option to use device back button for WebView<br>" +
+                        "- Fixed a tablet bottom sheet layout bug<br>" +
+                        "- Minor search bar behavior changes<br>" +
+                        "<br>" +
+                        "<b>Version 1.9.5:</b><br>" +
                         "- Fixed comment navigation buttons always visible<br>" +
                         "<br>" +
                         "<b>Version 1.9.4:</b><br>" +

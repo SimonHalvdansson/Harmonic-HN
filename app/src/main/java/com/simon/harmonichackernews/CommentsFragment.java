@@ -124,10 +124,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_TEXT = "com.simon.harmonichackernews.EXTRA_TEXT";
     public final static String EXTRA_IS_LINK = "com.simon.harmonichackernews.EXTRA_IS_LINK";
     public final static String EXTRA_IS_COMMENT = "com.simon.harmonichackernews.EXTRA_IS_COMMENT";
-
     public final static String EXTRA_FORWARD = "com.simon.harmonichackernews.EXTRA_FORWARD";
     public final static String EXTRA_SHOW_WEBSITE = "com.simon.harmonichackernews.EXTRA_SHOW_WEBSITE";
-
     private final static String PDF_MIME_TYPE = "application/pdf";
     private final static String PDF_LOADER_URL = "file:///android_asset/pdf/index.html";
 
