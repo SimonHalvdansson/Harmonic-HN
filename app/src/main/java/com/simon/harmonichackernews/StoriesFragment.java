@@ -4,7 +4,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -505,7 +504,7 @@ public class StoriesFragment extends Fragment {
                 Story s = new Story("Loading...", bookmarks.get(i).id, false, false);
 
                 stories.add(s);
-                adapter.notifyItemInserted( i + 1);
+                adapter.notifyItemInserted(i + 1);
                 if (i < 20) {
                     loadStory(stories.get(i + 1), 0);
                 }
@@ -526,7 +525,7 @@ public class StoriesFragment extends Fragment {
 
                         loadedTo = 0;
 
-                        adapter.notifyItemRangeRemoved(1, stories.size()+1);
+                        adapter.notifyItemRangeRemoved(1, stories.size() + 1);
 
                         stories.clear();
                         stories.add(new Story());
@@ -542,7 +541,7 @@ public class StoriesFragment extends Fragment {
                             }
 
                             stories.add(s);
-                            adapter.notifyItemInserted(1+i);
+                            adapter.notifyItemInserted(1 + i);
                         }
 
                         adapter.loadingFailed = false;
@@ -567,6 +566,8 @@ public class StoriesFragment extends Fragment {
         if (getActivity() != null && getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).backPressedCallback.setEnabled(adapter.searching);
         }
+
+        swipeRefreshLayout.setEnabled(!adapter.searching);
 
         if (adapter.searching) {
             //cancel all ongoing
@@ -601,6 +602,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void loadAlgolia(String url, boolean markClicked) {
+        swipeRefreshLayout.setEnabled(true);
         swipeRefreshLayout.setRefreshing(true);
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
@@ -662,7 +664,7 @@ public class StoriesFragment extends Fragment {
     private void hideUpdateButton() {
         if (updateContainer.getVisibility() == View.VISIBLE) {
 
-            float endYPosition = getResources().getDisplayMetrics().heightPixels-updateContainer.getY() + updateContainer.getHeight() + ViewUtils.getNavigationBarHeight(getResources());
+            float endYPosition = getResources().getDisplayMetrics().heightPixels - updateContainer.getY() + updateContainer.getHeight() + ViewUtils.getNavigationBarHeight(getResources());
             PathInterpolator pathInterpolator = new PathInterpolator(0.3f, 0f, 0.8f, 0.15f);
 
             ObjectAnimator yAnimator = ObjectAnimator.ofFloat(updateContainer, "translationY", endYPosition);

@@ -487,7 +487,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
 
-
     public class SubmissionsHeaderViewHolder extends RecyclerView.ViewHolder {
 
         public final TextView headerText;
