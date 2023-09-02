@@ -306,12 +306,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
                 updateBottomSheetMargin(insets.bottom);
 
+                webViewContainer.setPadding(0, insets.top, 0, 0);
                 return windowInsets;
             }
         });
         ViewUtils.requestApplyInsetsWhenAttached(view);
-
-        webViewContainer.setPadding(0, ViewUtils.getStatusBarHeight(getResources()), 0, 0);
 
         if (!showWebsite) {
             BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
