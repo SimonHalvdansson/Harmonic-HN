@@ -544,13 +544,31 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             recyclerView.setItemAnimator(null);
         }
 
+        BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+            @Override
+            public void onStateChanged(@NonNull View view, int newState) {
+            }
+
+            @Override
+            public void onSlide(@NonNull View view, float slideOffset) {
+                // Updating padding doesn't work because it causes incorrect scroll position for recycler.
+                // Updating scroll together with padding causes severe lags and other problems.
+                // So don't update padding at all on slide and instead just change whole view position
+                recyclerView.setTranslationY(-recyclerView.getPaddingTop() * (1 - slideOffset));
+            }
+        });
+
         ViewCompat.setOnApplyWindowInsetsListener(recyclerView, new OnApplyWindowInsetsListener() {
             @NonNull
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
 
-                recyclerView.setPadding(0,0,0, insets.bottom + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard));
+                float offset = BottomSheetBehavior.from(bottomSheet).calculateSlideOffset();
+                recyclerView.setTranslationY(insets.top * (1 - offset));
+
+                int paddingBottom = insets.bottom + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard);
+                recyclerView.setPadding(recyclerView.getPaddingLeft(), insets.top, recyclerView.getPaddingRight(), paddingBottom);
 
                 return windowInsets;
             }
