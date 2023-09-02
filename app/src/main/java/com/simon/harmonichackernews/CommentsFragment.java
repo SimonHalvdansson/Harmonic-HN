@@ -678,6 +678,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void loadUrl(String url, @Nullable String pdfFilePath) {
+        if (webView == null) {
+            return;
+        }
         if (url.equals(PDF_LOADER_URL)) {
             PdfAndroidJavascriptBridge pdfAndroidJavascriptBridge = new PdfAndroidJavascriptBridge(pdfFilePath, new PdfAndroidJavascriptBridge.Callbacks() {
                 @Override
