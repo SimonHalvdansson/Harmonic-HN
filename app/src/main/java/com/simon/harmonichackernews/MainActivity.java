@@ -110,7 +110,9 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml("<b>Version 1.9.6:</b><br>" +
+                .setMessage(Html.fromHtml("<b>Version 1.9.7:</b><br>" +
+                        "- Added option to hide clicked posts<br>" +
+                        "<b>Version 1.9.6:</b><br>" +
                         "- Increased stability of WebView (thanks AppearamidGuy and flofriday)<br>" +
                         "- Added option to use device back button for WebView<br>" +
                         "- Fixed a tablet bottom sheet layout bug<br>" +
