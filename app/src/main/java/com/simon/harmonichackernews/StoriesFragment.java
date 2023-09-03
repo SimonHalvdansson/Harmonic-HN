@@ -50,6 +50,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -66,7 +67,7 @@ public class StoriesFragment extends Fragment {
     private LinearLayoutManager linearLayoutManager;
     private Set<Integer> clickedIds;
     private ArrayList<String> filterWords;
-    private boolean hideJobs, alwaysOpenComments;
+    private boolean hideJobs, alwaysOpenComments, hideClicked;
     private String lastSearch;
     private boolean lastSearchRelevance;
     private String lastSearchAge;
@@ -233,9 +234,7 @@ public class StoriesFragment extends Fragment {
         });
 
         adapter.setOnCommentClickListener(this::clickedComments);
-
         adapter.setOnRefreshListener(this::attemptRefresh);
-
         adapter.setOnMoreClickListener(this::moreClick);
 
         adapter.setOnTypeClickListener(index -> {
@@ -273,6 +272,7 @@ public class StoriesFragment extends Fragment {
 
         filterWords = Utils.getFilterWords(getContext());
         hideJobs = SettingsUtils.shouldHideJobs(getContext());
+        hideClicked = SettingsUtils.shouldHideClicked(getContext());
         alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(getContext());
 
         long timeDiff = System.currentTimeMillis() - lastLoaded;
@@ -516,7 +516,7 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
-        // Request a string response from the provided URL.
+        // if none of the above, do a normal loading
         StringRequest stringRequest = new StringRequest(Request.Method.GET, hnUrls[currentType == 0 ? 0 : currentType - 3],
                 response -> {
                     swipeRefreshLayout.setRefreshing(false);
@@ -532,6 +532,10 @@ public class StoriesFragment extends Fragment {
 
                         for (int i = 0; i < jsonArray.length(); i++) {
                             int id = Integer.parseInt(jsonArray.get(i).toString());
+                            if (hideClicked && clickedIds.contains(id)) {
+                                continue;
+                            }
+
                             Story s = new Story("Loading...", id, false, clickedIds.contains(id));
                             //let's try to fill this with old information if possible
 
@@ -617,9 +621,13 @@ public class StoriesFragment extends Fragment {
 
                         stories.addAll(JSONParser.algoliaJsonToStories(response));
 
-                        if (markClicked) {
-                            for (Story s : stories) {
-                                s.clicked = clickedIds.contains(s.id);
+                        Iterator<Story> iterator = stories.iterator();
+                        while (iterator.hasNext()) {
+                            Story story = iterator.next();
+                            story.clicked = clickedIds.contains(story.id);
+
+                            if (hideClicked && story.clicked) {
+                                iterator.remove();
                             }
                         }
 

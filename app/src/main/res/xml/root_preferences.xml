@@ -295,6 +295,14 @@
             app:summary="Includes &quot;Who is hiring&quot; posts"
             app:title="Hide job posts"    />
 
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_hide_clicked"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_hide"
+            app:summary="Applies on refresh"
+            app:title="Hide clicked posts"    />
+
         <Preference
             app:singleLineTitle="false"
             app:key="pref_export_bookmarks"
