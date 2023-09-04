@@ -22,6 +22,6 @@ jobs:
       - uses: softprops/action-gh-release@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          files: ./app/build/outputs/apk/*.apk
+          files: app/build/outputs/apk/release/app-release-unsigned.apk
           draft: false
           prerelease: false
