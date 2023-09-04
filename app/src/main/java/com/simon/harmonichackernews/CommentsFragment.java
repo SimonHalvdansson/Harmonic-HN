@@ -564,7 +564,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
 
                 float offset = BottomSheetBehavior.from(bottomSheet).calculateSlideOffset();
-                recyclerView.setTranslationY(insets.top * (1 - offset));
+                recyclerView.setTranslationY(-insets.top * (1 - offset));
 
                 int paddingBottom = insets.bottom + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard);
                 recyclerView.setPadding(recyclerView.getPaddingLeft(), insets.top, recyclerView.getPaddingRight(), paddingBottom);
