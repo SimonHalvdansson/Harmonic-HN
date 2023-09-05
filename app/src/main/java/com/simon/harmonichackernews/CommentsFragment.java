@@ -440,6 +440,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 // + 1 since if we have 1 subcomment we have changed the parent and the child
                 adapter.notifyItemRangeChanged(index, lastChildIndex - index + 1);
             }
+
+            //next couple of lines makes it so that if we hide parents and click the comment at
+            //the top of the screen, we scroll down to the next comment automatically
+            LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+
+            //this is only applicable if we're hiding a comment
+            if (layoutManager != null && !comment.expanded && adapter.collapseParent) {
+                int firstVisible = layoutManager.findFirstVisibleItemPosition();
+                int clickedIndex = comments.indexOf(comment);
+
+                //if we clicked the top one and the new top level comment exists
+                if (clickedIndex == firstVisible && comments.size() > lastChildIndex + 1) {
+                    recyclerView.smoothScrollToPosition(lastChildIndex + 1);
+                }
+            }
         });
 
         adapter.setOnCommentLongClickListener(this);
