@@ -999,6 +999,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 initializeRecyclerView();
             }
 
+            if (SettingsUtils.shouldCollapseTopLevel(getContext())) {
+                for (Comment c : comments) {
+                    if (c.depth == 0) {
+                        c.expanded = false;
+                    }
+                }
+            }
+
             adapter.loadingFailed = false;
 
             //Seems like loading went well, lets cache the result

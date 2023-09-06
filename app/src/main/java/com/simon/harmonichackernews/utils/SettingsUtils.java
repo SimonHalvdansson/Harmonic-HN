@@ -93,6 +93,10 @@ public class SettingsUtils {
         return getBooleanPref("pref_hide_jobs", false, ctx);
     }
 
+    public static boolean shouldCollapseTopLevel(Context ctx) {
+        return getBooleanPref("pref_collapse_top_level", false, ctx);
+    }
+
     public static int getPreferredHotness(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return Integer.parseInt(prefs.getString("pref_hotness", "-1"));

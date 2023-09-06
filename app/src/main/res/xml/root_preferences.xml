@@ -223,6 +223,13 @@
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
+            android:defaultValue="false"
+            app:key="pref_collapse_top_level"
+            app:icon="@drawable/ic_action_minimize"
+            app:title="Auto-collapse top level comments"    />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
             app:key="pref_scroll_navigation"
             app:icon="@drawable/ic_action_explore"
             app:title="Show navigation buttons"
