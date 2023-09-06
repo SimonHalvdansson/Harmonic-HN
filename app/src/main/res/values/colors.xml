@@ -26,7 +26,7 @@
     <color name="darkStoryColorDisabled">#99a</color>
     <color name="darkTextColorHighlighted">#ccc</color>
     <color name="darkTextColorDefault">#bbc</color>
-    <color name="darkTextColorDisabled">#aab</color>
+    <color name="darkTextColorDisabled">#889</color>
     <color name="darkDividerColor">#22eeeeff</color>
     <color name="darkDrawableColor">#fff</color>
     <color name="darkOpCommentColor">#fff08c</color>
@@ -36,7 +36,7 @@
     <color name="lightStoryColorDisabled">#777</color>
     <color name="lightTextColorHighlighted">#3a3a3a</color>
     <color name="lightTextColorDefault">#4a4a4a</color>
-    <color name="lightTextColorDisabled">#666</color>
+    <color name="lightTextColorDisabled">#888</color>
     <color name="lightDividerColor">#aaa</color>
     <color name="lightDrawableColor">#bb000000</color>
     <color name="lightOpCommentColor">#356858</color>
