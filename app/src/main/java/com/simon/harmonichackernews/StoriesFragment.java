@@ -3,9 +3,12 @@ package com.simon.harmonichackernews;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -82,6 +85,8 @@ public class StoriesFragment extends Fragment {
     long lastClick = 0;
     private final static long CLICK_INTERVAL = 350;
 
+    private int topInset = 0;
+
     public StoriesFragment() {
         super(R.layout.fragment_stories);
     }
@@ -122,6 +127,8 @@ public class StoriesFragment extends Fragment {
                 CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) updateContainer.getLayoutParams();
                 params.bottomMargin = insets.bottom + Utils.pxFromDpInt(getResources(), 8);
                 updateContainer.setLayoutParams(params);
+
+                topInset = insets.top;
 
                 return windowInsets;
             }
@@ -254,6 +261,50 @@ public class StoriesFragment extends Fragment {
             @Override
             public void onSearchStatusChanged() {
                 updateSearchStatus();
+            }
+        });
+
+        adapter.setOnLongClickListener(new StoryRecyclerViewAdapter.LongClickCoordinateListener() {
+            @Override
+            public boolean onLongClick(View v, int position, int x, int y) {
+                Context context = v.getContext();
+
+                PopupMenu popupMenu = new PopupMenu(context, v);
+
+                Story story = stories.get(position);
+                boolean oldClicked = story.clicked;
+
+                popupMenu.getMenu().add(oldClicked ? "Mark as unread" : "Mark as read").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        story.clicked = !oldClicked;
+                        if (oldClicked) {
+                            clickedIds.remove(story.id);
+                        } else {
+                            clickedIds.add(story.id);
+                        }
+
+                        adapter.notifyItemChanged(position);
+                        return true;
+                    }
+                });
+
+                try {
+                    // Reflection code to force show the popup at x,y position
+                    java.lang.reflect.Field fieldPopup = popupMenu.getClass().getDeclaredField("mPopup");
+                    fieldPopup.setAccessible(true);
+                    Object menuPopupHelper = fieldPopup.get(popupMenu);
+
+                    int targetX = x - Utils.pxFromDpInt(getResources(), 56);
+                    int targetY = y - topInset - Utils.pxFromDpInt(getResources(), 20);
+
+                    menuPopupHelper.getClass().getDeclaredMethod("show", int.class, int.class).invoke(menuPopupHelper, targetX, targetY);
+                } catch (Exception e) {
+                    // In case reflection fails, show the popup the usual way
+                    popupMenu.show();
+                }
+
+                return false;
             }
         });
     }

@@ -9,6 +9,7 @@ import android.text.style.ImageSpan;
 import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
@@ -54,6 +55,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private SearchListener storiesSearchListener;
     private RefreshListener refreshListener;
     private View.OnClickListener moreClickListener;
+    private LongClickCoordinateListener longClickListener;
     private final boolean atSubmissions;
     private final String submitter;
 
@@ -332,8 +334,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final ImageView metaFavicon;
         public final TextView indexTextView;
 
+        private int touchX, touchY;
+
         public Story story;
 
+        @SuppressLint("ClickableViewAccessibility")
         public StoryViewHolder(View view) {
             super(view);
             mView = view;
@@ -349,8 +354,21 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             metaFavicon = view.findViewById(R.id.story_meta_favicon);
             indexTextView = view.findViewById(R.id.story_index);
 
-            linkLayoutView.setOnClickListener(view1 -> linkClickListener.onItemClick(getAbsoluteAdapterPosition()));
-            commentLayoutView.setOnClickListener(view12 -> commentClickListener.onItemClick(getAbsoluteAdapterPosition()));
+            linkLayoutView.setOnClickListener(v -> linkClickListener.onItemClick(getAbsoluteAdapterPosition()));
+            commentLayoutView.setOnClickListener(v -> commentClickListener.onItemClick(getAbsoluteAdapterPosition()));
+
+            if (longClickListener != null) {
+                linkLayoutView.setOnTouchListener(new View.OnTouchListener() {
+                    @Override
+                    public boolean onTouch(View v, MotionEvent event) {
+                        touchX = (int) event.getX();
+                        touchY = (int) event.getY();
+                        return false;
+                    }
+                });
+            }
+
+            linkLayoutView.setOnLongClickListener(v -> longClickListener.onLongClick(v, getAbsoluteAdapterPosition(), touchX, touchY));
         }
     }
 
@@ -393,8 +411,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             popRecAuto = view.findViewById(R.id.search_dropdown_popularity_recent_textview);
             timeScaleAuto = view.findViewById(R.id.search_dropdown_timescale_textview);
 
-            ArrayAdapter searchPopRecAdapter = new ArrayAdapter<>(ctx, R.layout.search_option_list_item, ctx.getResources().getStringArray(R.array.search_sorting_options));
-            ArrayAdapter searchTimescaleAdapter = new ArrayAdapter<>(ctx, R.layout.search_option_list_item, ctx.getResources().getStringArray(R.array.search_sorting_timescale));
+            ArrayAdapter<String> searchPopRecAdapter = new ArrayAdapter<>(ctx, R.layout.search_option_list_item, ctx.getResources().getStringArray(R.array.search_sorting_options));
+            ArrayAdapter<String> searchTimescaleAdapter = new ArrayAdapter<>(ctx, R.layout.search_option_list_item, ctx.getResources().getStringArray(R.array.search_sorting_timescale));
 
             popRecAuto.setText(ctx.getResources().getStringArray(R.array.search_sorting_options)[0], false);
             timeScaleAuto.setText(ctx.getResources().getStringArray(R.array.search_sorting_timescale)[0], false);
@@ -420,12 +438,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
             });
 
-            retryButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    refreshListener.onRefresh();
-                }
-            });
+            retryButton.setOnClickListener( (v) -> refreshListener.onRefresh());
 
             moreButton.setOnClickListener(moreClickListener);
 
@@ -441,7 +454,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         }
                         return true;
                     }
-
                     return false;
                 }
             });
@@ -487,7 +499,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
 
-    public class SubmissionsHeaderViewHolder extends RecyclerView.ViewHolder {
+    public static class SubmissionsHeaderViewHolder extends RecyclerView.ViewHolder {
 
         public final TextView headerText;
 
@@ -566,6 +578,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         commentRepliesClickListener = clickListener;
     }
 
+    public void setOnLongClickListener(LongClickCoordinateListener clickListener) {
+        longClickListener = clickListener;
+    }
+
     public void setOnRefreshListener(RefreshListener listener) {
         refreshListener = listener;
     }
@@ -590,4 +606,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public interface RefreshListener {
         void onRefresh();
     }
+
+    public interface LongClickCoordinateListener {
+        boolean onLongClick(View v, int position, int x, int y);
+    }
+
 }

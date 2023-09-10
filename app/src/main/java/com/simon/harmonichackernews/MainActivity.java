@@ -111,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml("<b>Version 1.9.7:</b><br>" +
+                        "- Posts can be marked as read/unread by long pressing and interacting with a small menu" +
                         "- Added option to hide clicked posts<br>" +
                         "- New scroll behavior when full collapsing comments<br>" +
                         "- Added option to collapse all top-level comments by default<br>" +
