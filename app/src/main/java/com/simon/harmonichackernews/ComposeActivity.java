@@ -121,7 +121,7 @@ public class ComposeActivity extends AppCompatActivity {
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
 
                 bottomContainer.setPadding(0, 0, 0, insets.bottom);
-                container.setPadding(0, insets.top, 0, 0);
+                container.setPadding(insets.left, insets.top, insets.right, 0);
 
                 return windowInsets;
             }
