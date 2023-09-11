@@ -282,7 +282,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                if (SettingsUtils.shouldUseWebViewDeviceBack(getContext()) && webView.canGoBack()) {
+                if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED &&
+                        SettingsUtils.shouldUseWebViewDeviceBack(getContext()) &&
+                        webView.canGoBack()) {
                     webView.goBack();
                     return;
                 }
