@@ -79,6 +79,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.transition.MaterialFadeThrough;
 import com.google.android.material.transition.MaterialSharedAxis;
 import com.simon.harmonichackernews.data.Comment;
+import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
@@ -105,6 +106,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 import okhttp3.Call;
@@ -137,6 +139,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private RecyclerView recyclerView;
     private RecyclerView recyclerViewSwipe;
     private RecyclerView recyclerViewRegular;
+    private LinearLayoutManager layoutManager;
     private LinearLayout scrollNavigation;
     private LinearProgressIndicator progressIndicator;
     private LinearLayout bottomSheet;
@@ -153,6 +156,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean blockAds = true;
     private boolean startedLoading = false;
     private boolean initializedWebView = false;
+
     private String username;
     private Story story;
 
@@ -309,6 +313,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 updateBottomSheetMargin(insets.bottom);
 
                 webViewContainer.setPadding(0, insets.top, 0, 0);
+
                 return windowInsets;
             }
         });
@@ -445,8 +450,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             //next couple of lines makes it so that if we hide parents and click the comment at
             //the top of the screen, we scroll down to the next comment automatically
-            LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-
             //this is only applicable if we're hiding a comment
             if (layoutManager != null && !comment.expanded && adapter.collapseParent) {
                 int firstVisible = layoutManager.findFirstVisibleItemPosition();
@@ -540,7 +543,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             recyclerView = recyclerViewSwipe;
         }
 
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        layoutManager = new LinearLayoutManager(getContext());
+
+        recyclerView.setLayoutManager(layoutManager);
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -589,6 +594,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                 int paddingBottom = insets.bottom + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard);
                 recyclerView.setPadding(recyclerView.getPaddingLeft(), insets.top, recyclerView.getPaddingRight(), paddingBottom);
+
 
                 return windowInsets;
             }
@@ -848,6 +854,62 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     @Override
+    public void onStop() {
+        super.onStop();
+
+        if (layoutManager != null) {
+            if (layoutManager.findFirstVisibleItemPosition() != RecyclerView.NO_POSITION) {
+                if (MainActivity.commentsScrollProgresses == null) {
+                    MainActivity.commentsScrollProgresses = new ArrayList<>();
+                }
+                //let's check all scrollProgresses in memory to see if we should change an active
+                //object
+                for (int i = 0; i < MainActivity.commentsScrollProgresses.size(); i++) {
+                    CommentsScrollProgress scrollProgress = MainActivity.commentsScrollProgresses.get(i);
+                    if (scrollProgress.storyId == story.id) {
+                        // if we find, overwrite the old thing and stop completely
+                        MainActivity.commentsScrollProgresses.set(i, recordScrollProgress());
+                        return;
+                    }
+                }
+
+                //if we didn't find anything, let's add it ourselves
+                MainActivity.commentsScrollProgresses.add(recordScrollProgress());
+            }
+        }
+    }
+
+    private CommentsScrollProgress recordScrollProgress() {
+        CommentsScrollProgress scrollProgress = new CommentsScrollProgress();
+
+        int lastScrollIndex = layoutManager.findFirstVisibleItemPosition();
+        scrollProgress.storyId = story.id;
+        scrollProgress.topCommentId = comments.get(lastScrollIndex).id;
+
+        scrollProgress.collapsedIDs = new HashSet<>();
+
+        for (Comment c : comments) {
+            if (!c.expanded) {
+                scrollProgress.collapsedIDs.add(c.id);
+            }
+        }
+
+        View firstVisibleItem = recyclerView.getChildAt(0);
+        scrollProgress.topCommentOffset = (firstVisibleItem == null) ? 0 : (firstVisibleItem.getTop() - recyclerView.getPaddingTop());
+
+        return scrollProgress;
+    }
+
+    private void restoreScrollProgress(CommentsScrollProgress scrollProgress) {
+        for (Comment c : comments) {
+            if (c.id == scrollProgress.topCommentId) {
+                layoutManager.scrollToPositionWithOffset(comments.indexOf(c), scrollProgress.topCommentOffset);
+            }
+            c.expanded = !scrollProgress.collapsedIDs.contains(c.id);
+        }
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
         if (queue != null) {
@@ -1014,6 +1076,18 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             //Seems like loading went well, lets cache the result
             if (cache) {
                 Utils.cacheStory(getContext(), id, response);
+            } else {
+                //if we're not caching the result, this means we just loaded an old cache.
+                //let's see if we can recover the scroll position.
+                if (MainActivity.commentsScrollProgresses != null && !MainActivity.commentsScrollProgresses.isEmpty()) {
+                    //we check all of the caches to see if one has the same story ID
+                    for (CommentsScrollProgress scrollProgress : MainActivity.commentsScrollProgresses) {
+                        if (scrollProgress.storyId == story.id) {
+                            //jackpot! Let's restore the state
+                            restoreScrollProgress(scrollProgress);
+                        }
+                    }
+                }
             }
 
         } catch (JSONException e) {
@@ -1137,14 +1211,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void scrollTop() {
-        LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-        if (layoutManager != null) {
-            recyclerView.smoothScrollToPosition(0);
-        }
+        recyclerView.smoothScrollToPosition(0);
     }
 
     private void scrollPrevious() {
-        LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
         if (layoutManager != null) {
             int firstVisible = layoutManager.findFirstVisibleItemPosition();
 
@@ -1161,7 +1231,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void scrollNext() {
-        LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
         if (layoutManager != null) {
             int firstVisible = layoutManager.findFirstVisibleItemPosition();
             int toScrollTo = firstVisible;
@@ -1186,7 +1255,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void scrollLast() {
-        LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
         if (layoutManager != null) {
             int firstVisible = layoutManager.findFirstVisibleItemPosition();
             int toScrollTo = firstVisible;
@@ -1408,7 +1476,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         void onSwitchView(boolean isAtWebView);
     }
 
-    static class PdfAndroidJavascriptBridge {
+    public static class PdfAndroidJavascriptBridge {
         private File mFile;
         private @Nullable
         RandomAccessFile mRandomAccessFile;

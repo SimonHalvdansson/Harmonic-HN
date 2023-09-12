@@ -16,12 +16,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
+import java.util.ArrayList;
+
 public class MainActivity extends AppCompatActivity implements StoriesFragment.StoryClickListener {
+
+    public static ArrayList<CommentsScrollProgress> commentsScrollProgresses = new ArrayList<>();
 
     int lastPosition = 0;
     public OnBackPressedCallback backPressedCallback;
