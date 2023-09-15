@@ -24,9 +24,8 @@ import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.simon.harmonichackernews.network.VolleyOkHttp3StackInterceptors;
+import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.Utils;
 
 import org.json.JSONArray;
@@ -62,7 +61,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         builder.setView(rootView);
         AlertDialog dialog = builder.create();
 
-        RequestQueue queue = Volley.newRequestQueue(requireContext(), new VolleyOkHttp3StackInterceptors());
+        RequestQueue queue = NetworkComponent.getRequestQueueInstance(requireContext());
 
         nameTextview = rootView.findViewById(R.id.user_name);
         metaTextview = rootView.findViewById(R.id.user_meta);

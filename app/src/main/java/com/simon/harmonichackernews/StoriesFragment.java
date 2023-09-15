@@ -36,11 +36,10 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
-import com.simon.harmonichackernews.network.VolleyOkHttp3StackInterceptors;
+import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -67,6 +66,7 @@ public class StoriesFragment extends Fragment {
     private StoryRecyclerViewAdapter adapter;
     private List<Story> stories;
     private RequestQueue queue;
+    private final Object requestTag = new Object();
     private LinearLayoutManager linearLayoutManager;
     private Set<Integer> clickedIds;
     private ArrayList<String> filterWords;
@@ -161,7 +161,7 @@ public class StoriesFragment extends Fragment {
             }
         });
 
-        queue = Volley.newRequestQueue(requireContext(), new VolleyOkHttp3StackInterceptors());
+        queue = NetworkComponent.getRequestQueueInstance(requireContext());
         stories.add(new Story());
         attemptRefresh();
 
@@ -393,8 +393,7 @@ public class StoriesFragment extends Fragment {
     public void onDestroy() {
         super.onDestroy();
         if (queue != null) {
-            queue.cancelAll(request -> true);
-            queue.stop();
+            queue.cancelAll(requestTag);
         }
     }
 
@@ -472,6 +471,7 @@ public class StoriesFragment extends Fragment {
             loadStory(story, attempt + 1);
         });
 
+        stringRequest.setTag(requestTag);
         queue.add(stringRequest);
     }
 
@@ -518,7 +518,7 @@ public class StoriesFragment extends Fragment {
         swipeRefreshLayout.setRefreshing(true);
 
         //cancel all ongoing
-        queue.cancelAll(request -> true);
+        queue.cancelAll(requestTag);
 
         adapter.type = currentType;
 
@@ -611,6 +611,7 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemChanged(0);
         });
 
+        stringRequest.setTag(requestTag);
         queue.add(stringRequest);
     }
 
@@ -626,7 +627,7 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.searching) {
             //cancel all ongoing
-            queue.cancelAll(request -> true);
+            queue.cancelAll(requestTag);
             swipeRefreshLayout.setRefreshing(false);
 
             adapter.notifyItemRangeRemoved(1, stories.size() + 1);
@@ -698,6 +699,7 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemChanged(0);
         });
 
+        stringRequest.setTag(requestTag);
         queue.add(stringRequest);
     }
 

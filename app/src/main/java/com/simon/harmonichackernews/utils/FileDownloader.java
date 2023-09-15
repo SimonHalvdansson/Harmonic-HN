@@ -8,12 +8,13 @@ import android.text.TextUtils;
 
 import androidx.annotation.WorkerThread;
 
+import com.simon.harmonichackernews.network.NetworkComponent;
+
 import java.io.File;
 import java.io.IOException;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okio.BufferedSink;
@@ -53,7 +54,7 @@ public class FileDownloader {
                 .addHeader("Content-Type", mimeType)
                 .build();
 
-        new OkHttpClient().newCall(request).enqueue(new Callback() {
+        NetworkComponent.getOkHttpClientInstance().newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 mMainHandler.post(() -> callback.onFailure(call, e));

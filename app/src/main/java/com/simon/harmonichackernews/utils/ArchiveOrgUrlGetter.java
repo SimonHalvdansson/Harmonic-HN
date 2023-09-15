@@ -4,9 +4,8 @@ import android.content.Context;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 
-import com.simon.harmonichackernews.network.VolleyOkHttp3StackInterceptors;
+import com.simon.harmonichackernews.network.NetworkComponent;
 
 import org.json.JSONObject;
 
@@ -38,7 +37,7 @@ public class ArchiveOrgUrlGetter {
 
         });
 
-        RequestQueue queue = Volley.newRequestQueue(ctx, new VolleyOkHttp3StackInterceptors());
+        RequestQueue queue = NetworkComponent.getRequestQueueInstance(ctx);
         queue.add(stringRequest);
 
     }

@@ -78,7 +78,7 @@ public class VolleyOkHttp3StackInterceptors extends BaseHttpStack {
 
     @Override
     public HttpResponse executeRequest(Request<?> request, Map<String, String> additionalHeaders) throws IOException, AuthFailureError {
-        OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
+        OkHttpClient.Builder clientBuilder = NetworkComponent.getOkHttpClientInstance().newBuilder();
         int timeoutMs = request.getTimeoutMs();
 
         clientBuilder.connectTimeout(timeoutMs, TimeUnit.MILLISECONDS);

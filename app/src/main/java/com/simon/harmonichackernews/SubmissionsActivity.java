@@ -15,11 +15,10 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.gw.swipeback.SwipeBackLayout;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
-import com.simon.harmonichackernews.network.VolleyOkHttp3StackInterceptors;
+import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.SplitChangeHandler;
 import com.simon.harmonichackernews.utils.ThemeUtils;
@@ -81,7 +80,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         //header
         submissions.add(new Story());
 
-        queue = Volley.newRequestQueue(this, new VolleyOkHttp3StackInterceptors());
+        queue = NetworkComponent.getRequestQueueInstance(this);
 
         linearLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(linearLayoutManager);
