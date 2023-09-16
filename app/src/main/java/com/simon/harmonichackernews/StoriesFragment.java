@@ -295,8 +295,10 @@ public class StoriesFragment extends Fragment {
                     fieldPopup.setAccessible(true);
                     Object menuPopupHelper = fieldPopup.get(popupMenu);
 
+                    //the reason for the -10 - height/3 thing is so match the popup location better
+                    //with the press location - for some reason this is necessary.
                     int targetX = x - Utils.pxFromDpInt(getResources(), 56);
-                    int targetY = y - topInset - Utils.pxFromDpInt(getResources(), 20);
+                    int targetY = y - topInset - Utils.pxFromDpInt(getResources(), 10) - v.getHeight()/3;
 
                     menuPopupHelper.getClass().getDeclaredMethod("show", int.class, int.class).invoke(menuPopupHelper, targetX, targetY);
                 } catch (Exception e) {
