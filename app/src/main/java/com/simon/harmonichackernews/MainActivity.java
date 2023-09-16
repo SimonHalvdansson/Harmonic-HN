@@ -3,13 +3,16 @@ package com.simon.harmonichackernews;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Html;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
+import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.SystemBarStyle;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -60,8 +63,8 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
                 }
             }
         };
-        getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
 
+        getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
         backPressedCallback.setEnabled(false);
     }
 

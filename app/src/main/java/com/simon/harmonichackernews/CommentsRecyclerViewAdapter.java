@@ -168,7 +168,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        final Context ctx = holder.itemView.getContext();
+        Context ctx = holder.itemView.getContext();
         if (holder instanceof HeaderViewHolder) {
             final HeaderViewHolder headerViewHolder = (HeaderViewHolder) holder;
 
@@ -570,7 +570,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetExpandButton.setOnClickListener((v) ->headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_EXPAND, view));
             sheetInvertButton.setOnClickListener((v) ->headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_INVERT, view));
 
-	        TooltipCompat.setTooltipText(sheetBackButton, "Back");
+            TooltipCompat.setTooltipText(sheetBackButton, "Back");
             TooltipCompat.setTooltipText(sheetRefreshButton, "Refresh");
             TooltipCompat.setTooltipText(sheetExpandButton, "Expand");
             TooltipCompat.setTooltipText(sheetInvertButton, "Invert colors");
