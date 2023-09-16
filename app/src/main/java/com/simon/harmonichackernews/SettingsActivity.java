@@ -152,7 +152,6 @@ public class SettingsActivity extends AppCompatActivity {
                     "pref_preload_webview",
                     "pref_webview_match_theme",
                     "pref_webview_adblock",
-                    "pref_webview_disable_swipeback",
                     "pref_webview_show_expand",
                     "pref_webview_device_back"
             };

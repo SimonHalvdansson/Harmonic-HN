@@ -15,7 +15,6 @@ import com.simon.harmonichackernews.utils.ThemeUtils;
 public class CommentsActivity extends AppCompatActivity implements CommentsFragment.BottomSheetFragmentCallback {
     public static String PREVENT_BACK = "PREVENT_BACK";
 
-    private boolean disableSwipeAtWeb;
     private boolean disableSwipeAtComments;
     private SwipeBackLayout swipeBackLayout;
     private SplitChangeHandler splitChangeHandler;
@@ -52,7 +51,6 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
             }
         });
 
-        disableSwipeAtWeb = SettingsUtils.shouldDisableWebviewSwipeBack(getApplicationContext());
         disableSwipeAtComments = SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext());
     }
 
@@ -63,9 +61,7 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
             return;
         }
 
-        if (isAtWebView) {
-            swipeBackLayout.setActive(!disableSwipeAtWeb);
-        } else {
+        if (!isAtWebView) {
             swipeBackLayout.setActive(!disableSwipeAtComments);
         }
     }

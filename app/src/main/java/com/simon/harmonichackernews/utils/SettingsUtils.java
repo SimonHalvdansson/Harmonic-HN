@@ -136,10 +136,6 @@ public class SettingsUtils {
         return getBooleanPref("pref_webview_adblock", false, ctx);
     }
 
-    public static boolean shouldDisableWebviewSwipeBack(Context ctx) {
-        return getBooleanPref("pref_webview_disable_swipeback", true, ctx);
-    }
-
     public static boolean shouldDisableCommentsSwipeBack(Context ctx) {
         return getBooleanPref("pref_comments_disable_swipeback", false, ctx);
     }
