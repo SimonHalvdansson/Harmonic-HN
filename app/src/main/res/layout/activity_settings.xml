@@ -1,24 +1,11 @@
-<com.gw.swipeback.SwipeBackLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/swipeBackLayout"
+    android:id="@+id/settings_linear_layout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    app:directionMode="left"
-    app:isSwipeFromEdge="false"
-    app:maskAlpha="125"
-    app:swipeBackFactor="0.5">
+    android:layout_height="match_parent">
 
-    <LinearLayout
-        android:id="@+id/settings_linear_layout"
+    <FrameLayout
+        android:id="@+id/settings"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <FrameLayout
-            android:id="@+id/settings"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-    </LinearLayout>
-
-</com.gw.swipeback.SwipeBackLayout>
-
-
+        android:layout_height="match_parent" />
+</LinearLayout>

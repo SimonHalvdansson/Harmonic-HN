@@ -1,33 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.gw.swipeback.SwipeBackLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.swiperefreshlayout.widget.SwipeRefreshLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/swipeBackLayout"
+    android:paddingLeft="@dimen/single_view_side_margin"
+    android:paddingRight="@dimen/single_view_side_margin"
+    android:id="@+id/submissions_swiperefreshlayout"
+    android:clipToPadding="false"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    app:directionMode="left"
-    app:isSwipeFromEdge="false"
-    app:maskAlpha="125"
-    app:swipeBackFactor="0.5">
+    tools:context=".SubmissionsActivity">
 
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:paddingLeft="@dimen/single_view_side_margin"
-        android:paddingRight="@dimen/single_view_side_margin"
-        android:id="@+id/submissions_swiperefreshlayout"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/submissions_recyclerview"
+        tools:listitem="@layout/story_list_item"
+        android:fitsSystemWindows="true"
         android:clipToPadding="false"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:context=".SubmissionsActivity">
+        android:layout_height="match_parent"       />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/submissions_recyclerview"
-            tools:listitem="@layout/story_list_item"
-            android:fitsSystemWindows="true"
-            android:clipToPadding="false"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"       />
-
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-</com.gw.swipeback.SwipeBackLayout>
-
+</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

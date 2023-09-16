@@ -56,24 +56,9 @@ public class SettingsActivity extends AppCompatActivity {
             }
         }
 
-        ThemeUtils.setupTheme(this, true);
+        ThemeUtils.setupTheme(this, false);
 
         setContentView(R.layout.activity_settings);
-        SwipeBackLayout swipeBackLayout = findViewById(R.id.swipeBackLayout);
-
-        swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
-            @Override
-            public void onViewPositionChanged(View mView, float swipeBackFraction, float swipeBackFactor) {
-                mView.invalidate();
-            }
-
-            @Override
-            public void onViewSwipeFinished(View mView, boolean isEnd) {
-                if (isEnd) {
-                    handleExit(true);
-                }
-            }
-        });
 
         LinearLayout linearLayout = findViewById(R.id.settings_linear_layout);
         linearLayout.setBackgroundResource(ThemeUtils.getBackgroundColorResource(this));
@@ -88,7 +73,7 @@ public class SettingsActivity extends AppCompatActivity {
         OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                handleExit(false);
+                handleExit();
             }
         };
         getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
@@ -408,7 +393,7 @@ public class SettingsActivity extends AppCompatActivity {
         findViewById(R.id.settings_linear_layout).setPadding(extraPadding, 0, extraPadding, 0);
     }
 
-    private void handleExit(boolean fromSwipe) {
+    private void handleExit() {
         if (requestRestart) {
             Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -418,7 +403,6 @@ public class SettingsActivity extends AppCompatActivity {
             }
         } else {
             finish();
-            overridePendingTransition(0, fromSwipe ? 0 : R.anim.activity_out_animation);
         }
     }
 }

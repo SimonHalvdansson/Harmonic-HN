@@ -17,26 +17,9 @@ public class AboutActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        ThemeUtils.setupTheme(this, true);
+        ThemeUtils.setupTheme(this, false);
 
         setContentView(R.layout.activity_about);
-
-        SwipeBackLayout swipeBackLayout = findViewById(R.id.swipeBackLayout);
-
-        swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
-            @Override
-            public void onViewPositionChanged(View mView, float swipeBackFraction, float swipeBackFactor) {
-                mView.invalidate();
-            }
-
-            @Override
-            public void onViewSwipeFinished(View mView, boolean isEnd) {
-                if (isEnd) {
-                    finish();
-                    overridePendingTransition(0, 0);
-                }
-            }
-        });
 
         ScrollView scrollView = findViewById(R.id.about_scroll_view);
         scrollView.setBackgroundResource(ThemeUtils.getBackgroundColorResource(this));

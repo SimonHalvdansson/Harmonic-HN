@@ -38,37 +38,16 @@ public class SubmissionsActivity extends AppCompatActivity {
     private LinearLayoutManager linearLayoutManager;
     private RequestQueue queue;
     private SwipeRefreshLayout swipeRefreshLayout;
-    private SplitChangeHandler splitChangeHandler;
-
-    private int loadedTo = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        ThemeUtils.setupTheme(this, true);
+        ThemeUtils.setupTheme(this, false);
 
         setContentView(R.layout.activity_submissions);
-
-        SwipeBackLayout swipeBackLayout = findViewById(R.id.swipeBackLayout);
-        splitChangeHandler = new SplitChangeHandler(this, swipeBackLayout);
-
-        swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
-            @Override
-            public void onViewPositionChanged(View mView, float swipeBackFraction, float swipeBackFactor) {
-                mView.invalidate();
-            }
-
-            @Override
-            public void onViewSwipeFinished(View mView, boolean isEnd) {
-                if (isEnd) {
-                    finish();
-                    overridePendingTransition(0, 0);
-                }
-            }
-        });
-
         swipeRefreshLayout = findViewById(R.id.submissions_swiperefreshlayout);
+
         swipeRefreshLayout.setBackgroundResource(ThemeUtils.getBackgroundColorResource(this));
 
         swipeRefreshLayout.setOnRefreshListener(this::loadSubmissions);
@@ -148,7 +127,6 @@ public class SubmissionsActivity extends AppCompatActivity {
             @Override
             public void handleOnBackPressed() {
                 finish();
-                overridePendingTransition(0, R.anim.activity_out_animation);
             }
         };
         getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
@@ -212,11 +190,5 @@ public class SubmissionsActivity extends AppCompatActivity {
         });
 
         queue.add(stringRequest);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        splitChangeHandler.teardown();
     }
 }
