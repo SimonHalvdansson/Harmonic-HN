@@ -4,8 +4,12 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.view.Window;
 
+import androidx.activity.ComponentActivity;
+import androidx.activity.EdgeToEdge;
+import androidx.activity.SystemBarStyle;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.WindowCompat;
 import androidx.preference.PreferenceManager;
@@ -18,15 +22,15 @@ import java.util.Date;
 
 public class ThemeUtils {
 
-    public static void setupTheme(Activity activity) {
+    public static void setupTheme(ComponentActivity activity) {
         setupTheme(activity, false, true);
     }
 
-    public static void setupTheme(Activity activity, boolean swipeBack) {
+    public static void setupTheme(ComponentActivity activity, boolean swipeBack) {
         setupTheme(activity, swipeBack, true);
     }
 
-    public static void setupTheme(Activity activity, boolean swipeBack, boolean specialFlags) {
+    public static void setupTheme(ComponentActivity activity, boolean swipeBack, boolean specialFlags) {
         String theme = getPreferredTheme(activity);
         switch (theme) {
             case "material_daynight":
@@ -63,6 +67,14 @@ public class ThemeUtils {
         if (SettingsUtils.shouldUseTransparentStatusBar(activity)) {
             window.setStatusBarColor(ContextCompat.getColor(activity, R.color.statusBarColorTransparent));
         }
+
+        int DefaultLightScrim = Color.argb(0xe6, 0xFF, 0xFF, 0xFF);
+        int DefaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b);
+        EdgeToEdge.enable(
+                activity,
+                SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT, (r) -> ThemeUtils.isDarkMode(activity)),
+                SystemBarStyle.auto(DefaultLightScrim, DefaultDarkScrim, (r) -> ThemeUtils.isDarkMode(activity))
+        );
     }
 
     public static boolean isDarkMode(Context ctx) {
