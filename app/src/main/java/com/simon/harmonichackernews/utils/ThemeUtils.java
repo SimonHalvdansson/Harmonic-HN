@@ -66,15 +66,15 @@ public class ThemeUtils {
 
         if (SettingsUtils.shouldUseTransparentStatusBar(activity)) {
             window.setStatusBarColor(ContextCompat.getColor(activity, R.color.statusBarColorTransparent));
-        }
 
-        int DefaultLightScrim = Color.argb(0xe6, 0xFF, 0xFF, 0xFF);
-        int DefaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b);
-        EdgeToEdge.enable(
-                activity,
-                SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT, (r) -> ThemeUtils.isDarkMode(activity)),
-                SystemBarStyle.auto(DefaultLightScrim, DefaultDarkScrim, (r) -> ThemeUtils.isDarkMode(activity))
-        );
+            int DefaultLightScrim = Color.argb(0xe6, 0xFF, 0xFF, 0xFF);
+            int DefaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b);
+            EdgeToEdge.enable(
+                    activity,
+                    SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT, (r) -> ThemeUtils.isDarkMode(activity)),
+                    SystemBarStyle.auto(DefaultLightScrim, DefaultDarkScrim, (r) -> ThemeUtils.isDarkMode(activity))
+            );
+        }
     }
 
     public static boolean isDarkMode(Context ctx) {
