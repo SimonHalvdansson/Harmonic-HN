@@ -582,8 +582,8 @@ public class Utils {
         return Math.round(pxFromDp(resources, dp));
     }
 
-    public static boolean isTablet(Context ctx) {
-        return ctx.getResources().getBoolean(R.bool.is_tablet);
+    public static boolean isTablet(Resources res) {
+        return res.getBoolean(R.bool.is_tablet);
     }
 
     public static void openLinkMaybeHN(Context context, String href) {

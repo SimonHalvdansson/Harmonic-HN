@@ -190,7 +190,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             story.isComment = bundle.getBoolean(EXTRA_IS_COMMENT, false);
             story.loaded = true;
 
-            if (Utils.isTablet(requireContext())) {
+            if (Utils.isTablet(getResources())) {
                 int forward = bundle.getInt(EXTRA_FORWARD, 0);
                 if (forward == 0) {
                     setExitTransition(new MaterialFadeThrough());
@@ -391,7 +391,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void updateBottomSheetMargin(int navbarHeight) {
-        int standardMargin = Utils.pxFromDpInt(getResources(), Utils.isTablet(requireContext()) ? 81 : 68);
+        int standardMargin = Utils.pxFromDpInt(getResources(), Utils.isTablet(getResources()) ? 81 : 68);
 
         BottomSheetBehavior.from(bottomSheet).setPeekHeight(standardMargin + navbarHeight);
         CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
@@ -410,7 +410,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         super.onConfigurationChanged(newConfig);
         //this is to make sure that action buttons in header get updated padding on rotations...
         //yes its ugly, I know
-        if (getContext() != null && Utils.isTablet(getContext()) && adapter != null) {
+        if (getContext() != null && Utils.isTablet(getResources()) && adapter != null) {
             adapter.notifyItemChanged(0);
         }
     }

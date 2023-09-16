@@ -52,7 +52,6 @@ public class ComposeActivity extends AppCompatActivity {
     private HtmlTextView replyingTextView;
     private ScrollView replyingScrollView;
     private TextView topCommentTextView;
-
     private int id;
     private String parentText;
     private String user;
@@ -119,9 +118,10 @@ public class ComposeActivity extends AppCompatActivity {
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
+                int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
 
                 bottomContainer.setPadding(0, 0, 0, insets.bottom);
-                container.setPadding(insets.left, insets.top, insets.right, 0);
+                container.setPadding(insets.left + sideMargin, insets.top, insets.right + sideMargin, 0);
 
                 return windowInsets;
             }
@@ -133,10 +133,7 @@ public class ComposeActivity extends AppCompatActivity {
                 new WindowInsetsAnimationCompat.Callback(WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_STOP) {
                     @NonNull
                     @Override
-                    public WindowInsetsCompat onProgress(
-                            @NonNull WindowInsetsCompat insets,
-                            @NonNull List<WindowInsetsAnimationCompat> runningAnimations
-                    ) {
+                    public WindowInsetsCompat onProgress(@NonNull WindowInsetsCompat insets, @NonNull List<WindowInsetsAnimationCompat> runningAnimations) {
                         WindowInsetsAnimationCompat imeAnimation = null;
                         for (WindowInsetsAnimationCompat animation : runningAnimations) {
                             if ((animation.getTypeMask() & WindowInsetsCompat.Type.ime()) != 0) {
@@ -156,24 +153,16 @@ public class ComposeActivity extends AppCompatActivity {
                     float startBottom;
 
                     @Override
-                    public void onPrepare(
-                            @NonNull WindowInsetsAnimationCompat animation
-                    ) {
-
+                    public void onPrepare(@NonNull WindowInsetsAnimationCompat animation) {
                         startBottom = bottomContainer.getPaddingBottom();
-                        Utils.log(startBottom);
                     }
 
                     float endBottom;
 
                     @NonNull
                     @Override
-                    public WindowInsetsAnimationCompat.BoundsCompat onStart(
-                            @NonNull WindowInsetsAnimationCompat animation,
-                            @NonNull WindowInsetsAnimationCompat.BoundsCompat bounds
-                    ) {
+                    public WindowInsetsAnimationCompat.BoundsCompat onStart(@NonNull WindowInsetsAnimationCompat animation, @NonNull WindowInsetsAnimationCompat.BoundsCompat bounds) {
                         endBottom = bottomContainer.getPaddingBottom();
-                        Utils.log(endBottom);
                         return bounds;
                     }
                 });

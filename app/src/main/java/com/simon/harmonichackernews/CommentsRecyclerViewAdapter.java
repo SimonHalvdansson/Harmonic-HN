@@ -151,7 +151,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     @NotNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        isTablet = Utils.isTablet(parent.getContext());
+        isTablet = Utils.isTablet(parent.getResources());
 
         if (viewType == TYPE_ITEM) {
             View view = LayoutInflater.from(parent.getContext())

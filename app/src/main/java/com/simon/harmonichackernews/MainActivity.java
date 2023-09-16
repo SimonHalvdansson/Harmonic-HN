@@ -87,7 +87,7 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
 
         lastPosition = pos;
 
-        if (Utils.isTablet(this)) {
+        if (Utils.isTablet(getResources())) {
             CommentsFragment fragment = new CommentsFragment();
             fragment.setArguments(bundle);
             FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
@@ -103,7 +103,7 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
     }
 
     private void updateFragmentLayout() {
-        if (Utils.isTablet(getApplicationContext()) && findViewById(R.id.main_fragments_container) != null) {
+        if (Utils.isTablet(getResources()) && findViewById(R.id.main_fragments_container) != null) {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     0,
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -119,7 +119,8 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml("<b>Version 1.9.7:</b><br>" +
-                        "- Posts can be marked as read/unread by long pressing and interacting with a small menu" +
+                        "- Comment scroll progress is now saved <br>" +
+                        "- Posts can be marked as read/unread by long pressing and interacting with a small menu<br>" +
                         "- Added option to hide clicked posts<br>" +
                         "- New scroll behavior when full collapsing comments<br>" +
                         "- Added option to collapse all top-level comments by default<br>" +

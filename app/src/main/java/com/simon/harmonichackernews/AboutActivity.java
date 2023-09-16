@@ -18,11 +18,7 @@ public class AboutActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         ThemeUtils.setupTheme(this, false);
-
         setContentView(R.layout.activity_about);
-
-        ScrollView scrollView = findViewById(R.id.about_scroll_view);
-        scrollView.setBackgroundResource(ThemeUtils.getBackgroundColorResource(this));
 
         ((TextView) findViewById(R.id.about_version)).setText("Version " + BuildConfig.VERSION_NAME);
     }

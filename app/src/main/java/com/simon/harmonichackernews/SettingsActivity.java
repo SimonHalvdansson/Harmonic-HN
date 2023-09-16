@@ -60,9 +60,6 @@ public class SettingsActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_settings);
 
-        LinearLayout linearLayout = findViewById(R.id.settings_linear_layout);
-        linearLayout.setBackgroundResource(ThemeUtils.getBackgroundColorResource(this));
-
         updatePadding();
 
         getSupportFragmentManager()

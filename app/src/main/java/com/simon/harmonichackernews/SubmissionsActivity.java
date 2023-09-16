@@ -139,7 +139,7 @@ public class SubmissionsActivity extends AppCompatActivity {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        if (Utils.isTablet(this)) {
+        if (Utils.isTablet(getResources())) {
             int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
             swipeRefreshLayout.setPadding(sideMargin, 0, sideMargin, 0);
         }
