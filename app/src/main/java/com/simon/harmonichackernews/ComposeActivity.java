@@ -56,6 +56,8 @@ public class ComposeActivity extends AppCompatActivity {
     private String parentText;
     private String user;
 
+    private OnBackPressedCallback backPressedCallback;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -107,6 +109,7 @@ public class ComposeActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable editable) {
+                backPressedCallback.setEnabled(!TextUtils.isEmpty(editable.toString()));
                 submitButton.setEnabled(!TextUtils.isEmpty(editable.toString()));
             }
         });
@@ -167,25 +170,24 @@ public class ComposeActivity extends AppCompatActivity {
                     }
                 });
 
-        OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
+        backPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                if (TextUtils.isEmpty(editText.getText().toString())) {
-                    finish();
-                } else {
-                    AlertDialog dialog = new MaterialAlertDialogBuilder(editText.getContext())
-                            .setTitle("Discard draft?")
-                            .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int whichButton) {
-                                    finish();
-                                }})
-                            .setNegativeButton("Cancel", null).create();
+                //This thing should only be enabled when we want to show the dialog, otherwise
+                //we just do the default back behavior (which is predictive back)
+                AlertDialog dialog = new MaterialAlertDialogBuilder(editText.getContext())
+                        .setTitle("Discard draft?")
+                        .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int whichButton) {
+                                finish();
+                            }})
+                        .setNegativeButton("Cancel", null).create();
 
-                    dialog.show();
-                }
+                dialog.show();
             }
         };
         getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
+        backPressedCallback.setEnabled(false);
     }
 
     @Override

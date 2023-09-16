@@ -40,21 +40,18 @@ import java.util.Set;
 
 public class SettingsActivity extends AppCompatActivity {
 
-    private static boolean requestRestart = false;
+    //private static boolean requestRestart = false;
     private static boolean requestFullRestart = false;
     public final static String EXTRA_REQUEST_RESTART = "EXTRA_REQUEST_RESTART";
+
+    private OnBackPressedCallback backPressedCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        requestRestart = false;
         requestFullRestart = false;
-        if (getIntent() != null) {
-            if (getIntent().getBooleanExtra(EXTRA_REQUEST_RESTART, false)) {
-                requestRestart = true;
-            }
-        }
+
 
         ThemeUtils.setupTheme(this, false);
 
@@ -67,13 +64,20 @@ public class SettingsActivity extends AppCompatActivity {
                 .replace(R.id.settings, new SettingsFragment())
                 .commit();
 
-        OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
+        backPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
                 handleExit();
             }
         };
         getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
+        backPressedCallback.setEnabled(false);
+
+        if (getIntent() != null) {
+            if (getIntent().getBooleanExtra(EXTRA_REQUEST_RESTART, false)) {
+                backPressedCallback.setEnabled(true);
+            }
+        }
     }
 
     public static class SettingsFragment extends PreferenceFragmentCompat {
@@ -114,7 +118,9 @@ public class SettingsActivity extends AppCompatActivity {
             findPreference("pref_foldable_support").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {
-                    requestRestart = true;
+                    if (getActivity() != null && getActivity() instanceof SettingsActivity) {
+                        ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
+                    }
                     requestFullRestart = true;
                     return true;
                 }
@@ -262,12 +268,13 @@ public class SettingsActivity extends AppCompatActivity {
                 @Override
                 public boolean onPreferenceClick(Preference preference) {
                     Set<Integer> set = SettingsUtils.readIntSetFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS);
-                    int oldCount = 0;
-
-                    oldCount = set.size();
+                    int oldCount = set.size();
 
                     SettingsUtils.saveIntSetToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS, new HashSet<>(0));
-                    requestRestart = true;
+                    if (getActivity() != null && getActivity() instanceof SettingsActivity) {
+                        ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
+                    }
+                    //TODO do we really need the above?
 
                     Snackbar snackbar = Snackbar.make(
                             requireView(),
@@ -391,15 +398,11 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void handleExit() {
-        if (requestRestart) {
-            Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            if (requestFullRestart) {
-                Runtime.getRuntime().exit(0);
-            }
-        } else {
-            finish();
+        Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        if (requestFullRestart) {
+            Runtime.getRuntime().exit(0);
         }
     }
 }

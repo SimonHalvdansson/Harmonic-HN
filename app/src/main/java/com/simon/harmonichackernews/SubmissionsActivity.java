@@ -123,14 +123,6 @@ public class SubmissionsActivity extends AppCompatActivity {
             }
         });
 
-        OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                finish();
-            }
-        };
-        getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
-
         recyclerView.setAdapter(adapter);
 
         loadSubmissions();
