@@ -70,7 +70,6 @@ import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -83,8 +82,8 @@ import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
+import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
-import com.simon.harmonichackernews.network.VolleyOkHttp3StackInterceptors;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.utils.FileDownloader;
@@ -134,6 +133,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
     private RequestQueue queue;
+    private final Object requestTag = new Object();
     private CommentsRecyclerViewAdapter adapter;
     private SwipeRefreshLayout swipeRefreshLayout;
     private RecyclerView recyclerView;
@@ -380,7 +380,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         initializeRecyclerView();
 
-        queue = Volley.newRequestQueue(requireContext(), new VolleyOkHttp3StackInterceptors());
+        queue = NetworkComponent.getRequestQueueInstance(requireContext());
         String cachedResponse = Utils.loadCachedStory(getContext(), story.id);
 
         loadStoryAndComments(story.id, cachedResponse == null, cachedResponse, true);
@@ -913,8 +913,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onDestroy() {
         super.onDestroy();
         if (queue != null) {
-            queue.cancelAll(request -> true);
-            queue.stop();
+            queue.cancelAll(requestTag);
         }
         destroyWebView();
     }
@@ -981,6 +980,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             loadPollOptions();
         }
 
+        stringRequest.setTag(requestTag);
         stringRequest.setRetryPolicy(new DefaultRetryPolicy(
                 15000,
                 DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
@@ -1024,6 +1024,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             });
 
+            stringRequest.setTag(requestTag);
             queue.add(stringRequest);
         }
     }

@@ -153,7 +153,7 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
     }
 
     public static void executeRequest(Context ctx, Request request, ActionCallback cb) {
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = NetworkComponent.getOkHttpClientInstance();
 
         client.newCall(request).enqueue(new Callback() {
             final Handler mainHandler = new Handler(ctx.getMainLooper());
