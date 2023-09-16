@@ -26,19 +26,16 @@
 
         <activity
             android:name=".SettingsActivity"
-            android:theme="@style/Theme.Swipe.Back.NoActionBar"
             android:configChanges="orientation|screenSize"/>
         <activity
             android:name=".WelcomeActivity"
             android:configChanges="orientation|screenSize"/>
         <activity
             android:name=".SubmissionsActivity"
-            android:theme="@style/Theme.Swipe.Back.NoActionBar"
             android:configChanges="orientation|screenSize"/>
         <activity
             android:name=".AboutActivity"
             android:enableOnBackInvokedCallback="true"
-            android:theme="@style/Theme.Swipe.Back.NoActionBar"
             android:configChanges="orientation|screenSize"
             tools:targetApi="tiramisu" />
         <activity

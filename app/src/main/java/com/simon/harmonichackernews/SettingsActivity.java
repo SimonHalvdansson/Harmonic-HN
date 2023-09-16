@@ -172,7 +172,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             findPreference("pref_theme").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
                     Intent intent = new Intent(getContext(), SettingsActivity.class);
                     intent.putExtra(EXTRA_REQUEST_RESTART, true);
                     requireContext().startActivity(intent);
@@ -183,7 +183,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             findPreference("pref_theme_timed_range").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
-                public boolean onPreferenceClick(Preference preference) {
+                public boolean onPreferenceClick(@NonNull Preference preference) {
                     int[] nighttimeHours = Utils.getNighttimeHours(getContext());
 
                     MaterialTimePicker fromTimePicker = new MaterialTimePicker.Builder()
