@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews;
 
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 
 import androidx.activity.OnBackPressedCallback;
@@ -63,6 +65,29 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
 
         if (!isAtWebView) {
             swipeBackLayout.setActive(!disableSwipeAtComments);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+
+            final Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    setTranslucent(true);
+                }
+            }, 400);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            setTranslucent(false);
         }
     }
 
