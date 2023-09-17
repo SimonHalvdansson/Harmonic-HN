@@ -909,15 +909,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if (queue != null) {
-            queue.cancelAll(requestTag);
-        }
-        destroyWebView();
-    }
-
     public void destroyWebView() {
         //nuclear
         webViewContainer.removeAllViews();
@@ -948,6 +939,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         super.onDestroyView();
+
+        if (queue != null) {
+            queue.cancelAll(requestTag);
+        }
+        destroyWebView();
     }
 
     public void refreshComments() {
