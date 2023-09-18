@@ -753,28 +753,30 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void showDownloadButton(String url, String contentDisposition, String mimetype) {
-        webView.setVisibility(View.GONE);
-        downloadButton.setVisibility(View.VISIBLE);
-        downloadButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                //just download via notification as usual
-                try {
-                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+        if (webView != null && downloadButton != null) {
+            webView.setVisibility(View.GONE);
+            downloadButton.setVisibility(View.VISIBLE);
+            downloadButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    //just download via notification as usual
+                    try {
+                        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
 
-                    request.allowScanningByMediaScanner();
-                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, URLUtil.guessFileName(url, contentDisposition, mimetype));
-                    DownloadManager dm = (DownloadManager) view.getContext().getSystemService(DOWNLOAD_SERVICE);
-                    dm.enqueue(request);
-                    Toast.makeText(getContext(), "Downloading...", Toast.LENGTH_LONG).show();
-                } catch (Exception e) {
-                    Toast.makeText(getContext(), "Failed to download, opening in browser", Toast.LENGTH_LONG).show();
-                    Utils.launchInExternalBrowser(getActivity(), url);
+                        request.allowScanningByMediaScanner();
+                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, URLUtil.guessFileName(url, contentDisposition, mimetype));
+                        DownloadManager dm = (DownloadManager) view.getContext().getSystemService(DOWNLOAD_SERVICE);
+                        dm.enqueue(request);
+                        Toast.makeText(getContext(), "Downloading...", Toast.LENGTH_LONG).show();
+                    } catch (Exception e) {
+                        Toast.makeText(getContext(), "Failed to download, opening in browser", Toast.LENGTH_LONG).show();
+                        Utils.launchInExternalBrowser(getActivity(), url);
+                    }
+
                 }
-
-            }
-        });
+            });
+        }
     }
 
     @Override
