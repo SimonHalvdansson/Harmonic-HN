@@ -392,8 +392,8 @@ public class StoriesFragment extends Fragment {
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
+    public void onDestroyView() {
+        super.onDestroyView();
         if (queue != null) {
             queue.cancelAll(requestTag);
         }
