@@ -157,6 +157,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean startedLoading = false;
     private boolean initializedWebView = false;
 
+    private OnBackPressedCallback backPressedCallback;
+
     private String username;
     private Story story;
 
@@ -283,7 +285,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
 
-        OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
+        backPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
                 if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED &&
@@ -293,9 +295,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     return;
                 }
                 requireActivity().finish();
-                requireActivity().overridePendingTransition(0, R.anim.activity_out_animation);
+                if (!SettingsUtils.shouldDisableCommentsSwipeBack(getContext()) && !Utils.isTablet(getResources())) {
+                    requireActivity().overridePendingTransition(0, R.anim.activity_out_animation);
+                }
             }
         };
+        backPressedCallback.setEnabled(false);
         requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), backPressedCallback);
 
         swipeRefreshLayout.setOnRefreshListener(this::refreshComments);
@@ -570,6 +575,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View view, int newState) {
+                if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
+                    backPressedCallback.setEnabled(webView.canGoBack());
+                } else {
+                    backPressedCallback.setEnabled(false);
+                }
             }
 
             @Override
@@ -700,7 +710,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
 
             }
-        }, 2000); // Start the animation after 1 second
+        }, 2000); // Start the animation after 2 second
     }
 
     private void loadUrl(String url) {
@@ -1426,6 +1436,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             super.onPageFinished(view, url);
             webView.setBackgroundColor(Color.WHITE);
             webViewBackdrop.setVisibility(View.GONE);
+
+            if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
+                //if we are at the webview and we just loaded, recheck the canGoBack status
+                backPressedCallback.setEnabled(webView.canGoBack());
+            }
         }
 
         @Override

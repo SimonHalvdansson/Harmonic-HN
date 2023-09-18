@@ -79,7 +79,7 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
                 public void run() {
                     setTranslucent(true);
                 }
-            }, 300);
+            }, 400);
         }
     }
 

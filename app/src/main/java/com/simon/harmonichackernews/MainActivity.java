@@ -22,6 +22,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -98,7 +99,9 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
             intent.putExtras(bundle);
             startActivity(intent);
 
-            overridePendingTransition(R.anim.activity_in_animation, 0);
+            if (!SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext())) {
+                overridePendingTransition(R.anim.activity_in_animation, 0);
+            }
         }
     }
 
