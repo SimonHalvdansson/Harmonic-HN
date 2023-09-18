@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.utils;
 
 import static androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -47,17 +46,14 @@ import java.net.URI;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class Utils {
 
@@ -524,34 +520,23 @@ public class Utils {
         return stringBuilder.toString();
     }
 
-    @SuppressLint("SimpleDateFormat")
-    public static boolean isTimeBetweenTwoTimes(String initialTime, String finalTime, String currentTime) throws ParseException {
-        //Start Time
-        //all times are from java.util.Date
-        Date inTime = new SimpleDateFormat("HH:mm").parse(initialTime);
-        Calendar calendar1 = Calendar.getInstance();
-        calendar1.setTime(inTime);
-
-        //Current Time
-        Date checkTime = new SimpleDateFormat("HH:mm").parse(currentTime);
-        Calendar calendar3 = Calendar.getInstance();
-        calendar3.setTime(checkTime);
-
-        //End Time
-        Date finTime = new SimpleDateFormat("HH:mm").parse(finalTime);
-        Calendar calendar2 = Calendar.getInstance();
-        calendar2.setTime(finTime);
-
-        if (finalTime.compareTo(initialTime) < 0) {
-            calendar2.add(Calendar.DATE, 1);
+    /**
+     * Check if time represented as minutes since midnight is between two other times.
+     * <p>
+     * If {@code initialTime} is after {@code finalTime}, then {@code currentTime} must be between
+     * last day's {@code initialTime} and this day's {@code finalTime} or this day's {@code initialTime}
+     * and next day's {@code finalTime}
+     */
+    public static boolean isTimeBetweenTwoTimes(long initialTime, long finalTime, long currentTime) {
+        if (finalTime < initialTime) {
+            finalTime += TimeUnit.DAYS.toMinutes(1);
         }
 
-        if (currentTime.compareTo(initialTime) < 0) {
-            calendar3.add(Calendar.DATE, 1);
+        if (currentTime < initialTime) {
+            currentTime += TimeUnit.DAYS.toMinutes(1);
         }
 
-        java.util.Date actualTime = calendar3.getTime();
-        return (actualTime.after(calendar1.getTime()) || actualTime.compareTo(calendar1.getTime()) == 0) && actualTime.before(calendar2.getTime());
+        return initialTime <= currentTime && currentTime < finalTime;
     }
     
     public static void setNighttimeHours(int fromHour, int fromMinute, int toHour, int toMinute, Context ctx) {
