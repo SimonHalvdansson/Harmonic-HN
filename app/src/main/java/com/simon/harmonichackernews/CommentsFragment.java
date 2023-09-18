@@ -501,7 +501,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         } else {
                             if (getActivity() instanceof CommentsActivity) {
                                 requireActivity().finish();
-                                requireActivity().overridePendingTransition(0, R.anim.activity_out_animation);
+                                if (!SettingsUtils.shouldDisableCommentsSwipeBack(getContext())) {
+                                    requireActivity().overridePendingTransition(0, R.anim.activity_out_animation);
+                                }
                             }
                         }
 
