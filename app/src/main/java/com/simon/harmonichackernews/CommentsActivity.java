@@ -3,6 +3,7 @@ package com.simon.harmonichackernews;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 
 import androidx.activity.OnBackPressedCallback;
@@ -68,13 +69,15 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
         }
     }
 
+    //we only need to do the translucent setting on Android 14 and above as its purpose is to
+    //make the predictive back animation nice (when we peek back from a deeper activity,
+    // CommentsActivity cannot be transparent). The theme already sets the activity to translucent
+    //so when we animate in we are transparent which is important!
     @Override
     protected void onResume() {
         super.onResume();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-
-            final Handler handler = new Handler();
-            handler.postDelayed(new Runnable() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     setTranslucent(true);
@@ -86,7 +89,7 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
     @Override
     protected void onPause() {
         super.onPause();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             setTranslucent(false);
         }
     }

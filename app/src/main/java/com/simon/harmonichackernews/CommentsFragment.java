@@ -926,15 +926,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     public void destroyWebView() {
         //nuclear
-        webViewContainer.removeAllViews();
-        webView.clearHistory();
-        webView.clearCache(true);
-        webView.onPause();
-        webView.removeAllViews();
-        webView.destroyDrawingCache();
-        webView.pauseTimers();
-        webView.destroy();
-        webView = null;
+        if (webView != null) {
+            webViewContainer.removeAllViews();
+            webView.clearHistory();
+            webView.clearCache(true);
+            webView.onPause();
+            webView.removeAllViews();
+            webView.destroyDrawingCache();
+            webView.pauseTimers();
+            webView.destroy();
+            webView = null;
+        }
     }
 
     @Override
