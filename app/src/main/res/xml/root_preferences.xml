@@ -39,6 +39,16 @@
 
     <PreferenceCategory app:title="Display">
 
+        <DropDownPreference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_bookmark_border"
+            app:title="Default starting page"
+            app:key="pref_default_story_type"
+            app:useSimpleSummaryProvider="true"
+            app:entries="@array/sorting_options"
+            app:defaultValue="Top Stories"
+            app:entryValues="@array/sorting_options"   />
+
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_compact_view"

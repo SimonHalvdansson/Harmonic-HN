@@ -192,5 +192,9 @@ public class SettingsUtils {
     public static int getPreferredCommentTextSize(Context ctx) {
         return Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_comment_text_size", "15"));
     }
+    public static String getPreferredStoryType(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return prefs.getString("pref_default_story_type", "Top Stories");
+    }
 
 }
