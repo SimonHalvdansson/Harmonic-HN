@@ -32,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.FontUtils;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.squareup.picasso.Picasso;
 
@@ -475,8 +476,16 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             });
 
             String[] sortingOptions = ctx.getResources().getStringArray(R.array.sorting_options);
+            ArrayList<CharSequence> typeAdapterList = new ArrayList<>(Arrays.asList(sortingOptions));
+            String defaultStoryType = SettingsUtils.getPreferredStoryType(ctx);
 
-            typeAdapter = new ArrayAdapter<>(ctx, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, new ArrayList<>(Arrays.asList(sortingOptions)));
+            // ensures default story type is at the beginning of the list
+            if(typeAdapterList.contains(defaultStoryType))
+               typeAdapterList.remove(defaultStoryType);
+            typeAdapterList.add(0, defaultStoryType);
+
+            //typeAdapter = new ArrayAdapter<>(ctx, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, new ArrayList<>(Arrays.asList(sortingOptions)));
+            typeAdapter = new ArrayAdapter<>(ctx, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, typeAdapterList);
             typeAdapter.setDropDownViewResource(R.layout.spinner_item_layout);
 
             typeSpinner.setAdapter(typeAdapter);
