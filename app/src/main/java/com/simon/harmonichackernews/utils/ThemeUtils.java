@@ -16,9 +16,8 @@ import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.R;
 
-import java.text.ParseException;
 import java.util.Calendar;
-import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 public class ThemeUtils {
 
@@ -116,19 +115,15 @@ public class ThemeUtils {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         if (SettingsUtils.shouldUseSpecialNighttimeTheme(ctx)) {
             //check time
-            Date currentTimeDate = Calendar.getInstance().getTime();
+            Calendar currentCalendar = Calendar.getInstance();
             int[] nighttimeHours = Utils.getNighttimeHours(ctx);
 
-            String startTime = (nighttimeHours[0] < 10 ? "0" : "") + nighttimeHours[0] + ":" + (nighttimeHours[1] < 10 ? "0" : "") +  nighttimeHours[1];
-            String endTime = (nighttimeHours[2] < 10 ? "0" : "") + nighttimeHours[2] + ":" + (nighttimeHours[3] < 10 ? "0" : "") +  nighttimeHours[3];
-            String currentTime = (currentTimeDate.getHours() < 10 ? "0" : "") + currentTimeDate.getHours() + ":" + (currentTimeDate.getMinutes() < 10 ? "0" : "") +  currentTimeDate.getMinutes();
+            long startTime = TimeUnit.HOURS.toMinutes(nighttimeHours[0]) + nighttimeHours[1];
+            long endTime = TimeUnit.HOURS.toMinutes(nighttimeHours[2]) + nighttimeHours[3];
+            long currentTime = TimeUnit.HOURS.toMinutes(currentCalendar.get(Calendar.HOUR_OF_DAY)) + currentCalendar.get(Calendar.MINUTE);
 
-            try {
-                if (Utils.isTimeBetweenTwoTimes(startTime, endTime, currentTime)) {
-                    return prefs.getString("pref_theme_nighttime", "dark");
-                }
-            } catch (ParseException e) {
-                e.printStackTrace();
+            if (Utils.isTimeBetweenTwoTimes(startTime, endTime, currentTime)) {
+                return prefs.getString("pref_theme_nighttime", "dark");
             }
         }
         return prefs.getString("pref_theme", "dark");
