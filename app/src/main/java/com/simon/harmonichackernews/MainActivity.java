@@ -125,8 +125,10 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
                         "- Comment scroll progress is now saved <br>" +
                         "- Posts can be marked as read/unread by long pressing and interacting with a small menu<br>" +
                         "- Added option to hide clicked posts<br>" +
+                        "- Updated predictive back to work on all screens<br>" +
                         "- New scroll behavior when full collapsing comments<br>" +
                         "- Added option to collapse all top-level comments by default<br>" +
+                        "- Fixed two comments related crashes<br>" +
                         "<br>" +
                         "<b>Version 1.9.6:</b><br>" +
                         "- Increased stability of WebView (thanks AppearamidGuy and flofriday)<br>" +
