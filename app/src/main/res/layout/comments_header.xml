@@ -228,7 +228,6 @@
                         android:visibility="gone"
                         android:textColor="?attr/storyColorNormal"
                         android:layout_marginTop="4dp"
-                        android:textIsSelectable="true"
                         android:textSize="15sp"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

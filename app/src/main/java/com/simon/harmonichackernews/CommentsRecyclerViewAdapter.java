@@ -38,6 +38,7 @@ import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.UserActions;
+import com.simon.harmonichackernews.utils.DialogUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
@@ -587,6 +588,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
                     Utils.launchCustomTab(mView.getContext(), href);
                     return true;
+                }
+            });
+
+            textView.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View view) {
+                    DialogUtils.showTextSelectionDialog(view.getContext(), story.text);
+                    return false;
                 }
             });
 

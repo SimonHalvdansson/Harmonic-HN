@@ -86,6 +86,7 @@ import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.ArchiveOrgUrlGetter;
+import com.simon.harmonichackernews.utils.DialogUtils;
 import com.simon.harmonichackernews.utils.FileDownloader;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ShareUtils;
@@ -1180,21 +1181,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         MenuInflater inflater = popup.getMenuInflater();
         inflater.inflate(R.menu.comments_more_menu, popup.getMenu());
 
-        if (!story.isLink) {
-            MenuItem menuItem3 = popup.getMenu().getItem(3);
-            if (menuItem3.getItemId() == R.id.menu_archive) {
-                menuItem3.setVisible(false);
-            } else{
-                Toast.makeText(getContext(), "Error: Archive menu item ID wrong", Toast.LENGTH_SHORT).show();
-            }
-        }
+        for (int i = 0; i < popup.getMenu().size(); i++) {
+            MenuItem item = popup.getMenu().getItem(i);
 
-        if (!SettingsUtils.shouldBlockAds(getContext())) {
-            MenuItem menuItem2 = popup.getMenu().getItem(2);
-            if (menuItem2.getItemId() == R.id.menu_adblock) {
-                menuItem2.setVisible(false);
-            } else{
-                Toast.makeText(getContext(), "Error: Adblock menu item ID wrong", Toast.LENGTH_SHORT).show();
+            if (!story.isLink && item.getItemId() == R.id.menu_archive) {
+                item.setVisible(false);
+            }
+
+            if (!SettingsUtils.shouldBlockAds(getContext()) && item.getItemId() == R.id.menu_adblock) {
+                item.setVisible(false);
             }
         }
 
@@ -1370,31 +1365,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                         break;
                     case 3: //select text
-                        MaterialAlertDialogBuilder selectTextDialogBuilder = new MaterialAlertDialogBuilder(ctx);
-                        View rootView = LayoutInflater.from(ctx).inflate(R.layout.select_text_dialog, null);
-                        selectTextDialogBuilder.setView(rootView);
-
-                        HtmlTextView htmlTextView = rootView.findViewById(R.id.select_text_htmltextview);
-                        htmlTextView.setHtml(comment.text);
-
-                        htmlTextView.setOnClickATagListener(new OnClickATagListener() {
-                            @Override
-                            public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                                Utils.openLinkMaybeHN(getActivity(), href);
-                                return true;
-                            }
-                        });
-
-                        final AlertDialog selectTextDialog = selectTextDialogBuilder.create();
-
-                        rootView.findViewById(R.id.select_text_dialog_done).setOnClickListener(new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                selectTextDialog.dismiss();
-                            }
-                        });
-
-                        selectTextDialog.show();
+                        DialogUtils.showTextSelectionDialog(ctx, comment.text);
 
                         break;
                     case 4: //upvote

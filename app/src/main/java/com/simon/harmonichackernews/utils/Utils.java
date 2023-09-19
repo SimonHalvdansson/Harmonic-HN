@@ -605,8 +605,6 @@ public class Utils {
             }
         }
 
-
-
         Utils.launchCustomTab(context, href);
     }
 
