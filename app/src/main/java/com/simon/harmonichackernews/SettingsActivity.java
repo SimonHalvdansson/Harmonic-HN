@@ -105,6 +105,17 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
+            findPreference("pref_default_story_type").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                    if (getActivity() != null && getActivity() instanceof SettingsActivity) {
+                        ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
+                    }
+                    requestFullRestart = true;
+                    return true;
+                }
+            });
+
             findPreference("pref_compact_view").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {

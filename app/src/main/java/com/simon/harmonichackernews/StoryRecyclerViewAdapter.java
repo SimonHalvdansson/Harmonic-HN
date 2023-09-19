@@ -40,6 +40,7 @@ import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -477,14 +478,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             String[] sortingOptions = ctx.getResources().getStringArray(R.array.sorting_options);
             ArrayList<CharSequence> typeAdapterList = new ArrayList<>(Arrays.asList(sortingOptions));
-            String defaultStoryType = SettingsUtils.getPreferredStoryType(ctx);
+            int defaultStoryIndex = typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(ctx));
+            type = defaultStoryIndex;
 
-            // ensures default story type is at the beginning of the list
-            if(typeAdapterList.contains(defaultStoryType))
-               typeAdapterList.remove(defaultStoryType);
-            typeAdapterList.add(0, defaultStoryType);
-
-            //typeAdapter = new ArrayAdapter<>(ctx, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, new ArrayList<>(Arrays.asList(sortingOptions)));
             typeAdapter = new ArrayAdapter<>(ctx, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, typeAdapterList);
             typeAdapter.setDropDownViewResource(R.layout.spinner_item_layout);
 
