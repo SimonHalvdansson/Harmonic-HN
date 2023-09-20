@@ -478,8 +478,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             String[] sortingOptions = ctx.getResources().getStringArray(R.array.sorting_options);
             ArrayList<CharSequence> typeAdapterList = new ArrayList<>(Arrays.asList(sortingOptions));
-            int defaultStoryIndex = typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(ctx));
-            type = defaultStoryIndex;
+            type = typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(ctx));
 
             typeAdapter = new ArrayAdapter<>(ctx, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, typeAdapterList);
             typeAdapter.setDropDownViewResource(R.layout.spinner_item_layout);

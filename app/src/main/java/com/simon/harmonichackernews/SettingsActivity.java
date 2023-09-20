@@ -52,7 +52,6 @@ public class SettingsActivity extends AppCompatActivity {
 
         requestFullRestart = false;
 
-
         ThemeUtils.setupTheme(this, false);
 
         setContentView(R.layout.activity_settings);
@@ -111,7 +110,6 @@ public class SettingsActivity extends AppCompatActivity {
                     if (getActivity() != null && getActivity() instanceof SettingsActivity) {
                         ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
                     }
-                    requestFullRestart = true;
                     return true;
                 }
             });
