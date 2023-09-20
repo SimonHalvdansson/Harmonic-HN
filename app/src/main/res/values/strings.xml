@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Harmonic</string>
-    <!-- HN Jobs gets remove in code if hideJobs == true -->
     <string-array name="sorting_options">
         <item>Top Stories</item>
         <item>Last 24 hours</item>

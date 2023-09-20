@@ -85,7 +85,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     boolean shouldUseCompactView,
                                     boolean shouldShowThumbnails,
                                     boolean shouldShowIndex,
-                                    boolean shouldHideJobs,
                                     boolean shouldUseCompactHeader,
                                     boolean shouldLeftAlign,
                                     int preferredHotness,
@@ -95,7 +94,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         compactView = shouldUseCompactView;
         thumbnails = shouldShowThumbnails;
         showIndex = shouldShowIndex;
-        hideJobs = shouldHideJobs;
         compactHeader = shouldUseCompactHeader;
         leftAlign = shouldLeftAlign;
         hotness = preferredHotness;
@@ -198,7 +196,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 FontUtils.setTypeface(storyViewHolder.metaView, false, 13, 13, 12, 12, 13, 13);
                 FontUtils.setTypeface(storyViewHolder.commentsView, true, 14, 13, 13, 14, 14, 14);
 
-                if (storyViewHolder.story.clicked && type != getBookmarksIndex(ctx)) {
+                if (storyViewHolder.story.clicked && type != SettingsUtils.getBookmarksIndex(ctx.getResources())) {
                     storyViewHolder.titleView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorDisabled));
                     storyViewHolder.commentsIcon.setAlpha(0.6f);
                     storyViewHolder.metaFavicon.setAlpha(0.6f);
@@ -268,7 +266,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 headerViewHolder.searchEmptyContainer.setVisibility(stories.size() == 1 ? View.VISIBLE : View.GONE);
                 headerViewHolder.noBookmarksLayout.setVisibility(View.GONE);
             } else {
-                headerViewHolder.noBookmarksLayout.setVisibility((stories.size() == 1 && type == getBookmarksIndex(ctx)) ? View.VISIBLE : View.GONE);
+                headerViewHolder.noBookmarksLayout.setVisibility((stories.size() == 1 && type == SettingsUtils.getBookmarksIndex(ctx.getResources())) ? View.VISIBLE : View.GONE);
                 headerViewHolder.searchEmptyContainer.setVisibility(View.GONE);
             }
 
@@ -276,16 +274,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             //headerViewHolder.searchOptionsContainer.setVisibility(searching ? View.VISIBLE : View.GONE);
 
             headerViewHolder.typeSpinner.setSelection(type);
-            //should collection be updated?
-            if (hideJobs) {
-                if (headerViewHolder.typeAdapter.getItem(8).equals("HN Jobs")) {
-                    headerViewHolder.typeAdapter.remove("HN Jobs");
-                }
-            } else {
-                if (!headerViewHolder.typeAdapter.getItem(8).equals("HN Jobs")) {
-                    headerViewHolder.typeAdapter.insert("HN Jobs", 8);
-                }
-            }
 
             headerViewHolder.loadingFailedLayout.setVisibility(loadingFailed ? View.VISIBLE : View.GONE);
         } else if (holder instanceof SubmissionsHeaderViewHolder) {
@@ -555,11 +543,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
             });
         }
-    }
-
-    private int getBookmarksIndex(Context ctx) {
-        //works as long as bookmarks is last option
-        return ctx.getResources().getStringArray(R.array.sorting_options).length - (hideJobs ? 2 : 1);
     }
 
     public void setOnTypeClickListener(ClickListener clickListener) {
