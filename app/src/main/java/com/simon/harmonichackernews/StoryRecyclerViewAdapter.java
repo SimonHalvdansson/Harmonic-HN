@@ -32,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.FontUtils;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.squareup.picasso.Picasso;
 
@@ -39,6 +40,7 @@ import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -83,7 +85,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     boolean shouldUseCompactView,
                                     boolean shouldShowThumbnails,
                                     boolean shouldShowIndex,
-                                    boolean shouldHideJobs,
                                     boolean shouldUseCompactHeader,
                                     boolean shouldLeftAlign,
                                     int preferredHotness,
@@ -93,7 +94,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         compactView = shouldUseCompactView;
         thumbnails = shouldShowThumbnails;
         showIndex = shouldShowIndex;
-        hideJobs = shouldHideJobs;
         compactHeader = shouldUseCompactHeader;
         leftAlign = shouldLeftAlign;
         hotness = preferredHotness;
@@ -196,7 +196,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 FontUtils.setTypeface(storyViewHolder.metaView, false, 13, 13, 12, 12, 13, 13);
                 FontUtils.setTypeface(storyViewHolder.commentsView, true, 14, 13, 13, 14, 14, 14);
 
-                if (storyViewHolder.story.clicked && type != getBookmarksIndex(ctx)) {
+                if (storyViewHolder.story.clicked && type != SettingsUtils.getBookmarksIndex(ctx.getResources())) {
                     storyViewHolder.titleView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorDisabled));
                     storyViewHolder.commentsIcon.setAlpha(0.6f);
                     storyViewHolder.metaFavicon.setAlpha(0.6f);
@@ -266,7 +266,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 headerViewHolder.searchEmptyContainer.setVisibility(stories.size() == 1 ? View.VISIBLE : View.GONE);
                 headerViewHolder.noBookmarksLayout.setVisibility(View.GONE);
             } else {
-                headerViewHolder.noBookmarksLayout.setVisibility((stories.size() == 1 && type == getBookmarksIndex(ctx)) ? View.VISIBLE : View.GONE);
+                headerViewHolder.noBookmarksLayout.setVisibility((stories.size() == 1 && type == SettingsUtils.getBookmarksIndex(ctx.getResources())) ? View.VISIBLE : View.GONE);
                 headerViewHolder.searchEmptyContainer.setVisibility(View.GONE);
             }
 
@@ -274,16 +274,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             //headerViewHolder.searchOptionsContainer.setVisibility(searching ? View.VISIBLE : View.GONE);
 
             headerViewHolder.typeSpinner.setSelection(type);
-            //should collection be updated?
-            if (hideJobs) {
-                if (headerViewHolder.typeAdapter.getItem(8).equals("HN Jobs")) {
-                    headerViewHolder.typeAdapter.remove("HN Jobs");
-                }
-            } else {
-                if (!headerViewHolder.typeAdapter.getItem(8).equals("HN Jobs")) {
-                    headerViewHolder.typeAdapter.insert("HN Jobs", 8);
-                }
-            }
 
             headerViewHolder.loadingFailedLayout.setVisibility(loadingFailed ? View.VISIBLE : View.GONE);
         } else if (holder instanceof SubmissionsHeaderViewHolder) {
@@ -475,8 +465,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             });
 
             String[] sortingOptions = ctx.getResources().getStringArray(R.array.sorting_options);
+            ArrayList<CharSequence> typeAdapterList = new ArrayList<>(Arrays.asList(sortingOptions));
+            type = typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(ctx));
 
-            typeAdapter = new ArrayAdapter<>(ctx, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, new ArrayList<>(Arrays.asList(sortingOptions)));
+            typeAdapter = new ArrayAdapter<>(ctx, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, typeAdapterList);
             typeAdapter.setDropDownViewResource(R.layout.spinner_item_layout);
 
             typeSpinner.setAdapter(typeAdapter);
@@ -551,11 +543,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
             });
         }
-    }
-
-    private int getBookmarksIndex(Context ctx) {
-        //works as long as bookmarks is last option
-        return ctx.getResources().getStringArray(R.array.sorting_options).length - (hideJobs ? 2 : 1);
     }
 
     public void setOnTypeClickListener(ClickListener clickListener) {

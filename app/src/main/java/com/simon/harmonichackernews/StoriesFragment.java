@@ -194,7 +194,6 @@ public class StoriesFragment extends Fragment {
                 SettingsUtils.shouldUseCompactView(getContext()),
                 SettingsUtils.shouldShowThumbnails(getContext()),
                 SettingsUtils.shouldShowIndex(getContext()),
-                SettingsUtils.shouldHideJobs(getContext()),
                 SettingsUtils.shouldUseCompactHeader(getContext()),
                 SettingsUtils.shouldUseLeftAlign(getContext()),
                 SettingsUtils.getPreferredHotness(getContext()),
@@ -331,7 +330,7 @@ public class StoriesFragment extends Fragment {
         long timeDiff = System.currentTimeMillis() - lastLoaded;
 
         // if more than 1 hr
-        if (timeDiff > 1000*60*60 && !adapter.searching && currentType != getBookmarksIndex() && !currentTypeIsAlgolia()) {
+        if (timeDiff > 1000*60*60 && !adapter.searching && currentType != SettingsUtils.getBookmarksIndex(getResources()) && !currentTypeIsAlgolia()) {
             showUpdateButton();
         }
 
@@ -453,7 +452,7 @@ public class StoriesFragment extends Fragment {
                         }
 
                         //or because it's a job
-                        if (hideJobs && (story.isJob || story.by.equals("whoishiring"))) {
+                        if (hideJobs && currentType != SettingsUtils.getJobsIndex(getResources()) && (story.isJob || story.by.equals("whoishiring"))) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
                             loadedTo = Math.max(0, loadedTo - 1);
@@ -543,7 +542,7 @@ public class StoriesFragment extends Fragment {
 
         lastLoaded = System.currentTimeMillis();
 
-        if (currentType == getBookmarksIndex()) {
+        if (currentType == SettingsUtils.getBookmarksIndex(getResources())) {
             //lets load bookmarks instead - or rather add empty stories with correct id:s and start loading them
             adapter.notifyItemRangeRemoved(1, stories.size() + 1);
             loadedTo = 0;
@@ -707,11 +706,6 @@ public class StoriesFragment extends Fragment {
 
     public boolean currentTypeIsAlgolia() {
         return 0 < currentType && 4 > currentType;
-    }
-
-    public int getBookmarksIndex() {
-        //works as long as bookmarks is last option
-        return getResources().getStringArray(R.array.sorting_options).length - (hideJobs ? 2 : 1);
     }
 
     public boolean exitSearch() {

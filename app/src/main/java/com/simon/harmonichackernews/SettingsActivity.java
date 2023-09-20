@@ -52,7 +52,6 @@ public class SettingsActivity extends AppCompatActivity {
 
         requestFullRestart = false;
 
-
         ThemeUtils.setupTheme(this, false);
 
         setContentView(R.layout.activity_settings);
@@ -101,6 +100,16 @@ public class SettingsActivity extends AppCompatActivity {
                     changePrefStatus(findPreference("pref_theme_nighttime"), (boolean) newValue);
                     changePrefStatus(findPreference("pref_theme_timed_range"), (boolean) newValue);
 
+                    return true;
+                }
+            });
+
+            findPreference("pref_default_story_type").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                    if (getActivity() != null && getActivity() instanceof SettingsActivity) {
+                        ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
+                    }
                     return true;
                 }
             });
