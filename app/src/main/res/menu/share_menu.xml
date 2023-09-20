@@ -6,7 +6,15 @@
         android:title="Article link" />
 
     <item
+        android:id="@+id/menu_link_title"
+        android:title="Article link and title" />
+
+    <item
         android:id="@+id/menu_hacker_news_link"
-        android:title="Hacker News link" />
+        android:title="HN link" />
+
+    <item
+        android:id="@+id/menu_hacker_news_link_title"
+        android:title="HN link and title" />
 
 </menu>

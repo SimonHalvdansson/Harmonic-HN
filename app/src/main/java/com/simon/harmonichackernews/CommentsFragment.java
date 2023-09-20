@@ -1120,10 +1120,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 public boolean onMenuItemClick(MenuItem item) {
                     int id = item.getItemId();
 
-                    if (id == R.id.menu_link) {
-                        startActivity(ShareUtils.getShareIntent(adapter.story.url));
-                    } else if (id == R.id.menu_hacker_news_link) {
-                        startActivity(ShareUtils.getShareIntent(adapter.story.id));
+                    switch (item.getItemId()) {
+                        case R.id.menu_link:
+                            startActivity(ShareUtils.getShareIntent(adapter.story.url));
+                            break;
+                        case R.id.menu_link_title:
+                            startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.url));
+                            break;
+                        case R.id.menu_hacker_news_link:
+                            startActivity(ShareUtils.getShareIntent(adapter.story.id));
+                            break;
+                        case R.id.menu_hacker_news_link_title:
+                            startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.id));
+                            break;
                     }
 
                     return true;

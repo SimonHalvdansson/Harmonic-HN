@@ -31,4 +31,12 @@ public class ShareUtils {
         return getShareIntent(SHARE_BASE_URL + id);
     }
 
+    public static Intent getShareIntentWithTitle(String title, String url) {
+        return getShareIntent(title + " | " + url);
+    }
+
+    public static Intent getShareIntentWithTitle(String title, int id) {
+        return getShareIntent(title + " | " + SHARE_BASE_URL + id);
+    }
+
 }
