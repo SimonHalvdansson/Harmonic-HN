@@ -64,7 +64,9 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
             return;
         }
 
-        if (!isAtWebView) {
+        if (isAtWebView) {
+            swipeBackLayout.setActive(false);
+        } else {
             swipeBackLayout.setActive(!disableSwipeAtComments);
         }
     }
