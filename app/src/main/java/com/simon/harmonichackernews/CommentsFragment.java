@@ -22,7 +22,6 @@ import android.text.Html;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -97,8 +96,6 @@ import com.simon.harmonichackernews.utils.ViewUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.sufficientlysecure.htmltextview.HtmlTextView;
-import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -440,9 +437,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 SettingsUtils.shouldShowWebviewExpandButton(getContext()),
                 ThemeUtils.isDarkMode(getContext()));
 
-        adapter.setOnHeaderClickListener(story1 -> {
-            Utils.launchCustomTab(getActivity(), story1.url);
-        });
+        adapter.setOnHeaderClickListener(story1 -> Utils.launchCustomTab(getActivity(), story1.url));
 
         adapter.setOnCommentClickListener((comment, index, commentView) -> {
             comment.expanded = !comment.expanded;
@@ -1118,21 +1113,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                 @Override
                 public boolean onMenuItemClick(MenuItem item) {
-                    int id = item.getItemId();
+                    int itemId = item.getItemId();
 
-                    switch (item.getItemId()) {
-                        case R.id.menu_link:
-                            startActivity(ShareUtils.getShareIntent(adapter.story.url));
-                            break;
-                        case R.id.menu_link_title:
-                            startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.url));
-                            break;
-                        case R.id.menu_hacker_news_link:
-                            startActivity(ShareUtils.getShareIntent(adapter.story.id));
-                            break;
-                        case R.id.menu_hacker_news_link_title:
-                            startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.id));
-                            break;
+                    if (itemId == R.id.menu_link) {
+                        startActivity(ShareUtils.getShareIntent(adapter.story.url));
+                    } else if (itemId == R.id.menu_link_title) {
+                        startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.url));
+                    } else if (itemId == R.id.menu_hacker_news_link) {
+                        startActivity(ShareUtils.getShareIntent(adapter.story.id));
+                    } else if (itemId == R.id.menu_hacker_news_link_title) {
+                        startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.id));
                     }
 
                     return true;
@@ -1317,7 +1307,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     new Pair<>("Select text", R.drawable.ic_action_select),
                     new Pair<>("Vote up", R.drawable.ic_action_thumbs_up),
                     new Pair<>("Unvote", R.drawable.ic_action_thumbs),
-                    new Pair<>("Vote down (experimental)", R.drawable.ic_action_thumb_down),
+                    new Pair<>("Vote down", R.drawable.ic_action_thumb_down),
             };
         } else {
             items = new Pair[]{
@@ -1470,11 +1460,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public static class PdfAndroidJavascriptBridge {
-        private File mFile;
+        private final File mFile;
         private @Nullable
         RandomAccessFile mRandomAccessFile;
-        private @Nullable Callbacks mCallback;
-        private Handler mHandler;
+        private final @Nullable Callbacks mCallback;
+        private final Handler mHandler;
 
         PdfAndroidJavascriptBridge(String filePath, @Nullable Callbacks callback) {
             mFile = new File(filePath);

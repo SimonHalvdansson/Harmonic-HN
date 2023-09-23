@@ -88,7 +88,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
             //lets create a request and fill in the data when we have it
             String url = "https://hacker-news.firebaseio.com/v0/user/" + userName + ".json";
 
-            @SuppressLint("SetTextI18n") StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+            StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                     response -> {
                         try {
                             //lets try to parse the response
@@ -99,7 +99,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             cal.setTime(new Date(jsonObject.getInt("created") * 1000L));
 
                             // Users who have never submitted before do not receive this key as part of their response.
-                            JSONArray submitted = null;
+                            JSONArray submitted;
                             if (jsonObject.has("submitted")) {
                                 submitted = jsonObject.getJSONArray("submitted");
                             } else {
