@@ -1,17 +1,16 @@
 package com.simon.harmonichackernews.utils;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.os.Build;
 import android.view.Window;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.EdgeToEdge;
-import androidx.activity.SystemBarStyle;
-import androidx.core.content.ContextCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.R;
@@ -20,6 +19,22 @@ import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 
 public class ThemeUtils {
+    /**
+     * Default color for nav bar's light scrim.
+     * <p>
+     * Copied from {@link EdgeToEdge#DefaultLightScrim} which was copied from Android sources:
+     * <a href="https://cs.android.com/android/platform/superproject/+/master:frameworks/base/core/java/com/android/internal/policy/DecorView.java;drc=6ef0f022c333385dba2c294e35b8de544455bf19;l=142">source</a>
+     */
+    private static final int defaultLightScrim = Color.argb(0xe6, 0xFF, 0xFF, 0xFF);
+
+    /**
+     * Default color for nav bar's dark scrim.
+     * <p>
+     * Copied from {@link EdgeToEdge#DefaultDarkScrim} which was copied from Android sources:
+     * <a href="https://cs.android.com/android/platform/superproject/+/master:frameworks/base/core/res/res/color/system_bar_background_semi_transparent.xml">source 1</a>,
+     * <a href="https://cs.android.com/android/platform/superproject/+/master:frameworks/base/core/res/remote_color_resources_res/values/colors.xml;l=67">source 2</a>
+     */
+    private static final int defaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b);
 
     public static void setupTheme(ComponentActivity activity) {
         setupTheme(activity, false, true);
@@ -56,23 +71,30 @@ public class ThemeUtils {
         }
 
         Window window = activity.getWindow();
-        WindowCompat.getInsetsController(window, window.getDecorView())
-                .setAppearanceLightStatusBars(!isDarkMode(activity));
+        WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(window, window.getDecorView());
+        insetsController.setAppearanceLightStatusBars(!isDarkMode(activity));
+        insetsController.setAppearanceLightNavigationBars(!isDarkMode(activity));
 
         if (specialFlags) {
             WindowCompat.setDecorFitsSystemWindows(window, false);
         }
 
-        if (SettingsUtils.shouldUseTransparentStatusBar(activity)) {
-            window.setStatusBarColor(ContextCompat.getColor(activity, R.color.statusBarColorTransparent));
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            // All themes have nav bar color set to transparent so on API 29+ the system will draw
+            // translucent scrim for us. However on older versions we need to set correct nav bar
+            // color manually. Also before API 26 Android doesn't support light nav bars, so we
+            // need to always use dark background
+            int navBarColor;
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                navBarColor = defaultDarkScrim;
+            } else {
+                navBarColor = isDarkMode(activity) ? defaultDarkScrim : defaultLightScrim;
+            }
+            window.setNavigationBarColor(navBarColor);
+        }
 
-            int DefaultLightScrim = Color.argb(0xe6, 0xFF, 0xFF, 0xFF);
-            int DefaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b);
-            EdgeToEdge.enable(
-                    activity,
-                    SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT, (r) -> ThemeUtils.isDarkMode(activity)),
-                    SystemBarStyle.auto(DefaultLightScrim, DefaultDarkScrim, (r) -> ThemeUtils.isDarkMode(activity))
-            );
+        if (SettingsUtils.shouldUseTransparentStatusBar(activity)) {
+            window.setStatusBarColor(Color.TRANSPARENT);
         }
     }
 
