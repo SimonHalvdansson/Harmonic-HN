@@ -411,8 +411,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         webViewContainer.setLayoutParams(params);
 
         if (adapter != null) {
-            adapter.navbarHeight = navbarHeight;
-            adapter.notifyItemChanged(0);
+            adapter.setNavbarHeight(navbarHeight);
         }
     }
 

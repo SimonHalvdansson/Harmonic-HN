@@ -80,7 +80,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean darkThemeActive;
     public String font;
 
-    public int navbarHeight = 0;
+    private int navbarHeight = 0;
 
     public static final int TYPE_HEADER = 0;
     public static final int TYPE_ITEM = 1;
@@ -591,14 +591,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             });
 
-            textView.setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View view) {
-                    DialogUtils.showTextSelectionDialog(view.getContext(), story.text);
-                    return false;
-                }
-            });
-
             LinearLayout sheetButtonsContainer = view.findViewById(R.id.comment_sheet_buttons_container);
             BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
                 @Override
@@ -655,6 +647,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     public void setRetryListener(RetryListener listener) {
         retryListener = listener;
+    }
+
+    public void setNavbarHeight(int navbarHeight) {
+        if (this.navbarHeight != navbarHeight) {
+            this.navbarHeight = navbarHeight;
+            notifyItemChanged(0);
+        }
     }
 
     public interface RetryListener {
