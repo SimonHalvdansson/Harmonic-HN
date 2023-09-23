@@ -131,7 +131,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             metaTextview.setText("Karma: " + Utils.getThousandSeparatedString(karma) + " • Created: " + month + " " + cal.get(Calendar.DAY_OF_MONTH) + ", " + (cal.get(Calendar.YEAR)));
 
                             if (jsonObject.has("about") && !TextUtils.isEmpty(jsonObject.getString("about"))) {
-                                setLinkifiedText(Html.fromHtml(jsonObject.getString("about")).toString(), aboutTextview);
+                                setLinkifiedText(Html.fromHtml(jsonObject.getString("about")).toString().trim(), aboutTextview);
                             } else {
                                 aboutTextview.setVisibility(View.GONE);
                             }
