@@ -333,17 +333,10 @@
             app:icon="@drawable/ic_action_clear" />
 
         <Preference
-            app:singleLineTitle="false"
-            app:key="pref_feedback"
-            app:title="Send feedback"
-            app:icon="@drawable/ic_action_feedback" />
-
-        <Preference
             app:icon="@drawable/ic_action_source"
             app:singleLineTitle="false"
             app:key="pref_open_source"
-            app:title="GitHub"
-            app:summary="Harmonic is now open-source!"  />
+            app:title="GitHub" />
 
         <Preference
             app:singleLineTitle="false"

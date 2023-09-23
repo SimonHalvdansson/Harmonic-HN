@@ -298,7 +298,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             }
         };
-        backPressedCallback.setEnabled(false);
+        toggleBackPressedCallback(false);
         requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), backPressedCallback);
 
         swipeRefreshLayout.setOnRefreshListener(this::refreshComments);
@@ -390,6 +390,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         if (cachedResponse != null) {
             handleJsonResponse(story.id, cachedResponse,false, false);
+        }
+    }
+
+    private void toggleBackPressedCallback(boolean newStatus) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            backPressedCallback.setEnabled(newStatus);
+        } else {
+            backPressedCallback.setEnabled(true);
         }
     }
 
@@ -572,9 +580,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onStateChanged(@NonNull View view, int newState) {
                 if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
-                    backPressedCallback.setEnabled(webView.canGoBack());
+                    toggleBackPressedCallback(webView.canGoBack());
                 } else {
-                    backPressedCallback.setEnabled(false);
+                    toggleBackPressedCallback(false);
                 }
             }
 
@@ -1406,7 +1414,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
                 //if we are at the webview and we just loaded, recheck the canGoBack status
-                backPressedCallback.setEnabled(webView.canGoBack());
+                toggleBackPressedCallback(webView.canGoBack());
             }
         }
 
@@ -1497,14 +1505,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         @JavascriptInterface
         public void onLoad() {
             if (mCallback != null) {
-                mHandler.post(() -> mCallback.onLoad());
+                mHandler.post(mCallback::onLoad);
             }
         }
 
         @JavascriptInterface
         public void onFailure() {
             if (mCallback != null) {
-                mHandler.post(() -> mCallback.onFailure());
+                mHandler.post(mCallback::onFailure);
             }
         }
 
@@ -1519,7 +1527,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         @Override
-        public void finalize() throws Throwable {
+        protected void finalize() throws Throwable {
             try {
                 cleanUp();
             } finally {

@@ -5,8 +5,15 @@ import static com.simon.harmonichackernews.SubmissionsActivity.KEY_USER;
 import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.text.Html;
+import android.text.SpannableString;
+import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -36,6 +43,9 @@ import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class UserDialogFragment extends AppCompatDialogFragment {
 
@@ -74,15 +84,6 @@ public class UserDialogFragment extends AppCompatDialogFragment {
 
         Bundle bundle = getArguments();
         final String userName = (bundle != null && !TextUtils.isEmpty(bundle.getString(EXTRA_USER_NAME))) ? bundle.getString(EXTRA_USER_NAME) : null;
-
-        /*else if (Intent.ACTION_VIEW.equalsIgnoreCase(intent.getAction())) {
-            if (intent.getData() != null) {
-                String param = intent.getData().getQueryParameter("id");
-                if (param != null && !param.equals("")) {
-                    userName = param;
-                }
-            }
-        }*/
 
         if (userName != null) {
             //lets create a request and fill in the data when we have it
@@ -128,8 +129,9 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             String month = getResources().getStringArray(R.array.months)[cal.get(Calendar.MONTH)];
 
                             metaTextview.setText("Karma: " + Utils.getThousandSeparatedString(karma) + " • Created: " + month + " " + cal.get(Calendar.DAY_OF_MONTH) + ", " + (cal.get(Calendar.YEAR)));
+
                             if (jsonObject.has("about") && !TextUtils.isEmpty(jsonObject.getString("about"))) {
-                                aboutTextview.setHtml(jsonObject.getString("about"));
+                                setLinkifiedText(Html.fromHtml(jsonObject.getString("about")).toString(), aboutTextview);
                             } else {
                                 aboutTextview.setVisibility(View.GONE);
                             }
@@ -181,6 +183,29 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         bundle.putString(UserDialogFragment.EXTRA_USER_NAME, name);
         userDialogFragment.setArguments(bundle);
         userDialogFragment.show(fm, UserDialogFragment.TAG);
+    }
+
+    public void setLinkifiedText(String text, TextView textView) {
+        SpannableString spannableString = new SpannableString(text);
+
+        Pattern urlPattern = Pattern.compile("(https?://\\S+)");
+        Matcher urlMatcher = urlPattern.matcher(text);
+
+        while (urlMatcher.find()) {
+            String url = urlMatcher.group(1);
+
+            spannableString.setSpan(new ClickableSpan() {
+                @Override
+                public void onClick(@NonNull View widget) {
+                    Utils.openLinkMaybeHN(widget.getContext(), url);
+
+                }
+            }, urlMatcher.start(1), urlMatcher.end(1), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+
+        textView.setMovementMethod(LinkMovementMethod.getInstance());
+
+        textView.setText(spannableString);
     }
 
 }

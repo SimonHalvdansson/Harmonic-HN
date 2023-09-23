@@ -382,6 +382,7 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemChanged(0);
             attemptRefresh();
         }
+
     }
 
     @Override

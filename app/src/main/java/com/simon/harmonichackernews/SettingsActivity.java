@@ -282,7 +282,6 @@ public class SettingsActivity extends AppCompatActivity {
                     if (getActivity() != null && getActivity() instanceof SettingsActivity) {
                         ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
                     }
-                    //TODO do we really need the above?
 
                     Snackbar snackbar = Snackbar.make(
                             requireView(),
@@ -291,18 +290,6 @@ public class SettingsActivity extends AppCompatActivity {
 
                     snackbar.show();
 
-                    return false;
-                }
-            });
-
-            findPreference("pref_feedback").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(Preference preference) {
-                    Intent intent = new Intent(Intent.ACTION_SENDTO);
-                    intent.setData(Uri.parse("mailto:"));
-                    intent.putExtra(Intent.EXTRA_EMAIL, new String[] { "swesnowme@gmail.com" });
-                    intent.putExtra(Intent.EXTRA_SUBJECT, "Harmonic for Hacker News feedback");
-                    startActivity(Intent.createChooser(intent, "Send feedback"));
                     return false;
                 }
             });
