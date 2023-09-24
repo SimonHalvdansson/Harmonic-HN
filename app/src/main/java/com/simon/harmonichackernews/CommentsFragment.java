@@ -388,6 +388,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         loadStoryAndComments(story.id, cachedResponse == null, cachedResponse, true);
 
+        recyclerView.scrollToPosition(0);
+
         if (cachedResponse != null) {
             handleJsonResponse(story.id, cachedResponse,false, false);
         }
