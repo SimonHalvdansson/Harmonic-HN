@@ -237,7 +237,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentsIcon.setAlpha(storyViewHolder.story.clicked ? 0.6f : 1.0f);
             }
         } else if (holder instanceof MainHeaderViewHolder) {
-            //header
             final MainHeaderViewHolder headerViewHolder = (MainHeaderViewHolder) holder;
             final Context ctx = headerViewHolder.itemView.getContext();
 
@@ -254,9 +253,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             headerViewHolder.searchEditText.setVisibility(searching ? View.VISIBLE : View.GONE);
             headerViewHolder.searchEditText.setText(stories.get(0).title);
-            //TODO can't get this to work, keeps resetting option
-            headerViewHolder.popRecAuto.setText(headerViewHolder.currentPopRecSorting, false);
-            //headerViewHolder.timeScaleAuto.setText(((MainHeaderViewHolder) holder).currentTimeSorting);
 
             if (searching) {
                 headerViewHolder.searchEditText.requestFocus();
@@ -269,10 +265,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 headerViewHolder.noBookmarksLayout.setVisibility((stories.size() == 1 && type == SettingsUtils.getBookmarksIndex(ctx.getResources())) ? View.VISIBLE : View.GONE);
                 headerViewHolder.searchEmptyContainer.setVisibility(View.GONE);
             }
-
-            //TODO finish search options
-            //headerViewHolder.searchOptionsContainer.setVisibility(searching ? View.VISIBLE : View.GONE);
-
+            
             headerViewHolder.typeSpinner.setSelection(type);
 
             headerViewHolder.loadingFailedLayout.setVisibility(loadingFailed ? View.VISIBLE : View.GONE);
@@ -281,7 +274,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             submissionsHeaderViewHolder.headerText.setText(submitter + "'s submissions:");
 
-        } else {
+        } else if (holder instanceof CommentViewHolder) {
             final CommentViewHolder commentViewHolder = (CommentViewHolder) holder;
 
             Story story = stories.get(position);
@@ -369,16 +362,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final LinearLayout noBookmarksLayout;
         public final LinearLayout spinnerContainer;
         public final LinearLayout searchEmptyContainer;
-        public final LinearLayout searchOptionsContainer;
         public final EditText searchEditText;
         public final ImageButton moreButton;
         public final ImageButton searchButton;
         public final Button retryButton;
-        public final AutoCompleteTextView popRecAuto;
-        public final AutoCompleteTextView timeScaleAuto;
-
-        public String currentPopRecSorting;
-        public String currentTimeSorting;
 
         public ArrayAdapter<CharSequence> typeAdapter;
 
@@ -397,36 +384,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             searchButton = view.findViewById(R.id.stories_header_search_button);
             searchEmptyContainer = view.findViewById(R.id.stories_header_search_empty_container);
             retryButton = view.findViewById(R.id.stories_header_retry_button);
-            searchOptionsContainer = view.findViewById(R.id.stories_header_search_options);
-            popRecAuto = view.findViewById(R.id.search_dropdown_popularity_recent_textview);
-            timeScaleAuto = view.findViewById(R.id.search_dropdown_timescale_textview);
 
             ArrayAdapter<String> searchPopRecAdapter = new ArrayAdapter<>(ctx, R.layout.search_option_list_item, ctx.getResources().getStringArray(R.array.search_sorting_options));
             ArrayAdapter<String> searchTimescaleAdapter = new ArrayAdapter<>(ctx, R.layout.search_option_list_item, ctx.getResources().getStringArray(R.array.search_sorting_timescale));
-
-            popRecAuto.setText(ctx.getResources().getStringArray(R.array.search_sorting_options)[0], false);
-            timeScaleAuto.setText(ctx.getResources().getStringArray(R.array.search_sorting_timescale)[0], false);
-            currentPopRecSorting = ctx.getResources().getStringArray(R.array.search_sorting_options)[0];
-            currentTimeSorting = ctx.getResources().getStringArray(R.array.search_sorting_timescale)[0];
-
-            popRecAuto.setAdapter(searchPopRecAdapter);
-            timeScaleAuto.setAdapter(searchTimescaleAdapter);
-
-            popRecAuto.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                    currentPopRecSorting = ctx.getResources().getStringArray(R.array.search_sorting_options)[i];
-                    doSearch();
-                }
-            });
-
-            timeScaleAuto.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                    currentTimeSorting = ctx.getResources().getStringArray(R.array.search_sorting_timescale)[i];
-                    doSearch();
-                }
-            });
 
             retryButton.setOnClickListener( (v) -> refreshListener.onRefresh());
 
@@ -486,7 +446,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         private void doSearch() {
-            storiesSearchListener.onQueryTextSubmit(searchEditText.getText().toString(), popRecAuto.getText().equals("Popularity"), timeScaleAuto.getText().toString());
+            storiesSearchListener.onQueryTextSubmit(searchEditText.getText().toString());
         }
     }
 
@@ -586,7 +546,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     public interface SearchListener {
-        void onQueryTextSubmit(String query, boolean relevance, String age);
+        void onQueryTextSubmit(String query);
         void onSearchStatusChanged();
     }
 

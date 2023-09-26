@@ -72,8 +72,6 @@ public class StoriesFragment extends Fragment {
     private ArrayList<String> filterWords;
     private boolean hideJobs, alwaysOpenComments, hideClicked;
     private String lastSearch;
-    private boolean lastSearchRelevance;
-    private String lastSearchAge;
 
     private int loadedTo = 0;
 
@@ -252,8 +250,8 @@ public class StoriesFragment extends Fragment {
 
         adapter.setSearchListener(new StoryRecyclerViewAdapter.SearchListener() {
             @Override
-            public void onQueryTextSubmit(String query, boolean relevance, String age) {
-                search(query, relevance, age);
+            public void onQueryTextSubmit(String query) {
+                search(query);
 
             }
 
@@ -513,7 +511,7 @@ public class StoriesFragment extends Fragment {
     public void attemptRefresh() {
         hideUpdateButton();
         if (adapter.searching) {
-            search(lastSearch, lastSearchRelevance, lastSearchAge);
+            search(lastSearch);
             return;
         }
 
@@ -650,13 +648,11 @@ public class StoriesFragment extends Fragment {
         loadAlgolia("https://hn.algolia.com/api/v1/search?tags=story&numericFilters=created_at_i>" + start_i + "&hitsPerPage=200", true);
     }
 
-    private void search(String query, boolean relevance, String age) {
+    private void search(String query) {
         lastSearch = query;
         adapter.lastSearch = query;
-        lastSearchRelevance = relevance;
-        lastSearchAge = age;
 
-        loadAlgolia("https://hn.algolia.com/api/v1/" + (relevance ? "search" : "search_by_date") + "?query=" + query + "&tags=story&hitsPerPage=200", false);
+        loadAlgolia("https://hn.algolia.com/api/v1/search?query=" + query + "&tags=story&hitsPerPage=200", false);
     }
 
     private void loadAlgolia(String url, boolean markClicked) {
