@@ -121,7 +121,11 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml("<b>Version 1.10:</b><br>" +
+                .setMessage(Html.fromHtml("<b>Version 1.10.1:</b><br>" +
+                        "- Made story text selectable (thanks AppearamidGuy)<br>" +
+                        "- Fixed tablet comment scroll bug<br>" +
+                        "<br>" +
+                        "<b>Version 1.10:</b><br>" +
                         "- Added option to select start page (thanks Thomas Dalgetty)<br>" +
                         "- Comment scroll progress is now saved <br>" +
                         "- Posts can be marked as read/unread by long pressing and interacting with a small menu<br>" +

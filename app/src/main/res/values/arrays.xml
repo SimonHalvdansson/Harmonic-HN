@@ -99,4 +99,12 @@
         <item>Nov</item>
         <item>Dec</item>
     </string-array>
+
+    <string-array name="comment_sorting">
+        <item>Default</item>
+        <item>Replies</item>
+        <item>Recent</item>
+        <item>Response by OP</item>
+    </string-array>
+
 </resources>

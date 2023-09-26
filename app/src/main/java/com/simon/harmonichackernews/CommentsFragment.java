@@ -85,6 +85,7 @@ import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.ArchiveOrgUrlGetter;
+import com.simon.harmonichackernews.utils.CommentSorter;
 import com.simon.harmonichackernews.utils.DialogUtils;
 import com.simon.harmonichackernews.utils.FileDownloader;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -388,6 +389,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         loadStoryAndComments(story.id, cachedResponse == null, cachedResponse, true);
 
+        //if this isn't here, the addition of the text appears to scroll the recyclerview down a little
         recyclerView.scrollToPosition(0);
 
         if (cachedResponse != null) {
@@ -1059,9 +1061,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             JSONArray children = jsonObject.getJSONArray("children");
 
+            //we run the defauly sorting
             for (int i = 0; i < children.length(); i++) {
                 JSONParser.readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, 0, story.kids);
             }
+            //and then perhaps apply an updated sorting
+            comments = CommentSorter.sort(getContext(), comments);
 
             boolean changed = JSONParser.updateStoryInformation(story, jsonObject, forceHeaderRefresh, oldCommentCount, comments.size());
             if (changed || forceHeaderRefresh) {

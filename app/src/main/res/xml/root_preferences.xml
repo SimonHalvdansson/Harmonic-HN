@@ -209,6 +209,16 @@
 
         <DropDownPreference
             app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_filter"
+            app:title="Comment sorting"
+            app:key="pref_comment_sorting"
+            app:useSimpleSummaryProvider="true"
+            app:entries="@array/comment_sorting"
+            app:defaultValue="Default"
+            app:entryValues="@array/comment_sorting"   />
+
+        <DropDownPreference
+            app:singleLineTitle="false"
             app:icon="@drawable/ic_action_text"
             app:title="Comments text size"
             app:key="pref_comment_text_size"
