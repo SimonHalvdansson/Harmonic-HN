@@ -318,93 +318,82 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         } else if (holder instanceof ItemViewHolder) {
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
-
             itemViewHolder.comment = comments.get(position);
 
-            if (shouldShow(itemViewHolder.comment)) {
-                //only compute if visible, LayoutParams are reset inside here for depth
-                holder.itemView.setVisibility(View.VISIBLE);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-
-                DisplayMetrics displayMetrics = new DisplayMetrics();
-                ((Activity) ctx).getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-                int width = displayMetrics.widthPixels;
-                if (isTablet) {
-                    width /= 2;
-                }
-
-                //16 is base padding, then add 13 for each comment
-                params.setMargins(
-                        Math.min(Utils.pxFromDpInt(ctx.getResources(), 16 + 13 * itemViewHolder.comment.depth), Math.round(((float) width) * 0.6f)),
-                        Utils.pxFromDpInt(ctx.getResources(), itemViewHolder.comment.depth > 0 && !collapseParent ? 10 : 6),
-                        Utils.pxFromDpInt(ctx.getResources(), 16),
-                        Utils.pxFromDpInt(ctx.getResources(), 6));
-                itemViewHolder.mView.setLayoutParams(params);
-
-                if (itemViewHolder.comment.depth == 0 && !showTopLevelDepthIndicator) {
-                    itemViewHolder.commentIndentIndicator.setVisibility(View.GONE);
-                } else {
-                    itemViewHolder.commentIndentIndicator.setVisibility(View.VISIBLE);
-                    int index = (itemViewHolder.comment.depth + (showTopLevelDepthIndicator ? 0 : -1)) % 7;
-
-                    if (monochromeCommentDepthIndicators) {
-                        itemViewHolder.commentIndentIndicator.setBackgroundResource(R.color.commentIndentIndicatorColorMonochrome);
-                    } else {
-                        itemViewHolder.commentIndentIndicator.setBackgroundResource(darkThemeActive ? commentDepthColorsDark[index] : commentDepthColorsLight[index]);
-                    }
-                }
-
-                if (!itemViewHolder.comment.text.isEmpty()) {
-                    itemViewHolder.commentBody.setHtml(itemViewHolder.comment.text);
-
-                    FontUtils.setTypeface(itemViewHolder.commentBody, false, preferredTextSize);
-                }
-
-                itemViewHolder.commentBy.setText(itemViewHolder.comment.by);
-                itemViewHolder.commentByTime.setText(" • " + itemViewHolder.comment.getTimeFormatted());
-
-                boolean byOp = story.by.equals(itemViewHolder.comment.by);
-                boolean byUser = false;
-                if (!TextUtils.isEmpty(username)) {
-                    byUser = itemViewHolder.comment.by.equals(username);
-                }
-
-                if (byUser) {
-                    itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.selfCommentColor));
-                    itemViewHolder.commentBy.setTypeface(FontUtils.activeBold);
-                } else if (byOp) {
-                    itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.opCommentColor));
-                    itemViewHolder.commentBy.setTypeface(FontUtils.activeBold);
-                } else {
-                    itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.storyColorDisabled));
-                    itemViewHolder.commentBy.setTypeface(FontUtils.activeRegular);
-                }
-
-                itemViewHolder.commentByTime.setTypeface(FontUtils.activeRegular);
-
-                itemViewHolder.commentBody.setVisibility( (!itemViewHolder.comment.expanded && collapseParent) ? View.GONE : View.VISIBLE);
-
-                if (itemViewHolder.comment.expanded) {
-                    // if expanded, there's no need to show the subcommentcount
-                    itemViewHolder.commentHiddenCount.setVisibility(View.INVISIBLE);
-                } else {
-                    // if not expanded, only show (and set text) if subCommentCount > 0
-                    int subCommentCount = getIndexOfLastChild(itemViewHolder.comment.depth, position) - position;
-
-                    if (subCommentCount > 0) {
-                        itemViewHolder.commentHiddenCount.setVisibility(View.VISIBLE);
-                        itemViewHolder.commentHiddenCount.setText("+" + subCommentCount);
-                    } else {
-                        itemViewHolder.commentHiddenCount.setVisibility(View.INVISIBLE);
-                    }
-                }
-            } else {
-                holder.itemView.setVisibility(View.GONE);
-                holder.itemView.setLayoutParams(new RecyclerView.LayoutParams(0, 0));
+            DisplayMetrics displayMetrics = new DisplayMetrics();
+            ((Activity) ctx).getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+            int width = displayMetrics.widthPixels;
+            if (isTablet) {
+                width /= 2;
             }
-        } else {
-            //nothing?
+
+            //16 is base padding, then add 13 for each comment
+            params.setMargins(
+                    Math.min(Utils.pxFromDpInt(ctx.getResources(), 16 + 13 * itemViewHolder.comment.depth), Math.round(((float) width) * 0.6f)),
+                    Utils.pxFromDpInt(ctx.getResources(), itemViewHolder.comment.depth > 0 && !collapseParent ? 10 : 6),
+                    Utils.pxFromDpInt(ctx.getResources(), 16),
+                    Utils.pxFromDpInt(ctx.getResources(), 6));
+            itemViewHolder.itemView.setLayoutParams(params);
+
+            if (itemViewHolder.comment.depth == 0 && !showTopLevelDepthIndicator) {
+                itemViewHolder.commentIndentIndicator.setVisibility(View.GONE);
+            } else {
+                itemViewHolder.commentIndentIndicator.setVisibility(View.VISIBLE);
+                int index = (itemViewHolder.comment.depth + (showTopLevelDepthIndicator ? 0 : -1)) % 7;
+
+                if (monochromeCommentDepthIndicators) {
+                    itemViewHolder.commentIndentIndicator.setBackgroundResource(R.color.commentIndentIndicatorColorMonochrome);
+                } else {
+                    itemViewHolder.commentIndentIndicator.setBackgroundResource(darkThemeActive ? commentDepthColorsDark[index] : commentDepthColorsLight[index]);
+                }
+            }
+
+            if (!itemViewHolder.comment.text.isEmpty()) {
+                itemViewHolder.commentBody.setHtml(itemViewHolder.comment.text);
+
+                FontUtils.setTypeface(itemViewHolder.commentBody, false, preferredTextSize);
+            }
+
+            itemViewHolder.commentBy.setText(itemViewHolder.comment.by);
+            itemViewHolder.commentByTime.setText(" • " + itemViewHolder.comment.getTimeFormatted());
+
+            boolean byOp = story.by.equals(itemViewHolder.comment.by);
+            boolean byUser = false;
+            if (!TextUtils.isEmpty(username)) {
+                byUser = itemViewHolder.comment.by.equals(username);
+            }
+
+            if (byUser) {
+                itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.selfCommentColor));
+                itemViewHolder.commentBy.setTypeface(FontUtils.activeBold);
+            } else if (byOp) {
+                itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.opCommentColor));
+                itemViewHolder.commentBy.setTypeface(FontUtils.activeBold);
+            } else {
+                itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.storyColorDisabled));
+                itemViewHolder.commentBy.setTypeface(FontUtils.activeRegular);
+            }
+
+            itemViewHolder.commentByTime.setTypeface(FontUtils.activeRegular);
+
+            itemViewHolder.commentBody.setVisibility( (!itemViewHolder.comment.expanded && collapseParent) ? View.GONE : View.VISIBLE);
+
+            if (itemViewHolder.comment.expanded) {
+                // if expanded, there's no need to show the subcommentcount
+                itemViewHolder.commentHiddenCount.setVisibility(View.INVISIBLE);
+            } else {
+                // if not expanded, only show (and set text) if subCommentCount > 0
+                int subCommentCount = getIndexOfLastChild(itemViewHolder.comment.depth, position) - position;
+
+                if (subCommentCount > 0) {
+                    itemViewHolder.commentHiddenCount.setVisibility(View.VISIBLE);
+                    itemViewHolder.commentHiddenCount.setText("+" + subCommentCount);
+                } else {
+                    itemViewHolder.commentHiddenCount.setVisibility(View.INVISIBLE);
+                }
+            }
         }
     }
 
@@ -423,7 +412,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private class ItemViewHolder extends RecyclerView.ViewHolder {
-        public final View mView;
         public final HtmlTextView commentBody;
         public final TextView commentBy;
         public final TextView commentByTime;
@@ -434,28 +422,27 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         public ItemViewHolder(View view) {
             super(view);
-            mView = view;
             commentBody =  view.findViewById(R.id.comment_body);
             commentBy = view.findViewById(R.id.comment_by);
             commentByTime = view.findViewById(R.id.comment_by_time);
             commentHiddenCount = view.findViewById(R.id.comment_hidden_count);
             commentIndentIndicator = view.findViewById(R.id.comment_indent_indicator);
 
-            mView.setOnLongClickListener(view13 -> {
-                commentLongClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), view13);
+            itemView.setOnLongClickListener(v -> {
+                commentLongClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), v);
                 return true;
             });
 
-            commentBody.setOnLongClickListener(view14 -> {
-                commentLongClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), view14);
+            commentBody.setOnLongClickListener(v -> {
+                commentLongClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), v);
                 return true;
             });
 
-            mView.setOnClickListener(view1 ->
-                    commentClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), view1));
+            itemView.setOnClickListener(v ->
+                    commentClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), v));
 
-            commentBody.setOnClickListener(view12 ->
-                    commentClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), view12));
+            commentBody.setOnClickListener(v ->
+                    commentClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), v));
 
             commentBody.setOnClickATagListener(new OnClickATagListener() {
                 @Override
@@ -463,7 +450,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     Utils.openLinkMaybeHN(widget.getContext(), href);
                     return true;
                 }
-
             });
         }
     }
