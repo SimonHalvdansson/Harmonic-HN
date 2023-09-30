@@ -70,10 +70,12 @@ public class ThemeUtils {
             case "white":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarWhite : R.style.AppThemeWhite);
                 break;
-            //needed because of comment activity where the default is apptheme
+            //needed because of comment activity where the default is apptheme, now swipeback
             case "dark":
+                Utils.toast(swipeBack ? "sw" : "no", activity);
                 activity.setTheme(swipeBack ? R.style.Theme_Swipe_Back_NoActionBar : R.style.AppTheme);
                 break;
+
         }
 
         Window window = activity.getWindow();
@@ -85,9 +87,16 @@ public class ThemeUtils {
             WindowCompat.setDecorFitsSystemWindows(window, false);
         }
 
-        if (swipeBack) {
-            window.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS, WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        /*this is a long story. On CommentsActivity, the default theme is dependent on the android version.
+            For 24-29, we set SwipeBack as the defaul theme and do nothing more
+            For 30-33, we set AppTheme as the default and perhaps switch to SwipeBack if the user wants to, but in that case we indicate translucency manually
+            which makes it so that SwipeBack can peek to MainActivity
+            For 34+, translucent = true is set automatically in the onResume (after a delay) which makes the peek work
+
+            On a somewhat related note, transparent status bar messes the intended MainActivity -> CommentsActivity transition up sadly...
+        * */
+        if (swipeBack && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            activity.setTranslucent(true);
         }
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
