@@ -72,7 +72,6 @@ public class ThemeUtils {
                 break;
             //needed because of comment activity where the default is apptheme, now swipeback
             case "dark":
-                Utils.toast(swipeBack ? "sw" : "no", activity);
                 activity.setTheme(swipeBack ? R.style.Theme_Swipe_Back_NoActionBar : R.style.AppTheme);
                 break;
 

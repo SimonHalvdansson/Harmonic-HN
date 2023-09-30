@@ -179,6 +179,10 @@ public class SettingsUtils {
         return getBooleanPref("pref_comments_animation", true, ctx);
     }
 
+    public static boolean shouldUseCommentsScrollbar(Context ctx) {
+        return getBooleanPref("pref_comments_scrollbar", false, ctx);
+    }
+
     public static boolean shouldHideClicked(Context ctx) {
         return getBooleanPref("pref_hide_clicked", false, ctx);
     }

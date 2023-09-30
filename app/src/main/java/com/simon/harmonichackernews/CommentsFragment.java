@@ -580,6 +580,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             recyclerView.setItemAnimator(null);
         }
 
+        if (!SettingsUtils.shouldUseCommentsScrollbar(getContext())) {
+            //for some reason, I could only get the scrollbars to show up when they are enabled via
+            //xml but disabling them in java worked so this is an okay solution...
+            recyclerView.setVerticalScrollBarEnabled(false);
+        }
+
         BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View view, int newState) {

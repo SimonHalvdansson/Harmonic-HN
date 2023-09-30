@@ -286,6 +286,13 @@
             app:icon="@drawable/ic_action_animation"
             app:title="Animate comments"    />
 
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_comments_scrollbar"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_swipe_vertical"
+            app:title="Scrollbar"    />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="General">
