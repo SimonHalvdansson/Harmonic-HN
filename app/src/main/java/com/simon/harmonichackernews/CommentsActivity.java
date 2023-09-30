@@ -26,7 +26,7 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        ThemeUtils.setupTheme(this, true);
+        ThemeUtils.setupTheme(this, !SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext()));
 
         setContentView(R.layout.activity_comments);
 

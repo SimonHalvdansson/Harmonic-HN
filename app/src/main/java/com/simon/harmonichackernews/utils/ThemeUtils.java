@@ -4,8 +4,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.view.Window;
+import android.view.WindowManager;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.EdgeToEdge;
@@ -68,6 +70,10 @@ public class ThemeUtils {
             case "white":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarWhite : R.style.AppThemeWhite);
                 break;
+            //needed because of comment activity where the default is apptheme
+            case "dark":
+                activity.setTheme(swipeBack ? R.style.Theme_Swipe_Back_NoActionBar : R.style.AppTheme);
+                break;
         }
 
         Window window = activity.getWindow();
@@ -77,6 +83,11 @@ public class ThemeUtils {
 
         if (specialFlags) {
             WindowCompat.setDecorFitsSystemWindows(window, false);
+        }
+
+        if (swipeBack) {
+            window.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS, WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
