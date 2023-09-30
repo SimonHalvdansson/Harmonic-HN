@@ -83,7 +83,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private int navbarHeight = 0;
 
     public static final int TYPE_HEADER = 0;
-    public static final int TYPE_ITEM = 1;
+    public static final int TYPE_COMMENT = 1;
+    public static final int TYPE_COLLAPSED = 2;
 
     public final static int FLAG_ACTION_CLICK_USER = 0;
     public final static int FLAG_ACTION_CLICK_COMMENT = 1;
@@ -130,7 +131,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        boolean shouldShowInvert,
                                        boolean shouldShowTopLevelDepthIndicator,
                                        boolean shouldShowExpand,
-                                       boolean darkTheme) {
+                                       boolean darkTheme,
+                                       boolean tablet) {
         integratedWebview = useIntegratedWebview;
         bottomSheet = sheet;
         fragmentManager = fm;
@@ -147,22 +149,24 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         showTopLevelDepthIndicator = shouldShowTopLevelDepthIndicator;
         showExpand = shouldShowExpand;
         darkThemeActive = darkTheme;
+        isTablet = tablet;
     }
 
     @NotNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        isTablet = Utils.isTablet(parent.getResources());
-
-        if (viewType == TYPE_ITEM) {
+        if (viewType == TYPE_COMMENT) {
             View view = LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.comments_item, parent, false);
             return new ItemViewHolder(view);
+        } else if (viewType == TYPE_COLLAPSED) {
+            return new RecyclerView.ViewHolder(new View(parent.getContext())) {
+            };
         } else {
             View view = LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.comments_header, parent, false);
 
-            return new CommentsRecyclerViewAdapter.HeaderViewHolder(view);
+            return new HeaderViewHolder(view);
         }
     }
 
@@ -399,6 +403,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 holder.itemView.setVisibility(View.GONE);
                 holder.itemView.setLayoutParams(new RecyclerView.LayoutParams(0, 0));
             }
+        } else {
+            //nothing?
         }
     }
 
@@ -412,7 +418,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (position == 0) {
             return TYPE_HEADER;
         } else {
-            return TYPE_ITEM;
+            return shouldShow(comments.get(position)) ? TYPE_COMMENT : TYPE_COLLAPSED;
         }
     }
 

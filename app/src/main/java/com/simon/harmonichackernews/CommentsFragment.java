@@ -446,7 +446,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 isFeatureSupported(WebViewFeature.FORCE_DARK) || WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING),
                 SettingsUtils.shouldShowTopLevelDepthIndicator(getContext()),
                 SettingsUtils.shouldShowWebviewExpandButton(getContext()),
-                ThemeUtils.isDarkMode(getContext()));
+                ThemeUtils.isDarkMode(getContext()),
+                Utils.isTablet(getResources()));
 
         adapter.setOnHeaderClickListener(story1 -> Utils.launchCustomTab(getActivity(), story1.url));
 
@@ -621,7 +622,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         recyclerView.setAdapter(adapter);
 
-        recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_ITEM, 100);
+        recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COMMENT, 300);
+        recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COLLAPSED, 600);
     }
 
 
