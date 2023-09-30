@@ -583,7 +583,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onStateChanged(@NonNull View view, int newState) {
                 if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
-                    toggleBackPressedCallback(webView.canGoBack());
+                    if (SettingsUtils.shouldUseWebViewDeviceBack(getContext())) {
+                        toggleBackPressedCallback(webView.canGoBack());
+                    } else {
+                        toggleBackPressedCallback(false);
+                    }
                 } else {
                     toggleBackPressedCallback(false);
                 }
@@ -1420,7 +1424,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
                 //if we are at the webview and we just loaded, recheck the canGoBack status
-                toggleBackPressedCallback(webView.canGoBack());
+                if (SettingsUtils.shouldUseWebViewDeviceBack(getContext())) {
+                    toggleBackPressedCallback(webView.canGoBack());
+                }
             }
         }
 
