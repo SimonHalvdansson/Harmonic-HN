@@ -20,4 +20,8 @@ public class Comment {
         return Utils.getTimeAgo(this.time);
     }
 
+    public int getTime() {
+        return this.time;
+    }
+
 }
