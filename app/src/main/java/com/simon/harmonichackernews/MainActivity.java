@@ -100,7 +100,7 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
             startActivity(intent);
 
             if (!SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext())) {
-                overridePendingTransition(R.anim.activity_in_animation, 0);
+                overridePendingTransition(R.anim.activity_in_animation, R.anim.hold);
             }
         }
     }
