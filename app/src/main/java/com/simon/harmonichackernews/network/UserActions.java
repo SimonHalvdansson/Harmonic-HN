@@ -1,19 +1,24 @@
 package com.simon.harmonichackernews.network;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.os.Handler;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.util.Pair;
 import androidx.fragment.app.FragmentManager;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.utils.AccountUtils;
+import com.simon.harmonichackernews.utils.Utils;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.Objects;
 
+import kotlin.Triple;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.FormBody;
@@ -60,54 +65,39 @@ private static final String HEADER_LOCATION = "location";
 private static final String HEADER_COOKIE = "cookie";
 private static final String HEADER_SET_COOKIE = "set-cookie";
 
-    public static void upvote(Context ctx, int id, FragmentManager fm) {
-        UserActions.vote(String.valueOf(id), VOTE_DIR_UP, ctx, fm, new UserActions.ActionCallback() {
+    public static void voteWithDir(Context ctx, int id, FragmentManager fm, String dir) {
+        UserActions.vote(String.valueOf(id), dir, ctx, fm, new UserActions.ActionCallback() {
             @Override
             public void onSuccess(Response response) {
                 Toast.makeText(ctx, "Vote successful", Toast.LENGTH_SHORT).show();
             }
 
             @Override
-            public void onFailure(String response) {
-                Toast.makeText(ctx, "Vote unsuccessful, error: " + response, Toast.LENGTH_SHORT).show();
+            public void onFailure(String summary, String response) {
+                UserActions.showFailureDetailDialog(ctx, summary, response);
+                Toast.makeText(ctx, "Vote unsuccessful, see dialog for response", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    public static void upvote(Context ctx, int id, FragmentManager fm) {
+        voteWithDir(ctx, id, fm, VOTE_DIR_UP);
     }
 
     public static void downvote(Context ctx, int id, FragmentManager fm) {
-        UserActions.vote(String.valueOf(id), VOTE_DIR_DOWN, ctx, fm, new UserActions.ActionCallback() {
-            @Override
-            public void onSuccess(Response response) {
-                Toast.makeText(ctx, "Vote successful", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onFailure(String response) {
-                Toast.makeText(ctx, "Vote unsuccessful, error: " + response, Toast.LENGTH_SHORT).show();
-            }
-        });
+        voteWithDir(ctx, id, fm, VOTE_DIR_DOWN);
     }
 
     public static void unvote(Context ctx, int id, FragmentManager fm) {
-        UserActions.vote(String.valueOf(id), VOTE_DIR_UN, ctx, fm, new UserActions.ActionCallback() {
-            @Override
-            public void onSuccess(Response response) {
-                Toast.makeText(ctx, "Vote successful", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onFailure(String response) {
-                Toast.makeText(ctx, "Vote unsuccessful, error: " + response, Toast.LENGTH_SHORT).show();
-            }
-        });
+        voteWithDir(ctx, id, fm, VOTE_DIR_UN);
     }
 
-    public static void vote(String itemId, String direction, Context ctx, FragmentManager fm, ActionCallback cb) {
-        Pair<String, String> account = AccountUtils.getAccountDetails(ctx);
 
-        if (account == null || account.first == null || account.second == null) {
-            AccountUtils.showLoginPrompt( fm);
-            Toast.makeText(ctx, "Log in and try again", Toast.LENGTH_SHORT).show();
+    public static void vote(String itemId, String direction, Context ctx, FragmentManager fm, ActionCallback cb) {
+        Utils.log("Attempting to vote");
+        Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
+
+        if (AccountUtils.handlePossibleError(account, fm, ctx)) {
             return;
         }
 
@@ -117,8 +107,8 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
                         .addPathSegment(VOTE_PATH)
                         .build())
                 .post(new FormBody.Builder()
-                        .add(LOGIN_PARAM_ACCT, account.first)
-                        .add(LOGIN_PARAM_PW, account.second)
+                        .add(LOGIN_PARAM_ACCT, account.getFirst())
+                        .add(LOGIN_PARAM_PW, account.getSecond())
                         .add(VOTE_PARAM_ID, itemId)
                         .add(VOTE_PARAM_HOW, direction)
                         .build())
@@ -128,11 +118,10 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
     }
 
 
-
     public static void comment(String itemId, String text, Context ctx, ActionCallback cb) {
-        Pair<String, String> account = AccountUtils.getAccountDetails(ctx);
+        Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
 
-        if (account.first == null || account.second == null) {
+        if (AccountUtils.handlePossibleError(account, null, ctx)) {
             return;
         }
 
@@ -142,8 +131,8 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
                         .addPathSegment(COMMENT_PATH)
                         .build())
                 .post(new FormBody.Builder()
-                        .add(LOGIN_PARAM_ACCT, account.first)
-                        .add(LOGIN_PARAM_PW, account.second)
+                        .add(LOGIN_PARAM_ACCT, account.getFirst())
+                        .add(LOGIN_PARAM_PW, account.getSecond())
                         .add(COMMENT_PARAM_PARENT, itemId)
                         .add(COMMENT_PARAM_TEXT, text)
                         .build())
@@ -165,7 +154,7 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
                     @Override
                     public void run() {
                         if (!response.isSuccessful()) {
-                            cb.onFailure(response.toString());
+                            cb.onFailure("Unsuccessful response", response.toString());
                             return;
                         }
 
@@ -173,17 +162,17 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
                             String responseBody = response.body().string();
 
                             if (responseBody.contains("Unknown or expired link.")) {
-                                cb.onFailure("Unknown or expired link");
+                                cb.onFailure("Unknown or expired link", responseBody);
                                 return;
                             }
 
                             if (responseBody.contains("Bad login.")) {
-                                cb.onFailure("Bad login");
+                                cb.onFailure("Bad login", responseBody);
                                 return;
                             }
 
                             if (responseBody.contains("Validation required. If this doesn't work, you can email")) {
-                                cb.onFailure("Rate limit reached");
+                                cb.onFailure("Rate limit reached", responseBody);
                                 return;
                             }
                         } catch (IOException e) {
@@ -200,15 +189,24 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
                 mainHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        cb.onFailure("Couldn't connect to HN");
+                        cb.onFailure("Couldn't connect to HN", null);
                     }
                 });
             }
         });
     }
 
+    public static void showFailureDetailDialog(Context ctx, String summary, String response) {
+        AlertDialog dialog = new MaterialAlertDialogBuilder(ctx)
+                .setTitle(summary)
+                .setMessage(response)
+                .setNegativeButton("Done", null).create();
+
+        dialog.show();
+    }
+
     public interface ActionCallback {
         void onSuccess(Response response);
-        void onFailure(String response);
+        void onFailure(String summary, String response);
     }
 }

@@ -87,23 +87,23 @@ public class Utils {
     public static String adservers;
 
     public static void log(String s) {
-        Log.d("TAG", s);
+        Log.d("HARMONIC_TAG", s);
     }
 
     public static void log(long i) {
-        Log.d("TAG", "" + i);
+        Log.d("HARMONIC_TAG", "" + i);
     }
 
     public static void log(int i) {
-        Log.d("TAG", "" + i);
+        Log.d("HARMONIC_TAG", "" + i);
     }
 
     public static void log(float i) {
-        Log.d("TAG", "" + i);
+        Log.d("HARMONIC_TAG", "" + i);
     }
 
     public static void log(boolean b) {
-        Log.d("TAG", "" + b);
+        Log.d("HARMONIC_TAG", "" + b);
     }
 
     public static void toast(String s, Context ctx) {

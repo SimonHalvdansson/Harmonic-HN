@@ -229,9 +229,10 @@ public class ComposeActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onFailure(String response) {
+            public void onFailure(String summary, String response) {
                 dialog.cancel();
-                Toast.makeText(view.getContext(), "Comment post unsuccessful, error: " + response, Toast.LENGTH_SHORT).show();
+                UserActions.showFailureDetailDialog(view.getContext(), summary, response);
+                Toast.makeText(view.getContext(), "Comment post unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
             }
         });
     }

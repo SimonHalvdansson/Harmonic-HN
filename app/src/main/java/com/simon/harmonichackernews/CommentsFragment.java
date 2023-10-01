@@ -1223,7 +1223,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void clickComment() {
-        if (AccountUtils.getAccountDetails(getContext()) == null) {
+        if (!AccountUtils.hasAccountDetails(getContext())) {
             AccountUtils.showLoginPrompt(getParentFragmentManager());
             return;
         }
@@ -1403,7 +1403,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case 7: //reply
-                        if (AccountUtils.getAccountDetails(ctx) == null) {
+                        if (!AccountUtils.hasAccountDetails(ctx)) {
                             AccountUtils.showLoginPrompt(getParentFragmentManager());
                             return;
                         }
