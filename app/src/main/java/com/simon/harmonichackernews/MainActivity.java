@@ -128,6 +128,7 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
                         "- Optimized AdBlock adlist loading (thanks AppearamidGuy)<br>" +
                         "- New comment opening animation when not using SwipeBack<br>" +
                         "- Improved logging for login errors<br>" +
+                        "- Fixed scroll restoration bug<br>" +
                         "- Improved collapsed comment scroll performance (thanks Yigit Boyar)<br>" +
                         "- Made story text selectable (thanks AppearamidGuy)<br>" +
                         "- Fixed tablet comment scroll bug<br>" +
