@@ -2,6 +2,9 @@ package com.simon.harmonichackernews.data;
 
 import com.simon.harmonichackernews.utils.Utils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Comment {
     public String by;
     public int id;
@@ -12,6 +15,9 @@ public class Comment {
     public int depth;
     public int children;
     public int totalReplies;
+
+    public List<Comment> childComments = new ArrayList<>();
+    public int sortOrder;
 
     public Comment() {
 

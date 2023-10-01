@@ -102,8 +102,9 @@
 
     <string-array name="comment_sorting">
         <item>Default</item>
+        <item>Newest first</item>
+        <item>Oldest first</item>
         <item>Reply count</item>
-        <item>Recent</item>
     </string-array>
 
 </resources>
