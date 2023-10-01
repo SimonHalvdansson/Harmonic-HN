@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews.utils;
+package com.simon.harmonichackernews.network;
 
 import android.content.Context;
 

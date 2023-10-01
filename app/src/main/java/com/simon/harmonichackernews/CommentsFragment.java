@@ -84,7 +84,7 @@ import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
-import com.simon.harmonichackernews.utils.ArchiveOrgUrlGetter;
+import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.utils.CommentSorter;
 import com.simon.harmonichackernews.utils.DialogUtils;
 import com.simon.harmonichackernews.utils.FileDownloader;
@@ -393,7 +393,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerView.scrollToPosition(0);
 
         if (cachedResponse != null) {
-            handleJsonResponse(story.id, cachedResponse,false, false);
+            handleJsonResponse(story.id, cachedResponse,false, false, !showWebsite);
         }
     }
 
@@ -987,7 +987,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
                     if (TextUtils.isEmpty(oldCachedResponse) || !oldCachedResponse.equals(response)) {
-                        handleJsonResponse(id, response,true, forceHeaderRefresh);
+                        handleJsonResponse(id, response,true, forceHeaderRefresh, false);
                     }
                     swipeRefreshLayout.setRefreshing(false);
                 }, error -> {
@@ -1055,7 +1055,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    private void handleJsonResponse(final int id, final String response, final boolean cache, final boolean forceHeaderRefresh) {
+    private void handleJsonResponse(final int id, final String response, final boolean cache, final boolean forceHeaderRefresh, boolean restoreScroll) {
         int oldCommentCount = comments.size();
 
         // This is what we get if the Algolia API has not indexed the post,
@@ -1078,7 +1078,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 JSONParser.readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, 0, story.kids);
             }
             //and then perhaps apply an updated sorting
-            comments = CommentSorter.sort(getContext(), comments);
+            CommentSorter.sort(getContext(), comments);
 
             boolean changed = JSONParser.updateStoryInformation(story, jsonObject, forceHeaderRefresh, oldCommentCount, comments.size());
             if (changed || forceHeaderRefresh) {
@@ -1106,7 +1106,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             //Seems like loading went well, lets cache the result
             if (cache) {
                 Utils.cacheStory(getContext(), id, response);
-            } else {
+            } else if (restoreScroll) {
                 //if we're not caching the result, this means we just loaded an old cache.
                 //let's see if we can recover the scroll position.
                 if (MainActivity.commentsScrollProgresses != null && !MainActivity.commentsScrollProgresses.isEmpty()) {

@@ -11,6 +11,7 @@ public class Comment {
     public boolean expanded;
     public int depth;
     public int children;
+    public int totalReplies;
 
     public Comment() {
 

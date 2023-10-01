@@ -122,6 +122,13 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml("<b>Version 1.10.1:</b><br>" +
+                        "- Added experimental alternative comment sorting<br>" +
+                        "- Fixed user bio bottom padding<br>" +
+                        "- Improved old Android navigation scrim (thanks AppearamidGuy)<br>" +
+                        "- Optimized AdBlock adlist loading (thanks AppearamidGuy)<br>" +
+                        "- New comment opening animation when not using SwipeBack<br>" +
+                        "- Improved logging for login errors<br>" +
+                        "- Improved collapsed comment scroll performance (thanks Yigit Boyar)<br>" +
                         "- Made story text selectable (thanks AppearamidGuy)<br>" +
                         "- Fixed tablet comment scroll bug<br>" +
                         "<br>" +

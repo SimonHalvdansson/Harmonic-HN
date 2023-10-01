@@ -210,7 +210,7 @@
         <DropDownPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_filter"
-            app:title="Comment sorting"
+            app:title="Comment sorting (experimental)"
             app:key="pref_comment_sorting"
             app:useSimpleSummaryProvider="true"
             app:entries="@array/comment_sorting"
