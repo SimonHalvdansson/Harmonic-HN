@@ -5,6 +5,7 @@ import android.content.Context;
 import com.simon.harmonichackernews.data.Comment;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
@@ -17,13 +18,28 @@ public class CommentSorter {
                 for (int i = 1; i < comments.size(); i++) {
                     comments.get(i).totalReplies = numChildren(comments, i);
                 }
-                sortComments(comments, Comparator.comparingInt(c -> -c.totalReplies));
+                sortComments(comments, new Comparator<Comment>() {
+                    @Override
+                    public int compare(Comment c1, Comment c2) {
+                        return Integer.compare(-c1.totalReplies, -c2.totalReplies);
+                    }
+                });
                 break;
             case "Newest first":
-                sortComments(comments, Comparator.comparingInt(c -> -c.time));
+                sortComments(comments, new Comparator<Comment>() {
+                    @Override
+                    public int compare(Comment c1, Comment c2) {
+                        return Integer.compare(-c1.time, -c2.time);
+                    }
+                });
                 break;
             case "Oldest first":
-                sortComments(comments, Comparator.comparingInt(c -> c.time));
+                sortComments(comments, new Comparator<Comment>() {
+                    @Override
+                    public int compare(Comment c1, Comment c2) {
+                        return Integer.compare(c1.time, c2.time);
+                    }
+                });
                 break;
         }
     }
@@ -42,7 +58,12 @@ public class CommentSorter {
         comments.get(0).sortOrder = -1;
 
         // Sort according to sortOrder from flattenCommentsWithChildren step - from sortOrder field
-        comments.sort(Comparator.comparingInt(e -> e.sortOrder));
+        Collections.sort(comments, new Comparator<Comment>() {
+            @Override
+            public int compare(Comment e1, Comment e2) {
+                return Integer.compare(e1.sortOrder, e2.sortOrder);
+            }
+        });
     }
 
     private static void sortCommentsRecursive(List<Comment> commentsWithChildren, Comparator<Comment> comparator) {
