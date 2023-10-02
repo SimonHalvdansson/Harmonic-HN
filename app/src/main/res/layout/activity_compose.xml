@@ -78,7 +78,7 @@
         android:layout_width="match_parent">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:hint="URL (optional)"
+            android:hint="URL"
             android:id="@+id/compose_edittext_url"
             android:inputType="textUri"
             android:autofillHints="url"

@@ -265,13 +265,16 @@ public class JSONParser {
         return changed;
     }
 
-    public static void readChildAndParseSubchilds(JSONObject child, List<Comment> comments, CommentsRecyclerViewAdapter adapter, int depth, int[] prioTop) throws JSONException {
+    public static boolean readChildAndParseSubchilds(JSONObject child, List<Comment> comments, CommentsRecyclerViewAdapter adapter, int depth, int[] prioTop) throws JSONException {
         /*
          * Remark: Right now we're only updating old comments, not deleting those who are not there
          * anymore but that is probably just nice
          */
+        //this is to be able to say if we should resort the list if we use non-default sorting
+        boolean placedNew = false;
+
         if (!child.has("text") || child.getString("text").equals("null")) {
-            return;
+            return false;
         }
 
         JSONArray children = child.has("children") ? child.getJSONArray("children") : null;
@@ -304,6 +307,7 @@ public class JSONParser {
         }
 
         if (newComment) {
+            placedNew = true;
             //now for placing, if it's a top level comment we should attempt to follow the prioList
             if (comment.depth == 0) {
 
@@ -420,9 +424,13 @@ public class JSONParser {
 
         if (children != null) {
             for (int i = 0; i < children.length(); i++) {
-                readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, depth + 1, prioTop);
+                boolean childPlaced = readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, depth + 1, prioTop);
+                if (childPlaced) {
+                    placedNew = true;
+                }
             }
         }
+        return placedNew;
     }
 
     public static boolean updateStoryWithAlgoliaResponse(Story story, String response) {

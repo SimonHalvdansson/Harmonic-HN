@@ -1074,14 +1074,23 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             JSONArray children = jsonObject.getJSONArray("children");
 
             //we run the defauly sorting
+            boolean addedNewComment = false;
             for (int i = 0; i < children.length(); i++) {
-                JSONParser.readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, 0, story.kids);
+                boolean added = JSONParser.readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, 0, story.kids);
+                if (added) {
+                    addedNewComment = true;
+                }
             }
+            //if non default, do full refresh after the sorting below!
+            if (addedNewComment && !SettingsUtils.getPreferredCommentSorting(getContext()).equals("Default")) {
+                adapter.notifyItemRangeChanged(1, comments.size());
+            }
+
             //and then perhaps apply an updated sorting
             CommentSorter.sort(getContext(), comments);
 
-            boolean changed = JSONParser.updateStoryInformation(story, jsonObject, forceHeaderRefresh, oldCommentCount, comments.size());
-            if (changed || forceHeaderRefresh) {
+            boolean storyChanged = JSONParser.updateStoryInformation(story, jsonObject, forceHeaderRefresh, oldCommentCount, comments.size());
+            if (storyChanged || forceHeaderRefresh) {
                 adapter.notifyItemChanged(0);
             }
 

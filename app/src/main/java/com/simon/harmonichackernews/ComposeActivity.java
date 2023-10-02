@@ -207,6 +207,7 @@ public class ComposeActivity extends AppCompatActivity {
                         .setTitle("Discard draft?")
                         .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int whichButton) {
+                                dialog.cancel();
                                 finish();
                             }})
                         .setNegativeButton("Cancel", null).create();
