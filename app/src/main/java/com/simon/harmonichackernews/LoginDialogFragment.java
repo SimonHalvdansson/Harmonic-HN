@@ -19,6 +19,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.simon.harmonichackernews.utils.AccountUtils;
+import com.simon.harmonichackernews.utils.ViewUtils;
 
 public class LoginDialogFragment extends AppCompatDialogFragment {
 
@@ -42,15 +43,7 @@ public class LoginDialogFragment extends AppCompatDialogFragment {
         Button infoButton = rootView.findViewById(R.id.login_dialog_more_info);
         LinearLayout infoContainer = rootView.findViewById(R.id.login_dialog_info_container);
 
-        usernameInput.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-
+        usernameInput.addTextChangedListener(new ViewUtils.SimpleTextWatcher() {
             @Override
             public void afterTextChanged(Editable editable) {
                 boolean usernameHasText = !TextUtils.isEmpty(usernameInput.getText().toString());
@@ -60,15 +53,7 @@ public class LoginDialogFragment extends AppCompatDialogFragment {
             }
         });
 
-        passwordInput.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-
+        passwordInput.addTextChangedListener(new ViewUtils.SimpleTextWatcher() {
             @Override
             public void afterTextChanged(Editable editable) {
                 boolean usernameHasText = !TextUtils.isEmpty(usernameInput.getText().toString());

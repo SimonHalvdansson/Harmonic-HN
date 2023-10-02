@@ -46,8 +46,15 @@ public class ComposeActivity extends AppCompatActivity {
     public final static String EXTRA_ID = "com.simon.harmonichackernews.EXTRA_ID";
     public final static String EXTRA_PARENT_TEXT = "com.simon.harmonichackernews.EXTRA_PARENT_TEXT";
     public final static String EXTRA_USER = "com.simon.harmonichackernews.EXTRA_USER";
+    public final static String EXTRA_TYPE = "com.simon.harmonichackernews.EXTRA_TYPE";
+
+    public final static int TYPE_TOP_COMMENT = 0;
+    public final static int TYPE_COMMENT_REPLY = 1;
+    public final static int TYPE_POST = 2;
 
     private EditText editText;
+    private EditText editTextTitle;
+    private EditText editTextUrl;
     private Button submitButton;
     private HtmlTextView replyingTextView;
     private ScrollView replyingScrollView;
@@ -55,6 +62,7 @@ public class ComposeActivity extends AppCompatActivity {
     private int id;
     private String parentText;
     private String user;
+    private int type;
 
     private OnBackPressedCallback backPressedCallback;
 
@@ -67,6 +75,8 @@ public class ComposeActivity extends AppCompatActivity {
         setContentView(R.layout.activity_compose);
 
         editText = findViewById(R.id.compose_edittext);
+        editTextTitle = findViewById(R.id.compose_edittext_title);
+        editTextUrl = findViewById(R.id.compose_edittext_url);
         submitButton = findViewById(R.id.compose_submit);
         replyingTextView = findViewById(R.id.compose_replying_text);
         replyingScrollView = findViewById(R.id.compose_replying_scrollview);
@@ -78,39 +88,36 @@ public class ComposeActivity extends AppCompatActivity {
         id = intent.getIntExtra(EXTRA_ID, -1);
         parentText = intent.getStringExtra(EXTRA_PARENT_TEXT);
         user = intent.getStringExtra(EXTRA_USER);
+        type = intent.getIntExtra(EXTRA_TYPE, TYPE_POST);
 
-        if (id == -1) {
+
+        if (type != TYPE_POST && id == -1) {
             Toast.makeText(this, "Invalid comment id", Toast.LENGTH_SHORT).show();
             finish();
         }
 
-        if (TextUtils.isEmpty(user)) {
-            replyingScrollView.setVisibility(View.GONE);
-            topCommentTextView.setVisibility(View.VISIBLE);
-            topCommentTextView.setText("Commenting on: " + parentText);
-        } else {
-            replyingScrollView.setVisibility(View.VISIBLE);
-            topCommentTextView.setVisibility(View.GONE);
-            replyingTextView.setHtml("<p>Replying to " + user + "'s comment:</p>" + parentText);
+        switch (type) {
+            case TYPE_TOP_COMMENT:
+                replyingScrollView.setVisibility(View.GONE);
+                topCommentTextView.setVisibility(View.VISIBLE);
+                topCommentTextView.setText("Commenting on: " + parentText);
+                break;
+            case TYPE_COMMENT_REPLY:
+                replyingScrollView.setVisibility(View.VISIBLE);
+                topCommentTextView.setVisibility(View.GONE);
+                replyingTextView.setHtml("<p>Replying to " + user + "'s comment:</p>" + parentText);
+                break;
+            case TYPE_POST:
+                replyingScrollView.setVisibility(View.GONE);
+                topCommentTextView.setVisibility(View.VISIBLE);
+                topCommentTextView.setText("Submitting post");
+                break;
         }
 
-        submitButton.setEnabled(!TextUtils.isEmpty(editText.getText().toString()));
-
-        editText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-
-            }
-
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-
-            }
-
+        editText.addTextChangedListener(new ViewUtils.SimpleTextWatcher() {
             @Override
             public void afterTextChanged(Editable editable) {
-                backPressedCallback.setEnabled(!TextUtils.isEmpty(editable.toString()));
-                submitButton.setEnabled(!TextUtils.isEmpty(editable.toString()));
+                updateEnabledStatuses();
             }
         });
 
@@ -187,7 +194,7 @@ public class ComposeActivity extends AppCompatActivity {
             }
         };
         getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
-        backPressedCallback.setEnabled(false);
+        updateEnabledStatuses();
     }
 
     @Override
@@ -214,26 +221,60 @@ public class ComposeActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    private void updateEnabledStatuses() {
+        boolean hasText = !TextUtils.isEmpty(editText.getText().toString());
+        boolean hasTitle = !TextUtils.isEmpty(editTextTitle.getText().toString());
+        boolean hasUrl = !TextUtils.isEmpty(editTextUrl.getText().toString());
+        boolean enable;
+
+        if (type == TYPE_POST) {
+            enable = hasTitle && (hasText || hasUrl);
+        } else {
+            enable = hasText;
+        }
+
+        backPressedCallback.setEnabled(enable);
+        submitButton.setEnabled(enable);
+    }
+
     public void submit(View view) {
         ProgressDialog dialog = ProgressDialog.show(this, "",
                 "Posting...", true);
 
         dialog.getWindow().setBackgroundDrawableResource(ThemeUtils.getBackgroundColorResource(view.getContext()));
 
-        UserActions.comment(String.valueOf(id), editText.getText().toString(), view.getContext(), new UserActions.ActionCallback() {
-            @Override
-            public void onSuccess(Response response) {
-                dialog.cancel();
-                Toast.makeText(view.getContext(), "Comment posted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
-                finish();
-            }
+        if (type == TYPE_POST) {
+            UserActions.submit(editTextTitle.getText().toString(), editText.getText().toString(), editTextUrl.getText().toString(), view.getContext(), new UserActions.ActionCallback() {
+                @Override
+                public void onSuccess(Response response) {
+                    dialog.cancel();
+                    Toast.makeText(view.getContext(), "Post submitted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
 
-            @Override
-            public void onFailure(String summary, String response) {
-                dialog.cancel();
-                UserActions.showFailureDetailDialog(view.getContext(), summary, response);
-                Toast.makeText(view.getContext(), "Comment post unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
-            }
-        });
+                @Override
+                public void onFailure(String summary, String response) {
+                    dialog.cancel();
+                    UserActions.showFailureDetailDialog(view.getContext(), summary, response);
+                    Toast.makeText(view.getContext(), "Post submission unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            UserActions.comment(String.valueOf(id), editText.getText().toString(), view.getContext(), new UserActions.ActionCallback() {
+                @Override
+                public void onSuccess(Response response) {
+                    dialog.cancel();
+                    Toast.makeText(view.getContext(), "Comment posted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+
+                @Override
+                public void onFailure(String summary, String response) {
+                    dialog.cancel();
+                    UserActions.showFailureDetailDialog(view.getContext(), summary, response);
+                    Toast.makeText(view.getContext(), "Comment post unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
 }

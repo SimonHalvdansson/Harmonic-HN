@@ -141,6 +141,31 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
         executeRequest(ctx, request, cb);
     }
 
+    public static void submit(String title, String text, String url, Context ctx, ActionCallback cb) {
+        Utils.log("Submitting");
+        Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
+
+        if (AccountUtils.handlePossibleError(account, null, ctx)) {
+            return;
+        }
+
+        Request request = new Request.Builder()
+                .url(Objects.requireNonNull(HttpUrl.parse(BASE_WEB_URL))
+                        .newBuilder()
+                        .addPathSegment(SUBMIT_PATH)
+                        .build())
+                .post(new FormBody.Builder()
+                        .add(LOGIN_PARAM_ACCT, account.getFirst())
+                        .add(LOGIN_PARAM_PW, account.getSecond())
+                        .add(SUBMIT_PARAM_TITLE, title)
+                        .add(SUBMIT_PARAM_TEXT, text)
+                        .add(SUBMIT_PARAM_URL, url)
+                        .build())
+                .build();
+
+        executeRequest(ctx, request, cb);
+    }
+
     public static void executeRequest(Context ctx, Request request, ActionCallback cb) {
         OkHttpClient client = NetworkComponent.getOkHttpClientInstance();
 

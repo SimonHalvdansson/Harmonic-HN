@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.utils;
 
 import android.content.res.Resources;
+import android.text.TextWatcher;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -69,4 +70,15 @@ public class ViewUtils {
         }
         return 0;
     }
+
+    public abstract static class SimpleTextWatcher implements TextWatcher {
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+        }
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+        }
+    }
+
 }

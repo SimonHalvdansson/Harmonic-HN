@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -482,7 +483,7 @@ public class StoriesFragment extends Fragment {
             public boolean onMenuItemClick(MenuItem item) {
                 if (item.getItemId() == R.id.menu_settings) {
                     requireActivity().startActivity(new Intent(requireActivity(), SettingsActivity.class));
-                } else if (item.getItemId() == R.id.menu_login) {
+                } else if (item.getItemId() == R.id.menu_log) {
                     if (TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity()))) {
                         AccountUtils.showLoginPrompt(requireActivity().getSupportFragmentManager());
                     } else {
@@ -491,19 +492,23 @@ public class StoriesFragment extends Fragment {
                     }
                 } else if (item.getItemId() == R.id.menu_profile) {
                     UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), AccountUtils.getAccountUsername(requireActivity()));
+                } else if (item.getItemId() == R.id.menu_submit) {
+                    Intent submitIntent = new Intent(getContext(), ComposeActivity.class);
+                    submitIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_POST);
+                    startActivity(submitIntent);
                 }
                 return true;
             }
         });
         popup.getMenuInflater().inflate(R.menu.main_menu, popup.getMenu());
 
-        if (TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity()))) {
-            popup.getMenu().getItem(0).setTitle("Log in");
-            popup.getMenu().getItem(1).setVisible(false);
-        } else {
-            popup.getMenu().getItem(0).setTitle("Log out");
-            popup.getMenu().getItem(1).setVisible(true);
-        }
+        Menu menu = popup.getMenu();
+
+        boolean loggedIn = !TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity()));
+
+        menu.findItem(R.id.menu_log).setTitle(loggedIn ? "Log out" : "Log in");
+        menu.findItem(R.id.menu_profile).setVisible(loggedIn);
+        menu.findItem(R.id.menu_submit).setVisible(loggedIn);
 
         popup.show();
     }

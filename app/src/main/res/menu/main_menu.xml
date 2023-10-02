@@ -2,8 +2,12 @@
     xmlns:tools="http://schemas.android.com/tools" tools:context=".MainActivity">
 
     <item
-        android:id="@+id/menu_login"
+        android:id="@+id/menu_log"
         android:title="Log in" />
+
+    <item
+        android:id="@+id/menu_submit"
+        android:title="Submit" />
 
     <item
         android:id="@+id/menu_profile"

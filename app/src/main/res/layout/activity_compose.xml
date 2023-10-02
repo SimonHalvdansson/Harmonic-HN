@@ -48,6 +48,36 @@
         android:layout_height="1dp" />
 
     <androidx.appcompat.widget.AppCompatEditText
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:paddingLeft="16dp"
+        android:imeOptions="normal"
+        android:paddingRight="16dp"
+        android:id="@+id/compose_edittext_title"
+        android:hint="Title"
+        android:background="@null"
+        android:fontFamily="@font/product_sans"
+        android:gravity="top"
+        android:inputType="textCapSentences|textMultiLine"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"    />
+
+    <androidx.appcompat.widget.AppCompatEditText
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:paddingLeft="16dp"
+        android:imeOptions="normal"
+        android:paddingRight="16dp"
+        android:id="@+id/compose_edittext_url"
+        android:hint="URL"
+        android:background="@null"
+        android:fontFamily="@font/product_sans"
+        android:gravity="top"
+        android:inputType="textCapSentences|textMultiLine"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"    />
+
+    <androidx.appcompat.widget.AppCompatEditText
         android:paddingLeft="16dp"
         android:imeOptions="normal"
         android:paddingRight="16dp"
