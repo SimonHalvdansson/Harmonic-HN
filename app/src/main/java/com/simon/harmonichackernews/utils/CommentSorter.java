@@ -68,7 +68,7 @@ public class CommentSorter {
 
     private static void sortCommentsRecursive(List<Comment> commentsWithChildren, Comparator<Comment> comparator) {
         // Sort top level (in place)
-        commentsWithChildren.sort(comparator);
+        Collections.sort(commentsWithChildren, comparator);
 
         for (Comment c : commentsWithChildren) {
             // Sort children level (in place)
@@ -119,9 +119,6 @@ public class CommentSorter {
         // Set sort order in flat array
         for (int i = 0; i < flatComments.size(); i++) {
             flatComments.get(i).sortOrder = i;
-
-            // Free memory as childComments are no longer used
-            //flatComments.get(i).childComments = null;
         }
     }
 
