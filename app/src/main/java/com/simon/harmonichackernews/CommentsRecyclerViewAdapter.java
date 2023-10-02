@@ -367,15 +367,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             if (byUser) {
                 itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.selfCommentColor));
-                itemViewHolder.commentBy.setTypeface(FontUtils.activeBold);
             } else if (byOp) {
                 itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.opCommentColor));
-                itemViewHolder.commentBy.setTypeface(FontUtils.activeBold);
             } else {
                 itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.storyColorDisabled));
-                itemViewHolder.commentBy.setTypeface(FontUtils.activeRegular);
             }
 
+            itemViewHolder.commentBy.setTypeface(FontUtils.activeBold);
             itemViewHolder.commentByTime.setTypeface(FontUtils.activeRegular);
 
             itemViewHolder.commentBody.setVisibility( (!itemViewHolder.comment.expanded && collapseParent) ? View.GONE : View.VISIBLE);
