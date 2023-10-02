@@ -47,35 +47,68 @@
         android:layout_width="match_parent"
         android:layout_height="1dp" />
 
-    <androidx.appcompat.widget.AppCompatEditText
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:paddingLeft="16dp"
-        android:imeOptions="normal"
-        android:paddingRight="16dp"
-        android:id="@+id/compose_edittext_title"
-        android:hint="Title"
-        android:background="@null"
-        android:fontFamily="@font/product_sans"
-        android:gravity="top"
-        android:inputType="textCapSentences|textMultiLine"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"    />
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/compose_title_container"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:visibility="gone"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_width="match_parent">
 
-    <androidx.appcompat.widget.AppCompatEditText
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:paddingLeft="16dp"
-        android:imeOptions="normal"
-        android:paddingRight="16dp"
-        android:id="@+id/compose_edittext_url"
-        android:hint="URL"
-        android:background="@null"
-        android:fontFamily="@font/product_sans"
+        <com.google.android.material.textfield.TextInputEditText
+            android:hint="Title"
+            android:id="@+id/compose_edittext_title"
+            android:inputType="textCapSentences"
+            android:imeOptions="normal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"    />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/compose_url_container"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:visibility="gone"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_width="match_parent">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:hint="URL (optional)"
+            android:id="@+id/compose_edittext_url"
+            android:inputType="textUri"
+            android:autofillHints="url"
+            android:imeOptions="normal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"    />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/compose_text_container"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:visibility="gone"
+        android:layout_marginTop="16dp"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_weight="1"
+        android:layout_height="0dp"
         android:gravity="top"
-        android:inputType="textCapSentences|textMultiLine"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"    />
+        android:layout_width="match_parent">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:hint="Text (optional)"
+            android:id="@+id/compose_edittext_text"
+            android:imeOptions="normal"
+            android:inputType="textCapSentences|textMultiLine"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"    />
+
+    </com.google.android.material.textfield.TextInputLayout>
 
     <androidx.appcompat.widget.AppCompatEditText
         android:paddingLeft="16dp"

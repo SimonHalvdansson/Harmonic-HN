@@ -30,6 +30,8 @@ import androidx.core.view.WindowInsetsAnimationCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -53,8 +55,12 @@ public class ComposeActivity extends AppCompatActivity {
     public final static int TYPE_POST = 2;
 
     private EditText editText;
-    private EditText editTextTitle;
-    private EditText editTextUrl;
+    private TextInputEditText editTextTitle;
+    private TextInputEditText editTextUrl;
+    private TextInputEditText editTextText;
+    private TextInputLayout titleContainer;
+    private TextInputLayout urlContainer;
+    private TextInputLayout textContainer;
     private Button submitButton;
     private HtmlTextView replyingTextView;
     private ScrollView replyingScrollView;
@@ -77,6 +83,10 @@ public class ComposeActivity extends AppCompatActivity {
         editText = findViewById(R.id.compose_edittext);
         editTextTitle = findViewById(R.id.compose_edittext_title);
         editTextUrl = findViewById(R.id.compose_edittext_url);
+        editTextText = findViewById(R.id.compose_edittext_text);
+        titleContainer = findViewById(R.id.compose_title_container);
+        urlContainer = findViewById(R.id.compose_url_container);
+        textContainer = findViewById(R.id.compose_text_container);
         submitButton = findViewById(R.id.compose_submit);
         replyingTextView = findViewById(R.id.compose_replying_text);
         replyingScrollView = findViewById(R.id.compose_replying_scrollview);
@@ -111,15 +121,26 @@ public class ComposeActivity extends AppCompatActivity {
                 replyingScrollView.setVisibility(View.GONE);
                 topCommentTextView.setVisibility(View.VISIBLE);
                 topCommentTextView.setText("Submitting post");
+
+                titleContainer.setVisibility(View.VISIBLE);
+                urlContainer.setVisibility(View.VISIBLE);
+                textContainer.setVisibility(View.VISIBLE);
+
+                editText.setVisibility(View.GONE);
                 break;
         }
 
-        editText.addTextChangedListener(new ViewUtils.SimpleTextWatcher() {
+        ViewUtils.SimpleTextWatcher updateStatusTextWatcher = new ViewUtils.SimpleTextWatcher() {
             @Override
             public void afterTextChanged(Editable editable) {
                 updateEnabledStatuses();
             }
-        });
+        };
+
+        editText.addTextChangedListener(updateStatusTextWatcher);
+        editTextTitle.addTextChangedListener(updateStatusTextWatcher);
+        editTextUrl.addTextChangedListener(updateStatusTextWatcher);
+        editTextText.addTextChangedListener(updateStatusTextWatcher);
 
         WindowCompat.setDecorFitsSystemWindows(getWindow(),false);
 
@@ -222,15 +243,16 @@ public class ComposeActivity extends AppCompatActivity {
     }
 
     private void updateEnabledStatuses() {
-        boolean hasText = !TextUtils.isEmpty(editText.getText().toString());
-        boolean hasTitle = !TextUtils.isEmpty(editTextTitle.getText().toString());
-        boolean hasUrl = !TextUtils.isEmpty(editTextUrl.getText().toString());
         boolean enable;
 
         if (type == TYPE_POST) {
+            boolean hasTitle = !TextUtils.isEmpty(editTextTitle.getText().toString());
+            boolean hasUrl = !TextUtils.isEmpty(editTextUrl.getText().toString());
+            boolean hasText = !TextUtils.isEmpty(editTextText.getText().toString());
+
             enable = hasTitle && (hasText || hasUrl);
         } else {
-            enable = hasText;
+            enable = !TextUtils.isEmpty(editText.getText().toString());
         }
 
         backPressedCallback.setEnabled(enable);
