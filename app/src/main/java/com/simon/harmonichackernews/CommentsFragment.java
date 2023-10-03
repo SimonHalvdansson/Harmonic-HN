@@ -3,6 +3,8 @@ package com.simon.harmonichackernews;
 import static android.content.Context.DOWNLOAD_SERVICE;
 import static androidx.webkit.WebViewFeature.isFeatureSupported;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.annotation.SuppressLint;
 import android.app.DownloadManager;
 import android.content.ClipData;
@@ -454,11 +456,50 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         adapter.setOnCommentClickListener((comment, index, commentView) -> {
             comment.expanded = !comment.expanded;
 
+            int offset = 0;
             int lastChildIndex = adapter.getIndexOfLastChild(comment.depth, index);
+            if (index == lastChildIndex) {
+                return;
+            }
+
+            final CommentsRecyclerViewAdapter.ItemViewHolder holder = ((CommentsRecyclerViewAdapter.ItemViewHolder) recyclerView.findViewHolderForAdapterPosition(index));
+            if (holder != null) {
+                //if we can reach the ViewHolder (which we should), we can animate the hiddenIndicator ourselves to get around a FULL item refresh (which flashes all the text which we don't want)
+                offset = 1;
+                final TextView hiddenIndicator = holder.commentHiddenCount;
+                int shortAnimationDuration = getResources().getInteger(android.R.integer.config_shortAnimTime);
+
+                hiddenIndicator.setText("+" + (lastChildIndex - index));
+
+                if (comment.expanded) {
+                    //fade out
+                    hiddenIndicator.setVisibility(View.VISIBLE);
+                    hiddenIndicator.setAlpha(1f);
+                    hiddenIndicator.animate()
+                            .alpha(0f)
+                            .setDuration(shortAnimationDuration)
+                            .setListener(new AnimatorListenerAdapter() {
+                                @Override
+                                public void onAnimationEnd(Animator animation) {
+                                    hiddenIndicator.setVisibility(View.INVISIBLE);
+                                }
+                            });
+                } else {
+                    //fade in
+                    hiddenIndicator.setVisibility(View.VISIBLE);
+                    hiddenIndicator.setAlpha(0f);
+                    hiddenIndicator.animate()
+                            .alpha(1f)
+                            .setDuration(shortAnimationDuration)
+                            .setListener(null);
+                }
+            } else {
+                adapter.notifyItemChanged(index);
+            }
 
             if (lastChildIndex != index || adapter.collapseParent) {
                 // + 1 since if we have 1 subcomment we have changed the parent and the child
-                adapter.notifyItemRangeChanged(index, lastChildIndex - index + 1);
+                adapter.notifyItemRangeChanged(index+offset, lastChildIndex - index + 1-offset);
             }
 
             //next couple of lines makes it so that if we hide parents and click the comment at

@@ -409,7 +409,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
     }
 
-    private class ItemViewHolder extends RecyclerView.ViewHolder {
+    public class ItemViewHolder extends RecyclerView.ViewHolder {
         public final HtmlTextView commentBody;
         public final TextView commentBy;
         public final TextView commentByTime;
