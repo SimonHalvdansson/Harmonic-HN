@@ -581,7 +581,7 @@ public class StoriesFragment extends Fragment {
 
                         loadedTo = 0;
 
-                        adapter.notifyItemRangeRemoved(1, stories.size() + 1);
+                        adapter.notifyItemRangeRemoved(1, stories.size());
 
                         stories.clear();
                         stories.add(new Story());
@@ -605,7 +605,6 @@ public class StoriesFragment extends Fragment {
                         }
 
                         adapter.loadingFailed = false;
-                        adapter.notifyItemChanged(0);
 
                     } catch (JSONException e) {
                         e.printStackTrace();
