@@ -96,7 +96,7 @@ public class CommentSorter {
 
     private static void populateChildComments(List<Comment> comments, Comment comment, int startIndex) {
         int targetDepth = comment.depth + 1;
-        comment.childComments = new ArrayList<Comment>();
+        comment.childComments = new ArrayList<>();
         // Starting off after the comment, we don't go outside the array of course and stop if we reach a comment with depth smaller than the targetDepth
         for (int i = startIndex + 1; i < comments.size() && comments.get(i).depth >= targetDepth; i++) {
             // If we find something which has the target depth

@@ -458,12 +458,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             int offset = 0;
             int lastChildIndex = adapter.getIndexOfLastChild(comment.depth, index);
-            if (index == lastChildIndex) {
+            if (index == lastChildIndex && !adapter.collapseParent) {
                 return;
             }
 
             final CommentsRecyclerViewAdapter.ItemViewHolder holder = ((CommentsRecyclerViewAdapter.ItemViewHolder) recyclerView.findViewHolderForAdapterPosition(index));
-            if (holder != null) {
+            if (holder != null && !adapter.collapseParent) {
                 //if we can reach the ViewHolder (which we should), we can animate the hiddenIndicator ourselves to get around a FULL item refresh (which flashes all the text which we don't want)
                 offset = 1;
                 final TextView hiddenIndicator = holder.commentHiddenCount;
@@ -499,7 +499,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             if (lastChildIndex != index || adapter.collapseParent) {
                 // + 1 since if we have 1 subcomment we have changed the parent and the child
-                adapter.notifyItemRangeChanged(index+offset, lastChildIndex - index + 1-offset);
+                adapter.notifyItemRangeChanged(index+1, lastChildIndex - index + 1-offset);
             }
 
             //next couple of lines makes it so that if we hide parents and click the comment at
