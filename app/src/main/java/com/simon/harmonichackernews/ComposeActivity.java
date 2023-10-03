@@ -120,7 +120,7 @@ public class ComposeActivity extends AppCompatActivity {
             case TYPE_POST:
                 replyingScrollView.setVisibility(View.GONE);
                 topCommentTextView.setVisibility(View.VISIBLE);
-                topCommentTextView.setText("Submitting post");
+                topCommentTextView.setText("Create submission");
 
                 titleContainer.setVisibility(View.VISIBLE);
                 urlContainer.setVisibility(View.VISIBLE);
@@ -204,7 +204,7 @@ public class ComposeActivity extends AppCompatActivity {
                 //This thing should only be enabled when we want to show the dialog, otherwise
                 //we just do the default back behavior (which is predictive back)
                 AlertDialog dialog = new MaterialAlertDialogBuilder(editText.getContext())
-                        .setTitle("Discard draft?")
+                        .setTitle(type == TYPE_POST ? "Discard post?" : "Discard comment?")
                         .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int whichButton) {
                                 dialog.cancel();
