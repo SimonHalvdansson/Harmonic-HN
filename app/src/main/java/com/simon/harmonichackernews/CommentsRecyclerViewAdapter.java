@@ -267,7 +267,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             if (showThumbnail && !TextUtils.isEmpty(story.url)) {
                 try {
                     Picasso.get()
-                            .load("https://api.faviconkit.com/" + Utils.getDomainName(story.url) + "/80")
+                            .load("https://api.faviconkit.com/" + Utils.getDomainName(story.url) + "")
                             .resize(80, 80)
                             .onlyScaleDown()
                             .placeholder(Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_action_web)))
