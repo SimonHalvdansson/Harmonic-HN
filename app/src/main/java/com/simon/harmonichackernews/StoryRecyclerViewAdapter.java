@@ -41,6 +41,7 @@ import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.lang.reflect.Array;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -181,13 +182,14 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     //Picasso sometimes loses its context, that should just be ignored
                     try {
                         Picasso.get()
-                                .load("https://api.faviconkit.com/" + url + "/80")
+                                //.load("https://www.google.com/s2/favicons?domain="+ url + "&sz=80")
+                                .load("https://api.faviconkit.com/" + url + "")
+                                //.load("https://icons.duckduckgo.com/ip3/" + url + ".ico")
                                 .resize(80, 80)
                                 .onlyScaleDown()
                                 .placeholder(Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_action_web)))
                                 .into(storyViewHolder.metaFavicon);
                     } catch (Exception ignored){};
-
                 }
 
                 storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment);
