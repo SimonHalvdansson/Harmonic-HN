@@ -209,6 +209,11 @@ public class SettingsUtils {
         return prefs.getString("pref_comment_sorting", "Default");
     }
 
+    public static String getPreferredFaviconProvider(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return prefs.getString("pref_favicon_provider", "Faviconkit");
+    }
+
     public static int getBookmarksIndex(Resources res) {
         String[] sortingOptions =  res.getStringArray(R.array.sorting_options);
 

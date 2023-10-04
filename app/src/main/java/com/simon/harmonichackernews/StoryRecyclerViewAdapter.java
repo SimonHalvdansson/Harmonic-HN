@@ -31,6 +31,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -75,6 +76,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public boolean hideJobs;
     public boolean compactHeader;
     public boolean leftAlign;
+    public String faviconProvider;
     public int hotness;
     public int type = 0;
     public boolean searching = false;
@@ -89,6 +91,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     boolean shouldUseCompactHeader,
                                     boolean shouldLeftAlign,
                                     int preferredHotness,
+                                    String faviconProv,
                                     String submissionsUserName) {
         stories = items;
         showPoints = shouldShowPoints;
@@ -98,6 +101,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         compactHeader = shouldUseCompactHeader;
         leftAlign = shouldLeftAlign;
         hotness = preferredHotness;
+        faviconProvider = faviconProv;
 
         atSubmissions = !TextUtils.isEmpty(submissionsUserName);
         submitter = submissionsUserName;
@@ -158,14 +162,14 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
 
                 storyViewHolder.commentsView.setText(Integer.toString(storyViewHolder.story.descendants));
-                String url = "";
+                String host = "";
 
                 try {
                     if (storyViewHolder.story.url != null) {
-                        url = Utils.getDomainName(storyViewHolder.story.url);
+                        host = Utils.getDomainName(storyViewHolder.story.url);
                     }
                 } catch (Exception e) {
-                    url = "Unknown";
+                    host = "Unknown";
                 }
 
                 String ptsString = " points";
@@ -173,23 +177,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     ptsString = " point";
                 }
                 if (showPoints && !storyViewHolder.story.isComment) {
-                    storyViewHolder.metaView.setText(storyViewHolder.story.score + ptsString + " • " + url + " • " + storyViewHolder.story.getTimeFormatted());
+                    storyViewHolder.metaView.setText(storyViewHolder.story.score + ptsString + " • " + host + " • " + storyViewHolder.story.getTimeFormatted());
                 } else {
-                    storyViewHolder.metaView.setText(url + "  •  " + storyViewHolder.story.getTimeFormatted());
+                    storyViewHolder.metaView.setText(host + "  •  " + storyViewHolder.story.getTimeFormatted());
                 }
 
                 if (thumbnails) {
-                    //Picasso sometimes loses its context, that should just be ignored
-                    try {
-                        Picasso.get()
-                                //.load("https://www.google.com/s2/favicons?domain="+ url + "&sz=80")
-                                .load("https://api.faviconkit.com/" + url + "")
-                                //.load("https://icons.duckduckgo.com/ip3/" + url + ".ico")
-                                .resize(80, 80)
-                                .onlyScaleDown()
-                                .placeholder(Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_action_web)))
-                                .into(storyViewHolder.metaFavicon);
-                    } catch (Exception ignored){};
+                    FaviconLoader.loadFavicon(storyViewHolder.story.url, storyViewHolder.metaFavicon, ctx, faviconProvider);
                 }
 
                 storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment);

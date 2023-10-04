@@ -196,6 +196,7 @@ public class StoriesFragment extends Fragment {
                 SettingsUtils.shouldUseCompactHeader(getContext()),
                 SettingsUtils.shouldUseLeftAlign(getContext()),
                 SettingsUtils.getPreferredHotness(getContext()),
+                SettingsUtils.getPreferredFaviconProvider(getContext()),
                 null);
 
         adapter.setOnLinkClickListener(position -> {
@@ -380,6 +381,11 @@ public class StoriesFragment extends Fragment {
             adapter.hideJobs = !adapter.hideJobs;
             adapter.notifyItemChanged(0);
             attemptRefresh();
+        }
+
+        if (adapter.faviconProvider != SettingsUtils.getPreferredFaviconProvider(getContext())) {
+            adapter.faviconProvider = SettingsUtils.getPreferredFaviconProvider(getContext());
+            adapter.notifyItemRangeChanged(1, stories.size());
         }
 
     }

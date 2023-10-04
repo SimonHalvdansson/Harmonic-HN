@@ -449,7 +449,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 SettingsUtils.shouldShowTopLevelDepthIndicator(getContext()),
                 SettingsUtils.shouldShowWebviewExpandButton(getContext()),
                 ThemeUtils.isDarkMode(getContext()),
-                Utils.isTablet(getResources()));
+                Utils.isTablet(getResources()),
+                SettingsUtils.getPreferredFaviconProvider(getContext()));
 
         adapter.setOnHeaderClickListener(story1 -> Utils.launchCustomTab(getActivity(), story1.url));
 

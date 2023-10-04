@@ -117,6 +117,16 @@
 
         <DropDownPreference
             app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_web"
+            app:title="Favicon provider"
+            app:key="pref_favicon_provider"
+            app:useSimpleSummaryProvider="true"
+            app:entries="@array/favicon_providers"
+            app:defaultValue="Faviconkit"
+            app:entryValues="@array/favicon_providers"   />
+
+        <DropDownPreference
+            app:singleLineTitle="false"
             app:icon="@drawable/ic_action_whatshot"
             app:title="Highlight hot stories"
             app:key="pref_hotness"

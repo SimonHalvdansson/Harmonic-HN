@@ -37,6 +37,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.DialogUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
@@ -72,6 +73,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean showNavigationBar;
     public boolean showInvert;
     public boolean showExpand;
+    public String faviconProvider;
     public boolean integratedWebview;
     public boolean showTopLevelDepthIndicator;
     public String username;
@@ -132,7 +134,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        boolean shouldShowTopLevelDepthIndicator,
                                        boolean shouldShowExpand,
                                        boolean darkTheme,
-                                       boolean tablet) {
+                                       boolean tablet,
+                                       String favProvider) {
         integratedWebview = useIntegratedWebview;
         bottomSheet = sheet;
         fragmentManager = fm;
@@ -150,6 +153,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         showExpand = shouldShowExpand;
         darkThemeActive = darkTheme;
         isTablet = tablet;
+        faviconProvider = favProvider;
     }
 
     @NotNull
@@ -265,17 +269,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
 
             if (showThumbnail && !TextUtils.isEmpty(story.url)) {
-                try {
-                    Picasso.get()
-                            .load("https://api.faviconkit.com/" + Utils.getDomainName(story.url) + "")
-                            .resize(80, 80)
-                            .onlyScaleDown()
-                            .placeholder(Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_action_web)))
-                            .into(headerViewHolder.favicon);
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                FaviconLoader.loadFavicon(story.url, headerViewHolder.favicon, ctx, faviconProvider);
             }
 
             headerViewHolder.bookmarkIcon.setBackgroundResource(

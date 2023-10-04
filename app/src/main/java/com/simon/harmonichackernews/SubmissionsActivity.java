@@ -72,6 +72,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                 SettingsUtils.shouldUseCompactHeader(this),
                 SettingsUtils.shouldUseLeftAlign(this),
                 SettingsUtils.getPreferredHotness(this),
+                SettingsUtils.getPreferredFaviconProvider(this),
                 getIntent().getStringExtra(KEY_USER));
 
         adapter.setOnRefreshListener(this::loadSubmissions);
