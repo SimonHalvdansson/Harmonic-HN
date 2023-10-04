@@ -182,7 +182,7 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_webview_device_back"
-            app:defaultValue="false"
+            app:defaultValue="true"
             app:icon="@drawable/ic_action_back"
             app:title="Use device back for WebView back"    />
 

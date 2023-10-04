@@ -18,6 +18,7 @@
         android:paddingRight="16dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:fontFamily="@font/product_sans_bold"
         tools:text="Commenting on &quot;Firefox was never enough&quot;" />
 
     <ScrollView
@@ -31,6 +32,7 @@
             android:paddingBottom="10dp"
             android:textSize="16sp"
             android:textColor="?attr/storyColorNormal"
+            android:fontFamily="@font/product_sans"
             android:paddingLeft="16dp"
             android:paddingRight="16dp"
             android:layout_width="wrap_content"
@@ -95,8 +97,7 @@
         android:layout_marginTop="16dp"
         android:layout_marginLeft="16dp"
         android:layout_marginRight="16dp"
-        android:layout_weight="1"
-        android:layout_height="0dp"
+        android:layout_height="wrap_content"
         android:gravity="top"
         android:layout_width="match_parent">
 
@@ -109,6 +110,17 @@
             android:layout_height="wrap_content"    />
 
     </com.google.android.material.textfield.TextInputLayout>
+
+    <TextView
+        android:id="@+id/compose_submit_info"
+        android:visibility="gone"
+        android:padding="16dp"
+        android:layout_width="match_parent"
+        android:layout_weight="1"
+        android:layout_height="0dp"
+        android:fontFamily="@font/product_sans_bold"
+        android:text="Leave url blank to submit a question for discussion. If there is no url, text will appear at the top of the thread. If there is a url, text is optional."
+        />
 
     <androidx.appcompat.widget.AppCompatEditText
         android:paddingLeft="16dp"

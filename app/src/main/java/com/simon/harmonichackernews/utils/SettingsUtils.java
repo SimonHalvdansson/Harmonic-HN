@@ -156,7 +156,7 @@ public class SettingsUtils {
     }
 
     public static boolean shouldUseWebViewDeviceBack(Context ctx) {
-        return getBooleanPref("pref_webview_device_back", false, ctx);
+        return getBooleanPref("pref_webview_device_back", true, ctx);
     }
 
     public static boolean shouldUseCompactHeader(Context ctx) {

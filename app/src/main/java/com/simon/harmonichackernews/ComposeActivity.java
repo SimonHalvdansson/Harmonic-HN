@@ -91,6 +91,7 @@ public class ComposeActivity extends AppCompatActivity {
         replyingTextView = findViewById(R.id.compose_replying_text);
         replyingScrollView = findViewById(R.id.compose_replying_scrollview);
         topCommentTextView = findViewById(R.id.compose_top_comment);
+        TextView postInfo = findViewById(R.id.compose_submit_info);
         LinearLayout bottomContainer = findViewById(R.id.compose_bottom_container);
         LinearLayout container = findViewById(R.id.compose_container);
 
@@ -125,6 +126,7 @@ public class ComposeActivity extends AppCompatActivity {
                 titleContainer.setVisibility(View.VISIBLE);
                 urlContainer.setVisibility(View.VISIBLE);
                 textContainer.setVisibility(View.VISIBLE);
+                postInfo.setVisibility(View.VISIBLE);
 
                 editText.setVisibility(View.GONE);
                 break;
