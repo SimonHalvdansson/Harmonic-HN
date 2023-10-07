@@ -330,25 +330,33 @@ public class Utils {
             return "?";
         }
 
+        String result;
+
         final long diff = now - time;
         if (diff < MINUTE_MILLIS) {
-            return "just now";
+            result = "just now";
         } else if (diff < 2 * MINUTE_MILLIS) {
-            return explicit ? "1 minute ago" : "1 min";
+            result = "1 min";
         } else if (diff < 50 * MINUTE_MILLIS) {
-            return diff / MINUTE_MILLIS + (explicit ? " minutes ago" : " mins");
+            result = diff / MINUTE_MILLIS + " mins";
         } else if (diff < 120 * MINUTE_MILLIS) {
-            return explicit ? "1 hour ago" : "1 hr";
+            result = "1 hr";
         } else if (diff < 24 * HOUR_MILLIS) {
-            return diff / HOUR_MILLIS + (explicit ? " hours ago" : " hrs");
+            result = diff / HOUR_MILLIS + " hrs";
         } else if (diff < 48 * HOUR_MILLIS) {
-            return explicit ? "yesterday" : "1 day";
+            result = explicit ? "yesterday" : "1 day";
         } else if (diff < 365 * DAY_MILLIS) {
-            return diff / DAY_MILLIS + (explicit ? " days ago" : " days");
+            result = diff / DAY_MILLIS + " days";
         } else if (diff < 2 * YEAR_MILLIS) {
-            return explicit ? "1 year ago" : "1 year";
+            result = "1 year";
         } else {
-            return diff / YEAR_MILLIS + (explicit ? " years ago" : " years");
+            result = diff / YEAR_MILLIS + " years";
+        }
+
+        if (explicit) {
+            return result + " ago";
+        } else {
+            return result;
         }
     }
 

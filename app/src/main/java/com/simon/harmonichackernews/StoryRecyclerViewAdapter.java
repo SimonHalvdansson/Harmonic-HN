@@ -268,14 +268,14 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         } else if (holder instanceof SubmissionsHeaderViewHolder) {
             final SubmissionsHeaderViewHolder submissionsHeaderViewHolder = (SubmissionsHeaderViewHolder) holder;
 
-            submissionsHeaderViewHolder.headerText.setText(submitter + "'s submissions:");
+            submissionsHeaderViewHolder.headerText.setText(submitter + "'s submissions");
 
         } else if (holder instanceof CommentViewHolder) {
             final CommentViewHolder commentViewHolder = (CommentViewHolder) holder;
 
             Story story = stories.get(position);
 
-            commentViewHolder.headerText.setText("On \"" + story.commentMasterTitle + "\", " + Utils.getTimeAgo(story.time, true) + ":");
+            commentViewHolder.headerText.setText("On \"" + story.commentMasterTitle + "\" " + Utils.getTimeAgo(story.time, true));
             commentViewHolder.bodyText.setHtml(story.text);
             //comment
         }

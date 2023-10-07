@@ -48,8 +48,6 @@ public class SubmissionsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_submissions);
         swipeRefreshLayout = findViewById(R.id.submissions_swiperefreshlayout);
 
-        swipeRefreshLayout.setBackgroundResource(ThemeUtils.getBackgroundColorResource(this));
-
         swipeRefreshLayout.setOnRefreshListener(this::loadSubmissions);
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
