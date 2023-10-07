@@ -266,6 +266,10 @@ public class StoriesFragment extends Fragment {
         adapter.setOnLongClickListener(new StoryRecyclerViewAdapter.LongClickCoordinateListener() {
             @Override
             public boolean onLongClick(View v, int position, int x, int y) {
+                if (position == RecyclerView.NO_POSITION) {
+                    return false;
+                }
+
                 Context context = v.getContext();
 
                 PopupMenu popupMenu = new PopupMenu(context, v);
@@ -514,7 +518,7 @@ public class StoriesFragment extends Fragment {
 
         menu.findItem(R.id.menu_log).setTitle(loggedIn ? "Log out" : "Log in");
         menu.findItem(R.id.menu_profile).setVisible(loggedIn);
-        menu.findItem(R.id.menu_submit).setVisible(loggedIn);
+        menu.findItem(R.id.menu_submit).setVisible(false);
 
         popup.show();
     }

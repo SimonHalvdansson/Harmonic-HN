@@ -633,7 +633,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void onStateChanged(@NonNull View view, int newState) {
                 if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
                     if (SettingsUtils.shouldUseWebViewDeviceBack(getContext())) {
-                        toggleBackPressedCallback(webView.canGoBack());
+                        toggleBackPressedCallback(webView != null && webView.canGoBack());
                     } else {
                         toggleBackPressedCallback(false);
                     }
@@ -1185,32 +1185,34 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void clickShare(View view) {
-        if (adapter.story.isLink) {
-            PopupMenu popup = new PopupMenu(requireActivity(), view);
-            popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                @Override
-                public boolean onMenuItemClick(MenuItem item) {
-                    int itemId = item.getItemId();
+        PopupMenu popup = new PopupMenu(requireActivity(), view);
+        popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                int itemId = item.getItemId();
 
-                    if (itemId == R.id.menu_link) {
-                        startActivity(ShareUtils.getShareIntent(adapter.story.url));
-                    } else if (itemId == R.id.menu_link_title) {
-                        startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.url));
-                    } else if (itemId == R.id.menu_hacker_news_link) {
-                        startActivity(ShareUtils.getShareIntent(adapter.story.id));
-                    } else if (itemId == R.id.menu_hacker_news_link_title) {
-                        startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.id));
-                    }
-
-                    return true;
+                if (itemId == R.id.menu_link) {
+                    startActivity(ShareUtils.getShareIntent(adapter.story.url));
+                } else if (itemId == R.id.menu_link_title) {
+                    startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.url));
+                } else if (itemId == R.id.menu_hacker_news_link) {
+                    startActivity(ShareUtils.getShareIntent(adapter.story.id));
+                } else if (itemId == R.id.menu_hacker_news_link_title) {
+                    startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.id));
                 }
-            });
-            MenuInflater inflater = popup.getMenuInflater();
-            inflater.inflate(R.menu.share_menu, popup.getMenu());
-            popup.show();
-        } else {
-            startActivity(ShareUtils.getShareIntent(adapter.story.url));
+
+                return true;
+            }
+        });
+        MenuInflater inflater = popup.getMenuInflater();
+        inflater.inflate(R.menu.share_menu, popup.getMenu());
+
+        if (!adapter.story.isLink) {
+            popup.getMenu().findItem(R.id.menu_link).setVisible(false);
+            popup.getMenu().findItem(R.id.menu_link_title).setVisible(false);
         }
+
+        popup.show();
     }
 
     public void clickMore(View view) {
@@ -1486,7 +1488,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
                 //if we are at the webview and we just loaded, recheck the canGoBack status
                 if (SettingsUtils.shouldUseWebViewDeviceBack(getContext())) {
-                    toggleBackPressedCallback(webView.canGoBack());
+                    toggleBackPressedCallback(webView != null && webView.canGoBack());
                 }
             }
         }

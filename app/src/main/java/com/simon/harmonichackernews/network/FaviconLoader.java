@@ -17,10 +17,11 @@ public class FaviconLoader {
     public static void loadFavicon(String url, ImageView into, Context ctx, String faviconProvider) {
         try {
             String host = Utils.getDomainName(url);
+            int faviconSize = Utils.pxFromDpInt(ctx.getResources(), 17);
 
             Picasso.get()
                     .load(getFaviconUrl(host, faviconProvider))
-                    .resize(80, 80)
+                    .resize(faviconSize, faviconSize)
                     .onlyScaleDown()
                     .placeholder(Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_action_web)))
                     .into(into);
@@ -32,7 +33,7 @@ public class FaviconLoader {
             case "Faviconkit":
                 return "https://api.faviconkit.com/" + host;
             case "Google":
-                return "https://www.google.com/s2/favicons?domain="+ host + "&sz=80";
+                return "https://www.google.com/s2/favicons?domain="+ host + "&sz=128";
             case "DuckDuckGo":
                 return "https://icons.duckduckgo.com/ip3/" + host + ".ico";
         }

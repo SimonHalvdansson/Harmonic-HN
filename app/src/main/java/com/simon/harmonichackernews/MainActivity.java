@@ -122,7 +122,6 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml("<b>Version 1.11:</b><br>" +
-                        "- Added experimental support for submitting HN posts<br>" +
                         "- Added alternative comment sortings (thanks John Rapp Farnes)<br>" +
                         "- Fixed user bio bottom padding<br>" +
                         "- Added option to choose favicon provider<br>" +
@@ -134,6 +133,7 @@ public class MainActivity extends AppCompatActivity implements StoriesFragment.S
                         "- Improved collapsed comment scroll performance (thanks Yigit Boyar)<br>" +
                         "- Made story text selectable (thanks AppearamidGuy)<br>" +
                         "- Fixed tablet comment scroll bug<br>" +
+                        "- Fixed rare long click crash<br>" +
                         "<br>" +
                         "<b>Version 1.10:</b><br>" +
                         "- Added option to select start page (thanks Thomas Dalgetty)<br>" +
