@@ -20,16 +20,29 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
-    <org.sufficientlysecure.htmltextview.HtmlTextView
-        android:id="@+id/submissions_comment_body"
-        android:ellipsize="end"
-        android:maxLines="12"
-        android:textSize="15sp"
-        tools:text="> While our log analysis, conducted from March 5 through March 8, confirmed that this was a rare issue, it could not rule out the possibility that a session had been incorrectly returned but then never used. This was not a risk we were willing to take, given the potential impact of even one of these incorrectly returned sessions being used.\n\n It is funny how they make it seem like they are super cautious. When in fact they had no other choice than do it when you rephrase the problem as 'there were maybe some people who got the admin right of the github account of some of our customers'"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="?attr/storyColorNormal"
-        android:fontFamily="@font/product_sans"/>
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <org.sufficientlysecure.htmltextview.HtmlTextView
+            android:id="@+id/submissions_comment_body"
+            android:ellipsize="end"
+            android:maxLines="12"
+            android:textSize="15sp"
+            tools:text="> While our log analysis, conducted from March 5 through March 8, confirmed that this was a rare issue, it could not rule out the possibility that a session had been incorrectly returned but then never used. This was not a risk we were willing to take, given the potential impact of even one of these incorrectly returned sessions being used.\n\n It is funny how they make it seem like they are super cautious. When in fact they had no other choice than do it when you rephrase the problem as 'there were maybe some people who got the admin right of the github account of some of our customers'"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/storyColorNormal"
+            android:fontFamily="@font/product_sans"/>
+
+        <View
+            android:id="@+id/submissions_comment_scrim"
+            android:layout_gravity="bottom"
+            android:layout_width="match_parent"
+            android:layout_height="16dp"/>
+
+    </FrameLayout>
+
 
     <LinearLayout
         android:layout_marginTop="6dp"

@@ -2,6 +2,9 @@ package com.simon.harmonichackernews;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.text.Layout;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -34,6 +37,7 @@ import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.squareup.picasso.Picasso;
 
@@ -272,13 +276,44 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         } else if (holder instanceof CommentViewHolder) {
             final CommentViewHolder commentViewHolder = (CommentViewHolder) holder;
+            final Context ctx = commentViewHolder.itemView.getContext();
 
             Story story = stories.get(position);
 
             commentViewHolder.headerText.setText("On \"" + story.commentMasterTitle + "\" " + Utils.getTimeAgo(story.time, true));
             commentViewHolder.bodyText.setHtml(story.text);
-            //comment
+
+            GradientDrawable gradientDrawable = new GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[] {Color.TRANSPARENT, ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx))});
+
+            commentViewHolder.scrim.setBackground(gradientDrawable);
+
+            commentViewHolder.bodyText.post(new Runnable() {
+                @Override
+                public void run() {
+                    commentViewHolder.scrim.setVisibility(isTextTruncated(commentViewHolder.bodyText) ? View.VISIBLE : View.GONE);
+                }
+            });
+
         }
+    }
+
+    public boolean isTextTruncated(TextView textView) {
+        Layout layout = textView.getLayout();
+        if (layout != null) {
+            int maxLines = textView.getMaxLines();
+            if (maxLines == -1) {  // If maxLines is not set, it returns -1
+                return false;  // TextView isn't set to truncate, so it can't be truncated
+            }
+            int lineCount = layout.getLineCount();
+            if (lineCount <= maxLines) {
+                return false;  // Number of lines is within limit
+            } else {
+                return true;  // Number of lines is more than limit, thus truncated
+            }
+        }
+        return false;  // Layout is null (not rendered yet), cannot determine if truncated
     }
 
     @Override
@@ -463,6 +498,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final HtmlTextView bodyText;
         public final MaterialButton storyButton;
         public final MaterialButton repliesButton;
+        public final View scrim;
 
         public CommentViewHolder(View view) {
             super(view);
@@ -470,6 +506,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             bodyText = view.findViewById(R.id.submissions_comment_body);
             storyButton = view.findViewById(R.id.submissions_comment_button_story);
             repliesButton = view.findViewById(R.id.submissions_comment_button_replies);
+            scrim = view.findViewById(R.id.submissions_comment_scrim);
 
             bodyText.setOnClickATagListener(new OnClickATagListener() {
                 @Override
