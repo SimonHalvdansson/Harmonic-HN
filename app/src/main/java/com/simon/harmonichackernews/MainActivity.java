@@ -7,6 +7,8 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Html;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
@@ -16,6 +18,11 @@ import androidx.activity.SystemBarStyle;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.graphics.Insets;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -25,15 +32,18 @@ import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.utils.ViewUtils;
 
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements StoriesFragment.StoryClickListener {
+public class MainActivity extends BaseActivity implements StoriesFragment.StoryClickListener {
 
     public static ArrayList<CommentsScrollProgress> commentsScrollProgresses = new ArrayList<>();
 
     int lastPosition = 0;
     public OnBackPressedCallback backPressedCallback;
+
+    public int bottom = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

@@ -15,7 +15,7 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.SplitChangeHandler;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
-public class CommentsActivity extends AppCompatActivity implements CommentsFragment.BottomSheetFragmentCallback {
+public class CommentsActivity extends BaseActivity implements CommentsFragment.BottomSheetFragmentCallback {
     public static String PREVENT_BACK = "PREVENT_BACK";
 
     private boolean disableSwipeAtComments;
@@ -26,7 +26,21 @@ public class CommentsActivity extends AppCompatActivity implements CommentsFragm
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        ThemeUtils.setupTheme(this, !SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext()));
+        boolean swipeBack = !SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext());
+
+        ThemeUtils.setupTheme(this, swipeBack);
+
+        /*this is a long story. On CommentsActivity, the default theme is dependent on the android version.
+            For 24-29, we set SwipeBack as the defaul theme and do nothing more
+            For 30-33, we set AppTheme as the default and perhaps switch to SwipeBack if the user wants to, but in that case we indicate translucency manually
+            which makes it so that SwipeBack can peek to MainActivity
+            For 34+, translucent = true is set automatically in the onResume (after a delay) which makes the peek work
+
+            On a somewhat related note, transparent status bar messes the intended MainActivity -> CommentsActivity transition up sadly...
+        * */
+        if (swipeBack && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            setTranslucent(true);
+        }
 
         setContentView(R.layout.activity_comments);
 

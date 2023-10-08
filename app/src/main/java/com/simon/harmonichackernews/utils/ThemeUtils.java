@@ -86,18 +86,6 @@ public class ThemeUtils {
             WindowCompat.setDecorFitsSystemWindows(window, false);
         }
 
-        /*this is a long story. On CommentsActivity, the default theme is dependent on the android version.
-            For 24-29, we set SwipeBack as the defaul theme and do nothing more
-            For 30-33, we set AppTheme as the default and perhaps switch to SwipeBack if the user wants to, but in that case we indicate translucency manually
-            which makes it so that SwipeBack can peek to MainActivity
-            For 34+, translucent = true is set automatically in the onResume (after a delay) which makes the peek work
-
-            On a somewhat related note, transparent status bar messes the intended MainActivity -> CommentsActivity transition up sadly...
-        * */
-        if (swipeBack && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            activity.setTranslucent(true);
-        }
-
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             // All themes have nav bar color set to transparent so on API 29+ the system will draw
             // translucent scrim for us. However on older versions we need to set correct nav bar
