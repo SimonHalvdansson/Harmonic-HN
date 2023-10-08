@@ -16,6 +16,7 @@ import com.simon.harmonichackernews.utils.ViewUtils;
 public class BaseActivity extends AppCompatActivity {
 
     private int navBarHeight = 0;
+    private int screenHeight = 0;
 
     @Override
     protected void onStart() {
@@ -34,15 +35,13 @@ public class BaseActivity extends AppCompatActivity {
         });
         ViewUtils.requestApplyInsetsWhenAttached(findViewById(android.R.id.content));
 
+        screenHeight = getWindow().getDecorView().getHeight();
     }
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        float y = ev.getY();
-        int screenHeight = getWindow().getDecorView().getHeight();
-
-        if (y >= (screenHeight - navBarHeight)) {
-            return true;  // consume the event
+        if (ev.getY() >= (screenHeight - navBarHeight)) {
+            return true;
         }
         return super.dispatchTouchEvent(ev);
     }

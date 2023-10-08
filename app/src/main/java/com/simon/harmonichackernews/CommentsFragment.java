@@ -389,7 +389,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         queue = NetworkComponent.getRequestQueueInstance(requireContext());
         String cachedResponse = Utils.loadCachedStory(getContext(), story.id);
 
-        loadStoryAndComments(story.id, cachedResponse == null, cachedResponse, true);
+        loadStoryAndComments(story.id, cachedResponse);
 
         //if this isn't here, the addition of the text appears to scroll the recyclerview down a little
         recyclerView.scrollToPosition(0);
@@ -1020,16 +1020,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     public void refreshComments() {
         swipeRefreshLayout.setRefreshing(true);
-        loadStoryAndComments(adapter.story.id, true, null, true);
+        loadStoryAndComments(adapter.story.id, null);
     }
 
-    private void loadStoryAndComments(final int id, final boolean forceHeaderRefresh, final String oldCachedResponse, final boolean useAlgolia) {
+    private void loadStoryAndComments(final int id, final String oldCachedResponse) {
         String url = "https://hn.algolia.com/api/v1/items/" + id;
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
                     if (TextUtils.isEmpty(oldCachedResponse) || !oldCachedResponse.equals(response)) {
-                        handleJsonResponse(id, response,true, forceHeaderRefresh, false);
+                        handleJsonResponse(id, response,true, oldCachedResponse == null, false);
                     }
                     swipeRefreshLayout.setRefreshing(false);
                 }, error -> {
