@@ -1,8 +1,10 @@
 package com.simon.harmonichackernews.utils;
 
 import android.content.res.Resources;
+import android.text.Layout;
 import android.text.TextWatcher;
 import android.view.View;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.view.ViewCompat;
@@ -69,6 +71,23 @@ public class ViewUtils {
             return res.getDimensionPixelSize(resourceId);
         }
         return 0;
+    }
+
+    public static boolean isTextTruncated(TextView textView) {
+        Layout layout = textView.getLayout();
+        if (layout != null) {
+            int maxLines = textView.getMaxLines();
+            if (maxLines == -1) {  // If maxLines is not set, it returns -1
+                return false;  // TextView isn't set to truncate, so it can't be truncated
+            }
+            int lineCount = layout.getLineCount();
+            if (lineCount <= maxLines) {
+                return false;  // Number of lines is within limit
+            } else {
+                return true;  // Number of lines is more than limit, thus truncated
+            }
+        }
+        return false;  // Layout is null (not rendered yet), cannot determine if truncated
     }
 
     public abstract static class SimpleTextWatcher implements TextWatcher {

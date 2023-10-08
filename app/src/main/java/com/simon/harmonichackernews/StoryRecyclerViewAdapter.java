@@ -39,6 +39,7 @@ import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.utils.ViewUtils;
 import com.squareup.picasso.Picasso;
 
 import org.jetbrains.annotations.NotNull;
@@ -283,37 +284,14 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             commentViewHolder.headerText.setText("On \"" + story.commentMasterTitle + "\" " + Utils.getTimeAgo(story.time, true));
             commentViewHolder.bodyText.setHtml(story.text);
 
-            GradientDrawable gradientDrawable = new GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM,
-                    new int[] {Color.TRANSPARENT, ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx))});
-
-            commentViewHolder.scrim.setBackground(gradientDrawable);
-
             commentViewHolder.bodyText.post(new Runnable() {
                 @Override
                 public void run() {
-                    commentViewHolder.scrim.setVisibility(isTextTruncated(commentViewHolder.bodyText) ? View.VISIBLE : View.GONE);
+                    commentViewHolder.scrim.setVisibility(ViewUtils.isTextTruncated(commentViewHolder.bodyText) ? View.VISIBLE : View.GONE);
                 }
             });
 
         }
-    }
-
-    public boolean isTextTruncated(TextView textView) {
-        Layout layout = textView.getLayout();
-        if (layout != null) {
-            int maxLines = textView.getMaxLines();
-            if (maxLines == -1) {  // If maxLines is not set, it returns -1
-                return false;  // TextView isn't set to truncate, so it can't be truncated
-            }
-            int lineCount = layout.getLineCount();
-            if (lineCount <= maxLines) {
-                return false;  // Number of lines is within limit
-            } else {
-                return true;  // Number of lines is more than limit, thus truncated
-            }
-        }
-        return false;  // Layout is null (not rendered yet), cannot determine if truncated
     }
 
     @Override
@@ -507,6 +485,14 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyButton = view.findViewById(R.id.submissions_comment_button_story);
             repliesButton = view.findViewById(R.id.submissions_comment_button_replies);
             scrim = view.findViewById(R.id.submissions_comment_scrim);
+
+            Context ctx = view.getContext();
+
+            GradientDrawable gradientDrawable = new GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[] {Color.TRANSPARENT, ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx))});
+
+            scrim.setBackground(gradientDrawable);
 
             bodyText.setOnClickATagListener(new OnClickATagListener() {
                 @Override
