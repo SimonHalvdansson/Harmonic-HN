@@ -288,7 +288,7 @@ public class ComposeActivity extends AppCompatActivity {
                 }
             });
         } else {
-            UserActions.comment(String.valueOf(id), editText.getText().toString(), view.getContext(), new UserActions.ActionCallback() {
+            UserActions.comment(String.valueOf(id), editText.getText().toString(), getApplicationContext(), new UserActions.ActionCallback() {
                 @Override
                 public void onSuccess(Response response) {
                     submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));

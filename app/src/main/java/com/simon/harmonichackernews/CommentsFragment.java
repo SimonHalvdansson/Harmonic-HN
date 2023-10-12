@@ -44,6 +44,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListAdapter;
+import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -149,6 +150,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private FrameLayout webViewContainer;
     private View webViewBackdrop;
     private MaterialButton downloadButton;
+    private Space sheetSpacer;
     private boolean showNavButtons = false;
     private boolean showWebsite = false;
     private boolean integratedWebview = true;
@@ -158,7 +160,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean blockAds = true;
     private boolean startedLoading = false;
     private boolean initializedWebView = false;
-
+    private int topInset = 0;
     private OnBackPressedCallback backPressedCallback;
 
     private String username;
@@ -274,6 +276,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerViewRegular = view.findViewById(R.id.comments_recyclerview);
         recyclerViewSwipe = view.findViewById(R.id.comments_recyclerview_swipe);
         bottomSheet = view.findViewById(R.id.comments_bottom_sheet);
+        sheetSpacer = view.findViewById(R.id.comments_sheet_spacer);
         webViewContainer = view.findViewById(R.id.webview_container);
         webViewBackdrop = view.findViewById(R.id.comments_webview_backdrop);
 
@@ -645,10 +648,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onSlide(@NonNull View view, float slideOffset) {
-                // Updating padding doesn't work because it causes incorrect scroll position for recycler.
+                // Updating padding (of recyclerview) doesn't work because it causes incorrect scroll position for recycler.
                 // Updating scroll together with padding causes severe lags and other problems.
-                // So don't update padding at all on slide and instead just change whole view position
-                recyclerView.setTranslationY(-recyclerView.getPaddingTop() * (1 - slideOffset));
+                // So don't update padding at all on slide and instead just change whole view position (by translationY on recyclerView)
+                //... is something you cuold do but this means that the touch target of the recyclerview is not aligned with the view
+                //so we go back to the padding but instead just put a view above the recyclerview (a spacer) and change its height!
+                sheetSpacer.getLayoutParams().height = Math.round(topInset * slideOffset);
             }
         });
 
@@ -657,12 +662,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                topInset = insets.top;
 
                 float offset = BottomSheetBehavior.from(bottomSheet).calculateSlideOffset();
-                recyclerView.setTranslationY(-insets.top * (1 - offset));
+
+                sheetSpacer.getLayoutParams().height = Math.round(insets.top * offset);
+                sheetSpacer.requestLayout();
 
                 int paddingBottom = insets.bottom + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard);
-                recyclerView.setPadding(recyclerView.getPaddingLeft(), insets.top, recyclerView.getPaddingRight(), paddingBottom);
+                recyclerView.setPadding(recyclerView.getPaddingLeft(), recyclerView.getPaddingTop(), recyclerView.getPaddingRight(), paddingBottom);
 
                 return windowInsets;
             }
