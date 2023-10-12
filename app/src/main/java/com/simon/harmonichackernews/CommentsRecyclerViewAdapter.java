@@ -330,7 +330,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             //16 is base padding, then add 13 for each comment
             params.setMargins(
-                    Math.min(Utils.pxFromDpInt(ctx.getResources(), 16 + 13 * itemViewHolder.comment.depth), Math.round(((float) width) * 0.6f)),
+                    Math.min(Utils.pxFromDpInt(ctx.getResources(), 16 + 12 * itemViewHolder.comment.depth), Math.round(((float) width) * 0.6f)),
                     Utils.pxFromDpInt(ctx.getResources(), itemViewHolder.comment.depth > 0 && !collapseParent ? 10 : 6),
                     Utils.pxFromDpInt(ctx.getResources(), 16),
                     Utils.pxFromDpInt(ctx.getResources(), 6));

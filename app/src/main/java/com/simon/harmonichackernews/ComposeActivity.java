@@ -22,13 +22,16 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.graphics.Insets;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsAnimationCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.swiperefreshlayout.widget.CircularProgressDrawable;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -263,23 +266,23 @@ public class ComposeActivity extends AppCompatActivity {
     }
 
     public void submit(View view) {
-        ProgressDialog dialog = ProgressDialog.show(this, "",
-                "Posting...", true);
-
-        dialog.getWindow().setBackgroundDrawableResource(ThemeUtils.getBackgroundColorResource(view.getContext()));
+        MaterialButton submitButton = (MaterialButton) view;
+        CircularProgressDrawable c = new CircularProgressDrawable(this);
+        submitButton.setIcon(c);
+        c.start();
 
         if (type == TYPE_POST) {
             UserActions.submit(editTextTitle.getText().toString(), editText.getText().toString(), editTextUrl.getText().toString(), view.getContext(), new UserActions.ActionCallback() {
                 @Override
                 public void onSuccess(Response response) {
-                    dialog.cancel();
+                    submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
                     Toast.makeText(view.getContext(), "Post submitted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
                     finish();
                 }
 
                 @Override
                 public void onFailure(String summary, String response) {
-                    dialog.cancel();
+                    submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
                     UserActions.showFailureDetailDialog(view.getContext(), summary, response);
                     Toast.makeText(view.getContext(), "Post submission unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
                 }
@@ -288,14 +291,14 @@ public class ComposeActivity extends AppCompatActivity {
             UserActions.comment(String.valueOf(id), editText.getText().toString(), view.getContext(), new UserActions.ActionCallback() {
                 @Override
                 public void onSuccess(Response response) {
-                    dialog.cancel();
+                    submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
                     Toast.makeText(view.getContext(), "Comment posted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
                     finish();
                 }
 
                 @Override
                 public void onFailure(String summary, String response) {
-                    dialog.cancel();
+                    submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
                     UserActions.showFailureDetailDialog(view.getContext(), summary, response);
                     Toast.makeText(view.getContext(), "Comment post unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
                 }

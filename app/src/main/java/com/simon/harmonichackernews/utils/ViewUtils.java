@@ -1,8 +1,12 @@
 package com.simon.harmonichackernews.utils;
 
+import android.content.Context;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
+import android.graphics.drawable.Drawable;
 import android.text.Layout;
 import android.text.TextWatcher;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.TextView;
 
