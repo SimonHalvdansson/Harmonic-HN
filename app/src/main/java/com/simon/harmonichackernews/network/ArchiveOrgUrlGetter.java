@@ -12,7 +12,7 @@ import org.json.JSONObject;
 
 public class ArchiveOrgUrlGetter {
 
-    public static void getArchiveUrl(String url, final Context ctx, GetterCallback callback) {
+    public static void getArchiveUrl(String url, final Context ctx, NetworkComponent.GetterCallback callback) {
         StringRequest stringRequest = new StringRequest(com.android.volley.Request.Method.GET, "http://archive.org/wayback/available?url=" + url,
                 response -> {
 
@@ -39,12 +39,8 @@ public class ArchiveOrgUrlGetter {
 
         RequestQueue queue = NetworkComponent.getRequestQueueInstance(ctx);
         queue.add(stringRequest);
-
     }
 
-    public interface GetterCallback {
-        void onSuccess(String url);
-        void onFailure(String reason);
-    }
+
 
 }

@@ -48,7 +48,7 @@ dependencies {
     implementation "androidx.security:security-crypto:1.1.0-alpha06"
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
     implementation 'androidx.webkit:webkit:1.8.0'
-    implementation "androidx.activity:activity:1.8.0-rc01"
+    implementation "androidx.activity:activity:1.8.0"
     implementation "androidx.window:window:1.1.0"
     implementation "androidx.window:window-java:1.1.0"
     implementation 'androidx.startup:startup-runtime:1.1.1'
@@ -62,4 +62,9 @@ dependencies {
     implementation 'com.facebook.shimmer:shimmer:0.5.0'
     implementation 'com.squareup.picasso:picasso:2.8'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.13.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.13.0'
+
 }

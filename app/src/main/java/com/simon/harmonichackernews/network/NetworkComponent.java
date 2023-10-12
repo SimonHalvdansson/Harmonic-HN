@@ -54,4 +54,9 @@ public class NetworkComponent {
         }
         return requestQueueInstance;
     }
+
+    public interface GetterCallback {
+        void onSuccess(String url);
+        void onFailure(String reason);
+    }
 }

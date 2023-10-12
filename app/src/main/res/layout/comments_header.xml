@@ -221,15 +221,51 @@
                 <org.sufficientlysecure.htmltextview.HtmlTextView
                     android:id="@+id/comments_header_text"
                     android:visibility="gone"
+                    android:layout_marginTop="4dp"
                     android:text="This is a bunch of text because the text was actually a text post, who would have known?"
                     android:textColor="?attr/storyColorNormal"
-                    android:layout_marginTop="4dp"
                     android:textSize="15sp"
                     android:paddingBottom="3dp"
                     android:textIsSelectable="true"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/product_sans" />
+
+                <LinearLayout
+                    android:id="@+id/comments_header_arxiv_abstract_container"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@drawable/abstract_background"
+                    android:paddingLeft="16dp"
+                    android:paddingRight="16dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:visibility="visible"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:textColor="?attr/textColorHighlighted"
+                        android:text="ABSTRACT:"
+                        android:fontFamily="@font/product_sans"
+                        android:textStyle="bold"
+                        android:textSize="13dp"
+                        android:textAllCaps="true"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+
+                    <org.sufficientlysecure.htmltextview.HtmlTextView
+                        android:id="@+id/comments_header_arxiv_abstract"
+                        android:textColor="?attr/storyColorNormal"
+                        android:textSize="15sp"
+                        android:paddingBottom="3dp"
+                        android:textIsSelectable="true"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/product_sans" />
+
+                </LinearLayout>
 
                 <LinearLayout
                     android:paddingTop="6dp"

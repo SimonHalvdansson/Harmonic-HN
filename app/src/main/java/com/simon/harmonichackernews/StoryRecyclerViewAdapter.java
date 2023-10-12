@@ -29,6 +29,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.TooltipCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -268,6 +269,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             }
             
             headerViewHolder.typeSpinner.setSelection(type);
+
+            TooltipCompat.setTooltipText(headerViewHolder.searchButton, searching ? "Close" : "Search");
+            TooltipCompat.setTooltipText(headerViewHolder.moreButton, "More");
 
             headerViewHolder.loadingFailedLayout.setVisibility(loadingFailed ? View.VISIBLE : View.GONE);
         } else if (holder instanceof SubmissionsHeaderViewHolder) {

@@ -22,6 +22,7 @@ public class Story {
     public boolean loaded;
     public boolean clicked;
     public String text;
+    public String arxivAbstract;
     public boolean isLink;
     public boolean isJob = false;
     public boolean loadingFailed = false;

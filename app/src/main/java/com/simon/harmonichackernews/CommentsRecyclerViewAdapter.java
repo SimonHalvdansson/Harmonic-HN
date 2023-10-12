@@ -191,10 +191,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             headerViewHolder.headerView.setClickable(story.isLink);
             headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : View.GONE);
-            headerViewHolder.textView.setVisibility(story.text == null ? View.GONE : View.VISIBLE);
+            headerViewHolder.textView.setVisibility(TextUtils.isEmpty(story.text) ? View.GONE : View.VISIBLE);
+            headerViewHolder.arxivAbstractContainer.setVisibility(TextUtils.isEmpty(story.arxivAbstract) ? View.GONE : View.VISIBLE);
 
-            if (story.text != null) {
+            if (!TextUtils.isEmpty(story.text)) {
                 headerViewHolder.textView.setHtml(story.text);
+            }
+
+            if (!TextUtils.isEmpty(story.arxivAbstract)) {
+                headerViewHolder.arxivAbstract.setHtml(story.arxivAbstract);
             }
 
             if (story.pollOptionArrayList != null) {
@@ -458,6 +463,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final ImageView metaVotesIcon;
         public final TextView urlView;
         public final HtmlTextView textView;
+        public final LinearLayout arxivAbstractContainer;
+        public final HtmlTextView arxivAbstract;
         public final LinearLayout emptyView;
         public final TextView emptyViewText;
         public final CircularProgressIndicator loadingIndicator;
@@ -500,6 +507,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             metaVotesIcon = view.findViewById(R.id.comments_header_meta_votes_icon);
             urlView = view.findViewById(R.id.comments_header_url);
             textView = view.findViewById(R.id.comments_header_text);
+            arxivAbstract = view.findViewById(R.id.comments_header_arxiv_abstract);
+            arxivAbstractContainer = view.findViewById(R.id.comments_header_arxiv_abstract_container);
             emptyView =  view.findViewById(R.id.comments_header_empty);
             emptyViewText = view.findViewById(R.id.comments_header_empty_text);
             headerView = view.findViewById(R.id.comments_header);

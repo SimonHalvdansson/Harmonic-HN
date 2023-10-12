@@ -82,6 +82,7 @@ import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.network.ArxivAbstractGetter;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
@@ -1048,6 +1049,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             loadPollOptions();
         }
 
+        if (ArxivAbstractGetter.isValidArxivUrl(story.url)) {
+            ArxivAbstractGetter.getAbstract(story.url, getContext(), new NetworkComponent.GetterCallback() {
+                @Override
+                public void onSuccess(String summary) {
+                    story.arxivAbstract = summary;
+                    adapter.notifyItemChanged(0);
+                }
+
+                @Override
+                public void onFailure(String reason) {
+                    //no-op
+                }
+            });
+        }
+
         stringRequest.setTag(requestTag);
         stringRequest.setRetryPolicy(new DefaultRetryPolicy(
                 15000,
@@ -1235,7 +1251,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     snackbar.show();
                 } else if (id == R.id.menu_archive) {
                     Toast.makeText(getContext(), "Contacting archive.org API...", Toast.LENGTH_SHORT).show();
-                    ArchiveOrgUrlGetter.getArchiveUrl(story.url, getContext(), new ArchiveOrgUrlGetter.GetterCallback() {
+                    ArchiveOrgUrlGetter.getArchiveUrl(story.url, getContext(), new NetworkComponent.GetterCallback() {
                         @Override
                         public void onSuccess(String url) {
                             Utils.launchCustomTab(getActivity(), url);
