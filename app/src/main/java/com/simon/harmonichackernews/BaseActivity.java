@@ -38,7 +38,14 @@ public class BaseActivity extends AppCompatActivity {
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         int screenHeight = getWindow().getDecorView().getHeight();
+        int actionType = ev.getAction();
+
         if (ev.getY() >= (screenHeight - navBarHeight)) {
+            if (actionType == MotionEvent.ACTION_UP) {
+                // Let the ACTION_UP event through
+                return super.dispatchTouchEvent(ev);
+            }
+            // Block other touch events in the specified area
             return true;
         }
         return super.dispatchTouchEvent(ev);
