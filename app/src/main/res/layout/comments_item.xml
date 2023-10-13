@@ -13,7 +13,10 @@
         android:layout_height="match_parent"    />
 
     <LinearLayout
-        android:padding="4dp"
+        android:paddingLeft="4dp"
+        android:paddingRight="4dp"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
