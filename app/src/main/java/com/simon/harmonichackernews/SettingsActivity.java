@@ -40,7 +40,6 @@ import java.util.Set;
 
 public class SettingsActivity extends AppCompatActivity {
 
-    //private static boolean requestRestart = false;
     private static boolean requestFullRestart = false;
     public final static String EXTRA_REQUEST_RESTART = "EXTRA_REQUEST_RESTART";
 

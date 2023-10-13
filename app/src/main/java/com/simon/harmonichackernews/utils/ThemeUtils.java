@@ -70,9 +70,20 @@ public class ThemeUtils {
             case "white":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarWhite : R.style.AppThemeWhite);
                 break;
-            //needed because of comment activity where the default is apptheme, now swipeback
+            //needed because of comment activity where the default is AppTheme, now swipeBack
             case "dark":
-                activity.setTheme(swipeBack ? R.style.Theme_Swipe_Back_NoActionBar : R.style.AppTheme);
+                //below 30, default on comments is swipeBack so if we don't use it we need to change to a normal theme
+                if (Build.VERSION.SDK_INT < 30) {
+                    if (!swipeBack) {
+                        activity.setTheme(R.style.AppTheme);
+                    }
+                } else {
+                    //at and above 30, the default is AppTheme so if we use swipeBack we need to change
+                    if (swipeBack) {
+                        activity.setTheme(R.style.Theme_Swipe_Back_NoActionBar);
+                    }
+                }
+
                 break;
 
         }
