@@ -30,7 +30,10 @@ public class JSONParser {
             JSONObject hit = hits.getJSONObject(i);
 
             Story story = new Story();
-            story.title = hit.getString("title");
+
+            boolean isComment = hit.getJSONArray("_tags").get(0).equals("comment");
+
+            story.title = isComment ? hit.getString("story_title") : hit.getString("title");
             story.score = hit.optInt("points");
             story.by = hit.getString("author");
             story.descendants = hit.optInt("num_comments");
@@ -52,12 +55,12 @@ public class JSONParser {
                 story.text = hit.getString("story_text");
             }
 
-            if (hit.getJSONArray("_tags").get(0).equals("comment")) {
+            if (isComment) {
                 story.isComment = true;
                 story.text = hit.getString("comment_text");
                 story.commentMasterTitle = hit.getString("story_title");
                 story.commentMasterId = hit.getInt("story_id");
-                if (!hit.getString("story_url").equals("null")) {
+                if (hit.has("story_url") && !hit.getString("story_url").equals("null")) {
                     story.commentMasterUrl = hit.getString("story_url");
                     story.isLink = true;
                 } else {
