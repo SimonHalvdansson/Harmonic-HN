@@ -222,12 +222,19 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
     }
 
     public static void showFailureDetailDialog(Context ctx, String summary, String response) {
-        AlertDialog dialog = new MaterialAlertDialogBuilder(ctx)
-                .setTitle(summary)
-                .setMessage(response)
-                .setNegativeButton("Done", null).create();
+        //We need to try-catch this because it is called asynchronously and if the app has been
+        //closed we cannot show a dialog. Instead of checking for this, we can just try-catch! :)
+        try {
+            AlertDialog dialog = new MaterialAlertDialogBuilder(ctx)
+                    .setTitle(summary)
+                    .setMessage(response)
+                    .setNegativeButton("Done", null).create();
 
-        dialog.show();
+            dialog.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
     public interface ActionCallback {

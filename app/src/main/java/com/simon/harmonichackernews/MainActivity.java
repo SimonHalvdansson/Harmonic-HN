@@ -131,7 +131,10 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml("<b>Version 1.11.1:</b><br>" +
+                .setMessage(Html.fromHtml( "<b>Version 1.11.2:</b><br>" +
+                        "- Fixed 2 comments crashes<br>" +
+                        "<br>" +
+                        "<b>Version 1.11.1:</b><br>" +
                         "- Fixed submissions failed to load (thanks Leslie Cheng)<br>" +
                         "- New dialog-less animation when posting comments<br>" +
                         "- Added ArXiV abstract resolver<br>" +

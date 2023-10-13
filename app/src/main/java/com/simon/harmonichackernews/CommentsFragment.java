@@ -160,6 +160,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean blockAds = true;
     private boolean startedLoading = false;
     private boolean initializedWebView = false;
+    private boolean useDeviceBackWebView = true;
     private int topInset = 0;
     private OnBackPressedCallback backPressedCallback;
 
@@ -253,6 +254,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             }
         }
+        useDeviceBackWebView = SettingsUtils.shouldUseWebViewDeviceBack(getContext());
     }
 
     @Override
@@ -294,7 +296,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void handleOnBackPressed() {
                 if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED &&
-                        SettingsUtils.shouldUseWebViewDeviceBack(getContext()) &&
+                        useDeviceBackWebView &&
                         webView.canGoBack()) {
                     webView.goBack();
                     return;
@@ -467,11 +469,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 return;
             }
 
-            final CommentsRecyclerViewAdapter.ItemViewHolder holder = ((CommentsRecyclerViewAdapter.ItemViewHolder) recyclerView.findViewHolderForAdapterPosition(index));
-            if (holder != null && !adapter.collapseParent) {
+            final RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(index);
+            if (holder != null && !adapter.collapseParent && holder instanceof CommentsRecyclerViewAdapter.ItemViewHolder) {
                 //if we can reach the ViewHolder (which we should), we can animate the hiddenIndicator ourselves to get around a FULL item refresh (which flashes all the text which we don't want)
                 offset = 1;
-                final TextView hiddenIndicator = holder.commentHiddenCount;
+                final TextView hiddenIndicator = ((CommentsRecyclerViewAdapter.ItemViewHolder) holder).commentHiddenCount;
                 int shortAnimationDuration = getResources().getInteger(android.R.integer.config_shortAnimTime);
 
                 hiddenIndicator.setText("+" + (lastChildIndex - index));
@@ -550,7 +552,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_BACK:
-                        if (webView.canGoBack() && !SettingsUtils.shouldUseWebViewDeviceBack(getContext())) {
+                        if (webView.canGoBack() && !useDeviceBackWebView) {
                             if (downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
                                 webView.setVisibility(View.VISIBLE);
                                 downloadButton.setVisibility(View.GONE);
@@ -636,7 +638,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onStateChanged(@NonNull View view, int newState) {
                 if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
-                    if (SettingsUtils.shouldUseWebViewDeviceBack(getContext())) {
+                    if (useDeviceBackWebView) {
                         toggleBackPressedCallback(webView != null && webView.canGoBack());
                     } else {
                         toggleBackPressedCallback(false);
@@ -1511,7 +1513,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
                 //if we are at the webview and we just loaded, recheck the canGoBack status
-                if (SettingsUtils.shouldUseWebViewDeviceBack(getContext())) {
+                if (useDeviceBackWebView) {
                     toggleBackPressedCallback(webView != null && webView.canGoBack());
                 }
             }
