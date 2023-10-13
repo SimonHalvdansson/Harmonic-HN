@@ -518,7 +518,7 @@ public class StoriesFragment extends Fragment {
 
         menu.findItem(R.id.menu_log).setTitle(loggedIn ? "Log out" : "Log in");
         menu.findItem(R.id.menu_profile).setVisible(loggedIn);
-        menu.findItem(R.id.menu_submit).setVisible(false);
+        menu.findItem(R.id.menu_submit).setVisible(loggedIn);
 
         popup.show();
     }

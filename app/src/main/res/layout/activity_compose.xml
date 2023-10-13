@@ -102,7 +102,7 @@
         android:layout_width="match_parent">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:hint="Text (optional)"
+            android:hint="Text"
             android:id="@+id/compose_edittext_text"
             android:imeOptions="normal"
             android:inputType="textCapSentences|textMultiLine"

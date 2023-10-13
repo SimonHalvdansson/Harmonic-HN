@@ -132,6 +132,10 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml( "<b>Version 1.11.2:</b><br>" +
+                        "- Added experimental ability to post stories<br>" +
+                        "- Fixed Android 14 predictive back issue<br>" +
+                        "- Restored correct search settings (thanks Leslie Cheng)<br>" +
+                        "- Prompt to update stale stories<br>" +
                         "- Fixed 2 comments crashes<br>" +
                         "<br>" +
                         "<b>Version 1.11.1:</b><br>" +
