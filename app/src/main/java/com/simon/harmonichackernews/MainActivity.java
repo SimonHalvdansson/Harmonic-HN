@@ -131,7 +131,15 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml("<b>Version 1.11:</b><br>" +
+                .setMessage(Html.fromHtml("<b>Version 1.11.1:</b><br>" +
+                        "- Fixed submissions failed to load (thanks Leslie Cheng)<br>" +
+                        "- New dialog-less animation when posting comments<br>" +
+                        "- Added ArXiV abstract resolver<br>" +
+                        "- Fixed rare Android 14 predictive back flashing<br>" +
+                        "- Added touch rejection on navigation bar<br>" +
+                        "- Added long comment scrim in submissions<br>" +
+                        "<br>" +
+                        "<b>Version 1.11:</b><br>" +
                         "- Added alternative comment sortings (thanks John Rapp Farnes)<br>" +
                         "- Fixed user bio bottom padding<br>" +
                         "- Added option to choose favicon provider<br>" +
