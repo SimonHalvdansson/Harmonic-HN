@@ -48,6 +48,7 @@ import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -1415,7 +1416,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onItemClick(Comment comment, int pos, View view) {
-        final Context ctx = view.getContext();
+        final Context ctx = getContext();
 
         Pair[] items;
 
@@ -1441,7 +1442,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     new Pair<>("Reply", R.drawable.ic_action_reply)
             };
         }
-
 
         ListAdapter adapter = new ArrayAdapter<Pair<String, Integer>>(ctx,
                 R.layout.comment_dialog_item,

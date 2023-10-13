@@ -103,11 +103,18 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         }
     }
 
+    //if we set translucency to false immediately onPause we can trigger animations by accident so we delay things a little
     @Override
     protected void onPause() {
         super.onPause();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && swipeBack) {
-            setTranslucent(false);
+            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    setTranslucent(false);
+                }
+            }, 300);
+
         }
     }
 
