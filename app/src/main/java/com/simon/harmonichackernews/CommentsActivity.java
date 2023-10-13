@@ -21,12 +21,13 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     private boolean disableSwipeAtComments;
     private SwipeBackLayout swipeBackLayout;
     private SplitChangeHandler splitChangeHandler;
+    private boolean swipeBack = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        boolean swipeBack = !SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext());
+        swipeBack = !SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext());
 
         ThemeUtils.setupTheme(this, swipeBack);
 
@@ -68,7 +69,7 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
             }
         });
 
-        disableSwipeAtComments = SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext());
+        disableSwipeAtComments = !swipeBack;
     }
 
     @Override
@@ -82,6 +83,31 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
             swipeBackLayout.setActive(false);
         } else {
             swipeBackLayout.setActive(!disableSwipeAtComments);
+        }
+    }
+
+    //we only need to do the translucent setting on Android 14 and above as its purpose is to
+    //make the predictive back animation nice (when we peek back from a deeper activity,
+    // CommentsActivity cannot be transparent). The theme already sets the activity to translucent
+    //so when we animate in we are transparent which is important!
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && swipeBack) {
+            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    setTranslucent(true);
+                }
+            }, 400);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && swipeBack) {
+            setTranslucent(false);
         }
     }
 
