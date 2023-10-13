@@ -162,6 +162,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean initializedWebView = false;
     private boolean useDeviceBackWebView = true;
     private int topInset = 0;
+    private long lastLoaded = 0;
     private OnBackPressedCallback backPressedCallback;
 
     private String username;
@@ -777,7 +778,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
 
             }
-        }, 2000); // Start the animation after 2 second
+        }, 2000); // Start the animation after 2 seconds
     }
 
     private void loadUrl(String url) {
@@ -935,6 +936,18 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+
+        if (lastLoaded != 0 && (System.currentTimeMillis() - lastLoaded) > 1000*60*60) {
+            if (adapter != null && !adapter.showUpdate) {
+                adapter.showUpdate = true;
+                adapter.notifyItemChanged(0);
+            }
+        }
+    }
+
+    @Override
     public void onStop() {
         super.onStop();
 
@@ -1036,6 +1049,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     private void loadStoryAndComments(final int id, final String oldCachedResponse) {
         String url = "https://hn.algolia.com/api/v1/items/" + id;
+        lastLoaded = System.currentTimeMillis();
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {

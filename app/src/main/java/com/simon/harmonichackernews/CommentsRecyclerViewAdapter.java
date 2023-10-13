@@ -1,9 +1,12 @@
 package com.simon.harmonichackernews;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Handler;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -49,6 +52,7 @@ import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
@@ -78,9 +82,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean showTopLevelDepthIndicator;
     public String username;
     public int preferredTextSize;
-    private boolean isTablet;
+    private final boolean isTablet;
     public boolean darkThemeActive;
     public String font;
+    public boolean showUpdate = false;
 
     private int navbarHeight = 0;
 
@@ -266,6 +271,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     headerViewHolder.emptyView.setVisibility(View.GONE);
                 }
             }
+
+            headerViewHolder.refreshButton.setVisibility(showUpdate ? View.VISIBLE : View.GONE);
 
             int actionContainerPadding = Math.round(headerViewHolder.actionsContainer.getResources().getDimension(R.dimen.comments_header_action_padding));
             headerViewHolder.actionsContainer.setPadding(actionContainerPadding, 0, actionContainerPadding, 0);
@@ -471,6 +478,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout loadingFailed;
         public final LinearLayout serverErrorLayout;
         public final Button serverErrorSwitchApiButton;
+        public final Button refreshButton;
 
         public final ImageView bookmarkIcon;
         public final ImageView favicon;
@@ -516,7 +524,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             loadingFailed = view.findViewById(R.id.comments_header_loading_failed);
             serverErrorLayout = view.findViewById(R.id.comments_header_server_error);
             serverErrorSwitchApiButton = view.findViewById(R.id.comments_header_server_error_switch_api);
-
+            refreshButton = view.findViewById(R.id.comments_header_refresh);
             bookmarkIcon = view.findViewById(R.id.comment_button_bookmark);
             favicon = view.findViewById(R.id.comments_header_favicon);
             linkInfoContainer = view.findViewById(R.id.comments_header_link_info_container);
@@ -541,6 +549,26 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 
             retryButton.setOnClickListener((v) -> retryListener.onRetry());
+
+            refreshButton.setOnClickListener((v) -> {
+                showUpdate = false;
+                retryListener.onRetry();
+                /*refreshButton.setAlpha(1);
+                refreshButton.animate().setDuration(200).alpha(0).setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        refreshButton.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                notifyItemChanged(0);
+
+                            }
+                        }, 200);
+                    }
+                });*/
+
+
+            });
 
             serverErrorSwitchApiButton.setOnClickListener(new View.OnClickListener() {
                 @Override

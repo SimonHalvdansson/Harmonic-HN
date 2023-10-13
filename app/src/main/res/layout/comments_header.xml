@@ -645,6 +645,19 @@
         android:layout_width="60dp"
         android:layout_height="60dp" />
 
+    <Button
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="4dp"
+        android:visibility="visible"
+        android:id="@+id/comments_header_refresh"
+        android:layout_gravity="center_horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        style="@style/Widget.Material3.Button.ElevatedButton"
+        app:icon="@drawable/ic_action_refresh"
+        android:textColor="?attr/storyColorNormal"
+        android:text="Tap to update"    />
+
     <LinearLayout
         android:id="@+id/comments_header_loading_failed"
         android:layout_marginTop="44dp"
