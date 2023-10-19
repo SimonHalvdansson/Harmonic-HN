@@ -1438,7 +1438,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     new Pair<>("Select text", R.drawable.ic_action_select),
                     new Pair<>("Vote up", R.drawable.ic_action_thumbs_up),
                     new Pair<>("Unvote", R.drawable.ic_action_thumbs),
-                    new Pair<>("Vote down (experimental)", R.drawable.ic_action_thumb_down),
+                    new Pair<>("Vote down", R.drawable.ic_action_thumb_down),
                     new Pair<>("Reply", R.drawable.ic_action_reply)
             };
         }

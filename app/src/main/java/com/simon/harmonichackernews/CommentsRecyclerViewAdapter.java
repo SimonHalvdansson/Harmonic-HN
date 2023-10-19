@@ -358,12 +358,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             if (!itemViewHolder.comment.text.isEmpty()) {
                 itemViewHolder.commentBody.setHtml(itemViewHolder.comment.text);
+                if (collapseParent) {
+                    itemViewHolder.commentHiddenText.setText(" • " + itemViewHolder.comment.text);
+                }
 
                 FontUtils.setTypeface(itemViewHolder.commentBody, false, preferredTextSize);
             }
 
             itemViewHolder.commentBy.setText(itemViewHolder.comment.by);
-            itemViewHolder.commentByTime.setText(" • " + itemViewHolder.comment.getTimeFormatted());
+            itemViewHolder.commentByTime.setText(itemViewHolder.comment.getTimeFormatted());
 
             boolean byOp = story.by.equals(itemViewHolder.comment.by);
             boolean byUser = false;
@@ -383,19 +386,21 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             itemViewHolder.commentByTime.setTypeface(FontUtils.activeRegular);
 
             itemViewHolder.commentBody.setVisibility( (!itemViewHolder.comment.expanded && collapseParent) ? View.GONE : View.VISIBLE);
+            itemViewHolder.commentHiddenText.setVisibility((!itemViewHolder.comment.expanded && collapseParent) ? View.VISIBLE : View.GONE);
 
             if (itemViewHolder.comment.expanded) {
                 // if expanded, there's no need to show the subcommentcount
-                itemViewHolder.commentHiddenCount.setVisibility(View.INVISIBLE);
+                itemViewHolder.commentHiddenCount.setVisibility(View.GONE);
             } else {
                 // if not expanded, only show (and set text) if subCommentCount > 0
+                //TODO should this be precomputed?
                 int subCommentCount = getIndexOfLastChild(itemViewHolder.comment.depth, position) - position;
 
                 if (subCommentCount > 0) {
                     itemViewHolder.commentHiddenCount.setVisibility(View.VISIBLE);
                     itemViewHolder.commentHiddenCount.setText("+" + subCommentCount);
                 } else {
-                    itemViewHolder.commentHiddenCount.setVisibility(View.INVISIBLE);
+                    itemViewHolder.commentHiddenCount.setVisibility(View.GONE);
                 }
             }
         }
@@ -420,6 +425,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView commentBy;
         public final TextView commentByTime;
         public final TextView commentHiddenCount;
+        public final TextView commentHiddenText;
         public final View commentIndentIndicator;
 
         public Comment comment;
@@ -430,6 +436,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentBy = view.findViewById(R.id.comment_by);
             commentByTime = view.findViewById(R.id.comment_by_time);
             commentHiddenCount = view.findViewById(R.id.comment_hidden_count);
+            commentHiddenText = view.findViewById(R.id.comment_hidden_short);
             commentIndentIndicator = view.findViewById(R.id.comment_indent_indicator);
 
             itemView.setOnLongClickListener(v -> {
