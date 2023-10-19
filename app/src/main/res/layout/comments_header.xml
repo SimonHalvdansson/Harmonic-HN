@@ -240,7 +240,7 @@
                     android:paddingRight="16dp"
                     android:paddingTop="12dp"
                     android:paddingBottom="12dp"
-                    android:visibility="visible"
+                    android:visibility="gone"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
@@ -374,13 +374,114 @@
     </LinearLayout>
 
     <LinearLayout
+        android:layout_marginBottom="6dp"
         android:id="@+id/comments_header_actions_container"
         android:paddingLeft="@dimen/comments_header_action_padding"
         android:paddingRight="@dimen/comments_header_action_padding"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
+        <RelativeLayout
+            android:id="@+id/comments_header_button_user_parent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <ImageButton
+                android:background="?selectableItemBackgroundBorderless"
+                android:layout_centerHorizontal="true"
+                android:id="@+id/comments_header_button_user"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_action_user" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/comments_header_button_comment_parent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <ImageButton
+                android:background="?selectableItemBackgroundBorderless"
+                android:layout_centerHorizontal="true"
+                android:id="@+id/comments_header_button_comment"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_action_comment" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <ImageButton
+                android:background="?selectableItemBackgroundBorderless"
+                android:layout_centerHorizontal="true"
+                android:id="@+id/comments_header_button_vote"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_action_thumbs_up" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/comments_header_button_bookmark_parent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <ImageButton
+                android:background="?selectableItemBackgroundBorderless"
+                android:layout_centerHorizontal="true"
+                android:id="@+id/comments_header_button_bookmark"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_action_bookmark_border" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <ImageButton
+                android:background="?selectableItemBackgroundBorderless"
+                android:layout_centerHorizontal="true"
+                android:id="@+id/comments_header_button_share"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_action_share" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/comments_header_button_more_parent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <ImageButton
+                android:background="?selectableItemBackgroundBorderless"
+                android:layout_centerHorizontal="true"
+                android:id="@+id/comments_header_button_more"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_action_more" />
+
+        </RelativeLayout>
+
+
+
+
+<!--
         <RelativeLayout
             android:id="@+id/comments_layout_user_parent"
             android:layout_width="0dp"
@@ -404,19 +505,7 @@
                     android:layout_width="27dp"
                     android:layout_height="27dp"
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_user" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_below="@id/comment_button_user"
-                    android:layout_marginTop="3dp"
-                    android:fontFamily="@font/product_sans"
-                    android:gravity="center_horizontal"
-                    android:text="User"
-                    android:textColor="?attr/textColorDefault"
-                    android:textSize="@dimen/comments_header_text_size"
-                    android:textStyle="bold" />
+                    android:src="@drawable/ic_action_user" />
 
             </RelativeLayout>
 
@@ -448,6 +537,7 @@
                     android:layout_height="27dp"/>
 
                 <TextView
+                    android:visibility="gone"
                     android:layout_marginTop="3dp"
                     android:layout_below="@id/comment_button_comment"
                     android:text="Comment"
@@ -488,6 +578,7 @@
                     android:layout_height="27dp"/>
 
                 <TextView
+                    android:visibility="gone"
                     android:layout_marginTop="3dp"
                     android:layout_below="@id/comment_button_vote"
                     android:text="Vote"
@@ -529,6 +620,7 @@
                     android:layout_height="27dp"/>
 
                 <TextView
+                    android:visibility="gone"
                     android:layout_marginTop="3dp"
                     android:layout_below="@id/comment_button_bookmark"
                     android:text="Bookmark"
@@ -569,6 +661,7 @@
                     android:layout_height="27dp"/>
 
                 <TextView
+                    android:visibility="gone"
                     android:layout_marginTop="3dp"
                     android:layout_below="@id/comment_button_share"
                     android:text="Share"
@@ -610,6 +703,7 @@
                     android:layout_height="27dp"/>
 
                 <TextView
+                    android:visibility="gone"
                     android:layout_marginTop="3dp"
                     android:layout_below="@id/comment_button_more"
                     android:text="More"
@@ -623,7 +717,7 @@
 
             </RelativeLayout>
 
-        </RelativeLayout>
+        </RelativeLayout>-->
 
     </LinearLayout>
 

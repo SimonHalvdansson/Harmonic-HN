@@ -16,6 +16,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -284,10 +285,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 FaviconLoader.loadFavicon(story.url, headerViewHolder.favicon, ctx, faviconProvider);
             }
 
-            headerViewHolder.bookmarkIcon.setBackgroundResource(
-                    Utils.isBookmarked(ctx, story.id) ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border);
+            headerViewHolder.bookmarkButton.setImageResource(Utils.isBookmarked(ctx, story.id) ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border);
 
-            headerViewHolder.bookmarkLayout.setOnClickListener(new View.OnClickListener() {
+            headerViewHolder.bookmarkButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     boolean wasBookmarked = Utils.isBookmarked(view.getContext(), story.id);
@@ -316,8 +316,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             });
 
             headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
-            headerViewHolder.bookmarkLayoutParent.setVisibility(story.isComment ? View.GONE : View.VISIBLE);
-            headerViewHolder.commentLayoutParent.setVisibility(Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time) ? View.GONE : View.VISIBLE);
+            headerViewHolder.bookmarkButtonParent.setVisibility(story.isComment ? View.GONE : View.VISIBLE);
+            headerViewHolder.commentButtonParent.setVisibility(Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time) ? View.GONE : View.VISIBLE);
 
             headerViewHolder.loadingFailed.setVisibility(loadingFailed ? View.VISIBLE : View.GONE);
             headerViewHolder.serverErrorLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
@@ -486,19 +486,18 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout serverErrorLayout;
         public final Button serverErrorSwitchApiButton;
         public final Button refreshButton;
+        public final ImageButton userButton;
+        public final ImageButton commentButton;
+        public final ImageButton voteButton;
+        public final ImageButton bookmarkButton;
+        public final ImageButton shareButton;
+        public final ImageButton moreButton;
+        public final RelativeLayout userButtonParent;
+        public final RelativeLayout moreButtonParent;
+        public final RelativeLayout commentButtonParent;
+        public final RelativeLayout bookmarkButtonParent;
 
-        public final ImageView bookmarkIcon;
         public final ImageView favicon;
-        public final RelativeLayout userLayout;
-        public final RelativeLayout commentLayout;
-        public final RelativeLayout voteLayout;
-        public final RelativeLayout bookmarkLayout;
-        public final RelativeLayout shareLayout;
-        public final RelativeLayout moreLayout;
-        public final RelativeLayout moreLayoutParent;
-        public final RelativeLayout userLayoutParent;
-        public final RelativeLayout commentLayoutParent;
-        public final RelativeLayout bookmarkLayoutParent;
         public final RelativeLayout sheetBackButton;
         public final RelativeLayout sheetRefreshButton;
         public final RelativeLayout sheetExpandButton;
@@ -532,19 +531,18 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             serverErrorLayout = view.findViewById(R.id.comments_header_server_error);
             serverErrorSwitchApiButton = view.findViewById(R.id.comments_header_server_error_switch_api);
             refreshButton = view.findViewById(R.id.comments_header_refresh);
-            bookmarkIcon = view.findViewById(R.id.comment_button_bookmark);
             favicon = view.findViewById(R.id.comments_header_favicon);
             linkInfoContainer = view.findViewById(R.id.comments_header_link_info_container);
-            userLayout = view.findViewById(R.id.comments_layout_user);
-            userLayoutParent = view.findViewById(R.id.comments_layout_user_parent);
-            commentLayout = view.findViewById(R.id.comments_layout_comment);
-            commentLayoutParent = view.findViewById(R.id.comments_layout_comment_parent);
-            voteLayout = view.findViewById(R.id.comments_layout_vote);
-            bookmarkLayout = view.findViewById(R.id.comments_layout_bookmark);
-            bookmarkLayoutParent = view.findViewById(R.id.comments_layout_bookmark_parent);
-            shareLayout = view.findViewById(R.id.comments_layout_share);
-            moreLayout = view.findViewById(R.id.comments_layout_more);
-            moreLayoutParent = view.findViewById(R.id.comments_layout_more_parent);
+            userButton = view.findViewById(R.id.comments_header_button_user);
+            commentButton = view.findViewById(R.id.comments_header_button_comment);
+            voteButton = view.findViewById(R.id.comments_header_button_vote);
+            bookmarkButton = view.findViewById(R.id.comments_header_button_bookmark);
+            shareButton = view.findViewById(R.id.comments_header_button_share);
+            moreButton = view.findViewById(R.id.comments_header_button_more);
+            userButtonParent = view.findViewById(R.id.comments_header_button_user_parent);
+            moreButtonParent = view.findViewById(R.id.comments_header_button_more_parent);
+            commentButtonParent = view.findViewById(R.id.comments_header_button_comment_parent);
+            bookmarkButtonParent = view.findViewById(R.id.comments_header_button_bookmark_parent);
             retryButton = view.findViewById(R.id.comments_header_retry);
             pollLayout = view.findViewById(R.id.comments_header_poll_layout);
             sheetBackButton = view.findViewById(R.id.comments_sheet_layout_back);
@@ -588,20 +586,27 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             });
 
-            userLayout.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_USER, null));
-            commentLayout.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_COMMENT, null));
-            voteLayout.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_VOTE, view));
-            shareLayout.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_SHARE, v));
-            moreLayout.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_MORE, v));
+            userButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_USER, null));
+            commentButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_COMMENT, null));
+            voteButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_VOTE, view));
+            shareButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_SHARE, v));
+            moreButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_MORE, v));
             sheetBackButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_BACK, view));
             sheetRefreshButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_REFRESH, view));
-            sheetExpandButton.setOnClickListener((v) ->headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_EXPAND, view));
-            sheetInvertButton.setOnClickListener((v) ->headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_INVERT, view));
+            sheetExpandButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_EXPAND, view));
+            sheetInvertButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_INVERT, view));
 
             TooltipCompat.setTooltipText(sheetBackButton, "Back");
             TooltipCompat.setTooltipText(sheetRefreshButton, "Refresh");
             TooltipCompat.setTooltipText(sheetExpandButton, "Expand");
             TooltipCompat.setTooltipText(sheetInvertButton, "Invert colors");
+
+            TooltipCompat.setTooltipText(userButton, "User");
+            TooltipCompat.setTooltipText(commentButton, "Comment");
+            TooltipCompat.setTooltipText(voteButton, "Vote");
+            TooltipCompat.setTooltipText(bookmarkButton, "Bookmark");
+            TooltipCompat.setTooltipText(shareButton, "Share");
+            TooltipCompat.setTooltipText(moreButton, "More");
 
             if (!showInvert) {
                 view.findViewById(R.id.comments_sheet_container_invert).setVisibility(View.GONE);
@@ -639,7 +644,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             });
 
             if (integratedWebview) {
-                userLayoutParent.setVisibility(View.GONE);
                 if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_EXPANDED) {
                     sheetButtonsContainer.setAlpha(0f);
                     sheetButtonsContainer.getLayoutParams().height = 0;
@@ -650,7 +654,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     sheetButtonsContainer.requestLayout();
                 }
             } else {
-                moreLayoutParent.setVisibility(View.GONE);
+                moreButtonParent.setVisibility(View.GONE);
                 sheetButtonsContainer.setVisibility(View.GONE);
                 view.findViewById(R.id.comments_sheet_handle).setVisibility(View.GONE);
             }

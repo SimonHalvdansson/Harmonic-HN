@@ -1263,9 +1263,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public boolean onMenuItemClick(MenuItem item) {
                 int id = item.getItemId();
 
-                if (id == R.id.menu_user) {
-                    clickUser();
-                } else if (id == R.id.menu_refresh) {
+                if (id == R.id.menu_refresh) {
                     refreshComments();
                 } else if (id == R.id.menu_adblock) {
                     blockAds = false;
