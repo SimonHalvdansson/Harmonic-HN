@@ -21,6 +21,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -87,7 +88,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean darkThemeActive;
     public String font;
     public boolean showUpdate = false;
-
+    public int spacerHeight = 0;
     private int navbarHeight = 0;
 
     public static final int TYPE_HEADER = 0;
@@ -271,6 +272,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     headerViewHolder.loadingIndicator.setVisibility(View.VISIBLE);
                     headerViewHolder.emptyView.setVisibility(View.GONE);
                 }
+            }
+
+            if (spacerHeight != 0) {
+                headerViewHolder.spacer.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, spacerHeight));
             }
 
             headerViewHolder.refreshButton.setVisibility(showUpdate ? View.VISIBLE : View.GONE);
@@ -465,7 +470,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
     }
 
-    private class HeaderViewHolder extends RecyclerView.ViewHolder {
+    public class HeaderViewHolder extends RecyclerView.ViewHolder {
         public final View mView;
         public final TextView titleView;
         public final ImageView linkImage;
@@ -496,6 +501,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout moreButtonParent;
         public final RelativeLayout commentButtonParent;
         public final RelativeLayout bookmarkButtonParent;
+        public final Space spacer;
 
         public final ImageView favicon;
         public final RelativeLayout sheetBackButton;
@@ -550,6 +556,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
             sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
             actionsContainer = view.findViewById(R.id.comments_header_actions_container);
+            spacer = view.findViewById(R.id.comments_header_spacer);
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 
@@ -558,21 +565,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             refreshButton.setOnClickListener((v) -> {
                 showUpdate = false;
                 retryListener.onRetry();
-                /*refreshButton.setAlpha(1);
-                refreshButton.animate().setDuration(200).alpha(0).setListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        refreshButton.postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                notifyItemChanged(0);
-
-                            }
-                        }, 200);
-                    }
-                });*/
-
-
             });
 
             serverErrorSwitchApiButton.setOnClickListener(new View.OnClickListener() {
@@ -582,7 +574,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(view.getContext());
                     prefs.edit().putBoolean("pref_algolia_api", false).apply();
 
-                    Toast.makeText(view.getContext(), "Deactivated Algolia API, this can be switch back in the settings. Try reloading", Toast.LENGTH_LONG).show();
+                    Toast.makeText(view.getContext(), "Deactivated Algolia API, this can be switched back in the settings. Try reloading", Toast.LENGTH_LONG).show();
                 }
             });
 

@@ -9,6 +9,11 @@
     android:layout_width="match_parent"
     android:orientation="vertical">
 
+    <Space
+        android:id="@+id/comments_header_spacer"
+        android:layout_height="0dp"
+        android:layout_width="match_parent"/>
+
     <ImageView
         android:id="@+id/comments_sheet_handle"
         android:src="@drawable/bottom_sheet_grapple"
