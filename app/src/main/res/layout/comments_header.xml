@@ -383,8 +383,8 @@
         android:id="@+id/comments_header_actions_container"
         android:paddingLeft="@dimen/comments_header_action_padding"
         android:paddingRight="@dimen/comments_header_action_padding"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
