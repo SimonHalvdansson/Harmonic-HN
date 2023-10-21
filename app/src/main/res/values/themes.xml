@@ -3,13 +3,12 @@
     <!-- These base themes are so that we can tell the app that android:isLightTheme="false"
     which enables us to use darkened webview again!-->
     <style name="AppThemeBase" parent="Theme.Material3.Dark.NoActionBar"></style>
-    <style name="AppThemeMaterialDarkBase" parent="Theme.Material3.Dark.NoActionBar"></style>
     <style name="AppThemeLightBase" parent="Theme.Material3.Light.NoActionBar"></style>
-    <style name="AppThemeMaterialLightBase" parent="Theme.Material3.Light.NoActionBar"></style>
 
+    <!-- This is just for daynight, there is another theme resource in the night folder-->
     <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialLight"></style>
 
-    <style name="AppThemeMaterialDark" parent="@style/AppThemeMaterialDarkBase">
+    <style name="AppThemeMaterialDark" parent="@style/AppThemeBase">
         <item name="storyColorNormal">@color/darkStoryColorNormal</item>
         <item name="storyColorDisabled">@color/darkStoryColorDisabled</item>
         <item name="textColorHighlighted">@color/darkTextColorHighlighted</item>
@@ -35,6 +34,7 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialDark</item>
+        <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>
 
     <style name="AppTheme" parent="AppThemeBase">
@@ -65,6 +65,7 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialog</item>
+        <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>
 
     <style name="AppThemeAmoledDark" parent="AppTheme">
@@ -109,9 +110,10 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogLight</item>
+        <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>
 
-    <style name="AppThemeMaterialLight" parent="AppThemeMaterialLightBase">
+    <style name="AppThemeMaterialLight" parent="AppThemeLightBase">
         <item name="storyColorNormal">@color/lightStoryColorNormal</item>
         <item name="storyColorDisabled">@color/lightStoryColorDisabled</item>
         <item name="textColorHighlighted">@color/lightTextColorHighlighted</item>
@@ -137,6 +139,7 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialLight</item>
+        <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>
 
     <style name="AppThemeWhite" parent="@style/AppThemeLight">
