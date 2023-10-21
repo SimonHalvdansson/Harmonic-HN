@@ -50,7 +50,18 @@ public class ThemeUtils {
         String theme = getPreferredTheme(activity);
         switch (theme) {
             case "material_daynight":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarMaterialDayNight : R.style.AppThemeMaterialDayNight);
+                //below 30, default on comments is swipeBack so if we don't use it we need to change to a normal theme
+                if (Build.VERSION.SDK_INT < 30) {
+                    if (!swipeBack) {
+                        activity.setTheme(R.style.AppThemeMaterialDayNight);
+                    }
+                } else {
+                    //at and above 30, the default is AppTheme so if we use swipeBack we need to change
+                    if (swipeBack) {
+                        activity.setTheme(R.style.ThemeSwipeBackNoActionBarMaterialDayNight);
+                    }
+                }
+                //activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarMaterialDayNight : R.style.AppThemeMaterialDayNight);
                 break;
             case "material_dark":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarMaterialDark : R.style.AppThemeMaterialDark);
@@ -72,17 +83,7 @@ public class ThemeUtils {
                 break;
             //needed because of comment activity where the default is AppTheme, now swipeBack
             case "dark":
-                //below 30, default on comments is swipeBack so if we don't use it we need to change to a normal theme
-                if (Build.VERSION.SDK_INT < 30) {
-                    if (!swipeBack) {
-                        activity.setTheme(R.style.AppTheme);
-                    }
-                } else {
-                    //at and above 30, the default is AppTheme so if we use swipeBack we need to change
-                    if (swipeBack) {
-                        activity.setTheme(R.style.Theme_Swipe_Back_NoActionBar);
-                    }
-                }
+                activity.setTheme(swipeBack ? R.style.Theme_Swipe_Back_NoActionBar : R.style.AppTheme);
 
                 break;
 
