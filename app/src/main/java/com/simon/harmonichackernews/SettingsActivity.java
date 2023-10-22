@@ -160,7 +160,6 @@ public class SettingsActivity extends AppCompatActivity {
                     "pref_preload_webview",
                     "pref_webview_match_theme",
                     "pref_webview_adblock",
-                    "pref_webview_show_expand",
             };
 
             for (String webViewPref : webViewPrefs) {

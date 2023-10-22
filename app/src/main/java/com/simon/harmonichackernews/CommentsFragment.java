@@ -456,7 +456,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 SettingsUtils.getPreferredFont(getContext()),
                 isFeatureSupported(WebViewFeature.FORCE_DARK) || WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING),
                 SettingsUtils.shouldShowTopLevelDepthIndicator(getContext()),
-                SettingsUtils.shouldShowWebviewExpandButton(getContext()),
                 ThemeUtils.isDarkMode(getContext()),
                 Utils.isTablet(getResources()),
                 SettingsUtils.getPreferredFaviconProvider(getContext()));
@@ -895,11 +894,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (adapter.showTopLevelDepthIndicator != SettingsUtils.shouldShowTopLevelDepthIndicator(ctx)) {
                 adapter.showTopLevelDepthIndicator = SettingsUtils.shouldShowTopLevelDepthIndicator(ctx);
                 updateComments = true;
-            }
-
-            if (adapter.showExpand != SettingsUtils.shouldShowWebviewExpandButton(ctx)) {
-                adapter.showExpand = SettingsUtils.shouldShowWebviewExpandButton(ctx);
-                updateHeader = true;
             }
 
             if (adapter.darkThemeActive != ThemeUtils.isDarkMode(ctx)) {

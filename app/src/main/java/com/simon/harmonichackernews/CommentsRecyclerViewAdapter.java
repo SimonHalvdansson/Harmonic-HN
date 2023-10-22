@@ -70,7 +70,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean monochromeCommentDepthIndicators;
     public boolean showNavigationBar;
     public boolean showInvert;
-    public boolean showExpand;
     public String faviconProvider;
     public boolean integratedWebview;
     public boolean showTopLevelDepthIndicator;
@@ -130,7 +129,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        String prefFont,
                                        boolean shouldShowInvert,
                                        boolean shouldShowTopLevelDepthIndicator,
-                                       boolean shouldShowExpand,
                                        boolean darkTheme,
                                        boolean tablet,
                                        String favProvider) {
@@ -148,7 +146,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         font = prefFont;
         showInvert = shouldShowInvert;
         showTopLevelDepthIndicator = shouldShowTopLevelDepthIndicator;
-        showExpand = shouldShowExpand;
         darkThemeActive = darkTheme;
         isTablet = tablet;
         faviconProvider = favProvider;
@@ -593,8 +590,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             if (!showInvert) {
                 view.findViewById(R.id.comments_sheet_container_invert).setVisibility(View.GONE);
             }
-
-            view.findViewById(R.id.comments_sheet_container_expand).setVisibility(showExpand ? View.VISIBLE : View.GONE);
 
             headerView.setOnClickListener(view1 -> headerClickListener.onItemClick(story));
 

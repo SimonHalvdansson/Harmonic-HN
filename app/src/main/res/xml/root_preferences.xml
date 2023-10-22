@@ -182,13 +182,6 @@
             app:icon="@drawable/ic_action_block"
             app:title="Block WebView ads"    />
 
-        <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_webview_show_expand"
-            app:defaultValue="true"
-            app:icon="@drawable/ic_action_arrow_up"
-            app:title="Show expand button in bottom sheet"    />
-
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Comments">

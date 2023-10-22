@@ -151,10 +151,6 @@ public class SettingsUtils {
         return getBooleanPref("pref_always_open_comments", false, ctx);
     }
 
-    public static boolean shouldShowWebviewExpandButton(Context ctx) {
-        return getBooleanPref("pref_webview_show_expand", true, ctx);
-    }
-
     public static boolean shouldUseCompactHeader(Context ctx) {
         return getBooleanPref("pref_compact_header", false, ctx);
     }
