@@ -37,33 +37,6 @@
             android:layout_height="wrap_content">
 
             <RelativeLayout
-                android:id="@+id/comments_sheet_layout_back"
-                android:paddingTop="10dp"
-                android:paddingBottom="6dp"
-                android:layout_marginBottom="5dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:layout_centerHorizontal="true"
-                android:background="?selectableItemBackgroundBorderless"
-                android:layout_width="60dp"
-                android:layout_height="wrap_content">
-
-                <ImageView
-                    android:layout_width="27dp"
-                    android:layout_height="27dp"
-                    android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_back" />
-
-            </RelativeLayout>
-
-        </RelativeLayout>
-
-        <RelativeLayout
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content">
-
-            <RelativeLayout
                 android:id="@+id/comments_sheet_layout_refresh"
                 android:layout_centerHorizontal="true"
                 android:paddingTop="10dp"

@@ -161,7 +161,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean blockAds = true;
     private boolean startedLoading = false;
     private boolean initializedWebView = false;
-    private boolean useDeviceBackWebView = true;
     private int topInset = 0;
     private long lastLoaded = 0;
     private OnBackPressedCallback backPressedCallback;
@@ -255,7 +254,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             }
         }
-        useDeviceBackWebView = SettingsUtils.shouldUseWebViewDeviceBack(getContext());
     }
 
     @Override
@@ -295,11 +293,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         backPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED &&
-                        useDeviceBackWebView &&
-                        webView.canGoBack()) {
-                    webView.goBack();
-                    return;
+                if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
+                    if (webView.canGoBack()) {
+                        if (downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
+                            webView.setVisibility(View.VISIBLE);
+                            downloadButton.setVisibility(View.GONE);
+                        } else {
+                            webView.goBack();
+                        }
+                        return;
+                    }
                 }
                 requireActivity().finish();
                 if (!SettingsUtils.shouldDisableCommentsSwipeBack(getContext()) && !Utils.isTablet(getResources())) {
@@ -551,25 +554,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         clickMore(clickedView);
                         break;
 
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_BACK:
-                        if (webView.canGoBack() && !useDeviceBackWebView) {
-                            if (downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
-                                webView.setVisibility(View.VISIBLE);
-                                downloadButton.setVisibility(View.GONE);
-                            } else {
-                                webView.goBack();
-                            }
-                        } else {
-                            if (getActivity() instanceof CommentsActivity) {
-                                requireActivity().finish();
-                                if (!SettingsUtils.shouldDisableCommentsSwipeBack(getContext())) {
-                                    requireActivity().overridePendingTransition(0, R.anim.activity_out_animation);
-                                }
-                            }
-                        }
-
-                        break;
-
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_REFRESH:
                         webView.reload();
                         break;
@@ -638,11 +622,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onStateChanged(@NonNull View view, int newState) {
                 if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
-                    if (useDeviceBackWebView) {
-                        toggleBackPressedCallback(webView != null && webView.canGoBack());
-                    } else {
-                        toggleBackPressedCallback(false);
-                    }
+                    toggleBackPressedCallback(webView != null && webView.canGoBack());
                 } else {
                     toggleBackPressedCallback(false);
                 }
@@ -1546,9 +1526,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
                 //if we are at the webview and we just loaded, recheck the canGoBack status
-                if (useDeviceBackWebView) {
-                    toggleBackPressedCallback(webView != null && webView.canGoBack());
-                }
+                toggleBackPressedCallback(webView != null && webView.canGoBack());
             }
         }
 

@@ -194,7 +194,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/product_sans" />
 
-        <com.google.android.material.switchmaterial.SwitchMaterial
+        <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/welcome_switch_thumbnails"
             android:drawableLeft="@drawable/ic_action_web"
             android:drawablePadding="14dp"
@@ -205,7 +205,7 @@
             android:checked="true"
             android:text="Thumbnails"   />
 
-        <com.google.android.material.switchmaterial.SwitchMaterial
+        <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/welcome_switch_points"
             android:drawableLeft="@drawable/ic_action_thumbs"
             android:drawablePadding="14dp"
@@ -216,7 +216,7 @@
             android:checked="true"
             android:text="Points"   />
 
-        <com.google.android.material.switchmaterial.SwitchMaterial
+        <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/welcome_switch_index"
             android:drawableLeft="@drawable/ic_action_index"
             android:drawablePadding="14dp"

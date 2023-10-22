@@ -1,12 +1,9 @@
 package com.simon.harmonichackernews;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.Handler;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -29,7 +26,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.TooltipCompat;
-import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
@@ -45,19 +41,14 @@ import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.network.UserActions;
-import com.simon.harmonichackernews.utils.DialogUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.Utils;
-import com.simon.harmonichackernews.utils.ViewUtils;
-import com.squareup.picasso.Picasso;
 
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 
 public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -101,7 +92,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public final static int FLAG_ACTION_CLICK_VOTE = 2;
     public final static int FLAG_ACTION_CLICK_SHARE = 4;
     public final static int FLAG_ACTION_CLICK_MORE = 5;
-    public final static int FLAG_ACTION_CLICK_BACK = -1;
     public final static int FLAG_ACTION_CLICK_REFRESH = -2;
     public final static int FLAG_ACTION_CLICK_EXPAND = -3;
     public final static int FLAG_ACTION_CLICK_INVERT = -5;
@@ -342,7 +332,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 width /= 2;
             }
 
-            //16 is base padding, then add 13 for each comment
+            //16 is base padding, then add 12 for each comment
             params.setMargins(
                     Math.min(Utils.pxFromDpInt(ctx.getResources(), 16 + 12 * comment.depth), Math.round(((float) width) * 0.6f)),
                     Utils.pxFromDpInt(ctx.getResources(), comment.depth > 0 && !collapseParent ? 10 : 6),
@@ -391,6 +381,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             itemViewHolder.commentBy.setTypeface(FontUtils.activeBold);
             itemViewHolder.commentByTime.setTypeface(FontUtils.activeRegular);
+            if (collapseParent) {
+                itemViewHolder.commentHiddenText.setTypeface(FontUtils.activeRegular);
+            }
 
             itemViewHolder.commentBody.setVisibility( (!comment.expanded && collapseParent) ? View.GONE : View.VISIBLE);
             itemViewHolder.commentHiddenText.setVisibility((!comment.expanded && collapseParent) ? View.VISIBLE : View.GONE);
@@ -505,7 +498,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final Space spacer;
 
         public final ImageView favicon;
-        public final RelativeLayout sheetBackButton;
         public final RelativeLayout sheetRefreshButton;
         public final RelativeLayout sheetExpandButton;
         public final RelativeLayout sheetInvertButton;
@@ -552,7 +544,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             bookmarkButtonParent = view.findViewById(R.id.comments_header_button_bookmark_parent);
             retryButton = view.findViewById(R.id.comments_header_retry);
             pollLayout = view.findViewById(R.id.comments_header_poll_layout);
-            sheetBackButton = view.findViewById(R.id.comments_sheet_layout_back);
             sheetRefreshButton = view.findViewById(R.id.comments_sheet_layout_refresh);
             sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
             sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
@@ -584,12 +575,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             voteButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_VOTE, view));
             shareButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_SHARE, v));
             moreButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_MORE, v));
-            sheetBackButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_BACK, view));
             sheetRefreshButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_REFRESH, view));
             sheetExpandButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_EXPAND, view));
             sheetInvertButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_INVERT, view));
 
-            TooltipCompat.setTooltipText(sheetBackButton, "Back");
             TooltipCompat.setTooltipText(sheetRefreshButton, "Refresh");
             TooltipCompat.setTooltipText(sheetExpandButton, "Expand");
             TooltipCompat.setTooltipText(sheetInvertButton, "Invert colors");
