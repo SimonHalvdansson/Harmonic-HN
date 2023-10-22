@@ -246,6 +246,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.metaVotes.setVisibility(story.isComment ? View.GONE : View.VISIBLE);
             headerViewHolder.metaVotesIcon.setVisibility(story.isComment ? View.GONE : View.VISIBLE);
 
+            FontUtils.setMultipleTypefaces(false, 14, 13, 13, 13, 13, 13,
+                    headerViewHolder.urlView,
+                    headerViewHolder.metaVotes,
+                    headerViewHolder.metaComments,
+                    headerViewHolder.metaTime,
+                    headerViewHolder.metaBy);
+
             FontUtils.setTypeface(headerViewHolder.titleView, true, 26, 26, 23, 26, 24, 26);
             FontUtils.setTypeface(headerViewHolder.textView, false, preferredTextSize);
 

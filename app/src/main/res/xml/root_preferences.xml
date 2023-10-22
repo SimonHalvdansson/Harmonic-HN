@@ -2,7 +2,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
     <PreferenceCategory app:title="Theme">
 
-        <DropDownPreference
+        <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_style"
             app:title="Theme"
@@ -25,7 +25,7 @@
             app:icon="@drawable/ic_action_time"
             app:title="Timed range"    />
 
-        <DropDownPreference
+        <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_dark_mode"
             app:title="Nighttime theme"
@@ -39,7 +39,7 @@
 
     <PreferenceCategory app:title="Display">
 
-        <DropDownPreference
+        <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_bookmark_border"
             app:title="Default starting page"
@@ -115,7 +115,7 @@
             app:icon="@drawable/ic_action_visibility"
             app:title="Transparent status bar"    />
 
-        <DropDownPreference
+        <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_web"
             app:title="Favicon provider"
@@ -125,7 +125,7 @@
             app:defaultValue="Faviconkit"
             app:entryValues="@array/favicon_providers"   />
 
-        <DropDownPreference
+        <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_whatshot"
             app:title="Highlight hot stories"
@@ -135,7 +135,7 @@
             app:defaultValue="-1"
             app:entryValues="@array/hotness_values"   />
 
-        <DropDownPreference
+        <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_font"
             app:title="Title and comment font"
@@ -157,7 +157,7 @@
             app:icon="@drawable/ic_action_browser"
             app:title="Integrated WebView"    />
 
-        <DropDownPreference
+        <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_cache"
             app:title="Preload websites"
@@ -193,7 +193,7 @@
             app:defaultValue="true"
             app:title="Use Algolia API"    />
 
-        <DropDownPreference
+        <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_text"
             app:title="Comments text size"
@@ -203,7 +203,7 @@
             app:defaultValue="15"
             app:entryValues="@array/font_size_values"   />
 
-        <DropDownPreference
+        <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_filter"
             app:title="Comment sorting"

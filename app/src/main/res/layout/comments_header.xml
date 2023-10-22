@@ -270,7 +270,7 @@
 
                         <ImageView
                             android:id="@+id/comments_header_meta_votes_icon"
-                            android:layout_marginTop="1dp"
+                            android:layout_marginTop="2dp"
                             android:src="@drawable/ic_action_thumbs_up"
                             android:layout_width="14dp"
                             android:layout_height="14dp"/>
@@ -286,7 +286,7 @@
                             android:text="87"/>
 
                         <ImageView
-                            android:layout_marginTop="1dp"
+                            android:layout_marginTop="2dp"
                             android:src="@drawable/ic_action_comment"
                             android:layout_width="14dp"
                             android:layout_height="14dp"/>
@@ -302,7 +302,7 @@
                             android:text="29"/>
 
                         <ImageView
-                            android:layout_marginTop="1dp"
+                            android:layout_marginTop="2dp"
                             android:src="@drawable/ic_action_time"
                             android:layout_width="14dp"
                             android:layout_height="14dp"/>
@@ -318,7 +318,7 @@
                             android:text="2 hrs "/>
 
                         <ImageView
-                            android:layout_marginTop="1dp"
+                            android:layout_marginTop="2dp"
                             android:src="@drawable/ic_action_user"
                             android:layout_width="14dp"
                             android:layout_height="14dp"/>

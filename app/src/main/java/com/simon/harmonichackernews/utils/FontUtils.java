@@ -51,6 +51,12 @@ public class FontUtils {
         setTypeface(textView, bold, size, size, size, size, size, size);
     }
 
+    public static void setMultipleTypefaces(boolean bold, float prodSize, float sansSize, float verdanaSize, float jetbrainsmonoSize, float georgiaSize, float robotoSlabSize, TextView... textViews) {
+        for (TextView textView : textViews) {
+            FontUtils.setTypeface(textView, bold, prodSize, sansSize, verdanaSize, jetbrainsmonoSize, georgiaSize, robotoSlabSize);
+        }
+    }
+
     public static void setTypeface(TextView textView, boolean bold, float prodSize, float sansSize, float verdanaSize, float jetbrainsmonoSize, float georgiaSize, float robotoSlabSize) {
         if (activeRegular == null) {
             init(textView.getContext());
