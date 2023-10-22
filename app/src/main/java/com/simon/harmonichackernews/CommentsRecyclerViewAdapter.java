@@ -256,6 +256,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             FontUtils.setTypeface(headerViewHolder.titleView, true, 26, 26, 23, 26, 24, 26);
             FontUtils.setTypeface(headerViewHolder.textView, false, preferredTextSize);
 
+            if (!TextUtils.isEmpty(story.arxivAbstract)) {
+                FontUtils.setTypeface(headerViewHolder.arxivAbstract, false, 14);
+            }
+
             if (loadingFailed) {
                 headerViewHolder.loadingIndicator.setVisibility(View.GONE);
                 headerViewHolder.emptyView.setVisibility(View.GONE);
@@ -269,9 +273,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             }
 
-            if (spacerHeight != 0) {
-                headerViewHolder.spacer.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, spacerHeight));
-            }
+            headerViewHolder.spacer.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, spacerHeight));
 
             headerViewHolder.refreshButton.setVisibility(showUpdate ? View.VISIBLE : View.GONE);
 
