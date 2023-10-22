@@ -159,6 +159,7 @@
             android:layout_height="wrap_content">
 
             <Button
+                android:fontFamily="@font/product_sans_bold"
                 android:onClick="infoClick"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -169,6 +170,7 @@
                 android:text="Formatting"/>
 
             <Button
+                android:fontFamily="@font/product_sans_bold"
                 android:id="@+id/compose_submit"
                 style="@style/Widget.Material3.Button.OutlinedButton.Icon"
                 app:icon="@drawable/ic_action_send"

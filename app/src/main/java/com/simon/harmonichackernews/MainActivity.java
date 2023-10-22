@@ -131,7 +131,13 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml( "<b>Version 1.11.2:</b><br>" +
+                .setMessage(Html.fromHtml( "<b>Version 1.12:</b><br>" +
+                        "- Expanded font selection to affect more components<br>" +
+                        "- Material (auto) is new default theme<br>" +
+                        "- Design tweaks to story page<br>" +
+                        "- Removed WebView back, only device back from now on<br>" +
+                        "- Updated preferences to be more Material 3<br>" +
+                        "- Fixed issue with transparent status bar<br>" +
                         "- Added experimental ability to post stories<br>" +
                         "- Fixed Android 14 predictive back issue<br>" +
                         "- Restored correct search settings (thanks Leslie Cheng)<br>" +
