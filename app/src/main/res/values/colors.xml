@@ -75,4 +75,5 @@
     <color name="material_you_neutral_800">@color/darkerBackground</color>
     <color name="material_you_neutral_900">@color/background</color>
 
+    <color name="splash_screen_background">@color/material_you_neutral_100</color>
 </resources>

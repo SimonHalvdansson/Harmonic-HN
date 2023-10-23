@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="AppThemeMaterialLight" parent="AppThemeLightBase">
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_screen_background</item>
+
+        <item name="storyColorNormal">@color/lightStoryColorNormal</item>
+        <item name="storyColorDisabled">@color/lightStoryColorDisabled</item>
+        <item name="textColorHighlighted">@color/lightTextColorHighlighted</item>
+        <item name="textColorDefault">@color/lightTextColorDefault</item>
+        <item name="textColorDisabled">@color/lightTextColorDisabled</item>
+        <item name="commentDividerColor">@color/lightDividerColor</item>
+        <item name="drawableColor">@color/lightDrawableColor</item>
+        <item name="dropdownColor">@color/material_you_neutral_50</item>
+        <item name="opCommentColor">@color/lightOpCommentColor</item>
+        <item name="selfCommentColor">@color/lightSelfCommentColor</item>
+        <item name="commentCountIndicatorColor">@color/material_you_600</item>
+        <item name="popupMenuBackground">@drawable/popup_background_material</item>
+
+        <item name="colorPrimary">@color/material_you_third_400</item>
+        <item name="colorPrimaryContainer">@color/material_you_third_700</item>
+
+        <item name="android:windowBackground">@color/material_you_neutral_100</item>
+
+        <item name="colorControlHighlight">#20000000</item>
+        <item name="snackbarTextViewStyle">@style/snackbarTextStyleLight</item>
+        <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
+        <item name="android:statusBarColor">@color/material_you_neutral_100</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <item name="materialAlertDialogTheme">
+            @style/ThemeOverlay.App.MaterialAlertDialogMaterialLight
+        </item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.Material3.MaterialAlertDialog</item>
+        <item name="dialogCornerRadius">28dp</item>
+        <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
+    </style>
+</resources>
