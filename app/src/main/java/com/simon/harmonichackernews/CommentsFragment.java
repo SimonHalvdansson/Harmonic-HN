@@ -562,6 +562,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_EXPAND:
                         BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
                         break;
+                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_BROWSER:
+                        clickBrowser();
+                        break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_INVERT:
                         //this whole thing should only be visible for SDK_INT larger than Q (29)
@@ -1243,6 +1246,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         adapter.commentsLoaded = true;
         updateNavigationVisibility();
+    }
+
+    public void clickBrowser() {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse(webView.getUrl()));
+        startActivity(intent);
     }
 
     public void clickShare(View view) {

@@ -14,7 +14,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 
-import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
 public class WelcomeActivity extends AppCompatActivity {
@@ -41,9 +41,9 @@ public class WelcomeActivity extends AppCompatActivity {
 
         favicon.setImageResource(R.drawable.quanta);
 
-        SwitchMaterial thumbnailSwitch = findViewById(R.id.welcome_switch_thumbnails);
-        SwitchMaterial pointsSwitch = findViewById(R.id.welcome_switch_points);
-        SwitchMaterial indexSwitch = findViewById(R.id.welcome_switch_index);
+        MaterialSwitch thumbnailSwitch = findViewById(R.id.welcome_switch_thumbnails);
+        MaterialSwitch pointsSwitch = findViewById(R.id.welcome_switch_points);
+        MaterialSwitch indexSwitch = findViewById(R.id.welcome_switch_index);
 
         thumbnailSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override

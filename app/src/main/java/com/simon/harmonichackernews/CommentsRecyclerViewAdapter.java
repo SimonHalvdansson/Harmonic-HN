@@ -95,6 +95,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public final static int FLAG_ACTION_CLICK_MORE = 5;
     public final static int FLAG_ACTION_CLICK_REFRESH = -2;
     public final static int FLAG_ACTION_CLICK_EXPAND = -3;
+    public final static int FLAG_ACTION_CLICK_BROWSER = -4;
     public final static int FLAG_ACTION_CLICK_INVERT = -5;
 
     private static final int[] commentDepthColorsDark = new int[]{
@@ -549,6 +550,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final ImageView favicon;
         public final RelativeLayout sheetRefreshButton;
         public final RelativeLayout sheetExpandButton;
+        public final RelativeLayout sheetBrowserButton;
         public final RelativeLayout sheetInvertButton;
         public final LinearLayout actionsContainer;
         public final LinearLayout linkInfoContainer;
@@ -597,6 +599,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             pollLayout = view.findViewById(R.id.comments_header_poll_layout);
             sheetRefreshButton = view.findViewById(R.id.comments_sheet_layout_refresh);
             sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
+            sheetBrowserButton = view.findViewById(R.id.comments_sheet_layout_expand);
             sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
             actionsContainer = view.findViewById(R.id.comments_header_actions_container);
             spacer = view.findViewById(R.id.comments_header_spacer);
@@ -639,10 +642,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             moreButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_MORE, v));
             sheetRefreshButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_REFRESH, view));
             sheetExpandButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_EXPAND, view));
+            sheetBrowserButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_BROWSER, view));
             sheetInvertButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_INVERT, view));
 
             TooltipCompat.setTooltipText(sheetRefreshButton, "Refresh");
             TooltipCompat.setTooltipText(sheetExpandButton, "Expand");
+            TooltipCompat.setTooltipText(sheetBrowserButton, "Open in browser");
             TooltipCompat.setTooltipText(sheetInvertButton, "Invert colors");
 
             TooltipCompat.setTooltipText(userButton, "User");
