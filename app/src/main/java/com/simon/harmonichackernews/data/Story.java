@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.data;
 
 import android.os.Bundle;
+import android.text.TextUtils;
 
 import com.simon.harmonichackernews.CommentsFragment;
 import com.simon.harmonichackernews.utils.Utils;
@@ -23,6 +24,7 @@ public class Story {
     public boolean clicked;
     public String text;
     public String arxivAbstract;
+    public RepoInfo repoInfo;
     public boolean isLink;
     public boolean isJob = false;
     public boolean loadingFailed = false;
@@ -74,6 +76,10 @@ public class Story {
         bundle.putBoolean(CommentsFragment.EXTRA_IS_COMMENT, isComment);
 
         return bundle;
+    }
+
+    public boolean hasExtraInfo() {
+        return !TextUtils.isEmpty(arxivAbstract) || repoInfo != null;
     }
 
 }

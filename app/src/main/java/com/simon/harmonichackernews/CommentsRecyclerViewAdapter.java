@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews;
 
+import static android.view.View.GONE;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
@@ -185,16 +187,44 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
 
             headerViewHolder.headerView.setClickable(story.isLink);
-            headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : View.GONE);
-            headerViewHolder.textView.setVisibility(TextUtils.isEmpty(story.text) ? View.GONE : View.VISIBLE);
-            headerViewHolder.arxivAbstractContainer.setVisibility(TextUtils.isEmpty(story.arxivAbstract) ? View.GONE : View.VISIBLE);
+            headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : GONE);
+            headerViewHolder.textView.setVisibility(TextUtils.isEmpty(story.text) ? GONE : View.VISIBLE);
+            headerViewHolder.infoContainer.setVisibility(story.hasExtraInfo() ? View.VISIBLE : GONE);
+
+            if (!TextUtils.isEmpty(story.arxivAbstract)) {
+
+            } else if (story.repoInfo != null) {
+                headerViewHolder.infoHeader.setText("REPO INFO:");
+            }
 
             if (!TextUtils.isEmpty(story.text)) {
                 headerViewHolder.textView.setHtml(story.text);
             }
 
             if (!TextUtils.isEmpty(story.arxivAbstract)) {
+                headerViewHolder.infoHeader.setText("ABSTRACT:");
+                headerViewHolder.arxivAbstract.setVisibility(View.VISIBLE);
+                headerViewHolder.repoContainer.setVisibility(GONE);
                 headerViewHolder.arxivAbstract.setHtml(story.arxivAbstract);
+            }
+
+            if (story.repoInfo != null) {
+                headerViewHolder.arxivAbstract.setVisibility(GONE);
+                headerViewHolder.repoContainer.setVisibility(View.VISIBLE);
+
+                headerViewHolder.infoHeader.setText(story.repoInfo.name);
+                headerViewHolder.githubAbout.setText(story.repoInfo.about);
+                headerViewHolder.githubUser.setText(story.repoInfo.owner);
+                headerViewHolder.githubWebsite.setText(story.repoInfo.getShortenedUrl());
+                headerViewHolder.githubLicense.setText(story.repoInfo.license);
+                headerViewHolder.githubLanguage.setText(story.repoInfo.language);
+                headerViewHolder.githubStars.setText(story.repoInfo.formatStars());
+                headerViewHolder.githubWatching.setText(story.repoInfo.formatWatching());
+                headerViewHolder.githubForks.setText(story.repoInfo.formatForks());
+
+                headerViewHolder.githubWebsiteContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.website) ? GONE : View.VISIBLE);
+                headerViewHolder.githubLicenseContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.license) ? GONE : View.VISIBLE);
+                headerViewHolder.githubLanguageContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.language) ? GONE : View.VISIBLE);
             }
 
             if (story.pollOptionArrayList != null) {
@@ -221,7 +251,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     }
                 }
             } else {
-                headerViewHolder.pollLayout.setVisibility(View.GONE);
+                headerViewHolder.pollLayout.setVisibility(GONE);
             }
 
             if (!TextUtils.isEmpty(story.pdfTitle)) {
@@ -241,10 +271,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.metaBy.setText(story.by);
             }
 
-            headerViewHolder.metaContainer.setVisibility(story.loaded ? View.VISIBLE : View.GONE);
-            headerViewHolder.urlView.setVisibility(story.isLink ? View.VISIBLE : View.GONE);
-            headerViewHolder.metaVotes.setVisibility(story.isComment ? View.GONE : View.VISIBLE);
-            headerViewHolder.metaVotesIcon.setVisibility(story.isComment ? View.GONE : View.VISIBLE);
+            headerViewHolder.metaContainer.setVisibility(story.loaded ? View.VISIBLE : GONE);
+            headerViewHolder.urlView.setVisibility(story.isLink ? View.VISIBLE : GONE);
+            headerViewHolder.metaVotes.setVisibility(story.isComment ? GONE : View.VISIBLE);
+            headerViewHolder.metaVotesIcon.setVisibility(story.isComment ? GONE : View.VISIBLE);
 
             FontUtils.setMultipleTypefaces(false, 14, 13, 13, 13, 13, 13,
                     headerViewHolder.urlView,
@@ -261,27 +291,27 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
 
             if (loadingFailed) {
-                headerViewHolder.loadingIndicator.setVisibility(View.GONE);
-                headerViewHolder.emptyView.setVisibility(View.GONE);
+                headerViewHolder.loadingIndicator.setVisibility(GONE);
+                headerViewHolder.emptyView.setVisibility(GONE);
             } else {
                 if (commentsLoaded) {
-                    headerViewHolder.loadingIndicator.setVisibility(View.GONE);
-                    headerViewHolder.emptyView.setVisibility(story.descendants > 0 ? View.GONE : View.VISIBLE);
+                    headerViewHolder.loadingIndicator.setVisibility(GONE);
+                    headerViewHolder.emptyView.setVisibility(story.descendants > 0 ? GONE : View.VISIBLE);
                 } else {
                     headerViewHolder.loadingIndicator.setVisibility(View.VISIBLE);
-                    headerViewHolder.emptyView.setVisibility(View.GONE);
+                    headerViewHolder.emptyView.setVisibility(GONE);
                 }
             }
 
             headerViewHolder.spacer.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, spacerHeight));
 
-            headerViewHolder.refreshButton.setVisibility(showUpdate ? View.VISIBLE : View.GONE);
+            headerViewHolder.refreshButton.setVisibility(showUpdate ? View.VISIBLE : GONE);
 
             int actionContainerPadding = Math.round(headerViewHolder.actionsContainer.getResources().getDimension(R.dimen.comments_header_action_padding));
             headerViewHolder.actionsContainer.setPadding(actionContainerPadding, 0, actionContainerPadding, 0);
 
-            headerViewHolder.favicon.setVisibility(showThumbnail ? View.VISIBLE : View.GONE);
-            headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
+            headerViewHolder.favicon.setVisibility(showThumbnail ? View.VISIBLE : GONE);
+            headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : GONE);
 
             if (showThumbnail && !TextUtils.isEmpty(story.url)) {
                 FaviconLoader.loadFavicon(story.url, headerViewHolder.favicon, ctx, faviconProvider);
@@ -318,11 +348,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             });
 
             headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
-            headerViewHolder.bookmarkButtonParent.setVisibility(story.isComment ? View.GONE : View.VISIBLE);
-            headerViewHolder.commentButtonParent.setVisibility(Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time) ? View.GONE : View.VISIBLE);
+            headerViewHolder.bookmarkButtonParent.setVisibility(story.isComment ? GONE : View.VISIBLE);
+            headerViewHolder.commentButtonParent.setVisibility(Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time) ? GONE : View.VISIBLE);
 
-            headerViewHolder.loadingFailed.setVisibility(loadingFailed ? View.VISIBLE : View.GONE);
-            headerViewHolder.serverErrorLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
+            headerViewHolder.loadingFailed.setVisibility(loadingFailed ? View.VISIBLE : GONE);
+            headerViewHolder.serverErrorLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : GONE);
 
         } else if (holder instanceof ItemViewHolder) {
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
@@ -347,7 +377,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             itemViewHolder.itemView.setLayoutParams(params);
 
             if (comment.depth == 0 && !showTopLevelDepthIndicator) {
-                itemViewHolder.commentIndentIndicator.setVisibility(View.GONE);
+                itemViewHolder.commentIndentIndicator.setVisibility(GONE);
             } else {
                 itemViewHolder.commentIndentIndicator.setVisibility(View.VISIBLE);
                 int index = (comment.depth + (showTopLevelDepthIndicator ? 0 : -1)) % 7;
@@ -391,12 +421,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentHiddenText.setTypeface(FontUtils.activeRegular);
             }
 
-            itemViewHolder.commentBody.setVisibility( (!comment.expanded && collapseParent) ? View.GONE : View.VISIBLE);
-            itemViewHolder.commentHiddenText.setVisibility((!comment.expanded && collapseParent) ? View.VISIBLE : View.GONE);
+            itemViewHolder.commentBody.setVisibility( (!comment.expanded && collapseParent) ? GONE : View.VISIBLE);
+            itemViewHolder.commentHiddenText.setVisibility((!comment.expanded && collapseParent) ? View.VISIBLE : GONE);
 
             if (comment.expanded) {
                 // if expanded, there's no need to show the subcommentcount
-                itemViewHolder.commentHiddenCount.setVisibility(View.GONE);
+                itemViewHolder.commentHiddenCount.setVisibility(GONE);
             } else {
                 // if not expanded, only show (and set text) if subCommentCount > 0
                 //TODO should this be precomputed?
@@ -406,7 +436,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     itemViewHolder.commentHiddenCount.setVisibility(View.VISIBLE);
                     itemViewHolder.commentHiddenCount.setText("+" + subCommentCount);
                 } else {
-                    itemViewHolder.commentHiddenCount.setVisibility(View.GONE);
+                    itemViewHolder.commentHiddenCount.setVisibility(GONE);
                 }
             }
         }
@@ -482,8 +512,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final ImageView metaVotesIcon;
         public final TextView urlView;
         public final HtmlTextView textView;
-        public final LinearLayout arxivAbstractContainer;
+        public final LinearLayout infoContainer;
         public final HtmlTextView arxivAbstract;
+        public final LinearLayout repoContainer;
+        public final TextView infoHeader;
         public final LinearLayout emptyView;
         public final TextView emptyViewText;
         public final CircularProgressIndicator loadingIndicator;
@@ -502,6 +534,17 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout commentButtonParent;
         public final RelativeLayout bookmarkButtonParent;
         public final Space spacer;
+        public final TextView githubAbout;
+        public final TextView githubUser;
+        public final TextView githubWebsite;
+        public final TextView githubLicense;
+        public final TextView githubLanguage;
+        public final TextView githubStars;
+        public final TextView githubWatching;
+        public final TextView githubForks;
+        public final LinearLayout githubWebsiteContainer;
+        public final LinearLayout githubLicenseContainer;
+        public final LinearLayout githubLanguageContainer;
 
         public final ImageView favicon;
         public final RelativeLayout sheetRefreshButton;
@@ -527,7 +570,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             urlView = view.findViewById(R.id.comments_header_url);
             textView = view.findViewById(R.id.comments_header_text);
             arxivAbstract = view.findViewById(R.id.comments_header_arxiv_abstract);
-            arxivAbstractContainer = view.findViewById(R.id.comments_header_arxiv_abstract_container);
+            repoContainer = view.findViewById(R.id.comments_header_repo_container);
+            infoContainer = view.findViewById(R.id.comments_header_info_container);
+            infoHeader = view.findViewById(R.id.comments_header_info_header);
             emptyView =  view.findViewById(R.id.comments_header_empty);
             emptyViewText = view.findViewById(R.id.comments_header_empty_text);
             headerView = view.findViewById(R.id.comments_header);
@@ -555,6 +600,17 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
             actionsContainer = view.findViewById(R.id.comments_header_actions_container);
             spacer = view.findViewById(R.id.comments_header_spacer);
+            githubAbout = view.findViewById(R.id.comments_header_github_about);
+            githubUser = view.findViewById(R.id.comments_header_github_by);
+            githubWebsite = view.findViewById(R.id.comments_header_github_website);
+            githubLicense = view.findViewById(R.id.comments_header_github_license);
+            githubLanguage = view.findViewById(R.id.comments_header_github_language);
+            githubStars = view.findViewById(R.id.comments_header_github_stars);
+            githubWatching = view.findViewById(R.id.comments_header_github_watching);
+            githubForks = view.findViewById(R.id.comments_header_github_forks);
+            githubWebsiteContainer = view.findViewById(R.id.comments_header_github_website_container);
+            githubLicenseContainer = view.findViewById(R.id.comments_header_github_license_container);
+            githubLanguageContainer = view.findViewById(R.id.comments_header_github_language_container);
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 
@@ -597,7 +653,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             TooltipCompat.setTooltipText(moreButton, "More");
 
             if (!showInvert) {
-                view.findViewById(R.id.comments_sheet_container_invert).setVisibility(View.GONE);
+                view.findViewById(R.id.comments_sheet_container_invert).setVisibility(GONE);
             }
 
             headerView.setOnClickListener(view1 -> headerClickListener.onItemClick(story));
@@ -640,9 +696,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     sheetButtonsContainer.requestLayout();
                 }
             } else {
-                moreButtonParent.setVisibility(View.GONE);
-                sheetButtonsContainer.setVisibility(View.GONE);
-                view.findViewById(R.id.comments_sheet_handle).setVisibility(View.GONE);
+                moreButtonParent.setVisibility(GONE);
+                sheetButtonsContainer.setVisibility(GONE);
+                view.findViewById(R.id.comments_sheet_handle).setVisibility(GONE);
             }
         }
     }

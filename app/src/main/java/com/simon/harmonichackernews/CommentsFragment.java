@@ -83,8 +83,10 @@ import com.google.android.material.transition.MaterialSharedAxis;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.PollOption;
+import com.simon.harmonichackernews.data.RepoInfo;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.ArxivAbstractGetter;
+import com.simon.harmonichackernews.network.GitHubInfoGetter;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
@@ -1078,8 +1080,31 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
 
                 @Override
+                public void onSuccess(RepoInfo repoInfo) {
+
+                }
+
+                @Override
                 public void onFailure(String reason) {
                     //no-op
+                }
+            });
+        } else if (GitHubInfoGetter.isValidGitHubUrl(story.url)) {
+            GitHubInfoGetter.getInfo(story.url, getContext(), new NetworkComponent.GetterCallback() {
+                @Override
+                public void onSuccess(String summary) {
+
+                }
+
+                @Override
+                public void onSuccess(RepoInfo repoInfo) {
+                    story.repoInfo = repoInfo;
+                    adapter.notifyItemChanged(0);
+                }
+
+                @Override
+                public void onFailure(String reason) {
+
                 }
             });
         }
@@ -1273,6 +1298,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         @Override
                         public void onSuccess(String url) {
                             Utils.launchCustomTab(getActivity(), url);
+                        }
+
+                        @Override
+                        public void onSuccess(RepoInfo repoInfo) {
+
                         }
 
                         @Override
