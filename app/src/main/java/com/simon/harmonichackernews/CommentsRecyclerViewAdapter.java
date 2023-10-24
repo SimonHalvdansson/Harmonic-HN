@@ -599,7 +599,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             pollLayout = view.findViewById(R.id.comments_header_poll_layout);
             sheetRefreshButton = view.findViewById(R.id.comments_sheet_layout_refresh);
             sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
-            sheetBrowserButton = view.findViewById(R.id.comments_sheet_layout_expand);
+            sheetBrowserButton = view.findViewById(R.id.comments_sheet_layout_browser);
             sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
             actionsContainer = view.findViewById(R.id.comments_header_actions_container);
             spacer = view.findViewById(R.id.comments_header_spacer);
