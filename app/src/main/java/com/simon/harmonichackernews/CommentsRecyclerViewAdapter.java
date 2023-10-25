@@ -192,31 +192,33 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.textView.setVisibility(TextUtils.isEmpty(story.text) ? GONE : View.VISIBLE);
             headerViewHolder.infoContainer.setVisibility(story.hasExtraInfo() ? View.VISIBLE : GONE);
 
-            if (!TextUtils.isEmpty(story.arxivAbstract)) {
-
-            } else if (story.repoInfo != null) {
-                headerViewHolder.infoHeader.setText("REPO INFO:");
-            }
-
             if (!TextUtils.isEmpty(story.text)) {
                 headerViewHolder.textView.setHtml(story.text);
             }
 
-            if (!TextUtils.isEmpty(story.arxivAbstract)) {
-                headerViewHolder.infoHeader.setText("ABSTRACT:");
-                headerViewHolder.arxivAbstract.setVisibility(View.VISIBLE);
-                headerViewHolder.repoContainer.setVisibility(GONE);
-                headerViewHolder.arxivAbstract.setHtml(story.arxivAbstract);
+            if (story.arxivInfo != null) {
+                headerViewHolder.arxivContainer.setVisibility(View.VISIBLE);
+                headerViewHolder.githubContainer.setVisibility(GONE);
+
+                headerViewHolder.infoHeader.setText("ARXIV INFO:");
+
+                headerViewHolder.arxivAbstract.setHtml(story.arxivInfo.arxivAbstract);
+                headerViewHolder.arxivBy.setText(story.arxivInfo.concatNames());
+                headerViewHolder.arxivDate.setText(story.arxivInfo.formatDate());
+                headerViewHolder.arxivSubjects.setText(story.arxivInfo.formatSubjects());
+
+                FontUtils.setTypeface(headerViewHolder.arxivAbstract, false, 14);
             }
 
             if (story.repoInfo != null) {
-                headerViewHolder.arxivAbstract.setVisibility(GONE);
-                headerViewHolder.repoContainer.setVisibility(View.VISIBLE);
+                headerViewHolder.arxivContainer.setVisibility(GONE);
+                headerViewHolder.githubContainer.setVisibility(View.VISIBLE);
 
                 headerViewHolder.infoHeader.setText(story.repoInfo.name);
+
                 headerViewHolder.githubAbout.setText(story.repoInfo.about);
                 headerViewHolder.githubUser.setText(story.repoInfo.owner);
-                headerViewHolder.githubWebsite.setText(story.repoInfo.getShortenedUrl());
+                headerViewHolder.githubWebsite.setHtml("<a href=\"" + story.repoInfo.website + "\">" + story.repoInfo.getShortenedUrl() + "</a>");
                 headerViewHolder.githubLicense.setText(story.repoInfo.license);
                 headerViewHolder.githubLanguage.setText(story.repoInfo.language);
                 headerViewHolder.githubStars.setText(story.repoInfo.formatStars());
@@ -286,10 +288,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             FontUtils.setTypeface(headerViewHolder.titleView, true, 26, 26, 23, 26, 24, 26);
             FontUtils.setTypeface(headerViewHolder.textView, false, preferredTextSize);
-
-            if (!TextUtils.isEmpty(story.arxivAbstract)) {
-                FontUtils.setTypeface(headerViewHolder.arxivAbstract, false, 14);
-            }
 
             if (loadingFailed) {
                 headerViewHolder.loadingIndicator.setVisibility(GONE);
@@ -515,7 +513,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final HtmlTextView textView;
         public final LinearLayout infoContainer;
         public final HtmlTextView arxivAbstract;
-        public final LinearLayout repoContainer;
+        public final LinearLayout githubContainer;
+        public final LinearLayout arxivContainer;
         public final TextView infoHeader;
         public final LinearLayout emptyView;
         public final TextView emptyViewText;
@@ -537,7 +536,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final Space spacer;
         public final TextView githubAbout;
         public final TextView githubUser;
-        public final TextView githubWebsite;
+        public final HtmlTextView githubWebsite;
         public final TextView githubLicense;
         public final TextView githubLanguage;
         public final TextView githubStars;
@@ -546,6 +545,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout githubWebsiteContainer;
         public final LinearLayout githubLicenseContainer;
         public final LinearLayout githubLanguageContainer;
+
+        public final TextView arxivBy;
+        public final TextView arxivDate;
+        public final TextView arxivSubjects;
 
         public final ImageView favicon;
         public final RelativeLayout sheetRefreshButton;
@@ -572,7 +575,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             urlView = view.findViewById(R.id.comments_header_url);
             textView = view.findViewById(R.id.comments_header_text);
             arxivAbstract = view.findViewById(R.id.comments_header_arxiv_abstract);
-            repoContainer = view.findViewById(R.id.comments_header_repo_container);
             infoContainer = view.findViewById(R.id.comments_header_info_container);
             infoHeader = view.findViewById(R.id.comments_header_info_header);
             emptyView =  view.findViewById(R.id.comments_header_empty);
@@ -603,6 +605,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
             actionsContainer = view.findViewById(R.id.comments_header_actions_container);
             spacer = view.findViewById(R.id.comments_header_spacer);
+            githubContainer = view.findViewById(R.id.comments_header_github_container);
+            arxivContainer = view.findViewById(R.id.comments_header_arxiv_container);
             githubAbout = view.findViewById(R.id.comments_header_github_about);
             githubUser = view.findViewById(R.id.comments_header_github_by);
             githubWebsite = view.findViewById(R.id.comments_header_github_website);
@@ -614,6 +618,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             githubWebsiteContainer = view.findViewById(R.id.comments_header_github_website_container);
             githubLicenseContainer = view.findViewById(R.id.comments_header_github_license_container);
             githubLanguageContainer = view.findViewById(R.id.comments_header_github_language_container);
+            arxivBy = view.findViewById(R.id.comments_header_arxiv_by);
+            arxivDate = view.findViewById(R.id.comments_header_arxiv_date);
+            arxivSubjects = view.findViewById(R.id.comments_header_arxiv_subjects);
+
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 
@@ -668,6 +676,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
                     Utils.launchCustomTab(mView.getContext(), href);
                     return true;
+                }
+            });
+
+            githubWebsite.setOnClickATagListener(new OnClickATagListener() {
+                @Override
+                public boolean onClick(View widget, String spannedText, @Nullable String href) {
+                    Utils.launchCustomTab(view.getContext(), story.repoInfo.website);
+                    return false;
                 }
             });
 

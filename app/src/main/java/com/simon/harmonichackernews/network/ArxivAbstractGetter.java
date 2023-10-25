@@ -6,12 +6,16 @@ import android.util.Xml;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
+import com.simon.harmonichackernews.data.ArxivInfo;
+import com.simon.harmonichackernews.data.RepoInfo;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,7 +30,7 @@ public class ArxivAbstractGetter {
         return matcher.matches();
     }
 
-    public static void getAbstract(String url, Context ctx, NetworkComponent.GetterCallback callback) {
+    public static void getAbstract(String url, Context ctx, GetterCallback callback) {
         String arxivID = url.substring(url.lastIndexOf('/') + 1).replace(".pdf", "");
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, "http://export.arxiv.org/api/query?id_list=" + arxivID,
@@ -35,21 +39,66 @@ public class ArxivAbstractGetter {
                         XmlPullParser parser = Xml.newPullParser();
                         parser.setInput(new StringReader(response));
                         int eventType = parser.getEventType();
+
                         String abstractText = "";
+                        List<String> authorList = new ArrayList<>();
+                        String primaryCategoryText = "";
+                        List<String> secondaryCategoryList = new ArrayList<>();
+                        String publishedDateText = "";
 
                         while (eventType != XmlPullParser.END_DOCUMENT) {
-                            if (eventType == XmlPullParser.START_TAG && "summary".equals(parser.getName())) {
+                            String tagName = parser.getName();
+
+                            // Parsing the summary
+                            if (eventType == XmlPullParser.START_TAG && "summary".equals(tagName)) {
                                 parser.next();
                                 abstractText = parser.getText();
-                                break;
                             }
+
+                            // Parsing the authors
+                            if (eventType == XmlPullParser.START_TAG && "name".equals(tagName)) {
+                                parser.next();
+                                authorList.add(parser.getText());
+                            }
+
+                            // Parsing the primary category
+                            if (eventType == XmlPullParser.START_TAG && "primary_category".equals(tagName)) {
+                                primaryCategoryText = parser.getAttributeValue(null, "term");
+                            }
+
+                            // Parsing secondary categories
+                            if (eventType == XmlPullParser.START_TAG && "category".equals(tagName)) {
+                                String category = parser.getAttributeValue(null, "term");
+                                if (!category.equals(primaryCategoryText)) {
+                                    secondaryCategoryList.add(category);
+                                }
+                            }
+
+                            // Parsing the published date
+                            if (eventType == XmlPullParser.START_TAG && "published".equals(tagName)) {
+                                parser.next();
+                                publishedDateText = parser.getText();
+                            }
+
                             eventType = parser.next();
                         }
 
-                        if (!abstractText.isEmpty()) {
-                            callback.onSuccess(abstractText);
+                        // Convert author list to array
+                        String[] authorsArray = authorList.toArray(new String[0]);
+                        String[] secondaryCategoriesArray = secondaryCategoryList.toArray(new String[0]);
+
+                        // Create ArxivInfo object
+                        ArxivInfo info = new ArxivInfo();
+                        info.arxivAbstract = abstractText;
+                        info.authors = authorsArray;
+                        info.primaryCategory = primaryCategoryText;
+                        info.secondaryCategories = secondaryCategoriesArray;
+                        info.publishedDate = publishedDateText;
+
+                        if (!abstractText.isEmpty() && authorsArray.length > 0 && !primaryCategoryText.isEmpty() && !publishedDateText.isEmpty()) {
+                            callback.onSuccess(info);
                         } else {
-                            callback.onFailure("Abstract not found");
+                            callback.onFailure("Data not found");
                         }
 
                     } catch (XmlPullParserException | IOException e) {
@@ -65,6 +114,10 @@ public class ArxivAbstractGetter {
         RequestQueue queue = NetworkComponent.getRequestQueueInstance(ctx);
         queue.add(stringRequest);
     }
+
+    public interface GetterCallback {
+        void onSuccess(ArxivInfo arxivInfo);
+
+        void onFailure(String reason);
+    }
 }
-
-

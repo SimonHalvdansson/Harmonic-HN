@@ -164,10 +164,10 @@ public class ThemeUtils {
             long currentTime = TimeUnit.HOURS.toMinutes(currentCalendar.get(Calendar.HOUR_OF_DAY)) + currentCalendar.get(Calendar.MINUTE);
 
             if (Utils.isTimeBetweenTwoTimes(startTime, endTime, currentTime)) {
-                return prefs.getString("pref_theme_nighttime", "dark");
+                return prefs.getString("pref_theme_nighttime", "material_daynight");
             }
         }
-        return prefs.getString("pref_theme", "dark");
+        return prefs.getString("pref_theme", "material_daynight");
     }
 
 }

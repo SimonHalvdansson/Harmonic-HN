@@ -7,6 +7,7 @@ import android.os.Looper;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 import com.simon.harmonichackernews.BuildConfig;
+import com.simon.harmonichackernews.data.ArxivInfo;
 import com.simon.harmonichackernews.data.RepoInfo;
 
 import java.io.IOException;
@@ -54,11 +55,5 @@ public class NetworkComponent {
                     new VolleyOkHttp3StackInterceptors());
         }
         return requestQueueInstance;
-    }
-
-    public interface GetterCallback {
-        void onSuccess(String url);
-        void onSuccess(RepoInfo repoInfo);
-        void onFailure(String reason);
     }
 }

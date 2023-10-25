@@ -23,8 +23,8 @@ public class Story {
     public boolean loaded;
     public boolean clicked;
     public String text;
-    public String arxivAbstract;
     public RepoInfo repoInfo;
+    public ArxivInfo arxivInfo;
     public boolean isLink;
     public boolean isJob = false;
     public boolean loadingFailed = false;
@@ -79,7 +79,7 @@ public class Story {
     }
 
     public boolean hasExtraInfo() {
-        return !TextUtils.isEmpty(arxivAbstract) || repoInfo != null;
+        return arxivInfo != null || repoInfo != null;
     }
 
 }

@@ -80,6 +80,7 @@ import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.transition.MaterialFadeThrough;
 import com.google.android.material.transition.MaterialSharedAxis;
+import com.simon.harmonichackernews.data.ArxivInfo;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.PollOption;
@@ -1075,16 +1076,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         if (ArxivAbstractGetter.isValidArxivUrl(story.url)) {
-            ArxivAbstractGetter.getAbstract(story.url, getContext(), new NetworkComponent.GetterCallback() {
+            ArxivAbstractGetter.getAbstract(story.url, getContext(), new ArxivAbstractGetter.GetterCallback() {
                 @Override
-                public void onSuccess(String summary) {
-                    story.arxivAbstract = summary;
+                public void onSuccess(ArxivInfo arxivInfo) {
+                    story.arxivInfo = arxivInfo;
                     adapter.notifyItemChanged(0);
-                }
-
-                @Override
-                public void onSuccess(RepoInfo repoInfo) {
-
                 }
 
                 @Override
@@ -1093,12 +1089,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             });
         } else if (GitHubInfoGetter.isValidGitHubUrl(story.url)) {
-            GitHubInfoGetter.getInfo(story.url, getContext(), new NetworkComponent.GetterCallback() {
-                @Override
-                public void onSuccess(String summary) {
-
-                }
-
+            GitHubInfoGetter.getInfo(story.url, getContext(), new GitHubInfoGetter.GetterCallback() {
                 @Override
                 public void onSuccess(RepoInfo repoInfo) {
                     story.repoInfo = repoInfo;
@@ -1107,7 +1098,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                 @Override
                 public void onFailure(String reason) {
-
+                    //no op
                 }
             });
         }
@@ -1303,15 +1294,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     snackbar.show();
                 } else if (id == R.id.menu_archive) {
                     Toast.makeText(getContext(), "Contacting archive.org API...", Toast.LENGTH_SHORT).show();
-                    ArchiveOrgUrlGetter.getArchiveUrl(story.url, getContext(), new NetworkComponent.GetterCallback() {
+                    ArchiveOrgUrlGetter.getArchiveUrl(story.url, getContext(), new ArchiveOrgUrlGetter.GetterCallback() {
                         @Override
                         public void onSuccess(String url) {
                             Utils.launchCustomTab(getActivity(), url);
-                        }
-
-                        @Override
-                        public void onSuccess(RepoInfo repoInfo) {
-
                         }
 
                         @Override

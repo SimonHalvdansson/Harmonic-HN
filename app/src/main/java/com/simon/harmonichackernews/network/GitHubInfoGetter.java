@@ -7,6 +7,7 @@ import android.util.Xml;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
+import com.simon.harmonichackernews.data.ArxivInfo;
 import com.simon.harmonichackernews.data.RepoInfo;
 
 import org.json.JSONObject;
@@ -27,7 +28,7 @@ public class GitHubInfoGetter {
         return matcher.matches();
     }
 
-    public static void getInfo(String githubUrl, Context ctx, NetworkComponent.GetterCallback callback) {
+    public static void getInfo(String githubUrl, Context ctx, GetterCallback callback) {
         try {
             String[] parts = githubUrl.split("github.com/")[1].split("/");
             String username = parts[0];
@@ -54,7 +55,7 @@ public class GitHubInfoGetter {
                                 repoInfo.website = null;
                             }
 
-                            if (jsonResponse.has("license")) {
+                            if (jsonResponse.has("license") && !jsonResponse.get("license").toString().equals("null")) {
                                 JSONObject license = jsonResponse.getJSONObject("license");
                                 repoInfo.license = license.optString("spdx_id");
                             }
@@ -82,6 +83,12 @@ public class GitHubInfoGetter {
         } catch (Exception e) {
             callback.onFailure("Invalid GitHub URL");
         }
+    }
+
+    public interface GetterCallback {
+        void onSuccess(RepoInfo repoInfo);
+
+        void onFailure(String reason);
     }
 
 }

@@ -235,7 +235,7 @@
             android:layout_height="wrap_content"/>
 
         <Button
-            style="@style/Widget.Material3.Button.TonalButton"
+            style="@style/Widget.Material3.Button.ElevatedButton.Icon"
             android:onClick="done"
             app:icon="@drawable/ic_action_check"
             android:layout_width="wrap_content"
