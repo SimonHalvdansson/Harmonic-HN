@@ -283,7 +283,7 @@
                         <TextView
                             android:id="@+id/comments_header_github_about"
                             android:paddingTop="6dp"
-                            android:paddingBottom="6dp"
+                            android:paddingBottom="4dp"
                             android:text="Android markdown library (no WebView)"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"/>
@@ -299,7 +299,7 @@
                                 android:layout_height="wrap_content">
 
                                 <LinearLayout
-                                    android:paddingBottom="2dp"
+                                    android:paddingTop="2dp"
                                     android:orientation="horizontal"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content">
@@ -321,7 +321,7 @@
 
                                 <LinearLayout
                                     android:id="@+id/comments_header_github_website_container"
-                                    android:paddingBottom="2dp"
+                                    android:paddingTop="2dp"
                                     android:orientation="horizontal"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content">
@@ -343,7 +343,7 @@
 
                                 <LinearLayout
                                     android:id="@+id/comments_header_github_license_container"
-                                    android:paddingBottom="2dp"
+                                    android:paddingTop="2dp"
                                     android:orientation="horizontal"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content">
@@ -365,7 +365,7 @@
 
                                 <LinearLayout
                                     android:id="@+id/comments_header_github_language_container"
-                                    android:paddingBottom="2dp"
+                                    android:paddingTop="2dp"
                                     android:orientation="horizontal"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content">
@@ -394,7 +394,7 @@
                                 android:layout_height="wrap_content">
 
                                 <LinearLayout
-                                    android:paddingBottom="2dp"
+                                    android:paddingTop="2dp"
                                     android:orientation="horizontal"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content">
@@ -415,7 +415,7 @@
                                 </LinearLayout>
 
                                 <LinearLayout
-                                    android:paddingBottom="2dp"
+                                    android:paddingTop="2dp"
                                     android:orientation="horizontal"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content">
@@ -436,7 +436,7 @@
                                 </LinearLayout>
 
                                 <LinearLayout
-                                    android:paddingBottom="2dp"
+                                    android:paddingTop="2dp"
                                     android:orientation="horizontal"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content">
