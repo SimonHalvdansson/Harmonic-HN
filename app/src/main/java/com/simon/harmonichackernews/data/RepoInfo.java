@@ -55,7 +55,7 @@ public class RepoInfo {
     public String kFormat(int number) {
         if (number < 1000) {
             return String.valueOf(number);
-        } else if (number < 10000) {
+        } else {
             // Round to the nearest 100 and then divide by 1000
             double rounded = Math.round((double) number / 100) * 100;
             String result = String.format("%.1fk", rounded / 1000);
@@ -65,10 +65,6 @@ public class RepoInfo {
                 return result.substring(0, result.length() - 3) + "k";
             }
             return result;
-        } else {
-            // Round to the nearest 1000 and then divide by 1000
-            double rounded = Math.round((double) number / 1000) * 1000;
-            return String.format("%.0fk", rounded / 1000);
         }
     }
 

@@ -57,7 +57,11 @@ public class GitHubInfoGetter {
 
                             if (jsonResponse.has("license") && !jsonResponse.get("license").toString().equals("null")) {
                                 JSONObject license = jsonResponse.getJSONObject("license");
-                                repoInfo.license = license.optString("spdx_id");
+                                if (license.has("name") && license.getString("name").equals("Other")) {
+                                    repoInfo.license = "Other";
+                                } else {
+                                    repoInfo.license = license.optString("spdx_id");
+                                }
                             }
 
                             repoInfo.language = jsonResponse.optString("language");

@@ -285,92 +285,68 @@
                             android:fontFamily="@font/product_sans" />
 
                         <LinearLayout
+                            android:paddingTop="2dp"
+                            android:orientation="horizontal"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content">
 
-                            <LinearLayout
-                                android:orientation="vertical"
-                                android:layout_weight="1"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content">
+                            <ImageView
+                                android:layout_marginRight="4dp"
+                                android:src="@drawable/ic_action_date"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"/>
 
-                                <LinearLayout
-                                    android:paddingTop="2dp"
-                                    android:orientation="horizontal"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content">
-
-                                    <ImageView
-                                        android:layout_marginRight="4dp"
-                                        android:src="@drawable/ic_action_user"
-                                        android:layout_width="20dp"
-                                        android:layout_height="20dp"/>
-
-                                    <TextView
-                                        android:id="@+id/comments_header_arxiv_by"
-                                        android:fontFamily="@font/product_sans"
-                                        android:text="John Smith, Alice Bob"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"/>
-
-                                </LinearLayout>
-
-                                <LinearLayout
-                                    android:paddingTop="2dp"
-                                    android:orientation="horizontal"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content">
-
-                                    <ImageView
-                                        android:layout_marginRight="4dp"
-                                        android:src="@drawable/ic_action_library_books"
-                                        android:layout_width="20dp"
-                                        android:layout_height="20dp"/>
-
-                                    <TextView
-                                        android:id="@+id/comments_header_arxiv_date"
-                                        android:fontFamily="@font/product_sans"
-                                        android:text="2023-05-11"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"/>
-
-                                </LinearLayout>
-
-                            </LinearLayout>
-
-                            <LinearLayout
-                                android:orientation="vertical"
-                                android:layout_weight="1"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content">
-
-                                <LinearLayout
-                                    android:paddingTop="2dp"
-                                    android:orientation="horizontal"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content">
-
-                                    <ImageView
-                                        android:layout_marginRight="4dp"
-                                        android:src="@drawable/ic_action_star"
-                                        android:layout_width="20dp"
-                                        android:layout_height="20dp"/>
-
-                                    <TextView
-                                        android:id="@+id/comments_header_arxiv_subjects"
-                                        android:fontFamily="@font/product_sans"
-                                        android:text="Mathematics, Functional Analysis"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"/>
-
-                                </LinearLayout>
-
-                            </LinearLayout>
+                            <TextView
+                                android:id="@+id/comments_header_arxiv_date"
+                                android:fontFamily="@font/product_sans"
+                                android:text="2023-05-11"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"/>
 
                         </LinearLayout>
 
-                    </LinearLayout>
+                        <LinearLayout
+                            android:paddingTop="2dp"
+                            android:orientation="horizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
 
+                            <ImageView
+                                android:layout_marginRight="4dp"
+                                android:src="@drawable/ic_action_group"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"/>
+
+                            <TextView
+                                android:id="@+id/comments_header_arxiv_by"
+                                android:fontFamily="@font/product_sans"
+                                android:text="John Smith, Alice Bob"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"/>
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:paddingTop="2dp"
+                            android:orientation="horizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <ImageView
+                                android:layout_marginRight="4dp"
+                                android:src="@drawable/ic_action_library_books"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"/>
+
+                            <TextView
+                                android:id="@+id/comments_header_arxiv_subjects"
+                                android:fontFamily="@font/product_sans"
+                                android:text="Mathematics, Functional Analysis"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"/>
+
+                        </LinearLayout>
+                    </LinearLayout>
 
 
 
@@ -392,101 +368,6 @@
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content">
-
-                            <LinearLayout
-                                android:orientation="vertical"
-                                android:layout_weight="3"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content">
-
-                                <LinearLayout
-                                    android:paddingTop="2dp"
-                                    android:orientation="horizontal"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content">
-
-                                    <ImageView
-                                        android:layout_marginRight="4dp"
-                                        android:src="@drawable/ic_action_user"
-                                        android:layout_width="20dp"
-                                        android:layout_height="20dp"/>
-
-                                    <TextView
-                                        android:id="@+id/comments_header_github_by"
-                                        android:fontFamily="@font/product_sans"
-                                        android:text="noties"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"/>
-
-                                </LinearLayout>
-
-                                <LinearLayout
-                                    android:id="@+id/comments_header_github_website_container"
-                                    android:paddingTop="2dp"
-                                    android:orientation="horizontal"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content">
-
-                                    <ImageView
-                                        android:layout_marginRight="4dp"
-                                        android:src="@drawable/ic_action_link"
-                                        android:layout_width="20dp"
-                                        android:layout_height="20dp"/>
-
-                                    <org.sufficientlysecure.htmltextview.HtmlTextView
-                                        android:id="@+id/comments_header_github_website"
-                                        android:fontFamily="@font/product_sans"
-                                        android:text="noties.io/Markwon/"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"/>
-
-                                </LinearLayout>
-
-                                <LinearLayout
-                                    android:id="@+id/comments_header_github_license_container"
-                                    android:paddingTop="2dp"
-                                    android:orientation="horizontal"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content">
-
-                                    <ImageView
-                                        android:layout_marginRight="4dp"
-                                        android:src="@drawable/ic_action_library_books"
-                                        android:layout_width="20dp"
-                                        android:layout_height="20dp"/>
-
-                                    <TextView
-                                        android:id="@+id/comments_header_github_license"
-                                        android:fontFamily="@font/product_sans"
-                                        android:text="Apache-2.0 license"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"/>
-
-                                </LinearLayout>
-
-                                <LinearLayout
-                                    android:id="@+id/comments_header_github_language_container"
-                                    android:paddingTop="2dp"
-                                    android:orientation="horizontal"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content">
-
-                                    <ImageView
-                                        android:layout_marginRight="4dp"
-                                        android:src="@drawable/ic_action_text"
-                                        android:layout_width="20dp"
-                                        android:layout_height="20dp"/>
-
-                                    <TextView
-                                        android:id="@+id/comments_header_github_language"
-                                        android:fontFamily="@font/product_sans"
-                                        android:text="Java"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"/>
-
-                                </LinearLayout>
-
-                            </LinearLayout>
 
                             <LinearLayout
                                 android:orientation="vertical"
@@ -552,6 +433,80 @@
                                         android:id="@+id/comments_header_github_forks"
                                         android:fontFamily="@font/product_sans"
                                         android:text="282 forks"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"/>
+
+                                </LinearLayout>
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:orientation="vertical"
+                                android:layout_weight="3"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content">
+
+                                <LinearLayout
+                                    android:id="@+id/comments_header_github_website_container"
+                                    android:paddingTop="2dp"
+                                    android:orientation="horizontal"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content">
+
+                                    <ImageView
+                                        android:layout_marginRight="4dp"
+                                        android:src="@drawable/ic_action_link"
+                                        android:layout_width="20dp"
+                                        android:layout_height="20dp"/>
+
+                                    <org.sufficientlysecure.htmltextview.HtmlTextView
+                                        android:id="@+id/comments_header_github_website"
+                                        android:fontFamily="@font/product_sans"
+                                        android:text="noties.io/Markwon/"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"/>
+
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:id="@+id/comments_header_github_license_container"
+                                    android:paddingTop="2dp"
+                                    android:orientation="horizontal"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content">
+
+                                    <ImageView
+                                        android:layout_marginRight="4dp"
+                                        android:src="@drawable/ic_action_attribution"
+                                        android:layout_width="20dp"
+                                        android:layout_height="20dp"/>
+
+                                    <TextView
+                                        android:id="@+id/comments_header_github_license"
+                                        android:fontFamily="@font/product_sans"
+                                        android:text="Apache-2.0 license"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"/>
+
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:id="@+id/comments_header_github_language_container"
+                                    android:paddingTop="2dp"
+                                    android:orientation="horizontal"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content">
+
+                                    <ImageView
+                                        android:layout_marginRight="4dp"
+                                        android:src="@drawable/ic_action_library_books"
+                                        android:layout_width="20dp"
+                                        android:layout_height="20dp"/>
+
+                                    <TextView
+                                        android:id="@+id/comments_header_github_language"
+                                        android:fontFamily="@font/product_sans"
+                                        android:text="Java"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"/>
 

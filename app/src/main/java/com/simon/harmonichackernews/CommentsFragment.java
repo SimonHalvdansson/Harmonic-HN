@@ -14,6 +14,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.PointF;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -147,6 +148,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private RecyclerView recyclerViewSwipe;
     private RecyclerView recyclerViewRegular;
     private LinearLayoutManager layoutManager;
+    private RecyclerView.SmoothScroller smoothScroller;
     private LinearLayout scrollNavigation;
     private LinearProgressIndicator progressIndicator;
     private LinearLayout bottomSheet;
@@ -476,7 +478,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             final RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(index);
             if (holder != null && !adapter.collapseParent && holder instanceof CommentsRecyclerViewAdapter.ItemViewHolder) {
-                //if we can reach the ViewHolder (which we should), we can animate the hiddenIndicator ourselves to get around a FULL item refresh (which flashes all the text which we don't want)
+                //if we can reach the ViewHolder (which we should), we can animate the
+                // hiddenIndicator ourselves to get around a FULL item refresh (which flashes
+                // all the text which we don't want)
                 offset = 1;
                 final TextView hiddenIndicator = ((CommentsRecyclerViewAdapter.ItemViewHolder) holder).commentHiddenCount;
                 int shortAnimationDuration = getResources().getInteger(android.R.integer.config_shortAnimTime);
@@ -523,7 +527,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                 //if we clicked the top one and the new top level comment exists
                 if (clickedIndex == firstVisible && comments.size() > lastChildIndex + 1) {
-                    recyclerView.smoothScrollToPosition(lastChildIndex + 1);
+                    smoothScroller.setTargetPosition(lastChildIndex + 1);
+                    layoutManager.startSmoothScroll(smoothScroller);
+
                 }
             }
         });
@@ -612,6 +618,23 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             }
         });
+        smoothScroller = new LinearSmoothScroller(requireContext()) {
+            public PointF computeScrollVectorForPosition(int targetPosition) {
+                return layoutManager.computeScrollVectorForPosition(targetPosition);
+            }
+
+            @Override
+            protected int getVerticalSnapPreference() {
+                return LinearSmoothScroller.SNAP_TO_START;
+            }
+
+            @Override
+            public int calculateDyToMakeVisible(View view, int snapPreference) {
+                //this is to make sure that scrollTo calls work properly
+                return super.calculateDyToMakeVisible(view, snapPreference) + topInset;
+            }
+
+        };
 
         if (!SettingsUtils.shouldUseCommentsAnimation(getContext())) {
             recyclerView.setItemAnimator(null);
@@ -1366,8 +1389,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     toScrollTo = i;
                 }
             }
-
-            recyclerView.smoothScrollToPosition(toScrollTo);
+            
+            smoothScroller.setTargetPosition(toScrollTo);
+            layoutManager.startSmoothScroll(smoothScroller);
         }
     }
 
@@ -1383,15 +1407,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             }
 
-            RecyclerView.SmoothScroller smoothScroller = new LinearSmoothScroller(requireContext()) {
-                @Override protected int getVerticalSnapPreference() {
-                    return LinearSmoothScroller.SNAP_TO_START;
-                }
-            };
-
             smoothScroller.setTargetPosition(toScrollTo);
             layoutManager.startSmoothScroll(smoothScroller);
-
         }
     }
 
@@ -1405,12 +1422,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     toScrollTo = i;
                 }
             }
-
-            RecyclerView.SmoothScroller smoothScroller = new LinearSmoothScroller(requireContext()) {
-                @Override protected int getVerticalSnapPreference() {
-                    return LinearSmoothScroller.SNAP_TO_START;
-                }
-            };
 
             smoothScroller.setTargetPosition(toScrollTo);
             layoutManager.startSmoothScroll(smoothScroller);

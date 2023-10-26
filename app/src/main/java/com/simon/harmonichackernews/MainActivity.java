@@ -134,6 +134,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                 .setMessage(Html.fromHtml( "<b>Version 1.12:</b><br>" +
                         "- Updated splash screen to use correct dark mode color<br>" +
                         "- Added GitHub repo info<br>" +
+                        "- Updated arXiv info box<br>" +
                         "- Expanded font selection to affect more components<br>" +
                         "- Material (auto) is new default theme<br>" +
                         "- Design tweaks to story page<br>" +
@@ -149,7 +150,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                         "<b>Version 1.11.1:</b><br>" +
                         "- Fixed submissions failed to load (thanks Leslie Cheng)<br>" +
                         "- New dialog-less animation when posting comments<br>" +
-                        "- Added ArXiV abstract resolver<br>" +
+                        "- Added arXiv abstract resolver<br>" +
                         "- Fixed rare Android 14 predictive back flashing<br>" +
                         "- Added touch rejection on navigation bar<br>" +
                         "- Added long comment scrim in submissions<br>" +

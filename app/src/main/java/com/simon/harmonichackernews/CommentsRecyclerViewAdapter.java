@@ -214,10 +214,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.arxivContainer.setVisibility(GONE);
                 headerViewHolder.githubContainer.setVisibility(View.VISIBLE);
 
-                headerViewHolder.infoHeader.setText(story.repoInfo.name);
+                headerViewHolder.infoHeader.setText(story.repoInfo.owner + " / " + story.repoInfo.name);
 
                 headerViewHolder.githubAbout.setText(story.repoInfo.about);
-                headerViewHolder.githubUser.setText(story.repoInfo.owner);
                 headerViewHolder.githubWebsite.setHtml("<a href=\"" + story.repoInfo.website + "\">" + story.repoInfo.getShortenedUrl() + "</a>");
                 headerViewHolder.githubLicense.setText(story.repoInfo.license);
                 headerViewHolder.githubLanguage.setText(story.repoInfo.language);
@@ -535,7 +534,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout bookmarkButtonParent;
         public final Space spacer;
         public final TextView githubAbout;
-        public final TextView githubUser;
         public final HtmlTextView githubWebsite;
         public final TextView githubLicense;
         public final TextView githubLanguage;
@@ -608,7 +606,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             githubContainer = view.findViewById(R.id.comments_header_github_container);
             arxivContainer = view.findViewById(R.id.comments_header_arxiv_container);
             githubAbout = view.findViewById(R.id.comments_header_github_about);
-            githubUser = view.findViewById(R.id.comments_header_github_by);
             githubWebsite = view.findViewById(R.id.comments_header_github_website);
             githubLicense = view.findViewById(R.id.comments_header_github_license);
             githubLanguage = view.findViewById(R.id.comments_header_github_language);
