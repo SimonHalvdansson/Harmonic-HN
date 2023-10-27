@@ -91,7 +91,6 @@ public class GitHubInfoGetter {
 
     public interface GetterCallback {
         void onSuccess(RepoInfo repoInfo);
-
         void onFailure(String reason);
     }
 

@@ -87,11 +87,13 @@ import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.RepoInfo;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.data.WikipediaInfo;
 import com.simon.harmonichackernews.network.ArxivAbstractGetter;
 import com.simon.harmonichackernews.network.GitHubInfoGetter;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
+import com.simon.harmonichackernews.network.WikipediaGetter;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.utils.CommentSorter;
@@ -1124,6 +1126,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     //no op
                 }
             });
+        } else if (WikipediaGetter.isValidWikipediaUrl(story.url)) {
+            WikipediaGetter.getInfo(story.url, getContext(), new WikipediaGetter.GetterCallback() {
+                @Override
+                public void onSuccess(WikipediaInfo wikipediaInfo) {
+                    story.wikiInfo = wikipediaInfo;
+                    adapter.notifyItemChanged(0);
+                }
+
+                @Override
+                public void onFailure(String reason) {
+                    //no op
+                }
+            });
         }
 
         stringRequest.setTag(requestTag);
@@ -1389,7 +1404,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     toScrollTo = i;
                 }
             }
-            
+
             smoothScroller.setTargetPosition(toScrollTo);
             layoutManager.startSmoothScroll(smoothScroller);
         }

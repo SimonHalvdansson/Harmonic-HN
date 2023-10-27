@@ -198,7 +198,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             if (story.arxivInfo != null) {
                 headerViewHolder.arxivContainer.setVisibility(View.VISIBLE);
-                headerViewHolder.githubContainer.setVisibility(GONE);
 
                 headerViewHolder.infoHeader.setText("ARXIV INFO:");
 
@@ -211,7 +210,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
 
             if (story.repoInfo != null) {
-                headerViewHolder.arxivContainer.setVisibility(GONE);
                 headerViewHolder.githubContainer.setVisibility(View.VISIBLE);
 
                 headerViewHolder.infoHeader.setText(story.repoInfo.owner + " / " + story.repoInfo.name);
@@ -227,6 +225,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.githubWebsiteContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.website) ? GONE : View.VISIBLE);
                 headerViewHolder.githubLicenseContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.license) ? GONE : View.VISIBLE);
                 headerViewHolder.githubLanguageContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.language) ? GONE : View.VISIBLE);
+            }
+
+            if (story.wikiInfo != null) {
+                headerViewHolder.wikiContainer.setVisibility(View.VISIBLE);
+
+                headerViewHolder.infoHeader.setText("WIKIPEDIA SUMMARY:");
+                headerViewHolder.wikiSummary.setText(story.wikiInfo.summary);
             }
 
             if (story.pollOptionArrayList != null) {
@@ -514,6 +519,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final HtmlTextView arxivAbstract;
         public final LinearLayout githubContainer;
         public final LinearLayout arxivContainer;
+        public final LinearLayout wikiContainer;
         public final TextView infoHeader;
         public final LinearLayout emptyView;
         public final TextView emptyViewText;
@@ -547,6 +553,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView arxivBy;
         public final TextView arxivDate;
         public final TextView arxivSubjects;
+
+        public final HtmlTextView wikiSummary;
 
         public final ImageView favicon;
         public final RelativeLayout sheetRefreshButton;
@@ -605,6 +613,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             spacer = view.findViewById(R.id.comments_header_spacer);
             githubContainer = view.findViewById(R.id.comments_header_github_container);
             arxivContainer = view.findViewById(R.id.comments_header_arxiv_container);
+            wikiContainer = view.findViewById(R.id.comments_header_wikipedia_container);
+            wikiSummary = view.findViewById(R.id.comments_header_wikipedia_summary);
             githubAbout = view.findViewById(R.id.comments_header_github_about);
             githubWebsite = view.findViewById(R.id.comments_header_github_website);
             githubLicense = view.findViewById(R.id.comments_header_github_license);
@@ -618,7 +628,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             arxivBy = view.findViewById(R.id.comments_header_arxiv_by);
             arxivDate = view.findViewById(R.id.comments_header_arxiv_date);
             arxivSubjects = view.findViewById(R.id.comments_header_arxiv_subjects);
-
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 

@@ -25,6 +25,7 @@ public class Story {
     public String text;
     public RepoInfo repoInfo;
     public ArxivInfo arxivInfo;
+    public WikipediaInfo wikiInfo;
     public boolean isLink;
     public boolean isJob = false;
     public boolean loadingFailed = false;
