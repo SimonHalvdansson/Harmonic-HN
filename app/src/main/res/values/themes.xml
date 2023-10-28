@@ -116,6 +116,7 @@
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
         <item name="android:statusBarColor">@color/lightStatusBarColor</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogLight</item>
         <item name="alertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogLight</item>
@@ -147,6 +148,7 @@
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
         <item name="android:statusBarColor">@color/material_you_neutral_100</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialLight</item>
         <item name="alertDialogTheme">@style/ThemeOverlay.Material3.MaterialAlertDialog</item>

@@ -61,7 +61,6 @@ public class ThemeUtils {
                         activity.setTheme(R.style.ThemeSwipeBackNoActionBarMaterialDayNight);
                     }
                 }
-                //activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarMaterialDayNight : R.style.AppThemeMaterialDayNight);
                 break;
             case "material_dark":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarMaterialDark : R.style.AppThemeMaterialDark);
