@@ -614,7 +614,10 @@ public class StoriesFragment extends Fragment {
                             adapter.notifyItemInserted(1 + i);
                         }
 
-                        adapter.loadingFailed = false;
+                        if (adapter.loadingFailed) {
+                            adapter.loadingFailed = false;
+                            adapter.notifyItemChanged(0);
+                        }
 
                     } catch (JSONException e) {
                         e.printStackTrace();

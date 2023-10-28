@@ -1471,7 +1471,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 scrollNavigation.setVisibility(View.VISIBLE);
 
                 AlphaAnimation anim = new AlphaAnimation(0.0f, 1.0f);
-                anim.setDuration(300);
+                anim.setDuration(400);
                 anim.setRepeatMode(Animation.REVERSE);
                 scrollNavigation.startAnimation(anim);
             }
