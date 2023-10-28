@@ -26,6 +26,7 @@
 
         <item name="colorPrimary">@color/material_you_third_400</item>
         <item name="colorPrimaryContainer">@color/material_you_third_700</item>
+        <item name="colorOnPrimary">@color/material_you_neutral_100</item>
 
         <item name="popupMenuBackground">@drawable/popup_dark_background_material</item>
         <item name="snackbarTextViewStyle">@style/snackbarTextStyle</item>
@@ -56,6 +57,7 @@
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
+        <item name="colorOnPrimary">@color/lightBackground</item>
 
         <item name="android:windowBackground">@color/background</item>
         <item name="colorControlHighlight">#40ffffff</item>
