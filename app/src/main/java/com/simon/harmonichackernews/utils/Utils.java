@@ -450,7 +450,19 @@ public class Utils {
                 }
             }
         }
+    }
 
+    public static boolean downloadPDF(Context context, String pdfUrl) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse(pdfUrl));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        // Check if there's an app that can handle this intent
+        if (intent.resolveActivity(context.getPackageManager()) != null) {
+            context.startActivity(intent);
+            return true;
+        }
+        return false;
     }
 
     public static boolean isCustomTabSupported(Context context) {

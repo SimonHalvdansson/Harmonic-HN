@@ -5,6 +5,7 @@ import static android.view.View.GONE;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
@@ -206,6 +207,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.arxivDate.setText(story.arxivInfo.formatDate());
                 headerViewHolder.arxivSubjects.setText(story.arxivInfo.formatSubjects());
 
+                int byIconResource = R.drawable.ic_action_group;
+                if (story.arxivInfo.authors.length == 1) {
+                    byIconResource = R.drawable.ic_action_person;
+                } else if (story.arxivInfo.authors.length == 2) {
+                    byIconResource = R.drawable.ic_action_pair;
+                }
+                headerViewHolder.arxivByIcon.setImageResource(byIconResource);
+
                 FontUtils.setTypeface(headerViewHolder.arxivAbstract, false, 14);
             }
 
@@ -231,7 +240,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.wikiContainer.setVisibility(View.VISIBLE);
 
                 headerViewHolder.infoHeader.setText("WIKIPEDIA SUMMARY:");
-                headerViewHolder.wikiSummary.setText(story.wikiInfo.summary);
+                headerViewHolder.wikiSummary.setHtml(story.wikiInfo.summary);
             }
 
             if (story.pollOptionArrayList != null) {
@@ -553,6 +562,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView arxivBy;
         public final TextView arxivDate;
         public final TextView arxivSubjects;
+        public final ImageView arxivByIcon;
+        public final Button arxivDownloadButton;
 
         public final HtmlTextView wikiSummary;
 
@@ -628,6 +639,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             arxivBy = view.findViewById(R.id.comments_header_arxiv_by);
             arxivDate = view.findViewById(R.id.comments_header_arxiv_date);
             arxivSubjects = view.findViewById(R.id.comments_header_arxiv_subjects);
+            arxivByIcon = view.findViewById(R.id.comments_header_arxiv_by_icon);
+            arxivDownloadButton = view.findViewById(R.id.comments_header_arxiv_download);
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 
@@ -647,6 +660,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
                     Toast.makeText(view.getContext(), "Deactivated Algolia API, this can be switched back in the settings. Try reloading", Toast.LENGTH_LONG).show();
                 }
+            });
+
+            arxivDownloadButton.setOnClickListener((v) -> {
+                Utils.downloadPDF(v.getContext(), story.arxivInfo.getPDFURL());
             });
 
             userButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_USER, null));

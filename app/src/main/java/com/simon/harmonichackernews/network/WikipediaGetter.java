@@ -9,6 +9,9 @@ import com.android.volley.toolbox.StringRequest;
 import com.simon.harmonichackernews.data.WikipediaInfo;
 
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,6 +29,7 @@ public class WikipediaGetter {
         try {
             String title = wikipediaUrl.split("en.wikipedia.org/wiki/")[1];
 
+            //String apiUrl = "https://en.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro&explaintext&titles=" + title;
             String apiUrl = "https://en.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro&titles=" + title;
 
             StringRequest stringRequest = new StringRequest(Request.Method.GET, apiUrl,
@@ -37,8 +41,20 @@ public class WikipediaGetter {
                             String summary = pages.getJSONObject(pageId).optString("extract");
 
                             if (!TextUtils.isEmpty(summary)) {
+                                Document doc = Jsoup.parse(summary);
+
+                                // Remove empty <ul> elements
+                                for (Element ul : doc.select("ul")) {
+                                    if (!ul.hasText()) {
+                                        ul.remove();
+                                    }
+                                }
+
+                                String cleanedHtml = doc.html();
+
                                 WikipediaInfo wikiInfo = new WikipediaInfo();
-                                wikiInfo.summary = summary;
+
+                                wikiInfo.summary = cleanedHtml;
                                 callback.onSuccess(wikiInfo);
                             } else {
                                 callback.onFailure("Failed to retrieve Wikipedia summary");

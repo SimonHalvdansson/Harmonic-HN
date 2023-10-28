@@ -134,6 +134,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                 .setMessage(Html.fromHtml( "<b>Version 1.12:</b><br>" +
                         "- Updated splash screen to use correct dark mode color<br>" +
                         "- Added GitHub repo info<br>" +
+                        "- Added Wikipedia summary<br>" +
                         "- Updated arXiv info box<br>" +
                         "- Expanded font selection to affect more components<br>" +
                         "- Material (auto) is new default theme<br>" +

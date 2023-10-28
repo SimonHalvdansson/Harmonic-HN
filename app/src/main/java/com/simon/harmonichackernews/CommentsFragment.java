@@ -1393,9 +1393,29 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerView.smoothScrollToPosition(0);
     }
 
+    private int findFirstVisiblePosition() {
+        int firstVisible = layoutManager.findFirstVisibleItemPosition();
+
+        View firstVisibleView = layoutManager.findViewByPosition(firstVisible);
+        if (firstVisibleView != null) {
+            int top = firstVisibleView.getTop();
+            int height = firstVisibleView.getHeight();
+            int scrolled = height - Math.abs(top);
+
+            //there is a topInset-sized padding at the top of the recyclerview (the
+            // recyclerview extends behind the status bar) and as such
+            // findFirstVisiblePosition() may return the view that is hidden behind the
+            //status bar. If we have scrolled so short, then firstVisible should get a ++
+            if (scrolled <= topInset) {
+                firstVisible++;
+            }
+        }
+        return firstVisible;
+    }
+
     private void scrollPrevious() {
         if (layoutManager != null) {
-            int firstVisible = layoutManager.findFirstVisibleItemPosition();
+            int firstVisible = findFirstVisiblePosition();
 
             int toScrollTo = 0;
 
@@ -1412,7 +1432,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     public void scrollNext() {
         if (layoutManager != null) {
-            int firstVisible = layoutManager.findFirstVisibleItemPosition();
+            int firstVisible = findFirstVisiblePosition();
+
             int toScrollTo = firstVisible;
 
             for (int i = firstVisible + 1; i < comments.size(); i++) {
@@ -1594,7 +1615,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                             return true; // Indicate that we're handling this URL
                         }
                     }
-                } catch (URISyntaxException e) {
+                } catch (Exception e) {
                     // Handle the error
                     return false; // Indicate that we're not handling this URL
                 }

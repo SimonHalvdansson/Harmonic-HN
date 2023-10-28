@@ -94,6 +94,7 @@ public class ArxivAbstractGetter {
                         info.primaryCategory = primaryCategoryText;
                         info.secondaryCategories = secondaryCategoriesArray;
                         info.publishedDate = publishedDateText;
+                        info.arxivID = arxivID;
 
                         if (!abstractText.isEmpty() && authorsArray.length > 0 && !primaryCategoryText.isEmpty() && !publishedDateText.isEmpty()) {
                             callback.onSuccess(info);

@@ -10,14 +10,13 @@
         android:id="@+id/comments_header_arxiv_abstract"
         android:textColor="?attr/storyColorNormal"
         android:textSize="15sp"
-        android:paddingBottom="3dp"
         android:textIsSelectable="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:fontFamily="@font/product_sans" />
 
     <LinearLayout
-        android:paddingTop="2dp"
+        android:paddingTop="10dp"
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -45,6 +44,7 @@
 
         <ImageView
             android:layout_marginRight="4dp"
+            android:id="@+id/comments_header_arxiv_by_icon"
             android:src="@drawable/ic_action_group"
             android:layout_width="20dp"
             android:layout_height="20dp"/>
@@ -78,4 +78,15 @@
             android:layout_height="wrap_content"/>
 
     </LinearLayout>
+
+    <Button
+        android:fontFamily="@font/product_sans_bold"
+        android:layout_marginTop="8dp"
+        android:text="Download PDF"
+        android:id="@+id/comments_header_arxiv_download"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/Widget.Material3.Button.Icon"
+        app:icon="@drawable/ic_action_download" />
+
 </LinearLayout>

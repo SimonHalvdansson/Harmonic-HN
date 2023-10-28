@@ -61,6 +61,7 @@ dependencies {
     implementation 'com.squareup.okhttp:okhttp-urlconnection:2.7.5'
     implementation 'com.facebook.shimmer:shimmer:0.5.0'
     implementation 'com.squareup.picasso:picasso:2.8'
+    implementation 'org.jsoup:jsoup:1.16.2'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
 
 }

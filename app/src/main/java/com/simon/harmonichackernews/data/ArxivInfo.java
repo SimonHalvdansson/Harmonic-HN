@@ -7,6 +7,7 @@ public class ArxivInfo {
     public String arxivAbstract;
     public String[] authors;
     public String primaryCategory;
+    public String arxivID;
 
     public String[] secondaryCategories;
 
@@ -39,6 +40,10 @@ public class ArxivInfo {
             allSubjects = allSubjects + "; " + ArxivResolver.resolveFull(secondaryCategories[i]);
         }
         return allSubjects;
+    }
+
+    public String getPDFURL() {
+        return "https://arxiv.org/pdf/" + arxivID + ".pdf";
     }
 
 }

@@ -80,7 +80,7 @@ public class Story {
     }
 
     public boolean hasExtraInfo() {
-        return arxivInfo != null || repoInfo != null;
+        return arxivInfo != null || repoInfo != null || wikiInfo != null;
     }
 
 }
