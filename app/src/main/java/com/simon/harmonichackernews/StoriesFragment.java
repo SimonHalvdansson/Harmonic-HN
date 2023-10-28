@@ -53,6 +53,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -187,6 +188,12 @@ public class StoriesFragment extends Fragment {
         });
     }
 
+    private int getPreferredTypeIndex() {
+        String[] sortingOptions = getResources().getStringArray(R.array.sorting_options);
+        ArrayList<CharSequence> typeAdapterList = new ArrayList<>(Arrays.asList(sortingOptions));
+        return typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(getContext()));
+    }
+
     private void setupAdapter() {
         adapter = new StoryRecyclerViewAdapter(stories,
                 SettingsUtils.shouldShowPoints(getContext()),
@@ -197,7 +204,9 @@ public class StoriesFragment extends Fragment {
                 SettingsUtils.shouldUseLeftAlign(getContext()),
                 SettingsUtils.getPreferredHotness(getContext()),
                 SettingsUtils.getPreferredFaviconProvider(getContext()),
-                null);
+                null,
+                getPreferredTypeIndex()
+                );
 
         adapter.setOnLinkClickListener(position -> {
             if (position == RecyclerView.NO_POSITION) {
@@ -379,11 +388,8 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemRangeChanged(1, stories.size());
         }
 
-        if (adapter.hideJobs != SettingsUtils.shouldHideJobs(getContext())) {
-            adapter.type = 0;
-            currentType = 0;
-            adapter.hideJobs = !adapter.hideJobs;
-            adapter.notifyItemChanged(0);
+        if (hideJobs != SettingsUtils.shouldHideJobs(getContext())) {
+            hideJobs = !hideJobs;
             attemptRefresh();
         }
 

@@ -79,12 +79,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public boolean compactView;
     public boolean thumbnails;
     public boolean showIndex;
-    public boolean hideJobs;
     public boolean compactHeader;
     public boolean leftAlign;
     public String faviconProvider;
     public int hotness;
-    public int type = 0;
+    public int type;
     public boolean searching = false;
 
     public String lastSearch = "";
@@ -98,7 +97,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     boolean shouldLeftAlign,
                                     int preferredHotness,
                                     String faviconProv,
-                                    String submissionsUserName) {
+                                    String submissionsUserName,
+                                    int wantedType) {
         stories = items;
         showPoints = shouldShowPoints;
         compactView = shouldUseCompactView;
@@ -108,6 +108,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         leftAlign = shouldLeftAlign;
         hotness = preferredHotness;
         faviconProvider = faviconProv;
+        type = wantedType;
 
         atSubmissions = !TextUtils.isEmpty(submissionsUserName);
         submitter = submissionsUserName;
@@ -267,7 +268,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 headerViewHolder.noBookmarksLayout.setVisibility((stories.size() == 1 && type == SettingsUtils.getBookmarksIndex(ctx.getResources())) ? View.VISIBLE : View.GONE);
                 headerViewHolder.searchEmptyContainer.setVisibility(View.GONE);
             }
-            
+
+            headerViewHolder.justSelected = true;
             headerViewHolder.typeSpinner.setSelection(type);
 
             TooltipCompat.setTooltipText(headerViewHolder.searchButton, searching ? "Close" : "Search");
@@ -370,6 +372,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     public class MainHeaderViewHolder extends RecyclerView.ViewHolder {
         public final Spinner typeSpinner;
+        public boolean justSelected = false;
         public final LinearLayout container;
         public final LinearLayout loadingFailedLayout;
         public final LinearLayout noBookmarksLayout;
@@ -439,8 +442,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             String[] sortingOptions = ctx.getResources().getStringArray(R.array.sorting_options);
             ArrayList<CharSequence> typeAdapterList = new ArrayList<>(Arrays.asList(sortingOptions));
-            type = typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(ctx));
-
             typeAdapter = new ArrayAdapter<>(ctx, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, typeAdapterList);
             typeAdapter.setDropDownViewResource(R.layout.spinner_item_layout);
 
@@ -448,7 +449,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             typeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                    typeClickListener.onItemClick(i);
+                    if (justSelected) {
+                        justSelected = false;
+                    } else {
+                        typeClickListener.onItemClick(i);
+                    }
                 }
 
                 @Override

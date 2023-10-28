@@ -71,7 +71,8 @@ public class SubmissionsActivity extends AppCompatActivity {
                 SettingsUtils.shouldUseLeftAlign(this),
                 SettingsUtils.getPreferredHotness(this),
                 SettingsUtils.getPreferredFaviconProvider(this),
-                getIntent().getStringExtra(KEY_USER));
+                getIntent().getStringExtra(KEY_USER),
+                -1);
 
         adapter.setOnRefreshListener(this::loadSubmissions);
         adapter.setOnCommentClickListener(new StoryRecyclerViewAdapter.ClickListener() {
