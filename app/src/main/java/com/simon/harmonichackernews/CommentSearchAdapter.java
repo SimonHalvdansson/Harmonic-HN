@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.simon.harmonichackernews.data.Comment;
+import com.simon.harmonichackernews.utils.ThemeUtils;
 
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 
@@ -29,6 +30,8 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     private List<Comment> comments;
     private String searchTerm;
     public ItemClickListener itemClickListener;
+
+    private String markedColor;
 
     public CommentSearchAdapter(List<Comment> comments) {
         this.comments = comments;
@@ -56,6 +59,8 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
             container.setOnClickListener((v) -> {
                 itemClickListener.onItemClick(comments.get(getAbsoluteAdapterPosition()));
             });
+
+            markedColor = ThemeUtils.isDarkMode(view.getContext()) ? "#fce205" : "#cc7722";
 
             //this is illegal according to some but works according to all
             // the issue is that HtmlTextView hijacks clicks heavily
@@ -114,7 +119,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
 
             while (matcher.find()) {
                 // Retains the original case of the matching substring and adds the red color
-                String replacement = "<b><font color='red'>" + matcher.group() + "</font></b>";
+                String replacement = "<b><font color='" + markedColor + "'>" + matcher.group() + "</font></b>";
                 matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
             }
 
@@ -122,11 +127,6 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
             matcher.appendTail(sb);
             text = sb.toString();
         }
-
-        commentViewHolder.itemView.setVisibility(View.VISIBLE);
-        commentViewHolder.itemView.setLayoutParams(new RecyclerView.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
 
         commentViewHolder.commentText.setHtml(text);
         commentViewHolder.commentBy.setText(comment.by);
