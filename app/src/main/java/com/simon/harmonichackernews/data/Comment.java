@@ -2,10 +2,11 @@ package com.simon.harmonichackernews.data;
 
 import com.simon.harmonichackernews.utils.Utils;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Comment {
+public class Comment implements Serializable {
     public String by;
     public int id;
     public int parent;
@@ -15,6 +16,7 @@ public class Comment {
     public int depth;
     public int children;
     public int totalReplies;
+    public boolean matchesSearch = true;
 
     public List<Comment> childComments = new ArrayList<>();
     public int sortOrder;

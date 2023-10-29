@@ -1,0 +1,35 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:tools="http://schemas.android.com/tools"
+    android:background="?attr/selectableItemBackground"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:id="@+id/comment_search_item_container"
+    android:paddingRight="24dp"
+    android:paddingLeft="24dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:paddingBottom="1dp"
+        android:id="@+id/comment_search_item_by"
+        android:textColor="?attr/storyColorDisabled"
+        android:fontFamily="@font/product_sans_bold"
+        tools:text="eanzenberg"
+        android:textSize="13sp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"    />
+
+    <org.sufficientlysecure.htmltextview.HtmlTextView
+        tools:text="Yes, I've come to the same conclusion. When interviewing ML engineers, I prefer to know they are exceptional programmers with passable knowledge of ML than the other way around. If they haven't learned to be good software engineers it's improbable they will in the future, but ML can be learned. In fact a ML team needs a large number of regular software engineers, there's a lot of non-ML code to work on, such as labelling interfaces, data pipelines and CI/CD for models."
+        android:id="@+id/comment_search_item_text"
+        android:clickable="false"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:fontFamily="@font/product_sans"
+        android:textColor="?attr/storyColorNormal"
+        android:textSize="15sp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"    />
+
+</LinearLayout>

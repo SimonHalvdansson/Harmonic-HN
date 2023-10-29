@@ -133,6 +133,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml( "<b>Version 1.12:</b><br>" +
                         "- Updated splash screen to use correct dark mode color<br>" +
+                        "- Improved comment show/hide animation<br>" +
                         "- Added GitHub repo info<br>" +
                         "- Added Wikipedia summary<br>" +
                         "- Updated arXiv info box<br>" +

@@ -63,6 +63,7 @@ import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView;
@@ -1316,6 +1317,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     public void clickMore(View view) {
         PopupMenu popup = new PopupMenu(requireActivity(), view);
+
         popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
@@ -1345,6 +1347,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                             }
                         }
                     });
+                } else if (id == R.id.menu_search_comments) {
+                    CommentsSearchDialogFragment.showCommentSearchDialog(getParentFragmentManager(), comments, new CommentsSearchDialogFragment.CommentSelectedListener() {
+                        @Override
+                        public void onCommentSelected(Comment comment) {
+                            for (Comment c : comments) {
+                                if (c.id == comment.id) {
+                                    smoothScroller.setTargetPosition(comments.indexOf(c));
+                                    layoutManager.startSmoothScroll(smoothScroller);
+                                    break;
+                                }
+                            }
+                        }
+                    });
                 }
 
                 return true;
@@ -1361,6 +1376,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
             if (!SettingsUtils.shouldBlockAds(getContext()) && item.getItemId() == R.id.menu_adblock) {
+                item.setVisible(false);
+            }
+
+            if (item.getItemId() == R.id.menu_search_comments && comments.size() < 2) {
                 item.setVisible(false);
             }
         }

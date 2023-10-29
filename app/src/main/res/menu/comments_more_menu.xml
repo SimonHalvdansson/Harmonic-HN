@@ -9,6 +9,9 @@
         android:id="@+id/menu_adblock"
         android:title="Disable adblock temporarily" />
 
+    <item android:id="@+id/menu_search_comments"
+        android:title="Search comments"/>
+
     <item
         android:id="@+id/menu_archive"
         android:title="View on archive.org" />
