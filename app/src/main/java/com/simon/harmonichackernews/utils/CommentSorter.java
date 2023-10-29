@@ -135,8 +135,9 @@ public class CommentSorter {
 
     private static int numChildren(List<Comment> comments, int startIndex) {
         int count = 0;
+        int targetDepth = comments.get(startIndex).depth;
         for (int i = startIndex + 1; i < comments.size(); i++) {
-            if (comments.get(i).depth == 0) {
+            if (comments.get(i).depth == targetDepth) {
                 break;
             } else {
                 count++;

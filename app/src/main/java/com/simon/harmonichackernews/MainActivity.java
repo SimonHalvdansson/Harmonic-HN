@@ -132,6 +132,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml( "<b>Version 1.12:</b><br>" +
+                        "- Added ability to search comments<br>" +
                         "- Updated splash screen to use correct dark mode color<br>" +
                         "- Improved comment show/hide animation<br>" +
                         "- Added GitHub repo info<br>" +

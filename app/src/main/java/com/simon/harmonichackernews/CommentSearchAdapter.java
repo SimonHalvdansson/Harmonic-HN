@@ -108,7 +108,6 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
 
         StringBuffer sb = new StringBuffer(); // To hold the modified string
 
-
         if (!TextUtils.isEmpty(searchTerm)) {
             Pattern pattern = Pattern.compile("(?i)" + Pattern.quote(searchTerm));
             Matcher matcher = pattern.matcher(text);
