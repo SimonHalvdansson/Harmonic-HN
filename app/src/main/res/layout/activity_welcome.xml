@@ -47,19 +47,6 @@
             android:text="Before we get started, you can change some layout options here to customize the app to your liking."/>
 
         <TextView
-            android:textColor="?attr/textColorDisabled"
-            android:text="Preview:"
-            android:fontFamily="@font/product_sans"
-            android:textStyle="bold"
-            android:textSize="13dp"
-            android:textAllCaps="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
-        <include
-            layout="@layout/story_list_item"/>
-
-        <TextView
             android:layout_marginTop="16dp"
             android:text="Theme:"
             android:textStyle="bold"
@@ -185,6 +172,19 @@
         </LinearLayout>
 
         <TextView
+            android:textColor="?attr/textColorDisabled"
+            android:text="Preview:"
+            android:fontFamily="@font/product_sans"
+            android:textStyle="bold"
+            android:textSize="13dp"
+            android:textAllCaps="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <include
+            layout="@layout/story_list_item"/>
+
+        <TextView
             android:layout_marginTop="16dp"
             android:text="Quick settings:"
             android:textStyle="bold"
@@ -238,8 +238,10 @@
             style="@style/Widget.Material3.Button.ElevatedButton.Icon"
             android:onClick="done"
             app:icon="@drawable/ic_action_check"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            app:iconTint="?attr/storyColorNormal"
+            android:textColor="?attr/storyColorNormal"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
             android:layout_gravity="right"
             android:layout_marginTop="20dp"
             android:layout_marginBottom="8dp"

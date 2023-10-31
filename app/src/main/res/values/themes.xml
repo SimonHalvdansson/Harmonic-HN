@@ -148,7 +148,7 @@
         <item name="colorControlHighlight">#20000000</item>
         <item name="snackbarTextViewStyle">@style/snackbarTextStyleLight</item>
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
-        <item name="android:statusBarColor">@color/material_you_neutral_100</item>
+        <item name="android:statusBarColor">@color/material_you_neutral_50</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
 

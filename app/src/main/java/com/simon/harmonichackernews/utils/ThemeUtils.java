@@ -143,9 +143,11 @@ public class ThemeUtils {
             case "material_dark":
                 return R.color.material_you_neutral_900;
             case "material_light":
-                return R.color.material_you_neutral_100;
+                return R.color.material_you_neutral_50;
             case "material_daynight":
-                return uiModeNight(ctx) ? R.color.material_you_neutral_900 : R.color.material_you_neutral_100;
+                return uiModeNight(ctx) ? R.color.material_you_neutral_900 : R.color.material_you_neutral_50;
+            case "dark":
+                return R.color.background;
             default:
                 return R.color.background;
         }
