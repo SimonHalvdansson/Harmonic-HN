@@ -21,6 +21,7 @@ import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -170,7 +171,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         // Serialize the ArrayList
         bundle.putSerializable(EXTRA_SEARCHABLE_COMMENTS, (Serializable) comments);
         dialogFragment.setArguments(bundle);
-        dialogFragment.show(fm, UserDialogFragment.TAG);
+        dialogFragment.show(fm, CommentsSearchDialogFragment.TAG);
     }
 
     public interface CommentSelectedListener {
