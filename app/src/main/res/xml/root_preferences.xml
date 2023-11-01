@@ -182,6 +182,13 @@
             app:icon="@drawable/ic_action_block"
             app:title="Block WebView ads"    />
 
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_redirect_nitter"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_redirect"
+            app:title="Redirect Twitter/X to Nitter"    />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Comments">

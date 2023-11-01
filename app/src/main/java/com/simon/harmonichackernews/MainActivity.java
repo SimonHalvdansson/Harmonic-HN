@@ -138,6 +138,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                         "- Added GitHub repo info<br>" +
                         "- Added Wikipedia summary<br>" +
                         "- Updated arXiv info box<br>" +
+                        "- Added optional Twitter/X to Nitter redirect<br>" +
                         "- Expanded font selection to affect more components<br>" +
                         "- Material (auto) is new default theme<br>" +
                         "- Design tweaks to story page<br>" +

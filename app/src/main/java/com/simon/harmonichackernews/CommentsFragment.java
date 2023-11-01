@@ -829,6 +829,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             webView.getSettings().setLoadWithOverviewMode(true);
             webView.getSettings().setUseWideViewPort(true);
         }
+
+        if (SettingsUtils.shouldRedirectNitter(getContext())) {
+            url = url.replace("twitter.com", "nitter.net").replace("x.com", "nitter.net");
+        }
+
         webView.loadUrl(url);
     }
 

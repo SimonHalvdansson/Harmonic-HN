@@ -179,6 +179,10 @@ public class SettingsUtils {
         return getBooleanPref("pref_hide_clicked", false, ctx);
     }
 
+    public static boolean shouldRedirectNitter(Context ctx) {
+        return getBooleanPref("pref_redirect_nitter", false, ctx);
+    }
+
     public static boolean shouldUseAlgolia(Context ctx) {
         return getBooleanPref("pref_algolia_api", true, ctx);
     }
