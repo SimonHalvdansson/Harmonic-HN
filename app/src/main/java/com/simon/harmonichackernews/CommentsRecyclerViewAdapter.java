@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews;
 
 import static android.view.View.GONE;
+import static android.view.View.VISIBLE;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -234,6 +235,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.githubWebsiteContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.website) ? GONE : View.VISIBLE);
                 headerViewHolder.githubLicenseContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.license) ? GONE : View.VISIBLE);
                 headerViewHolder.githubLanguageContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.language) ? GONE : View.VISIBLE);
+                headerViewHolder.githubAbout.setVisibility(TextUtils.isEmpty(story.repoInfo.about) ? GONE : VISIBLE);
             }
 
             if (story.wikiInfo != null) {

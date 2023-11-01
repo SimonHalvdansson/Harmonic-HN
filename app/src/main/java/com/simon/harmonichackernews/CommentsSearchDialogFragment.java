@@ -21,6 +21,7 @@ import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -70,6 +71,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
 
     private TextInputEditText searchBar;
     private RecyclerView recyclerView;
+    private TextView matchesText;
     private CommentSearchAdapter adapter;
     private List<Comment> comments;
     private final CommentSelectedListener listener;
@@ -98,11 +100,14 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
 
         searchBar = rootView.findViewById(R.id.comments_search_edittext);
         recyclerView = rootView.findViewById(R.id.comments_search_recyclerview);
+        matchesText = rootView.findViewById(R.id.comments_search_matches);
 
         if (getArguments() != null) {
             comments = (List<Comment>) getArguments().getSerializable(EXTRA_SEARCHABLE_COMMENTS);
             comments = comments.subList(1, comments.size());
         }
+
+        updateMatches(null);
 
         adapter = new CommentSearchAdapter(comments);
         recyclerView.setAdapter(adapter);
@@ -123,6 +128,8 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
 
                 adapter.setSearchTerm(searchTerm);
                 adapter.notifyDataSetChanged();
+
+                updateMatches(searchTerm);
             }
         });
 
@@ -142,6 +149,21 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         return dialog;
     }
 
+    private void updateMatches(String searchTerm) {
+        int matchingComments = 0;
+        if (TextUtils.isEmpty(searchTerm)) {
+            matchingComments = comments.size();
+        } else {
+            for (Comment c : comments) {
+                if (c.text.toUpperCase().contains(searchTerm.toUpperCase())) {
+                    matchingComments++;
+                }
+            }
+        }
+
+        matchesText.setText("(" + matchingComments + (matchingComments == 1 ? " match" : " matches") + ")");
+    }
+
     public static void showCommentSearchDialog(FragmentManager fm, List<Comment> comments, CommentSelectedListener listener) {
         CommentsSearchDialogFragment dialogFragment = new CommentsSearchDialogFragment(listener);
         Bundle bundle = new Bundle();
@@ -149,7 +171,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         // Serialize the ArrayList
         bundle.putSerializable(EXTRA_SEARCHABLE_COMMENTS, (Serializable) comments);
         dialogFragment.setArguments(bundle);
-        dialogFragment.show(fm, UserDialogFragment.TAG);
+        dialogFragment.show(fm, CommentsSearchDialogFragment.TAG);
     }
 
     public interface CommentSelectedListener {

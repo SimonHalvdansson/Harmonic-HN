@@ -755,7 +755,7 @@
         app:backgroundTint="?attr/colorPrimaryDark"
         app:iconTint="#fff"
         android:textColor="#fff"
-        android:text="Tap to update"    />
+        android:text="Tap to refresh"    />
 
     <LinearLayout
         android:id="@+id/comments_header_loading_failed"

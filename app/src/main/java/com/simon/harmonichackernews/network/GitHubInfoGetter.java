@@ -45,26 +45,23 @@ public class GitHubInfoGetter {
 
                             if (jsonResponse.has("owner")) {
                                 JSONObject owner = jsonResponse.getJSONObject("owner");
-                                repoInfo.owner = owner.optString("login");
+                                repoInfo.owner = readJsonProp(owner, "login");
                             }
 
                             repoInfo.name = jsonResponse.optString("name");
-                            repoInfo.about = jsonResponse.optString("description");
-                            repoInfo.website = jsonResponse.optString("homepage");
-                            if (!TextUtils.isEmpty(repoInfo.website) && repoInfo.website.equals("null")) {
-                                repoInfo.website = null;
-                            }
+                            repoInfo.about = readJsonProp(jsonResponse, "description");
+                            repoInfo.website = readJsonProp(jsonResponse, "homepage");
 
                             if (jsonResponse.has("license") && !jsonResponse.get("license").toString().equals("null")) {
                                 JSONObject license = jsonResponse.getJSONObject("license");
                                 if (license.has("name") && license.getString("name").equals("Other")) {
                                     repoInfo.license = "Other";
                                 } else {
-                                    repoInfo.license = license.optString("spdx_id");
+                                    repoInfo.license = readJsonProp(license, "spdx_id");
                                 }
                             }
 
-                            repoInfo.language = jsonResponse.optString("language");
+                            repoInfo.language = readJsonProp(jsonResponse, "language");
                             repoInfo.stars = jsonResponse.optInt("stargazers_count");
                             repoInfo.watching = jsonResponse.optInt("subscribers_count");
                             repoInfo.forks = jsonResponse.optInt("forks_count");
@@ -87,6 +84,18 @@ public class GitHubInfoGetter {
         } catch (Exception e) {
             callback.onFailure("Invalid GitHub URL");
         }
+    }
+
+    private static String readJsonProp(JSONObject jsonObject, String key) {
+        String input = jsonObject.optString(key);
+
+        if (TextUtils.isEmpty(input)) {
+            return null;
+        }
+        if (input.equals("null")) {
+            return null;
+        }
+        return input;
     }
 
     public interface GetterCallback {

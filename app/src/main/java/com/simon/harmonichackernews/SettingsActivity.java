@@ -93,16 +93,6 @@ public class SettingsActivity extends AppCompatActivity {
 
             updateTimedRangeSummary();
 
-            findPreference("pref_special_nighttime").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
-                    changePrefStatus(findPreference("pref_theme_nighttime"), (boolean) newValue);
-                    changePrefStatus(findPreference("pref_theme_timed_range"), (boolean) newValue);
-
-                    return true;
-                }
-            });
-
             findPreference("pref_default_story_type").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {
@@ -134,10 +124,6 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
-            boolean specialNighttimeTheme = SettingsUtils.shouldUseSpecialNighttimeTheme(getContext());
-            changePrefStatus(findPreference("pref_theme_nighttime"), specialNighttimeTheme);
-            changePrefStatus(findPreference("pref_theme_timed_range"), specialNighttimeTheme);
-
             boolean compact = SettingsUtils.shouldUseCompactView(getContext());
 
             changePrefStatus(findPreference("pref_show_points"), !compact);
@@ -155,31 +141,9 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
-            boolean integratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
-            String[] webViewPrefs = {
-                    "pref_preload_webview",
-                    "pref_webview_match_theme",
-                    "pref_webview_adblock",
-            };
-
-            for (String webViewPref : webViewPrefs) {
-                changePrefStatus(findPreference(webViewPref), integratedWebview);
-            }
-
             findPreference("pref_about").setSummary("Version " + BuildConfig.VERSION_NAME);
 
             final Fragment f = this;
-
-            findPreference("pref_webview").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
-                    for (String webViewPref : webViewPrefs) {
-                        changePrefStatus(findPreference(webViewPref), (boolean) newValue);
-                    }
-
-                    return true;
-                }
-            });
 
             findPreference("pref_theme").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override

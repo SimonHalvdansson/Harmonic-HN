@@ -28,6 +28,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     public static final int TYPE_COMMENT = 1;
     public static final int TYPE_COLLAPSED = 2;
     private List<Comment> comments;
+
     private String searchTerm;
     public ItemClickListener itemClickListener;
 

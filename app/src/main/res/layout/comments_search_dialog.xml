@@ -7,6 +7,19 @@
     android:paddingTop="24dp"
     android:layout_height="match_parent">
 
+    <TextView
+        android:paddingRight="24dp"
+        android:paddingLeft="24dp"
+        android:text="(5 matches)"
+        android:textAllCaps="true"
+        android:textColor="?attr/storyColorDisabled"
+        android:textSize="12sp"
+        android:gravity="center_horizontal"
+        android:id="@+id/comments_search_matches"
+        android:fontFamily="@font/product_sans_bold"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/outlinedTextField"
         android:layout_width="match_parent"
@@ -18,7 +31,7 @@
         app:boxCornerRadiusTopEnd="24dp"
         app:boxCornerRadiusTopStart="24dp"
         app:startIconDrawable="@drawable/ic_action_search"
-        android:hint="Search">
+        android:hint="Search comments">
 
         <com.google.android.material.textfield.TextInputEditText
             android:inputType="textCapSentences"

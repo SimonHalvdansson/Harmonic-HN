@@ -66,14 +66,16 @@
     <color name="material_you_secondary_100">@color/lightBackground</color>
     <color name="material_you_secondary_900">@color/darkerBackground</color>
     <color name="material_you_secondary_800">@color/darkerBackground</color>
+    <color name="material_you_secondary_400">@color/material_dynamic_secondary40</color>
 
     <color name="material_you_third_400">@color/colorPrimary</color>
     <color name="material_you_third_700">@color/colorPrimaryDark</color>
 
+    <color name="material_you_neutral_10">@color/lightBackground</color>
     <color name="material_you_neutral_50">@color/lightBackground</color>
     <color name="material_you_neutral_100">@color/lightBackground</color>
     <color name="material_you_neutral_800">@color/darkerBackground</color>
     <color name="material_you_neutral_900">@color/background</color>
 
-    <color name="splash_screen_background">@color/material_you_neutral_100</color>
+    <color name="splash_screen_background">@color/material_you_neutral_50</color>
 </resources>
