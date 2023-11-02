@@ -85,6 +85,7 @@ import com.google.android.material.transition.MaterialSharedAxis;
 import com.simon.harmonichackernews.data.ArxivInfo;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
+import com.simon.harmonichackernews.data.NitterInfo;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.RepoInfo;
 import com.simon.harmonichackernews.data.Story;
@@ -93,6 +94,7 @@ import com.simon.harmonichackernews.network.ArxivAbstractGetter;
 import com.simon.harmonichackernews.network.GitHubInfoGetter;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
+import com.simon.harmonichackernews.network.NitterGetter;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.network.WikipediaGetter;
 import com.simon.harmonichackernews.utils.AccountUtils;
@@ -1617,6 +1619,22 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
                 //if we are at the webview and we just loaded, recheck the canGoBack status
                 toggleBackPressedCallback(webView != null && webView.canGoBack());
+            }
+
+
+            if (NitterGetter.isValidNitterUrl(url)) {
+                NitterGetter.getInfo(view, getContext(), new NitterGetter.GetterCallback() {
+                    @Override
+                    public void onSuccess(NitterInfo nitterInfo) {
+                        story.nitterInfo = nitterInfo;
+                        adapter.notifyItemChanged(0);
+                    }
+
+                    @Override
+                    public void onFailure(String reason) {
+
+                    }
+                });
             }
         }
 

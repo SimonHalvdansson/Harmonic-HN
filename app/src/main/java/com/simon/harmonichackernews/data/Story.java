@@ -26,6 +26,7 @@ public class Story {
     public RepoInfo repoInfo;
     public ArxivInfo arxivInfo;
     public WikipediaInfo wikiInfo;
+    public NitterInfo nitterInfo;
     public boolean isLink;
     public boolean isJob = false;
     public boolean loadingFailed = false;
