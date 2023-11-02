@@ -269,6 +269,9 @@
 
                     <include layout="@layout/github_container" />
 
+                    <include layout="@layout/nitter_container" />
+
+
                 </LinearLayout>
 
                 <LinearLayout

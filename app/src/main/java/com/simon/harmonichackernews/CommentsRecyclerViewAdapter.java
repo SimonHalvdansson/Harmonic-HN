@@ -245,6 +245,20 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.wikiSummary.setHtml(story.wikiInfo.summary);
             }
 
+            if (story.nitterInfo != null) {
+                headerViewHolder.nitterContainer.setVisibility(View.VISIBLE);
+
+                headerViewHolder.nitterText.setHtml(story.nitterInfo.text);
+                headerViewHolder.nitterUserName.setText(story.nitterInfo.userName);
+                headerViewHolder.nitterUserTag.setText(story.nitterInfo.userTag);
+                headerViewHolder.nitterDate.setText(story.nitterInfo.date);
+                headerViewHolder.nitterReplyCount.setText(story.nitterInfo.replyCount + " replies");
+                headerViewHolder.nitterReposts.setText(story.nitterInfo.reposts + " reposts");
+                headerViewHolder.nitterQuotes.setText(story.nitterInfo.quotes + " quotes");
+                headerViewHolder.nitterLikes.setText(story.nitterInfo.likes + " likes");
+            }
+
+
             if (story.pollOptionArrayList != null) {
                 headerViewHolder.pollLayout.setVisibility(View.VISIBLE);
                 headerViewHolder.pollLayout.removeAllViews();
@@ -531,6 +545,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout githubContainer;
         public final LinearLayout arxivContainer;
         public final LinearLayout wikiContainer;
+        public final LinearLayout nitterContainer;
         public final TextView infoHeader;
         public final LinearLayout emptyView;
         public final TextView emptyViewText;
@@ -568,6 +583,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final Button arxivDownloadButton;
 
         public final HtmlTextView wikiSummary;
+
+        public final HtmlTextView nitterText;
+        public final TextView nitterUserName;
+        public final TextView nitterUserTag;
+        public final TextView nitterDate;
+        public final TextView nitterReplyCount;
+        public final TextView nitterReposts;
+        public final TextView nitterQuotes;
+        public final TextView nitterLikes;
 
         public final ImageView favicon;
         public final RelativeLayout sheetRefreshButton;
@@ -643,6 +667,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             arxivSubjects = view.findViewById(R.id.comments_header_arxiv_subjects);
             arxivByIcon = view.findViewById(R.id.comments_header_arxiv_by_icon);
             arxivDownloadButton = view.findViewById(R.id.comments_header_arxiv_download);
+            nitterContainer = view.findViewById(R.id.comments_header_nitter_container);
+            nitterText = view.findViewById(R.id.comments_header_nitter_text);
+            nitterUserName = view.findViewById(R.id.comments_header_nitter_user_name);
+            nitterUserTag = view.findViewById(R.id.comments_header_nitter_user_tag);
+            nitterDate = view.findViewById(R.id.comments_header_nitter_date);
+            nitterReplyCount = view.findViewById(R.id.comments_header_nitter_reply_count);
+            nitterReposts = view.findViewById(R.id.comments_header_nitter_reposts);
+            nitterQuotes = view.findViewById(R.id.comments_header_nitter_quotes);
+            nitterLikes = view.findViewById(R.id.comments_header_nitter_likes);
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 

@@ -81,7 +81,7 @@ public class Story {
     }
 
     public boolean hasExtraInfo() {
-        return arxivInfo != null || repoInfo != null || wikiInfo != null;
+        return arxivInfo != null || repoInfo != null || wikiInfo != null || nitterInfo != null;
     }
 
 }

@@ -35,13 +35,16 @@ public class NitterGetter {
                 "   userName: document.querySelector('.fullname').textContent," +
                 "   userTag: document.querySelector('.username').textContent," +
                 "   date: document.querySelector('.tweet-date').textContent," +
-                "   replyCount: document.querySelector('.icon-comment + *').textContent.trim()," +
-                "   reposts: document.querySelector('.icon-retweet + *').textContent.trim()," +
-                "   quotes: document.querySelector('.icon-quote + *').textContent.trim()," +
-                "   likes: document.querySelector('.icon-heart + *').textContent.trim()" +
+                "   replyCount: document.querySelector('.icon-comment').parentNode.textContent.trim()," +
+                "   reposts: document.querySelector('.icon-retweet').parentNode.textContent.trim()," +
+                "   quotes: document.querySelector('.icon-quote').parentNode.textContent.trim()," +
+                "   likes: document.querySelector('.icon-heart').parentNode.textContent.trim()" +
                 "});" +
                 "}) ();", resp -> {
             try {
+                //Get rid of double escaping things or something like that...
+                resp = resp.substring(1, resp.length() - 1).replace("\\\"", "\"").replace("\\\\", "\\");
+
                 JSONObject jsonObject = new JSONObject(resp);
                 nitterInfo.text = jsonObject.getString("text");
                 nitterInfo.userName = jsonObject.getString("userName");
