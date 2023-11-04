@@ -8,7 +8,9 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
 import android.text.Html;
+import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -30,6 +32,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.TooltipCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
@@ -200,6 +203,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             if (story.arxivInfo != null) {
                 headerViewHolder.arxivContainer.setVisibility(View.VISIBLE);
+                headerViewHolder.infoHeader.setVisibility(VISIBLE);
 
                 headerViewHolder.infoHeader.setText("ARXIV INFO:");
 
@@ -221,6 +225,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             if (story.repoInfo != null) {
                 headerViewHolder.githubContainer.setVisibility(View.VISIBLE);
+                headerViewHolder.infoHeader.setVisibility(VISIBLE);
 
                 headerViewHolder.infoHeader.setText(story.repoInfo.owner + " / " + story.repoInfo.name);
 
@@ -240,6 +245,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             if (story.wikiInfo != null) {
                 headerViewHolder.wikiContainer.setVisibility(View.VISIBLE);
+                headerViewHolder.infoHeader.setVisibility(VISIBLE);
 
                 headerViewHolder.infoHeader.setText("WIKIPEDIA SUMMARY:");
                 headerViewHolder.wikiSummary.setHtml(story.wikiInfo.summary);
@@ -247,17 +253,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             if (story.nitterInfo != null) {
                 headerViewHolder.nitterContainer.setVisibility(View.VISIBLE);
+                headerViewHolder.infoHeader.setText(story.nitterInfo.userName + " " + story.nitterInfo.userTag);
 
                 headerViewHolder.nitterText.setHtml(story.nitterInfo.text);
-                headerViewHolder.nitterUserName.setText(story.nitterInfo.userName);
-                headerViewHolder.nitterUserTag.setText(story.nitterInfo.userTag);
                 headerViewHolder.nitterDate.setText(story.nitterInfo.date);
-                headerViewHolder.nitterReplyCount.setText(story.nitterInfo.replyCount + " replies");
-                headerViewHolder.nitterReposts.setText(story.nitterInfo.reposts + " reposts");
-                headerViewHolder.nitterQuotes.setText(story.nitterInfo.quotes + " quotes");
-                headerViewHolder.nitterLikes.setText(story.nitterInfo.likes + " likes");
+                headerViewHolder.nitterReplyCount.setText(String.valueOf(story.nitterInfo.replyCount));
+                headerViewHolder.nitterReposts.setText(String.valueOf(story.nitterInfo.reposts));
+                headerViewHolder.nitterQuotes.setText(String.valueOf(story.nitterInfo.quotes));
+                headerViewHolder.nitterLikes.setText(String.valueOf(story.nitterInfo.likes));
             }
-
 
             if (story.pollOptionArrayList != null) {
                 headerViewHolder.pollLayout.setVisibility(View.VISIBLE);
@@ -585,8 +589,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final HtmlTextView wikiSummary;
 
         public final HtmlTextView nitterText;
-        public final TextView nitterUserName;
-        public final TextView nitterUserTag;
         public final TextView nitterDate;
         public final TextView nitterReplyCount;
         public final TextView nitterReposts;
@@ -669,8 +671,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             arxivDownloadButton = view.findViewById(R.id.comments_header_arxiv_download);
             nitterContainer = view.findViewById(R.id.comments_header_nitter_container);
             nitterText = view.findViewById(R.id.comments_header_nitter_text);
-            nitterUserName = view.findViewById(R.id.comments_header_nitter_user_name);
-            nitterUserTag = view.findViewById(R.id.comments_header_nitter_user_tag);
             nitterDate = view.findViewById(R.id.comments_header_nitter_date);
             nitterReplyCount = view.findViewById(R.id.comments_header_nitter_reply_count);
             nitterReposts = view.findViewById(R.id.comments_header_nitter_reposts);
@@ -741,6 +741,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 @Override
                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
                     Utils.launchCustomTab(view.getContext(), story.repoInfo.website);
+                    return false;
+                }
+            });
+
+            nitterText.setOnClickATagListener(new OnClickATagListener() {
+                @Override
+                public boolean onClick(View widget, String spannedText, @Nullable String href) {
+                    Utils.launchCustomTab(widget.getContext(), href);
                     return false;
                 }
             });

@@ -6,9 +6,9 @@ public class NitterInfo {
     public String userName;
     public String userTag;
     public String date;
-    public int replyCount;
-    public int reposts;
-    public int quotes;
-    public int likes;
+    public String replyCount;
+    public String reposts;
+    public String quotes;
+    public String likes;
 
 }

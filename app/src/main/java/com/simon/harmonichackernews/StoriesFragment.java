@@ -79,8 +79,6 @@ public class StoriesFragment extends Fragment {
 
     public final static String[] hnUrls = new String[]{Utils.URL_TOP, Utils.URL_NEW, Utils.URL_BEST, Utils.URL_ASK, Utils.URL_SHOW, Utils.URL_JOBS};
 
-    private int currentType = 0;
-
     long lastLoaded = 0;
     long lastClick = 0;
     private final static long CLICK_INTERVAL = 350;
@@ -253,8 +251,8 @@ public class StoriesFragment extends Fragment {
         adapter.setOnMoreClickListener(this::moreClick);
 
         adapter.setOnTypeClickListener(index -> {
-            if (index != currentType) {
-                currentType = index;
+            if (index != adapter.type) {
+                adapter.type = index;
                 attemptRefresh();
             }
         });
@@ -343,7 +341,7 @@ public class StoriesFragment extends Fragment {
         long timeDiff = System.currentTimeMillis() - lastLoaded;
 
         // if more than 1 hr
-        if (timeDiff > 1000*60*60 && !adapter.searching && currentType != SettingsUtils.getBookmarksIndex(getResources()) && !currentTypeIsAlgolia()) {
+        if (timeDiff > 1000*60*60 && !adapter.searching && adapter.type != SettingsUtils.getBookmarksIndex(getResources()) && !currentTypeIsAlgolia()) {
             showUpdateButton();
         }
 
@@ -468,7 +466,7 @@ public class StoriesFragment extends Fragment {
                         }
 
                         //or because it's a job
-                        if (hideJobs && currentType != SettingsUtils.getJobsIndex(getResources()) && (story.isJob || story.by.equals("whoishiring"))) {
+                        if (hideJobs && adapter.type != SettingsUtils.getJobsIndex(getResources()) && (story.isJob || story.by.equals("whoishiring"))) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
                             loadedTo = Math.max(0, loadedTo - 1);
@@ -541,17 +539,15 @@ public class StoriesFragment extends Fragment {
         //cancel all ongoing
         queue.cancelAll(requestTag);
 
-        adapter.type = currentType;
-
         if (currentTypeIsAlgolia()) {
             //algoliaStuff
             int currentTime = (int) (System.currentTimeMillis() / 1000);
             int startTime = currentTime;
-            if (currentType == 1) {
+            if (adapter.type == 1) {
                 startTime = currentTime - 60*60*24;
-            } else if (currentType == 2) {
+            } else if (adapter.type == 2) {
                 startTime = currentTime - 60*60*48;
-            } else if (currentType == 3) {
+            } else if (adapter.type == 3) {
                 startTime = currentTime - 60*60*24*7;
             }
 
@@ -562,7 +558,7 @@ public class StoriesFragment extends Fragment {
 
         lastLoaded = System.currentTimeMillis();
 
-        if (currentType == SettingsUtils.getBookmarksIndex(getResources())) {
+        if (adapter.type == SettingsUtils.getBookmarksIndex(getResources())) {
             //lets load bookmarks instead - or rather add empty stories with correct id:s and start loading them
             adapter.notifyItemRangeRemoved(1, stories.size() + 1);
             loadedTo = 0;
@@ -589,7 +585,7 @@ public class StoriesFragment extends Fragment {
         }
 
         // if none of the above, do a normal loading
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, hnUrls[currentType == 0 ? 0 : currentType - 3],
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, hnUrls[adapter.type == 0 ? 0 : adapter.type - 3],
                 response -> {
                     swipeRefreshLayout.setRefreshing(false);
                     try {
@@ -725,7 +721,7 @@ public class StoriesFragment extends Fragment {
     }
 
     public boolean currentTypeIsAlgolia() {
-        return 0 < currentType && 4 > currentType;
+        return 0 < adapter.type && 4 > adapter.type;
     }
 
     public boolean exitSearch() {

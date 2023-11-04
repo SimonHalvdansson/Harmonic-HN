@@ -741,7 +741,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         webView.setWebViewClient(new MyWebViewClient());
-        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(requireContext())) || showWebsite) {
+        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(requireContext())) || showWebsite || (NitterGetter.isConvertibleToNitter(story.url) && SettingsUtils.shouldRedirectNitter(getContext()))) {
             loadUrl(story.url);
             startedLoading = true;
         }
@@ -832,8 +832,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             webView.getSettings().setUseWideViewPort(true);
         }
 
-        if (SettingsUtils.shouldRedirectNitter(getContext())) {
-            url = url.replace("twitter.com", "nitter.net").replace("x.com", "nitter.net");
+        if (NitterGetter.isConvertibleToNitter(url) && SettingsUtils.shouldRedirectNitter(getContext())) {
+            url = NitterGetter.convertToNitterUrl(url);
         }
 
         webView.loadUrl(url);

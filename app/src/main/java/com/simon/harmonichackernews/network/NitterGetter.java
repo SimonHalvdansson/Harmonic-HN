@@ -26,12 +26,20 @@ public class NitterGetter {
         return url.contains("nitter.net");
     }
 
+    public static boolean isConvertibleToNitter(String url) {
+        return url.contains("twitter.com") || url.contains("x.com");
+    }
+
+    public static String convertToNitterUrl(String url) {
+        return url.replace("twitter.com", "nitter.net").replace("x.com", "nitter.net");
+    }
+
     public static void getInfo(WebView webView, Context ctx, NitterGetter.GetterCallback callback) {
         NitterInfo nitterInfo = new NitterInfo();
 
         webView.evaluateJavascript("(function() { " +
                 "return JSON.stringify({" +
-                "   text: document.querySelector('.tweet-content').textContent," +
+                "   text: document.querySelector('.tweet-content').innerHTML," +
                 "   userName: document.querySelector('.fullname').textContent," +
                 "   userTag: document.querySelector('.username').textContent," +
                 "   date: document.querySelector('.tweet-date').textContent," +
@@ -46,14 +54,14 @@ public class NitterGetter {
                 resp = resp.substring(1, resp.length() - 1).replace("\\\"", "\"").replace("\\\\", "\\");
 
                 JSONObject jsonObject = new JSONObject(resp);
-                nitterInfo.text = jsonObject.getString("text");
+                nitterInfo.text = jsonObject.getString("text").replace("\n", "<br>");
                 nitterInfo.userName = jsonObject.getString("userName");
                 nitterInfo.userTag = jsonObject.getString("userTag");
                 nitterInfo.date = jsonObject.getString("date");
-                nitterInfo.replyCount = Integer.parseInt(jsonObject.getString("replyCount"));
-                nitterInfo.reposts = Integer.parseInt(jsonObject.getString("reposts"));
-                nitterInfo.quotes = Integer.parseInt(jsonObject.getString("quotes"));
-                nitterInfo.likes = Integer.parseInt(jsonObject.getString("likes"));
+                nitterInfo.replyCount = jsonObject.getString("replyCount");
+                nitterInfo.reposts = jsonObject.getString("reposts");
+                nitterInfo.quotes = jsonObject.getString("quotes");
+                nitterInfo.likes = jsonObject.getString("likes");
 
                 callback.onSuccess(nitterInfo);
             } catch (Exception e) {
