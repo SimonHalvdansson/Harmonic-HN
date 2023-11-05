@@ -48,7 +48,11 @@ public class BaseActivity extends AppCompatActivity {
             // Block other touch events in the specified area
             return true;
         }
-        return super.dispatchTouchEvent(ev);
+        try {
+            return super.dispatchTouchEvent(ev);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
 

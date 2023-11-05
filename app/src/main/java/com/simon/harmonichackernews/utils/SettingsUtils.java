@@ -207,7 +207,7 @@ public class SettingsUtils {
 
     public static String getPreferredFaviconProvider(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getString("pref_favicon_provider", "Faviconkit");
+        return prefs.getString("pref_favicon_provider", "Google");
     }
 
     public static int getBookmarksIndex(Resources res) {

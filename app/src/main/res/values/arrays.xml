@@ -108,9 +108,9 @@
     </string-array>
 
     <string-array name="favicon_providers">
-        <item>Faviconkit</item>
         <item>Google</item>
         <item>DuckDuckGo</item>
+        <item>Favicon kit</item>
     </string-array>
 
 </resources>
