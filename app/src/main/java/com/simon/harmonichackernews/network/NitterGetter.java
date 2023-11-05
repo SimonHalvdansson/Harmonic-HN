@@ -41,7 +41,8 @@ public class NitterGetter {
                 "var imgElement = document.querySelector('.main-tweet .attachment.image img');" +
                 "var beforeImgElement = document.querySelector('.before-tweet .attachment.image img');" +
                 "var imgSrc = imgElement ? (window.location.origin + imgElement.getAttribute('src')) : null;" +
-                "var beforeImgSrc = imgElement ? (window.location.origin + beforeImgElement.getAttribute('src')) : null;" +
+                "var beforeImgSrc = beforeImgElement ? (window.location.origin + beforeImgElement.getAttribute('src')) : null;" +  // Fixed this line
+                "var beforeTweet = document.querySelector('.before-tweet');" +
                 "return JSON.stringify({" +
                 "   text: document.querySelector('.main-tweet .tweet-content').innerHTML," +
                 "   userName: document.querySelector('.main-tweet .fullname').textContent," +
@@ -50,13 +51,13 @@ public class NitterGetter {
                 "   replyCount: document.querySelector('.main-tweet .icon-comment').parentNode.textContent.trim()," +
                 "   reposts: document.querySelector('.main-tweet .icon-retweet').parentNode.textContent.trim()," +
                 "   quotes: document.querySelector('.main-tweet .icon-quote').parentNode.textContent.trim()," +
-                "   likes: document.querySelector('.main-tweet .icon-heart').parentNode.textContent.trim()," + //before things here
-                "   beforeName: document.querySelector('.before-tweet .fullname').textContent," +
-                "   beforeTag: document.querySelector('.before-tweet .username').textContent," +
-                "   beforeText: document.querySelector('.before-tweet .tweet-content').innerHTML," +
-                "   beforeDate: document.querySelector('.before-tweet .tweet-date').textContent," +
+                "   likes: document.querySelector('.main-tweet .icon-heart').parentNode.textContent.trim()," +
+                "   beforeName: beforeTweet ? beforeTweet.querySelector('.fullname').textContent : null," +
+                "   beforeTag: beforeTweet ? beforeTweet.querySelector('.username').textContent : null," +
+                "   beforeText: beforeTweet ? beforeTweet.querySelector('.tweet-content').innerHTML : null," +
+                "   beforeDate: beforeTweet ? beforeTweet.querySelector('.tweet-date').textContent : null," +
                 "   beforeImgSrc: beforeImgSrc," +
-                "   imgSrc: imgSrc" + // The image src URL if it exists.
+                "   imgSrc: imgSrc" +
                 "});" +
                 "}) ();", resp -> {
             try {

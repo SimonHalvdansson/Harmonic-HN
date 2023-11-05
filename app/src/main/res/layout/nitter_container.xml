@@ -11,7 +11,6 @@
         android:textColor="?attr/storyColorNormal"
         android:textSize="15sp"
         tools:text="This is a tweet"
-        android:paddingBottom="4dp"
         android:textIsSelectable="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -26,7 +25,7 @@
         android:adjustViewBounds="true"
         android:scaleType="fitCenter"
         android:contentDescription="Tweet image"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="10dp"
         android:layout_marginBottom="8dp" />
 
     <LinearLayout
