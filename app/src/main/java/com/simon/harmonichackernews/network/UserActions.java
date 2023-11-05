@@ -11,6 +11,7 @@ import androidx.fragment.app.FragmentManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.utils.AccountUtils;
+import com.simon.harmonichackernews.utils.EncryptedSharedPreferencesHelper;
 import com.simon.harmonichackernews.utils.Utils;
 
 import org.jetbrains.annotations.NotNull;
@@ -192,7 +193,8 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
                             }
 
                             if (responseBody.contains("Bad login.")) {
-                                cb.onFailure("Bad login", responseBody);
+                                AccountUtils.deleteAccountDetails(ctx);
+                                cb.onFailure("Bad login", "Hacker News API returned a 'Bad login' error. This could be that your account details were mistyped but could also be that your saved account details were corrupted. Either way, you have been logged out. If logging in again does not solve this issue, you can try the nuclear option of clearing all data for Harmonic.");
                                 return;
                             }
 

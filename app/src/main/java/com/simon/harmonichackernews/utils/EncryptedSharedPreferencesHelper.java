@@ -58,7 +58,7 @@ public class EncryptedSharedPreferencesHelper {
 
     // Workaround [https://github.com/google/tink/issues/535#issuecomment-912170221]
     // Issue Tracker - https://issuetracker.google.com/issues/176215143?pli=1
-    private static void deleteSharedPreferences(Context ctx) {
+    public static boolean deleteSharedPreferences(Context ctx) {
         try {
             File sharedPrefsFile = new File(ctx.getFilesDir().getParent() + "/shared_prefs/" + HARMONIC_ENCRYPTED_PREFS + ".xml");
 
@@ -77,9 +77,10 @@ public class EncryptedSharedPreferencesHelper {
             KeyStore keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER);
             keyStore.load(null);
             keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS);
-
+            return true;
         } catch (Exception e) {
             Utils.log("EncryptedSharedPref: Error occurred while trying to reset shared pref=" + e);
+            return false;
         }
     }
 

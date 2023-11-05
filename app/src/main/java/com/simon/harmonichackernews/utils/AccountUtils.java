@@ -77,6 +77,10 @@ public class AccountUtils {
 
     public static void deleteAccountDetails(Context ctx) {
         setAccountDetails(ctx, null, null);
+        boolean deleted = EncryptedSharedPreferencesHelper.deleteSharedPreferences(ctx);
+        if (!deleted) {
+            Utils.toast("Failed to delete EncryptedSharedPreferences", ctx);
+        }
     }
 
     public static void setAccountDetails(Context ctx, String username, String password) {
@@ -105,8 +109,6 @@ public class AccountUtils {
                 AccountUtils.showLoginPrompt(fm);
             }
 
-            //we had a failure
-            AccountUtils.showLoginPrompt(fm);
             switch (account.getThird()) {
                 case AccountUtils.FAILURE_MODE_MAINKEY:
                     Utils.toast("Login failed, cause: Couldn't get AndroidX MasterKey", ctx);
