@@ -16,6 +16,18 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:fontFamily="@font/product_sans" />
+    <ImageView
+        android:background="@drawable/rounded_corners"
+        android:visibility="gone"
+        android:clipToOutline="true"
+        android:id="@+id/comments_header_nitter_image"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:contentDescription="Tweet image"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp" />
 
     <LinearLayout
         android:orientation="horizontal"
@@ -24,14 +36,14 @@
 
         <ImageView
             android:src="@drawable/ic_action_date"
-            android:layout_width="15dp"
+            android:layout_width="14dp"
             android:layout_height="16dp"/>
 
         <TextView
             android:id="@+id/comments_header_nitter_date"
             android:fontFamily="@font/product_sans"
             android:paddingLeft="2dp"
-            android:paddingRight="4dp"
+            android:paddingRight="5dp"
             android:text="Nov 3"
             android:textSize="13sp"
             android:layout_width="wrap_content"
@@ -46,7 +58,7 @@
             android:id="@+id/comments_header_nitter_reply_count"
             android:fontFamily="@font/product_sans"
             android:paddingLeft="1dp"
-            android:paddingRight="4dp"
+            android:paddingRight="5dp"
             android:text="12"
             android:textSize="13sp"
             android:layout_width="wrap_content"
@@ -61,7 +73,7 @@
             android:id="@+id/comments_header_nitter_reposts"
             android:fontFamily="@font/product_sans"
             android:paddingLeft="1dp"
-            android:paddingRight="3dp"
+            android:paddingRight="4dp"
             android:text="3,709"
             android:textSize="13sp"
             android:layout_width="wrap_content"
@@ -76,7 +88,7 @@
             android:id="@+id/comments_header_nitter_quotes"
             android:fontFamily="@font/product_sans"
             android:paddingLeft="0dp"
-            android:paddingRight="4dp"
+            android:paddingRight="7dp"
             android:text="118"
             android:textSize="13sp"
             android:layout_width="wrap_content"
@@ -84,7 +96,7 @@
 
         <ImageView
             android:src="@drawable/ic_action_thumbs_up"
-            android:layout_width="14dp"
+            android:layout_width="12dp"
             android:layout_height="16dp"/>
 
         <TextView

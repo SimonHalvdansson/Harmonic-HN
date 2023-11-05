@@ -38,15 +38,25 @@ public class NitterGetter {
         NitterInfo nitterInfo = new NitterInfo();
 
         webView.evaluateJavascript("(function() { " +
+                "var imgElement = document.querySelector('.main-tweet .attachment.image img');" +
+                "var beforeImgElement = document.querySelector('.before-tweet .attachment.image img');" +
+                "var imgSrc = imgElement ? (window.location.origin + imgElement.getAttribute('src')) : null;" +
+                "var beforeImgSrc = imgElement ? (window.location.origin + beforeImgElement.getAttribute('src')) : null;" +
                 "return JSON.stringify({" +
-                "   text: document.querySelector('.tweet-content').innerHTML," +
-                "   userName: document.querySelector('.fullname').textContent," +
-                "   userTag: document.querySelector('.username').textContent," +
-                "   date: document.querySelector('.tweet-date').textContent," +
-                "   replyCount: document.querySelector('.icon-comment').parentNode.textContent.trim()," +
-                "   reposts: document.querySelector('.icon-retweet').parentNode.textContent.trim()," +
-                "   quotes: document.querySelector('.icon-quote').parentNode.textContent.trim()," +
-                "   likes: document.querySelector('.icon-heart').parentNode.textContent.trim()" +
+                "   text: document.querySelector('.main-tweet .tweet-content').innerHTML," +
+                "   userName: document.querySelector('.main-tweet .fullname').textContent," +
+                "   userTag: document.querySelector('.main-tweet .username').textContent," +
+                "   date: document.querySelector('.main-tweet .tweet-date').textContent," +
+                "   replyCount: document.querySelector('.main-tweet .icon-comment').parentNode.textContent.trim()," +
+                "   reposts: document.querySelector('.main-tweet .icon-retweet').parentNode.textContent.trim()," +
+                "   quotes: document.querySelector('.main-tweet .icon-quote').parentNode.textContent.trim()," +
+                "   likes: document.querySelector('.main-tweet .icon-heart').parentNode.textContent.trim()," + //before things here
+                "   beforeName: document.querySelector('.before-tweet .fullname').textContent," +
+                "   beforeTag: document.querySelector('.before-tweet .username').textContent," +
+                "   beforeText: document.querySelector('.before-tweet .tweet-content').innerHTML," +
+                "   beforeDate: document.querySelector('.before-tweet .tweet-date').textContent," +
+                "   beforeImgSrc: beforeImgSrc," +
+                "   imgSrc: imgSrc" + // The image src URL if it exists.
                 "});" +
                 "}) ();", resp -> {
             try {
@@ -62,6 +72,13 @@ public class NitterGetter {
                 nitterInfo.reposts = jsonObject.getString("reposts");
                 nitterInfo.quotes = jsonObject.getString("quotes");
                 nitterInfo.likes = jsonObject.getString("likes");
+                nitterInfo.imgSrc = jsonObject.optString("imgSrc");
+
+                nitterInfo.beforeUserName = jsonObject.optString("beforeName");
+                nitterInfo.beforeUserTag = jsonObject.optString("beforeTag");
+                nitterInfo.beforeText = jsonObject.optString("beforeText");
+                nitterInfo.beforeDate = jsonObject.optString("beforeDate");
+                nitterInfo.beforeImgSrc = jsonObject.optString("beforeImgSrc");
 
                 callback.onSuccess(nitterInfo);
             } catch (Exception e) {

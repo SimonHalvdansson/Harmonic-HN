@@ -50,12 +50,14 @@ import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.Utils;
+import com.squareup.picasso.Picasso;
 
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.util.List;
+import java.util.Objects;
 
 public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -261,6 +263,18 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.nitterReposts.setText(String.valueOf(story.nitterInfo.reposts));
                 headerViewHolder.nitterQuotes.setText(String.valueOf(story.nitterInfo.quotes));
                 headerViewHolder.nitterLikes.setText(String.valueOf(story.nitterInfo.likes));
+
+                if (story.nitterInfo.imgSrc != null) {
+                    headerViewHolder.nitterImage.setVisibility(VISIBLE);
+                    try {
+                        Picasso.get()
+                                .load(story.nitterInfo.imgSrc)
+                                .into(headerViewHolder.nitterImage);
+                    } catch (Exception e){
+                        e.printStackTrace();
+                    };
+                }
+
             }
 
             if (story.pollOptionArrayList != null) {
@@ -594,6 +608,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView nitterReposts;
         public final TextView nitterQuotes;
         public final TextView nitterLikes;
+        public final ImageView nitterImage;
 
         public final ImageView favicon;
         public final RelativeLayout sheetRefreshButton;
@@ -676,6 +691,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             nitterReposts = view.findViewById(R.id.comments_header_nitter_reposts);
             nitterQuotes = view.findViewById(R.id.comments_header_nitter_quotes);
             nitterLikes = view.findViewById(R.id.comments_header_nitter_likes);
+            nitterImage = view.findViewById(R.id.comments_header_nitter_image);
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 

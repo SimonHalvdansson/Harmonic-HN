@@ -15,6 +15,7 @@ import com.simon.harmonichackernews.LoginDialogFragment;
 
 import org.w3c.dom.Text;
 
+import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
@@ -24,9 +25,6 @@ public class AccountUtils {
 
     private final static String KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME = "com.simon.harmonichackernews.KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME";
     private final static String KEY_ENCRYPTED_SHARED_PREFERENCES_PASSWORD = "com.simon.harmonichackernews.KEY_ENCRYPTED_SHARED_PREFERENCES_PASSWORD";
-    private final static String HARMONIC_ENCRYPTED_PREFS = "HARMONIC_ENCRYPTED_PREFS";
-    private static final String MASTER_KEY_ALIAS = "_androidx_security_master_key_harmonic_";
-
     public final static int FAILURE_MODE_NONE = -1;
     public final static int FAILURE_MODE_MAINKEY = 0;
     public final static int FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION = 1;
@@ -49,24 +47,10 @@ public class AccountUtils {
     }
 
     public static Triple<String, String, Integer> getAccountDetails(Context ctx) {
-        MasterKey mainKey = getMasterKey(ctx);
-
-        if (mainKey == null) {
-            Utils.log("mainKey was null");
-            return new Triple<>(null, null, FAILURE_MODE_MAINKEY);
-        }
-
         SharedPreferences sharedPreferences;
         try {
-            sharedPreferences = EncryptedSharedPreferences.create(
-                    ctx,
-                    HARMONIC_ENCRYPTED_PREFS,
-                    mainKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            );
-        } catch (GeneralSecurityException | IOException e) {
-            Utils.log("Exception when creating shared pref");
+            sharedPreferences = EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(ctx);
+        } catch (Exception e) {
             e.printStackTrace();
             return new Triple<>(null, null, FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION);
         }
@@ -96,22 +80,10 @@ public class AccountUtils {
     }
 
     public static void setAccountDetails(Context ctx, String username, String password) {
-        MasterKey mainKey = getMasterKey(ctx);
-
-        if (mainKey == null) {
-            return;
-        }
-
         SharedPreferences sharedPreferences;
         try {
-            sharedPreferences = EncryptedSharedPreferences.create(
-                    ctx,
-                    HARMONIC_ENCRYPTED_PREFS,
-                    mainKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            );
-        } catch (GeneralSecurityException | IOException e) {
+            sharedPreferences = EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(ctx);
+        } catch (Exception e) {
             e.printStackTrace();
             return;
         }
@@ -121,25 +93,6 @@ public class AccountUtils {
         sharedPrefsEditor.apply();
 
         setAccountUsername(ctx, username);
-    }
-
-    private static MasterKey getMasterKey(Context ctx) {
-        try {
-            KeyGenParameterSpec spec = new KeyGenParameterSpec.Builder(
-                    MASTER_KEY_ALIAS,
-                    KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
-                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .setKeySize(256)
-                    .build();
-
-            return new MasterKey.Builder(ctx, MASTER_KEY_ALIAS)
-                    .setKeyGenParameterSpec(spec)
-                    .build();
-        } catch (Exception e) {
-            Log.e(ctx.getClass().getSimpleName(), "Error on getting master key", e);
-        }
-        return null;
     }
 
     public static void showLoginPrompt(FragmentManager fm) {
