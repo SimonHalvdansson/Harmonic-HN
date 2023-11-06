@@ -764,7 +764,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             nitterText.setOnClickATagListener(new OnClickATagListener() {
                 @Override
                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                    Utils.launchCustomTab(widget.getContext(), href);
+                    if (TextUtils.isEmpty(href)) {
+                        return false;
+                    }
+                    if (spannedText.startsWith("#") && href.startsWith("/search?q=")) {
+                        Utils.launchCustomTab(widget.getContext(), "https://www.x.com/" + href);
+                    } else if (spannedText.startsWith("@") && href.startsWith("/")) {
+                        Utils.launchCustomTab(widget.getContext(), "https://www.x.com/" + href);
+                    } else {
+                        Utils.launchCustomTab(widget.getContext(), href);
+                    }
                     return false;
                 }
             });

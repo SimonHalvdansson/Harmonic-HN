@@ -209,13 +209,13 @@ public class ComposeActivity extends AppCompatActivity {
                 //This thing should only be enabled when we want to show the dialog, otherwise
                 //we just do the default back behavior (which is predictive back)
                 AlertDialog dialog = new MaterialAlertDialogBuilder(editText.getContext())
-                        .setTitle(type == TYPE_POST ? "Discard post?" : "Discard comment?")
-                        .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        .setMessage(type == TYPE_POST ? "Discard post?" : "Discard comment?")
+                        .setNegativeButton("Discard", new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int whichButton) {
                                 dialog.cancel();
                                 finish();
                             }})
-                        .setNegativeButton("No", null).create();
+                        .setPositiveButton("Cancel", null).create();
 
                 dialog.show();
             }

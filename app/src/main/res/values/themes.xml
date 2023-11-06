@@ -20,6 +20,7 @@
         <item name="opCommentColor">@color/darkOpCommentColor</item>
         <item name="selfCommentColor">@color/darkSelfCommentColor</item>
         <item name="commentCountIndicatorColor">@color/material_you_600</item>
+        <item name="secondaryTextColor">@color/material_you_secondary_700</item>
 
         <item name="android:windowBackground">@color/material_you_neutral_900</item>
         <item name="colorControlHighlight">#40ffffff</item>
@@ -27,6 +28,7 @@
         <item name="colorPrimary">@color/material_you_third_400</item>
         <item name="colorPrimaryContainer">@color/material_you_third_700</item>
         <item name="colorOnPrimary">@color/material_you_neutral_100</item>
+        <item name="colorSurfaceContainerHigh">@color/material_dynamic_neutral_variant20</item>
 
         <item name="popupMenuBackground">@drawable/popup_dark_background_material</item>
         <item name="snackbarTextViewStyle">@style/snackbarTextStyle</item>
@@ -35,7 +37,7 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialDark</item>
-        <item name="alertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialDark</item>
+        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="dialogCornerRadius">28dp</item>
         <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>
@@ -52,6 +54,7 @@
         <item name="opCommentColor">@color/darkOpCommentColor</item>
         <item name="selfCommentColor">@color/darkSelfCommentColor</item>
         <item name="commentCountIndicatorColor">@color/colorPrimaryDark</item>
+        <item name="secondaryTextColor">@color/material_you_secondary_700</item>
 
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
@@ -106,6 +109,7 @@
         <item name="opCommentColor">@color/lightOpCommentColor</item>
         <item name="selfCommentColor">@color/lightSelfCommentColor</item>
         <item name="commentCountIndicatorColor">@color/colorPrimaryDark</item>
+        <item name="secondaryTextColor">@color/material_you_secondary_400</item>
 
         <item name="colorPrimary">@color/colorPrimaryGreen</item>
         <item name="colorPrimaryDark">@color/colorPrimaryGreen</item>
@@ -139,9 +143,11 @@
         <item name="selfCommentColor">@color/lightSelfCommentColor</item>
         <item name="commentCountIndicatorColor">@color/material_you_600</item>
         <item name="popupMenuBackground">@drawable/popup_background_material</item>
+        <item name="secondaryTextColor">@color/material_you_secondary_400</item>
 
         <item name="colorPrimary">@color/material_you_third_400</item>
         <item name="colorPrimaryContainer">@color/material_you_third_700</item>
+        <item name="colorSurfaceContainerHigh">@color/material_dynamic_neutral_variant95</item>
 
         <item name="android:windowBackground">@color/material_you_neutral_50</item>
 
@@ -153,7 +159,7 @@
         <item name="android:windowLightStatusBar">true</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialLight</item>
-        <item name="alertDialogTheme">@style/ThemeOverlay.Material3.MaterialAlertDialog</item>
+        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="dialogCornerRadius">28dp</item>
         <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>

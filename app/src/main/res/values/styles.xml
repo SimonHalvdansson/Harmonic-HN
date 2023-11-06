@@ -46,4 +46,8 @@
         <item name="widgetLayout">@layout/view_preference_switch</item>
     </style>
 
+    <style name="AlertDialogMaterialStyle" parent="@style/ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="android:colorBackground">?attr/colorSurfaceContainerHigh</item>
+    </style>
+
 </resources>

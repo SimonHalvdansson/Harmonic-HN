@@ -1548,7 +1548,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         };
 
-        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(ctx);
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(ctx);
         builder.setAdapter(adapter, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
