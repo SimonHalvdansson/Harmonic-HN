@@ -618,6 +618,7 @@ public class StoriesFragment extends Fragment {
 
                         if (adapter.loadingFailed) {
                             adapter.loadingFailed = false;
+                            adapter.loadingFailedServerError = false;
                             adapter.notifyItemChanged(0);
                         }
 
@@ -701,6 +702,7 @@ public class StoriesFragment extends Fragment {
                         }
 
                         adapter.loadingFailed = false;
+                        adapter.loadingFailedServerError = false;
 
                         adapter.notifyItemRangeInserted(1, stories.size());
                         adapter.notifyItemChanged(0);
@@ -710,6 +712,10 @@ public class StoriesFragment extends Fragment {
                     }
 
                 }, error -> {
+            if (error.networkResponse.statusCode == 404) {
+                adapter.loadingFailedServerError = true;
+            }
+
             error.printStackTrace();
             swipeRefreshLayout.setRefreshing(false);
             adapter.loadingFailed = true;

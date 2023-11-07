@@ -75,6 +75,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final int TYPE_COMMENT = 3;
 
     public boolean loadingFailed = false;
+    public boolean loadingFailedServerError = false;
+
     public boolean showPoints;
     public boolean compactView;
     public boolean thumbnails;
@@ -276,6 +278,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             TooltipCompat.setTooltipText(headerViewHolder.moreButton, "More");
 
             headerViewHolder.loadingFailedLayout.setVisibility(loadingFailed ? View.VISIBLE : View.GONE);
+            headerViewHolder.loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
         } else if (holder instanceof SubmissionsHeaderViewHolder) {
             final SubmissionsHeaderViewHolder submissionsHeaderViewHolder = (SubmissionsHeaderViewHolder) holder;
 
@@ -375,6 +378,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public boolean justSelected = false;
         public final LinearLayout container;
         public final LinearLayout loadingFailedLayout;
+        public final TextView loadingFailedAlgoliaLayout;
         public final LinearLayout noBookmarksLayout;
         public final LinearLayout spinnerContainer;
         public final LinearLayout searchEmptyContainer;
@@ -391,6 +395,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             final Context ctx = view.getContext();
 
             loadingFailedLayout = view.findViewById(R.id.stories_header_loading_failed);
+            loadingFailedAlgoliaLayout = view.findViewById(R.id.stories_header_loading_failed_algolia);
             container = view.findViewById(R.id.stories_header_container);
             typeSpinner = view.findViewById(R.id.stories_header_spinner);
             noBookmarksLayout = view.findViewById(R.id.stories_header_no_bookmarks);
@@ -400,9 +405,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             searchButton = view.findViewById(R.id.stories_header_search_button);
             searchEmptyContainer = view.findViewById(R.id.stories_header_search_empty_container);
             retryButton = view.findViewById(R.id.stories_header_retry_button);
-
-            ArrayAdapter<String> searchPopRecAdapter = new ArrayAdapter<>(ctx, R.layout.search_option_list_item, ctx.getResources().getStringArray(R.array.search_sorting_options));
-            ArrayAdapter<String> searchTimescaleAdapter = new ArrayAdapter<>(ctx, R.layout.search_option_list_item, ctx.getResources().getStringArray(R.array.search_sorting_timescale));
 
             retryButton.setOnClickListener( (v) -> refreshListener.onRefresh());
 

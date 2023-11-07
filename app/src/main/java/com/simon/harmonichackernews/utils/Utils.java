@@ -344,7 +344,7 @@ public class Utils {
         } else if (diff < 24 * HOUR_MILLIS) {
             result = diff / HOUR_MILLIS + " hrs";
         } else if (diff < 48 * HOUR_MILLIS) {
-            result = explicit ? "yesterday" : "1 day";
+            return explicit ? "yesterday" : "1 day ago";
         } else if (diff < 365 * DAY_MILLIS) {
             result = diff / DAY_MILLIS + " days";
         } else if (diff < 2 * YEAR_MILLIS) {

@@ -165,6 +165,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                         submissions.addAll(JSONParser.algoliaJsonToStories(response));
 
                         adapter.loadingFailed = false;
+                        adapter.loadingFailedServerError = false;
 
                         adapter.notifyItemRangeInserted(1, submissions.size());
                         adapter.notifyItemChanged(0);
@@ -174,6 +175,10 @@ public class SubmissionsActivity extends AppCompatActivity {
                     }
 
                 }, error -> {
+            if (error.networkResponse.statusCode == 404) {
+                adapter.loadingFailedServerError = true;
+            }
+
             error.printStackTrace();
             swipeRefreshLayout.setRefreshing(false);
             adapter.loadingFailed = true;

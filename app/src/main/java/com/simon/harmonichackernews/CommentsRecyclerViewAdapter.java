@@ -347,7 +347,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     headerViewHolder.metaTime,
                     headerViewHolder.metaBy);
 
-            FontUtils.setTypeface(headerViewHolder.titleView, true, 26, 26, 23, 26, 24, 26);
+            FontUtils.setTypeface(headerViewHolder.titleView, true, 27, 26, 23, 26, 24, 26);
             FontUtils.setTypeface(headerViewHolder.textView, false, preferredTextSize);
 
             if (loadingFailed) {

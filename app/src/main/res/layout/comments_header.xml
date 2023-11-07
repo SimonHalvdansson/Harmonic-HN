@@ -191,7 +191,7 @@
                 android:fontFamily="@font/product_sans"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="26sp"
+                android:textSize="27sp"
                 android:textStyle="bold"
                 android:textColor="?attr/storyColorNormal"
                 tools:text="Court dismisses Genius lawsuit over lyrics-scraping by Google" />
@@ -834,7 +834,9 @@
             android:layout_height="wrap_content"
             style="@style/Widget.Material3.Button.ElevatedButton"
             app:icon="@drawable/ic_action_refresh"
-            android:textColor="?attr/storyColorNormal"
+            app:backgroundTint="?attr/colorPrimaryDark"
+            app:iconTint="#fff"
+            android:textColor="#fff"
             android:text="Retry"    />
 
     </LinearLayout>
