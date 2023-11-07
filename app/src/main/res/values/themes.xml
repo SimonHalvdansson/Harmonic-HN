@@ -23,6 +23,7 @@
         <item name="secondaryTextColor">@color/material_you_secondary_700</item>
 
         <item name="android:windowBackground">@color/material_you_neutral_900</item>
+        <item name="android:colorBackground">@color/material_you_neutral_900</item>
         <item name="colorControlHighlight">#40ffffff</item>
 
         <item name="colorPrimary">@color/material_you_third_400</item>
@@ -63,6 +64,7 @@
         <item name="colorOnPrimary">@color/lightBackground</item>
 
         <item name="android:windowBackground">@color/background</item>
+        <item name="android:colorBackground">@color/background</item>
         <item name="colorControlHighlight">#40ffffff</item>
 
         <item name="popupMenuBackground">@drawable/popup_dark_background</item>
@@ -79,9 +81,17 @@
 
     <style name="AppThemeAmoledDark" parent="AppTheme">
         <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:colorBackground">@android:color/black</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:statusBarColor">@android:color/black</item>
         <item name="dropdownColor">@android:color/black</item>
+        <item name="colorSurfaceContainerHigh">@android:color/black</item>
+
+
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogAmoledDark</item>
         <item name="alertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogAmoledDark</item>
@@ -90,6 +100,7 @@
 
     <style name="AppThemeGray" parent="AppTheme">
         <item name="android:windowBackground">@color/grayBackground</item>
+        <item name="android:colorBackground">@color/grayBackground</item>
         <item name="android:statusBarColor">@color/grayStatusBarColor</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogGray</item>
@@ -117,6 +128,7 @@
         <item name="colorPrimaryContainer">@color/colorPrimaryGreenLighter</item>
 
         <item name="android:windowBackground">@color/lightBackground</item>
+        <item name="android:colorBackground">@color/lightBackground</item>
         <item name="colorControlHighlight">#20000000</item>
         <item name="snackbarTextViewStyle">@style/snackbarTextStyleLight</item>
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
@@ -150,6 +162,7 @@
         <item name="colorSurfaceContainerHigh">@color/material_dynamic_neutral_variant95</item>
 
         <item name="android:windowBackground">@color/material_you_neutral_50</item>
+        <item name="android:colorBackground">@color/material_you_neutral_50</item>
 
         <item name="colorControlHighlight">#20000000</item>
         <item name="snackbarTextViewStyle">@style/snackbarTextStyleLight</item>
@@ -166,6 +179,7 @@
 
     <style name="AppThemeWhite" parent="@style/AppThemeLight">
         <item name="android:windowBackground">@color/whiteBackground</item>
+        <item name="android:colorBackground">@color/whiteBackground</item>
         <item name="android:statusBarColor">@color/whiteStatusBarColor</item>
 
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogWhite</item>

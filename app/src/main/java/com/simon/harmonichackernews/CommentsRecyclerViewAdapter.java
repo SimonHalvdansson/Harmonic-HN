@@ -49,6 +49,7 @@ import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.FontUtils;
+import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.squareup.picasso.Picasso;
 
@@ -85,7 +86,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public String username;
     public int preferredTextSize;
     private final boolean isTablet;
-    public boolean darkThemeActive;
+    public String theme;
     public String font;
     public boolean showUpdate = false;
     public int spacerHeight = 0;
@@ -105,11 +106,23 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public final static int FLAG_ACTION_CLICK_BROWSER = -4;
     public final static int FLAG_ACTION_CLICK_INVERT = -5;
 
+
+
     private static final int[] commentDepthColorsDark = new int[]{
             R.color.commentIndentIndicatorColor1,
             R.color.commentIndentIndicatorColor2,
             R.color.commentIndentIndicatorColor3,
             R.color.commentIndentIndicatorColor4,
+            R.color.commentIndentIndicatorColor5,
+            R.color.commentIndentIndicatorColor6,
+            R.color.commentIndentIndicatorColor7
+    };
+
+    private static final int[] commentDepthColorsMaterial = new int[]{
+            com.google.android.material.R.color.material_dynamic_primary60,
+            com.google.android.material.R.color.material_dynamic_secondary60,
+            com.google.android.material.R.color.material_dynamic_tertiary50,
+            com.google.android.material.R.color.material_dynamic_neutral_variant50,
             R.color.commentIndentIndicatorColor5,
             R.color.commentIndentIndicatorColor6,
             R.color.commentIndentIndicatorColor7
@@ -125,6 +138,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             R.color.commentIndentIndicatorColor7light
     };
 
+
     public CommentsRecyclerViewAdapter(boolean useIntegratedWebview,
                                        LinearLayout sheet,
                                        FragmentManager fm,
@@ -139,7 +153,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        String prefFont,
                                        boolean shouldShowInvert,
                                        boolean shouldShowTopLevelDepthIndicator,
-                                       boolean darkTheme,
+                                       String theme,
                                        boolean tablet,
                                        String favProvider) {
         integratedWebview = useIntegratedWebview;
@@ -156,7 +170,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         font = prefFont;
         showInvert = shouldShowInvert;
         showTopLevelDepthIndicator = shouldShowTopLevelDepthIndicator;
-        darkThemeActive = darkTheme;
+        theme = theme;
         isTablet = tablet;
         faviconProvider = favProvider;
     }
@@ -431,7 +445,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 if (monochromeCommentDepthIndicators) {
                     itemViewHolder.commentIndentIndicator.setBackgroundResource(R.color.commentIndentIndicatorColorMonochrome);
                 } else {
-                    itemViewHolder.commentIndentIndicator.setBackgroundResource(darkThemeActive ? commentDepthColorsDark[index] : commentDepthColorsLight[index]);
+                    if (theme.startsWith("material")) {
+                        itemViewHolder.commentIndentIndicator.setBackgroundResource(commentDepthColorsMaterial[index]);
+                    } else {
+                        itemViewHolder.commentIndentIndicator.setBackgroundResource(ThemeUtils.isDarkMode(ctx, theme) ? commentDepthColorsDark[index] : commentDepthColorsLight[index]);
+                    }
                 }
             }
 

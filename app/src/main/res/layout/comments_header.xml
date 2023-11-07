@@ -794,6 +794,19 @@
                 android:paddingBottom="6dp"
                 android:paddingRight="24dp"
                 android:paddingLeft="24dp"
+                android:paddingTop="6dp"
+                android:fontFamily="@font/product_sans"
+                android:textSize="17sp"
+                android:textColor="?attr/storyColorNormal"
+                android:text="API Server error: This is most likely due to the Algolia Hacker News API which Harmonic uses being down. Historically, outages for the Algolia API are limited to a few hours but they can last longer."
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"    />
+
+            <TextView
+                android:visibility="gone"
+                android:paddingBottom="6dp"
+                android:paddingRight="24dp"
+                android:paddingLeft="24dp"
                 android:fontFamily="@font/product_sans"
                 android:textSize="17sp"
                 android:textColor="?attr/storyColorNormal"
@@ -802,6 +815,7 @@
                 android:layout_height="wrap_content"    />
 
             <Button
+                android:visibility="gone"
                 android:id="@+id/comments_header_server_error_switch_api"
                 android:layout_gravity="center_horizontal"
                 android:layout_width="wrap_content"

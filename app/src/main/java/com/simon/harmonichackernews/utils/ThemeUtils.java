@@ -116,12 +116,16 @@ public class ThemeUtils {
         }
     }
 
-    public static boolean isDarkMode(Context ctx) {
-        String theme = getPreferredTheme(ctx);
+    public static boolean isDarkMode(Context ctx, String theme) {
         if (theme.equals("material_daynight")) {
             return uiModeNight(ctx);
         }
         return theme.equals("amoled") || theme.equals("dark") || theme.equals("gray") || theme.equals("material_dark");
+    }
+    
+    public static boolean isDarkMode(Context ctx) {
+        String theme = getPreferredTheme(ctx);
+        return isDarkMode(ctx, theme);
     }
 
     public static boolean uiModeNight(Context ctx) {

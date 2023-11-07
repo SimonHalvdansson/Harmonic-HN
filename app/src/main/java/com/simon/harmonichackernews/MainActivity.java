@@ -138,6 +138,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                         "- Added GitHub repo info<br>" +
                         "- Added Wikipedia summary<br>" +
                         "- Updated arXiv info box<br>" +
+                        "- Added Algolia API error information<br>" +
                         "- Experimental fix for EncryptedSharedPreferences crash<br>" +
                         "- Added optional Twitter/X to Nitter redirect<br>" +
                         "- Expanded font selection to affect more components<br>" +
@@ -149,6 +150,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                         "- Fixed issue with transparent status bar<br>" +
                         "- Added experimental ability to post stories<br>" +
                         "- Fixed several Android 14 predictive back issue<br>" +
+                        "- Added Material You comment depth indicators<br>" +
                         "- Restored correct search settings (thanks Leslie Cheng)<br>" +
                         "- Prompt to update stale stories<br>" +
                         "- Changed default favicon provider to Google<br>" +

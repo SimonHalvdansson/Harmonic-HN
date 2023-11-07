@@ -466,7 +466,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 SettingsUtils.getPreferredFont(getContext()),
                 isFeatureSupported(WebViewFeature.FORCE_DARK) || WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING),
                 SettingsUtils.shouldShowTopLevelDepthIndicator(getContext()),
-                ThemeUtils.isDarkMode(getContext()),
+                ThemeUtils.getPreferredTheme(getContext()),
                 Utils.isTablet(getResources()),
                 SettingsUtils.getPreferredFaviconProvider(getContext()));
 
@@ -935,8 +935,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 updateComments = true;
             }
 
-            if (adapter.darkThemeActive != ThemeUtils.isDarkMode(ctx)) {
-                adapter.darkThemeActive = ThemeUtils.isDarkMode(ctx);
+            if (adapter.theme != ThemeUtils.getPreferredTheme(ctx)) {
+                adapter.theme = ThemeUtils.getPreferredTheme(ctx);
                 updateHeader = true;
                 updateComments = true;
 
@@ -1099,6 +1099,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 adapter.loadingFailedServerError = true;
             }
 
+            if (error.networkResponse.statusCode == 404) {
+                adapter.loadingFailedServerError = true;
+            }
+
             adapter.loadingFailed = true;
             adapter.notifyItemChanged(0);
             swipeRefreshLayout.setRefreshing(false);
@@ -1254,6 +1258,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
             adapter.loadingFailed = false;
+            adapter.loadingFailedServerError = false;
 
             //Seems like loading went well, lets cache the result
             if (cache) {
