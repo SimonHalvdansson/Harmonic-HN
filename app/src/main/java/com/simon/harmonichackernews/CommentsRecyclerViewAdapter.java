@@ -746,7 +746,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetInvertButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_INVERT, view));
 
             TooltipCompat.setTooltipText(sheetRefreshButton, "Refresh");
-            TooltipCompat.setTooltipText(sheetExpandButton, "Expand");
+            TooltipCompat.setTooltipText(sheetExpandButton, "Open comments");
             TooltipCompat.setTooltipText(sheetBrowserButton, "Open in browser");
             TooltipCompat.setTooltipText(sheetInvertButton, "Invert colors");
 
