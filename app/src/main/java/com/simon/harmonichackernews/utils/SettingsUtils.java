@@ -183,6 +183,22 @@ public class SettingsUtils {
         return getBooleanPref("pref_redirect_nitter", false, ctx);
     }
 
+    public static boolean shouldUseLinkPreviewArxiv(Context ctx) {
+        return getBooleanPref("pref_link_preview_arxiv", false, ctx);
+    }
+
+    public static boolean shouldUseLinkPreviewGithub(Context ctx) {
+        return getBooleanPref("pref_link_preview_github", false, ctx);
+    }
+
+    public static boolean shouldUseLinkPreviewX(Context ctx) {
+        return getBooleanPref("pref_link_preview_x", false, ctx);
+    }
+
+    public static boolean shouldUseLinkPreviewWikipedia(Context ctx) {
+        return getBooleanPref("pref_link_preview_wikipedia", false, ctx);
+    }
+
     public static boolean shouldUseAlgolia(Context ctx) {
         return getBooleanPref("pref_algolia_api", true, ctx);
     }

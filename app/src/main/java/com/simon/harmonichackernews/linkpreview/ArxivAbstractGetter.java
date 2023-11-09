@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews.network;
+package com.simon.harmonichackernews.linkpreview;
 
 import android.content.Context;
 import android.util.Xml;
@@ -8,6 +8,7 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.simon.harmonichackernews.data.ArxivInfo;
 import com.simon.harmonichackernews.data.RepoInfo;
+import com.simon.harmonichackernews.network.NetworkComponent;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;

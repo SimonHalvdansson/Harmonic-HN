@@ -90,13 +90,13 @@ import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.RepoInfo;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.data.WikipediaInfo;
-import com.simon.harmonichackernews.network.ArxivAbstractGetter;
-import com.simon.harmonichackernews.network.GitHubInfoGetter;
+import com.simon.harmonichackernews.linkpreview.ArxivAbstractGetter;
+import com.simon.harmonichackernews.linkpreview.GitHubInfoGetter;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
-import com.simon.harmonichackernews.network.NitterGetter;
+import com.simon.harmonichackernews.linkpreview.NitterGetter;
 import com.simon.harmonichackernews.network.UserActions;
-import com.simon.harmonichackernews.network.WikipediaGetter;
+import com.simon.harmonichackernews.linkpreview.WikipediaGetter;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.utils.CommentSorter;
@@ -116,7 +116,6 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -1112,12 +1111,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             loadPollOptions();
         }
 
-        if (ArxivAbstractGetter.isValidArxivUrl(story.url)) {
+        if (ArxivAbstractGetter.isValidArxivUrl(story.url) && SettingsUtils.shouldUseLinkPreviewArxiv(getContext())) {
             ArxivAbstractGetter.getAbstract(story.url, getContext(), new ArxivAbstractGetter.GetterCallback() {
                 @Override
                 public void onSuccess(ArxivInfo arxivInfo) {
                     story.arxivInfo = arxivInfo;
-                    adapter.notifyItemChanged(0);
+                    if (adapter != null) {
+                        adapter.notifyItemChanged(0);
+                    }
                 }
 
                 @Override
@@ -1125,12 +1126,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     //no-op
                 }
             });
-        } else if (GitHubInfoGetter.isValidGitHubUrl(story.url)) {
+        } else if (GitHubInfoGetter.isValidGitHubUrl(story.url) && SettingsUtils.shouldUseLinkPreviewGithub(getContext())) {
             GitHubInfoGetter.getInfo(story.url, getContext(), new GitHubInfoGetter.GetterCallback() {
                 @Override
                 public void onSuccess(RepoInfo repoInfo) {
                     story.repoInfo = repoInfo;
-                    adapter.notifyItemChanged(0);
+                    if (adapter != null) {
+                        adapter.notifyItemChanged(0);
+                    }
                 }
 
                 @Override
@@ -1138,12 +1141,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     //no op
                 }
             });
-        } else if (WikipediaGetter.isValidWikipediaUrl(story.url)) {
+        } else if (WikipediaGetter.isValidWikipediaUrl(story.url) && SettingsUtils.shouldUseLinkPreviewWikipedia(getContext())) {
             WikipediaGetter.getInfo(story.url, getContext(), new WikipediaGetter.GetterCallback() {
                 @Override
                 public void onSuccess(WikipediaInfo wikipediaInfo) {
                     story.wikiInfo = wikipediaInfo;
-                    adapter.notifyItemChanged(0);
+                    if (adapter != null) {
+                        adapter.notifyItemChanged(0);
+                    }
                 }
 
                 @Override
@@ -1627,12 +1632,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
 
-            if (NitterGetter.isValidNitterUrl(url)) {
+            if (NitterGetter.isValidNitterUrl(url) && SettingsUtils.shouldUseLinkPreviewX(getContext())) {
                 NitterGetter.getInfo(view, getContext(), new NitterGetter.GetterCallback() {
                     @Override
                     public void onSuccess(NitterInfo nitterInfo) {
                         story.nitterInfo = nitterInfo;
-                        adapter.notifyItemChanged(0);
+                        if (adapter != null) {
+                            adapter.notifyItemChanged(0);
+                        }
                     }
 
                     @Override

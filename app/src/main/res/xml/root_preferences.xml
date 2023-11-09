@@ -196,7 +196,7 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_redirect_nitter"
-            app:summary="Preloads Nitter posts to display info box"
+            app:summary="Preloads Nitter posts"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_redirect"
             app:title="Redirect Twitter/X to Nitter"    />
@@ -299,6 +299,38 @@
             app:defaultValue="false"
             app:icon="@drawable/ic_action_swipe_vertical"
             app:title="Scrollbar"    />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="Link previews"
+        android:layout="@layout/preference_category">
+
+        <SwitchPreferenceCompat
+            app:icon="@drawable/ic_link_preview_arxiv"
+            app:title="ArXiV"
+            app:defaultValue="true"
+            app:key="pref_link_preview_arxiv"/>
+
+        <SwitchPreferenceCompat
+            app:icon="@drawable/ic_link_preview_github"
+            app:title="GitHub"
+            app:defaultValue="true"
+            app:key="pref_link_preview_github"/>
+
+        <SwitchPreferenceCompat
+            app:icon="@drawable/ic_link_preview_x"
+            app:title="Twitter/X"
+            app:dependency="pref_redirect_nitter"
+            app:summary="Requires Nitter redirect to be active"
+            app:defaultValue="true"
+            app:key="pref_link_preview_x"/>
+
+        <SwitchPreferenceCompat
+            app:icon="@drawable/ic_link_preview_wikipedia"
+            app:title="Wikipedia"
+            app:defaultValue="true"
+            app:key="pref_link_preview_wikipedia"/>
 
     </PreferenceCategory>
 

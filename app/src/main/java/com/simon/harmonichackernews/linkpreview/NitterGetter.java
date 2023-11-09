@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews.network;
+package com.simon.harmonichackernews.linkpreview;
 
 import android.content.Context;
 import android.text.TextUtils;
@@ -80,6 +80,14 @@ public class NitterGetter {
                 nitterInfo.beforeText = jsonObject.optString("beforeText");
                 nitterInfo.beforeDate = jsonObject.optString("beforeDate");
                 nitterInfo.beforeImgSrc = jsonObject.optString("beforeImgSrc");
+
+                if (nitterInfo.imgSrc != null && nitterInfo.imgSrc.equals("null")) {
+                    nitterInfo.imgSrc = null;
+                }
+
+                if (nitterInfo.beforeImgSrc != null && nitterInfo.beforeImgSrc.equals("null")) {
+                    nitterInfo.beforeImgSrc = null;
+                }
 
                 callback.onSuccess(nitterInfo);
             } catch (Exception e) {

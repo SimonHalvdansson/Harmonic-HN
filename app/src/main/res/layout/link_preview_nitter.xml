@@ -3,7 +3,7 @@
     android:orientation="vertical"
     android:id="@+id/comments_header_nitter_container"
     android:layout_width="match_parent"
-    android:visibility="visible"
+    android:visibility="gone"
     android:layout_height="wrap_content">
 
     <org.sufficientlysecure.htmltextview.HtmlTextView
@@ -14,6 +14,7 @@
         android:textIsSelectable="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:paddingBottom="4dp"
         android:fontFamily="@font/product_sans" />
     <ImageView
         android:background="@drawable/rounded_corners"
@@ -25,7 +26,7 @@
         android:adjustViewBounds="true"
         android:scaleType="fitCenter"
         android:contentDescription="Tweet image"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="6dp"
         android:layout_marginBottom="8dp" />
 
     <LinearLayout
@@ -79,6 +80,7 @@
             android:layout_height="wrap_content"/>
 
         <ImageView
+            android:id="@+id/comments_header_nitter_quotes_image"
             android:src="@drawable/ic_action_quote"
             android:layout_width="15dp"
             android:layout_height="16dp"/>

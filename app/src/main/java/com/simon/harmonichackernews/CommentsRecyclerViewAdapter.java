@@ -278,6 +278,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.nitterQuotes.setText(String.valueOf(story.nitterInfo.quotes));
                 headerViewHolder.nitterLikes.setText(String.valueOf(story.nitterInfo.likes));
 
+                if (story.nitterInfo.quotes.equals("")) {
+                    headerViewHolder.nitterQuotes.setVisibility(GONE);
+                    headerViewHolder.nitterQuotesImageView.setVisibility(GONE);
+                }
+
                 if (story.nitterInfo.imgSrc != null) {
                     headerViewHolder.nitterImage.setVisibility(VISIBLE);
                     try {
@@ -626,6 +631,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView nitterReposts;
         public final TextView nitterQuotes;
         public final TextView nitterLikes;
+        public final ImageView nitterQuotesImageView;
         public final ImageView nitterImage;
 
         public final ImageView favicon;
@@ -709,6 +715,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             nitterReposts = view.findViewById(R.id.comments_header_nitter_reposts);
             nitterQuotes = view.findViewById(R.id.comments_header_nitter_quotes);
             nitterLikes = view.findViewById(R.id.comments_header_nitter_likes);
+            nitterQuotesImageView = view.findViewById(R.id.comments_header_nitter_quotes_image);
             nitterImage = view.findViewById(R.id.comments_header_nitter_image);
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);

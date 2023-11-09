@@ -263,13 +263,13 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"/>
 
-                    <include layout="@layout/wikipedia_container" />
+                    <include layout="@layout/link_preview_wikipedia" />
 
-                    <include layout="@layout/arxiv_container" />
+                    <include layout="@layout/link_preview_arxiv" />
 
-                    <include layout="@layout/github_container" />
+                    <include layout="@layout/link_preview_github" />
 
-                    <include layout="@layout/nitter_container" />
+                    <include layout="@layout/link_preview_nitter" />
 
 
                 </LinearLayout>
