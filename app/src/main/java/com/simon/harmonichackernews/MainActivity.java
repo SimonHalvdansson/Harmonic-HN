@@ -132,17 +132,15 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml( "<b>Version 1.12:</b><br>" +
+                        "- Material (auto) is new default theme, I recommend you try this out<br>" +
                         "- Added ability to search comments<br>" +
                         "- Updated splash screen to use correct dark mode color<br>" +
-                        "- Improved comment show/hide animation<br>" +
-                        "- Added GitHub repo info<br>" +
-                        "- Added Wikipedia summary<br>" +
-                        "- Updated arXiv info box<br>" +
+                        "- Added GitHub repo link preview<br>" +
+                        "- Added Wikipedia link preview<br>" +
+                        "- Updated arXiv link preview<br>" +
                         "- Added Algolia API error information<br>" +
                         "- Experimental fix for EncryptedSharedPreferences crash<br>" +
                         "- Added optional Twitter/X to Nitter redirect<br>" +
-                        "- Expanded font selection to affect more components<br>" +
-                        "- Material (auto) is new default theme<br>" +
                         "- Design tweaks to story page<br>" +
                         "- Changed default favicon provider to Google<br>" +
                         "- Removed WebView back, only device back from now on<br>" +
@@ -152,6 +150,8 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                         "- Fixed several Android 14 predictive back issue<br>" +
                         "- Added Material You comment depth indicators<br>" +
                         "- Restored correct search settings (thanks Leslie Cheng)<br>" +
+                        "- Improved comment show/hide animation<br>" +
+                        "- Expanded font selection to affect more components<br>" +
                         "- Prompt to update stale stories<br>" +
                         "- Changed default favicon provider to Google<br>" +
                         "- Fixed 2 comments crashes<br>" +
