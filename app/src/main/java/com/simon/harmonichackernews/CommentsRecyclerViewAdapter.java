@@ -119,10 +119,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     };
 
     private static final int[] commentDepthColorsMaterial = new int[]{
-            com.google.android.material.R.color.material_dynamic_primary60,
-            com.google.android.material.R.color.material_dynamic_secondary60,
-            com.google.android.material.R.color.material_dynamic_tertiary50,
-            com.google.android.material.R.color.material_dynamic_neutral_variant50,
+            R.color.material_you_primary60,
+            R.color.material_you_secondary60,
+            R.color.material_you_tertiary50,
+            R.color.material_you_neutral_variant50,
             R.color.commentIndentIndicatorColor5,
             R.color.commentIndentIndicatorColor6,
             R.color.commentIndentIndicatorColor7
