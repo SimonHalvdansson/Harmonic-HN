@@ -131,7 +131,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml( "<b>Version 1.12:</b><br>" +
+                .setMessage(Html.fromHtml( "<b>Version 2.0:</b><br>" +
                         "- Material (auto) is new default theme, I recommend you try this out<br>" +
                         "- Added ability to search comments<br>" +
                         "- Updated splash screen to use correct dark mode color<br>" +
@@ -154,6 +154,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                         "- Expanded font selection to affect more components<br>" +
                         "- Prompt to update stale stories<br>" +
                         "- Changed default favicon provider to Google<br>" +
+                        "- Fixed a possible WebView crash<br>" +
                         "- Fixed 2 comments crashes<br>" +
                         "<br>" +
                         "<b>Version 1.11.1:</b><br>" +
