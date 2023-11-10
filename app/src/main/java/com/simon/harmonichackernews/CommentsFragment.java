@@ -33,6 +33,7 @@ import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -1052,6 +1053,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
+    public void restartWebView() {
+        destroyWebView();
+
+        webView = new WebView(getContext());
+        webViewContainer.addView(webView);
+        initializeWebView();
+    }
+
     @Override
     public void onDestroyView() {
         if (recyclerView != null) {
@@ -1692,6 +1701,38 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
             return super.shouldInterceptRequest(view, request);
+        }
+
+        @Override
+        public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+            if (!detail.didCrash()) {
+                // Renderer is killed because the system ran out of memory. The app
+                // can recover gracefully by creating a new WebView instance in the
+                // foreground.
+                Log.e("MY_APP_TAG", "System killed the WebView rendering process " +
+                        "to reclaim memory. Recreating...");
+
+                Utils.toast("System ran out of memory and killed WebView, reinitializing", getContext());
+                restartWebView();
+
+                // By this point, the instance variable "mWebView" is guaranteed to
+                // be null, so it's safe to reinitialize it.
+
+                return true; // The app continues executing.
+            }
+            Utils.toast("WebView crashed, reinitializing", getContext());
+            restartWebView();
+
+            // Renderer crashes because of an internal error, such as a memory
+            // access violation.
+            Log.e("MY_APP_TAG", "The WebView rendering process crashed!");
+
+            // In this example, the app itself crashes after detecting that the
+            // renderer crashed. If you handle the crash more gracefully and let
+            // your app continue executing, you must destroy the current WebView
+            // instance, specify logic for how the app continues executing, and
+            // return "true" instead.
+            return false;
         }
     }
 
