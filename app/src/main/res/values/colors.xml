@@ -60,23 +60,23 @@
 
     <color name="commentIndentIndicatorColorMonochrome">#888</color>
 
-    <color name="material_you_900">@color/background</color>
-    <color name="material_you_50">@color/lightBackground</color>
-    <color name="material_you_600">@color/colorPrimaryDark</color>
-    <color name="material_you_secondary_100">@color/lightBackground</color>
-    <color name="material_you_secondary_900">@color/darkerBackground</color>
-    <color name="material_you_secondary_800">@color/darkerBackground</color>
+    <color name="material_you_900">#001E2C</color>
+    <color name="material_you_50">#E0F3FF</color>
+    <color name="material_you_600">#00668B</color>
+    <color name="material_you_secondary_100">#D1E5F4</color>
+    <color name="material_you_secondary_900">#091E28</color>
+    <color name="material_you_secondary_800">#20333D</color>
     <color name="material_you_secondary_40">#4E616C</color>
     <color name="material_you_secondary_70">#9AAEBB</color>
 
-    <color name="material_you_third_400">@color/colorPrimary</color>
-    <color name="material_you_third_700">@color/colorPrimaryDark</color>
+    <color name="material_you_third_400">#8094A0</color>
+    <color name="material_you_third_700">#374955</color>
 
-    <color name="material_you_neutral_10">@color/lightBackground</color>
-    <color name="material_you_neutral_50">@color/lightBackground</color>
-    <color name="material_you_neutral_100">@color/lightBackground</color>
-    <color name="material_you_neutral_800">@color/darkerBackground</color>
-    <color name="material_you_neutral_900">@color/background</color>
+    <color name="material_you_neutral_10">#FCFCFF</color>
+    <color name="material_you_neutral_50">#F0F0F3</color>
+    <color name="material_you_neutral_100">#E1E3E5</color>
+    <color name="material_you_neutral_800">#2E3133</color>
+    <color name="material_you_neutral_900">#191C1E</color>
 
     <!-- Hard coded from system reference -->
     <color name="material_you_neutral_variant20">#2A3136</color>
