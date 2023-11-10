@@ -153,7 +153,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        String prefFont,
                                        boolean shouldShowInvert,
                                        boolean shouldShowTopLevelDepthIndicator,
-                                       String theme,
+                                       String prefTheme,
                                        boolean tablet,
                                        String favProvider) {
         integratedWebview = useIntegratedWebview;
@@ -170,7 +170,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         font = prefFont;
         showInvert = shouldShowInvert;
         showTopLevelDepthIndicator = shouldShowTopLevelDepthIndicator;
-        theme = theme;
+        theme = prefTheme;
         isTablet = tablet;
         faviconProvider = favProvider;
     }

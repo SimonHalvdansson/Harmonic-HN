@@ -247,7 +247,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                         startActivity(intent);
                     }
                 })
-                .setNegativeButton("Dismiss", null).create();
+                .setNegativeButton("Done", null).create();
 
         dialog.show();
     }
