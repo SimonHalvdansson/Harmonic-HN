@@ -736,7 +736,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
-        ((FrameLayout) swipeRefreshLayout.getParent()).removeView(swipeRefreshLayout);
+        //This is because we are now for sure not using swipeRefresh
+        try {
+            ((FrameLayout) swipeRefreshLayout.getParent()).removeView(swipeRefreshLayout);
+        } catch (Exception e) {
+            //this will crash if we have already done this, which is fine
+        }
+
         if (blockAds && TextUtils.isEmpty(Utils.adservers)) {
             Utils.loadAdservers(getResources());
         }
@@ -1706,20 +1712,22 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         @Override
         public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
-            if (!detail.didCrash()) {
-                // Renderer is killed because the system ran out of memory. The app
-                // can recover gracefully by creating a new WebView instance in the
-                // foreground.
-                Log.e("MY_APP_TAG", "System killed the WebView rendering process " +
-                        "to reclaim memory. Recreating...");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (!detail.didCrash()) {
+                    // Renderer is killed because the system ran out of memory. The app
+                    // can recover gracefully by creating a new WebView instance in the
+                    // foreground.
+                    Log.e("MY_APP_TAG", "System killed the WebView rendering process " +
+                            "to reclaim memory. Recreating...");
 
-                Utils.toast("System ran out of memory and killed WebView, reinitializing", getContext());
-                restartWebView();
+                    Utils.toast("System ran out of memory and killed WebView, reinitializing", getContext());
+                    restartWebView();
 
-                // By this point, the instance variable "mWebView" is guaranteed to
-                // be null, so it's safe to reinitialize it.
+                    // By this point, the instance variable "mWebView" is guaranteed to
+                    // be null, so it's safe to reinitialize it.
 
-                return true; // The app continues executing.
+                    return true; // The app continues executing.
+                }
             }
             Utils.toast("WebView crashed, reinitializing", getContext());
             restartWebView();
@@ -1733,7 +1741,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             // your app continue executing, you must destroy the current WebView
             // instance, specify logic for how the app continues executing, and
             // return "true" instead.
-            return false;
+            return true;
         }
     }
 
