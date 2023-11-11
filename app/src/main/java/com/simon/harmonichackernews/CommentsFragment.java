@@ -741,7 +741,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         webView.setWebViewClient(new MyWebViewClient());
-        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(requireContext())) || showWebsite || (NitterGetter.isConvertibleToNitter(story.url) && SettingsUtils.shouldRedirectNitter(getContext()))) {
+        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(requireContext())) || showWebsite || (NitterGetter.isConvertibleToNitter(story.url) && SettingsUtils.shouldUseLinkPreviewX(getContext()))) {
             loadUrl(story.url);
             startedLoading = true;
         }

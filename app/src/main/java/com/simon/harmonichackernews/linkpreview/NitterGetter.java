@@ -17,6 +17,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,7 +29,13 @@ public class NitterGetter {
     }
 
     public static boolean isConvertibleToNitter(String url) {
-        return url.contains("twitter.com") || url.contains("x.com");
+        try {
+            URL parsedUrl = new URL(url);
+            String host = parsedUrl.getHost();
+            return host.equals("twitter.com") || host.equals("x.com");
+        } catch (MalformedURLException e) {
+            return false; // URL is not valid
+        }
     }
 
     public static String convertToNitterUrl(String url) {

@@ -25,6 +25,7 @@
 
     <color name="material_you_primary60">@color/material_dynamic_primary60</color>
     <color name="material_you_secondary60">@color/material_dynamic_secondary60</color>
+    <color name="material_you_tertiary30">@color/material_dynamic_tertiary30</color>
     <color name="material_you_tertiary50">@color/material_dynamic_tertiary50</color>
     <color name="material_you_neutral_variant50">@color/material_dynamic_primary60</color>
 

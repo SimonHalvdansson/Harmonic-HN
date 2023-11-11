@@ -196,7 +196,6 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_redirect_nitter"
-            app:summary="Preloads Nitter posts"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_redirect"
             app:title="Redirect Twitter/X to Nitter"    />

@@ -151,7 +151,7 @@
         <item name="commentDividerColor">@color/lightDividerColor</item>
         <item name="drawableColor">@color/lightDrawableColor</item>
         <item name="dropdownColor">@color/material_you_neutral_50</item>
-        <item name="opCommentColor">@color/lightOpCommentColor</item>
+        <item name="opCommentColor">@color/material_you_tertiary30</item>
         <item name="selfCommentColor">@color/lightSelfCommentColor</item>
         <item name="commentCountIndicatorColor">@color/material_you_600</item>
         <item name="popupMenuBackground">@drawable/popup_background_material</item>

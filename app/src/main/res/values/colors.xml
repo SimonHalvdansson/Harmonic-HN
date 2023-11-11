@@ -84,6 +84,7 @@
 
     <color name="material_you_primary60">#219BCC</color>
     <color name="material_you_secondary60">#8094A0</color>
+    <color name="material_you_tertiary30">#484264</color>
     <color name="material_you_tertiary50">#787296</color>
     <color name="material_you_neutral_variant50">#70777C</color>
 
