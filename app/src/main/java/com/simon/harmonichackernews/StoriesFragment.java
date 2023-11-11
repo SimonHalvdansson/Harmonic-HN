@@ -713,7 +713,7 @@ public class StoriesFragment extends Fragment {
                     }
 
                 }, error -> {
-            if (error.networkResponse.statusCode == 404) {
+            if (error.networkResponse != null && error.networkResponse.statusCode == 404) {
                 adapter.loadingFailedServerError = true;
             }
 

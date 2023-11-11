@@ -1114,7 +1114,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 adapter.loadingFailedServerError = true;
             }
 
-            if (error.networkResponse.statusCode == 404) {
+            if (error.networkResponse != null && error.networkResponse.statusCode == 404) {
                 adapter.loadingFailedServerError = true;
             }
 
