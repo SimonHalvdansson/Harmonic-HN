@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews;
+package com.simon.harmonichackernews.adapters;
 
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
@@ -43,6 +43,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
+import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;

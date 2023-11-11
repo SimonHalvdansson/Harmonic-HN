@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews;
+package com.simon.harmonichackernews.adapters;
 
 import android.graphics.drawable.RippleDrawable;
 import android.text.Html;
@@ -14,6 +14,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 

@@ -2,7 +2,7 @@ package com.simon.harmonichackernews.network;
 
 import android.text.TextUtils;
 
-import com.simon.harmonichackernews.CommentsRecyclerViewAdapter;
+import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.StoryUpdate;
@@ -33,7 +33,7 @@ public class JSONParser {
 
             boolean isComment = hit.getJSONArray("_tags").get(0).equals("comment");
 
-            story.title = isComment ? hit.getString("story_title") : hit.getString("title");
+            story.title = isComment ? hit.getString("story_title") : hit.optString("title");
             story.score = hit.optInt("points");
             story.by = hit.getString("author");
             story.descendants = hit.optInt("num_comments");

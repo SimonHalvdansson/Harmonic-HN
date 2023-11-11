@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews;
+package com.simon.harmonichackernews.adapters;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -34,6 +34,7 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.utils.FontUtils;

@@ -43,6 +43,7 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
+import com.simon.harmonichackernews.adapters.CommentSearchAdapter;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.ThemeUtils;
