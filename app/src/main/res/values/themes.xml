@@ -37,7 +37,7 @@
         <item name="android:statusBarColor">@color/material_you_neutral_900</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
 
-        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialDark</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="dialogCornerRadius">28dp</item>
         <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
@@ -62,6 +62,7 @@
         <item name="colorAccent">@color/colorAccent</item>
         <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
         <item name="colorOnPrimary">@color/lightBackground</item>
+        <item name="colorSurfaceContainerHigh">@color/darkerBackground</item>
 
         <item name="android:windowBackground">@color/background</item>
         <item name="android:colorBackground">@color/background</item>
@@ -73,8 +74,8 @@
         <item name="android:statusBarColor">@color/statusBarColor</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
 
-        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialog</item>
-        <item name="alertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialog</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
+        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="dialogCornerRadius">28dp</item>
         <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>
@@ -82,30 +83,24 @@
     <style name="AppThemeAmoledDark" parent="AppTheme">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:colorBackground">@android:color/black</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:statusBarColor">@android:color/black</item>
         <item name="dropdownColor">@android:color/black</item>
         <item name="colorSurfaceContainerHigh">@android:color/black</item>
-
 
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
 
-        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogAmoledDark</item>
-        <item name="alertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogAmoledDark</item>
-        <item name="dialogCornerRadius">28dp</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
+        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
     </style>
 
     <style name="AppThemeGray" parent="AppTheme">
         <item name="android:windowBackground">@color/grayBackground</item>
         <item name="android:colorBackground">@color/grayBackground</item>
         <item name="android:statusBarColor">@color/grayStatusBarColor</item>
-
-        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogGray</item>
-        <item name="alertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogGray</item>
-        <item name="dialogCornerRadius">28dp</item>
+        <item name="colorSurfaceContainerHigh">@color/grayBackground</item>
     </style>
 
     <style name="AppThemeLight" parent="AppThemeLightBase">
@@ -126,6 +121,7 @@
         <item name="colorPrimaryDark">@color/colorPrimaryGreen</item>
         <item name="colorAccent">@color/colorPrimaryGreen</item>
         <item name="colorPrimaryContainer">@color/colorPrimaryGreenLighter</item>
+        <item name="colorSurfaceContainerHigh">@color/lightBackground</item>
 
         <item name="android:windowBackground">@color/lightBackground</item>
         <item name="android:colorBackground">@color/lightBackground</item>
@@ -136,23 +132,15 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
 
-        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogLight</item>
-        <item name="alertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogLight</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
+        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="dialogCornerRadius">28dp</item>
         <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>
 
-    <style name="AppThemeMaterialLight" parent="AppThemeLightBase">
-        <item name="storyColorNormal">@color/lightStoryColorNormal</item>
-        <item name="storyColorDisabled">@color/lightStoryColorDisabled</item>
-        <item name="textColorHighlighted">@color/lightTextColorHighlighted</item>
-        <item name="textColorDefault">@color/lightTextColorDefault</item>
-        <item name="textColorDisabled">@color/lightTextColorDisabled</item>
-        <item name="commentDividerColor">@color/lightDividerColor</item>
-        <item name="drawableColor">@color/lightDrawableColor</item>
+    <style name="AppThemeMaterialLight" parent="AppThemeLight">
         <item name="dropdownColor">@color/material_you_neutral_50</item>
         <item name="opCommentColor">@color/material_you_tertiary30</item>
-        <item name="selfCommentColor">@color/lightSelfCommentColor</item>
         <item name="commentCountIndicatorColor">@color/material_you_600</item>
         <item name="popupMenuBackground">@drawable/popup_background_material</item>
         <item name="secondaryTextColor">@color/material_you_secondary_40</item>
@@ -164,26 +152,20 @@
         <item name="android:windowBackground">@color/material_you_neutral_50</item>
         <item name="android:colorBackground">@color/material_you_neutral_50</item>
 
-        <item name="colorControlHighlight">#20000000</item>
-        <item name="snackbarTextViewStyle">@style/snackbarTextStyleLight</item>
-        <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
         <item name="android:statusBarColor">@color/material_you_neutral_50</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
 
-        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogMaterialLight</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="dialogCornerRadius">28dp</item>
-        <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>
 
     <style name="AppThemeWhite" parent="@style/AppThemeLight">
         <item name="android:windowBackground">@color/whiteBackground</item>
         <item name="android:colorBackground">@color/whiteBackground</item>
         <item name="android:statusBarColor">@color/whiteStatusBarColor</item>
+        <item name="colorSurfaceContainerHigh">@color/whiteBackground</item>
 
-        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogWhite</item>
-        <item name="alertDialogTheme">@style/ThemeOverlay.App.MaterialAlertDialogWhite</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
+        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="dialogCornerRadius">28dp</item>
     </style>
 

@@ -8,24 +8,12 @@
         <item name="colorSurface">@color/background</item>
     </style>
 
-    <style name="ThemeOverlay.App.MaterialAlertDialogAmoledDark" parent="ThemeOverlay.Material3.MaterialAlertDialog">
-        <item name="colorSurface">@android:color/black</item>
-    </style>
-
     <style name="ThemeOverlay.App.MaterialAlertDialogGray" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="colorSurface">@color/grayBackground</item>
     </style>
 
-    <style name="ThemeOverlay.App.MaterialAlertDialogLight" parent="ThemeOverlay.Material3.MaterialAlertDialog">
-        <item name="colorSurface">@color/lightBackground</item>
-    </style>
-
     <style name="ThemeOverlay.App.MaterialAlertDialogMaterialLight" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="colorSurface">@color/material_you_50</item>
-    </style>
-
-    <style name="ThemeOverlay.App.MaterialAlertDialogWhite" parent="ThemeOverlay.Material3.MaterialAlertDialog">
-        <item name="colorSurface">@color/whiteBackground</item>
     </style>
 
     <style name="snackbarTextStyle" parent="@style/Widget.Material3.Snackbar">
