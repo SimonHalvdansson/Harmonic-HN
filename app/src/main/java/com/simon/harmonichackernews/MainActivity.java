@@ -131,7 +131,11 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml( "<b>Version 2.0:</b><br>" +
+                .setMessage(Html.fromHtml( "<b>Version 2.0.1:</b><br>" +
+                        "- Fixed crash when WebView runs out of memory<br>" +
+                        "- Fixed crash when encountering some network errors<br>" +
+                        "<br>" +
+                        "<b>Version 2.0:</b><br>" +
                         "- Material (auto) is new default theme, I recommend you try this out<br>" +
                         "- Added ability to search comments<br>" +
                         "- Updated splash screen to use correct dark mode color<br>" +
