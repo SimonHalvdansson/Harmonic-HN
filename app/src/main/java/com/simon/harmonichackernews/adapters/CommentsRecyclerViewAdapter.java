@@ -468,7 +468,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 FontUtils.setTypeface(itemViewHolder.commentBody, false, preferredTextSize);
             }
 
-            itemViewHolder.commentBy.setText(comment.by);
             itemViewHolder.commentByTime.setText(comment.getTimeFormatted());
 
             boolean byOp = story.by.equals(comment.by);
@@ -476,6 +475,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             if (!TextUtils.isEmpty(username)) {
                 byUser = comment.by.equals(username);
             }
+
+            itemViewHolder.commentBy.setText(byOp ? comment.by + " (OP)" : comment.by);
 
             if (byUser) {
                 itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.selfCommentColor));
