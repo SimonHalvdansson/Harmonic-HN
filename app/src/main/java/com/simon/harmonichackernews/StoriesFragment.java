@@ -620,8 +620,9 @@ public class StoriesFragment extends Fragment {
                         if (adapter.loadingFailed) {
                             adapter.loadingFailed = false;
                             adapter.loadingFailedServerError = false;
-                            adapter.notifyItemChanged(0);
                         }
+
+                        adapter.notifyItemChanged(0);
 
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -632,6 +633,7 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemChanged(0);
         });
 
+        adapter.notifyItemChanged(0);
         stringRequest.setTag(requestTag);
         queue.add(stringRequest);
     }
@@ -722,6 +724,8 @@ public class StoriesFragment extends Fragment {
             adapter.loadingFailed = true;
             adapter.notifyItemChanged(0);
         });
+
+        adapter.notifyItemChanged(0);
 
         stringRequest.setTag(requestTag);
         queue.add(stringRequest);

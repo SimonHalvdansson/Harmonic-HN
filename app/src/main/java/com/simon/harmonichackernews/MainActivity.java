@@ -133,6 +133,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml( "<b>Version 2.0.2:</b><br>" +
                         "- Fixed crash when opening PDF in browser<br>" +
+                        "- Added loading indicator to main screen for initial load<br>" +
                         "- Added option to swap comment tap/long press behavior<br>" +
                         "- Added option to disable startup changelog (this thing)<br>" +
                         "<br>" +

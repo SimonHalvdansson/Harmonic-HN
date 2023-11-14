@@ -25,6 +25,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -261,6 +262,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             headerViewHolder.searchEditText.setText(stories.get(0).title);
 
             if (searching) {
+                headerViewHolder.loadingIndicator.setVisibility(View.GONE);
                 headerViewHolder.searchEditText.requestFocus();
                 headerViewHolder.searchEditText.setText(lastSearch);
                 headerViewHolder.searchEditText.setSelection(lastSearch.length());
@@ -270,9 +272,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             } else {
                 headerViewHolder.noBookmarksLayout.setVisibility((stories.size() == 1 && type == SettingsUtils.getBookmarksIndex(ctx.getResources())) ? View.VISIBLE : View.GONE);
                 headerViewHolder.searchEmptyContainer.setVisibility(View.GONE);
+
+                headerViewHolder.loadingIndicator.setVisibility(stories.size() == 1 && !loadingFailed && !loadingFailedServerError ? View.VISIBLE : View.GONE);
             }
 
-            headerViewHolder.justSelected = true;
             headerViewHolder.typeSpinner.setSelection(type);
 
             TooltipCompat.setTooltipText(headerViewHolder.searchButton, searching ? "Close" : "Search");
@@ -376,13 +379,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     public class MainHeaderViewHolder extends RecyclerView.ViewHolder {
         public final Spinner typeSpinner;
-        public boolean justSelected = false;
         public final LinearLayout container;
         public final LinearLayout loadingFailedLayout;
         public final TextView loadingFailedAlgoliaLayout;
         public final LinearLayout noBookmarksLayout;
         public final LinearLayout spinnerContainer;
         public final LinearLayout searchEmptyContainer;
+        public final RelativeLayout loadingIndicator;
         public final EditText searchEditText;
         public final ImageButton moreButton;
         public final ImageButton searchButton;
@@ -406,6 +409,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             searchButton = view.findViewById(R.id.stories_header_search_button);
             searchEmptyContainer = view.findViewById(R.id.stories_header_search_empty_container);
             retryButton = view.findViewById(R.id.stories_header_retry_button);
+            loadingIndicator = view.findViewById(R.id.stories_header_loading_indicator);
 
             retryButton.setOnClickListener( (v) -> refreshListener.onRefresh());
 
@@ -452,9 +456,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             typeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                    if (justSelected) {
-                        justSelected = false;
-                    } else {
+                    if (i != type) {
                         typeClickListener.onItemClick(i);
                     }
                 }
