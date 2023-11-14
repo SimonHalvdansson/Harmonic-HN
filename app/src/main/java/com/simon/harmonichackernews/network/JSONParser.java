@@ -218,8 +218,6 @@ public class JSONParser {
         String newTitle = item.getString("title");
         String oldFormattedTime = story.getTimeFormatted();
 
-        Utils.log(story.time);
-
         int newScore = item.optInt("points", 0);
 
         if (TextUtils.isEmpty(story.title)) {

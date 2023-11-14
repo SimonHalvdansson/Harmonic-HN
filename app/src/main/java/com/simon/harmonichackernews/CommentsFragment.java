@@ -970,7 +970,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onResume() {
         super.onResume();
 
-        if (lastLoaded != 0 && (System.currentTimeMillis() - lastLoaded) > 1000*60*60) {
+        if (lastLoaded != 0 && (System.currentTimeMillis() - lastLoaded) > 1000*60*60 && !Utils.timeInSecondsMoreThanTwoHoursAgo(story.time)) {
             if (adapter != null && !adapter.showUpdate) {
                 adapter.showUpdate = true;
                 adapter.notifyItemChanged(0);

@@ -579,6 +579,10 @@ public class Utils {
         return (System.currentTimeMillis() - ((long) time)*1000)/1000/60/60/24 > 14;
     }
 
+    public static boolean timeInSecondsMoreThanTwoHoursAgo(int time) {
+        return (System.currentTimeMillis() - ((long) time)*1000)/1000/60/60 > 2;
+    }
+
     public static float pxFromDp(final Resources resources, final float dp) {
         return dp * resources.getDisplayMetrics().density;
     }
