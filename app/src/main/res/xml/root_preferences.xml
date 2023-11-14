@@ -299,6 +299,15 @@
             app:icon="@drawable/ic_action_swipe_vertical"
             app:title="Scrollbar"    />
 
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_comments_swap_long"
+            app:defaultValue="false"
+            app:summaryOn="Current: Tap for options"
+            app:summaryOff="Current: Tap to hide/expand"
+            app:icon="@drawable/ic_action_touch"
+            app:title="Swap tap/long press behavior"    />
+
     </PreferenceCategory>
 
     <PreferenceCategory

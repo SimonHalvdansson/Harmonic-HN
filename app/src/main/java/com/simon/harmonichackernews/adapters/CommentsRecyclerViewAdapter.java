@@ -84,6 +84,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public String faviconProvider;
     public boolean integratedWebview;
     public boolean showTopLevelDepthIndicator;
+    public boolean swapLongPressTap;
     public String username;
     public int preferredTextSize;
     private final boolean isTablet;
@@ -106,8 +107,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public final static int FLAG_ACTION_CLICK_EXPAND = -3;
     public final static int FLAG_ACTION_CLICK_BROWSER = -4;
     public final static int FLAG_ACTION_CLICK_INVERT = -5;
-
-
 
     private static final int[] commentDepthColorsDark = new int[]{
             R.color.commentIndentIndicatorColor1,
@@ -156,7 +155,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        boolean shouldShowTopLevelDepthIndicator,
                                        String prefTheme,
                                        boolean tablet,
-                                       String favProvider) {
+                                       String favProvider,
+                                       boolean shouldSwapLongPressTap) {
         integratedWebview = useIntegratedWebview;
         bottomSheet = sheet;
         fragmentManager = fm;
@@ -174,6 +174,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         theme = prefTheme;
         isTablet = tablet;
         faviconProvider = favProvider;
+        swapLongPressTap = shouldSwapLongPressTap;
     }
 
     @NotNull
@@ -546,20 +547,20 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentIndentIndicator = view.findViewById(R.id.comment_indent_indicator);
 
             itemView.setOnLongClickListener(v -> {
-                commentLongClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), v);
+                longPressed(comment, getAbsoluteAdapterPosition(), v);
                 return true;
             });
 
             commentBody.setOnLongClickListener(v -> {
-                commentLongClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), v);
+                longPressed(comment, getAbsoluteAdapterPosition(), v);
                 return true;
             });
 
             itemView.setOnClickListener(v ->
-                    commentClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), v));
+                    tapped(comment, getAbsoluteAdapterPosition(), v));
 
             commentBody.setOnClickListener(v ->
-                    commentClickListener.onItemClick(comment, getAbsoluteAdapterPosition(), v));
+                    tapped(comment, getAbsoluteAdapterPosition(), v));
 
             commentBody.setOnClickATagListener(new OnClickATagListener() {
                 @Override
@@ -568,6 +569,22 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     return true;
                 }
             });
+        }
+
+        private void tapped(Comment comment, int pos, View v) {
+            if (swapLongPressTap) {
+                commentLongClickListener.onItemClick(comment, pos, v);
+            } else {
+                commentClickListener.onItemClick(comment, pos, v);
+            }
+        }
+
+        private void longPressed(Comment comment, int pos, View v) {
+            if (swapLongPressTap) {
+                commentClickListener.onItemClick(comment, pos, v);
+            } else {
+                commentLongClickListener.onItemClick(comment, pos, v);
+            }
         }
     }
 

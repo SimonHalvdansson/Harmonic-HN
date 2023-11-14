@@ -203,6 +203,11 @@ public class SettingsUtils {
         return getBooleanPref("pref_show_changelog", true, ctx);
     }
 
+    public static boolean shouldSwapCommentLongPressTap(Context ctx) {
+        return getBooleanPref("pref_comments_swap_long", false, ctx);
+    }
+
+
     public static boolean shouldUseAlgolia(Context ctx) {
         return getBooleanPref("pref_algolia_api", true, ctx);
     }

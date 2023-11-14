@@ -131,7 +131,12 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml( "<b>Version 2.0.1:</b><br>" +
+                .setMessage(Html.fromHtml( "<b>Version 2.0.2:</b><br>" +
+                        "- Fixed crash when opening PDF in browser<br>" +
+                        "- Added option to swap comment tap/long press behavior<br>" +
+                        "- Added option to disable startup changelog (this thing)<br>" +
+                        "<br>" +
+                        "<b>Version 2.0.1:</b><br>" +
                         "- Fixed crash when WebView runs out of memory<br>" +
                         "- Fixed crash when encountering some network errors<br>" +
                         "<br>" +

@@ -469,7 +469,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 SettingsUtils.shouldShowTopLevelDepthIndicator(getContext()),
                 ThemeUtils.getPreferredTheme(getContext()),
                 Utils.isTablet(getResources()),
-                SettingsUtils.getPreferredFaviconProvider(getContext()));
+                SettingsUtils.getPreferredFaviconProvider(getContext()),
+                SettingsUtils.shouldSwapCommentLongPressTap(getContext()));
 
         adapter.setOnHeaderClickListener(story1 -> Utils.launchCustomTab(getActivity(), story1.url));
 
@@ -942,7 +943,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 updateComments = true;
             }
 
-            if (adapter.theme != ThemeUtils.getPreferredTheme(ctx)) {
+            if (adapter.swapLongPressTap != SettingsUtils.shouldSwapCommentLongPressTap(ctx)) {
+                adapter.swapLongPressTap = SettingsUtils.shouldSwapCommentLongPressTap(ctx);
+            }
+
+            if (!adapter.theme.equals(ThemeUtils.getPreferredTheme(ctx))) {
                 adapter.theme = ThemeUtils.getPreferredTheme(ctx);
                 updateHeader = true;
                 updateComments = true;
