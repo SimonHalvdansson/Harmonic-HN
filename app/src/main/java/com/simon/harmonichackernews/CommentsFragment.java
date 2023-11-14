@@ -1313,8 +1313,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     public void clickBrowser() {
         Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setData(Uri.parse(webView.getUrl()));
-        startActivity(intent);
+        try {
+            intent.setData(Uri.parse(webView.getUrl()));
+            startActivity(intent);
+        } catch (Exception e) {
+            //if we're at a PDF or something like that, just do the original URL
+            intent.setData(Uri.parse(story.url));
+            startActivity(intent);
+        }
+
     }
 
     public void clickShare(View view) {
