@@ -36,7 +36,7 @@ public class ArxivInfo {
             return allSubjects;
         }
 
-        for (int i = 1; i < secondaryCategories.length; i++) {
+        for (int i = 0; i < secondaryCategories.length; i++) {
             allSubjects = allSubjects + "; " + ArxivResolver.resolveFull(secondaryCategories[i]);
         }
         return allSubjects;
