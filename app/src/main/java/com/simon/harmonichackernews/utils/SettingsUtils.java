@@ -199,6 +199,10 @@ public class SettingsUtils {
         return getBooleanPref("pref_link_preview_wikipedia", false, ctx);
     }
 
+    public static boolean shouldShowChangelog(Context ctx) {
+        return getBooleanPref("pref_show_changelog", true, ctx);
+    }
+
     public static boolean shouldUseAlgolia(Context ctx) {
         return getBooleanPref("pref_algolia_api", true, ctx);
     }

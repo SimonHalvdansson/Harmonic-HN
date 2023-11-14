@@ -60,7 +60,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
         updateFragmentLayout();
 
-        if (Utils.justUpdated(this)) {
+        if (Utils.justUpdated(this) && SettingsUtils.shouldShowChangelog(this)) {
             showUpdateDialog();
         }
 
