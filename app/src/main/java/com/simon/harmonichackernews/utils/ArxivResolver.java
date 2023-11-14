@@ -118,10 +118,10 @@ public class ArxivResolver {
         ARXIV_SUBJECTS.put("gr-qc", "General Relativity and Quantum Cosmology");
 
 //HIGH ENERGY PHYSICS
-        ARXIV_SUBJECTS.put("hep-ex", "Experiment");
-        ARXIV_SUBJECTS.put("hep-lat", "Lattice");
-        ARXIV_SUBJECTS.put("hep-ph", "Phenomenology");
-        ARXIV_SUBJECTS.put("hep-th", "Theory");
+        ARXIV_SUBJECTS.put("hep-ex", "High Energy Physics - Experiment");
+        ARXIV_SUBJECTS.put("hep-lat", "High Energy Physics - Lattice");
+        ARXIV_SUBJECTS.put("hep-ph", "High Energy Physics - Phenomenology");
+        ARXIV_SUBJECTS.put("hep-th", "High Energy Physics - Theory");
 
 //MATHEMATICAL PHYSICS
         ARXIV_SUBJECTS.put("math-ph", "Mathematical Physics");
@@ -134,8 +134,8 @@ public class ArxivResolver {
         ARXIV_SUBJECTS.put("nlin.SI", "Exactly Solvable and Integrable Systems");
 
 //NUCLEAR
-        ARXIV_SUBJECTS.put("nucl-ex", "Experiment");
-        ARXIV_SUBJECTS.put("nucl-th", "Theory");
+        ARXIV_SUBJECTS.put("nucl-ex", "Nuclear Experiment");
+        ARXIV_SUBJECTS.put("nucl-th", "Nuclear Theory");
 
 //PHYSICS
         ARXIV_SUBJECTS.put("physics.acc-ph", "Accelerator Physics");
