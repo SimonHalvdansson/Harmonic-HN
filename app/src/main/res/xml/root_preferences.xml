@@ -259,7 +259,6 @@
             app:key="pref_monochrome_comment_depth"
             app:icon="@drawable/ic_action_colors"
             app:defaultValue="false"
-            app:summary="Gray lines next to child comments"
             app:title="Monochrome thread indicators" />
 
         <SwitchPreferenceCompat

@@ -21,12 +21,13 @@
             android:layout_weight="1"
             android:layout_height="wrap_content">
 
-            <Spinner
+            <androidx.appcompat.widget.AppCompatSpinner
                 android:layout_marginTop="2dp"
                 android:layout_marginRight="-10dp"
                 android:id="@+id/stories_header_spinner"
                 android:dropDownVerticalOffset="49dp"
-                app:backgroundTint="?attr/textColorDefault"
+                android:spinnerMode="dropdown"
+                android:popupBackground="@drawable/popup_background_material"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"    />
 

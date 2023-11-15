@@ -7,7 +7,6 @@
     <attr name="textColorDisabled" format="reference"/>
     <attr name="commentDividerColor" format="reference"/>
     <attr name="drawableColor" format="reference"/>
-    <attr name="dropdownColor" format="reference"/>
     <attr name="opCommentColor" format="reference"/>
     <attr name="selfCommentColor" format="reference"/>
     <attr name="commentCountIndicatorColor" format="reference"/>
