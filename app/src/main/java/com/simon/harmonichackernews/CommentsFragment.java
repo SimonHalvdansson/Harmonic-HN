@@ -782,6 +782,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (progress < 100 && progressIndicator.getVisibility() == View.GONE) {
                     progressIndicator.setVisibility(View.VISIBLE);
                 }
+
                 progressIndicator.setProgress(progress);
                 if (progress == 100) {
                     progressIndicator.setVisibility(View.GONE);

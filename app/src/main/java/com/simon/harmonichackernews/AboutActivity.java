@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews;
 
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ScrollView;
@@ -21,5 +23,12 @@ public class AboutActivity extends AppCompatActivity {
         setContentView(R.layout.activity_about);
 
         ((TextView) findViewById(R.id.about_version)).setText("Version " + BuildConfig.VERSION_NAME);
+    }
+
+    public void openGithub(View v) {
+        String url = "https://github.com/SimonHalvdansson/Harmonic-HN";
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse(url));
+        startActivity(intent);
     }
 }

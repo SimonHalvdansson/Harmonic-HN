@@ -406,12 +406,6 @@
             app:icon="@drawable/ic_action_clear" />
 
         <Preference
-            app:icon="@drawable/ic_action_source"
-            app:singleLineTitle="false"
-            app:key="pref_open_source"
-            app:title="GitHub" />
-
-        <Preference
             app:singleLineTitle="false"
             app:key="pref_about"
             app:title="About"

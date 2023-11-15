@@ -124,7 +124,7 @@ public class ComposeActivity extends AppCompatActivity {
             case TYPE_POST:
                 replyingScrollView.setVisibility(View.GONE);
                 topCommentTextView.setVisibility(View.VISIBLE);
-                topCommentTextView.setText("Create submission");
+                topCommentTextView.setText("New submission");
 
                 titleContainer.setVisibility(View.VISIBLE);
                 urlContainer.setVisibility(View.VISIBLE);

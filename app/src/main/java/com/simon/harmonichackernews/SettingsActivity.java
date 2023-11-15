@@ -266,18 +266,6 @@ public class SettingsActivity extends AppCompatActivity {
                     return false;
                 }
             });
-
-            findPreference("pref_open_source").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(Preference preference) {
-                    String url = "https://github.com/SimonHalvdansson/Harmonic-HN";
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setData(Uri.parse(url));
-                    startActivity(intent);
-
-                    return false;
-                }
-            });
         }
 
         @Override
