@@ -205,6 +205,10 @@ public class ArxivResolver {
         return ARXIV_SUBJECTS.get(abbreviation);
     }
 
+    public static boolean isArxivSubjet(String abbr) {
+        return ARXIV_SUBJECTS.containsKey(abbr);
+    }
+
     public static String resolveFull(String category) {
         return ArxivResolver.resolveSubject(category) + " (" + category + ")";
     }

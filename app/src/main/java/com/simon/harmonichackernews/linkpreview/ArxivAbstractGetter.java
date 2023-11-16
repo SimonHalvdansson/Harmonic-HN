@@ -9,6 +9,7 @@ import com.android.volley.toolbox.StringRequest;
 import com.simon.harmonichackernews.data.ArxivInfo;
 import com.simon.harmonichackernews.data.RepoInfo;
 import com.simon.harmonichackernews.network.NetworkComponent;
+import com.simon.harmonichackernews.utils.ArxivResolver;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -16,6 +17,7 @@ import org.xmlpull.v1.XmlPullParserException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -86,14 +88,23 @@ public class ArxivAbstractGetter {
 
                         // Convert author list to array
                         String[] authorsArray = authorList.toArray(new String[0]);
-                        String[] secondaryCategoriesArray = secondaryCategoryList.toArray(new String[0]);
+
+                        //API 23 does not support Java 8 so we do this by hand
+                        List<String> secondaryCategoriesFiltered = new ArrayList<>();
+                        for (String category : secondaryCategoryList) {
+                            if (ArxivResolver.isArxivSubjet(category)) {
+                                secondaryCategoriesFiltered.add(category);
+                            }
+                        }
+
+                        String[] secondaryCategoriesFilteredArray = secondaryCategoriesFiltered.toArray(new String[0]);
 
                         // Create ArxivInfo object
                         ArxivInfo info = new ArxivInfo();
                         info.arxivAbstract = abstractText;
                         info.authors = authorsArray;
                         info.primaryCategory = primaryCategoryText;
-                        info.secondaryCategories = secondaryCategoriesArray;
+                        info.secondaryCategories = secondaryCategoriesFilteredArray;
                         info.publishedDate = publishedDateText;
                         info.arxivID = arxivID;
 
