@@ -33,13 +33,6 @@ public class DialogUtils {
 
         final AlertDialog selectTextDialog = selectTextDialogBuilder.create();
 
-        rootView.findViewById(R.id.select_text_dialog_done).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                selectTextDialog.dismiss();
-            }
-        });
-
         selectTextDialog.show();
     }
 

@@ -9,11 +9,13 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="24dp"
-        android:paddingLeft="20dp"
-        android:paddingRight="20dp"
-        android:paddingBottom="16dp"
+        android:paddingLeft="24dp"
+        android:paddingRight="24dp"
         android:orientation="vertical">
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="24dp"/>
 
         <org.sufficientlysecure.htmltextview.HtmlTextView
             android:id="@+id/select_text_htmltextview"
@@ -24,20 +26,9 @@
             android:textIsSelectable="true"
             tools:text="Select things from this comment" />
 
-        <RelativeLayout
-            android:layout_marginTop="20dp"
+        <Space
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <Button
-                android:id="@+id/select_text_dialog_done"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentRight="true"
-                android:text="Done" />
-
-        </RelativeLayout>
+            android:layout_height="24dp"/>
 
     </LinearLayout>
 
