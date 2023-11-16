@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.gw.swipeback.SwipeBackLayout;
 import com.simon.harmonichackernews.utils.ThemeUtils;
+import com.simon.harmonichackernews.utils.Utils;
 
 public class AboutActivity extends AppCompatActivity {
 
@@ -31,4 +32,10 @@ public class AboutActivity extends AppCompatActivity {
         intent.setData(Uri.parse(url));
         startActivity(intent);
     }
+
+    public void openPrivacy(View v) {
+        Utils.launchCustomTab(this, "https://simonhalvdansson.github.io/harmonic_privacy.html");
+    }
+
+
 }

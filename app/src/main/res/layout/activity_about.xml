@@ -25,7 +25,7 @@
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:layout_marginRight="16dp"
-                android:src="@mipmap/ic_launcher_round" />
+                android:src="@mipmap/ic_launcher" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -42,6 +42,9 @@
                     android:layout_height="wrap_content"/>
 
                 <TextView
+                    android:textColor="?attr/storyColorDisabled"
+                    android:fontFamily="@font/product_sans"
+                    android:textStyle="bold"
                     android:id="@+id/about_version"
                     android:layout_marginTop="-4dp"
                     tools:text="Version 1.3.3.7"
@@ -132,7 +135,21 @@
         <TextView
             android:paddingTop="3dp"
             android:paddingBottom="3dp"
-            android:text="• Materialistic by Hidroh - Apache 2.0"
+            android:text="• hidroh/Materialistic - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• jsoup - MIT"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• gongwen/SwipeBackLayout - Apache 2.0"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
 
@@ -146,7 +163,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:onClick="openGithub"
-            android:text="Github" />
+            android:text="GitHub" />
+
+        <Button
+            android:fontFamily="@font/product_sans_bold"
+            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            app:icon="@drawable/ic_action_policy"
+            android:textColor="?attr/storyColorNormal"
+            app:iconTint="?attr/storyColorNormal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="openPrivacy"
+            android:text="Privacy policy" />
 
     </LinearLayout>
 
