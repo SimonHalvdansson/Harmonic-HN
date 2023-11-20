@@ -196,6 +196,7 @@ public class StoriesFragment extends Fragment {
     private void setupAdapter() {
         adapter = new StoryRecyclerViewAdapter(stories,
                 SettingsUtils.shouldShowPoints(getContext()),
+                SettingsUtils.shouldShowCommentsCount(getContext()),
                 SettingsUtils.shouldUseCompactView(getContext()),
                 SettingsUtils.shouldShowThumbnails(getContext()),
                 SettingsUtils.shouldShowIndex(getContext()),
@@ -348,6 +349,11 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.showPoints != SettingsUtils.shouldShowPoints(getContext())) {
             adapter.showPoints = !adapter.showPoints;
+            adapter.notifyItemRangeChanged(1, stories.size());
+        }
+
+        if (adapter.showCommentsCount != SettingsUtils.shouldShowCommentsCount(getContext())) {
+            adapter.showCommentsCount = !adapter.showCommentsCount;
             adapter.notifyItemRangeChanged(1, stories.size());
         }
 

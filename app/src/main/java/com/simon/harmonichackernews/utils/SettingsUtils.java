@@ -72,6 +72,10 @@ public class SettingsUtils {
         return getBooleanPref("pref_show_points", true, ctx);
     }
 
+    public static boolean shouldShowCommentsCount(Context ctx) {
+        return getBooleanPref("pref_show_comments_count", true, ctx);
+    }
+
     public static boolean shouldUseCompactView(Context ctx) {
         return getBooleanPref("pref_compact_view", false, ctx);
     }
