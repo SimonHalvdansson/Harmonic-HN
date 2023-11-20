@@ -110,6 +110,7 @@ public class SettingsActivity extends AppCompatActivity {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {
                     changePrefStatus(findPreference("pref_show_points"), !(boolean) newValue);
+                    changePrefStatus(findPreference("pref_show_comments_count"), !(boolean) newValue);
                     changePrefStatus(findPreference("pref_thumbnails"), !(boolean) newValue);
 
                     return true;
@@ -130,8 +131,8 @@ public class SettingsActivity extends AppCompatActivity {
             boolean compact = SettingsUtils.shouldUseCompactView(getContext());
 
             changePrefStatus(findPreference("pref_show_points"), !compact);
+            changePrefStatus(findPreference("pref_show_comments_count"), !compact);
             changePrefStatus(findPreference("pref_thumbnails"), !compact);
-
 
             findPreference("pref_transparent_status_bar").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override

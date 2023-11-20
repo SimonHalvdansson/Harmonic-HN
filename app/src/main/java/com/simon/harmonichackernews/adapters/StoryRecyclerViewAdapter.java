@@ -80,6 +80,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public boolean loadingFailedServerError = false;
 
     public boolean showPoints;
+    public boolean showCommentsCount;
     public boolean compactView;
     public boolean thumbnails;
     public boolean showIndex;
@@ -94,6 +95,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     public StoryRecyclerViewAdapter(List<Story> items,
                                     boolean shouldShowPoints,
+                                    boolean shouldShowCommentsCount,
                                     boolean shouldUseCompactView,
                                     boolean shouldShowThumbnails,
                                     boolean shouldShowIndex,
@@ -105,6 +107,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     int wantedType) {
         stories = items;
         showPoints = shouldShowPoints;
+        showCommentsCount = shouldShowCommentsCount;
         compactView = shouldUseCompactView;
         thumbnails = shouldShowThumbnails;
         showIndex = shouldShowIndex;
@@ -172,7 +175,16 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     storyViewHolder.titleView.setText(storyViewHolder.story.title);
                 }
 
-                storyViewHolder.commentsView.setText(Integer.toString(storyViewHolder.story.descendants));
+                final String commentCountText;
+                if (showCommentsCount) {
+                    commentCountText = Integer.toString(storyViewHolder.story.descendants);
+                } else if (storyViewHolder.story.descendants > 0){
+                    commentCountText = "•";
+                } else {
+                    commentCountText = "";
+                }
+                storyViewHolder.commentsView.setText(commentCountText);
+
                 String host = "";
 
                 try {

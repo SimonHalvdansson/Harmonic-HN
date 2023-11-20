@@ -78,6 +78,13 @@
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
+            app:key="pref_show_comments_count"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_comment"
+            app:title="Show comment count"    />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
             app:key="pref_show_index"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_index"

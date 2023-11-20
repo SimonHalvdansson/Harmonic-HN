@@ -65,6 +65,7 @@ public class SubmissionsActivity extends AppCompatActivity {
 
         adapter = new StoryRecyclerViewAdapter(submissions,
                 SettingsUtils.shouldShowPoints(this),
+                SettingsUtils.shouldShowCommentsCount(this),
                 SettingsUtils.shouldUseCompactView(this),
                 SettingsUtils.shouldShowThumbnails(this),
                 false,
