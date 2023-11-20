@@ -81,7 +81,7 @@
             app:key="pref_show_comments_count"
             app:defaultValue="true"
             app:icon="@drawable/ic_action_comment"
-            app:title="Show comments count"    />
+            app:title="Show comment count"    />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
