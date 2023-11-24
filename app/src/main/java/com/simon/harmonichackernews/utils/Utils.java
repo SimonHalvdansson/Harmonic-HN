@@ -313,13 +313,7 @@ public class Utils {
         return false;
     }
 
-
-
     public static String getTimeAgo(long time) {
-        return getTimeAgo(time, false);
-    }
-
-    public static String getTimeAgo(long time, boolean explicit) {
         if (time < 1000000000000L) {
             // if timestamp given in seconds, convert to millis
             time *= 1000;
@@ -330,33 +324,25 @@ public class Utils {
             return "?";
         }
 
-        String result;
-
         final long diff = now - time;
         if (diff < MINUTE_MILLIS) {
-            result = "just now";
+            return "just now";
         } else if (diff < 2 * MINUTE_MILLIS) {
-            result = "1 min";
+            return "1 min";
         } else if (diff < 50 * MINUTE_MILLIS) {
-            result = diff / MINUTE_MILLIS + " mins";
+            return diff / MINUTE_MILLIS + " mins";
         } else if (diff < 120 * MINUTE_MILLIS) {
-            result = "1 hr";
+            return "1 hr";
         } else if (diff < 24 * HOUR_MILLIS) {
-            result = diff / HOUR_MILLIS + " hrs";
+            return diff / HOUR_MILLIS + " hrs";
         } else if (diff < 48 * HOUR_MILLIS) {
-            return explicit ? "yesterday" : "1 day ago";
+            return "1 day";
         } else if (diff < 365 * DAY_MILLIS) {
-            result = diff / DAY_MILLIS + " days";
+            return diff / DAY_MILLIS + " days";
         } else if (diff < 2 * YEAR_MILLIS) {
-            result = "1 year";
+            return "1 year";
         } else {
-            result = diff / YEAR_MILLIS + " years";
-        }
-
-        if (explicit) {
-            return result + " ago";
-        } else {
-            return result;
+            return diff / YEAR_MILLIS + " years";
         }
     }
 
