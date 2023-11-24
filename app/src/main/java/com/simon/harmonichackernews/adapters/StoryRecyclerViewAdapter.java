@@ -202,7 +202,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 if (showPoints && !storyViewHolder.story.isComment) {
                     storyViewHolder.metaView.setText(storyViewHolder.story.score + ptsString + " • " + host + " • " + storyViewHolder.story.getTimeFormatted());
                 } else {
-                    storyViewHolder.metaView.setText(host + "  •  " + storyViewHolder.story.getTimeFormatted());
+                    storyViewHolder.metaView.setText(host + " • " + storyViewHolder.story.getTimeFormatted());
                 }
 
                 if (thumbnails) {
@@ -306,7 +306,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             Story story = stories.get(position);
 
-            commentViewHolder.headerText.setText("On \"" + story.commentMasterTitle + "\" " + Utils.getTimeAgo(story.time, true));
+            commentViewHolder.headerText.setText("On \"" + story.commentMasterTitle + "\" " + Utils.getTimeAgo(story.time));
             commentViewHolder.bodyText.setHtml(story.text);
 
             commentViewHolder.bodyText.post(new Runnable() {
