@@ -62,7 +62,7 @@
             android:fontFamily="@font/product_sans"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:text="Harmonic for Hacker News is developed by me, Simon Halvdansson. The libraries used are listed below together with Materialistic by Hidroh which I've used for some network code and PDF integration.\n\nSince releasing Harmonic I've started my PhD in harmonic analysis (hence the name) so the pace of updates has been lower. I still use the app and read all the emails but don't have the same amount of time to respond and work on new features as earlier but hope to be able to keep Harmonic the (in my opinion) best Hacker News app on Android."/>
+            android:text="Harmonic for Hacker News is developed by me, Simon Halvdansson, although as of 2023 the app is open source. The libraries used are listed below together with Materialistic by Hidroh which I've used for some network code and PDF integration.\n\nSince releasing Harmonic I've started my PhD in harmonic analysis (hence the name) so the pace of updates has been lower. I still use the app and read all the emails but don't have the same amount of time to respond and work on new features as earlier but hope to be able to keep Harmonic the (in my opinion) best Hacker News app on Android."/>
 
         <TextView
             android:textColor="?attr/textColorDisabled"
@@ -163,7 +163,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:onClick="openGithub"
-            android:text="GitHub" />
+            android:text="Harmonic on GitHub" />
 
         <Button
             android:fontFamily="@font/product_sans_bold"
