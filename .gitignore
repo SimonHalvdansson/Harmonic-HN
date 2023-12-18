@@ -1,17 +1,15 @@
-*.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+
+# IntelliJ/Android Studio
+.idea/
+*.iml
+misc.xml
+deploymentTargetDropDown.xml
+
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
 *.pepk
-.idea/deploymentTargetDropDown.xml
-.idea/deploymentTargetDropDown.xml
