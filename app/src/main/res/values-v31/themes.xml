@@ -13,5 +13,4 @@
         <item name="android:windowSplashScreenBackground">@color/splash_screen_background</item>
     </style>
 
-
 </resources>

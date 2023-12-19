@@ -32,10 +32,12 @@
         android:layout_height="48dp">
 
         <Button
+            android:backgroundTint="?attr/colorSecondary"
             android:id="@+id/stories_update_button"
             android:textAllCaps="false"
             android:text="Tap to update"
             android:fontFamily="@font/product_sans"
+            android:textStyle="bold"
             android:textColor="#fff"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
