@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews;
 
-import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -8,7 +7,6 @@ import android.content.res.Resources;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -210,12 +208,12 @@ public class ComposeActivity extends AppCompatActivity {
                 //we just do the default back behavior (which is predictive back)
                 AlertDialog dialog = new MaterialAlertDialogBuilder(editText.getContext())
                         .setMessage(type == TYPE_POST ? "Discard post?" : "Discard comment?")
-                        .setNegativeButton("Discard", new DialogInterface.OnClickListener() {
+                        .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int whichButton) {
                                 dialog.cancel();
                                 finish();
                             }})
-                        .setPositiveButton("Cancel", null).create();
+                        .setNegativeButton("Cancel", null).create();
 
                 dialog.show();
             }
