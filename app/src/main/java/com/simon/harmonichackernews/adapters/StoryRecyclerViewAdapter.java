@@ -504,6 +504,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final MaterialButton repliesButton;
         public final View scrim;
 
+
+        @SuppressLint("WrongViewCast")
         public CommentViewHolder(View view) {
             super(view);
             headerText = view.findViewById(R.id.submissions_comment_header);
