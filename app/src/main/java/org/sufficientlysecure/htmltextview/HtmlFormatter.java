@@ -16,6 +16,7 @@ package org.sufficientlysecure.htmltextview;
 
 import android.text.Html;
 import android.text.Html.ImageGetter;
+import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 
 import androidx.annotation.NonNull;
@@ -58,7 +59,11 @@ public class HtmlFormatter {
             formattedHtml = Html.fromHtml(html, imageGetter, new WrapperContentHandler(htmlTagHandler));
         }
 
-        return formattedHtml;
+        // Replace non breaking spaces with breaking spaces.
+        // They make unexpected line-breaks even in the middle of a word.
+        SpannableStringBuilder builder = new SpannableStringBuilder(formattedHtml);
+        replaceNonBreakingSpaces(builder);
+        return (Spanned) builder.subSequence(0, builder.length());
     }
 
     /**
@@ -76,5 +81,18 @@ public class HtmlFormatter {
             text = (Spanned) text.subSequence(0, text.length() - 1);
         }
         return text;
+    }
+
+    private static void replaceNonBreakingSpaces(SpannableStringBuilder builder) {
+        int start = 0;
+        while (start < builder.length()) {
+            int index = builder.toString().indexOf('\u00A0', start);
+            if (index != -1) {
+                builder.replace(index, index + 1, " ");
+                start = index + 1;
+            } else {
+                break;
+            }
+        }
     }
 }
