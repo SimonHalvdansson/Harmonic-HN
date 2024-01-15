@@ -463,7 +463,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             if (!comment.text.isEmpty()) {
                 itemViewHolder.commentBody.setHtml(comment.text);
                 if (collapseParent) {
-                    itemViewHolder.commentHiddenText.setText(" • " + Html.fromHtml(comment.text.substring(0, Math.min(100, comment.text.length()-1))));
+                    itemViewHolder.commentHiddenText.setText(" • " + Html.fromHtml(comment.text.substring(0, Math.min(120, comment.text.length()))));
                 }
 
                 FontUtils.setTypeface(itemViewHolder.commentBody, false, preferredTextSize);
