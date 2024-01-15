@@ -137,7 +137,9 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                         "- Added option to hide comment count (thanks Loïc Carr)<br>" +
                         "- Added loading indicator to main screen for initial load<br>" +
                         "- Added option to swap comment tap/long press behavior<br>" +
+                        "- Improved code comment formatting (thanks @naitgacem)<br>" +
                         "- Added option to disable startup changelog (this thing)<br>" +
+                        "- Fixed collapsed comment cutoff issue<br>" +
                         "- Fixed Material dialog discard button placement (thanks Carsten Hagemann)<br>" +
                         "<br>" +
                         "<b>Version 2.0.1:</b><br>" +
