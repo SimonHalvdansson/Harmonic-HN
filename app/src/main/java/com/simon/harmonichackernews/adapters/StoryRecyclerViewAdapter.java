@@ -500,9 +500,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         public final TextView headerText;
         public final HtmlTextView bodyText;
-        public final MaterialButton storyButton;
-        public final MaterialButton repliesButton;
+        public final Button storyButton;
+        public final Button repliesButton;
         public final View scrim;
+
 
         public CommentViewHolder(View view) {
             super(view);
