@@ -368,6 +368,7 @@
             app:summary="Hide stories based on words in title"
             app:title="Filter stories on words" />
         <EditTextPreference
+            app:dialogMessage="Setting this value too high may cause the UI to become janky."
             app:icon="@drawable/ic_action_block"
             app:key="pref_filter_score"
             app:singleLineTitle="false"
