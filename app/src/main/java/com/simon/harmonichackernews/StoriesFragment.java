@@ -481,7 +481,7 @@ public class StoriesFragment extends Fragment {
                         }
 
                         //or because it's less than the minimum score
-                        if (story.score < minimumScore) {
+                        if (adapter.type == SettingsUtils.getTopStoriesIndex(getResources()) && story.score < minimumScore) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
                             loadedTo = Math.max(0, loadedTo - 1);

@@ -373,7 +373,7 @@
             app:key="pref_filter_score"
             app:singleLineTitle="false"
             app:summary="Hide stories based on a minimum score"
-            app:title="Filter stories on score" />
+            app:title="Filter top stories on score" />
 
         <SwitchPreferenceCompat
             app:defaultValue="false"
