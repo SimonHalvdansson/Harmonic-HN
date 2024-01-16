@@ -264,16 +264,4 @@ public class SettingsUtils {
         //fallback
         return sortingOptions.length - 2;
     }
-    public static int getTopStoriesIndex(@NonNull Resources res) {
-        String[] sortingOptions = res.getStringArray(R.array.sorting_options);
-
-        for (int i = sortingOptions.length - 1; i >= 0; i--) {
-            if (sortingOptions[i].equals("Top Stories")) {
-                return i;
-            }
-        }
-        //fallback
-        return 0;
-    }
-
 }

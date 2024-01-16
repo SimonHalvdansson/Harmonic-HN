@@ -481,7 +481,7 @@ public class StoriesFragment extends Fragment {
                         }
 
                         //or because it's less than the minimum score
-                        if (adapter.type == SettingsUtils.getTopStoriesIndex(getResources()) && story.score < minimumScore) {
+                        if (story.score < minimumScore) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
                             loadedTo = Math.max(0, loadedTo - 1);
@@ -682,7 +682,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void loadTopStoriesSince(int start_i) {
-        loadAlgolia("https://hn.algolia.com/api/v1/search?tags=story&numericFilters=created_at_i>" + start_i + "&hitsPerPage=200", true);
+        loadAlgolia("https://hn.algolia.com/api/v1/search?tags=story&numericFilters=points>=" + minimumScore +",created_at_i>" + start_i + "&hitsPerPage=200", true);
     }
 
     private void search(String query) {
