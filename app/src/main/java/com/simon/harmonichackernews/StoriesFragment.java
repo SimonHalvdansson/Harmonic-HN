@@ -205,7 +205,7 @@ public class StoriesFragment extends Fragment {
                 SettingsUtils.getPreferredFaviconProvider(getContext()),
                 null,
                 getPreferredTypeIndex()
-                );
+        );
 
         adapter.setOnLinkClickListener(position -> {
             if (position == RecyclerView.NO_POSITION) {
@@ -309,7 +309,7 @@ public class StoriesFragment extends Fragment {
                     //the reason for the -10 - height/3 thing is so match the popup location better
                     //with the press location - for some reason this is necessary.
                     int targetX = x - Utils.pxFromDpInt(getResources(), 56);
-                    int targetY = y - topInset - Utils.pxFromDpInt(getResources(), 10) - v.getHeight()/3;
+                    int targetY = y - topInset - Utils.pxFromDpInt(getResources(), 10) - v.getHeight() / 3;
 
                     menuPopupHelper.getClass().getDeclaredMethod("show", int.class, int.class).invoke(menuPopupHelper, targetX, targetY);
                 } catch (Exception e) {
@@ -343,7 +343,7 @@ public class StoriesFragment extends Fragment {
         long timeDiff = System.currentTimeMillis() - lastLoaded;
 
         // if more than 1 hr
-        if (timeDiff > 1000*60*60 && !adapter.searching && adapter.type != SettingsUtils.getBookmarksIndex(getResources()) && !currentTypeIsAlgolia()) {
+        if (timeDiff > 1000 * 60 * 60 && !adapter.searching && adapter.type != SettingsUtils.getBookmarksIndex(getResources()) && !currentTypeIsAlgolia()) {
             showUpdateButton();
         }
 
@@ -559,11 +559,11 @@ public class StoriesFragment extends Fragment {
             int currentTime = (int) (System.currentTimeMillis() / 1000);
             int startTime = currentTime;
             if (adapter.type == 1) {
-                startTime = currentTime - 60*60*24;
+                startTime = currentTime - 60 * 60 * 24;
             } else if (adapter.type == 2) {
-                startTime = currentTime - 60*60*48;
+                startTime = currentTime - 60 * 60 * 48;
             } else if (adapter.type == 3) {
-                startTime = currentTime - 60*60*24*7;
+                startTime = currentTime - 60 * 60 * 24 * 7;
             }
 
             loadTopStoriesSince(startTime);

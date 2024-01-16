@@ -109,7 +109,7 @@ public class Utils {
 
     public static String getDomainName(String url) throws Exception {
         if (url.endsWith("#")) {
-            url = url.substring(0, url.length()-1);
+            url = url.substring(0, url.length() - 1);
         }
         URI uri = new URI(url);
         String domain = uri.getHost();
@@ -151,7 +151,7 @@ public class Utils {
         }
         //if there already exists a story with the same id, remove it from list of cached since we're only saving the latest one
         if (cachedStories.size() > 0) {
-            for (Iterator<String> iterator = cachedStories.iterator(); iterator.hasNext();) {
+            for (Iterator<String> iterator = cachedStories.iterator(); iterator.hasNext(); ) {
                 String cached = iterator.next();
                 String[] idAndDate = cached.split("-");
                 if (Integer.parseInt(idAndDate[0]) == id) {
@@ -172,7 +172,7 @@ public class Utils {
                     oldestId = Integer.parseInt(idAndDate[0]);
                 }
             }
-            
+
             cachedStories.remove(oldestId + "-" + oldestTime);
 
             ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE).edit().remove(KEY_SHARED_PREFERENCES_CACHED_STORY + oldestId).apply();
@@ -291,13 +291,14 @@ public class Utils {
         }
         return phrases;
     }
+
     public static int getMinScore(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         String prefText = prefs.getString("pref_filter_score", null);
         int minScore;
-        try{
+        try {
             minScore = Integer.parseInt(prefText);
-        } catch (Exception e){
+        } catch (Exception e) {
             minScore = 0;
         }
         return minScore;
@@ -490,7 +491,7 @@ public class Utils {
         return packagesSupportingCustomTabs;
     }
 
-    public static int[] JSONArrayToIntArray(JSONArray jsonArray){
+    public static int[] JSONArrayToIntArray(JSONArray jsonArray) {
         int[] intArray = new int[jsonArray.length()];
         for (int i = 0; i < intArray.length; ++i) {
             intArray[i] = jsonArray.optInt(i);
@@ -552,7 +553,7 @@ public class Utils {
 
         return initialTime <= currentTime && currentTime < finalTime;
     }
-    
+
     public static void setNighttimeHours(int fromHour, int fromMinute, int toHour, int toMinute, Context ctx) {
         SettingsUtils.saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_HOUR, fromHour + "");
         SettingsUtils.saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_MINUTE, fromMinute + "");
@@ -561,7 +562,7 @@ public class Utils {
     }
 
     public static int[] getNighttimeHours(Context ctx) {
-        return new int[] {
+        return new int[]{
                 Integer.parseInt(SettingsUtils.readStringFromSharedPreferences(ctx, KEY_NIGHTTIME_FROM_HOUR, "21")),
                 Integer.parseInt(SettingsUtils.readStringFromSharedPreferences(ctx, KEY_NIGHTTIME_FROM_MINUTE, "0")),
                 Integer.parseInt(SettingsUtils.readStringFromSharedPreferences(ctx, KEY_NIGHTTIME_TO_HOUR, "6")),
@@ -570,11 +571,11 @@ public class Utils {
     }
 
     public static boolean timeInSecondsMoreThanTwoWeeksAgo(int time) {
-        return (System.currentTimeMillis() - ((long) time)*1000)/1000/60/60/24 > 14;
+        return (System.currentTimeMillis() - ((long) time) * 1000) / 1000 / 60 / 60 / 24 > 14;
     }
 
     public static boolean timeInSecondsMoreThanTwoHoursAgo(int time) {
-        return (System.currentTimeMillis() - ((long) time)*1000)/1000/60/60 > 2;
+        return (System.currentTimeMillis() - ((long) time) * 1000) / 1000 / 60 / 60 > 2;
     }
 
     public static float pxFromDp(final Resources resources, final float dp) {

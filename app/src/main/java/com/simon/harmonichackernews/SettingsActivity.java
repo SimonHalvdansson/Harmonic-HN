@@ -321,7 +321,7 @@ public class SettingsActivity extends AppCompatActivity {
             int[] nighttimeHours = Utils.getNighttimeHours(getContext());
 
             if (DateFormat.is24HourFormat(getContext())) {
-                findPreference("pref_theme_timed_range").setSummary((nighttimeHours[0] < 10 ? "0" : "") + nighttimeHours[0] + ":" + (nighttimeHours[1] < 10 ? "0" : "") +  nighttimeHours[1] + " - " + (nighttimeHours[2] < 10 ? "0" : "") + nighttimeHours[2] + ":" + (nighttimeHours[3] < 10 ? "0" : "") + nighttimeHours[3]);
+                findPreference("pref_theme_timed_range").setSummary((nighttimeHours[0] < 10 ? "0" : "") + nighttimeHours[0] + ":" + (nighttimeHours[1] < 10 ? "0" : "") + nighttimeHours[1] + " - " + (nighttimeHours[2] < 10 ? "0" : "") + nighttimeHours[2] + ":" + (nighttimeHours[3] < 10 ? "0" : "") + nighttimeHours[3]);
 
             } else {
                 SimpleDateFormat df = new SimpleDateFormat("h:mm a");

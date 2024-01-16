@@ -224,6 +224,7 @@ public class SettingsUtils {
     public static int getPreferredCommentTextSize(Context ctx) {
         return Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_comment_text_size", "15"));
     }
+
     public static String getPreferredStoryType(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return prefs.getString("pref_default_story_type", "Top Stories");
@@ -240,7 +241,7 @@ public class SettingsUtils {
     }
 
     public static int getBookmarksIndex(Resources res) {
-        String[] sortingOptions =  res.getStringArray(R.array.sorting_options);
+        String[] sortingOptions = res.getStringArray(R.array.sorting_options);
 
         for (int i = sortingOptions.length - 1; i >= 0; i--) {
             if (sortingOptions[i].equals("Bookmarks")) {
@@ -252,7 +253,7 @@ public class SettingsUtils {
     }
 
     public static int getJobsIndex(Resources res) {
-        String[] sortingOptions =  res.getStringArray(R.array.sorting_options);
+        String[] sortingOptions = res.getStringArray(R.array.sorting_options);
 
         for (int i = sortingOptions.length - 1; i >= 0; i--) {
             if (sortingOptions[i].equals("HN Jobs")) {
