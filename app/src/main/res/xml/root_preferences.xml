@@ -367,6 +367,13 @@
             app:icon="@drawable/ic_action_filter"
             app:summary="Hide stories based on words in title"
             app:dialogMessage="Separate phrases by commas, capitalization is ignored"  />
+        <EditTextPreference
+            app:singleLineTitle="false"
+            app:title="Filter stories by domain"
+            app:key="pref_filter_domains"
+            app:icon="@drawable/ic_action_block"
+            app:summary="Hide stories based on domain name"
+            app:dialogMessage="Separate phrases by commas, capitalization is ignored"  />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"

@@ -294,6 +294,18 @@ public class Utils {
         }
         return phrases;
     }
+    public static ArrayList<String> getFilterDomains(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        String prefText = prefs.getString("pref_filter_domains", null);
+
+        ArrayList<String> phrases = new ArrayList<>();
+        if (prefText != null && !prefText.equals("")) {
+            for (String phrase : prefText.split(",")) {
+                phrases.add(phrase.trim());
+            }
+        }
+        return phrases;
+    }
 
     public static boolean isFirstAppStart(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
