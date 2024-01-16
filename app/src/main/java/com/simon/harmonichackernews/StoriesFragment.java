@@ -5,10 +5,8 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -73,6 +71,7 @@ public class StoriesFragment extends Fragment {
     private LinearLayoutManager linearLayoutManager;
     private Set<Integer> clickedIds;
     private ArrayList<String> filterWords;
+    private int minimumScore;
     private boolean hideJobs, alwaysOpenComments, hideClicked;
     private String lastSearch;
 
@@ -336,6 +335,7 @@ public class StoriesFragment extends Fragment {
         super.onResume();
 
         filterWords = Utils.getFilterWords(getContext());
+        minimumScore = Utils.getMinScore(getContext());
         hideJobs = SettingsUtils.shouldHideJobs(getContext());
         hideClicked = SettingsUtils.shouldHideClicked(getContext());
         alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(getContext());
@@ -474,6 +474,14 @@ public class StoriesFragment extends Fragment {
 
                         //or because it's a job
                         if (hideJobs && adapter.type != SettingsUtils.getJobsIndex(getResources()) && (story.isJob || story.by.equals("whoishiring"))) {
+                            stories.remove(story);
+                            adapter.notifyItemRemoved(index);
+                            loadedTo = Math.max(0, loadedTo - 1);
+                            return;
+                        }
+
+                        //or because it's less than the minimum score
+                        if (story.score < minimumScore) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
                             loadedTo = Math.max(0, loadedTo - 1);

@@ -22,10 +22,7 @@ import android.widget.Toast;
 import androidx.browser.customtabs.CustomTabColorSchemeParams;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.content.ContextCompat;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.preference.PreferenceManager;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.simon.harmonichackernews.BuildConfig;
 import com.simon.harmonichackernews.CommentsActivity;
@@ -293,6 +290,17 @@ public class Utils {
             }
         }
         return phrases;
+    }
+    public static int getMinScore(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        String prefText = prefs.getString("pref_filter_score", null);
+        int minScore;
+        try{
+            minScore = Integer.parseInt(prefText);
+        } catch (Exception e){
+            minScore = 0;
+        }
+        return minScore;
     }
 
     public static boolean isFirstAppStart(Context ctx) {

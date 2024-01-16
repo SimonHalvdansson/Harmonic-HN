@@ -1,421 +1,427 @@
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <PreferenceCategory
-        app:title="Theme"
-        android:layout="@layout/preference_category">
+        android:layout="@layout/preference_category"
+        app:title="Theme">
 
         <ListPreference
-            app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_style"
-            app:title="Theme"
-            app:key="pref_theme"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/theme_entries"
             app:defaultValue="material_daynight"
-            app:entryValues="@array/theme_values"   />
+            app:entries="@array/theme_entries"
+            app:entryValues="@array/theme_values"
+            app:icon="@drawable/ic_action_style"
+            app:key="pref_theme"
+            app:singleLineTitle="false"
+            app:title="Theme"
+            app:useSimpleSummaryProvider="true" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_special_nighttime"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_night"
-            app:title="Special nighttime theme"    />
+            app:key="pref_special_nighttime"
+            app:singleLineTitle="false"
+            app:title="Special nighttime theme" />
 
         <Preference
             app:dependency="pref_special_nighttime"
-            app:singleLineTitle="false"
-            app:key="pref_theme_timed_range"
             app:icon="@drawable/ic_action_time"
-            app:title="Timed range"    />
+            app:key="pref_theme_timed_range"
+            app:singleLineTitle="false"
+            app:title="Timed range" />
 
         <ListPreference
-            app:dependency="pref_special_nighttime"
-            app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_dark_mode"
-            app:title="Nighttime theme"
-            app:key="pref_theme_nighttime"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/theme_entries"
             app:defaultValue="dark"
-            app:entryValues="@array/theme_values"   />
+            app:dependency="pref_special_nighttime"
+            app:entries="@array/theme_entries"
+            app:entryValues="@array/theme_values"
+            app:icon="@drawable/ic_action_dark_mode"
+            app:key="pref_theme_nighttime"
+            app:singleLineTitle="false"
+            app:title="Nighttime theme"
+            app:useSimpleSummaryProvider="true" />
 
     </PreferenceCategory>
 
     <PreferenceCategory
-        app:title="Display"
-        android:layout="@layout/preference_category">
+        android:layout="@layout/preference_category"
+        app:title="Display">
 
         <ListPreference
-            app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_bookmark_border"
-            app:title="Default starting page"
-            app:key="pref_default_story_type"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/sorting_options"
             app:defaultValue="Top Stories"
-            app:entryValues="@array/sorting_options"   />
+            app:entries="@array/sorting_options"
+            app:entryValues="@array/sorting_options"
+            app:icon="@drawable/ic_action_bookmark_border"
+            app:key="pref_default_story_type"
+            app:singleLineTitle="false"
+            app:title="Default starting page"
+            app:useSimpleSummaryProvider="true" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_compact_view"
-            app:summary="Hides points, domain and time"
             app:icon="@drawable/ic_action_compact"
-            app:title="Compact stories"    />
+            app:key="pref_compact_view"
+            app:singleLineTitle="false"
+            app:summary="Hides points, domain and time"
+            app:title="Compact stories" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
             app:defaultValue="true"
-            app:key="pref_thumbnails"
             app:icon="@drawable/ic_action_web"
-            app:title="Show story thumbnails"    />
+            app:key="pref_thumbnails"
+            app:singleLineTitle="false"
+            app:title="Show story thumbnails" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_show_points"
             app:defaultValue="true"
             app:icon="@drawable/ic_action_thumbs"
-            app:title="Show story points"    />
+            app:key="pref_show_points"
+            app:singleLineTitle="false"
+            app:title="Show story points" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_show_comments_count"
             app:defaultValue="true"
             app:icon="@drawable/ic_action_comment"
-            app:title="Show comment count"    />
+            app:key="pref_show_comments_count"
+            app:singleLineTitle="false"
+            app:title="Show comment count" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_show_index"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_index"
-            app:title="Show story indices"    />
+            app:key="pref_show_index"
+            app:singleLineTitle="false"
+            app:title="Show story indices" />
 
         <SwitchPreferenceCompat
-            app:isPreferenceVisible="false"
-            app:singleLineTitle="false"
-            app:key="pref_show_pdf_badge"
             app:defaultValue="true"
-            app:summary="Instead of titles ending in [PDF]"
             app:icon="@drawable/ic_action_pdf"
-            app:title="Show PDF badge"    />
+            app:isPreferenceVisible="false"
+            app:key="pref_show_pdf_badge"
+            app:singleLineTitle="false"
+            app:summary="Instead of titles ending in [PDF]"
+            app:title="Show PDF badge" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_compact_header"
             app:defaultValue="false"
-            app:summary="Smaller margins for 'Top stories' header"
             app:icon="@drawable/ic_action_horizontal_split"
-            app:title="Compact header"    />
+            app:key="pref_compact_header"
+            app:singleLineTitle="false"
+            app:summary="Smaller margins for 'Top stories' header"
+            app:title="Compact header" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_left_align"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_hand"
-            app:title="Left align comments button"    />
+            app:key="pref_left_align"
+            app:singleLineTitle="false"
+            app:title="Left align comments button" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_foldable_support"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_tablet"
-            app:title="Enable foldable support"   />
-      
-      <SwitchPreferenceCompat
+            app:key="pref_foldable_support"
             app:singleLineTitle="false"
-            app:key="pref_transparent_status_bar"
+            app:title="Enable foldable support" />
+
+        <SwitchPreferenceCompat
             app:defaultValue="false"
             app:icon="@drawable/ic_action_visibility"
-            app:title="Transparent status bar"    />
+            app:key="pref_transparent_status_bar"
+            app:singleLineTitle="false"
+            app:title="Transparent status bar" />
 
         <ListPreference
-            app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_web"
-            app:title="Favicon provider"
-            app:key="pref_favicon_provider"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/favicon_providers"
             app:defaultValue="Google"
-            app:entryValues="@array/favicon_providers"   />
+            app:entries="@array/favicon_providers"
+            app:entryValues="@array/favicon_providers"
+            app:icon="@drawable/ic_action_web"
+            app:key="pref_favicon_provider"
+            app:singleLineTitle="false"
+            app:title="Favicon provider"
+            app:useSimpleSummaryProvider="true" />
 
         <ListPreference
-            app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_whatshot"
-            app:title="Highlight hot stories"
-            app:key="pref_hotness"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/hotness_entries"
             app:defaultValue="-1"
-            app:entryValues="@array/hotness_values"   />
+            app:entries="@array/hotness_entries"
+            app:entryValues="@array/hotness_values"
+            app:icon="@drawable/ic_action_whatshot"
+            app:key="pref_hotness"
+            app:singleLineTitle="false"
+            app:title="Highlight hot stories"
+            app:useSimpleSummaryProvider="true" />
 
         <ListPreference
-            app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_font"
-            app:title="Title and comment font"
-            app:key="pref_font"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/font_entries"
             app:defaultValue="productsans"
-            app:entryValues="@array/font_values"   />
+            app:entries="@array/font_entries"
+            app:entryValues="@array/font_values"
+            app:icon="@drawable/ic_action_font"
+            app:key="pref_font"
+            app:singleLineTitle="false"
+            app:title="Title and comment font"
+            app:useSimpleSummaryProvider="true" />
 
     </PreferenceCategory>
 
     <PreferenceCategory
-        app:title="WebView"
-        android:layout="@layout/preference_category">
+        android:layout="@layout/preference_category"
+        app:title="WebView">
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_webview"
             app:defaultValue="true"
-            app:summary="Opens websites in the app which has a hit on performance"
             app:icon="@drawable/ic_action_browser"
-            app:title="Integrated WebView"    />
+            app:key="pref_webview"
+            app:singleLineTitle="false"
+            app:summary="Opens websites in the app which has a hit on performance"
+            app:title="Integrated WebView" />
 
         <ListPreference
-            app:dependency="pref_webview"
-            app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_cache"
-            app:title="Preload websites"
-            app:key="pref_preload_webview"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/preload_entries"
             app:defaultValue="never"
-            app:entryValues="@array/preload_values"   />
+            app:dependency="pref_webview"
+            app:entries="@array/preload_entries"
+            app:entryValues="@array/preload_values"
+            app:icon="@drawable/ic_action_cache"
+            app:key="pref_preload_webview"
+            app:singleLineTitle="false"
+            app:title="Preload websites"
+            app:useSimpleSummaryProvider="true" />
 
         <SwitchPreferenceCompat
-            app:dependency="pref_webview"
-            app:singleLineTitle="false"
-            app:key="pref_webview_match_theme"
             app:defaultValue="false"
+            app:dependency="pref_webview"
             app:icon="@drawable/ic_action_invert"
-            app:title="Match WebView dark mode to theme"    />
+            app:key="pref_webview_match_theme"
+            app:singleLineTitle="false"
+            app:title="Match WebView dark mode to theme" />
 
         <SwitchPreferenceCompat
-            app:dependency="pref_webview"
-            app:singleLineTitle="false"
-            app:key="pref_webview_adblock"
             app:defaultValue="false"
-            app:summary="May cause some sites to stop working and has a small performance penalty"
+            app:dependency="pref_webview"
             app:icon="@drawable/ic_action_block"
-            app:title="Block WebView ads"    />
+            app:key="pref_webview_adblock"
+            app:singleLineTitle="false"
+            app:summary="May cause some sites to stop working and has a small performance penalty"
+            app:title="Block WebView ads" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_redirect_nitter"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_redirect"
-            app:title="Redirect Twitter/X to Nitter"    />
+            app:key="pref_redirect_nitter"
+            app:singleLineTitle="false"
+            app:title="Redirect Twitter/X to Nitter" />
 
     </PreferenceCategory>
 
     <PreferenceCategory
-        app:title="Comments"
-        android:layout="@layout/preference_category">
+        android:layout="@layout/preference_category"
+        app:title="Comments">
 
         <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_api"
             app:isPreferenceVisible="false"
             app:key="pref_algolia_api"
-            app:icon="@drawable/ic_action_api"
-            app:defaultValue="true"
-            app:title="Use Algolia API"    />
+            app:title="Use Algolia API" />
 
         <ListPreference
-            app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_text"
-            app:title="Comments text size"
-            app:key="pref_comment_text_size"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/font_size_entries"
             app:defaultValue="15"
-            app:entryValues="@array/font_size_values"   />
+            app:entries="@array/font_size_entries"
+            app:entryValues="@array/font_size_values"
+            app:icon="@drawable/ic_action_text"
+            app:key="pref_comment_text_size"
+            app:singleLineTitle="false"
+            app:title="Comments text size"
+            app:useSimpleSummaryProvider="true" />
 
         <ListPreference
-            app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_filter"
-            app:title="Comment sorting"
-            app:key="pref_comment_sorting"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/comment_sorting"
             app:defaultValue="Default"
-            app:entryValues="@array/comment_sorting"   />
+            app:entries="@array/comment_sorting"
+            app:entryValues="@array/comment_sorting"
+            app:icon="@drawable/ic_action_filter"
+            app:key="pref_comment_sorting"
+            app:singleLineTitle="false"
+            app:title="Comment sorting"
+            app:useSimpleSummaryProvider="true" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_collapse_parent"
             app:icon="@drawable/ic_action_comment"
-            app:title="Hide text of collapsed comment"    />
+            app:key="pref_collapse_parent"
+            app:singleLineTitle="false"
+            app:title="Hide text of collapsed comment" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
             android:defaultValue="false"
-            app:key="pref_collapse_top_level"
             app:icon="@drawable/ic_action_minimize"
-            app:title="Auto-collapse top level comments"    />
+            app:key="pref_collapse_top_level"
+            app:singleLineTitle="false"
+            app:title="Auto-collapse top level comments" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_scroll_navigation"
-            app:icon="@drawable/ic_action_explore"
-            app:title="Show navigation buttons"
-            app:summary="Navigate between top level comments"
-            app:defaultValue="false" />
-
-        <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_monochrome_comment_depth"
-            app:icon="@drawable/ic_action_colors"
             app:defaultValue="false"
+            app:icon="@drawable/ic_action_explore"
+            app:key="pref_scroll_navigation"
+            app:singleLineTitle="false"
+            app:summary="Navigate between top level comments"
+            app:title="Show navigation buttons" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_colors"
+            app:key="pref_monochrome_comment_depth"
+            app:singleLineTitle="false"
             app:title="Monochrome thread indicators" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_top_level_thread_indicators"
-            app:icon="@drawable/ic_action_align_left"
             app:defaultValue="false"
+            app:icon="@drawable/ic_action_align_left"
+            app:key="pref_top_level_thread_indicators"
+            app:singleLineTitle="false"
             app:summary="Makes it easier to separate top level comments"
             app:title="Show top level thread indicators" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_always_open_comments"
-            app:icon="@drawable/ic_action_skip"
             app:defaultValue="false"
+            app:icon="@drawable/ic_action_skip"
+            app:key="pref_always_open_comments"
+            app:singleLineTitle="false"
             app:summary="Clicking a story takes you directly to the comments view"
             app:title="Always open comments" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_comments_disable_swipeback"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_swipe"
-            app:title="Disable swipe back from comments"    />
+            app:key="pref_comments_disable_swipeback"
+            app:singleLineTitle="false"
+            app:title="Disable swipe back from comments" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_comments_animation"
             app:defaultValue="true"
             app:icon="@drawable/ic_action_animation"
-            app:title="Animate comments"    />
+            app:key="pref_comments_animation"
+            app:singleLineTitle="false"
+            app:title="Animate comments" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_comments_scrollbar"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_swipe_vertical"
-            app:title="Scrollbar"    />
+            app:key="pref_comments_scrollbar"
+            app:singleLineTitle="false"
+            app:title="Scrollbar" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_comments_swap_long"
             app:defaultValue="false"
-            app:summaryOn="Current: Tap for options"
-            app:summaryOff="Current: Tap to hide/expand"
             app:icon="@drawable/ic_action_touch"
-            app:title="Swap tap/long press behavior"    />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        app:title="Link previews"
-        android:layout="@layout/preference_category">
-
-        <SwitchPreferenceCompat
-            app:icon="@drawable/ic_link_preview_arxiv"
-            app:title="ArXiV"
-            app:defaultValue="true"
-            app:key="pref_link_preview_arxiv"/>
-
-        <SwitchPreferenceCompat
-            app:icon="@drawable/ic_link_preview_github"
-            app:title="GitHub"
-            app:defaultValue="true"
-            app:key="pref_link_preview_github"/>
-
-        <SwitchPreferenceCompat
-            app:icon="@drawable/ic_link_preview_x"
-            app:title="Twitter/X"
-            app:dependency="pref_redirect_nitter"
-            app:summary="Requires Nitter redirect to be active"
-            app:defaultValue="true"
-            app:key="pref_link_preview_x"/>
-
-        <SwitchPreferenceCompat
-            app:icon="@drawable/ic_link_preview_wikipedia"
-            app:title="Wikipedia"
-            app:defaultValue="true"
-            app:key="pref_link_preview_wikipedia"/>
-
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        app:title="General"
-        android:layout="@layout/preference_category">
-
-        <SwitchPreferenceCompat
+            app:key="pref_comments_swap_long"
             app:singleLineTitle="false"
-            app:key="pref_external_browser"
+            app:summaryOff="Current: Tap to hide/expand"
+            app:summaryOn="Current: Tap for options"
+            app:title="Swap tap/long press behavior" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/preference_category"
+        app:title="Link previews">
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:icon="@drawable/ic_link_preview_arxiv"
+            app:key="pref_link_preview_arxiv"
+            app:title="ArXiV" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:icon="@drawable/ic_link_preview_github"
+            app:key="pref_link_preview_github"
+            app:title="GitHub" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:dependency="pref_redirect_nitter"
+            app:icon="@drawable/ic_link_preview_x"
+            app:key="pref_link_preview_x"
+            app:summary="Requires Nitter redirect to be active"
+            app:title="Twitter/X" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:icon="@drawable/ic_link_preview_wikipedia"
+            app:key="pref_link_preview_wikipedia"
+            app:title="Wikipedia" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/preference_category"
+        app:title="General">
+
+        <SwitchPreferenceCompat
             app:defaultValue="false"
-            app:title="Use external browser"
+            app:icon="@drawable/ic_action_external_browser"
+            app:key="pref_external_browser"
+            app:singleLineTitle="false"
             app:summary="In place of custom tabs"
-            app:icon="@drawable/ic_action_external_browser" />
+            app:title="Use external browser" />
 
         <EditTextPreference
-            app:singleLineTitle="false"
-            app:title="Filter stories"
-            app:key="pref_filter"
+            app:dialogMessage="Separate phrases by commas, capitalization is ignored"
             app:icon="@drawable/ic_action_filter"
+            app:key="pref_filter"
+            app:singleLineTitle="false"
             app:summary="Hide stories based on words in title"
-            app:dialogMessage="Separate phrases by commas, capitalization is ignored"  />
+            app:title="Filter stories on words" />
+        <EditTextPreference
+            app:icon="@drawable/ic_action_block"
+            app:key="pref_filter_score"
+            app:singleLineTitle="false"
+            app:summary="Hide stories based on a minimum score"
+            app:title="Filter stories on score" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_hide_jobs"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_work_off"
+            app:key="pref_hide_jobs"
+            app:singleLineTitle="false"
             app:summary="Includes &quot;Who is hiring&quot; posts"
-            app:title="Hide job posts"    />
+            app:title="Hide job posts" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_hide_clicked"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_hide"
+            app:key="pref_hide_clicked"
+            app:singleLineTitle="false"
             app:summary="Applies on refresh"
-            app:title="Hide clicked posts"    />
+            app:title="Hide clicked posts" />
 
         <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_show_changelog"
             app:defaultValue="true"
             app:icon="@drawable/ic_action_update"
-            app:title="Show update changelogs"    />
+            app:key="pref_show_changelog"
+            app:singleLineTitle="false"
+            app:title="Show update changelogs" />
 
         <Preference
-            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_bookmark_border"
             app:key="pref_export_bookmarks"
-            app:title="Export bookmarks"
+            app:singleLineTitle="false"
             app:summary="Exports to text file where first number of each line is post ID"
-            app:icon="@drawable/ic_action_bookmark_border" />
+            app:title="Export bookmarks" />
 
         <Preference
-            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_bookmark_filled"
             app:key="pref_import_bookmarks"
-            app:title="Import bookmarks"
+            app:singleLineTitle="false"
             app:summary="Overwrites current bookmarks"
-            app:icon="@drawable/ic_action_bookmark_filled" />
+            app:title="Import bookmarks" />
 
         <Preference
-            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_clear"
             app:key="pref_clear_clicked_stories"
-            app:title="Clear clicked stories"
-            app:icon="@drawable/ic_action_clear" />
+            app:singleLineTitle="false"
+            app:title="Clear clicked stories" />
 
         <Preference
-            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_info"
             app:key="pref_about"
-            app:title="About"
-            app:icon="@drawable/ic_action_info" />
+            app:singleLineTitle="false"
+            app:title="About" />
 
     </PreferenceCategory>
 </PreferenceScreen>
