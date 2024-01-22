@@ -132,6 +132,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml( "<b>Version 2.0.2:</b><br>" +
+                        "- New app icon!<br>" +
                         "- Fixed crash when opening PDF in browser<br>" +
                         "- More material 3 styling<br>" +
                         "- Added option to hide comment count (thanks Loïc Carr)<br>" +
