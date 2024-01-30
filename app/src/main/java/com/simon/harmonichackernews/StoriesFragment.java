@@ -73,6 +73,7 @@ public class StoriesFragment extends Fragment {
     private LinearLayoutManager linearLayoutManager;
     private Set<Integer> clickedIds;
     private ArrayList<String> filterWords;
+    private ArrayList<String> filterDomains;
     private boolean hideJobs, alwaysOpenComments, hideClicked;
     private String lastSearch;
 
@@ -336,6 +337,7 @@ public class StoriesFragment extends Fragment {
         super.onResume();
 
         filterWords = Utils.getFilterWords(getContext());
+        filterDomains = Utils.getFilterDomains(getContext());
         hideJobs = SettingsUtils.shouldHideJobs(getContext());
         hideClicked = SettingsUtils.shouldHideClicked(getContext());
         alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(getContext());
@@ -465,6 +467,15 @@ public class StoriesFragment extends Fragment {
                         //lets check if we should remove the post because of filter
                         for (String phrase : filterWords) {
                             if (story.title.toLowerCase().contains(phrase.toLowerCase())) {
+                                stories.remove(story);
+                                adapter.notifyItemRemoved(index);
+                                loadedTo = Math.max(0, loadedTo - 1);
+                                return;
+                            }
+                        }
+                        // or domain name
+                        for (String phrase : filterDomains) {
+                            if (story.url.toLowerCase().contains(phrase.toLowerCase())) {
                                 stories.remove(story);
                                 adapter.notifyItemRemoved(index);
                                 loadedTo = Math.max(0, loadedTo - 1);

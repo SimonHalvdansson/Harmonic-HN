@@ -287,7 +287,19 @@ public class Utils {
         String prefText = prefs.getString("pref_filter", null);
 
         ArrayList<String> phrases = new ArrayList<>();
-        if (prefText != null && !prefText.equals("")) {
+        if (!TextUtils.isEmpty(prefText)) {
+            for (String phrase : prefText.split(",")) {
+                phrases.add(phrase.trim());
+            }
+        }
+        return phrases;
+    }
+    public static ArrayList<String> getFilterDomains(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        String prefText = prefs.getString("pref_filter_domains", null);
+
+        ArrayList<String> phrases = new ArrayList<>();
+        if (!TextUtils.isEmpty(prefText)) {
             for (String phrase : prefText.split(",")) {
                 phrases.add(phrase.trim());
             }
