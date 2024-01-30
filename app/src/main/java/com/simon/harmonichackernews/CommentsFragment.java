@@ -50,7 +50,6 @@ import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -64,7 +63,6 @@ import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView;
@@ -87,7 +85,6 @@ import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.ArxivInfo;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
-import com.simon.harmonichackernews.data.NitterInfo;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.RepoInfo;
 import com.simon.harmonichackernews.data.Story;
@@ -96,7 +93,6 @@ import com.simon.harmonichackernews.linkpreview.ArxivAbstractGetter;
 import com.simon.harmonichackernews.linkpreview.GitHubInfoGetter;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
-import com.simon.harmonichackernews.linkpreview.NitterGetter;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.linkpreview.WikipediaGetter;
 import com.simon.harmonichackernews.utils.AccountUtils;
@@ -749,7 +745,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         webView.setWebViewClient(new MyWebViewClient());
-        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(requireContext())) || showWebsite || (NitterGetter.isConvertibleToNitter(story.url) && SettingsUtils.shouldUseLinkPreviewX(getContext()))) {
+        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(requireContext())) || showWebsite) {
             loadUrl(story.url);
             startedLoading = true;
         }
@@ -839,10 +835,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             webView.setInitialScale(100);
             webView.getSettings().setLoadWithOverviewMode(true);
             webView.getSettings().setUseWideViewPort(true);
-        }
-
-        if (NitterGetter.isConvertibleToNitter(url) && SettingsUtils.shouldRedirectNitter(getContext())) {
-            url = NitterGetter.convertToNitterUrl(url);
         }
 
         webView.loadUrl(url);
@@ -1658,24 +1650,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
                 //if we are at the webview and we just loaded, recheck the canGoBack status
                 toggleBackPressedCallback(webView != null && webView.canGoBack());
-            }
-
-
-            if (NitterGetter.isValidNitterUrl(url) && SettingsUtils.shouldUseLinkPreviewX(getContext())) {
-                NitterGetter.getInfo(view, getContext(), new NitterGetter.GetterCallback() {
-                    @Override
-                    public void onSuccess(NitterInfo nitterInfo) {
-                        story.nitterInfo = nitterInfo;
-                        if (adapter != null) {
-                            adapter.notifyItemChanged(0);
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(String reason) {
-
-                    }
-                });
             }
         }
 
