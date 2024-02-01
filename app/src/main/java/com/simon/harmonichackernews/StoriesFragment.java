@@ -280,12 +280,13 @@ public class StoriesFragment extends Fragment {
                     return false;
                 }
 
-                Context context = v.getContext();
+                Context ctx = v.getContext();
 
-                PopupMenu popupMenu = new PopupMenu(context, v);
+                PopupMenu popupMenu = new PopupMenu(ctx, v);
 
                 Story story = stories.get(position);
                 boolean oldClicked = story.clicked;
+                boolean oldBookmarked = Utils.isBookmarked(ctx, story.id);
 
                 popupMenu.getMenu().add(oldClicked ? "Mark as unread" : "Mark as read").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
@@ -295,6 +296,25 @@ public class StoriesFragment extends Fragment {
                             clickedIds.remove(story.id);
                         } else {
                             clickedIds.add(story.id);
+                        }
+
+                        adapter.notifyItemChanged(position);
+                        return true;
+                    }
+                });
+
+                popupMenu.getMenu().add(oldBookmarked ? "Remove bookmark" : "Bookmark").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        if (oldBookmarked) {
+                            Utils.removeBookmark(ctx, story.id);
+                            if (adapter.type == SettingsUtils.getBookmarksIndex(ctx.getResources())) {
+                                stories.remove(story);
+                                adapter.notifyItemRemoved(position);
+                                return true;
+                            }
+                        } else {
+                            Utils.addBookmark(ctx, story.id);
                         }
 
                         adapter.notifyItemChanged(position);
