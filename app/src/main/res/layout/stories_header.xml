@@ -188,9 +188,9 @@
             android:layout_height="wrap_content"
             style="@style/Widget.Material3.Button.ElevatedButton"
             app:icon="@drawable/ic_action_refresh"
-            app:backgroundTint="?attr/colorPrimaryDark"
-            app:iconTint="#fff"
-            android:textColor="#fff"
+            android:textColor="?attr/colorOnSecondary"
+            app:iconTint="?attr/colorOnSecondary"
+            android:backgroundTint="?attr/colorSecondary"
             android:id="@+id/stories_header_retry_button"
             android:text="Retry"    />
 

@@ -41,9 +41,9 @@
                 style="@style/Widget.Material3.Button.OutlinedButton.Icon"
                 app:icon="@drawable/ic_action_refresh"
                 android:id="@+id/user_retry"
-                app:backgroundTint="?attr/colorPrimaryDark"
-                app:iconTint="#fff"
-                android:textColor="#fff"
+                android:textColor="?attr/colorOnSecondary"
+                app:iconTint="?attr/colorOnSecondary"
+                android:backgroundTint="?attr/colorSecondary"
                 android:text="Retry"    />
 
         </LinearLayout>
