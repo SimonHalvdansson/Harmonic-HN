@@ -223,7 +223,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.arxivContainer.setVisibility(View.VISIBLE);
                 headerViewHolder.infoHeader.setVisibility(VISIBLE);
 
-                headerViewHolder.infoHeader.setText("ARXIV INFO:");
+                headerViewHolder.infoHeader.setText("ABSTRACT:");
 
                 headerViewHolder.arxivAbstract.setHtml(story.arxivInfo.arxivAbstract);
                 headerViewHolder.arxivBy.setText(story.arxivInfo.concatNames());

@@ -143,6 +143,7 @@
         <item name="colorPrimary">@color/material_you_third_400</item>
         <item name="colorPrimaryContainer">@color/material_you_third_700</item>
         <item name="colorSurfaceContainerHigh">@color/material_you_neutral_variant95</item>
+        <item name="colorPrimaryDark">@color/material_you_third_700</item>
 
         <item name="android:windowBackground">@color/material_you_neutral_50</item>
         <item name="android:colorBackground">@color/material_you_neutral_50</item>

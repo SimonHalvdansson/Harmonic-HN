@@ -17,7 +17,6 @@ import com.simon.harmonichackernews.utils.ThemeUtils;
 
 public class CommentsActivity extends BaseActivity implements CommentsFragment.BottomSheetFragmentCallback {
     public static String PREVENT_BACK = "PREVENT_BACK";
-
     private boolean disableSwipeAtComments;
     private SwipeBackLayout swipeBackLayout;
     private SplitChangeHandler splitChangeHandler;

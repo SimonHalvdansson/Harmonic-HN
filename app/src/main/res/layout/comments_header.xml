@@ -255,7 +255,7 @@
                     <TextView
                         android:id="@+id/comments_header_info_header"
                         android:textColor="?attr/textColorHighlighted"
-                        android:text="ARXIV INFO:"
+                        android:text="Abstract:"
                         android:fontFamily="@font/product_sans"
                         android:textStyle="bold"
                         android:textSize="13dp"

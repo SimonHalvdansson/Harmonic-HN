@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".MainActivity">
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -19,6 +19,9 @@
             tools:listitem="@layout/story_list_item" />
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
+    <!-- My memory is failing me on what this container does but it has
+     a custom drawable background for some reason. I _think_ it is to make
+     sure that the button has a nice shadow but I'm not quite sure-->
     <LinearLayout
         android:id="@+id/stories_update_container"
         android:foreground="?selectableItemBackgroundBorderless"
@@ -32,16 +35,17 @@
         android:layout_height="48dp">
 
         <Button
-            android:backgroundTint="?attr/colorSecondary"
+            style="@style/Widget.Material3.Button"
             android:id="@+id/stories_update_button"
             android:textAllCaps="false"
             android:text="Tap to update"
             android:fontFamily="@font/product_sans"
             android:textStyle="bold"
-            android:textColor="#fff"
+            android:textColor="?attr/colorOnSecondary"
+            app:iconTint="?attr/colorOnSecondary"
+            android:backgroundTint="?attr/colorSecondary"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="?selectableItemBackgroundBorderless"/>
+            android:layout_height="match_parent"    />
 
     </LinearLayout>
 
