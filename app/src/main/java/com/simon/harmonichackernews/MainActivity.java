@@ -131,7 +131,13 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     private void showUpdateDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml( "<b>Version 2.0.2:</b><br>" +
+                .setMessage(Html.fromHtml( "<b>Version 2.0.3:</b><br>" +
+                        "- Removed Nitter integration (RIP)<br>" +
+                        "- Changed some button colors<br>" +
+                        "- Added button to add/remove bookmark on post long press<br>" +
+                        "- Added option to filter domains (thanks naitgacem!)<br>" +
+                        "<br>" +
+                        "<b>Version 2.0.2:</b><br>" +
                         "- New app icon!<br>" +
                         "- Fixed crash when opening PDF in browser<br>" +
                         "- More material 3 styling<br>" +
