@@ -133,7 +133,9 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml( "<b>Version 2.0.3:</b><br>" +
                         "- Removed Nitter integration (RIP)<br>" +
+                        "- Fixed long comment links opened on long press (thanks flofriday!)<br>" +
                         "- Changed some button colors<br>" +
+                        "- Fixed 2 rare crashes<br>" +
                         "- Added button to add/remove bookmark on post long press<br>" +
                         "- Added option to filter domains (thanks naitgacem!)<br>" +
                         "<br>" +
