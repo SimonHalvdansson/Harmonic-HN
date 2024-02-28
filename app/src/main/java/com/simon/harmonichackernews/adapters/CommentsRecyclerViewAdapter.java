@@ -93,6 +93,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean showUpdate = false;
     public int spacerHeight = 0;
     private int navbarHeight = 0;
+    public boolean disableCommentATagClick = false;
 
     public static final int TYPE_HEADER = 0;
     public static final int TYPE_COMMENT = 1;
@@ -536,6 +537,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentBody.setOnClickATagListener(new OnClickATagListener() {
                 @Override
                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
+                    if (disableCommentATagClick) return true ;
+
                     Utils.openLinkMaybeHN(widget.getContext(), href);
                     return true;
                 }
