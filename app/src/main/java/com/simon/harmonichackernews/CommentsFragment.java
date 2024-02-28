@@ -1635,7 +1635,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
+        CommentsRecyclerViewAdapter commentAdapter = this.adapter;
+        builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialog) {
+                commentAdapter.disableCommentATagClick = false;
+            }
+        });
+
         AlertDialog dialog = builder.create();
+        commentAdapter.disableCommentATagClick = true;
         dialog.show();
     }
 
