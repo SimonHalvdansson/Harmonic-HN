@@ -122,7 +122,7 @@ public class ThemeUtils {
 
     public static boolean isDarkMode(Context ctx, String theme) {
         List<String> dynamicThemes = Arrays.asList("material_daynight", "darklight_daynight", "amoledwhite_daynight");
-        List<String> darkThemes = Arrays.asList("amoled", "dark", "grey", "material_dark");
+        List<String> darkThemes = Arrays.asList("amoled", "dark", "gray", "material_dark");
 
         if (dynamicThemes.contains(theme)) {
             return uiModeNight(ctx);
