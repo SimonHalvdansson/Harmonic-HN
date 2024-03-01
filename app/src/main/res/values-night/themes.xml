@@ -7,4 +7,9 @@
     <style name="AppThemeDarkLightDayNight" parent="AppTheme"></style>
 
     <style name="ThemeSwipeBackNoActionBarDarkLightDayNight" parent="ThemeSwipeBackNoActionBar"></style>
+
+    <style name="AppThemeAmoledWhiteDayNight" parent="AppThemeAmoledDark"></style>
+
+    <style name="ThemeSwipeBackNoActionBarAmoledWhiteDayNight" parent="ThemeSwipeBackNoActionBarAmoledDark"></style>
+
 </resources>

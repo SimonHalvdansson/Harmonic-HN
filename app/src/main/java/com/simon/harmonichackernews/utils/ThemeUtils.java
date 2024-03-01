@@ -15,7 +15,9 @@ import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.R;
 
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ThemeUtils {
@@ -62,6 +64,9 @@ public class ThemeUtils {
                 break;
             case "darklight_daynight":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarDarkLightDayNight : R.style.AppThemeDarkLightDayNight);
+                break;
+            case "amoledwhite_daynight":
+                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarAmoledWhiteDayNight : R.style.AppThemeAmoledWhiteDayNight);
                 break;
             case "material_dark":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarMaterialDark : R.style.AppThemeMaterialDark);
@@ -116,12 +121,15 @@ public class ThemeUtils {
     }
 
     public static boolean isDarkMode(Context ctx, String theme) {
-        if (theme.equals("material_daynight") || theme.equals("darklight_daynight")) {
+        List<String> dynamicThemes = Arrays.asList("material_daynight", "darklight_daynight", "amoledwhite_daynight");
+        List<String> darkThemes = Arrays.asList("amoled", "dark", "grey", "material_dark");
+
+        if (dynamicThemes.contains(theme)) {
             return uiModeNight(ctx);
         }
-        return theme.equals("amoled") || theme.equals("dark") || theme.equals("gray") || theme.equals("material_dark");
+        return darkThemes.contains(theme);
     }
-    
+
     public static boolean isDarkMode(Context ctx) {
         String theme = getPreferredTheme(ctx);
         return isDarkMode(ctx, theme);
@@ -151,6 +159,8 @@ public class ThemeUtils {
                 return uiModeNight(ctx) ? R.color.material_you_neutral_900 : R.color.material_you_neutral_50;
             case "darklight_daynight":
                 return uiModeNight(ctx) ? R.color.background : R.color.lightBackground;
+            case "amoledwhite_daynight":
+                return uiModeNight(ctx) ? android.R.color.black : R.color.whiteBackground;
             case "dark":
                 return R.color.background;
             default:

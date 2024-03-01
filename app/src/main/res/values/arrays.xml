@@ -20,6 +20,7 @@
     <string-array name="theme_entries">
         <item>Material You (auto)</item>
         <item>Dark/Light (auto)</item>
+        <item>Black/White (auto)</item>
         <item>Dark</item>
         <item>Material You (dark)</item>
         <item>Gray</item>
@@ -32,6 +33,7 @@
     <string-array name="theme_values">
         <item>material_daynight</item>
         <item>darklight_daynight</item>
+        <item>amoledwhite_daynight</item>
         <item>dark</item>
         <item>material_dark</item>
         <item>gray</item>
