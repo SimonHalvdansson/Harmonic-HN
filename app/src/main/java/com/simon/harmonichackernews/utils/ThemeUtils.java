@@ -4,10 +4,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.view.Window;
-import android.view.WindowManager;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.EdgeToEdge;
