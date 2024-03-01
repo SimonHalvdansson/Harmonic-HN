@@ -60,6 +60,9 @@ public class ThemeUtils {
                     }
                 }
                 break;
+            case "darklight_daynight":
+                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarDarkLightDayNight : R.style.AppThemeDarkLightDayNight);
+                break;
             case "material_dark":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarMaterialDark : R.style.AppThemeMaterialDark);
                 break;
@@ -80,10 +83,8 @@ public class ThemeUtils {
                 break;
             //needed because of comment activity where the default is AppTheme, now swipeBack
             case "dark":
-                activity.setTheme(swipeBack ? R.style.Theme_Swipe_Back_NoActionBar : R.style.AppTheme);
-
+                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBar : R.style.AppTheme);
                 break;
-
         }
 
         Window window = activity.getWindow();
@@ -115,7 +116,7 @@ public class ThemeUtils {
     }
 
     public static boolean isDarkMode(Context ctx, String theme) {
-        if (theme.equals("material_daynight")) {
+        if (theme.equals("material_daynight") || theme.equals("darklight_daynight")) {
             return uiModeNight(ctx);
         }
         return theme.equals("amoled") || theme.equals("dark") || theme.equals("gray") || theme.equals("material_dark");
@@ -148,6 +149,8 @@ public class ThemeUtils {
                 return R.color.material_you_neutral_50;
             case "material_daynight":
                 return uiModeNight(ctx) ? R.color.material_you_neutral_900 : R.color.material_you_neutral_50;
+            case "darklight_daynight":
+                return uiModeNight(ctx) ? R.color.background : R.color.lightBackground;
             case "dark":
                 return R.color.background;
             default:

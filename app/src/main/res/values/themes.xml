@@ -8,6 +8,8 @@
     <!-- This is just for daynight, there is another theme resource in the night folder-->
     <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialLight"></style>
 
+    <style name="AppThemeDarkLightDayNight" parent="AppThemeLight"></style>
+
     <style name="AppThemeMaterialDark" parent="@style/AppThemeBase">
         <item name="storyColorNormal">@color/darkStoryColorNormal</item>
         <item name="storyColorDisabled">@color/darkStoryColorDisabled</item>
@@ -167,12 +169,14 @@
 
 
 
-    <style name="Theme.Swipe.Back.NoActionBar" parent="AppTheme">
+    <style name="ThemeSwipeBackNoActionBar" parent="AppTheme">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
     </style>
 
     <style name="ThemeSwipeBackNoActionBarMaterialDayNight" parent="ThemeSwipeBackNoActionBarMaterialLight"></style>
+
+    <style name="ThemeSwipeBackNoActionBarDarkLightDayNight" parent="ThemeSwipeBackNoActionBarLight"></style>
 
     <style name="ThemeSwipeBackNoActionBarMaterialDark" parent="@style/AppThemeMaterialDark">
         <item name="android:windowIsTranslucent">true</item>
