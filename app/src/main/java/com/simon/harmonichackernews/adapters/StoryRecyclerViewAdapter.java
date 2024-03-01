@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
-import android.text.Layout;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -19,7 +18,6 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -34,7 +32,6 @@ import androidx.appcompat.widget.TooltipCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.button.MaterialButton;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
@@ -43,18 +40,14 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
-import com.squareup.picasso.Picasso;
 
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
-import java.lang.reflect.Array;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -178,7 +171,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 final String commentCountText;
                 if (showCommentsCount) {
                     commentCountText = Integer.toString(storyViewHolder.story.descendants);
-                } else if (storyViewHolder.story.descendants > 0){
+                } else if (storyViewHolder.story.descendants > 0) {
                     commentCountText = "•";
                 } else {
                     commentCountText = "";
@@ -186,7 +179,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentsView.setText(commentCountText);
 
                 String host = "";
-
                 try {
                     if (storyViewHolder.story.url != null) {
                         host = Utils.getDomainName(storyViewHolder.story.url);
@@ -195,11 +187,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     host = "Unknown";
                 }
 
-                String ptsString = " points";
-                if (storyViewHolder.story.score == 1) {
-                    ptsString = " point";
-                }
                 if (showPoints && !storyViewHolder.story.isComment) {
+                    String ptsString = storyViewHolder.story.score == 1 ? " point" : " points";
                     storyViewHolder.metaView.setText(storyViewHolder.story.score + ptsString + " • " + host + " • " + storyViewHolder.story.getTimeFormatted());
                 } else {
                     storyViewHolder.metaView.setText(host + " • " + storyViewHolder.story.getTimeFormatted());
@@ -302,7 +291,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         } else if (holder instanceof CommentViewHolder) {
             final CommentViewHolder commentViewHolder = (CommentViewHolder) holder;
-            final Context ctx = commentViewHolder.itemView.getContext();
 
             Story story = stories.get(position);
 
@@ -423,23 +411,23 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             retryButton = view.findViewById(R.id.stories_header_retry_button);
             loadingIndicator = view.findViewById(R.id.stories_header_loading_indicator);
 
-            retryButton.setOnClickListener( (v) -> refreshListener.onRefresh());
+            retryButton.setOnClickListener((v) -> refreshListener.onRefresh());
 
             moreButton.setOnClickListener(moreClickListener);
 
             searchEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
                 @Override
                 public boolean onEditorAction(TextView textView, int actionId, KeyEvent keyEvent) {
-                    if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                        doSearch();
-
-                        if (textView != null) {
-                            InputMethodManager imm = (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
-                            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-                        }
-                        return true;
+                    if (actionId != EditorInfo.IME_ACTION_SEARCH) {
+                        return false;
                     }
-                    return false;
+
+                    doSearch();
+                    if (textView != null) {
+                        InputMethodManager imm = (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
+                        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                    }
+                    return true;
                 }
             });
 
@@ -517,7 +505,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             GradientDrawable gradientDrawable = new GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
-                    new int[] {Color.TRANSPARENT, ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx))});
+                    new int[]{Color.TRANSPARENT, ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx))});
 
             scrim.setBackground(gradientDrawable);
 
@@ -593,6 +581,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     public interface SearchListener {
         void onQueryTextSubmit(String query);
+
         void onSearchStatusChanged();
     }
 

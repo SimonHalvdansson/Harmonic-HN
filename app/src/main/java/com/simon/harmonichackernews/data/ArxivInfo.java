@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.data;
 
+import android.text.TextUtils;
+
 import com.simon.harmonichackernews.utils.ArxivResolver;
 
 public class ArxivInfo {
@@ -14,15 +16,7 @@ public class ArxivInfo {
     public String publishedDate;
 
     public String concatNames() {
-        if (authors.length == 0) {
-            return "";
-        }
-
-        String allNames = authors[0];
-        for (int i = 1; i < authors.length; i++) {
-            allNames = allNames + ", " + authors[i];
-        }
-        return allNames;
+        return TextUtils.join(", ", authors);
     }
 
     public String formatDate() {
@@ -30,16 +24,12 @@ public class ArxivInfo {
     }
 
     public String formatSubjects() {
-        String allSubjects = ArxivResolver.resolveFull(primaryCategory);
+        StringBuilder allSubjects = new StringBuilder(ArxivResolver.resolveFull(primaryCategory));
 
-        if (secondaryCategories.length == 0) {
-            return allSubjects;
+        for (String secondaryCategory : secondaryCategories) {
+            allSubjects.append("; ").append(ArxivResolver.resolveFull(secondaryCategory));
         }
-
-        for (int i = 0; i < secondaryCategories.length; i++) {
-            allSubjects = allSubjects + "; " + ArxivResolver.resolveFull(secondaryCategories[i]);
-        }
-        return allSubjects;
+        return allSubjects.toString();
     }
 
     public String getPDFURL() {

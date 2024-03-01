@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
 
 import com.simon.harmonichackernews.network.NetworkComponent;
@@ -56,12 +57,12 @@ public class FileDownloader {
 
         NetworkComponent.getOkHttpClientInstance().newCall(request).enqueue(new Callback() {
             @Override
-            public void onFailure(Call call, IOException e) {
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 mMainHandler.post(() -> callback.onFailure(call, e));
             }
 
             @Override
-            public void onResponse(Call call, Response response) {
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
                 try {
                     BufferedSink sink = Okio.buffer(Okio.sink(outputFile));
                     sink.writeAll(response.body().source());

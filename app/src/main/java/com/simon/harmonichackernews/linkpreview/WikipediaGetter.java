@@ -30,7 +30,6 @@ public class WikipediaGetter {
         try {
             String title = wikipediaUrl.split("en.wikipedia.org/wiki/")[1];
 
-            //String apiUrl = "https://en.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro&explaintext&titles=" + title;
             String apiUrl = "https://en.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro&titles=" + title;
 
             StringRequest stringRequest = new StringRequest(Request.Method.GET, apiUrl,
@@ -81,6 +80,7 @@ public class WikipediaGetter {
 
     public interface GetterCallback {
         void onSuccess(WikipediaInfo wikiInfo);
+
         void onFailure(String reason);
     }
 }

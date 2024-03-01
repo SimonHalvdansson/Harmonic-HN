@@ -6,11 +6,8 @@ import static android.view.View.VISIBLE;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.drawable.Drawable;
 import android.text.Html;
-import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -32,7 +29,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.TooltipCompat;
-import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
@@ -52,14 +48,12 @@ import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
-import com.squareup.picasso.Picasso;
 
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.util.List;
-import java.util.Objects;
 
 public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -407,7 +401,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 width /= 2;
             }
 
-            //16 is base padding, then add 12 for each comment
+            // 16 is base padding, then add 12 for each comment
             params.setMargins(
                     Math.min(Utils.pxFromDpInt(ctx.getResources(), 16 + 12 * comment.depth), Math.round(((float) width) * 0.6f)),
                     Utils.pxFromDpInt(ctx.getResources(), comment.depth > 0 && !collapseParent ? 10 : 6),
@@ -465,7 +459,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentHiddenText.setTypeface(FontUtils.activeRegular);
             }
 
-            itemViewHolder.commentBody.setVisibility( (!comment.expanded && collapseParent) ? GONE : View.VISIBLE);
+            itemViewHolder.commentBody.setVisibility((!comment.expanded && collapseParent) ? GONE : View.VISIBLE);
             itemViewHolder.commentHiddenText.setVisibility((!comment.expanded && collapseParent) ? View.VISIBLE : GONE);
 
             if (comment.expanded) {
@@ -473,7 +467,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentHiddenCount.setVisibility(GONE);
             } else {
                 // if not expanded, only show (and set text) if subCommentCount > 0
-                //TODO should this be precomputed?
+                // TODO should this be precomputed?
                 int subCommentCount = getIndexOfLastChild(comment.depth, position) - position;
 
                 if (subCommentCount > 0) {
@@ -511,7 +505,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         public ItemViewHolder(View view) {
             super(view);
-            commentBody =  view.findViewById(R.id.comment_body);
+            commentBody = view.findViewById(R.id.comment_body);
             commentBy = view.findViewById(R.id.comment_by);
             commentByTime = view.findViewById(R.id.comment_by_time);
             commentHiddenCount = view.findViewById(R.id.comment_hidden_count);
@@ -537,7 +531,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentBody.setOnClickATagListener(new OnClickATagListener() {
                 @Override
                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                    if (disableCommentATagClick) return true ;
+                    if (disableCommentATagClick) return true;
 
                     Utils.openLinkMaybeHN(widget.getContext(), href);
                     return true;
@@ -644,7 +638,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             arxivAbstract = view.findViewById(R.id.comments_header_arxiv_abstract);
             infoContainer = view.findViewById(R.id.comments_header_info_container);
             infoHeader = view.findViewById(R.id.comments_header_info_header);
-            emptyView =  view.findViewById(R.id.comments_header_empty);
+            emptyView = view.findViewById(R.id.comments_header_empty);
             emptyViewText = view.findViewById(R.id.comments_header_empty_text);
             headerView = view.findViewById(R.id.comments_header);
             loadingIndicator = view.findViewById(R.id.comments_header_loading);
@@ -704,7 +698,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             serverErrorSwitchApiButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    //This switches off the algolia API
+                    // This switches off the algolia API
                     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(view.getContext());
                     prefs.edit().putBoolean("pref_algolia_api", false).apply();
 
@@ -768,12 +762,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
                 @Override
                 public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-                    //0 when small, 1 when opened
-                    sheetButtonsContainer.setAlpha((1-slideOffset)*(1-slideOffset)*(1-slideOffset));
-                    sheetButtonsContainer.getLayoutParams().height = Math.round((1-slideOffset) * (SHEET_ITEM_HEIGHT + navbarHeight));
+                    // 0 when small, 1 when opened
+                    sheetButtonsContainer.setAlpha((1 - slideOffset) * (1 - slideOffset) * (1 - slideOffset));
+                    sheetButtonsContainer.getLayoutParams().height = Math.round((1 - slideOffset) * (SHEET_ITEM_HEIGHT + navbarHeight));
                     sheetButtonsContainer.requestLayout();
 
-                    float headerAlpha = Math.min(1, slideOffset*slideOffset*20);
+                    float headerAlpha = Math.min(1, slideOffset * slideOffset * 20);
                     actionsContainer.setAlpha(headerAlpha);
                     headerView.setAlpha(headerAlpha);
                 }
@@ -785,7 +779,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     sheetButtonsContainer.getLayoutParams().height = 0;
                     sheetButtonsContainer.requestLayout();
                 } else {
-                    //make sure we set correct height when starting on the webview
+                    // Make sure we set correct height when starting on the WebView
                     sheetButtonsContainer.getLayoutParams().height = SHEET_ITEM_HEIGHT + navbarHeight;
                     sheetButtonsContainer.requestLayout();
                 }
@@ -854,11 +848,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     private boolean shouldShow(Comment comment) {
         /*
-        * Try to call shouldShow() on the parent if parent is expanded
-        * if parent is not expanded the return false.
-        *
-        * If parent is -1 (top level) always show
-        * */
+         * Try to call shouldShow() on the parent if parent is expanded
+         * if parent is not expanded the return false.
+         *
+         * If parent is -1 (top level) always show
+         * */
 
         if (comment.parent == -1) {
             return true;
