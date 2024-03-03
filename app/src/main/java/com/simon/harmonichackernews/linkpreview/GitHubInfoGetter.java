@@ -2,21 +2,15 @@ package com.simon.harmonichackernews.linkpreview;
 
 import android.content.Context;
 import android.text.TextUtils;
-import android.util.Xml;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
-import com.simon.harmonichackernews.data.ArxivInfo;
 import com.simon.harmonichackernews.data.RepoInfo;
 import com.simon.harmonichackernews.network.NetworkComponent;
 
 import org.json.JSONObject;
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
 
-import java.io.IOException;
-import java.io.StringReader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -90,17 +84,16 @@ public class GitHubInfoGetter {
     private static String readJsonProp(JSONObject jsonObject, String key) {
         String input = jsonObject.optString(key);
 
-        if (TextUtils.isEmpty(input)) {
+        if (TextUtils.isEmpty(input) || input.equals("null")) {
             return null;
         }
-        if (input.equals("null")) {
-            return null;
-        }
+
         return input;
     }
 
     public interface GetterCallback {
         void onSuccess(RepoInfo repoInfo);
+
         void onFailure(String reason);
     }
 

@@ -4,10 +4,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.view.Window;
-import android.view.WindowManager;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.EdgeToEdge;
@@ -50,13 +48,13 @@ public class ThemeUtils {
         String theme = getPreferredTheme(activity);
         switch (theme) {
             case "material_daynight":
-                //below 30, default on comments is swipeBack so if we don't use it we need to change to a normal theme
+                // below 30, default on comments is swipeBack so if we don't use it we need to change to a normal theme
                 if (Build.VERSION.SDK_INT < 30) {
                     if (!swipeBack) {
                         activity.setTheme(R.style.AppThemeMaterialDayNight);
                     }
                 } else {
-                    //at and above 30, the default is AppTheme so if we use swipeBack we need to change
+                    // at and above 30, the default is AppTheme so if we use swipeBack we need to change
                     if (swipeBack) {
                         activity.setTheme(R.style.ThemeSwipeBackNoActionBarMaterialDayNight);
                     }
@@ -80,7 +78,7 @@ public class ThemeUtils {
             case "white":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarWhite : R.style.AppThemeWhite);
                 break;
-            //needed because of comment activity where the default is AppTheme, now swipeBack
+            // needed because of comment activity where the default is AppTheme, now swipeBack
             case "dark":
                 activity.setTheme(swipeBack ? R.style.Theme_Swipe_Back_NoActionBar : R.style.AppTheme);
 
@@ -122,7 +120,7 @@ public class ThemeUtils {
         }
         return theme.equals("amoled") || theme.equals("dark") || theme.equals("gray") || theme.equals("material_dark");
     }
-    
+
     public static boolean isDarkMode(Context ctx) {
         String theme = getPreferredTheme(ctx);
         return isDarkMode(ctx, theme);
@@ -160,7 +158,7 @@ public class ThemeUtils {
     public static String getPreferredTheme(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         if (SettingsUtils.shouldUseSpecialNighttimeTheme(ctx)) {
-            //check time
+            // check time
             Calendar currentCalendar = Calendar.getInstance();
             int[] nighttimeHours = Utils.getNighttimeHours(ctx);
 

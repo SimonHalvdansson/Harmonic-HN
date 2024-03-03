@@ -91,19 +91,19 @@ public class Utils {
     }
 
     public static void log(long i) {
-        Log.d("HARMONIC_TAG", "" + i);
+        Log.d("HARMONIC_TAG", String.valueOf(i));
     }
 
     public static void log(int i) {
-        Log.d("HARMONIC_TAG", "" + i);
+        Log.d("HARMONIC_TAG", String.valueOf(i));
     }
 
     public static void log(float i) {
-        Log.d("HARMONIC_TAG", "" + i);
+        Log.d("HARMONIC_TAG", String.valueOf(i));
     }
 
     public static void log(boolean b) {
-        Log.d("HARMONIC_TAG", "" + b);
+        Log.d("HARMONIC_TAG", String.valueOf(b));
     }
 
     public static void toast(String s, Context ctx) {
@@ -152,8 +152,9 @@ public class Utils {
         if (cachedStories == null) {
             cachedStories = new HashSet<>();
         }
-        //if there already exists a story with the same id, remove it from list of cached since we're only saving the latest one
-        if (cachedStories.size() > 0) {
+        // if there already exists a story with the same id, remove it from list of cached since 
+        // we're only saving the latest one
+        if (!cachedStories.isEmpty()) {
             for (Iterator<String> iterator = cachedStories.iterator(); iterator.hasNext();) {
                 String cached = iterator.next();
                 String[] idAndDate = cached.split("-");
@@ -165,7 +166,7 @@ public class Utils {
         cachedStories.add(id + "-" + System.currentTimeMillis());
 
         if (cachedStories.size() > 100) {
-            //If we have a lot of stories, lets delete the oldest one
+            // If we have a lot of stories, lets delete the oldest one
             long oldestTime = -1;
             int oldestId = -1;
             for (String cachedStory : cachedStories) {
@@ -197,7 +198,7 @@ public class Utils {
 
         ArrayList<Bookmark> bookmarks = new ArrayList<>();
 
-        if (bookmarksString == null || bookmarksString.length() == 0) {
+        if (bookmarksString == null || bookmarksString.isEmpty()) {
             return bookmarks;
         }
 
@@ -260,16 +261,11 @@ public class Utils {
     public static void removeBookmark(Context ctx, int id) {
         ArrayList<Bookmark> bookmarks = loadBookmarks(ctx, false);
 
-        int badIndex = -1;
-
-        for (int i = 0; i < bookmarks.size(); i++) {
-            if (bookmarks.get(i).id == id) {
-                badIndex = i;
+        for (Bookmark bookmark: bookmarks) {
+            if (bookmark.id == id) {
+                bookmarks.remove(bookmark);
+                break;
             }
-        }
-
-        if (badIndex != -1) {
-            bookmarks.remove(badIndex);
         }
 
         saveBookmarks(ctx, bookmarks);
@@ -309,7 +305,7 @@ public class Utils {
 
     public static boolean isFirstAppStart(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true) && SettingsUtils.readIntSetFromSharedPreferences(ctx, Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS).size() == 0) {
+        if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true) && SettingsUtils.readIntSetFromSharedPreferences(ctx, Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS).isEmpty()) {
             sharedPref.edit().putBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, false).apply();
             return true;
         }
@@ -432,12 +428,12 @@ public class Utils {
             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             ctx.startActivity(browserIntent);
         } catch (Exception e) {
-            //failed for the first time, let's try to guess a fix to the url
+            // failed for the first time, let's try to guess a fix to the url
             try {
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(URLUtil.guessUrl(url)));
                 ctx.startActivity(browserIntent);
             } catch (Exception e1) {
-                //automated fix didn't work, let's try to do it manually
+                // automated fix didn't work, let's try to do it manually
                 try {
                     if (!url.startsWith("http://") && !url.startsWith("https://"))
                         url = "http://" + url;
@@ -464,7 +460,7 @@ public class Utils {
     }
 
     public static boolean isCustomTabSupported(Context context) {
-        return getCustomTabsPackages(context).size() > 0;
+        return !getCustomTabsPackages(context).isEmpty();
     }
 
     /**

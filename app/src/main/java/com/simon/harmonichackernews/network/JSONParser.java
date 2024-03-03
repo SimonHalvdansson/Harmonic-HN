@@ -6,7 +6,6 @@ import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.StoryUpdate;
-import com.simon.harmonichackernews.utils.Utils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -43,7 +42,7 @@ public class JSONParser {
             story.loadingFailed = false;
             story.clicked = false;
 
-            if (hit.has("url") && !hit.getString("url").equals("null") &&!hit.getString("url").equals("")) {
+            if (hit.has("url") && !hit.getString("url").equals("null") && !hit.getString("url").isEmpty()) {
                 story.url = hit.getString("url");
                 story.isLink = true;
             } else {
@@ -113,7 +112,7 @@ public class JSONParser {
         }
 
         if (jsonObject.has("type") && jsonObject.getString("type").equals("poll") && jsonObject.has("parts")) {
-            JSONArray pollOptionsJson =  jsonObject.getJSONArray("parts");
+            JSONArray pollOptionsJson = jsonObject.getJSONArray("parts");
             int[] pollOptions = new int[pollOptionsJson.length()];
             for (int i = 0; i < pollOptionsJson.length(); i++) {
                 pollOptions[i] = pollOptionsJson.getInt(i);
@@ -158,7 +157,7 @@ public class JSONParser {
             return false;
         }
 
-        //setting score to -1 means it doesn't get shown
+        // setting the score to -1 means it doesn't get shown
         story.update(
                 jsonObject.getString("by"),
                 jsonObject.getInt("id"),
@@ -201,14 +200,13 @@ public class JSONParser {
     public static void updatePdfProperties(Story story) {
         if (story.url.endsWith(".pdf") || story.title.endsWith("[pdf]") || story.title.endsWith("(pdf)")) {
             story.pdfTitle = story.title;
-            if (story.pdfTitle.endsWith(" [pdf]")) {
-                story.pdfTitle = story.pdfTitle.substring(0, story.pdfTitle.length() - 6);
-            } else if (story.pdfTitle.endsWith("[pdf]")) {
-                story.pdfTitle = story.pdfTitle.substring(0, story.pdfTitle.length() - 5);
-            } else if (story.pdfTitle.endsWith(" (pdf)")) {
-                story.pdfTitle = story.pdfTitle.substring(0, story.pdfTitle.length() - 6);
-            } else if (story.pdfTitle.endsWith("(pdf)")) {
-                story.pdfTitle = story.pdfTitle.substring(0, story.pdfTitle.length() - 5);
+
+            String[] suffixes = {" [pdf]", "[pdf]", " (pdf)", "(pdf)"};
+            for (String suffix : suffixes) {
+                if (story.pdfTitle.endsWith(suffix)) {
+                    story.pdfTitle = story.pdfTitle.substring(0, story.pdfTitle.length() - suffix.length());
+                    break;
+                }
             }
         }
     }
@@ -253,7 +251,7 @@ public class JSONParser {
             story.text = preprocessHtml(item.getString("text"));
         }
 
-        story.descendants = newCommentCount - 1; //-1 for header
+        story.descendants = newCommentCount - 1; // -1 for header
         story.id = item.getInt("id");
         story.score = item.optInt("points", 0);
         story.by = item.getString("author");
@@ -271,7 +269,7 @@ public class JSONParser {
          * Remark: Right now we're only updating old comments, not deleting those who are not there
          * anymore but that is probably just nice
          */
-        //this is to be able to say if we should resort the list if we use non-default sorting
+        // this is to be able to say if we should resort the list if we use non-default sorting
         boolean placedNew = false;
 
         if (!child.has("text") || child.getString("text").equals("null")) {
@@ -291,7 +289,7 @@ public class JSONParser {
         comment.id = child.getInt("id");
         comment.children = children == null ? 0 : children.length();
 
-        //Let's see if a comment with this ID already is placed, in that case we'll just replace it and call notifyitemchanged
+        // Let's see if a comment with this ID already is placed, in that case we'll just replace it and call notifyitemchanged
         boolean newComment = true;
 
         for (int i = 1; i < comments.size(); i++) {
@@ -309,12 +307,12 @@ public class JSONParser {
 
         if (newComment) {
             placedNew = true;
-            //now for placing, if it's a top level comment we should attempt to follow the prioList
+            // now for placing, if it's a top level comment we should attempt to follow the prioList
             if (comment.depth == 0) {
 
                 int prioIndex = -1;
                 if (prioTop != null) {
-                    //only attempt to change the index if priotop is nonnull
+                    // only attempt to change the index if priotop is nonnull
                     for (int i = 0; i < prioTop.length; i++) {
                         if (prioTop[i] == comment.id) {
                             prioIndex = i;
@@ -324,7 +322,7 @@ public class JSONParser {
                 }
 
                 if (prioIndex == -1) {
-                    //add it last
+                    // add it last
                     comments.add(comments.size(), comment);
                     adapter.notifyItemInserted(comments.size() - 1);
                 } else {
@@ -332,43 +330,43 @@ public class JSONParser {
                         comments.add(1, comment);
                         adapter.notifyItemInserted(1);
                     } else {
-                        //lets find the last top level comment which has priority higher than prioIndex
+                        // lets find the last top level comment which has priority higher than prioIndex
                         int prioBeforeIndex = -1;
 
                         for (int i = 0; i < comments.size(); i++) {
-                            //search all comments...
+                            // search all comments...
                             if (comments.get(i).depth == 0) {
-                                //and only care about top level ones...
+                                // and only care about top level ones...
                                 int searchId = comments.get(i).id;
-                                //and check if its id
+                                // and check if its id
                                 for (int j = 0; j < prioIndex; j++) {
-                                    //is higher priority
+                                    // is higher priority
                                     if (prioTop[j] == searchId) {
-                                        //if so, lets save the index
+                                        // if so, lets save the index
                                         prioBeforeIndex = i;
                                         break;
                                     }
                                 }
                             }
                         }
-                        //if we are priority and can't find anything with higher priority, we should be placed at the top
+                        // if we are priority and can't find anything with higher priority, we should be placed at the top
                         if (prioBeforeIndex == -1) {
                             comments.add(1, comment);
                             adapter.notifyItemInserted(1);
                         } else {
-                            //otherwise, lets search for the next depth = 0 after the comment with higher priority
+                            // otherwise, lets search for the next depth = 0 after the comment with higher priority
                             int newLocation = -1;
 
-                            //we found parent, lets start searching for when it ends
+                            // we found parent, lets start searching for when it ends
                             for (int i = prioBeforeIndex + 1; i < comments.size(); i++) {
                                 if (comments.get(i).depth == 0) {
-                                    //next time we find a depth zero comment, need to insert ours there
+                                    // next time we find a depth zero comment, need to insert ours there
                                     newLocation = i;
                                     break;
                                 }
                             }
 
-                            //if we didn't find a new location, then just place it at the bottom
+                            // if we didn't find a new location, then just place it at the bottom
                             if (newLocation == -1) {
                                 comments.add(comments.size(), comment);
                                 adapter.notifyItemInserted(comments.size() - 1);
@@ -380,7 +378,7 @@ public class JSONParser {
                     }
                 }
             } else {
-                //if it's not a top level comment, let's find its parent and place so that top answers have many children
+                // if it's not a top level comment, let's find its parent and place so that top answers have many children
                 boolean foundParent = false;
 
                 for (int i = 1; i < comments.size(); i++) {
@@ -395,7 +393,7 @@ public class JSONParser {
                         * */
 
                         foundParent = true;
-                        //having found the parent, lets keep going until we find a comment with fewer children or depth goes up
+                        // having found the parent, lets keep going until we find a comment with fewer children or depth goes up
                         boolean placed = false;
                         for (int j = 1; j < comments.size() - i; j++) {
                             Comment candidate = comments.get(i + j);
@@ -415,7 +413,7 @@ public class JSONParser {
                     }
                 }
 
-                //and if we can't find the parent, lets put it at the bottom
+                // and if we can't find the parent, lets put it at the bottom
                 if (!foundParent) {
                     comments.add(comments.size(), comment);
                     adapter.notifyItemInserted(comments.size() - 1);
@@ -438,10 +436,8 @@ public class JSONParser {
         try {
             JSONObject item = new JSONObject(response);
 
-            //for comment count we need to manually count
-            JSONArray children = item.getJSONArray("children");
-
-            story.descendants = children.length();
+            // for comment count we need to manually count
+            story.descendants = item.getJSONArray("children").length();
 
             story.time = item.getInt("created_at_i");
             story.title = item.getString("title");
@@ -471,19 +467,19 @@ public class JSONParser {
         input = input.replace("<code>", "<pre><small>").replace("</code>", "</small></pre>");
 
         if (input.contains("<pre>")) {
-            for (int i = 0; i < input.length()-2; i++) {
+            for (int i = 0; i < input.length() - 2; i++) {
                 if (input.charAt(i) == ' ') {
                     String upUntilNow = input.substring(0, i);
                     if (upUntilNow.contains("<pre>")) {
                         if (upUntilNow.lastIndexOf("<pre>") > upUntilNow.lastIndexOf("</pre>")) {
-                            input = upUntilNow + "&nbsp;" + input.substring(i+1);
+                            input = upUntilNow + "&nbsp;" + input.substring(i + 1);
                         }
                     }
                 } else if (input.charAt(i) == '\n') {
                     String upUntilNow = input.substring(0, i);
                     if (upUntilNow.contains("<pre>")) {
                         if (upUntilNow.lastIndexOf("<pre>") > upUntilNow.lastIndexOf("</pre>")) {
-                            input = upUntilNow + "<br>" + input.substring(i+1);
+                            input = upUntilNow + "<br>" + input.substring(i + 1);
                         }
                     }
 

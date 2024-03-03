@@ -8,7 +8,7 @@ public class ArxivResolver {
     private static final Map<String, String> ARXIV_SUBJECTS = new HashMap<>();
 
     static {
-        //Computer Science
+        // Computer Science
         ARXIV_SUBJECTS.put("cs.AI", "Artificial Intelligence");
         ARXIV_SUBJECTS.put("cs.AR", "Hardware Architecture");
         ARXIV_SUBJECTS.put("cs.CC", "Computational Complexity");
@@ -50,18 +50,18 @@ public class ArxivResolver {
         ARXIV_SUBJECTS.put("cs.SI", "Social and Information Networks");
         ARXIV_SUBJECTS.put("cs.SY", "Systems and Control");
 
-//Economics
+        // Economics
         ARXIV_SUBJECTS.put("econ.EM", "Econometrics");
         ARXIV_SUBJECTS.put("econ.GN", "General Economics");
         ARXIV_SUBJECTS.put("econ.TH", "Theoretical Economics");
 
-        //Electrical Engineering and Systems Science
+        // Electrical Engineering and Systems Science
         ARXIV_SUBJECTS.put("eess.AS", "Audio and Speech Processing");
         ARXIV_SUBJECTS.put("eess.IV", "Image and Video Processing");
         ARXIV_SUBJECTS.put("eess.SP", "Signal Processing");
         ARXIV_SUBJECTS.put("eess.SY", "Systems and Control");
 
-//Mathematics
+        // Mathematics
         ARXIV_SUBJECTS.put("math.AC", "Commutative Algebra");
         ARXIV_SUBJECTS.put("math.AG", "Algebraic Geometry");
         ARXIV_SUBJECTS.put("math.AP", "Analysis of PDEs");
@@ -95,7 +95,7 @@ public class ArxivResolver {
         ARXIV_SUBJECTS.put("math.SP", "Spectral Theory");
         ARXIV_SUBJECTS.put("math.ST", "Statistics Theory");
 
-//ASTROPHYSICS
+        // ASTROPHYSICS
         ARXIV_SUBJECTS.put("astro-ph.CO", "Cosmology and Nongalactic Astrophysics");
         ARXIV_SUBJECTS.put("astro-ph.EP", "Earth and Planetary Astrophysics");
         ARXIV_SUBJECTS.put("astro-ph.GA", "Astrophysics of Galaxies");
@@ -103,7 +103,7 @@ public class ArxivResolver {
         ARXIV_SUBJECTS.put("astro-ph.IM", "Instrumentation and Methods for Astrophysics");
         ARXIV_SUBJECTS.put("astro-ph.SR", "Solar and Stellar Astrophysics");
 
-//CONDENSED MATTER
+        // CONDENSED MATTER
         ARXIV_SUBJECTS.put("cond-mat.dis-nn", "Disordered Systems and Neural Networks");
         ARXIV_SUBJECTS.put("cond-mat.mes-hall", "Mesoscale and Nanoscale Physics");
         ARXIV_SUBJECTS.put("cond-mat.mtrl-sci", "Materials Science");
@@ -114,30 +114,30 @@ public class ArxivResolver {
         ARXIV_SUBJECTS.put("cond-mat.str-el", "Strongly Correlated Electrons");
         ARXIV_SUBJECTS.put("cond-mat.supr-con", "Superconductivity");
 
-//GENERAL RELATIVITY AND QUANTUM COSMOLOGY
+        // GENERAL RELATIVITY AND QUANTUM COSMOLOGY
         ARXIV_SUBJECTS.put("gr-qc", "General Relativity and Quantum Cosmology");
 
-//HIGH ENERGY PHYSICS
+        // HIGH ENERGY PHYSICS
         ARXIV_SUBJECTS.put("hep-ex", "High Energy Physics - Experiment");
         ARXIV_SUBJECTS.put("hep-lat", "High Energy Physics - Lattice");
         ARXIV_SUBJECTS.put("hep-ph", "High Energy Physics - Phenomenology");
         ARXIV_SUBJECTS.put("hep-th", "High Energy Physics - Theory");
 
-//MATHEMATICAL PHYSICS
+        // MATHEMATICAL PHYSICS
         ARXIV_SUBJECTS.put("math-ph", "Mathematical Physics");
 
-//NONLINEAR SCIENCES
+        // NONLINEAR SCIENCES
         ARXIV_SUBJECTS.put("nlin.AO", "Adaptation and Self-Organizing Systems");
         ARXIV_SUBJECTS.put("nlin.CD", "Chaotic Dynamics");
         ARXIV_SUBJECTS.put("nlin.CG", "Cellular Automata and Lattice Gases");
         ARXIV_SUBJECTS.put("nlin.PS", "Pattern Formation and Solitons");
         ARXIV_SUBJECTS.put("nlin.SI", "Exactly Solvable and Integrable Systems");
 
-//NUCLEAR
+        // NUCLEAR
         ARXIV_SUBJECTS.put("nucl-ex", "Nuclear Experiment");
         ARXIV_SUBJECTS.put("nucl-th", "Nuclear Theory");
 
-//PHYSICS
+        // PHYSICS
         ARXIV_SUBJECTS.put("physics.acc-ph", "Accelerator Physics");
         ARXIV_SUBJECTS.put("physics.ao-ph", "Atmospheric and Oceanic Physics");
         ARXIV_SUBJECTS.put("physics.app-ph", "Applied Physics");
@@ -161,10 +161,10 @@ public class ArxivResolver {
         ARXIV_SUBJECTS.put("physics.soc-ph", "Physics and Society");
         ARXIV_SUBJECTS.put("physics.space-ph", "Space Physics");
 
-//QUANTUM PHYSICS
+        // QUANTUM PHYSICS
         ARXIV_SUBJECTS.put("quant-ph", "Quantum Physics");
 
-//Quantitative Biology
+        // Quantitative Biology
         ARXIV_SUBJECTS.put("q-bio.BM", "Biomolecules");
         ARXIV_SUBJECTS.put("q-bio.CB", "Cell Behavior");
         ARXIV_SUBJECTS.put("q-bio.GN", "Genomics");
@@ -176,7 +176,7 @@ public class ArxivResolver {
         ARXIV_SUBJECTS.put("q-bio.SC", "Subcellular Processes");
         ARXIV_SUBJECTS.put("q-bio.TO", "Tissues and Organs");
 
-//Quantitative Finance
+        // Quantitative Finance
         ARXIV_SUBJECTS.put("q-fin.CP", "Computational Finance");
         ARXIV_SUBJECTS.put("q-fin.EC", "Economics");
         ARXIV_SUBJECTS.put("q-fin.GN", "General Finance");
@@ -187,7 +187,7 @@ public class ArxivResolver {
         ARXIV_SUBJECTS.put("q-fin.ST", "Statistical Finance");
         ARXIV_SUBJECTS.put("q-fin.TR", "Trading and Market Microstructure");
 
-//Statistics
+        // Statistics
         ARXIV_SUBJECTS.put("stat.AP", "Applications");
         ARXIV_SUBJECTS.put("stat.CO", "Computation");
         ARXIV_SUBJECTS.put("stat.ME", "Methodology");
@@ -198,6 +198,7 @@ public class ArxivResolver {
 
     /**
      * Resolves the arXiv subject abbreviation to its full name.
+     *
      * @param abbreviation the arXiv subject abbreviation.
      * @return the full name of the subject, or null if the abbreviation is not recognized.
      */

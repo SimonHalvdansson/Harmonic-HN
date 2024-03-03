@@ -1,13 +1,11 @@
 package com.simon.harmonichackernews.adapters;
 
 import android.graphics.drawable.RippleDrawable;
-import android.text.Html;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -28,7 +26,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
 
     public static final int TYPE_COMMENT = 1;
     public static final int TYPE_COLLAPSED = 2;
-    private List<Comment> comments;
+    private final List<Comment> comments;
 
     private String searchTerm;
     public ItemClickListener itemClickListener;
@@ -64,7 +62,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
 
             markedColor = ThemeUtils.isDarkMode(view.getContext()) ? "#fce205" : "#cc7722";
 
-            //this is illegal according to some but works according to all
+            // this is illegal according to some but works according to all
             // the issue is that HtmlTextView hijacks clicks heavily
             final RippleDrawable rippleDrawable = (RippleDrawable) container.getBackground();
 
@@ -104,7 +102,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     }
 
     @Override
-    public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if (!(holder instanceof CommentSearchAdapter.CommentViewHolder)) {
             return;
         }

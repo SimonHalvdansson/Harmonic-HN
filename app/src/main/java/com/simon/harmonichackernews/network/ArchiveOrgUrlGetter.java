@@ -5,9 +5,6 @@ import android.content.Context;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 
-import com.simon.harmonichackernews.data.ArxivInfo;
-import com.simon.harmonichackernews.network.NetworkComponent;
-
 import org.json.JSONObject;
 
 

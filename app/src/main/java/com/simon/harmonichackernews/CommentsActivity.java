@@ -31,7 +31,7 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         ThemeUtils.setupTheme(this, swipeBack);
 
         /*this is a long story. On CommentsActivity, the default theme is dependent on the android version.
-            For 24-29, we set SwipeBack as the defaul theme and do nothing more
+            For 24-29, we set SwipeBack as the default theme and do nothing more
             For 30-33, we set AppTheme as the default and perhaps switch to SwipeBack if the user wants to, but in that case we indicate translucency manually
             which makes it so that SwipeBack can peek to MainActivity
             For 34+, translucent = true is set automatically in the onResume (after a delay) which makes the peek work
@@ -85,10 +85,10 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         }
     }
 
-    //we only need to do the translucent setting on Android 14 and above as its purpose is to
-    //make the predictive back animation nice (when we peek back from a deeper activity,
+    // We only need to do the translucent setting on Android 14 and above as its purpose is to
+    // make the predictive back animation nice (when we peek back from a deeper activity,
     // CommentsActivity cannot be transparent). The theme already sets the activity to translucent
-    //so when we animate in we are transparent which is important!
+    // so when we animate in we are transparent which is important!
     @Override
     protected void onResume() {
         super.onResume();
@@ -102,7 +102,8 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         }
     }
 
-    //if we set translucency to false immediately onPause we can trigger animations by accident so we delay things a little
+    // If we set translucency to false immediately onPause we can trigger animations by accident so
+    // we delay things a little
     @Override
     protected void onPause() {
         super.onPause();

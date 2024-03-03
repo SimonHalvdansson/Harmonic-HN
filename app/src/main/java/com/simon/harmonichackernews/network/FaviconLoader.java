@@ -6,7 +6,6 @@ import android.widget.ImageView;
 import androidx.core.content.ContextCompat;
 
 import com.simon.harmonichackernews.R;
-import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.squareup.picasso.Picasso;
 
@@ -33,11 +32,11 @@ public class FaviconLoader {
             case "Favicon kit":
                 return "https://api.faviconkit.com/" + host;
             case "Google":
-                return "https://www.google.com/s2/favicons?domain="+ host + "&sz=128";
+                return "https://www.google.com/s2/favicons?domain=" + host + "&sz=128";
             case "DuckDuckGo":
                 return "https://icons.duckduckgo.com/ip3/" + host + ".ico";
             default:
-                return "https://www.google.com/s2/favicons?domain="+ host + "&sz=128";
+                return "https://www.google.com/s2/favicons?domain=" + host + "&sz=128";
         }
     }
 

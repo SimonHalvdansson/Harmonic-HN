@@ -204,8 +204,8 @@ public class ComposeActivity extends AppCompatActivity {
         backPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                //This thing should only be enabled when we want to show the dialog, otherwise
-                //we just do the default back behavior (which is predictive back)
+                // This thing should only be enabled when we want to show the dialog, otherwise
+                // we just do the default back behavior (which is predictive back)
                 AlertDialog dialog = new MaterialAlertDialogBuilder(editText.getContext())
                         .setMessage(type == TYPE_POST ? "Discard post?" : "Discard comment?")
                         .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
@@ -225,15 +225,11 @@ public class ComposeActivity extends AppCompatActivity {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        //Make sure scrollview never takes up more than 1/3 of screen height
+        // Make sure scrollview never takes up more than 1/3 of screen height
         ViewGroup.LayoutParams layout = replyingScrollView.getLayoutParams();
         int dp160 = Utils.pxFromDpInt(getResources(), 160);
         int screenHeightThird = Resources.getSystem().getDisplayMetrics().heightPixels / 3;
-        if (dp160 > screenHeightThird) {
-            layout.height = screenHeightThird;
-        } else {
-            layout.height = dp160;
-        }
+        layout.height = Math.min(dp160, screenHeightThird);
         replyingScrollView.setLayoutParams(layout);
     }
 

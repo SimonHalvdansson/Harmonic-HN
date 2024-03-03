@@ -10,8 +10,6 @@ import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKey;
 
 import java.io.File;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 
 public class EncryptedSharedPreferencesHelper {
@@ -24,14 +22,12 @@ public class EncryptedSharedPreferencesHelper {
 
     public static SharedPreferences getEncryptedSharedPreferences(Context ctx) throws Exception {
         try {
-            SharedPreferences sp = createSharedPreferences(ctx);
-            return sp;
+            return createSharedPreferences(ctx);
         } catch (Exception e) {
             e.printStackTrace();
             try {
                 deleteSharedPreferences(ctx);
-                SharedPreferences sp = createSharedPreferences(ctx);
-                return sp;
+                return createSharedPreferences(ctx);
             } catch (Exception otherException) {
                 otherException.printStackTrace();
                 throw new Exception();

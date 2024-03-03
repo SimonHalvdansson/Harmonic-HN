@@ -2,22 +2,11 @@ package com.simon.harmonichackernews.utils;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.security.keystore.KeyGenParameterSpec;
-import android.security.keystore.KeyProperties;
 import android.text.TextUtils;
-import android.util.Log;
 
 import androidx.fragment.app.FragmentManager;
-import androidx.security.crypto.EncryptedSharedPreferences;
-import androidx.security.crypto.MasterKey;
 
 import com.simon.harmonichackernews.LoginDialogFragment;
-
-import org.w3c.dom.Text;
-
-import java.io.File;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 
 import kotlin.Triple;
 
@@ -30,7 +19,6 @@ public class AccountUtils {
     public final static int FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION = 1;
     public final static int FAILURE_MODE_NO_USERNAME = 3;
     public final static int FAILURE_MODE_NO_PASSWORD = 4;
-
 
 
     public static String getAccountUsername(Context ctx) {
@@ -59,7 +47,7 @@ public class AccountUtils {
         String password = sharedPreferences.getString(KEY_ENCRYPTED_SHARED_PREFERENCES_PASSWORD, null);
 
         if (TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
-            //note we're not logging the password
+            // note we're not logging the password
             Utils.log("Empty check: username " + TextUtils.isEmpty(username) + ", pass:" + TextUtils.isEmpty(password));
         }
 
@@ -71,7 +59,7 @@ public class AccountUtils {
             return new Triple<>(username, password, FAILURE_MODE_NO_PASSWORD);
         }
 
-        //last resort, all is well, still send migration status
+        // last resort, all is well, still send migration status
         return new Triple<>(username, password, FAILURE_MODE_NONE);
     }
 
@@ -104,28 +92,28 @@ public class AccountUtils {
     }
 
     public static boolean handlePossibleError(Triple<String, String, Integer> account, FragmentManager fm, Context ctx) {
-        if (account.getThird() != AccountUtils.FAILURE_MODE_NONE) {
-            if (fm != null) {
-                AccountUtils.showLoginPrompt(fm);
-            }
-
-            switch (account.getThird()) {
-                case AccountUtils.FAILURE_MODE_MAINKEY:
-                    Utils.toast("Login failed, cause: Couldn't get AndroidX MasterKey", ctx);
-                    break;
-                case AccountUtils.FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION:
-                    Utils.toast("Login failed, cause: EncryptedSharedPreferences threw exception", ctx);
-                    break;
-                case AccountUtils.FAILURE_MODE_NO_USERNAME:
-                    Utils.toast("Login failed, cause: No saved username", ctx);
-                    break;
-                case AccountUtils.FAILURE_MODE_NO_PASSWORD:
-                    Utils.toast("Login failed, cause: No saved password", ctx);
-                    break;
-            }
-            return true;
+        if (account.getThird() == AccountUtils.FAILURE_MODE_NONE) {
+            return false;
         }
-        //no error
-        return false;
+
+        if (fm != null) {
+            AccountUtils.showLoginPrompt(fm);
+        }
+
+        switch (account.getThird()) {
+            case AccountUtils.FAILURE_MODE_MAINKEY:
+                Utils.toast("Login failed, cause: Couldn't get AndroidX MasterKey", ctx);
+                break;
+            case AccountUtils.FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION:
+                Utils.toast("Login failed, cause: EncryptedSharedPreferences threw exception", ctx);
+                break;
+            case AccountUtils.FAILURE_MODE_NO_USERNAME:
+                Utils.toast("Login failed, cause: No saved username", ctx);
+                break;
+            case AccountUtils.FAILURE_MODE_NO_PASSWORD:
+                Utils.toast("Login failed, cause: No saved password", ctx);
+                break;
+        }
+        return true;
     }
 }

@@ -2,11 +2,8 @@ package com.simon.harmonichackernews;
 
 import static com.simon.harmonichackernews.SubmissionsActivity.KEY_USER;
 
-import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.Intent;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.SpannableString;
@@ -43,7 +40,6 @@ import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -86,13 +82,13 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         final String userName = (bundle != null && !TextUtils.isEmpty(bundle.getString(EXTRA_USER_NAME))) ? bundle.getString(EXTRA_USER_NAME) : null;
 
         if (userName != null) {
-            //lets create a request and fill in the data when we have it
+            // lets create a request and fill in the data when we have it
             String url = "https://hacker-news.firebaseio.com/v0/user/" + userName + ".json";
 
             StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                     response -> {
                         try {
-                            //lets try to parse the response
+                            // lets try to parse the response
                             JSONObject jsonObject = new JSONObject(response);
                             nameTextview.setText(jsonObject.getString("id"));
                             int karma = jsonObject.getInt("karma");
@@ -145,7 +141,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             });
 
                             container.setVisibility(View.VISIBLE);
-                        } catch(Exception e) {
+                        } catch (Exception e) {
                             loadingProgress.setVisibility(View.GONE);
                             errorLayout.setVisibility(View.VISIBLE);
                             container.setVisibility(View.GONE);

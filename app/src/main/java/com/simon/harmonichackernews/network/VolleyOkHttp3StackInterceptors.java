@@ -27,7 +27,6 @@ public class VolleyOkHttp3StackInterceptors extends BaseHttpStack {
     private static final RequestBody EMPTY_REQUEST = RequestBody.create(new byte[0]);
 
     public VolleyOkHttp3StackInterceptors() {
-
     }
 
 
@@ -35,7 +34,7 @@ public class VolleyOkHttp3StackInterceptors extends BaseHttpStack {
             throws AuthFailureError {
         switch (request.getMethod()) {
             case Request.Method.DEPRECATED_GET_OR_POST:
-                // Ensure backwards compatibility.  Volley assumes a request with a null body is a GET.
+                // Ensure backwards compatibility. Volley assumes a request with a null body is a GET.
                 byte[] postBody = request.getBody();
                 if (postBody != null) {
                     builder.post(RequestBody.create(postBody, MediaType.parse(request.getBodyContentType())));
@@ -93,10 +92,10 @@ public class VolleyOkHttp3StackInterceptors extends BaseHttpStack {
         okHttpRequestBuilder.url(request.getUrl());
 
         Map<String, String> headers = request.getHeaders();
-        for (Map.Entry<String, String> header: headers.entrySet()) {
+        for (Map.Entry<String, String> header : headers.entrySet()) {
             okHttpRequestBuilder.addHeader(header.getKey(), header.getValue());
         }
-        for (Map.Entry<String, String> header: additionalHeaders.entrySet()) {
+        for (Map.Entry<String, String> header : additionalHeaders.entrySet()) {
             okHttpRequestBuilder.addHeader(header.getKey(), header.getValue());
         }
 
@@ -105,7 +104,7 @@ public class VolleyOkHttp3StackInterceptors extends BaseHttpStack {
         OkHttpClient client = clientBuilder.build();
         okhttp3.Request okHttpRequest = okHttpRequestBuilder.build();
         Call okHttpCall = client.newCall(okHttpRequest);
-        // todo: close response. Note that it is not as simple as adding try-with-resources because
+        // TODO: close response. Note that it is not as simple as adding try-with-resources because
         //  that would close the response before Volley has had a chance to consume it. At the same
         //  time, not closing the response is also wrong because it will not be closed at all.
         //  Volley closes only input stream created from response body's which is not the same as
@@ -118,6 +117,7 @@ public class VolleyOkHttp3StackInterceptors extends BaseHttpStack {
         InputStream content = body == null ? null : body.byteStream();
         int contentLength = body == null ? 0 : (int) body.contentLength();
         List<Header> responseHeaders = mapHeaders(okHttpResponse.headers());
+        //okHttpResponse.close();
         return new HttpResponse(code, responseHeaders, contentLength, content);
     }
 
