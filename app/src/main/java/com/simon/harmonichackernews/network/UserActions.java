@@ -70,7 +70,13 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
         UserActions.vote(String.valueOf(id), dir, ctx, fm, new UserActions.ActionCallback() {
             @Override
             public void onSuccess(Response response) {
-                Toast.makeText(ctx, "Vote successful", Toast.LENGTH_SHORT).show();
+                String message = "Vote successful";
+                switch (dir) {
+                    case VOTE_DIR_UP: message = "Upvote successful"; break;
+                    case VOTE_DIR_DOWN: message = "Downvote successful"; break;
+                    case VOTE_DIR_UN: message= "Removed vote successfully"; break;
+                }
+                Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show();
             }
 
             @Override
