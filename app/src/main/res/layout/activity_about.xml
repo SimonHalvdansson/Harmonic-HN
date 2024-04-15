@@ -178,6 +178,7 @@
 
 
         <Button
+            android:layout_marginBottom="24dp"
             android:fontFamily="@font/product_sans_bold"
             style="@style/Widget.Material3.Button.OutlinedButton.Icon"
             app:icon="@drawable/ic_action_policy"

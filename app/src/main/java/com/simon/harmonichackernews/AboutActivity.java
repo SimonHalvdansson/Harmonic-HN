@@ -25,7 +25,12 @@ public class AboutActivity extends AppCompatActivity {
         ThemeUtils.setupTheme(this, false);
         setContentView(R.layout.activity_about);
 
-        ((TextView) findViewById(R.id.about_version)).setText("Version " + BuildConfig.VERSION_NAME);
+        String versionText = "Version " + BuildConfig.VERSION_NAME;
+        if (BuildConfig.BUILD_TYPE != "release") {
+            String buildName = BuildConfig.BUILD_TYPE.substring(0, 1).toUpperCase() + BuildConfig.BUILD_TYPE.substring(1);
+            versionText += String.format(" · %s Build!", buildName);
+        }
+        ((TextView) findViewById(R.id.about_version)).setText(versionText);
     }
 
     public void openGithub(View v) {
