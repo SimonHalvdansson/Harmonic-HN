@@ -168,6 +168,18 @@
         <Button
             android:fontFamily="@font/product_sans_bold"
             style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            app:icon="@drawable/ic_action_update"
+            android:textColor="?attr/storyColorNormal"
+            app:iconTint="?attr/storyColorNormal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="openChangelog"
+            android:text="Changelog" />
+
+
+        <Button
+            android:fontFamily="@font/product_sans_bold"
+            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
             app:icon="@drawable/ic_action_policy"
             android:textColor="?attr/storyColorNormal"
             app:iconTint="?attr/storyColorNormal"
