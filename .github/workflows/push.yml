@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - main
+      - updated-build-action
   pull_request:
   workflow_dispatch:
 
@@ -10,13 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v3
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-      - uses: gradle/gradle-build-action@v2
-        with:
-          arguments: build --warning-mode all
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+      - name: Build with Gradle
+        run: ./gradlew build --warning-mode all
       - uses: actions/upload-artifact@v3
         with:
           name: apks
