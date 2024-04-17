@@ -154,7 +154,7 @@
             android:layout_height="wrap_content"/>
 
         <Button
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
             android:fontFamily="@font/product_sans_bold"
             style="@style/Widget.Material3.Button.OutlinedButton.Icon"
             app:icon="@drawable/ic_link_preview_github"
@@ -178,6 +178,7 @@
 
 
         <Button
+            android:layout_marginBottom="16dp"
             android:fontFamily="@font/product_sans_bold"
             style="@style/Widget.Material3.Button.OutlinedButton.Icon"
             app:icon="@drawable/ic_action_policy"
