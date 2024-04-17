@@ -22,7 +22,7 @@ jobs:
 #          cache-read-only: false
       - name: Build with Gradle
         run: ./gradlew build --warning-mode all --no-daemon --parallel
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: apks
           path: app/build/outputs/apk
