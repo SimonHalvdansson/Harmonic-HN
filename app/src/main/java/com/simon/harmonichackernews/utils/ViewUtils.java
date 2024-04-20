@@ -1,12 +1,8 @@
 package com.simon.harmonichackernews.utils;
 
-import android.content.Context;
 import android.content.res.Resources;
-import android.content.res.TypedArray;
-import android.graphics.drawable.Drawable;
 import android.text.Layout;
 import android.text.TextWatcher;
-import android.util.TypedValue;
 import android.view.View;
 import android.widget.TextView;
 
@@ -48,7 +44,7 @@ public class ViewUtils {
      * Requests that insets should be applied to this view once it is attached.
      * <p>
      * Copied from {@link com.google.android.material.internal.ViewUtils#requestApplyInsetsWhenAttached(View)}
-     * */
+     */
     public static void requestApplyInsetsWhenAttached(@NonNull View view) {
         if (ViewCompat.isAttachedToWindow(view)) {
             // We're already attached, just request as normal.
@@ -64,7 +60,8 @@ public class ViewUtils {
                         }
 
                         @Override
-                        public void onViewDetachedFromWindow(View v) {}
+                        public void onViewDetachedFromWindow(View v) {
+                        }
                     });
         }
     }

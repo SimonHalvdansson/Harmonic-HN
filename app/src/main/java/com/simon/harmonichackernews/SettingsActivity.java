@@ -3,17 +3,12 @@ package com.simon.harmonichackernews;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
-import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.text.format.DateFormat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
@@ -28,7 +23,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.timepicker.MaterialTimePicker;
 import com.google.android.material.timepicker.TimeFormat;
-import com.gw.swipeback.SwipeBackLayout;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
@@ -74,10 +68,8 @@ public class SettingsActivity extends AppCompatActivity {
         getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
         backPressedCallback.setEnabled(false);
 
-        if (getIntent() != null) {
-            if (getIntent().getBooleanExtra(EXTRA_REQUEST_RESTART, false)) {
-                backPressedCallback.setEnabled(true);
-            }
+        if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_REQUEST_RESTART, false)) {
+            backPressedCallback.setEnabled(true);
         }
     }
 
@@ -98,7 +90,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             findPreference("pref_default_story_type").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
                     if (getActivity() != null && getActivity() instanceof SettingsActivity) {
                         ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
                     }
@@ -108,7 +100,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             findPreference("pref_compact_view").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
                     changePrefStatus(findPreference("pref_show_points"), !(boolean) newValue);
                     changePrefStatus(findPreference("pref_show_comments_count"), !(boolean) newValue);
                     changePrefStatus(findPreference("pref_thumbnails"), !(boolean) newValue);
@@ -119,7 +111,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             findPreference("pref_foldable_support").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
                     if (getActivity() != null && getActivity() instanceof SettingsActivity) {
                         ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
                     }
@@ -136,7 +128,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             findPreference("pref_transparent_status_bar").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
                     Intent intent = new Intent(getContext(), SettingsActivity.class);
                     intent.putExtra(EXTRA_REQUEST_RESTART, true);
                     requireContext().startActivity(intent);
@@ -198,7 +190,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             findPreference("pref_export_bookmarks").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
-                public boolean onPreferenceClick(Preference preference) {
+                public boolean onPreferenceClick(@NonNull Preference preference) {
 
                     String textToSave = SettingsUtils.readStringFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS);
 
@@ -226,7 +218,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             findPreference("pref_import_bookmarks").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
-                public boolean onPreferenceClick(Preference preference) {
+                public boolean onPreferenceClick(@NonNull Preference preference) {
                     Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
                     intent.setType("text/plain");
@@ -239,7 +231,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             findPreference("pref_clear_clicked_stories").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
-                public boolean onPreferenceClick(Preference preference) {
+                public boolean onPreferenceClick(@NonNull Preference preference) {
                     Set<Integer> set = SettingsUtils.readIntSetFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS);
                     int oldCount = set.size();
 
@@ -261,7 +253,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             findPreference("pref_about").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
-                public boolean onPreferenceClick(Preference preference) {
+                public boolean onPreferenceClick(@NonNull Preference preference) {
                     startActivity(new Intent(getContext(), AboutActivity.class));
 
                     return false;
@@ -288,8 +280,8 @@ public class SettingsActivity extends AppCompatActivity {
                     try {
                         String content = Utils.readFileContent(getContext(), data.getData());
                         ArrayList<Bookmark> bookmarks = Utils.loadBookmarks(true, content);
-                        if (bookmarks.size() > 0) {
-                            //save the new bookmarks
+                        if (!bookmarks.isEmpty()) {
+                            // save the new bookmarks
                             SettingsUtils.saveStringToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS, content);
                             Toast.makeText(getContext(), "Loaded " + bookmarks.size() + " bookmarks", Toast.LENGTH_SHORT).show();
                         } else {
@@ -321,7 +313,7 @@ public class SettingsActivity extends AppCompatActivity {
             int[] nighttimeHours = Utils.getNighttimeHours(getContext());
 
             if (DateFormat.is24HourFormat(getContext())) {
-                findPreference("pref_theme_timed_range").setSummary((nighttimeHours[0] < 10 ? "0" : "") + nighttimeHours[0] + ":" + (nighttimeHours[1] < 10 ? "0" : "") +  nighttimeHours[1] + " - " + (nighttimeHours[2] < 10 ? "0" : "") + nighttimeHours[2] + ":" + (nighttimeHours[3] < 10 ? "0" : "") + nighttimeHours[3]);
+                findPreference("pref_theme_timed_range").setSummary((nighttimeHours[0] < 10 ? "0" : "") + nighttimeHours[0] + ":" + (nighttimeHours[1] < 10 ? "0" : "") + nighttimeHours[1] + " - " + (nighttimeHours[2] < 10 ? "0" : "") + nighttimeHours[2] + ":" + (nighttimeHours[3] < 10 ? "0" : "") + nighttimeHours[3]);
 
             } else {
                 SimpleDateFormat df = new SimpleDateFormat("h:mm a");
