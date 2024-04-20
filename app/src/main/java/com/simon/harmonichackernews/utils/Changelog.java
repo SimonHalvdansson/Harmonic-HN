@@ -7,6 +7,7 @@ public class Changelog {
                 "- Fixed long comment links opened on long press (thanks flofriday!)<br>" +
                 "- Added vote direction in toast (thanks flofriday!)<br>" +
                 "- Added button to view changelog from about (thanks flofriday!)<br>" +
+                "- Fixed crash when clicking link in reply screen (thanks flofriday!)<br>" +
                 "- Changed some button colors<br>" +
                 "- Fixed 2 rare crashes<br>" +
                 "- Added button to add/remove bookmark on post long press<br>" +
