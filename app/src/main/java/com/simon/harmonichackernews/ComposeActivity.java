@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
@@ -39,6 +40,7 @@ import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
 
 import org.sufficientlysecure.htmltextview.HtmlTextView;
+import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.util.List;
 
@@ -96,6 +98,8 @@ public class ComposeActivity extends AppCompatActivity {
         LinearLayout bottomContainer = findViewById(R.id.compose_bottom_container);
         LinearLayout container = findViewById(R.id.compose_container);
 
+
+
         Intent intent = getIntent();
         id = intent.getIntExtra(EXTRA_ID, -1);
         parentText = intent.getStringExtra(EXTRA_PARENT_TEXT);
@@ -118,6 +122,13 @@ public class ComposeActivity extends AppCompatActivity {
                 replyingScrollView.setVisibility(View.VISIBLE);
                 topCommentTextView.setVisibility(View.GONE);
                 replyingTextView.setHtml("<p>Replying to " + user + "'s comment:</p>" + parentText);
+                replyingTextView.setOnClickATagListener(new OnClickATagListener() {
+                    @Override
+                    public boolean onClick(View widget, String spannedText, @Nullable String href) {
+                        Utils.openLinkMaybeHN(widget.getContext(), href);
+                        return true;
+                    }
+                });
                 break;
             case TYPE_POST:
                 replyingScrollView.setVisibility(View.GONE);
