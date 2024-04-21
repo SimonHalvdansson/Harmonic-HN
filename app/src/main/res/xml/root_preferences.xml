@@ -280,7 +280,7 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_comments_disable_swipeback"
-            app:defaultValue="false"
+            app:defaultValue="true"
             app:icon="@drawable/ic_action_swipe"
             app:title="Disable swipe back from comments"    />
 
