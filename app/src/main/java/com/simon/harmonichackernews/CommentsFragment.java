@@ -410,7 +410,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         queue = NetworkComponent.getRequestQueueInstance(requireContext());
         String cachedResponse = Utils.loadCachedStory(getContext(), story.id);
 
-        loadStoryAndComments(story.id, cachedResponse);
+        loadStoryAndComments(story.id, cachedResponse, false);
 
         // if this isn't here, the addition of the text appears to scroll the recyclerview down a little
         recyclerView.scrollToPosition(0);
@@ -1097,16 +1097,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     public void refreshComments() {
         swipeRefreshLayout.setRefreshing(true);
-        loadStoryAndComments(adapter.story.id, null);
+        loadStoryAndComments(adapter.story.id, null, true);
     }
 
-    private void loadStoryAndComments(final int id, final String oldCachedResponse) {
+    private void loadStoryAndComments(final int id, final String oldCachedResponse, boolean forceInvalidateNetworkCache) {
         String url = "https://hn.algolia.com/api/v1/items/" + id;
+
         lastLoaded = System.currentTimeMillis();
 
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+        StringRequest getStoryAndComments = new StringRequest(Request.Method.GET, url,
                 response -> {
-                    if (TextUtils.isEmpty(oldCachedResponse) || !oldCachedResponse.equals(response)) {
+                    if (TextUtils.isEmpty(oldCachedResponse) || !response.equals(oldCachedResponse)) {
                         handleJsonResponse(id, response, true, oldCachedResponse == null, false);
                     }
                     swipeRefreshLayout.setRefreshing(false);
@@ -1177,13 +1178,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             });
         }
 
-        stringRequest.setTag(requestTag);
-        stringRequest.setRetryPolicy(new DefaultRetryPolicy(
+        getStoryAndComments.setTag(requestTag);
+        getStoryAndComments.setRetryPolicy(new DefaultRetryPolicy(
                 15000,
                 DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
 
-        queue.add(stringRequest);
+        if(forceInvalidateNetworkCache) {
+            // In order to re-invoke the network request, we must invalidate the disk cache.
+            this.queue.getCache().invalidate(url, true);
+        }
+        queue.add(getStoryAndComments);
     }
 
     private void loadPollOptions() {
@@ -1224,7 +1229,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    private void handleJsonResponse(final int id, final String response, final boolean cache, final boolean forceHeaderRefresh, boolean restoreScroll) {
+    private void handleJsonResponse(final int id, final String response, final boolean shouldCacheResult, final boolean forceHeaderRefresh, boolean restoreScroll) {
         int oldCommentCount = comments.size();
 
         // This is what we get if the Algolia API has not indexed the post,
@@ -1283,7 +1288,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.loadingFailedServerError = false;
 
             // Seems like loading went well, lets cache the result
-            if (cache) {
+            if (shouldCacheResult) {
                 Utils.cacheStory(getContext(), id, response);
             } else if (restoreScroll) {
                 // If we're not caching the result, this means we just loaded an old cache.
