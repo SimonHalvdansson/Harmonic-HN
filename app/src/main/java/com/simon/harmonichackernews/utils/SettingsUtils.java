@@ -239,6 +239,18 @@ public class SettingsUtils {
         return sortingOptions.length - 1;
     }
 
+    public static int getHistoryIndex(Resources res) {
+        String[] sortingOptions = res.getStringArray(R.array.sorting_options);
+
+        for (int i = sortingOptions.length - 1; i >= 0; i--) {
+            if (sortingOptions[i].equals("History")) {
+                return i;
+            }
+        }
+        // fallback
+        return sortingOptions.length - 1;
+    }
+
     public static int getJobsIndex(Resources res) {
         String[] sortingOptions = res.getStringArray(R.array.sorting_options);
 
