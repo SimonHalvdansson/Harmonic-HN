@@ -5,7 +5,7 @@
   <SplitPairRule
     window:splitRatio="0.5"
     window:splitLayoutDirection="locale"
-    window:splitMinWidthDp="840"
+    window:splitMinWidthDp="700"
     window:splitMaxAspectRatioInPortrait="alwaysAllow"
     window:finishPrimaryWithSecondary="never"
     window:finishSecondaryWithPrimary="always"
@@ -19,7 +19,7 @@
     window:placeholderActivityName=".SplitPlaceholderActivity"
     window:splitRatio="0.5"
     window:splitLayoutDirection="locale"
-    window:splitMinWidthDp="840"
+    window:splitMinWidthDp="700"
     window:splitMaxAspectRatioInPortrait="alwaysAllow"
     window:stickyPlaceholder="false">
     <ActivityFilter
