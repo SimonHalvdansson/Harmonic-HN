@@ -710,7 +710,7 @@ public class StoriesFragment extends Fragment {
         lastSearch = query;
         adapter.lastSearch = query;
 
-        loadAlgolia("https://hn.algolia.com/api/v1/search_by_date?query=" + query + "&tags=story&hitsPerPage=200", false);
+        loadAlgolia("https://hn.algolia.com/api/v1/search_by_date?query=" + query + "&tags=story&hitsPerPage=200&typoTolerance=min", false);
     }
 
     private void loadAlgolia(String url, boolean markClicked) {
