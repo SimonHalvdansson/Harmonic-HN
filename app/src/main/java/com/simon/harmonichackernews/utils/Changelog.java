@@ -8,6 +8,7 @@ public class Changelog {
                 "- Changed Algolia search parameters (thanks Jonas Wunderlich)<br>" +
                 "- Updated libraries and targeting Android 15<br>" +
                 "- Fixed post title/domain filtering for Algolia API<br>" +
+                "- Made links unshortened when selecting text<br>" +
                 "<br>" +
                 "<b>Version 2.0.3:</b><br>" +
                 "- Removed Nitter integration (RIP)<br>" +
