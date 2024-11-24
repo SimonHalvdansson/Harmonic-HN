@@ -4,6 +4,9 @@ public class Changelog {
     static public String getHTML() {
         return "<b>Version 2.1:</b><br>" +
                 "- Add history view (thanks Fernando F. H.!)<br>" +
+                "- Enabled foldable support for Galaxy Fold 6 (thanks Michael Swiger)<br>" +
+                "- Changed Algolia search parameters (thanks Jonas Wunderlich)<br>" +
+                "- Updated libraries and targeting Android 15<br>" +
                 "<br>" +
                 "<b>Version 2.0.3:</b><br>" +
                 "- Removed Nitter integration (RIP)<br>" +
