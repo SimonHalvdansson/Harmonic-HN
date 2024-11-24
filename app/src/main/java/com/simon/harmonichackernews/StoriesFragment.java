@@ -491,13 +491,20 @@ public class StoriesFragment extends Fragment {
                                 return;
                             }
                         }
+
                         // or domain name
                         for (String phrase : filterDomains) {
-                            if (story.url.toLowerCase().contains(phrase.toLowerCase())) {
-                                stories.remove(story);
-                                adapter.notifyItemRemoved(index);
-                                loadedTo = Math.max(0, loadedTo - 1);
-                                return;
+                            try {
+                                String domain = Utils.getDomainName(story.url);
+                                if (domain.toLowerCase().contains(phrase.toLowerCase())) {
+
+                                    stories.remove(story);
+                                    adapter.notifyItemRemoved(index);
+                                    loadedTo = Math.max(0, loadedTo - 1);
+                                    return;
+                                }
+                            } catch (Exception e) {
+                                //nothing
                             }
                         }
 
@@ -761,6 +768,28 @@ public class StoriesFragment extends Fragment {
                         while (iterator.hasNext()) {
                             Story story = iterator.next();
                             story.clicked = clickedIds.contains(story.id);
+
+                            if (story.title != null) {
+                                // lets check if we should remove the post because of filter
+                                for (String phrase : filterWords) {
+                                    if (story.title.toLowerCase().contains(phrase.toLowerCase())) {
+                                        iterator.remove();
+                                        break;
+                                    }
+                                }
+                                // or domain name
+                                for (String phrase : filterDomains) {
+                                    try {
+                                        String domain = Utils.getDomainName(story.url);
+                                        if (domain.toLowerCase().contains(phrase.toLowerCase())) {
+                                            iterator.remove();
+                                            break;
+                                        }
+                                    } catch (Exception e) {
+                                        //nothing
+                                    }
+                                }
+                            }
 
                             if (hideClicked && story.clicked) {
                                 iterator.remove();
