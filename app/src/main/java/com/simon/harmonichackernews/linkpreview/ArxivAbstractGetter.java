@@ -34,7 +34,7 @@ public class ArxivAbstractGetter {
     public static void getAbstract(String url, Context ctx, GetterCallback callback) {
         String arxivID = url.substring(url.lastIndexOf('/') + 1).replace(".pdf", "");
 
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, "http://export.arxiv.org/api/query?id_list=" + arxivID,
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, "https://export.arxiv.org/api/query?id_list=" + arxivID,
                 response -> {
                     try {
                         XmlPullParser parser = Xml.newPullParser();
