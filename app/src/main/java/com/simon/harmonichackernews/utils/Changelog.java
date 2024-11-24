@@ -7,6 +7,7 @@ public class Changelog {
                 "- Enabled foldable support for Galaxy Fold 6 (thanks Michael Swiger)<br>" +
                 "- Changed Algolia search parameters (thanks Jonas Wunderlich)<br>" +
                 "- Updated libraries and targeting Android 15<br>" +
+                "- Fixed post title/domain filtering for Algolia API<br>" +
                 "<br>" +
                 "<b>Version 2.0.3:</b><br>" +
                 "- Removed Nitter integration (RIP)<br>" +
