@@ -1319,10 +1319,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             startActivity(intent);
         } catch (Exception e) {
             // If we're at a PDF or something like that, just do the original URL
-            intent.setData(Uri.parse(story.url));
-            startActivity(intent);
+            try {
+                intent.setData(Uri.parse(story.url));
+                startActivity(intent);
+            } catch (Exception e2) {
+                Utils.toast("Couldn't open URL", getContext());
+            }
         }
-
     }
 
     public void clickShare(View view) {

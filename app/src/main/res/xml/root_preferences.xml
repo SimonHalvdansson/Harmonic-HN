@@ -122,6 +122,7 @@
             app:title="Enable foldable support"   />
       
       <SwitchPreferenceCompat
+            app:isPreferenceVisible="@bool/before_android_15"
             app:singleLineTitle="false"
             app:key="pref_transparent_status_bar"
             app:defaultValue="false"
