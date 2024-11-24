@@ -2,7 +2,10 @@ package com.simon.harmonichackernews.utils;
 
 public class Changelog {
     static public String getHTML() {
-        return "<b>Version 2.0.3:</b><br>" +
+        return "<b>Version 2.1:</b><br>" +
+                "- Add history view (thanks Fernando F. H.!)<br>" +
+                "<br>" +
+                "<b>Version 2.0.3:</b><br>" +
                 "- Removed Nitter integration (RIP)<br>" +
                 "- Fixed long comment links opened on long press (thanks flofriday!)<br>" +
                 "- Added vote direction in toast (thanks flofriday!)<br>" +

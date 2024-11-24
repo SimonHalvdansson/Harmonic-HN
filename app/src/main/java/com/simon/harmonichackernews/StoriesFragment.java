@@ -618,6 +618,34 @@ public class StoriesFragment extends Fragment {
             swipeRefreshLayout.setRefreshing(false);
 
             return;
+        } else if (adapter.type == SettingsUtils.getHistoryIndex(getResources())) {
+            // lets load bookmarks instead - or rather add empty stories with correct id:s and start loading them
+            adapter.notifyItemRangeRemoved(1, stories.size() + 1);
+            loadedTo = 0;
+
+            stories.clear();
+            stories.add(new Story());
+            int[] clickIdsArray = new int[clickedIds.size()];
+
+            int j = 0;
+            for (int id: clickedIds){
+                clickIdsArray[j++] = id;
+            }
+
+            for (int i = 0; i < clickedIds.size(); i++) {
+                Story s = new Story("Loading...", clickIdsArray[i], false, false);
+
+                stories.add(s);
+                adapter.notifyItemInserted(i + 1);
+                if (i < 20) {
+                    loadStory(stories.get(i + 1), 0);
+                }
+            }
+
+            adapter.notifyItemChanged(0);
+            swipeRefreshLayout.setRefreshing(false);
+
+            return;
         }
 
         // if none of the above, do a normal loading
