@@ -293,7 +293,9 @@ public class ComposeActivity extends AppCompatActivity {
                 }
             });
         } else {
-            UserActions.comment(String.valueOf(id), editText.getText().toString(), getApplicationContext(), new UserActions.ActionCallback() {
+            final String commentText = editText.getText().toString();
+
+            UserActions.comment(String.valueOf(id), commentText, getApplicationContext(), new UserActions.ActionCallback() {
                 @Override
                 public void onSuccess(Response response) {
                     submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
@@ -304,7 +306,7 @@ public class ComposeActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(String summary, String response) {
                     submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
-                    UserActions.showFailureDetailDialog(view.getContext(), summary, response);
+                    UserActions.showFailureDetailDialog(view.getContext(), summary, response + "\n\n" + "Here is your comment should you wish to copy it and try again:\n" + commentText);
                     Toast.makeText(view.getContext(), "Comment post unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
                 }
             });

@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.network;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Handler;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -239,6 +240,11 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
                     .setNegativeButton("Done", null).create();
 
             dialog.show();
+
+            TextView messageView = dialog.findViewById(android.R.id.message);
+            if (messageView != null) {
+                messageView.setTextIsSelectable(true);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
