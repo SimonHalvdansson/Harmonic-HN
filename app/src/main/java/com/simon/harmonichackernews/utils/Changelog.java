@@ -9,6 +9,7 @@ public class Changelog {
                 "- Updated libraries and targeting Android 15<br>" +
                 "- Fixed post title/domain filtering for Algolia API<br>" +
                 "- Made links unshortened when selecting text<br>" +
+                "- Added ability to copy comment text if posting fails<br>" +
                 "<br>" +
                 "<b>Version 2.0.3:</b><br>" +
                 "- Removed Nitter integration (RIP)<br>" +
