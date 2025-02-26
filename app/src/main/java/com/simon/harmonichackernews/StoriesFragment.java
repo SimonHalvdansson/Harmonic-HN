@@ -5,10 +5,8 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -207,7 +205,7 @@ public class StoriesFragment extends Fragment {
                 SettingsUtils.getPreferredFaviconProvider(getContext()),
                 null,
                 getPreferredTypeIndex()
-                );
+        );
 
         adapter.setOnLinkClickListener(position -> {
             if (position == RecyclerView.NO_POSITION) {
@@ -290,7 +288,7 @@ public class StoriesFragment extends Fragment {
 
                 popupMenu.getMenu().add(oldClicked ? "Mark as unread" : "Mark as read").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
-                    public boolean onMenuItemClick(MenuItem item) {
+                    public boolean onMenuItemClick(@NonNull MenuItem item) {
                         story.clicked = !oldClicked;
                         if (oldClicked) {
                             clickedIds.remove(story.id);
@@ -305,7 +303,7 @@ public class StoriesFragment extends Fragment {
 
                 popupMenu.getMenu().add(oldBookmarked ? "Remove bookmark" : "Bookmark").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
-                    public boolean onMenuItemClick(MenuItem item) {
+                    public boolean onMenuItemClick(@NonNull MenuItem item) {
                         if (oldBookmarked) {
                             Utils.removeBookmark(ctx, story.id);
                             if (adapter.type == SettingsUtils.getBookmarksIndex(ctx.getResources())) {
@@ -328,10 +326,10 @@ public class StoriesFragment extends Fragment {
                     fieldPopup.setAccessible(true);
                     Object menuPopupHelper = fieldPopup.get(popupMenu);
 
-                    //the reason for the -10 - height/3 thing is so match the popup location better
-                    //with the press location - for some reason this is necessary.
+                    // the reason for the -10 - height/3 thing is so match the popup location better
+                    // with the press location - for some reason this is necessary.
                     int targetX = x - Utils.pxFromDpInt(getResources(), 56);
-                    int targetY = y - topInset - Utils.pxFromDpInt(getResources(), 10) - v.getHeight()/3;
+                    int targetY = y - topInset - Utils.pxFromDpInt(getResources(), 10) - v.getHeight() / 3;
 
                     menuPopupHelper.getClass().getDeclaredMethod("show", int.class, int.class).invoke(menuPopupHelper, targetX, targetY);
                 } catch (Exception e) {
@@ -365,7 +363,7 @@ public class StoriesFragment extends Fragment {
         long timeDiff = System.currentTimeMillis() - lastLoaded;
 
         // if more than 1 hr
-        if (timeDiff > 1000*60*60 && !adapter.searching && adapter.type != SettingsUtils.getBookmarksIndex(getResources()) && !currentTypeIsAlgolia()) {
+        if (timeDiff > 1000 * 60 * 60 && !adapter.searching && adapter.type != SettingsUtils.getBookmarksIndex(getResources()) && !currentTypeIsAlgolia()) {
             showUpdateButton();
         }
 
@@ -442,7 +440,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void clickedComments(int position) {
-        //prevent double clicks
+        // prevent double clicks
         long now = System.currentTimeMillis();
         if (now - lastClick > CLICK_INTERVAL) {
             lastClick = now;
@@ -484,7 +482,7 @@ public class StoriesFragment extends Fragment {
                             return;
                         }
 
-                        //lets check if we should remove the post because of filter
+                        // lets check if we should remove the post because of filter
                         for (String phrase : filterWords) {
                             if (story.title.toLowerCase().contains(phrase.toLowerCase())) {
                                 stories.remove(story);
@@ -493,17 +491,24 @@ public class StoriesFragment extends Fragment {
                                 return;
                             }
                         }
+
                         // or domain name
                         for (String phrase : filterDomains) {
-                            if (story.url.toLowerCase().contains(phrase.toLowerCase())) {
-                                stories.remove(story);
-                                adapter.notifyItemRemoved(index);
-                                loadedTo = Math.max(0, loadedTo - 1);
-                                return;
+                            try {
+                                String domain = Utils.getDomainName(story.url);
+                                if (domain.toLowerCase().contains(phrase.toLowerCase())) {
+
+                                    stories.remove(story);
+                                    adapter.notifyItemRemoved(index);
+                                    loadedTo = Math.max(0, loadedTo - 1);
+                                    return;
+                                }
+                            } catch (Exception e) {
+                                //nothing
                             }
                         }
 
-                        //or because it's a job
+                        // or because it's a job
                         if (hideJobs && adapter.type != SettingsUtils.getJobsIndex(getResources()) && (story.isJob || story.by.equals("whoishiring"))) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
@@ -574,19 +579,19 @@ public class StoriesFragment extends Fragment {
 
         swipeRefreshLayout.setRefreshing(true);
 
-        //cancel all ongoing
+        // cancel all ongoing
         queue.cancelAll(requestTag);
 
         if (currentTypeIsAlgolia()) {
-            //algoliaStuff
+            // algoliaStuff
             int currentTime = (int) (System.currentTimeMillis() / 1000);
             int startTime = currentTime;
             if (adapter.type == 1) {
-                startTime = currentTime - 60*60*24;
+                startTime = currentTime - 60 * 60 * 24;
             } else if (adapter.type == 2) {
-                startTime = currentTime - 60*60*48;
+                startTime = currentTime - 60 * 60 * 48;
             } else if (adapter.type == 3) {
-                startTime = currentTime - 60*60*24*7;
+                startTime = currentTime - 60 * 60 * 24 * 7;
             }
 
             loadTopStoriesSince(startTime);
@@ -597,7 +602,7 @@ public class StoriesFragment extends Fragment {
         lastLoaded = System.currentTimeMillis();
 
         if (adapter.type == SettingsUtils.getBookmarksIndex(getResources())) {
-            //lets load bookmarks instead - or rather add empty stories with correct id:s and start loading them
+            // lets load bookmarks instead - or rather add empty stories with correct id:s and start loading them
             adapter.notifyItemRangeRemoved(1, stories.size() + 1);
             loadedTo = 0;
 
@@ -608,6 +613,34 @@ public class StoriesFragment extends Fragment {
 
             for (int i = 0; i < bookmarks.size(); i++) {
                 Story s = new Story("Loading...", bookmarks.get(i).id, false, false);
+
+                stories.add(s);
+                adapter.notifyItemInserted(i + 1);
+                if (i < 20) {
+                    loadStory(stories.get(i + 1), 0);
+                }
+            }
+
+            adapter.notifyItemChanged(0);
+            swipeRefreshLayout.setRefreshing(false);
+
+            return;
+        } else if (adapter.type == SettingsUtils.getHistoryIndex(getResources())) {
+            // lets load bookmarks instead - or rather add empty stories with correct id:s and start loading them
+            adapter.notifyItemRangeRemoved(1, stories.size() + 1);
+            loadedTo = 0;
+
+            stories.clear();
+            stories.add(new Story());
+            int[] clickIdsArray = new int[clickedIds.size()];
+
+            int j = 0;
+            for (int id: clickedIds){
+                clickIdsArray[j++] = id;
+            }
+
+            for (int i = 0; i < clickedIds.size(); i++) {
+                Story s = new Story("Loading...", clickIdsArray[i], false, false);
 
                 stories.add(s);
                 adapter.notifyItemInserted(i + 1);
@@ -643,7 +676,7 @@ public class StoriesFragment extends Fragment {
                             }
 
                             Story s = new Story("Loading...", id, false, clickedIds.contains(id));
-                            //let's try to fill this with old information if possible
+                            // let's try to fill this with old information if possible
 
                             String cachedResponse = Utils.loadCachedStory(getContext(), id);
                             if (cachedResponse != null && !cachedResponse.equals(JSONParser.ALGOLIA_ERROR_STRING)) {
@@ -686,7 +719,7 @@ public class StoriesFragment extends Fragment {
         swipeRefreshLayout.setEnabled(!adapter.searching);
 
         if (adapter.searching) {
-            //cancel all ongoing
+            // cancel all ongoing
             queue.cancelAll(requestTag);
             swipeRefreshLayout.setRefreshing(false);
 
@@ -712,7 +745,7 @@ public class StoriesFragment extends Fragment {
         lastSearch = query;
         adapter.lastSearch = query;
 
-        loadAlgolia("https://hn.algolia.com/api/v1/search_by_date?query=" + query + "&tags=story&hitsPerPage=200", false);
+        loadAlgolia("https://hn.algolia.com/api/v1/search_by_date?query=" + query + "&tags=story&hitsPerPage=200&typoTolerance=min", false);
     }
 
     private void loadAlgolia(String url, boolean markClicked) {
@@ -735,6 +768,28 @@ public class StoriesFragment extends Fragment {
                         while (iterator.hasNext()) {
                             Story story = iterator.next();
                             story.clicked = clickedIds.contains(story.id);
+
+                            if (story.title != null) {
+                                // lets check if we should remove the post because of filter
+                                for (String phrase : filterWords) {
+                                    if (story.title.toLowerCase().contains(phrase.toLowerCase())) {
+                                        iterator.remove();
+                                        break;
+                                    }
+                                }
+                                // or domain name
+                                for (String phrase : filterDomains) {
+                                    try {
+                                        String domain = Utils.getDomainName(story.url);
+                                        if (domain.toLowerCase().contains(phrase.toLowerCase())) {
+                                            iterator.remove();
+                                            break;
+                                        }
+                                    } catch (Exception e) {
+                                        //nothing
+                                    }
+                                }
+                            }
 
                             if (hideClicked && story.clicked) {
                                 iterator.remove();

@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
@@ -39,6 +40,7 @@ import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
 
 import org.sufficientlysecure.htmltextview.HtmlTextView;
+import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.util.List;
 
@@ -96,6 +98,8 @@ public class ComposeActivity extends AppCompatActivity {
         LinearLayout bottomContainer = findViewById(R.id.compose_bottom_container);
         LinearLayout container = findViewById(R.id.compose_container);
 
+
+
         Intent intent = getIntent();
         id = intent.getIntExtra(EXTRA_ID, -1);
         parentText = intent.getStringExtra(EXTRA_PARENT_TEXT);
@@ -118,6 +122,13 @@ public class ComposeActivity extends AppCompatActivity {
                 replyingScrollView.setVisibility(View.VISIBLE);
                 topCommentTextView.setVisibility(View.GONE);
                 replyingTextView.setHtml("<p>Replying to " + user + "'s comment:</p>" + parentText);
+                replyingTextView.setOnClickATagListener(new OnClickATagListener() {
+                    @Override
+                    public boolean onClick(View widget, String spannedText, @Nullable String href) {
+                        Utils.openLinkMaybeHN(widget.getContext(), href);
+                        return true;
+                    }
+                });
                 break;
             case TYPE_POST:
                 replyingScrollView.setVisibility(View.GONE);
@@ -204,8 +215,8 @@ public class ComposeActivity extends AppCompatActivity {
         backPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                //This thing should only be enabled when we want to show the dialog, otherwise
-                //we just do the default back behavior (which is predictive back)
+                // This thing should only be enabled when we want to show the dialog, otherwise
+                // we just do the default back behavior (which is predictive back)
                 AlertDialog dialog = new MaterialAlertDialogBuilder(editText.getContext())
                         .setMessage(type == TYPE_POST ? "Discard post?" : "Discard comment?")
                         .setPositiveButton("Discard", new DialogInterface.OnClickListener() {
@@ -225,15 +236,11 @@ public class ComposeActivity extends AppCompatActivity {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        //Make sure scrollview never takes up more than 1/3 of screen height
+        // Make sure scrollview never takes up more than 1/3 of screen height
         ViewGroup.LayoutParams layout = replyingScrollView.getLayoutParams();
         int dp160 = Utils.pxFromDpInt(getResources(), 160);
         int screenHeightThird = Resources.getSystem().getDisplayMetrics().heightPixels / 3;
-        if (dp160 > screenHeightThird) {
-            layout.height = screenHeightThird;
-        } else {
-            layout.height = dp160;
-        }
+        layout.height = Math.min(dp160, screenHeightThird);
         replyingScrollView.setLayoutParams(layout);
     }
 
@@ -286,7 +293,9 @@ public class ComposeActivity extends AppCompatActivity {
                 }
             });
         } else {
-            UserActions.comment(String.valueOf(id), editText.getText().toString(), getApplicationContext(), new UserActions.ActionCallback() {
+            final String commentText = editText.getText().toString();
+
+            UserActions.comment(String.valueOf(id), commentText, getApplicationContext(), new UserActions.ActionCallback() {
                 @Override
                 public void onSuccess(Response response) {
                     submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
@@ -297,7 +306,7 @@ public class ComposeActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(String summary, String response) {
                     submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
-                    UserActions.showFailureDetailDialog(view.getContext(), summary, response);
+                    UserActions.showFailureDetailDialog(view.getContext(), summary, response + "\n\n" + "Here is your comment should you wish to copy it and try again:\n" + commentText);
                     Toast.makeText(view.getContext(), "Comment post unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
                 }
             });

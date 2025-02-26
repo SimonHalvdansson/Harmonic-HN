@@ -1,5 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
+    <bool name="before_android_15">true</bool>
+
     <!-- These base themes are so that we can tell the app that android:isLightTheme="false"
     which enables us to use darkened webview again!-->
     <style name="AppThemeBase" parent="Theme.Material3.Dark.NoActionBar"></style>

@@ -60,7 +60,7 @@ public class SwipeBackLayout extends ViewGroup {
 
     private int leftOffset = 0;
     private int topOffset = 0;
-    //important constant
+    // important constant
     private float autoFinishedVelocityLimit = 3000f;
 
     private int touchedEdge = ViewDragHelper.INVALID_POINTER;

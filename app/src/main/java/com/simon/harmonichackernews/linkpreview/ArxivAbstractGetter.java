@@ -7,7 +7,6 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.simon.harmonichackernews.data.ArxivInfo;
-import com.simon.harmonichackernews.data.RepoInfo;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.ArxivResolver;
 
@@ -17,7 +16,6 @@ import org.xmlpull.v1.XmlPullParserException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,7 +34,7 @@ public class ArxivAbstractGetter {
     public static void getAbstract(String url, Context ctx, GetterCallback callback) {
         String arxivID = url.substring(url.lastIndexOf('/') + 1).replace(".pdf", "");
 
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, "http://export.arxiv.org/api/query?id_list=" + arxivID,
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, "https://export.arxiv.org/api/query?id_list=" + arxivID,
                 response -> {
                     try {
                         XmlPullParser parser = Xml.newPullParser();
@@ -89,7 +87,7 @@ public class ArxivAbstractGetter {
                         // Convert author list to array
                         String[] authorsArray = authorList.toArray(new String[0]);
 
-                        //API 23 does not support Java 8 so we do this by hand
+                        // API 23 does not support Java 8 so we do this by hand
                         List<String> secondaryCategoriesFiltered = new ArrayList<>();
                         for (String category : secondaryCategoryList) {
                             if (ArxivResolver.isArxivSubjet(category)) {

@@ -91,12 +91,12 @@ import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.data.WikipediaInfo;
 import com.simon.harmonichackernews.linkpreview.ArxivAbstractGetter;
 import com.simon.harmonichackernews.linkpreview.GitHubInfoGetter;
+import com.simon.harmonichackernews.linkpreview.WikipediaGetter;
+import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
-import com.simon.harmonichackernews.linkpreview.WikipediaGetter;
 import com.simon.harmonichackernews.utils.AccountUtils;
-import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.utils.CommentSorter;
 import com.simon.harmonichackernews.utils.DialogUtils;
 import com.simon.harmonichackernews.utils.FileDownloader;
@@ -223,7 +223,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         } else {
             story.loaded = false;
             story.id = -1;
-            //check if url intercept
+            // check if url intercept
             Intent intent = requireActivity().getIntent();
             if (intent != null) {
                 if (Intent.ACTION_VIEW.equalsIgnoreCase(intent.getAction())) {
@@ -239,7 +239,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                                     story.url = "";
                                     story.score = 0;
                                 }
-                            } catch(Exception e) {
+                            } catch (Exception e) {
                                 e.printStackTrace();
                                 Toast.makeText(getContext(), "Unable to parse story", Toast.LENGTH_SHORT).show();
                                 requireActivity().finish();
@@ -288,7 +288,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         webViewBackdrop = view.findViewById(R.id.comments_webview_backdrop);
 
         if (story.title == null) {
-            //Empty view for tablets
+            // Empty view for tablets
             view.findViewById(R.id.comments_empty).setVisibility(View.VISIBLE);
             bottomSheet.setVisibility(View.GONE);
             webViewContainer.setVisibility(View.GONE);
@@ -300,17 +300,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         backPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
-                    if (webView.canGoBack()) {
-                        if (downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
-                            webView.setVisibility(View.VISIBLE);
-                            downloadButton.setVisibility(View.GONE);
-                        } else {
-                            webView.goBack();
-                        }
-                        return;
+                if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED && webView.canGoBack()) {
+                    if (downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
+                        webView.setVisibility(View.VISIBLE);
+                        downloadButton.setVisibility(View.GONE);
+                    } else {
+                        webView.goBack();
                     }
+                    return;
                 }
+
                 requireActivity().finish();
                 if (!SettingsUtils.shouldDisableCommentsSwipeBack(getContext()) && !Utils.isTablet(getResources())) {
                     requireActivity().overridePendingTransition(0, R.anim.activity_out_animation);
@@ -323,8 +322,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         swipeRefreshLayout.setOnRefreshListener(this::refreshComments);
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
-        // this is how much the bottom sheet sticks up by default and also decides height of webview
-        //We want to watch for navigation bar height changes (tablets on Android 12L can cause
+        // This is how much the bottom sheet sticks up by default and also decides height of WebView
+        // We want to watch for navigation bar height changes (tablets on Android 12L can cause
         // these)
 
         ViewCompat.setOnApplyWindowInsetsListener(view, new OnApplyWindowInsetsListener() {
@@ -366,7 +365,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         webViewContainer.setBackgroundColor(ContextCompat.getColor(requireContext(), ThemeUtils.getBackgroundColorResource(requireContext())));
 
         comments = new ArrayList<>();
-        comments.add(new Comment()); //header
+        comments.add(new Comment()); // header
 
         username = AccountUtils.getAccountUsername(getContext());
 
@@ -378,7 +377,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
 
                 FrameLayout.LayoutParams scrollParams = (FrameLayout.LayoutParams) scrollNavigation.getLayoutParams();
-                scrollParams.setMargins(0,0,0, insets.bottom + Utils.pxFromDpInt(getResources(), 16));
+                scrollParams.setMargins(0, 0, 0, insets.bottom + Utils.pxFromDpInt(getResources(), 16));
 
                 return windowInsets;
             }
@@ -395,10 +394,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         scrollIcon.setOnClickListener(null);
 
         scrollNext.setOnClickListener((v) -> scrollNext());
-        scrollNext.setOnLongClickListener(v -> {scrollLast(); return true;});
+        scrollNext.setOnLongClickListener(v -> {
+            scrollLast();
+            return true;
+        });
 
         scrollPrev.setOnClickListener((v) -> scrollPrevious());
-        scrollPrev.setOnLongClickListener(v -> {scrollTop(); return true;});
+        scrollPrev.setOnLongClickListener(v -> {
+            scrollTop();
+            return true;
+        });
 
         initializeRecyclerView();
 
@@ -407,11 +412,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         loadStoryAndComments(story.id, cachedResponse);
 
-        //if this isn't here, the addition of the text appears to scroll the recyclerview down a little
+        // if this isn't here, the addition of the text appears to scroll the recyclerview down a little
         recyclerView.scrollToPosition(0);
 
         if (cachedResponse != null) {
-            handleJsonResponse(story.id, cachedResponse,false, false, !showWebsite);
+            handleJsonResponse(story.id, cachedResponse, false, false, !showWebsite);
         }
     }
 
@@ -428,7 +433,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         BottomSheetBehavior.from(bottomSheet).setPeekHeight(standardMargin + navbarHeight);
         CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        params.setMargins(0,0, 0, standardMargin + navbarHeight);
+        params.setMargins(0, 0, 0, standardMargin + navbarHeight);
 
         webViewContainer.setLayoutParams(params);
 
@@ -440,8 +445,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        //this is to make sure that action buttons in header get updated padding on rotations...
-        //yes its ugly, I know
+        // this is to make sure that action buttons in header get updated padding on rotations...
+        // yes its ugly, I know
         if (getContext() != null && Utils.isTablet(getResources()) && adapter != null) {
             adapter.notifyItemChanged(0);
         }
@@ -481,7 +486,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             final RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(index);
             if (holder != null && !adapter.collapseParent && holder instanceof CommentsRecyclerViewAdapter.ItemViewHolder) {
-                //if we can reach the ViewHolder (which we should), we can animate the
+                // if we can reach the ViewHolder (which we should), we can animate the
                 // hiddenIndicator ourselves to get around a FULL item refresh (which flashes
                 // all the text which we don't want)
                 offset = 1;
@@ -491,7 +496,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 hiddenIndicator.setText("+" + (lastChildIndex - index));
 
                 if (comment.expanded) {
-                    //fade out
+                    // fade out
                     hiddenIndicator.setVisibility(View.VISIBLE);
                     hiddenIndicator.setAlpha(1f);
                     hiddenIndicator.animate()
@@ -504,7 +509,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                                 }
                             });
                 } else {
-                    //fade in
+                    // fade in
                     hiddenIndicator.setVisibility(View.VISIBLE);
                     hiddenIndicator.setAlpha(0f);
                     hiddenIndicator.animate()
@@ -518,17 +523,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             if (lastChildIndex != index || adapter.collapseParent) {
                 // + 1 since if we have 1 subcomment we have changed the parent and the child
-                adapter.notifyItemRangeChanged(index+1, lastChildIndex - index + 1-offset);
+                adapter.notifyItemRangeChanged(index + 1, lastChildIndex - index + 1 - offset);
             }
 
-            //next couple of lines makes it so that if we hide parents and click the comment at
-            //the top of the screen, we scroll down to the next comment automatically
-            //this is only applicable if we're hiding a comment
+            // next couple of lines makes it so that if we hide parents and click the comment at
+            // the top of the screen, we scroll down to the next comment automatically
+            // this is only applicable if we're hiding a comment
             if (layoutManager != null && !comment.expanded && adapter.collapseParent) {
                 int firstVisible = layoutManager.findFirstVisibleItemPosition();
                 int clickedIndex = comments.indexOf(comment);
 
-                //if we clicked the top one and the new top level comment exists
+                // if we clicked the top one and the new top level comment exists
                 if (clickedIndex == firstVisible && comments.size() > lastChildIndex + 1) {
                     smoothScroller.setTargetPosition(lastChildIndex + 1);
                     layoutManager.startSmoothScroll(smoothScroller);
@@ -577,15 +582,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_INVERT:
-                        //this whole thing should only be visible for SDK_INT larger than Q (29)
-                        //We first check the "new" version of dark mode, algorithmic darkening
+                        // This whole thing should only be visible for SDK_INT larger than Q (29)
+                        // We first check the "new" version of dark mode, algorithmic darkening
                         // this requires the isDarkMode thing to be true for the theme which we
                         // have set
                         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                             WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), !WebSettingsCompat.isAlgorithmicDarkeningAllowed(webView.getSettings()));
                         } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
-                            //I don't know why but this seems to always be true whenever we
-                            //are at or above android 10
+                            // I don't know why but this seems to always be true whenever we
+                            // are at or above android 10
                             if (WebSettingsCompat.getForceDark(webView.getSettings()) == WebSettingsCompat.FORCE_DARK_ON) {
                                 WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_OFF);
                             } else {
@@ -612,8 +617,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
                 if (integratedWebview) {
-                    //Shouldn't be neccessary but once I was stuck in comments and couldn't swipe up.
-                    //this just updates a flag so there's no performance impact
+                    // Shouldn't be neccessary but once I was stuck in comments and couldn't swipe up.
+                    // This just updates a flag so there's no performance impact
                     if (dy != 0 && callback != null) {
                         callback.onSwitchView(false);
                     }
@@ -633,7 +638,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public int calculateDyToMakeVisible(View view, int snapPreference) {
-                //this is to make sure that scrollTo calls work properly
+                // This is to make sure that scrollTo calls work properly
                 return super.calculateDyToMakeVisible(view, snapPreference) + topInset;
             }
 
@@ -644,8 +649,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         if (!SettingsUtils.shouldUseCommentsScrollbar(getContext())) {
-            //for some reason, I could only get the scrollbars to show up when they are enabled via
-            //xml but disabling them in java worked so this is an okay solution...
+            // For some reason, I could only get the scrollbars to show up when they are enabled via
+            // xml but disabling them in java worked so this is an okay solution...
             recyclerView.setVerticalScrollBarEnabled(false);
         }
 
@@ -664,12 +669,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 // Updating padding (of recyclerview) doesn't work because it causes incorrect scroll position for recycler.
                 // Updating scroll together with padding causes severe lags and other problems.
                 // So don't update padding at all on slide and instead just change whole view position (by translationY on recyclerView)
-                //... is something you could do but this means that the touch target of the recyclerview is not aligned with the view
-                //so we go back to the padding but instead just put a view above the recyclerview (a spacer) and change its height!
-                //... is what you could do if you were stupid! This would mean that the recyclerView starts BELOW the status bar
-                //breaking transparent status bar. Instead, the spacing needs to be _within_ the recyclerview header!
-                //NOTE: this also needs to be set in onBindViewHolder of the adapter to stay up to date if the header item
-                //should be refreshed
+                // ... is something you could do but this means that the touch target of the recyclerview is not aligned with the view
+                // so we go back to the padding but instead just put a view above the recyclerview (a spacer) and change its height!
+                // ... is what you could do if you were stupid! This would mean that the recyclerView starts BELOW the status bar
+                // breaking transparent status bar. Instead, the spacing needs to be _within_ the recyclerview header!
+                // NOTE: this also needs to be set in onBindViewHolder of the adapter to stay up to date if the header item
+                // should be refreshed
                 loadHeaderSpacer();
                 if (headerSpacer != null) {
                     headerSpacer.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Math.round(topInset * slideOffset)));
@@ -717,15 +722,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
-               if (callback != null) {
-                   callback.onSwitchView(newState == BottomSheetBehavior.STATE_COLLAPSED);
+                if (callback != null) {
+                    callback.onSwitchView(newState == BottomSheetBehavior.STATE_COLLAPSED);
                 }
             }
 
             @Override
             public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-                //onSlide gets called when if we're just scrolling the scrollview in the sheet,
-                //we only want to start loading if we're actually sliding up the thing!
+                // onSlide gets called when if we're just scrolling the scrollview in the sheet,
+                // we only want to start loading if we're actually sliding up the thing!
                 if (!startedLoading && slideOffset < 0.9999) {
                     startedLoading = true;
                     loadUrl(story.url);
@@ -733,11 +738,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
-        //This is because we are now for sure not using swipeRefresh
+        // This is because we are now for sure not using swipeRefresh
         try {
             ((FrameLayout) swipeRefreshLayout.getParent()).removeView(swipeRefreshLayout);
         } catch (Exception e) {
-            //this will crash if we have already done this, which is fine
+            // This will crash if we have already done this, which is fine
         }
 
         if (blockAds && TextUtils.isEmpty(Utils.adservers)) {
@@ -758,7 +763,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         webView.getSettings().setDatabaseEnabled(true);
         webView.getSettings().setUseWideViewPort(true);
         webView.getSettings().setLoadWithOverviewMode(true);
-        
+
         webView.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String userAgent,
@@ -867,7 +872,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             downloadButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    //just download via notification as usual
+                    // Just download via notification as usual
                     try {
                         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
 
@@ -951,7 +956,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (bottomSheet != null) {
                     bottomSheet.setBackgroundColor(ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx)));
                 }
-                if (webViewContainer != null){
+                if (webViewContainer != null) {
                     webViewContainer.setBackgroundColor(ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx)));
                 }
             }
@@ -968,7 +973,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onResume() {
         super.onResume();
 
-        if (lastLoaded != 0 && (System.currentTimeMillis() - lastLoaded) > 1000*60*60 && !Utils.timeInSecondsMoreThanTwoHoursAgo(story.time)) {
+        if (lastLoaded != 0 && (System.currentTimeMillis() - lastLoaded) > 1000 * 60 * 60 && !Utils.timeInSecondsMoreThanTwoHoursAgo(story.time)) {
             if (adapter != null && !adapter.showUpdate) {
                 adapter.showUpdate = true;
                 adapter.notifyItemChanged(0);
@@ -985,18 +990,18 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (MainActivity.commentsScrollProgresses == null) {
                     MainActivity.commentsScrollProgresses = new ArrayList<>();
                 }
-                //let's check all scrollProgresses in memory to see if we should change an active
-                //object
+                // Let's check all scrollProgresses in memory to see if we should change an active
+                // object
                 for (int i = 0; i < MainActivity.commentsScrollProgresses.size(); i++) {
                     CommentsScrollProgress scrollProgress = MainActivity.commentsScrollProgresses.get(i);
                     if (scrollProgress.storyId == story.id) {
-                        // if we find, overwrite the old thing and stop completely
+                        // If we find, overwrite the old thing and stop completely
                         MainActivity.commentsScrollProgresses.set(i, recordScrollProgress());
                         return;
                     }
                 }
 
-                //if we didn't find anything, let's add it ourselves
+                // If we didn't find anything, let's add it ourselves
                 MainActivity.commentsScrollProgresses.add(recordScrollProgress());
             }
         }
@@ -1044,7 +1049,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void destroyWebView() {
-        //nuclear
+        // Nuclear
         if (webView != null) {
             webViewContainer.removeAllViews();
             webView.clearHistory();
@@ -1102,7 +1107,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
                     if (TextUtils.isEmpty(oldCachedResponse) || !oldCachedResponse.equals(response)) {
-                        handleJsonResponse(id, response,true, oldCachedResponse == null, false);
+                        handleJsonResponse(id, response, true, oldCachedResponse == null, false);
                     }
                     swipeRefreshLayout.setRefreshing(false);
                 }, error -> {
@@ -1137,7 +1142,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                 @Override
                 public void onFailure(String reason) {
-                    //no-op
+                    // no-op
                 }
             });
         } else if (GitHubInfoGetter.isValidGitHubUrl(story.url) && SettingsUtils.shouldUseLinkPreviewGithub(getContext())) {
@@ -1152,7 +1157,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                 @Override
                 public void onFailure(String reason) {
-                    //no op
+                    // no op
                 }
             });
         } else if (WikipediaGetter.isValidWikipediaUrl(story.url) && SettingsUtils.shouldUseLinkPreviewWikipedia(getContext())) {
@@ -1167,7 +1172,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                 @Override
                 public void onFailure(String reason) {
-                    //no op
+                    // no op
                 }
             });
         }
@@ -1196,9 +1201,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                     response -> {
                         try {
-                            for (int i = 0; i < story.pollOptionArrayList.size(); i++) {
-                                PollOption pollOption = story.pollOptionArrayList.get(i);
-
+                            for (PollOption pollOption : story.pollOptionArrayList) {
                                 if (pollOption.id == optionId) {
                                     pollOption.loaded = true;
 
@@ -1239,7 +1242,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             JSONArray children = jsonObject.getJSONArray("children");
 
-            //we run the defauly sorting
+            // We run the default sorting
             boolean addedNewComment = false;
             for (int i = 0; i < children.length(); i++) {
                 boolean added = JSONParser.readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, 0, story.kids);
@@ -1247,12 +1250,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     addedNewComment = true;
                 }
             }
-            //if non default, do full refresh after the sorting below!
+            // If non default, do full refresh after the sorting below!
             if (addedNewComment && !SettingsUtils.getPreferredCommentSorting(getContext()).equals("Default")) {
                 adapter.notifyItemRangeChanged(1, comments.size());
             }
 
-            //and then perhaps apply an updated sorting
+            // And then perhaps apply an updated sorting
             CommentSorter.sort(getContext(), comments);
 
             boolean storyChanged = JSONParser.updateStoryInformation(story, jsonObject, forceHeaderRefresh, oldCommentCount, comments.size());
@@ -1263,7 +1266,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             integratedWebview = prefIntegratedWebview && story.isLink;
 
             if (integratedWebview && !initializedWebView) {
-                //it's the first time, so we need to re-initialize the recyclerview too
+                // It's the first time, so we need to re-initialize the recyclerview too
                 initializeWebView();
                 initializeRecyclerView();
             }
@@ -1279,17 +1282,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.loadingFailed = false;
             adapter.loadingFailedServerError = false;
 
-            //Seems like loading went well, lets cache the result
+            // Seems like loading went well, lets cache the result
             if (cache) {
                 Utils.cacheStory(getContext(), id, response);
             } else if (restoreScroll) {
-                //if we're not caching the result, this means we just loaded an old cache.
-                //let's see if we can recover the scroll position.
+                // If we're not caching the result, this means we just loaded an old cache.
+                // Let's see if we can recover the scroll position.
                 if (MainActivity.commentsScrollProgresses != null && !MainActivity.commentsScrollProgresses.isEmpty()) {
-                    //we check all of the caches to see if one has the same story ID
+                    // We check all of the caches to see if one has the same story ID
                     for (CommentsScrollProgress scrollProgress : MainActivity.commentsScrollProgresses) {
                         if (scrollProgress.storyId == story.id) {
-                            //jackpot! Let's restore the state
+                            // Jackpot! Let's restore the state
                             restoreScrollProgress(scrollProgress);
                         }
                     }
@@ -1298,7 +1301,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         } catch (JSONException e) {
             e.printStackTrace();
-            //Show some error, remove things?
+            // Show some error, remove things?
             adapter.loadingFailed = true;
             adapter.loadingFailedServerError = false;
             adapter.notifyItemChanged(0);
@@ -1315,11 +1318,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             intent.setData(Uri.parse(webView.getUrl()));
             startActivity(intent);
         } catch (Exception e) {
-            //if we're at a PDF or something like that, just do the original URL
-            intent.setData(Uri.parse(story.url));
-            startActivity(intent);
+            // If we're at a PDF or something like that, just do the original URL
+            try {
+                intent.setData(Uri.parse(story.url));
+                startActivity(intent);
+            } catch (Exception e2) {
+                Utils.toast("Couldn't open URL", getContext());
+            }
         }
-
     }
 
     public void clickShare(View view) {
@@ -1459,10 +1465,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             int height = firstVisibleView.getHeight();
             int scrolled = height - Math.abs(top);
 
-            //there is a topInset-sized padding at the top of the recyclerview (the
+            // There is a topInset-sized padding at the top of the recyclerview (the
             // recyclerview extends behind the status bar) and as such
             // findFirstVisiblePosition() may return the view that is hidden behind the
-            //status bar. If we have scrolled so short, then firstVisible should get a ++
+            // status bar. If we have scrolled so short, then firstVisible should get a ++
             if (scrolled <= topInset) {
                 firstVisible++;
             }
@@ -1523,7 +1529,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     private void updateNavigationVisibility() {
         if (showNavButtons) {
-            //If was gone and shouldn't be now, animate in
+            // If was gone and shouldn't be now, animate in
             if (comments != null && comments.size() > 1 && scrollNavigation.getVisibility() == View.GONE) {
                 scrollNavigation.setVisibility(View.VISIBLE);
 
@@ -1568,7 +1574,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         ListAdapter adapter = new ArrayAdapter<Pair<String, Integer>>(ctx,
                 R.layout.comment_dialog_item,
                 R.id.comment_dialog_text,
-                items){
+                items) {
             public View getView(int position, View convertView, ViewGroup parent) {
                 TextView view = (TextView) super.getView(position, convertView, parent);
 
@@ -1635,7 +1641,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
+        CommentsRecyclerViewAdapter commentAdapter = this.adapter;
+        builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialog) {
+                commentAdapter.disableCommentATagClick = false;
+            }
+        });
+
         AlertDialog dialog = builder.create();
+        commentAdapter.disableCommentATagClick = true;
         dialog.show();
     }
 
@@ -1648,7 +1663,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             webViewBackdrop.setVisibility(View.GONE);
 
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
-                //if we are at the webview and we just loaded, recheck the canGoBack status
+                // If we are at the webview and we just loaded, recheck the canGoBack status
                 toggleBackPressedCallback(webView != null && webView.canGoBack());
             }
         }
@@ -1806,6 +1821,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         interface Callbacks {
             void onFailure();
+
             void onLoad();
         }
     }

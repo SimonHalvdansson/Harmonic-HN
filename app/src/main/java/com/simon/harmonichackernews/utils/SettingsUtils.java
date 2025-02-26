@@ -203,11 +203,6 @@ public class SettingsUtils {
         return getBooleanPref("pref_comments_swap_long", false, ctx);
     }
 
-
-    public static boolean shouldUseAlgolia(Context ctx) {
-        return getBooleanPref("pref_algolia_api", true, ctx);
-    }
-
     public static boolean getBooleanPref(String key, boolean backup, Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return prefs.getBoolean(key, backup);
@@ -216,6 +211,7 @@ public class SettingsUtils {
     public static int getPreferredCommentTextSize(Context ctx) {
         return Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_comment_text_size", "15"));
     }
+
     public static String getPreferredStoryType(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return prefs.getString("pref_default_story_type", "Top Stories");
@@ -232,26 +228,38 @@ public class SettingsUtils {
     }
 
     public static int getBookmarksIndex(Resources res) {
-        String[] sortingOptions =  res.getStringArray(R.array.sorting_options);
+        String[] sortingOptions = res.getStringArray(R.array.sorting_options);
 
         for (int i = sortingOptions.length - 1; i >= 0; i--) {
             if (sortingOptions[i].equals("Bookmarks")) {
                 return i;
             }
         }
-        //fallback
+        // fallback
+        return sortingOptions.length - 1;
+    }
+
+    public static int getHistoryIndex(Resources res) {
+        String[] sortingOptions = res.getStringArray(R.array.sorting_options);
+
+        for (int i = sortingOptions.length - 1; i >= 0; i--) {
+            if (sortingOptions[i].equals("History")) {
+                return i;
+            }
+        }
+        // fallback
         return sortingOptions.length - 1;
     }
 
     public static int getJobsIndex(Resources res) {
-        String[] sortingOptions =  res.getStringArray(R.array.sorting_options);
+        String[] sortingOptions = res.getStringArray(R.array.sorting_options);
 
         for (int i = sortingOptions.length - 1; i >= 0; i--) {
             if (sortingOptions[i].equals("HN Jobs")) {
                 return i;
             }
         }
-        //fallback
+        // fallback
         return sortingOptions.length - 2;
     }
 

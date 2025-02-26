@@ -154,7 +154,7 @@
             android:layout_height="wrap_content"/>
 
         <Button
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
             android:fontFamily="@font/product_sans_bold"
             style="@style/Widget.Material3.Button.OutlinedButton.Icon"
             app:icon="@drawable/ic_link_preview_github"
@@ -166,6 +166,19 @@
             android:text="Harmonic on GitHub" />
 
         <Button
+            android:fontFamily="@font/product_sans_bold"
+            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            app:icon="@drawable/ic_action_update"
+            android:textColor="?attr/storyColorNormal"
+            app:iconTint="?attr/storyColorNormal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="openChangelog"
+            android:text="Changelog" />
+
+
+        <Button
+            android:layout_marginBottom="16dp"
             android:fontFamily="@font/product_sans_bold"
             style="@style/Widget.Material3.Button.OutlinedButton.Icon"
             app:icon="@drawable/ic_action_policy"

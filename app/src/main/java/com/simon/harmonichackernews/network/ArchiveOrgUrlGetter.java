@@ -5,16 +5,13 @@ import android.content.Context;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 
-import com.simon.harmonichackernews.data.ArxivInfo;
-import com.simon.harmonichackernews.network.NetworkComponent;
-
 import org.json.JSONObject;
 
 
 public class ArchiveOrgUrlGetter {
 
     public static void getArchiveUrl(String url, final Context ctx, GetterCallback callback) {
-        StringRequest stringRequest = new StringRequest(com.android.volley.Request.Method.GET, "http://archive.org/wayback/available?url=" + url,
+        StringRequest stringRequest = new StringRequest(com.android.volley.Request.Method.GET, "https://archive.org/wayback/available?url=" + url,
                 response -> {
 
                     try {

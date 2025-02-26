@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.network;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Handler;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -70,7 +71,13 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
         UserActions.vote(String.valueOf(id), dir, ctx, fm, new UserActions.ActionCallback() {
             @Override
             public void onSuccess(Response response) {
-                Toast.makeText(ctx, "Vote successful", Toast.LENGTH_SHORT).show();
+                String message = "Vote successful";
+                switch (dir) {
+                    case VOTE_DIR_UP: message = "Upvote successful"; break;
+                    case VOTE_DIR_DOWN: message = "Downvote successful"; break;
+                    case VOTE_DIR_UN: message= "Removed vote successfully"; break;
+                }
+                Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show();
             }
 
             @Override
@@ -224,8 +231,8 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
     }
 
     public static void showFailureDetailDialog(Context ctx, String summary, String response) {
-        //We need to try-catch this because it is called asynchronously and if the app has been
-        //closed we cannot show a dialog. Instead of checking for this, we can just try-catch! :)
+        // We need to try-catch this because it is called asynchronously and if the app has been
+        // closed we cannot show a dialog. Instead of checking for this, we can just try-catch! :)
         try {
             AlertDialog dialog = new MaterialAlertDialogBuilder(ctx)
                     .setTitle(summary)
@@ -233,6 +240,11 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
                     .setNegativeButton("Done", null).create();
 
             dialog.show();
+
+            TextView messageView = dialog.findViewById(android.R.id.message);
+            if (messageView != null) {
+                messageView.setTextIsSelectable(true);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

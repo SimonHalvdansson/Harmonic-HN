@@ -11,6 +11,7 @@
         <item>Show HN</item>
         <item>HN Jobs</item>
         <item>Bookmarks</item>
+        <item>History</item>
     </string-array>
 
     <string-array name="search_sorting_options">

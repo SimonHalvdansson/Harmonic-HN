@@ -4,13 +4,15 @@ package com.simon.harmonichackernews;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Html;
 import android.view.View;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.gw.swipeback.SwipeBackLayout;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.simon.harmonichackernews.utils.Changelog;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -23,7 +25,11 @@ public class AboutActivity extends AppCompatActivity {
         ThemeUtils.setupTheme(this, false);
         setContentView(R.layout.activity_about);
 
-        ((TextView) findViewById(R.id.about_version)).setText("Version " + BuildConfig.VERSION_NAME);
+        String versionText = "Version " + BuildConfig.VERSION_NAME;
+        if (BuildConfig.DEBUG) {
+            versionText += String.format(" (%s)", BuildConfig.BUILD_TYPE);
+        }
+        ((TextView) findViewById(R.id.about_version)).setText(versionText);
     }
 
     public void openGithub(View v) {
@@ -31,6 +37,15 @@ public class AboutActivity extends AppCompatActivity {
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setData(Uri.parse(url));
         startActivity(intent);
+    }
+
+    public void openChangelog(View v) {
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle("Changelog")
+                .setMessage(Html.fromHtml(Changelog.getHTML()))
+                .setNegativeButton("Done", null).create();
+
+        dialog.show();
     }
 
     public void openPrivacy(View v) {
