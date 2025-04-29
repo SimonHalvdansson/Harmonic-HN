@@ -303,6 +303,19 @@ public class Utils {
         return phrases;
     }
 
+    public static Set<String> getFilteredUsers(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        String prefText = prefs.getString("pref_filter_users", null);
+
+        Set<String> usernames = new HashSet<>();
+        if (!TextUtils.isEmpty(prefText)) {
+            for (String username : prefText.split(",")) {
+                usernames.add(username.trim());
+            }
+        }
+        return usernames;
+    }
+
     public static boolean isFirstAppStart(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
         if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true) && SettingsUtils.readIntSetFromSharedPreferences(ctx, Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS).isEmpty()) {

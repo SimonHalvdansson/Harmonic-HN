@@ -13,11 +13,11 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class JSONParser {
 
     public final static String ALGOLIA_ERROR_STRING = "{\"status\":404,\"error\":\"Not Found\"}";
-
     public static List<Story> algoliaJsonToStories(String response) throws JSONException {
         List<Story> stories = new ArrayList<>();
 
@@ -264,7 +264,7 @@ public class JSONParser {
         return changed;
     }
 
-    public static boolean readChildAndParseSubchilds(JSONObject child, List<Comment> comments, CommentsRecyclerViewAdapter adapter, int depth, int[] prioTop) throws JSONException {
+    public static boolean readChildAndParseSubchilds(JSONObject child, List<Comment> comments, CommentsRecyclerViewAdapter adapter, int depth, int[] prioTop, Set<String> filteredUsers) throws JSONException {
         /*
          * Remark: Right now we're only updating old comments, not deleting those who are not there
          * anymore but that is probably just nice
@@ -275,6 +275,10 @@ public class JSONParser {
         if (!child.has("text") || child.getString("text").equals("null")) {
             return false;
         }
+        String author = child.getString("author");
+        if (filteredUsers.contains(author)){
+            return false;
+        }
 
         JSONArray children = child.has("children") ? child.getJSONArray("children") : null;
 
@@ -283,7 +287,7 @@ public class JSONParser {
         comment.depth = depth;
         comment.parent = child.getInt("parent_id");
         comment.expanded = true;
-        comment.by = child.getString("author");
+        comment.by = author;
         comment.text = preprocessHtml(child.getString("text"));
         comment.time = child.getInt("created_at_i");
         comment.id = child.getInt("id");
@@ -423,7 +427,7 @@ public class JSONParser {
 
         if (children != null) {
             for (int i = 0; i < children.length(); i++) {
-                boolean childPlaced = readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, depth + 1, prioTop);
+                boolean childPlaced = readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, depth + 1, prioTop, filteredUsers);
                 if (childPlaced) {
                     placedNew = true;
                 }

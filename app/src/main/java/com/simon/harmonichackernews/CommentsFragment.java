@@ -117,6 +117,7 @@ import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import okhttp3.Call;
 
@@ -173,6 +174,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private OnBackPressedCallback backPressedCallback;
     private String username;
     private Story story;
+    private Set<String> filteredUsers;
 
     public CommentsFragment() {
         super(R.layout.fragment_comments);
@@ -181,6 +183,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        filteredUsers = Utils.getFilteredUsers(getContext());
 
         setExitTransition(new MaterialSharedAxis(MaterialSharedAxis.Y, true));
         setEnterTransition(new MaterialSharedAxis(MaterialSharedAxis.Y, false));
@@ -1245,7 +1249,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             // We run the default sorting
             boolean addedNewComment = false;
             for (int i = 0; i < children.length(); i++) {
-                boolean added = JSONParser.readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, 0, story.kids);
+                boolean added = JSONParser.readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, 0, story.kids, filteredUsers);
                 if (added) {
                     addedNewComment = true;
                 }
