@@ -360,6 +360,13 @@
             app:icon="@drawable/ic_action_block"
             app:summary="Hide stories based on domain name"
             app:dialogMessage="Separate phrases by commas, capitalization is ignored"  />
+        <EditTextPreference
+            app:singleLineTitle="false"
+            app:title="Filter user comments"
+            app:key="pref_filter_users"
+            app:icon="@drawable/ic_action_block"
+            app:summary="Hide comments by the specified users"
+            app:dialogMessage="Separate usernames by commas, capitalization is ignored"  />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
