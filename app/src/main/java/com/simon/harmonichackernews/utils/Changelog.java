@@ -2,7 +2,10 @@ package com.simon.harmonichackernews.utils;
 
 public class Changelog {
     static public String getHTML() {
-        return "<b>Version 2.1:</b><br>" +
+        return "<b>Version 2.1.1:</b><br>" +
+                "- Add option to filter users (thanks Carey Metcalfe!)<br>" +
+                "<br>" +
+                "<b>Version 2.1:</b><br>" +
                 "- Add history view (thanks Fernando F. H.!)<br>" +
                 "- Enabled foldable support for Galaxy Fold 6 (thanks Michael Swiger)<br>" +
                 "- Changed Algolia search parameters (thanks Jonas Wunderlich)<br>" +
