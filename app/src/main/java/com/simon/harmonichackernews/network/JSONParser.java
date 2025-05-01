@@ -276,7 +276,7 @@ public class JSONParser {
             return false;
         }
         String author = child.getString("author");
-        if (filteredUsers.contains(author)){
+        if (filteredUsers.contains(author.toLowerCase())){
             return false;
         }
 

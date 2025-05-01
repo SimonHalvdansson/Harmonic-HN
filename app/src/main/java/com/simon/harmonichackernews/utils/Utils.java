@@ -309,7 +309,7 @@ public class Utils {
 
         Set<String> usernames = new HashSet<>();
         if (!TextUtils.isEmpty(prefText)) {
-            for (String username : prefText.split(",")) {
+            for (String username : prefText.toLowerCase().split(",")) {
                 usernames.add(username.trim());
             }
         }
