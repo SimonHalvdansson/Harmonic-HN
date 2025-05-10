@@ -18,6 +18,8 @@ import java.util.Set;
 public class JSONParser {
 
     public final static String ALGOLIA_ERROR_STRING = "{\"status\":404,\"error\":\"Not Found\"}";
+    private static final String JSON_NULL_LITERAL = "null";
+
     public static List<Story> algoliaJsonToStories(String response) throws JSONException {
         List<Story> stories = new ArrayList<>();
 
@@ -42,7 +44,7 @@ public class JSONParser {
             story.loadingFailed = false;
             story.clicked = false;
 
-            if (hit.has("url") && !hit.getString("url").equals("null") && !hit.getString("url").isEmpty()) {
+            if (hit.has("url") && !hit.getString("url").equals(JSON_NULL_LITERAL) && !hit.getString(JSON_NULL_LITERAL).isEmpty()) {
                 story.url = hit.getString("url");
                 story.isLink = true;
             } else {
@@ -50,7 +52,7 @@ public class JSONParser {
                 story.isLink = false;
             }
 
-            if (hit.has("story_text") && !hit.getString("story_text").equals("null")) {
+            if (hit.has("story_text") && !hit.getString("story_text").equals(JSON_NULL_LITERAL)) {
                 story.text = hit.getString("story_text");
             }
 
@@ -59,13 +61,13 @@ public class JSONParser {
                 story.text = hit.getString("comment_text");
                 story.commentMasterTitle = hit.getString("story_title");
                 story.commentMasterId = hit.getInt("story_id");
-                if (hit.has("story_url") && !hit.getString("story_url").equals("null")) {
+                if (hit.has("story_url") && !hit.getString("story_url").equals(JSON_NULL_LITERAL)) {
                     story.commentMasterUrl = hit.getString("story_url");
                     story.isLink = true;
                 } else {
                     story.isLink = false;
                 }
-                if (!TextUtils.isEmpty(story.title) && story.title.equals("null")) {
+                if (!TextUtils.isEmpty(story.title) && story.title.equals(JSON_NULL_LITERAL)) {
                     story.title = "Comment by " + story.by;
                 }
             }
@@ -79,7 +81,7 @@ public class JSONParser {
     }
 
     public static boolean updateStoryWithHNJson(String response, Story story) throws JSONException {
-        if (response.equals("null")) {
+        if (response.equals(JSON_NULL_LITERAL)) {
             return false;
         }
 
@@ -236,7 +238,7 @@ public class JSONParser {
             story.isComment = true;
         } else {
             story.title = item.getString("title");
-            story.isLink = item.has("url") && !item.getString("url").equals("null") && !item.getString("url").equals("");
+            story.isLink = item.has("url") && !item.getString("url").equals(JSON_NULL_LITERAL) && !item.getString("url").equals("");
 
             if (story.isLink) {
                 story.url = item.getString("url");
@@ -247,7 +249,7 @@ public class JSONParser {
             updatePdfProperties(story);
         }
 
-        if (item.has("text") && !item.getString("text").equals("null")) {
+        if (item.has("text") && !item.getString("text").equals(JSON_NULL_LITERAL)) {
             story.text = preprocessHtml(item.getString("text"));
         }
 
@@ -272,15 +274,18 @@ public class JSONParser {
         // this is to be able to say if we should resort the list if we use non-default sorting
         boolean placedNew = false;
 
-        if (!child.has("text") || child.getString("text").equals("null")) {
+        String rawText = child.optString("text", "").trim();
+        if (rawText.isEmpty() || JSON_NULL_LITERAL.equalsIgnoreCase(rawText)) {
             return false;
         }
-        String author = child.getString("author");
+
+        String author = child.optString("author", "").trim();
         if (filteredUsers.contains(author.toLowerCase())){
             return false;
         }
 
-        JSONArray children = child.has("children") ? child.getJSONArray("children") : null;
+        JSONArray childrenArr = child.optJSONArray("children");
+        int childCount = (childrenArr == null ? 0 : childrenArr.length());
 
         Comment comment = new Comment();
 
@@ -291,7 +296,7 @@ public class JSONParser {
         comment.text = preprocessHtml(child.getString("text"));
         comment.time = child.getInt("created_at_i");
         comment.id = child.getInt("id");
-        comment.children = children == null ? 0 : children.length();
+        comment.children = childCount;
 
         // Let's see if a comment with this ID already is placed, in that case we'll just replace it and call notifyitemchanged
         boolean newComment = true;
@@ -387,14 +392,6 @@ public class JSONParser {
 
                 for (int i = 1; i < comments.size(); i++) {
                     if (comments.get(i).id == comment.parent) {
-                        /*OLD
-                        *
-                        * comments.add(i + 1, comment);
-                            adapter.notifyItemInserted(i + 1);
-                            * break;
-                        *
-                        *BELOW IS NOT QUITE WORKING YET TODO
-                        * */
 
                         foundParent = true;
                         // having found the parent, lets keep going until we find a comment with fewer children or depth goes up
@@ -425,9 +422,9 @@ public class JSONParser {
             }
         }
 
-        if (children != null) {
-            for (int i = 0; i < children.length(); i++) {
-                boolean childPlaced = readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, depth + 1, prioTop, filteredUsers);
+        if (childrenArr != null) {
+            for (int i = 0; i < childrenArr.length(); i++) {
+                boolean childPlaced = readChildAndParseSubchilds(childrenArr.getJSONObject(i), comments, adapter, depth + 1, prioTop, filteredUsers);
                 if (childPlaced) {
                     placedNew = true;
                 }
@@ -436,34 +433,35 @@ public class JSONParser {
         return placedNew;
     }
 
-    public static boolean updateStoryWithAlgoliaResponse(Story story, String response) {
+    public static void updateStoryWithAlgoliaResponse(Story story, String response) {
         try {
             JSONObject item = new JSONObject(response);
 
-            // for comment count we need to manually count
-            story.descendants = item.getJSONArray("children").length();
+            // count children in one go
+            JSONArray children = item.optJSONArray("children");
+            story.descendants = (children == null ? 0 : children.length());
 
-            story.time = item.getInt("created_at_i");
-            story.title = item.getString("title");
+            // timestamp, title, author, score—all with a single lookup each
+            story.time   = item.optInt("created_at_i", story.time);
+            story.title  = item.optString("title", story.title);
+            story.score  = item.optInt("points",    story.score);
+            story.by     = item.optString("author",   story.by);
 
-            story.isLink = item.has("url") && !item.getString("url").equals("null") && !item.getString("url").equals("");
-            story.time = item.getInt("created_at_i");
+            // pull url once, trim it, then check for empty or literal "null"
+            String rawUrl = item.optString("url", "").trim();
+            boolean hasValidUrl = !rawUrl.isEmpty() && !rawUrl.equalsIgnoreCase(JSON_NULL_LITERAL);
+            story.isLink = hasValidUrl;
 
-            if (story.isLink) {
-                story.url = item.getString("url");
+            // only set story.url once
+            if (hasValidUrl) {
+                story.url = rawUrl;
             } else {
                 story.url = "https://news.ycombinator.com/item?id=" + story.id;
             }
 
             updatePdfProperties(story);
-
-            story.score = item.optInt("points", 0);
-            story.by = item.getString("author");
-
-            return true;
         } catch (JSONException e) {
             e.printStackTrace();
-            return false;
         }
     }
 

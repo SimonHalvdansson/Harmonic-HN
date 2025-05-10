@@ -1254,6 +1254,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     addedNewComment = true;
                 }
             }
+
             // If non default, do full refresh after the sorting below!
             if (addedNewComment && !SettingsUtils.getPreferredCommentSorting(getContext()).equals("Default")) {
                 adapter.notifyItemRangeChanged(1, comments.size());
