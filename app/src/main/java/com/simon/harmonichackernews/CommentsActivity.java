@@ -47,6 +47,7 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         CommentsFragment fragment = new CommentsFragment();
         fragment.setArguments(getIntent().getExtras());
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        transaction.setReorderingAllowed(true);
         transaction.replace(R.id.comment_fragment_container_view, fragment);
         transaction.commit();
 

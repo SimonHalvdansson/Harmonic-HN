@@ -106,7 +106,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
             transaction.replace(R.id.main_fragment_comments_container, fragment);
             transaction.commit();
         } else {
-            Intent intent = new Intent(getApplicationContext(), CommentsActivity.class);
+            Intent intent = new Intent(MainActivity.this, CommentsActivity.class);
             intent.putExtras(bundle);
             startActivity(intent);
 

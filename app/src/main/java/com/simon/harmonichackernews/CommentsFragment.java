@@ -29,6 +29,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.webkit.DownloadListener;
@@ -186,8 +187,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         filteredUsers = Utils.getFilteredUsers(getContext());
 
-        setExitTransition(new MaterialSharedAxis(MaterialSharedAxis.Y, true));
-        setEnterTransition(new MaterialSharedAxis(MaterialSharedAxis.Y, false));
+        postponeEnterTransition();
 
         story = new Story();
 
@@ -422,6 +422,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (cachedResponse != null) {
             handleJsonResponse(story.id, cachedResponse, false, false, !showWebsite);
         }
+
+        view.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                view.getViewTreeObserver().removeOnPreDrawListener(this);
+                startPostponedEnterTransition();
+                return true;
+            }
+        });
     }
 
     private void toggleBackPressedCallback(boolean newStatus) {

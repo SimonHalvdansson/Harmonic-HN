@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.utils;
 public class Changelog {
     static public String getHTML() {
         return "<b>Version 2.1.1:</b><br>" +
+                "- Improved the speed of comment parsing by ~20%<br>" +
                 "- Add option to filter users (thanks Carey Metcalfe!)<br>" +
                 "<br>" +
                 "<b>Version 2.1:</b><br>" +
