@@ -4,6 +4,7 @@ import static com.simon.harmonichackernews.SubmissionsActivity.KEY_USER;
 
 import android.app.Dialog;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.SpannableString;
@@ -17,6 +18,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,7 +31,9 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.simon.harmonichackernews.network.NetworkComponent;
+import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 import org.json.JSONArray;
@@ -52,7 +56,9 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     private TextView metaTextview;
     private HtmlTextView aboutTextview;
     private Button submissionsButton;
-    private ProgressBar loadingProgress;
+    private Button blockButton;
+    private Button reportButton;
+    private LoadingIndicator loadingProgress;
     private LinearLayout errorLayout;
     private LinearLayout container;
 
@@ -73,6 +79,8 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         metaTextview = rootView.findViewById(R.id.user_meta);
         aboutTextview = rootView.findViewById(R.id.user_about);
         submissionsButton = rootView.findViewById(R.id.user_submissions_button);
+        reportButton = rootView.findViewById(R.id.user_report_button);
+        blockButton = rootView.findViewById(R.id.user_block_button);
         loadingProgress = rootView.findViewById(R.id.user_loading);
         errorLayout = rootView.findViewById(R.id.user_error);
         Button retryButton = rootView.findViewById(R.id.user_retry);
@@ -137,6 +145,40 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
                                     Utils.openLinkMaybeHN(widget.getContext(), href);
                                     return true;
+                                }
+                            });
+
+                            if (userName.equals(AccountUtils.getAccountUsername(getContext()))) {
+                                reportButton.setVisibility(View.GONE);
+                                blockButton.setVisibility(View.GONE);
+                            } else {
+                                reportButton.setVisibility(View.VISIBLE);
+                                blockButton.setVisibility(View.VISIBLE);
+                            }
+
+                            reportButton.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    String subject = "Reporting user " + userName;
+                                    String uriText = "mailto:hn@ycombinator.com" +
+                                            "?subject=" + Uri.encode(subject);
+                                    Uri mailUri = Uri.parse(uriText);
+                                    Intent intent = new Intent(Intent.ACTION_SENDTO, mailUri);
+
+                                    if (intent.resolveActivity(getContext().getPackageManager()) != null) {
+                                        Intent chooser = Intent.createChooser(intent, "Send report via");
+                                        getContext().startActivity(chooser);
+                                    }
+                                }
+                            });
+
+                            blockButton.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    if (Utils.addFilteredUser(getContext(), userName)) {
+                                        Toast.makeText(getContext(), "You will no longer see comments from " + userName, Toast.LENGTH_SHORT).show();
+                                        dialog.dismiss();
+                                    }
                                 }
                             });
 

@@ -48,7 +48,7 @@
 
         </LinearLayout>
 
-        <ProgressBar
+        <com.google.android.material.loadingindicator.LoadingIndicator
             tools:visibility="gone"
             android:id="@+id/user_loading"
             android:layout_marginTop="20dp"
@@ -104,6 +104,24 @@
                 android:layout_height="wrap_content"
                 android:textColor="?attr/storyColorNormal"
                 tools:text="Submissions" />
+
+            <Button
+                android:id="@+id/user_block_button"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_marginTop="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/storyColorNormal"
+                android:text="Block user" />
+
+            <Button
+                android:id="@+id/user_report_button"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/storyColorNormal"
+                android:text="Report user (email HN)" />
+
 
         </LinearLayout>
 

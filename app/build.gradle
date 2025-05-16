@@ -9,8 +9,8 @@ android {
         applicationId "com.simon.harmonichackernews"
         minSdkVersion 23
         targetSdkVersion 35
-        versionCode 61
-        versionName "2.1"
+        versionCode 63
+        versionName "2.1.1"
         compileSdk 35
         buildToolsVersion = "35.0.0"
 

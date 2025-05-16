@@ -32,6 +32,7 @@ import androidx.swiperefreshlayout.widget.CircularProgressDrawable;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.loadingindicator.LoadingIndicatorDrawable;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.simon.harmonichackernews.network.UserActions;

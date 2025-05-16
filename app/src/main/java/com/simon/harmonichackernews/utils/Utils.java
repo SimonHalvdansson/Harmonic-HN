@@ -316,6 +316,31 @@ public class Utils {
         return usernames;
     }
 
+    public static boolean addFilteredUser(Context ctx, String username) {
+        if (TextUtils.isEmpty(username)) return false;
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        // Grab current set, add new entry
+        Set<String> users = getFilteredUsers(ctx);
+        users.add(username.toLowerCase().trim());
+
+        // Join back into comma-separated string
+        StringBuilder sb = new StringBuilder();
+        Iterator<String> iter = users.iterator();
+        while (iter.hasNext()) {
+            sb.append(iter.next());
+            if (iter.hasNext()) sb.append(",");
+        }
+
+        // Persist updated list
+        prefs.edit()
+                .putString("pref_filter_users", sb.toString())
+                .apply();
+
+
+        return true;
+    }
+
     public static boolean isFirstAppStart(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
         if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true) && SettingsUtils.readIntSetFromSharedPreferences(ctx, Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS).isEmpty()) {
