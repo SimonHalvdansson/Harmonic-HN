@@ -293,7 +293,7 @@ public class JSONParser {
         comment.parent = child.getInt("parent_id");
         comment.expanded = true;
         comment.by = author;
-        comment.text = preprocessHtml(child.getString("text"));
+        comment.text = preprocessHtml(rawText);
         comment.time = child.getInt("created_at_i");
         comment.id = child.getInt("id");
         comment.children = childCount;
