@@ -733,7 +733,7 @@
         android:layout_height="1dp"
         android:background="?attr/commentDividerColor"/>
 
-    <com.google.android.material.progressindicator.CircularProgressIndicator
+    <com.google.android.material.loadingindicator.LoadingIndicator
         android:id="@+id/comments_header_loading"
         android:indeterminate="true"
         android:layout_gravity="center_horizontal"

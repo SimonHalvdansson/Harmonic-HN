@@ -37,7 +37,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
-import com.google.android.material.progressindicator.CircularProgressIndicator;
+import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Comment;
@@ -576,7 +576,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView infoHeader;
         public final LinearLayout emptyView;
         public final TextView emptyViewText;
-        public final CircularProgressIndicator loadingIndicator;
+        public final LoadingIndicator loadingIndicator;
         public final LinearLayout loadingFailed;
         public final LinearLayout serverErrorLayout;
         public final Button serverErrorSwitchApiButton;
