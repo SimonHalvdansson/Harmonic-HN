@@ -11,6 +11,7 @@
     <attr name="selfCommentColor" format="reference"/>
     <attr name="commentCountIndicatorColor" format="reference"/>
     <attr name="secondaryTextColor" format="reference"/>
+    <attr name="overlayButtonColor" format="reference|color"/>
 
     <declare-styleable name="SwipeBackLayout">
         <attr name="swipeBackFactor" format="float"/>
