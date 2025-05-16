@@ -32,7 +32,7 @@
         android:background="@drawable/scrolling_helper_background"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_width="wrap_content"
-        android:layout_height="48dp">
+        android:layout_height="56dp">
 
         <Button
             style="@style/Widget.Material3.Button"

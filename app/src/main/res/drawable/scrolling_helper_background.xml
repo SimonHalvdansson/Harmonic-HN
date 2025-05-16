@@ -3,5 +3,5 @@
     <solid android:color="?attr/overlayButtonColor"/>
 
     <corners
-        android:radius="24dp"/>
+        android:radius="28dp"/>
 </shape>

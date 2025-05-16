@@ -120,15 +120,15 @@
                     android:id="@+id/comments_scroll_previous"
                     android:background="?selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_action_caret_up_white"
-                    android:layout_marginLeft="2dp"
-                    android:layout_width="48dp"
-                    android:layout_height="44dp"/>
+                    android:paddingLeft="8dp"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"/>
 
                 <ImageView
                     android:id="@+id/comments_scroll_icon"
                     android:layout_marginLeft="10dp"
                     android:layout_marginRight="10dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="14dp"
                     android:src="@drawable/ic_action_explore_white"
                     android:layout_width="28dp"
                     android:layout_height="28dp"    />
@@ -137,9 +137,9 @@
                     android:id="@+id/comments_scroll_next"
                     android:background="?selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_action_caret_down_white"
-                    android:layout_marginRight="2dp"
-                    android:layout_width="48dp"
-                    android:layout_height="44dp"/>
+                    android:paddingRight="8dp"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"/>
             </LinearLayout>
         </FrameLayout>
     </LinearLayout>
