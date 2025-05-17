@@ -44,7 +44,7 @@ public class JSONParser {
             story.loadingFailed = false;
             story.clicked = false;
 
-            if (hit.has("url") && !hit.getString("url").equals(JSON_NULL_LITERAL) && !hit.getString(JSON_NULL_LITERAL).isEmpty()) {
+            if (hit.has("url") && !hit.getString("url").equals(JSON_NULL_LITERAL) && !hit.getString("url").isEmpty()) {
                 story.url = hit.getString("url");
                 story.isLink = true;
             } else {
