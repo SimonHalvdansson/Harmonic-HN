@@ -64,6 +64,9 @@
 
         <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/webview_progress"
+            app:waveAmplitude="1.5dp"
+            app:wavelength="40dp"
+            app:waveSpeed="10dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
 

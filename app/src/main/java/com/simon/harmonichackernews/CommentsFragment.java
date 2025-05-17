@@ -5,6 +5,7 @@ import static androidx.webkit.WebViewFeature.isFeatureSupported;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.DownloadManager;
 import android.content.ClipData;
@@ -16,6 +17,7 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.PointF;
 import android.net.Uri;
+import android.opengl.Visibility;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -792,15 +794,28 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
 
         webView.setWebChromeClient(new WebChromeClient() {
-            public void onProgressChanged(WebView view, int progress) {
-                if (progress < 100 && progressIndicator.getVisibility() == View.GONE) {
-                    progressIndicator.setVisibility(View.VISIBLE);
+
+            private ValueAnimator progressAnimator;
+
+            public void onProgressChanged(WebView view, int newProgress) {
+                if (progressAnimator != null && progressAnimator.isRunning()) {
+                    progressAnimator.cancel();
                 }
 
-                progressIndicator.setProgress(progress);
-                if (progress == 100) {
-                    progressIndicator.setVisibility(View.GONE);
+                int current = progressIndicator.getProgress();
+                if (newProgress > current) {
+                    progressAnimator = ValueAnimator.ofInt(current, newProgress);
+                    progressAnimator.setDuration(400);
+                    progressAnimator.addUpdateListener(anim -> {
+                        int animatedValue = (int) anim.getAnimatedValue();
+                        progressIndicator.setProgress(animatedValue);
+                    });
+                    progressAnimator.start();
+                } else {
+                    progressIndicator.setProgress(newProgress);
                 }
+
+                progressIndicator.setVisibility(newProgress < 100 ? View.VISIBLE : View.GONE);
             }
         });
 
