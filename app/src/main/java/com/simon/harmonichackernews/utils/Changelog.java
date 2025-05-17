@@ -2,7 +2,7 @@ package com.simon.harmonichackernews.utils;
 
 public class Changelog {
     static public String getHTML() {
-        return "<b>Version 2.1.1:</b><br>" +
+        return "<b>Version 2.1.2:</b><br>" +
                 "- Material 3 expressive loading indicators<br>" +
                 "- Fixed color of comment navigation button in dark mode<br>" +
                 "- Improved the speed of comment parsing by ~20%<br>" +
