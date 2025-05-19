@@ -37,14 +37,17 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Bookmark;
+import com.simon.harmonichackernews.data.History;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
+import com.simon.harmonichackernews.utils.HistoriesUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryUpdate;
 import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.utils.UtilsKt;
 import com.simon.harmonichackernews.utils.ViewUtils;
 
 import org.jetbrains.annotations.NotNull;
@@ -55,7 +58,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 public class StoriesFragment extends Fragment {
 
@@ -69,7 +71,6 @@ public class StoriesFragment extends Fragment {
     private RequestQueue queue;
     private final Object requestTag = new Object();
     private LinearLayoutManager linearLayoutManager;
-    private Set<Integer> clickedIds;
     private ArrayList<String> filterWords;
     private ArrayList<String> filterDomains;
     private boolean hideJobs, alwaysOpenComments, hideClicked;
@@ -92,7 +93,7 @@ public class StoriesFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        clickedIds = SettingsUtils.readIntSetFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS);
+        HistoriesUtils.INSTANCE.init(requireContext());
 
         return super.onCreateView(inflater, container, savedInstanceState);
     }
@@ -227,7 +228,7 @@ public class StoriesFragment extends Fragment {
             Story story = stories.get(position);
             if (story.loaded) {
                 story.clicked = true;
-                clickedIds.add(story.id);
+                HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
 
                 if (story.isLink) {
                     if (SettingsUtils.shouldUseIntegratedWebView(getContext())) {
@@ -285,15 +286,17 @@ public class StoriesFragment extends Fragment {
                 Story story = stories.get(position);
                 boolean oldClicked = story.clicked;
                 boolean oldBookmarked = Utils.isBookmarked(ctx, story.id);
+                History h = HistoriesUtils.INSTANCE.getHistorybyId(story.id);
+
 
                 popupMenu.getMenu().add(oldClicked ? "Mark as unread" : "Mark as read").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(@NonNull MenuItem item) {
                         story.clicked = !oldClicked;
                         if (oldClicked) {
-                            clickedIds.remove(story.id);
+                            HistoriesUtils.INSTANCE.removeHistoryById(requireContext(), story.id);
                         } else {
-                            clickedIds.add(story.id);
+                            HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
                         }
 
                         adapter.notifyItemChanged(position);
@@ -426,12 +429,6 @@ public class StoriesFragment extends Fragment {
     }
 
     @Override
-    public void onPause() {
-        super.onPause();
-        SettingsUtils.saveIntSetToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS, clickedIds);
-    }
-
-    @Override
     public void onDestroyView() {
         super.onDestroyView();
         if (queue != null) {
@@ -455,7 +452,7 @@ public class StoriesFragment extends Fragment {
         Story story = stories.get(position);
         if (story.loaded) {
             story.clicked = true;
-            clickedIds.add(story.id);
+            HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
 
             openComments(story, position, false);
 
@@ -475,7 +472,7 @@ public class StoriesFragment extends Fragment {
                     try {
                         int index = stories.indexOf(story);
 
-                        if (!JSONParser.updateStoryWithHNJson(response, story)) {
+                        if (!JSONParser.updateStoryWithHNJson(response, story, adapter.type == SettingsUtils.getHistoryIndex(getResources()))) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
                             loadedTo = Math.max(0, loadedTo - 1);
@@ -626,21 +623,15 @@ public class StoriesFragment extends Fragment {
 
             return;
         } else if (adapter.type == SettingsUtils.getHistoryIndex(getResources())) {
-            // lets load bookmarks instead - or rather add empty stories with correct id:s and start loading them
             adapter.notifyItemRangeRemoved(1, stories.size() + 1);
             loadedTo = 0;
 
             stories.clear();
             stories.add(new Story());
-            int[] clickIdsArray = new int[clickedIds.size()];
+            List<History> histories = UtilsKt.INSTANCE.loadHistories(requireContext(), true);
 
-            int j = 0;
-            for (int id: clickedIds){
-                clickIdsArray[j++] = id;
-            }
-
-            for (int i = 0; i < clickedIds.size(); i++) {
-                Story s = new Story("Loading...", clickIdsArray[i], false, false);
+            for (int i = 0; i < histories.size(); i++) {
+                Story s = new Story("Loading...", histories.get(i).getId(), false, false, histories.get(i).getCreated());
 
                 stories.add(s);
                 adapter.notifyItemInserted(i + 1);
@@ -671,11 +662,11 @@ public class StoriesFragment extends Fragment {
 
                         for (int i = 0; i < jsonArray.length(); i++) {
                             int id = Integer.parseInt(jsonArray.get(i).toString());
-                            if (hideClicked && clickedIds.contains(id)) {
+                            if (hideClicked && HistoriesUtils.INSTANCE.isHistoryExist(id)) {
                                 continue;
                             }
 
-                            Story s = new Story("Loading...", id, false, clickedIds.contains(id));
+                            Story s = new Story("Loading...", id, false, HistoriesUtils.INSTANCE.isHistoryExist(id));
                             // let's try to fill this with old information if possible
 
                             String cachedResponse = Utils.loadCachedStory(getContext(), id);
@@ -767,7 +758,7 @@ public class StoriesFragment extends Fragment {
                         Iterator<Story> iterator = stories.iterator();
                         while (iterator.hasNext()) {
                             Story story = iterator.next();
-                            story.clicked = clickedIds.contains(story.id);
+                            story.clicked = HistoriesUtils.INSTANCE.isHistoryExist(story.id);
 
                             if (story.title != null) {
                                 // lets check if we should remove the post because of filter
