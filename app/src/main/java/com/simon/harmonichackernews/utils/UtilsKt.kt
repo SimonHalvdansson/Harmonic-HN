@@ -4,7 +4,7 @@ import android.content.Context
 import com.simon.harmonichackernews.data.History
 
 object UtilsKt {
-    private const val KEY_SHARED_PREFERENCES_HISTORIES: String = "com.simon.harmonichackernews" +
+    const val KEY_SHARED_PREFERENCES_HISTORIES: String = "com.simon.harmonichackernews" +
             ".KEY_SHARED_PREFERENCES_HISTORIES"
 
     fun loadHistories(ctx: Context, sorted: Boolean): MutableList<History> {
