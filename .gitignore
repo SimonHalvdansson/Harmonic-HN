@@ -13,3 +13,6 @@ deploymentTargetDropDown.xml
 .externalNativeBuild
 .cxx
 *.pepk
+
+# kotlin
+.kotlin/
