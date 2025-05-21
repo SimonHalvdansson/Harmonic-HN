@@ -80,7 +80,7 @@ public class JSONParser {
         return stories;
     }
 
-    public static boolean updateStoryWithHNJson(String response, Story story) throws JSONException {
+    public static boolean updateStoryWithHNJson(String response, Story story, boolean isHistory) throws JSONException {
         if (response.equals(JSON_NULL_LITERAL)) {
             return false;
         }
@@ -99,7 +99,7 @@ public class JSONParser {
                 jsonObject.getString("by"),
                 jsonObject.getInt("id"),
                 jsonObject.getInt("score"),
-                jsonObject.getInt("time"),
+                isHistory ? story.time : jsonObject.getInt("time"),
                 jsonObject.getString("title")
         );
 

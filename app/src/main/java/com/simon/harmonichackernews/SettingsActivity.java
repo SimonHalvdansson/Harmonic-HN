@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews;
 
+import static com.simon.harmonichackernews.utils.UtilsKt.KEY_SHARED_PREFERENCES_HISTORIES;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -24,9 +26,11 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.timepicker.MaterialTimePicker;
 import com.google.android.material.timepicker.TimeFormat;
 import com.simon.harmonichackernews.data.Bookmark;
+import com.simon.harmonichackernews.utils.HistoriesUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.utils.UtilsKt;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -232,10 +236,9 @@ public class SettingsActivity extends AppCompatActivity {
             findPreference("pref_clear_clicked_stories").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
                 public boolean onPreferenceClick(@NonNull Preference preference) {
-                    Set<Integer> set = SettingsUtils.readIntSetFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS);
-                    int oldCount = set.size();
+                    int oldCount = HistoriesUtils.INSTANCE.size();
 
-                    SettingsUtils.saveIntSetToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS, new HashSet<>(0));
+                    SettingsUtils.saveStringToSharedPreferences(getContext(), KEY_SHARED_PREFERENCES_HISTORIES, "");
                     if (getActivity() != null && getActivity() instanceof SettingsActivity) {
                         ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
                     }

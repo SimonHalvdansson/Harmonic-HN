@@ -2,6 +2,8 @@ package com.simon.harmonichackernews.utils;
 
 import static androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION;
 
+import static com.simon.harmonichackernews.utils.UtilsKt.KEY_SHARED_PREFERENCES_HISTORIES;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -63,7 +65,6 @@ public class Utils {
     private static final long DAY_MILLIS = 24 * HOUR_MILLIS;
     private static final long YEAR_MILLIS = 365 * DAY_MILLIS;
 
-    public final static String KEY_SHARED_PREFERENCES_CLICKED_IDS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CLICKED_IDS";
     public final static String KEY_SHARED_PREFERENCES_CACHED_STORY = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORY";
     public final static String KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS";
     public final static String GLOBAL_SHARED_PREFERENCES_KEY = "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY";
@@ -343,7 +344,7 @@ public class Utils {
 
     public static boolean isFirstAppStart(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true) && SettingsUtils.readIntSetFromSharedPreferences(ctx, Utils.KEY_SHARED_PREFERENCES_CLICKED_IDS).isEmpty()) {
+        if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true) && SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_HISTORIES).isEmpty()) {
             sharedPref.edit().putBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, false).apply();
             return true;
         }
