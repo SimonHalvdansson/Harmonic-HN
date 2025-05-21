@@ -26,18 +26,43 @@
         android:layout_width="match_parent"
         android:layout_height="180dp">
 
-        <org.sufficientlysecure.htmltextview.HtmlTextView
-            android:id="@+id/compose_replying_text"
-            android:paddingTop="16dp"
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
             android:paddingBottom="10dp"
-            android:textSize="16sp"
-            android:textColor="?attr/storyColorNormal"
-            android:fontFamily="@font/product_sans"
-            android:paddingLeft="16dp"
-            android:paddingRight="16dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            tools:text="Replying to aysbd's comment:\n\nLorem impus dolor sit amet." />
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_marginLeft="16dp"
+                android:layout_marginRight="16dp"
+                android:layout_marginTop="16dp"
+                android:elevation="12dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:paddingLeft="14dp"
+                android:paddingRight="14dp"
+                tools:text="Replying to aysbd's comment:"
+                android:id="@+id/compose_replying_text_header"
+                android:background="@drawable/scrolling_helper_background"
+                android:textColor="#fff"
+                android:fontFamily="@font/product_sans"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"/>
+
+            <org.sufficientlysecure.htmltextview.HtmlTextView
+                android:id="@+id/compose_replying_text"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp"
+                android:layout_marginTop="16dp"
+                android:textSize="16sp"
+                android:textColor="?attr/storyColorNormal"
+                android:fontFamily="@font/product_sans"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="Lorem impus dolor sit amet." />
+
+        </LinearLayout>
 
     </ScrollView>
 
@@ -125,6 +150,7 @@
     <androidx.appcompat.widget.AppCompatEditText
         android:paddingLeft="16dp"
         android:imeOptions="normal"
+        android:textSize="16sp"
         android:paddingRight="16dp"
         android:id="@+id/compose_edittext"
         android:hint="Type here..."

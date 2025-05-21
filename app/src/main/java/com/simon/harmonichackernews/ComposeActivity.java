@@ -67,6 +67,7 @@ public class ComposeActivity extends AppCompatActivity {
     private TextInputLayout textContainer;
     private Button submitButton;
     private HtmlTextView replyingTextView;
+    private TextView replyingHeaderTextView;
     private ScrollView replyingScrollView;
     private TextView topCommentTextView;
     private int id;
@@ -93,6 +94,7 @@ public class ComposeActivity extends AppCompatActivity {
         textContainer = findViewById(R.id.compose_text_container);
         submitButton = findViewById(R.id.compose_submit);
         replyingTextView = findViewById(R.id.compose_replying_text);
+        replyingHeaderTextView = findViewById(R.id.compose_replying_text_header);
         replyingScrollView = findViewById(R.id.compose_replying_scrollview);
         topCommentTextView = findViewById(R.id.compose_top_comment);
         TextView postInfo = findViewById(R.id.compose_submit_info);
@@ -122,7 +124,9 @@ public class ComposeActivity extends AppCompatActivity {
             case TYPE_COMMENT_REPLY:
                 replyingScrollView.setVisibility(View.VISIBLE);
                 topCommentTextView.setVisibility(View.GONE);
-                replyingTextView.setHtml("<p>Replying to " + user + "'s comment:</p>" + parentText);
+                replyingHeaderTextView.setText("Replying to " + user + "'s comment:");
+                replyingTextView.setHtml(parentText);
+
                 replyingTextView.setOnClickATagListener(new OnClickATagListener() {
                     @Override
                     public boolean onClick(View widget, String spannedText, @Nullable String href) {
