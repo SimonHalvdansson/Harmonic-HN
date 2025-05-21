@@ -3,6 +3,9 @@ package com.simon.harmonichackernews.utils;
 public class Changelog {
     static public String getHTML() {
         return "<b>Version 2.1.3:</b><br>" +
+                "- Fixed submit stories not working<br>" +
+                "- Updated History to sort by click time (thanks Fernando F. H.!)<br>" +
+                "- Fixed design issue with \"Tap to update\" button<br>" +
                 "- Tweaked design of the replying to comments screen<br>" +
                 "<br>" +
                 "<b>Version 2.1.2:</b><br>" +
