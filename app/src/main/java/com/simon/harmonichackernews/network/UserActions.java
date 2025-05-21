@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.network;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Handler;
+import android.text.TextUtils;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,6 +20,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import kotlin.Triple;
 import okhttp3.Call;
@@ -149,29 +152,80 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
         executeRequest(ctx, request, cb);
     }
 
-    public static void submit(String title, String text, String url, Context ctx, ActionCallback cb) {
-        Utils.log("Submitting");
-        Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
+    public static void submit(String title,
+                              String text,
+                              String url,
+                              Context ctx,
+                              ActionCallback cb) {
 
+        Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
         if (AccountUtils.handlePossibleError(account, null, ctx)) {
             return;
         }
 
-        Request request = new Request.Builder()
-                .url(Objects.requireNonNull(HttpUrl.parse(BASE_WEB_URL))
-                        .newBuilder()
-                        .addPathSegment(SUBMIT_PATH)
-                        .build())
-                .post(new FormBody.Builder()
-                        .add(LOGIN_PARAM_ACCT, account.getFirst())
-                        .add(LOGIN_PARAM_PW, account.getSecond())
-                        .add(SUBMIT_PARAM_TITLE, title)
-                        .add(SUBMIT_PARAM_TEXT, text)
-                        .add(SUBMIT_PARAM_URL, url)
-                        .build())
+        OkHttpClient client = NetworkComponent.getOkHttpClientInstance();
+        Handler main = new Handler(ctx.getMainLooper());
+
+        // --- Step 1: POST /login with creds
+        FormBody loginBody = new FormBody.Builder()
+                .add(LOGIN_PARAM_ACCT, account.getFirst())
+                .add(LOGIN_PARAM_PW,   account.getSecond())
+                .add(LOGIN_PARAM_GOTO, SUBMIT_PATH)
                 .build();
 
-        executeRequest(ctx, request, cb);
+        Request doLogin = new Request.Builder()
+                .url(BASE_WEB_URL + "/login")
+                .post(loginBody)
+                .build();
+
+        client.newCall(doLogin).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                main.post(() -> cb.onFailure("Login failed", e.getMessage()));
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response loginResp)
+                    throws IOException {
+                if (!loginResp.isSuccessful()) {
+                    main.post(() -> cb.onFailure("Login failed", loginResp.toString()));
+                    return;
+                }
+
+                // --- Step 2: Scrape fnid from response
+                String submitHtml = loginResp.body().string();
+                Matcher mSubmit = Pattern.compile(
+                        "<input[^>]*name=\"fnid\"[^>]*value=\"([^\"]+)\""
+                ).matcher(submitHtml);
+
+                if (!mSubmit.find()) {
+                    main.post(() -> cb.onFailure(
+                            "HN submit form parsing error",
+                            "No fnid found on /submit"
+                    ));
+                    return;
+                }
+
+                String submitFnid = mSubmit.group(1);
+
+                // --- Step 3: POST to /r ---
+                FormBody.Builder submitBody = new FormBody.Builder()
+                        .add("fnid", submitFnid)
+                        .add("fnop", DEFAULT_FNOP)
+                        .add("title", title);
+
+                submitBody.add("url", url);
+                submitBody.add("text", text);
+
+                Request doSubmit = new Request.Builder()
+                        .url(BASE_WEB_URL + "/" + SUBMIT_POST_PATH)
+                        .post(submitBody.build())
+                        .build();
+
+                // **finally** hand off to your executeRequest
+                main.post(() -> executeRequest(ctx, doSubmit, cb));
+            }
+        });
     }
 
     public static void executeRequest(Context ctx, Request request, ActionCallback cb) {
@@ -182,37 +236,29 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
 
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) {
-                mainHandler.post(new Runnable() {
+                mainHandler.post(() -> {
+                    if (!response.isSuccessful()) {
+                        cb.onFailure("Unsuccessful response", response.toString());
+                        return;
+                    }
 
-                    @Override
-                    public void run() {
-                        if (!response.isSuccessful()) {
-                            cb.onFailure("Unsuccessful response", response.toString());
-                            return;
-                        }
+                    String body = "";
+                    try {
+                        body = response.body().string();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
 
-                        try {
-                            String responseBody = response.body().string();
-
-                            if (responseBody.contains("Unknown or expired link.")) {
-                                cb.onFailure("Unknown or expired link", responseBody);
-                                return;
-                            }
-
-                            if (responseBody.contains("Bad login.")) {
-                                AccountUtils.deleteAccountDetails(ctx);
-                                cb.onFailure("Bad login", "Hacker News API returned a 'Bad login' error. This could be that your account details were mistyped but could also be that your saved account details were corrupted. Either way, you have been logged out. If logging in again does not solve this issue, you can try the nuclear option of clearing all data for Harmonic.");
-                                return;
-                            }
-
-                            if (responseBody.contains("Validation required. If this doesn't work, you can email")) {
-                                cb.onFailure("Rate limit reached", responseBody);
-                                return;
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-
+                    if (body.contains("Unknown or expired link.")) {
+                        cb.onFailure("Unknown or expired link", body);
+                    } else if (body.contains("Bad login.")) {
+                        AccountUtils.deleteAccountDetails(ctx);
+                        cb.onFailure("Bad login",
+                                "Your session has expired or credentials are invalid. Logged out.");
+                    } else if (body.contains("Validation required. If this doesn't work, you can email")) {
+                        cb.onFailure("Rate limit reached", body);
+                    } else {
+                        // HN will send a 302 → the new post, but OkHttp follows redirects by default.
                         cb.onSuccess(response);
                     }
                 });
@@ -220,15 +266,11 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
 
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                mainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        cb.onFailure("Couldn't connect to HN", null);
-                    }
-                });
+                mainHandler.post(() -> cb.onFailure("Couldn't connect to HN", e.getMessage()));
             }
         });
     }
+
 
     public static void showFailureDetailDialog(Context ctx, String summary, String response) {
         // We need to try-catch this because it is called asynchronously and if the app has been

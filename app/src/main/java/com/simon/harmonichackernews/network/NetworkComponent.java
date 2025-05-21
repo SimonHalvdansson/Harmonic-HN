@@ -3,18 +3,17 @@ package com.simon.harmonichackernews.network;
 import android.content.Context;
 import android.os.Looper;
 
-import androidx.annotation.NonNull;
-
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 import com.simon.harmonichackernews.BuildConfig;
 
-import java.io.IOException;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 
 import okhttp3.Interceptor;
+import okhttp3.JavaNetCookieJar;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.Response;
 
 public class NetworkComponent {
     private static volatile OkHttpClient okHttpClientInstance;
@@ -24,18 +23,22 @@ public class NetworkComponent {
         if (okHttpClientInstance == null) {
             synchronized (NetworkComponent.class) {
                 if (okHttpClientInstance == null) {
-                    Interceptor userAgentInterceptor = new Interceptor() {
-                        @Override
-                        public Response intercept(Chain chain) throws IOException {
-                            Request originalRequest = chain.request();
-                            Request requestWithUserAgent = originalRequest.newBuilder()
-                                    .header("User-Agent", "Harmonic-HN-Android/" + BuildConfig.VERSION_NAME + "/" + BuildConfig.BUILD_TYPE)
-                                    .build();
-                            return chain.proceed(requestWithUserAgent);
-                        }
+                    // set up an in-memory cookie store
+                    CookieManager cookieManager = new CookieManager();
+                    cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+
+                    Interceptor userAgentInterceptor = chain -> {
+                        Request original = chain.request();
+                        Request withAgent = original.newBuilder()
+                                .header("User-Agent",
+                                        "Harmonic-HN-Android/" + BuildConfig.VERSION_NAME + "/" + BuildConfig.BUILD_TYPE)
+                                .build();
+                        return chain.proceed(withAgent);
                     };
 
                     okHttpClientInstance = new OkHttpClient.Builder()
+                            // JavaNetCookieJar comes from okhttp-urlconnection
+                            .cookieJar(new JavaNetCookieJar(cookieManager))
                             .addInterceptor(userAgentInterceptor)
                             .build();
                 }
