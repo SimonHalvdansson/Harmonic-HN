@@ -35,6 +35,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.data.Story;
@@ -61,7 +62,7 @@ public class StoriesFragment extends Fragment {
 
     private StoryClickListener storyClickListener;
     private SwipeRefreshLayout swipeRefreshLayout;
-    private LinearLayout updateContainer;
+    private ExtendedFloatingActionButton updateFab;
     private RecyclerView recyclerView;
 
     private StoryRecyclerViewAdapter adapter;
@@ -103,8 +104,7 @@ public class StoriesFragment extends Fragment {
 
         recyclerView = view.findViewById(R.id.stories_recyclerview);
         swipeRefreshLayout = view.findViewById(R.id.stories_swipe_refresh);
-        updateContainer = view.findViewById(R.id.stories_update_container);
-        Button updateButton = view.findViewById(R.id.stories_update_button);
+        updateFab = view.findViewById(R.id.stories_update_fab);
 
         swipeRefreshLayout.setOnRefreshListener(this::attemptRefresh);
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
@@ -122,9 +122,9 @@ public class StoriesFragment extends Fragment {
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
 
-                CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) updateContainer.getLayoutParams();
+                CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) updateFab.getLayoutParams();
                 params.bottomMargin = insets.bottom + Utils.pxFromDpInt(getResources(), 8);
-                updateContainer.setLayoutParams(params);
+                updateFab.setLayoutParams(params);
 
                 topInset = insets.top;
 
@@ -133,7 +133,7 @@ public class StoriesFragment extends Fragment {
         });
         ViewUtils.requestApplyInsetsWhenAttached(view);
 
-        updateButton.setOnClickListener((v) -> {
+        updateFab.setOnClickListener((v) -> {
             attemptRefresh();
             recyclerView.smoothScrollToPosition(0);
         });
@@ -838,17 +838,17 @@ public class StoriesFragment extends Fragment {
     }
 
     private void hideUpdateButton() {
-        if (updateContainer.getVisibility() == View.VISIBLE) {
+        if (updateFab.getVisibility() == View.VISIBLE) {
 
-            float endYPosition = getResources().getDisplayMetrics().heightPixels - updateContainer.getY() + updateContainer.getHeight() + ViewUtils.getNavigationBarHeight(getResources());
+            float endYPosition = getResources().getDisplayMetrics().heightPixels - updateFab.getY() + updateFab.getHeight() + ViewUtils.getNavigationBarHeight(getResources());
             PathInterpolator pathInterpolator = new PathInterpolator(0.3f, 0f, 0.8f, 0.15f);
 
-            ObjectAnimator yAnimator = ObjectAnimator.ofFloat(updateContainer, "translationY", endYPosition);
+            ObjectAnimator yAnimator = ObjectAnimator.ofFloat(updateFab, "translationY", endYPosition);
             yAnimator.setDuration(200);
 
             yAnimator.setInterpolator(pathInterpolator);
 
-            ObjectAnimator alphaAnimator = ObjectAnimator.ofFloat(updateContainer, "alpha", 1.0f, 0.0f);
+            ObjectAnimator alphaAnimator = ObjectAnimator.ofFloat(updateFab, "alpha", 1.0f, 0.0f);
             alphaAnimator.setDuration(300);
             alphaAnimator.setInterpolator(pathInterpolator);
 
@@ -858,9 +858,9 @@ public class StoriesFragment extends Fragment {
             animatorSet.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(android.animation.Animator animation) {
-                    updateContainer.setVisibility(View.GONE);
-                    updateContainer.setTranslationY(0);
-                    updateContainer.setAlpha(1f);
+                    updateFab.setVisibility(View.GONE);
+                    updateFab.setTranslationY(0);
+                    updateFab.setAlpha(1f);
                 }
             });
 
@@ -869,13 +869,13 @@ public class StoriesFragment extends Fragment {
     }
 
     private void showUpdateButton() {
-        if (updateContainer.getVisibility() != View.VISIBLE) {
-            updateContainer.setVisibility(View.VISIBLE);
+        if (updateFab.getVisibility() != View.VISIBLE) {
+            updateFab.setVisibility(View.VISIBLE);
 
             AlphaAnimation anim = new AlphaAnimation(0.0f, 1.0f);
             anim.setDuration(300);
             anim.setRepeatMode(Animation.REVERSE);
-            updateContainer.startAnimation(anim);
+            updateFab.startAnimation(anim);
         }
     }
 
