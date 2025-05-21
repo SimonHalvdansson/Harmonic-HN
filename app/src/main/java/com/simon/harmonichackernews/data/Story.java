@@ -43,6 +43,14 @@ public class Story {
         this.clicked = clicked;
     }
 
+    public Story(String title, int id, boolean loaded, boolean clicked, long time) {
+        this.title = title;
+        this.id = id;
+        this.loaded = loaded;
+        this.clicked = clicked;
+        this.time = (int) (time/1000);
+    }
+
     public void update(String by, int id, int score, int time, String title) {
         this.by = by;
         this.id = id;
