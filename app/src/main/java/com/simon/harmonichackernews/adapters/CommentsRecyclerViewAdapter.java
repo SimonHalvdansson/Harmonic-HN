@@ -389,8 +389,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         } else if (holder instanceof ItemViewHolder) {
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
-            Comment comment = comments.get(position);
-            itemViewHolder.comment = comments.get(position);
+            Comment comment = comments.get(holder.getBindingAdapterPosition());
+            itemViewHolder.comment = comments.get(holder.getBindingAdapterPosition());
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 
@@ -468,7 +468,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             } else {
                 // if not expanded, only show (and set text) if subCommentCount > 0
                 // TODO should this be precomputed?
-                int subCommentCount = getIndexOfLastChild(comment.depth, position) - position;
+                int subCommentCount = getIndexOfLastChild(comment.depth, holder.getBindingAdapterPosition()) - holder.getBindingAdapterPosition();
 
                 if (subCommentCount > 0) {
                     itemViewHolder.commentHiddenCount.setVisibility(View.VISIBLE);

@@ -152,81 +152,117 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
         executeRequest(ctx, request, cb);
     }
 
+    /**
+     * Performs a login POST to Hacker News and verifies credentials by checking for the fnid
+     * input in the resulting /submit page. Calls onSuccess only if login succeeded and the
+     * submit form is present.
+     */
+    public static void login(Context ctx, ActionCallback cb) {
+        // always redirect to submit page to verify login
+        String gotoPath = SUBMIT_PATH;
+
+        // Retrieve stored account details
+        Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
+        if (AccountUtils.handlePossibleError(account, null, ctx)) {
+            cb.onFailure("Couldn't read credentials", "Check your saved login.");
+            return;
+        }
+
+        // Build login form
+        FormBody form = new FormBody.Builder()
+                .add(LOGIN_PARAM_ACCT, account.getFirst())
+                .add(LOGIN_PARAM_PW,   account.getSecond())
+                .add(LOGIN_PARAM_GOTO, gotoPath)
+                .build();
+
+        Request request = new Request.Builder()
+                .url(BASE_WEB_URL + "/" + LOGIN_PATH)
+                .post(form)
+                .build();
+
+        Handler main = new Handler(ctx.getMainLooper());
+        OkHttpClient client = NetworkComponent.getOkHttpClientInstance();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                main.post(() -> cb.onFailure("Login failed", e.getMessage()));
+            }
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) {
+                if (!response.isSuccessful()) {
+                    main.post(() -> cb.onFailure(
+                            "Login failed: HTTP " + response.code(), response.toString()));
+                    return;
+                }
+                try {
+                    // Peek at a small part of the body to find fnid without consuming full stream
+                    String preview = response.peekBody(8192).string();
+                    Matcher matcher = Pattern.compile(
+                            "<input[^>]*name=\\\"fnid\\\"[^>]*value=\\\"([^\\\"]+)\\\""
+                    ).matcher(preview);
+                    if (!matcher.find()) {
+                        main.post(() -> cb.onFailure("Bad login", "Submit form not found"));
+                    } else {
+                        main.post(() -> cb.onSuccess(response));
+                    }
+                } catch (IOException e) {
+                    main.post(() -> cb.onFailure("Login parsing error", e.getMessage()));
+                }
+            }
+        });
+    }
+
+    /**
+     * Submits a story to Hacker News: logs in (checked above), then parses fnid and posts submission.
+     */
     public static void submit(String title,
                               String text,
                               String url,
                               Context ctx,
                               ActionCallback cb) {
-
-        Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
-        if (AccountUtils.handlePossibleError(account, null, ctx)) {
-            return;
-        }
-
-        OkHttpClient client = NetworkComponent.getOkHttpClientInstance();
         Handler main = new Handler(ctx.getMainLooper());
 
-        // --- Step 1: POST /login with creds
-        FormBody loginBody = new FormBody.Builder()
-                .add(LOGIN_PARAM_ACCT, account.getFirst())
-                .add(LOGIN_PARAM_PW,   account.getSecond())
-                .add(LOGIN_PARAM_GOTO, SUBMIT_PATH)
-                .build();
-
-        Request doLogin = new Request.Builder()
-                .url(BASE_WEB_URL + "/login")
-                .post(loginBody)
-                .build();
-
-        client.newCall(doLogin).enqueue(new Callback() {
+        // Login first (will check credentials and readiness of submit page)
+        login(ctx, new ActionCallback() {
             @Override
-            public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                main.post(() -> cb.onFailure("Login failed", e.getMessage()));
+            public void onFailure(String summary, String response) {
+                main.post(() -> cb.onFailure(summary, response));
             }
 
             @Override
-            public void onResponse(@NotNull Call call, @NotNull Response loginResp)
-                    throws IOException {
-                if (!loginResp.isSuccessful()) {
-                    main.post(() -> cb.onFailure("Login failed", loginResp.toString()));
-                    return;
-                }
-
-                // --- Step 2: Scrape fnid from response
-                String submitHtml = loginResp.body().string();
-                Matcher mSubmit = Pattern.compile(
-                        "<input[^>]*name=\"fnid\"[^>]*value=\"([^\"]+)\""
-                ).matcher(submitHtml);
-
-                if (!mSubmit.find()) {
-                    main.post(() -> cb.onFailure(
-                            "HN submit form parsing error",
-                            "No fnid found on /submit"
-                    ));
-                    return;
-                }
-
-                String submitFnid = mSubmit.group(1);
-
-                // --- Step 3: POST to /r ---
-                FormBody.Builder submitBody = new FormBody.Builder()
-                        .add("fnid", submitFnid)
-                        .add("fnop", DEFAULT_FNOP)
-                        .add("title", title);
-
-                submitBody.add("url", url);
-                submitBody.add("text", text);
-
-                Request doSubmit = new Request.Builder()
-                        .url(BASE_WEB_URL + "/" + SUBMIT_POST_PATH)
-                        .post(submitBody.build())
-                        .build();
-
-                // **finally** hand off to your executeRequest
-                main.post(() -> executeRequest(ctx, doSubmit, cb));
+            public void onSuccess(Response loginResp) {
+                main.post(() -> {
+                    String html;
+                    try {
+                        html = loginResp.body().string();
+                    } catch (IOException e) {
+                        cb.onFailure("Error reading login response", e.getMessage());
+                        return;
+                    }
+                    Matcher m = Pattern.compile(
+                            "<input[^>]*name=\"fnid\"[^>]*value=\"([^\"]+)\""
+                    ).matcher(html);
+                    if (!m.find()) {
+                        cb.onFailure("HN submit form parsing error", "No fnid found on /submit");
+                        return;
+                    }
+                    String fnid = m.group(1);
+                    FormBody.Builder submitForm = new FormBody.Builder()
+                            .add("fnid", fnid)
+                            .add("fnop", "submit-page")
+                            .add("title", title)
+                            .add("url", url)
+                            .add("text", text);
+                    Request submitReq = new Request.Builder()
+                            .url(BASE_WEB_URL + "/" + SUBMIT_POST_PATH)
+                            .post(submitForm.build())
+                            .build();
+                    executeRequest(ctx, submitReq, cb);
+                });
             }
         });
     }
+
 
     public static void executeRequest(Context ctx, Request request, ActionCallback cb) {
         OkHttpClient client = NetworkComponent.getOkHttpClientInstance();

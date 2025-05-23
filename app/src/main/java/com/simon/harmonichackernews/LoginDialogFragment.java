@@ -8,6 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -17,8 +18,11 @@ import androidx.appcompat.app.AppCompatDialogFragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
+import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.ViewUtils;
+
+import okhttp3.Response;
 
 public class LoginDialogFragment extends AppCompatDialogFragment {
 
@@ -77,8 +81,29 @@ public class LoginDialogFragment extends AppCompatDialogFragment {
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                //actually try to log in here and see if it works out
                 AccountUtils.setAccountDetails(getContext(), usernameInput.getText().toString(), passwordInput.getText().toString());
-                dismiss();
+
+                UserActions.login(getContext(), new UserActions.ActionCallback() {
+                    @Override
+                    public void onSuccess(Response response) {
+                        requireActivity().runOnUiThread(() -> {
+                            Toast.makeText(getContext(), "Login successful", Toast.LENGTH_SHORT).show();
+                            dismiss();
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(String summary, String response) {
+                        requireActivity().runOnUiThread(() -> {
+                            AccountUtils.deleteAccountDetails(getContext());
+                            Toast.makeText(getContext(), "Login failed, bad credentials?", Toast.LENGTH_SHORT).show();
+                            dismiss();
+                        });
+                    }
+                });
+
+                Toast.makeText(getContext(), "Logging in...", Toast.LENGTH_SHORT).show();
             }
         });
 
