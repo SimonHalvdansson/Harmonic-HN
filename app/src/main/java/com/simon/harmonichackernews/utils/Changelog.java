@@ -5,6 +5,7 @@ public class Changelog {
         return "<b>Version 2.1.3:</b><br>" +
                 "- Fixed submit stories not working<br>" +
                 "- Updated History to sort by click time (thanks Fernando F. H.!)<br>" +
+                "- Fixed animation when opening story/comment from submissions view<br>" +
                 "- Fixed design issue with \"Tap to update\" button<br>" +
                 "- Tweaked design of the replying to comments screen<br>" +
                 "<br>" +

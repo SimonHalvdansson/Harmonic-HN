@@ -109,7 +109,9 @@ public class SubmissionsActivity extends AppCompatActivity {
 
                 startActivity(intent);
 
-                overridePendingTransition(R.anim.activity_in_animation, 0);
+                if (!SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext()) && !Utils.isTablet(getResources())) {
+                    overridePendingTransition(R.anim.activity_in_animation, 0);
+                }
             }
         });
 
@@ -142,7 +144,9 @@ public class SubmissionsActivity extends AppCompatActivity {
         intent.putExtras(bundle);
         startActivity(intent);
 
-        overridePendingTransition(R.anim.activity_in_animation, 0);
+        if (!SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext()) && !Utils.isTablet(getResources())) {
+            overridePendingTransition(R.anim.activity_in_animation, 0);
+        }
     }
 
     private void loadSubmissions() {
