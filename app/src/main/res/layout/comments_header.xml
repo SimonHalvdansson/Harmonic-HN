@@ -831,6 +831,7 @@
         android:layout_height="wrap_content">
 
         <TextView
+            android:id="@+id/comments_header_loading_failed_text"
             android:gravity="center"
             android:paddingTop="24dp"
             android:paddingBottom="6dp"

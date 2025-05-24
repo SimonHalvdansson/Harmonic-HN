@@ -417,6 +417,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.commentButtonParent.setVisibility(Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time) ? GONE : View.VISIBLE);
 
             headerViewHolder.loadingFailed.setVisibility(loadingFailed ? View.VISIBLE : GONE);
+            if (loadingFailed) {
+                if (!Utils.isNetworkAvailable(ctx)) {
+                    headerViewHolder.loadingFailedText.setText("No internet connection");
+                } else {
+                    headerViewHolder.loadingFailedText.setText("Loading failed");
+                }
+            }
+
             headerViewHolder.serverErrorLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : GONE);
 
         } else if (holder instanceof ItemViewHolder) {
@@ -609,6 +617,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView emptyViewText;
         public final LoadingIndicator loadingIndicator;
         public final LinearLayout loadingFailed;
+        public final TextView loadingFailedText;
         public final LinearLayout serverErrorLayout;
         public final Button serverErrorSwitchApiButton;
         public final Button refreshButton;
@@ -679,6 +688,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerView = view.findViewById(R.id.comments_header);
             loadingIndicator = view.findViewById(R.id.comments_header_loading);
             loadingFailed = view.findViewById(R.id.comments_header_loading_failed);
+            loadingFailedText = view.findViewById(R.id.comments_header_loading_failed_text);
             serverErrorLayout = view.findViewById(R.id.comments_header_server_error);
             serverErrorSwitchApiButton = view.findViewById(R.id.comments_header_server_error_switch_api);
             refreshButton = view.findViewById(R.id.comments_header_refresh);

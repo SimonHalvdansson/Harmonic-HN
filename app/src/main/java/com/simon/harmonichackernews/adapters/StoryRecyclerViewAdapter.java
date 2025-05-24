@@ -283,6 +283,14 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             TooltipCompat.setTooltipText(headerViewHolder.moreButton, "More");
 
             headerViewHolder.loadingFailedLayout.setVisibility(loadingFailed ? View.VISIBLE : View.GONE);
+            if (loadingFailed) {
+                if (!Utils.isNetworkAvailable(ctx)) {
+                    headerViewHolder.loadingFailedText.setText("No internet connection");
+                } else {
+                    headerViewHolder.loadingFailedText.setText("Loading failed");
+                }
+            }
+
             headerViewHolder.loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
         } else if (holder instanceof SubmissionsHeaderViewHolder) {
             final SubmissionsHeaderViewHolder submissionsHeaderViewHolder = (SubmissionsHeaderViewHolder) holder;
@@ -381,6 +389,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final Spinner typeSpinner;
         public final LinearLayout container;
         public final LinearLayout loadingFailedLayout;
+        public final TextView loadingFailedText;
         public final TextView loadingFailedAlgoliaLayout;
         public final LinearLayout noBookmarksLayout;
         public final LinearLayout spinnerContainer;
@@ -400,6 +409,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             loadingFailedLayout = view.findViewById(R.id.stories_header_loading_failed);
             loadingFailedAlgoliaLayout = view.findViewById(R.id.stories_header_loading_failed_algolia);
+            loadingFailedText = view.findViewById(R.id.stories_header_loading_failed_text);
             container = view.findViewById(R.id.stories_header_container);
             typeSpinner = view.findViewById(R.id.stories_header_spinner);
             noBookmarksLayout = view.findViewById(R.id.stories_header_no_bookmarks);
