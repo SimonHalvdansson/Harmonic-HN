@@ -33,6 +33,7 @@ public class Story {
     public String commentMasterTitle;
     public int commentMasterId;
     public String commentMasterUrl;
+    public String summary;
 
     public Story() {}
 

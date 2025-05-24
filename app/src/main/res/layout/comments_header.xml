@@ -378,6 +378,55 @@
     </LinearLayout>
 
     <LinearLayout
+        android:animateLayoutChanges="true"
+        android:orientation="vertical"
+        android:id="@+id/comments_header_summary_container"
+        android:visibility="visible"
+        android:paddingTop="16dp"
+        android:paddingBottom="8dp"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:id="@+id/comments_header_summary_loading"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:textStyle="bold"
+                android:gravity="center"
+                android:textSize="16sp"
+                android:textColor="?attr/storyColorNormal"
+                android:fontFamily="@font/product_sans"
+                android:text="Generating summary..."
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+
+            <com.google.android.material.loadingindicator.LoadingIndicator
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="12dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp"
+                android:minWidth="60dp" />
+
+        </LinearLayout>
+
+        <TextView
+            android:textSize="15sp"
+            android:textColor="?attr/storyColorNormal"
+            android:fontFamily="@font/product_sans"
+            android:id="@+id/comments_header_summary"
+            android:text="Article summary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_marginBottom="6dp"
         android:id="@+id/comments_header_actions_container"
         android:paddingLeft="@dimen/comments_header_action_padding"
@@ -448,6 +497,22 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_action_bookmark_border" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/comments_header_button_summarize_parent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <ImageButton
+                android:background="?selectableItemBackgroundBorderless"
+                android:layout_centerHorizontal="true"
+                android:id="@+id/comments_header_button_summarize"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_action_summarize" />
 
         </RelativeLayout>
 

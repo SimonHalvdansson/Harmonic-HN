@@ -39,6 +39,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.google.android.material.snackbar.Snackbar;
+import com.simon.harmonichackernews.CommentsFragment;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.PollOption;
@@ -88,6 +89,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public int spacerHeight = 0;
     private int navbarHeight = 0;
     public boolean disableCommentATagClick = false;
+    private RequestSummaryCallback summaryCallback;
 
     public static final int TYPE_HEADER = 0;
     public static final int TYPE_COMMENT = 1;
@@ -151,7 +153,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        String prefTheme,
                                        boolean tablet,
                                        String favProvider,
-                                       boolean shouldSwapLongPressTap) {
+                                       boolean shouldSwapLongPressTap,
+                                       CommentsRecyclerViewAdapter.RequestSummaryCallback requestSummaryCallback) {
         integratedWebview = useIntegratedWebview;
         bottomSheet = sheet;
         fragmentManager = fm;
@@ -170,6 +173,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         isTablet = tablet;
         faviconProvider = favProvider;
         swapLongPressTap = shouldSwapLongPressTap;
+        summaryCallback = requestSummaryCallback;
     }
 
     @NotNull
@@ -344,14 +348,42 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.actionsContainer.setPadding(actionContainerPadding, 0, actionContainerPadding, 0);
 
             headerViewHolder.favicon.setVisibility(showThumbnail ? View.VISIBLE : GONE);
-            headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : GONE);
+            headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
 
             if (showThumbnail && !TextUtils.isEmpty(story.url)) {
                 FaviconLoader.loadFavicon(story.url, headerViewHolder.favicon, ctx, faviconProvider);
             }
 
-            headerViewHolder.bookmarkButton.setImageResource(Utils.isBookmarked(ctx, story.id) ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border);
+            headerViewHolder.summarizeButtonParent.setVisibility(story.isLink && Utils.canProvideSummary(ctx) ? View.VISIBLE : View.GONE);
 
+            headerViewHolder.summaryContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : VISIBLE);
+
+            headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
+            headerViewHolder.summary.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
+            headerViewHolder.summary.setText(story.summary);
+
+            headerViewHolder.summarizeButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    headerViewHolder.summaryContainer.setVisibility(View.VISIBLE);
+
+                    headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
+                    headerViewHolder.summary.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
+
+                    summaryCallback.onRequest(new Runnable() {
+                        @Override
+                        public void run() {
+                            notifyItemChanged(0);
+
+                            headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
+                            headerViewHolder.summary.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
+                            headerViewHolder.summary.setText(story.summary);
+                        }
+                    });
+                }
+            });
+
+            headerViewHolder.bookmarkButton.setImageResource(Utils.isBookmarked(ctx, story.id) ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border);
             headerViewHolder.bookmarkButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
@@ -467,7 +499,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentHiddenCount.setVisibility(GONE);
             } else {
                 // if not expanded, only show (and set text) if subCommentCount > 0
-                // TODO should this be precomputed?
                 int subCommentCount = getIndexOfLastChild(comment.depth, holder.getBindingAdapterPosition()) - holder.getBindingAdapterPosition();
 
                 if (subCommentCount > 0) {
@@ -586,6 +617,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final ImageButton voteButton;
         public final ImageButton bookmarkButton;
         public final ImageButton shareButton;
+        public final ImageButton summarizeButton;
+        public final RelativeLayout summarizeButtonParent;
+        public final LinearLayout summaryContainer;
+        public final LinearLayout summaryLoadingContainer;
+        public final TextView summary;
         public final ImageButton moreButton;
         public final RelativeLayout userButtonParent;
         public final RelativeLayout moreButtonParent;
@@ -653,6 +689,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             voteButton = view.findViewById(R.id.comments_header_button_vote);
             bookmarkButton = view.findViewById(R.id.comments_header_button_bookmark);
             shareButton = view.findViewById(R.id.comments_header_button_share);
+            summarizeButtonParent = view.findViewById(R.id.comments_header_button_summarize_parent);
+            summarizeButton = view.findViewById(R.id.comments_header_button_summarize);
+            summaryContainer = view.findViewById(R.id.comments_header_summary_container);
+            summaryLoadingContainer = view.findViewById(R.id.comments_header_summary_loading);
+            summary = view.findViewById(R.id.comments_header_summary);
             moreButton = view.findViewById(R.id.comments_header_button_more);
             userButtonParent = view.findViewById(R.id.comments_header_button_user_parent);
             moreButtonParent = view.findViewById(R.id.comments_header_button_more_parent);
@@ -729,6 +770,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             TooltipCompat.setTooltipText(commentButton, "Comment");
             TooltipCompat.setTooltipText(voteButton, "Vote");
             TooltipCompat.setTooltipText(bookmarkButton, "Bookmark");
+            TooltipCompat.setTooltipText(summarizeButton, "Summarize");
             TooltipCompat.setTooltipText(shareButton, "Share");
             TooltipCompat.setTooltipText(moreButton, "More");
 
@@ -867,5 +909,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
         }
         return true;
+    }
+
+    public interface RequestSummaryCallback {
+        //maybe take a callback as argument here
+        void onRequest(Runnable onDone);
     }
 }

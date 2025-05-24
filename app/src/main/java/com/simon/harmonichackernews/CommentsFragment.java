@@ -61,6 +61,7 @@ import androidx.appcompat.widget.PopupMenu;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
+import androidx.core.util.Consumer;
 import androidx.core.util.Pair;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
@@ -124,7 +125,7 @@ import java.util.Set;
 
 import okhttp3.Call;
 
-public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener {
+public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener, CommentsRecyclerViewAdapter.RequestSummaryCallback {
 
     public final static String EXTRA_TITLE = "com.simon.harmonichackernews.EXTRA_TITLE";
     public final static String EXTRA_PDF_TITLE = "com.simon.harmonichackernews.EXTRA_PDF_TITLE";
@@ -486,7 +487,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 ThemeUtils.getPreferredTheme(getContext()),
                 Utils.isTablet(getResources()),
                 SettingsUtils.getPreferredFaviconProvider(getContext()),
-                SettingsUtils.shouldSwapCommentLongPressTap(getContext()));
+                SettingsUtils.shouldSwapCommentLongPressTap(getContext()),
+                this);
 
         adapter.setOnHeaderClickListener(story1 -> Utils.launchCustomTab(getActivity(), story1.url));
 
@@ -1681,6 +1683,42 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         AlertDialog dialog = builder.create();
         commentAdapter.disableCommentATagClick = true;
         dialog.show();
+    }
+
+    @Override
+    public void onRequest(Runnable onDone) {
+        // Ensure we're on the main thread
+        Handler handler = new Handler(Looper.getMainLooper());
+
+        // If the WebView hasn't been initialized or hasn't started loading yet, start it now
+        if (webView == null || !startedLoading) {
+            startedLoading = true;
+            loadUrl(story.url);
+        }
+
+        // Inject a one-time listener to wait for the page to finish loading
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+
+                // Run a simple JS snippet to grab the page's body text
+                view.evaluateJavascript(
+                        "(function() { return document.body.innerText || ''; })();",
+                        result -> {
+                            // result is a JSON-encoded string
+                            if (result != null) {
+                                // Strip the surrounding quotes
+                                story.summary = result.replaceAll("^\"|\"$", "");
+                            } else {
+                                story.summary = "";
+                            }
+                            // Notify caller that we're done
+                            handler.post(onDone);
+                        }
+                );
+            }
+        });
     }
 
     public class MyWebViewClient extends WebViewClient {

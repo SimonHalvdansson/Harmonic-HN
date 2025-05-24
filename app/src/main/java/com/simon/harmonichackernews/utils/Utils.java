@@ -660,4 +660,8 @@ public class Utils {
         context.startActivity(intent);
     }
 
+    public static boolean canProvideSummary(Context ctx) {
+        return false;
+    }
+
 }
