@@ -359,8 +359,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.summaryContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : VISIBLE);
 
             headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
-            headerViewHolder.summary.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
+            headerViewHolder.summaryContentContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
             headerViewHolder.summary.setText(story.summary);
+            headerViewHolder.summary.setText("• Introduces algebraic effects: resumable “exceptions” that serve as a single primitive for custom control flow.\n" +
+                    "• Shows how to build generators, coroutines, async/await, exception handling, and schedulers purely as libraries.\n" +
+                    "• Demonstrates modeling services (databases, logging, randomness, allocation) as effects you can swap or mock via handlers.\n" +
+                    "• Highlights cleaner APIs through implicit state/context threading and enforced purity/security (can IO, can Print) enabling deterministic replay/debugging.");
 
             headerViewHolder.summarizeButton.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -368,7 +372,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     headerViewHolder.summaryContainer.setVisibility(View.VISIBLE);
 
                     headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
-                    headerViewHolder.summary.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
+                    headerViewHolder.summaryContentContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
 
                     summaryCallback.onRequest(new Runnable() {
                         @Override
@@ -376,7 +380,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                             notifyItemChanged(0);
 
                             headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
-                            headerViewHolder.summary.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
+                            headerViewHolder.summaryContentContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
                             headerViewHolder.summary.setText(story.summary);
                         }
                     });
@@ -629,6 +633,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final ImageButton summarizeButton;
         public final RelativeLayout summarizeButtonParent;
         public final LinearLayout summaryContainer;
+        public final LinearLayout summaryContentContainer;
         public final LinearLayout summaryLoadingContainer;
         public final TextView summary;
         public final ImageButton moreButton;
@@ -702,6 +707,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             summarizeButtonParent = view.findViewById(R.id.comments_header_button_summarize_parent);
             summarizeButton = view.findViewById(R.id.comments_header_button_summarize);
             summaryContainer = view.findViewById(R.id.comments_header_summary_container);
+            summaryContentContainer = view.findViewById(R.id.comments_header_summary_content_container);
             summaryLoadingContainer = view.findViewById(R.id.comments_header_summary_loading);
             summary = view.findViewById(R.id.comments_header_summary);
             moreButton = view.findViewById(R.id.comments_header_button_more);
