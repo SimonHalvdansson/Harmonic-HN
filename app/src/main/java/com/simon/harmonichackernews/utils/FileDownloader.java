@@ -7,8 +7,6 @@ import android.os.Looper;
 import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.WorkerThread;
-
 import com.simon.harmonichackernews.network.NetworkComponent;
 
 import java.io.File;
@@ -39,7 +37,10 @@ public class FileDownloader {
         mMainHandler = new Handler(Looper.getMainLooper());
     }
 
-    @WorkerThread
+    /**
+     * Enqueues an asynchronous download for the provided URL. This method may be
+     * called from the main thread.
+     */
     public void downloadFile(String url, String mimeType, FileDownloaderCallback callback) {
         if (TextUtils.isEmpty(mCacheDir)) {
             mMainHandler.post(() -> callback.onFailure(null, null));
