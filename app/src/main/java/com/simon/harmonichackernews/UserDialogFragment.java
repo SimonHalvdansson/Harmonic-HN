@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews;
 
+import static android.view.View.GONE;
 import static com.simon.harmonichackernews.SubmissionsActivity.KEY_USER;
 
 import android.app.Dialog;
@@ -31,6 +32,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.AccountUtils;
@@ -56,11 +58,17 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     private TextView metaTextview;
     private HtmlTextView aboutTextview;
     private Button submissionsButton;
+    private Button tagButton;
     private Button blockButton;
     private Button reportButton;
     private LoadingIndicator loadingProgress;
     private LinearLayout errorLayout;
     private LinearLayout container;
+    private UserDialogCallback setTagCallback;
+
+    public void setCallback(UserDialogCallback callback) {
+        this.setTagCallback = callback;
+    }
 
     @NonNull
     @Override
@@ -79,6 +87,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         metaTextview = rootView.findViewById(R.id.user_meta);
         aboutTextview = rootView.findViewById(R.id.user_about);
         submissionsButton = rootView.findViewById(R.id.user_submissions_button);
+        tagButton = rootView.findViewById(R.id.user_tag_button);
         reportButton = rootView.findViewById(R.id.user_report_button);
         blockButton = rootView.findViewById(R.id.user_block_button);
         loadingProgress = rootView.findViewById(R.id.user_loading);
@@ -113,7 +122,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             }
 
                             if (submitted.length() == 0) {
-                                submissionsButton.setVisibility(View.GONE);
+                                submissionsButton.setVisibility(GONE);
                             } else {
                                 submissionsButton.setText("Submissions");
                                 submissionsButton.setOnClickListener(new View.OnClickListener() {
@@ -137,23 +146,28 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             if (jsonObject.has("about") && !TextUtils.isEmpty(jsonObject.getString("about"))) {
                                 setLinkifiedText(Html.fromHtml(jsonObject.getString("about")).toString().trim(), aboutTextview);
                             } else {
-                                aboutTextview.setVisibility(View.GONE);
+                                aboutTextview.setVisibility(GONE);
                             }
 
                             aboutTextview.setOnClickATagListener(new OnClickATagListener() {
-                                @Override
-                                public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                                    Utils.openLinkMaybeHN(widget.getContext(), href);
-                                    return true;
+                                    @Override
+                                    public boolean onClick(View widget, String spannedText, @Nullable String href) {
+                                        Utils.openLinkMaybeHN(widget.getContext(), href);
+                                        return true;
                                 }
                             });
 
+                            String currentTag = Utils.getUserTag(getContext(), userName);
+                            tagButton.setOnClickListener(v -> showTagDialog(userName, currentTag));
+
                             if (userName.equals(AccountUtils.getAccountUsername(getContext()))) {
-                                reportButton.setVisibility(View.GONE);
-                                blockButton.setVisibility(View.GONE);
+                                reportButton.setVisibility(GONE);
+                                blockButton.setVisibility(GONE);
+                                tagButton.setVisibility(GONE);
                             } else {
                                 reportButton.setVisibility(View.VISIBLE);
                                 blockButton.setVisibility(View.VISIBLE);
+                                tagButton.setVisibility(View.VISIBLE);
                             }
 
                             reportButton.setOnClickListener(new View.OnClickListener() {
@@ -184,19 +198,19 @@ public class UserDialogFragment extends AppCompatDialogFragment {
 
                             container.setVisibility(View.VISIBLE);
                         } catch (Exception e) {
-                            loadingProgress.setVisibility(View.GONE);
+                            loadingProgress.setVisibility(GONE);
                             errorLayout.setVisibility(View.VISIBLE);
-                            container.setVisibility(View.GONE);
+                            container.setVisibility(GONE);
 
                             e.printStackTrace();
                         }
 
-                        loadingProgress.setVisibility(View.GONE);
+                        loadingProgress.setVisibility(GONE);
                     }, error -> {
                 error.printStackTrace();
-                loadingProgress.setVisibility(View.GONE);
+                loadingProgress.setVisibility(GONE);
                 errorLayout.setVisibility(View.VISIBLE);
-                container.setVisibility(View.GONE);
+                container.setVisibility(GONE);
             });
 
             stringRequest.setRetryPolicy(new DefaultRetryPolicy(
@@ -215,12 +229,24 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         return dialog;
     }
 
-    public static void showUserDialog(FragmentManager fm, String name) {
+    public interface UserDialogCallback {
+        void onResult(boolean accepted);
+    }
+
+    public static void showUserDialog(FragmentManager fm, String name, UserDialogCallback callback) {
         UserDialogFragment userDialogFragment = new UserDialogFragment();
         Bundle bundle = new Bundle();
         bundle.putString(UserDialogFragment.EXTRA_USER_NAME, name);
         userDialogFragment.setArguments(bundle);
         userDialogFragment.show(fm, UserDialogFragment.TAG);
+
+        if (callback != null) {
+            userDialogFragment.setCallback(callback);
+        }
+    }
+
+    public static void showUserDialog(FragmentManager fm, String name) {
+        showUserDialog(fm, name, null);
     }
 
     public void setLinkifiedText(String text, TextView textView) {
@@ -244,6 +270,32 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         textView.setMovementMethod(LinkMovementMethod.getInstance());
 
         textView.setText(spannableString);
+    }
+
+    private void showTagDialog(String userName, String currentTag) {
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
+        LayoutInflater inflater = requireActivity().getLayoutInflater();
+        View view = inflater.inflate(R.layout.tag_dialog, null);
+        builder.setView(view);
+        AlertDialog dialog = builder.create();
+
+        TextInputEditText editText = view.findViewById(R.id.tag_dialog_edittext);
+        Button cancel = view.findViewById(R.id.tag_dialog_cancel);
+        Button save = view.findViewById(R.id.tag_dialog_save);
+
+        editText.setText(currentTag);
+
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        save.setOnClickListener(v -> {
+            String tag = editText.getText() != null ? editText.getText().toString().trim() : "";
+            Utils.setUserTag(getContext(), userName, tag);
+            if (setTagCallback != null) {
+                setTagCallback.onResult(true);
+            }
+            dialog.dismiss();
+        });
+
+        dialog.show();
     }
 
 }

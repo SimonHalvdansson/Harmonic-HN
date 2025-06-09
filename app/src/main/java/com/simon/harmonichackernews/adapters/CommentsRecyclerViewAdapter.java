@@ -309,7 +309,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.metaVotes.setText(String.valueOf(story.score));
                 headerViewHolder.metaComments.setText(String.valueOf(story.descendants));
                 headerViewHolder.metaTime.setText(story.getTimeFormatted());
-                headerViewHolder.metaBy.setText(story.by);
+                String tag = Utils.getUserTag(ctx, story.by);
+                headerViewHolder.metaBy.setText(TextUtils.isEmpty(tag) ? story.by : story.by + " (" + tag + ")");
             }
 
             headerViewHolder.metaContainer.setVisibility(story.loaded ? View.VISIBLE : GONE);
@@ -487,7 +488,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 byUser = comment.by.equals(username);
             }
 
-            itemViewHolder.commentBy.setText(byOp ? comment.by + " (OP)" : comment.by);
+            String cTag = Utils.getUserTag(ctx, comment.by);
+            String displayName = comment.by;
+            if (!TextUtils.isEmpty(cTag)) {
+                displayName += " (" + cTag + ")";
+            }
+            if (byOp) {
+                displayName += " (OP)";
+            }
+            itemViewHolder.commentBy.setText(displayName);
 
             if (byUser) {
                 itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.selfCommentColor));

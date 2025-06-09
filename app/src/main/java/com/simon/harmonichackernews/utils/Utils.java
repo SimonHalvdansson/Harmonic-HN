@@ -37,6 +37,8 @@ import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -53,9 +55,11 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -74,6 +78,7 @@ public class Utils {
     public final static String GLOBAL_SHARED_PREFERENCES_KEY = "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY";
 
     public final static String KEY_SHARED_PREFERENCES_BOOKMARKS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_BOOKMARKS";
+    public final static String KEY_SHARED_PREFERENCES_USER_TAGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_USER_TAGS";
     public final static String KEY_SHARED_PREFERENCES_FIRST_TIME = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FIRST_TIME";
     public final static String KEY_SHARED_PREFERENCES_LAST_VERSION = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION";
 
@@ -344,6 +349,59 @@ public class Utils {
 
 
         return true;
+    }
+
+    public static Map<String, String> getUserTags(Context ctx) {
+        String jsonString = SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_USER_TAGS);
+        Map<String, String> map = new HashMap<>();
+        if (!TextUtils.isEmpty(jsonString)) {
+            try {
+                JSONObject obj = new JSONObject(jsonString);
+                Iterator<String> keys = obj.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    String value = obj.optString(key, "");
+                    map.put(key.toLowerCase().trim(), value);
+                }
+            } catch (JSONException e) {
+                // Invalid JSON in prefs; just start fresh
+                e.printStackTrace();
+            }
+        }
+        return map;
+    }
+
+    public static String getUserTag(Context ctx, String username) {
+        if (TextUtils.isEmpty(username)) return "";
+        Map<String, String> map = getUserTags(ctx);
+        String tag = map.get(username.toLowerCase().trim());
+        return tag == null ? "" : tag;
+    }
+
+    public static void setUserTag(Context ctx, String username, String tag) {
+        if (TextUtils.isEmpty(username)) return;
+        // Load existing
+        Map<String, String> map = getUserTags(ctx);
+        String key = username.toLowerCase().trim();
+        if (TextUtils.isEmpty(tag)) {
+            map.remove(key);
+        } else {
+            map.put(key, tag.trim());
+        }
+        // Convert back to JSON
+        JSONObject obj = new JSONObject();
+        for (Map.Entry<String, String> e : map.entrySet()) {
+            try {
+                obj.put(e.getKey(), e.getValue());
+            } catch (JSONException ex) {
+                ex.printStackTrace();
+            }
+        }
+        SettingsUtils.saveStringToSharedPreferences(
+                ctx,
+                KEY_SHARED_PREFERENCES_USER_TAGS,
+                obj.toString()
+        );
     }
 
     public static boolean isFirstAppStart(Context ctx) {
