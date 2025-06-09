@@ -91,6 +91,7 @@ public class SettingsActivity extends AppCompatActivity {
             setPreferencesFromResource(R.xml.root_preferences, rootKey);
 
             updateTimedRangeSummary();
+            updateUserTagsSubtitle();
 
             findPreference("pref_default_story_type").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
@@ -312,6 +313,12 @@ public class SettingsActivity extends AppCompatActivity {
             setDivider(null);
         }
 
+        @Override
+        public void onResume() {
+            super.onResume();
+            updateUserTagsSubtitle();
+        }
+
         @NonNull
         @Override
         public RecyclerView onCreateRecyclerView(@NonNull LayoutInflater inflater, @NonNull ViewGroup parent, @Nullable Bundle savedInstanceState) {
@@ -332,6 +339,18 @@ public class SettingsActivity extends AppCompatActivity {
                 Date dateTo = new Date(0, 0, 0, nighttimeHours[2], nighttimeHours[3]);
 
                 findPreference("pref_theme_timed_range").setSummary(df.format(dateFrom) + " - " + df.format(dateTo));
+            }
+        }
+
+        private void updateUserTagsSubtitle() {
+            Preference pref = findPreference("pref_manage_user_tags");
+            if (pref != null && getContext() != null) {
+                int count = Utils.getUserTags(getContext()).size();
+                if (count > 0) {
+                    pref.setSummary(count + " users with tags");
+                } else {
+                    pref.setSummary("");
+                }
             }
         }
 
