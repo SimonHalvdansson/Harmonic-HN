@@ -7,6 +7,7 @@ public class Changelog {
                 "- Updated History to sort by click time (thanks Fernando F. H.!)<br>" +
                 "- Fixed animation when opening story/comment from submissions view<br>" +
                 "- Fixed design issue with \"Tap to update\" button<br>" +
+                "- Added button to upvote post from main view long press menu (Thanks Piotr Płaczek!)<br>" +
                 "- Tweaked design of the replying to comments screen<br>" +
                 "<br>" +
                 "<b>Version 2.1.2:</b><br>" +
