@@ -42,6 +42,7 @@ import com.simon.harmonichackernews.data.History;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
+import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
@@ -288,6 +289,15 @@ public class StoriesFragment extends Fragment {
                 boolean oldBookmarked = Utils.isBookmarked(ctx, story.id);
                 History h = HistoriesUtils.INSTANCE.getHistorybyId(story.id);
 
+                popupMenu.getMenu().add("Upvote").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(@NonNull MenuItem item) {
+                        UserActions.upvote(getContext(), story.id, getParentFragmentManager());
+
+                        adapter.notifyItemChanged(position);
+                        return true;
+                    }
+                });
 
                 popupMenu.getMenu().add(oldClicked ? "Mark as unread" : "Mark as read").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
