@@ -368,6 +368,12 @@
             app:summary="Hide comments by the specified users"
             app:dialogMessage="Separate usernames by commas, capitalization is ignored"  />
 
+        <Preference
+            app:singleLineTitle="false"
+            app:title="Manage user tags"
+            app:key="pref_manage_user_tags"
+            app:icon="@drawable/ic_action_block" />
+
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_hide_jobs"

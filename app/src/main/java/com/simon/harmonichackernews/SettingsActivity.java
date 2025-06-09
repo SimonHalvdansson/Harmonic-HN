@@ -233,6 +233,14 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
+            findPreference("pref_manage_user_tags").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(@NonNull Preference preference) {
+                    ManageUserTagsDialogFragment.showManageUserTagsDialog(getParentFragmentManager());
+                    return false;
+                }
+            });
+
             findPreference("pref_clear_clicked_stories").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
                 public boolean onPreferenceClick(@NonNull Preference preference) {
