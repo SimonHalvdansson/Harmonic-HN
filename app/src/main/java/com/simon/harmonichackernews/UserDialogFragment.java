@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews;
 
+import static android.view.View.GONE;
 import static com.simon.harmonichackernews.SubmissionsActivity.KEY_USER;
 
 import android.app.Dialog;
@@ -63,6 +64,11 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     private LoadingIndicator loadingProgress;
     private LinearLayout errorLayout;
     private LinearLayout container;
+    private UserDialogCallback setTagCallback;
+
+    public void setCallback(UserDialogCallback callback) {
+        this.setTagCallback = callback;
+    }
 
     @NonNull
     @Override
@@ -116,7 +122,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             }
 
                             if (submitted.length() == 0) {
-                                submissionsButton.setVisibility(View.GONE);
+                                submissionsButton.setVisibility(GONE);
                             } else {
                                 submissionsButton.setText("Submissions");
                                 submissionsButton.setOnClickListener(new View.OnClickListener() {
@@ -140,27 +146,28 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             if (jsonObject.has("about") && !TextUtils.isEmpty(jsonObject.getString("about"))) {
                                 setLinkifiedText(Html.fromHtml(jsonObject.getString("about")).toString().trim(), aboutTextview);
                             } else {
-                            aboutTextview.setVisibility(View.GONE);
-                        }
-
-                        aboutTextview.setOnClickATagListener(new OnClickATagListener() {
-                                @Override
-                                public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                                    Utils.openLinkMaybeHN(widget.getContext(), href);
-                                    return true;
+                                aboutTextview.setVisibility(GONE);
                             }
-                        });
 
-                        String currentTag = Utils.getUserTag(getContext(), userName);
-                        tagButton.setText(TextUtils.isEmpty(currentTag) ? "Add tag" : "Change tag");
-                        tagButton.setOnClickListener(v -> showTagDialog(userName, currentTag));
+                            aboutTextview.setOnClickATagListener(new OnClickATagListener() {
+                                    @Override
+                                    public boolean onClick(View widget, String spannedText, @Nullable String href) {
+                                        Utils.openLinkMaybeHN(widget.getContext(), href);
+                                        return true;
+                                }
+                            });
 
-                        if (userName.equals(AccountUtils.getAccountUsername(getContext()))) {
-                            reportButton.setVisibility(View.GONE);
-                            blockButton.setVisibility(View.GONE);
+                            String currentTag = Utils.getUserTag(getContext(), userName);
+                            tagButton.setOnClickListener(v -> showTagDialog(userName, currentTag));
+
+                            if (userName.equals(AccountUtils.getAccountUsername(getContext()))) {
+                                reportButton.setVisibility(GONE);
+                                blockButton.setVisibility(GONE);
+                                tagButton.setVisibility(GONE);
                             } else {
                                 reportButton.setVisibility(View.VISIBLE);
                                 blockButton.setVisibility(View.VISIBLE);
+                                tagButton.setVisibility(View.VISIBLE);
                             }
 
                             reportButton.setOnClickListener(new View.OnClickListener() {
@@ -191,19 +198,19 @@ public class UserDialogFragment extends AppCompatDialogFragment {
 
                             container.setVisibility(View.VISIBLE);
                         } catch (Exception e) {
-                            loadingProgress.setVisibility(View.GONE);
+                            loadingProgress.setVisibility(GONE);
                             errorLayout.setVisibility(View.VISIBLE);
-                            container.setVisibility(View.GONE);
+                            container.setVisibility(GONE);
 
                             e.printStackTrace();
                         }
 
-                        loadingProgress.setVisibility(View.GONE);
+                        loadingProgress.setVisibility(GONE);
                     }, error -> {
                 error.printStackTrace();
-                loadingProgress.setVisibility(View.GONE);
+                loadingProgress.setVisibility(GONE);
                 errorLayout.setVisibility(View.VISIBLE);
-                container.setVisibility(View.GONE);
+                container.setVisibility(GONE);
             });
 
             stringRequest.setRetryPolicy(new DefaultRetryPolicy(
@@ -222,12 +229,24 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         return dialog;
     }
 
-    public static void showUserDialog(FragmentManager fm, String name) {
+    public interface UserDialogCallback {
+        void onResult(boolean accepted);
+    }
+
+    public static void showUserDialog(FragmentManager fm, String name, UserDialogCallback callback) {
         UserDialogFragment userDialogFragment = new UserDialogFragment();
         Bundle bundle = new Bundle();
         bundle.putString(UserDialogFragment.EXTRA_USER_NAME, name);
         userDialogFragment.setArguments(bundle);
         userDialogFragment.show(fm, UserDialogFragment.TAG);
+
+        if (callback != null) {
+            userDialogFragment.setCallback(callback);
+        }
+    }
+
+    public static void showUserDialog(FragmentManager fm, String name) {
+        showUserDialog(fm, name, null);
     }
 
     public void setLinkifiedText(String text, TextView textView) {
@@ -270,7 +289,9 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         save.setOnClickListener(v -> {
             String tag = editText.getText() != null ? editText.getText().toString().trim() : "";
             Utils.setUserTag(getContext(), userName, tag);
-            tagButton.setText(TextUtils.isEmpty(tag) ? "Add tag" : "Change tag");
+            if (setTagCallback != null) {
+                setTagCallback.onResult(true);
+            }
             dialog.dismiss();
         });
 

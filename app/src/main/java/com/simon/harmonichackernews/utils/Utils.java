@@ -37,6 +37,8 @@ import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -350,15 +352,20 @@ public class Utils {
     }
 
     public static Map<String, String> getUserTags(Context ctx) {
-        String tagsString = SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_USER_TAGS);
+        String jsonString = SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_USER_TAGS);
         Map<String, String> map = new HashMap<>();
-        if (!TextUtils.isEmpty(tagsString)) {
-            String[] entries = tagsString.split(":::");
-            for (String entry : entries) {
-                String[] parts = entry.split("\\|\\|\\|");
-                if (parts.length == 2) {
-                    map.put(parts[0].toLowerCase().trim(), parts[1]);
+        if (!TextUtils.isEmpty(jsonString)) {
+            try {
+                JSONObject obj = new JSONObject(jsonString);
+                Iterator<String> keys = obj.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    String value = obj.optString(key, "");
+                    map.put(key.toLowerCase().trim(), value);
                 }
+            } catch (JSONException e) {
+                // Invalid JSON in prefs; just start fresh
+                e.printStackTrace();
             }
         }
         return map;
@@ -373,6 +380,7 @@ public class Utils {
 
     public static void setUserTag(Context ctx, String username, String tag) {
         if (TextUtils.isEmpty(username)) return;
+        // Load existing
         Map<String, String> map = getUserTags(ctx);
         String key = username.toLowerCase().trim();
         if (TextUtils.isEmpty(tag)) {
@@ -380,15 +388,20 @@ public class Utils {
         } else {
             map.put(key, tag.trim());
         }
-
-        StringBuilder sb = new StringBuilder();
-        Iterator<Map.Entry<String, String>> it = map.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<String, String> e = it.next();
-            sb.append(e.getKey()).append("|||").append(e.getValue());
-            if (it.hasNext()) sb.append(":::");
+        // Convert back to JSON
+        JSONObject obj = new JSONObject();
+        for (Map.Entry<String, String> e : map.entrySet()) {
+            try {
+                obj.put(e.getKey(), e.getValue());
+            } catch (JSONException ex) {
+                ex.printStackTrace();
+            }
         }
-        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_USER_TAGS, sb.toString());
+        SettingsUtils.saveStringToSharedPreferences(
+                ctx,
+                KEY_SHARED_PREFERENCES_USER_TAGS,
+                obj.toString()
+        );
     }
 
     public static boolean isFirstAppStart(Context ctx) {

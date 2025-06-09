@@ -106,21 +106,23 @@
                 tools:text="Submissions" />
 
             <Button
+                android:minWidth="10dp"
+                android:layout_marginTop="8dp"
                 android:id="@+id/user_tag_button"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="?attr/storyColorNormal"
-                android:text="Add tag" />
+                android:text="Set tag" />
 
             <Button
+                android:minWidth="10dp"
                 android:id="@+id/user_block_button"
                 style="@style/Widget.Material3.Button.TextButton"
-                android:layout_marginTop="8dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="?attr/storyColorNormal"
-                android:text="Block user" />
+                android:text="Block" />
 
             <Button
                 android:id="@+id/user_report_button"
@@ -128,7 +130,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="?attr/storyColorNormal"
-                android:text="Report user (email HN)" />
+                android:text="Report (email HN)" />
 
 
         </LinearLayout>

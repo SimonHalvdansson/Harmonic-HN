@@ -1463,7 +1463,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void clickUser() {
-        UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), adapter.story.by);
+        UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), adapter.story.by, new UserDialogFragment.UserDialogCallback() {
+            @Override
+            public void onResult(boolean accepted) {
+                if (accepted) {
+                    updateUserTags(story.by);
+                }
+            }
+        });
     }
 
     public void clickComment() {
@@ -1622,7 +1629,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void onClick(DialogInterface dialog, int which) {
                 switch (which) {
                     case 0: //view user
-                        UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), comment.by);
+
+                        UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), comment.by, new UserDialogFragment.UserDialogCallback() {
+                            @Override
+                            public void onResult(boolean accepted) {
+                                if (accepted) {
+                                    updateUserTags(comment.by);
+                                }
+                            }
+                        });
 
                         break;
                     case 1: //share comment
@@ -1683,6 +1698,23 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         AlertDialog dialog = builder.create();
         commentAdapter.disableCommentATagClick = true;
         dialog.show();
+    }
+
+    private void updateUserTags(String changedUser) {
+        if (story.by.equals(changedUser)) {
+            CommentsFragment.this.adapter.notifyItemChanged(0);
+        }
+        for (int i = 1; i < comments.size(); i++) {
+            String by = comments.get(i).by;
+            if (by != null) {
+                if (by.equals(changedUser)) {
+                    if (CommentsFragment.this.adapter != null) {
+                        CommentsFragment.this.adapter.notifyItemChanged(i);
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     @Override
