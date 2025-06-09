@@ -278,6 +278,7 @@ public class ComposeActivity extends AppCompatActivity {
     public void submit(View view) {
         MaterialButton submitButton = (MaterialButton) view;
         CircularProgressDrawable c = new CircularProgressDrawable(this);
+        submitButton.setEnabled(false);
         submitButton.setIcon(c);
         c.start();
 
@@ -286,6 +287,7 @@ public class ComposeActivity extends AppCompatActivity {
                 @Override
                 public void onSuccess(Response response) {
                     submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
+                    submitButton.setEnabled(true);
                     Toast.makeText(view.getContext(), "Post submitted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
                     finish();
                 }
@@ -293,6 +295,7 @@ public class ComposeActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(String summary, String response) {
                     submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
+                    submitButton.setEnabled(true);
                     UserActions.showFailureDetailDialog(view.getContext(), summary, response);
                     Toast.makeText(view.getContext(), "Post submission unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
                 }
@@ -304,6 +307,7 @@ public class ComposeActivity extends AppCompatActivity {
                 @Override
                 public void onSuccess(Response response) {
                     submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
+                    submitButton.setEnabled(true);
                     Toast.makeText(view.getContext(), "Comment posted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
                     finish();
                 }
@@ -311,6 +315,7 @@ public class ComposeActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(String summary, String response) {
                     submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
+                    submitButton.setEnabled(true);
                     UserActions.showFailureDetailDialog(view.getContext(), summary, response + "\n\n" + "Here is your comment should you wish to copy it and try again:\n" + commentText);
                     Toast.makeText(view.getContext(), "Comment post unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
                 }
