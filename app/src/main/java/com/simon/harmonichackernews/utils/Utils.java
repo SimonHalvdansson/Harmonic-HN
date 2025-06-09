@@ -53,9 +53,11 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -74,6 +76,7 @@ public class Utils {
     public final static String GLOBAL_SHARED_PREFERENCES_KEY = "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY";
 
     public final static String KEY_SHARED_PREFERENCES_BOOKMARKS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_BOOKMARKS";
+    public final static String KEY_SHARED_PREFERENCES_USER_TAGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_USER_TAGS";
     public final static String KEY_SHARED_PREFERENCES_FIRST_TIME = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FIRST_TIME";
     public final static String KEY_SHARED_PREFERENCES_LAST_VERSION = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION";
 
@@ -344,6 +347,48 @@ public class Utils {
 
 
         return true;
+    }
+
+    public static Map<String, String> getUserTags(Context ctx) {
+        String tagsString = SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_USER_TAGS);
+        Map<String, String> map = new HashMap<>();
+        if (!TextUtils.isEmpty(tagsString)) {
+            String[] entries = tagsString.split(":::");
+            for (String entry : entries) {
+                String[] parts = entry.split("\\|\\|\\|");
+                if (parts.length == 2) {
+                    map.put(parts[0].toLowerCase().trim(), parts[1]);
+                }
+            }
+        }
+        return map;
+    }
+
+    public static String getUserTag(Context ctx, String username) {
+        if (TextUtils.isEmpty(username)) return "";
+        Map<String, String> map = getUserTags(ctx);
+        String tag = map.get(username.toLowerCase().trim());
+        return tag == null ? "" : tag;
+    }
+
+    public static void setUserTag(Context ctx, String username, String tag) {
+        if (TextUtils.isEmpty(username)) return;
+        Map<String, String> map = getUserTags(ctx);
+        String key = username.toLowerCase().trim();
+        if (TextUtils.isEmpty(tag)) {
+            map.remove(key);
+        } else {
+            map.put(key, tag.trim());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        Iterator<Map.Entry<String, String>> it = map.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, String> e = it.next();
+            sb.append(e.getKey()).append("|||").append(e.getValue());
+            if (it.hasNext()) sb.append(":::");
+        }
+        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_USER_TAGS, sb.toString());
     }
 
     public static boolean isFirstAppStart(Context ctx) {

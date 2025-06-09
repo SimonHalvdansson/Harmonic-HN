@@ -31,6 +31,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.AccountUtils;
@@ -56,6 +57,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     private TextView metaTextview;
     private HtmlTextView aboutTextview;
     private Button submissionsButton;
+    private Button tagButton;
     private Button blockButton;
     private Button reportButton;
     private LoadingIndicator loadingProgress;
@@ -79,6 +81,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         metaTextview = rootView.findViewById(R.id.user_meta);
         aboutTextview = rootView.findViewById(R.id.user_about);
         submissionsButton = rootView.findViewById(R.id.user_submissions_button);
+        tagButton = rootView.findViewById(R.id.user_tag_button);
         reportButton = rootView.findViewById(R.id.user_report_button);
         blockButton = rootView.findViewById(R.id.user_block_button);
         loadingProgress = rootView.findViewById(R.id.user_loading);
@@ -137,20 +140,24 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             if (jsonObject.has("about") && !TextUtils.isEmpty(jsonObject.getString("about"))) {
                                 setLinkifiedText(Html.fromHtml(jsonObject.getString("about")).toString().trim(), aboutTextview);
                             } else {
-                                aboutTextview.setVisibility(View.GONE);
-                            }
+                            aboutTextview.setVisibility(View.GONE);
+                        }
 
-                            aboutTextview.setOnClickATagListener(new OnClickATagListener() {
+                        aboutTextview.setOnClickATagListener(new OnClickATagListener() {
                                 @Override
                                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
                                     Utils.openLinkMaybeHN(widget.getContext(), href);
                                     return true;
-                                }
-                            });
+                            }
+                        });
 
-                            if (userName.equals(AccountUtils.getAccountUsername(getContext()))) {
-                                reportButton.setVisibility(View.GONE);
-                                blockButton.setVisibility(View.GONE);
+                        String currentTag = Utils.getUserTag(getContext(), userName);
+                        tagButton.setText(TextUtils.isEmpty(currentTag) ? "Add tag" : "Change tag");
+                        tagButton.setOnClickListener(v -> showTagDialog(userName, currentTag));
+
+                        if (userName.equals(AccountUtils.getAccountUsername(getContext()))) {
+                            reportButton.setVisibility(View.GONE);
+                            blockButton.setVisibility(View.GONE);
                             } else {
                                 reportButton.setVisibility(View.VISIBLE);
                                 blockButton.setVisibility(View.VISIBLE);
@@ -244,6 +251,30 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         textView.setMovementMethod(LinkMovementMethod.getInstance());
 
         textView.setText(spannableString);
+    }
+
+    private void showTagDialog(String userName, String currentTag) {
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
+        LayoutInflater inflater = requireActivity().getLayoutInflater();
+        View view = inflater.inflate(R.layout.tag_dialog, null);
+        builder.setView(view);
+        AlertDialog dialog = builder.create();
+
+        TextInputEditText editText = view.findViewById(R.id.tag_dialog_edittext);
+        Button cancel = view.findViewById(R.id.tag_dialog_cancel);
+        Button save = view.findViewById(R.id.tag_dialog_save);
+
+        editText.setText(currentTag);
+
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        save.setOnClickListener(v -> {
+            String tag = editText.getText() != null ? editText.getText().toString().trim() : "";
+            Utils.setUserTag(getContext(), userName, tag);
+            tagButton.setText(TextUtils.isEmpty(tag) ? "Add tag" : "Change tag");
+            dialog.dismiss();
+        });
+
+        dialog.show();
     }
 
 }
