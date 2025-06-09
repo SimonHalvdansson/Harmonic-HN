@@ -1,0 +1,38 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960"
+    android:tint="?attr/drawableColor"
+    android:alpha="0.8"
+    android:autoMirrored="true">
+
+  <path
+      android:fillColor="#000000"
+      android:fillType="nonZero"
+      android:pathData="
+            M200,840
+            v-680
+            h360
+            l16,80
+            h224
+            v400
+            H520
+            l-16,-80
+            H280
+            v280
+            h-80
+            Z
+            m300,-440
+            Z
+            m86,160
+            h134
+            v-240
+            H510
+            l-16,-80
+            H280
+            v240
+            h290
+            l16,80
+            Z" />
+</vector>
