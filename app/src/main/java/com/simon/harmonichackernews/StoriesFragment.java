@@ -895,7 +895,7 @@ public class StoriesFragment extends Fragment {
         loadedTo = stories.size() - 1;
         adapter.loadingFailed = false;
         adapter.loadingFailedServerError = false;
-        adapter.notifyDataSetChanged();
+        adapter.notifyItemRangeChanged(0, stories.size());
     }
 
     private void hideUpdateButton() {
