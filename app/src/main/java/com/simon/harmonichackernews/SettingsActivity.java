@@ -237,7 +237,12 @@ public class SettingsActivity extends AppCompatActivity {
             findPreference("pref_manage_user_tags").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
                 public boolean onPreferenceClick(@NonNull Preference preference) {
-                    ManageUserTagsDialogFragment.showManageUserTagsDialog(getParentFragmentManager());
+                    ManageUserTagsDialogFragment.showManageUserTagsDialog(getParentFragmentManager(), new Runnable() {
+                        @Override
+                        public void run() {
+                            updateUserTagsSubtitle();
+                        }
+                    });
                     return false;
                 }
             });
@@ -347,9 +352,11 @@ public class SettingsActivity extends AppCompatActivity {
             if (pref != null && getContext() != null) {
                 int count = Utils.getUserTags(getContext()).size();
                 if (count > 0) {
-                    pref.setSummary(count + " users with tags");
+                    pref.setSummary(count + " user" + (count == 1 ? "" : "s") + " with tag" + (count == 1 ? "" : "s"));
+                    changePrefStatus(pref, true);
                 } else {
                     pref.setSummary("");
+                    changePrefStatus(pref, false);
                 }
             }
         }
