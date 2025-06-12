@@ -106,6 +106,7 @@
                 tools:text="Submissions" />
 
             <Button
+                app:icon="@drawable/ic_action_tag"
                 android:minWidth="10dp"
                 android:layout_marginTop="8dp"
                 android:id="@+id/user_tag_button"
@@ -116,6 +117,7 @@
                 android:text="Set tag" />
 
             <Button
+                app:icon="@drawable/ic_action_block"
                 android:minWidth="10dp"
                 android:id="@+id/user_block_button"
                 style="@style/Widget.Material3.Button.TextButton"
@@ -125,6 +127,7 @@
                 android:text="Block" />
 
             <Button
+                app:icon="@drawable/ic_action_report"
                 android:id="@+id/user_report_button"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
