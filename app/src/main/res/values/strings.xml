@@ -12,10 +12,9 @@
         <item>HN Jobs</item>
         <item>Bookmarks</item>
         <item>History</item>
-        <item>Preload posts</item>
     </string-array>
 
-    <string name="show_preloaded_posts">Show preloaded posts</string>
+    <string name="show_cached_stories">Show cached stories</string>
 
     <string-array name="search_sorting_options">
         <item>Popularity</item>

@@ -203,7 +203,7 @@ public class Utils {
         return SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id);
     }
 
-    public static boolean hasPreloadedStories(Context ctx) {
+    public static boolean hasCachedStories(Context ctx) {
         Set<String> cached = SettingsUtils.readStringSetFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
         if (cached == null) {
             return false;
@@ -219,7 +219,7 @@ public class Utils {
         return false;
     }
 
-    public static ArrayList<Story> loadPreloadedStories(Context ctx) {
+    public static ArrayList<Story> loadCachedStories(Context ctx) {
         Set<String> cached = SettingsUtils.readStringSetFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
         ArrayList<Story> stories = new ArrayList<>();
         if (cached == null) {
@@ -250,7 +250,7 @@ public class Utils {
             try {
                 JSONObject obj = new JSONObject(json);
                 Story story = new Story();
-                JSONParser.updateStoryInformation(story, obj, true, 0, obj.getJSONArray("children").length());
+                JSONParser.updateStoryInformation(story, obj, true, 0, obj.getJSONArray("children").length() + 1);
                 stories.add(story);
             } catch (Exception ignored) {}
         }

@@ -195,7 +195,7 @@
             android:text="Retry"    />
 
         <Button
-            android:id="@+id/stories_header_show_preloaded"
+            android:id="@+id/stories_header_show_cached"
             android:layout_gravity="center_horizontal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -204,7 +204,7 @@
             android:textColor="?attr/colorOnSecondary"
             app:iconTint="?attr/colorOnSecondary"
             android:backgroundTint="?attr/colorSecondary"
-            android:text="@string/show_preloaded_posts" />
+            android:text="@string/show_cached_stories" />
 
     </LinearLayout>
 

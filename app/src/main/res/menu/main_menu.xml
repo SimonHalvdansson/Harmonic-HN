@@ -14,8 +14,8 @@
         android:title="Profile" />
 
     <item
-        android:id="@+id/menu_preload"
-        android:title="Preload posts" />
+        android:id="@+id/menu_cache"
+        android:title="Cache stories" />
 
     <item
         android:id="@+id/menu_settings"
