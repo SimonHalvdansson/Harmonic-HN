@@ -35,6 +35,8 @@ import com.simon.harmonichackernews.BuildConfig;
 import com.simon.harmonichackernews.CommentsActivity;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
+import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.network.JSONParser;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -197,6 +199,54 @@ public class Utils {
 
     public static String loadCachedStory(Context ctx, int id) {
         return SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id);
+    }
+
+    public static boolean hasPreloadedStories(Context ctx) {
+        Set<String> cached = SettingsUtils.readStringSetFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
+        if (cached == null) {
+            return false;
+        }
+
+        long limit = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
+        for (String entry : cached) {
+            String[] split = entry.split("-");
+            if (split.length == 2 && Long.parseLong(split[1]) >= limit) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static ArrayList<Story> loadPreloadedStories(Context ctx) {
+        Set<String> cached = SettingsUtils.readStringSetFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
+        ArrayList<Story> stories = new ArrayList<>();
+        if (cached == null) {
+            return stories;
+        }
+
+        long limit = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
+
+        for (String entry : cached) {
+            String[] split = entry.split("-");
+            if (split.length != 2) continue;
+
+            int id = Integer.parseInt(split[0]);
+            long time = Long.parseLong(split[1]);
+            if (time < limit) continue;
+
+            String json = loadCachedStory(ctx, id);
+            if (json == null || json.equals(JSONParser.ALGOLIA_ERROR_STRING)) continue;
+
+            try {
+                JSONObject obj = new JSONObject(json);
+                Story story = new Story();
+                JSONParser.updateStoryInformation(story, obj, true, 0, obj.getJSONArray("children").length());
+                stories.add(story);
+            } catch (Exception ignored) {}
+        }
+
+        Collections.sort(stories, (a, b) -> Integer.compare(b.time, a.time));
+        return stories;
     }
 
     public static ArrayList<Bookmark> loadBookmarks(Context ctx, boolean sorted) {

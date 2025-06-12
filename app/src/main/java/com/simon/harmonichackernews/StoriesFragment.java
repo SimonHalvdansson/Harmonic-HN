@@ -78,6 +78,8 @@ public class StoriesFragment extends Fragment {
     private boolean hideJobs, alwaysOpenComments, hideClicked;
     private String lastSearch;
 
+    private boolean showingPreloaded = false;
+
     private int loadedTo = 0;
 
     public final static String[] hnUrls = new String[]{Utils.URL_TOP, Utils.URL_NEW, Utils.URL_BEST, Utils.URL_ASK, Utils.URL_SHOW, Utils.URL_JOBS};
@@ -194,6 +196,16 @@ public class StoriesFragment extends Fragment {
         return typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(getContext()));
     }
 
+    private int getPreloadIndex() {
+        String[] sortingOptions = getResources().getStringArray(R.array.sorting_options);
+        for (int i = 0; i < sortingOptions.length; i++) {
+            if ("Preload posts".equals(sortingOptions[i])) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     private void setupAdapter() {
         adapter = new StoryRecyclerViewAdapter(stories,
                 SettingsUtils.shouldShowPoints(getContext()),
@@ -252,10 +264,18 @@ public class StoriesFragment extends Fragment {
         adapter.setOnCommentClickListener(this::clickedComments);
         adapter.setOnRefreshListener(this::attemptRefresh);
         adapter.setOnMoreClickListener(this::moreClick);
+        adapter.setOnShowPreloadedListener(this::showPreloadedStories);
 
         adapter.setOnTypeClickListener(index -> {
+            int preloadIndex = getPreloadIndex();
+            if (index == preloadIndex) {
+                preloadPosts();
+                adapter.notifyItemChanged(0);
+                return;
+            }
             if (index != adapter.type) {
                 adapter.type = index;
+                showingPreloaded = false;
                 attemptRefresh();
             }
         });
@@ -579,6 +599,7 @@ public class StoriesFragment extends Fragment {
 
     public void attemptRefresh() {
         hideUpdateButton();
+        showingPreloaded = false;
         if (adapter.searching) {
             search(lastSearch);
             return;
@@ -836,6 +857,43 @@ public class StoriesFragment extends Fragment {
             return true;
         }
         return false;
+    }
+
+    private void preloadPosts() {
+        Toast.makeText(getContext(), "Preloading posts...", Toast.LENGTH_SHORT).show();
+        StringRequest request = new StringRequest(Request.Method.GET, Utils.URL_TOP,
+                response -> {
+                    try {
+                        JSONArray arr = new JSONArray(response);
+                        for (int i = 0; i < Math.min(20, arr.length()); i++) {
+                            int id = arr.getInt(i);
+                            String url = "https://hn.algolia.com/api/v1/items/" + id;
+                            StringRequest r = new StringRequest(Request.Method.GET, url,
+                                    res -> Utils.cacheStory(getContext(), id, res), error -> {});
+                            queue.add(r);
+                        }
+                        Toast.makeText(getContext(), "Posts preloaded", Toast.LENGTH_SHORT).show();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                        Toast.makeText(getContext(), "Preload failed", Toast.LENGTH_SHORT).show();
+                    }
+                }, error -> Toast.makeText(getContext(), "Preload failed", Toast.LENGTH_SHORT).show());
+
+        queue.add(request);
+    }
+
+    private void showPreloadedStories() {
+        showingPreloaded = true;
+        swipeRefreshLayout.setRefreshing(false);
+
+        adapter.notifyItemRangeRemoved(1, stories.size());
+        stories.clear();
+        stories.add(new Story());
+        stories.addAll(Utils.loadPreloadedStories(getContext()));
+        loadedTo = stories.size() - 1;
+        adapter.loadingFailed = false;
+        adapter.loadingFailedServerError = false;
+        adapter.notifyDataSetChanged();
     }
 
     private void hideUpdateButton() {

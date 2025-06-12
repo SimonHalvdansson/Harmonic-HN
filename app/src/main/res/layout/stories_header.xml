@@ -194,6 +194,18 @@
             android:id="@+id/stories_header_retry_button"
             android:text="Retry"    />
 
+        <Button
+            android:id="@+id/stories_header_show_preloaded"
+            android:layout_gravity="center_horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            style="@style/Widget.Material3.Button.ElevatedButton"
+            app:icon="@drawable/ic_action_library_books"
+            android:textColor="?attr/colorOnSecondary"
+            app:iconTint="?attr/colorOnSecondary"
+            android:backgroundTint="?attr/colorSecondary"
+            android:text="@string/show_preloaded_posts" />
+
     </LinearLayout>
 
 </LinearLayout>
