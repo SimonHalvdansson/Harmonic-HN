@@ -18,7 +18,7 @@
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/tag_dialog_edittext"
                 android:hint="Tag"
-                android:inputType="text"
+                android:inputType="textCapSentences"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -39,13 +39,13 @@
                 android:layout_height="wrap_content" />
 
             <Button
+                android:textColor="?attr/storyColorNormal"
                 android:id="@+id/tag_dialog_save"
-                style="@style/Widget.Material3.Button.OutlinedButton.Icon"
-                app:icon="@drawable/ic_action_check"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentRight="true"
-                android:text="Save" />
+                android:text="Set" />
         </RelativeLayout>
 
     </LinearLayout>

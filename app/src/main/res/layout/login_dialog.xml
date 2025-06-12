@@ -119,14 +119,14 @@
                 android:layout_height="wrap_content"    />
 
             <Button
+                android:textColor="?attr/storyColorNormal"
                 android:id="@+id/login_dialog_save"
-                style="@style/Widget.Material3.Button.OutlinedButton.Icon"
-                app:icon="@drawable/ic_action_check"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentRight="true"
                 android:enabled="false"
-                android:text="Save" />
+                android:text="Log in" />
 
         </RelativeLayout>
 
