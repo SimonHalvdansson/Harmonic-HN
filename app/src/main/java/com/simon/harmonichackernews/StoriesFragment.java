@@ -78,7 +78,7 @@ public class StoriesFragment extends Fragment {
     private boolean hideJobs, alwaysOpenComments, hideClicked;
     private String lastSearch;
 
-    private boolean showingPreloaded = false;
+    private boolean showingCached = false;
 
     private int loadedTo = 0;
 
@@ -196,15 +196,6 @@ public class StoriesFragment extends Fragment {
         return typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(getContext()));
     }
 
-    private int getPreloadIndex() {
-        String[] sortingOptions = getResources().getStringArray(R.array.sorting_options);
-        for (int i = 0; i < sortingOptions.length; i++) {
-            if ("Preload posts".equals(sortingOptions[i])) {
-                return i;
-            }
-        }
-        return -1;
-    }
 
     private void setupAdapter() {
         adapter = new StoryRecyclerViewAdapter(stories,
@@ -264,18 +255,12 @@ public class StoriesFragment extends Fragment {
         adapter.setOnCommentClickListener(this::clickedComments);
         adapter.setOnRefreshListener(this::attemptRefresh);
         adapter.setOnMoreClickListener(this::moreClick);
-        adapter.setOnShowPreloadedListener(this::showPreloadedStories);
+        adapter.setOnShowCachedListener(this::showCachedStories);
 
         adapter.setOnTypeClickListener(index -> {
-            int preloadIndex = getPreloadIndex();
-            if (index == preloadIndex) {
-                preloadPosts();
-                adapter.notifyItemChanged(0);
-                return;
-            }
             if (index != adapter.type) {
                 adapter.type = index;
-                showingPreloaded = false;
+                showingCached = false;
                 attemptRefresh();
             }
         });
@@ -576,8 +561,8 @@ public class StoriesFragment extends Fragment {
                     }
                 } else if (item.getItemId() == R.id.menu_profile) {
                     UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), AccountUtils.getAccountUsername(requireActivity()));
-                } else if (item.getItemId() == R.id.menu_preload) {
-                    preloadPosts();
+                } else if (item.getItemId() == R.id.menu_cache) {
+                    cacheStories();
                 } else if (item.getItemId() == R.id.menu_submit) {
                     Intent submitIntent = new Intent(getContext(), ComposeActivity.class);
                     submitIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_POST);
@@ -601,7 +586,7 @@ public class StoriesFragment extends Fragment {
 
     public void attemptRefresh() {
         hideUpdateButton();
-        showingPreloaded = false;
+        showingCached = false;
         if (adapter.searching) {
             search(lastSearch);
             return;
@@ -861,8 +846,8 @@ public class StoriesFragment extends Fragment {
         return false;
     }
 
-    private void preloadPosts() {
-        Toast.makeText(getContext(), "Preloading posts...", Toast.LENGTH_SHORT).show();
+    private void cacheStories() {
+        Toast.makeText(getContext(), "Caching stories...", Toast.LENGTH_SHORT).show();
         StringRequest request = new StringRequest(Request.Method.GET, Utils.URL_TOP,
                 response -> {
                     try {
@@ -874,24 +859,24 @@ public class StoriesFragment extends Fragment {
                                     res -> Utils.cacheStory(getContext(), id, res), error -> {});
                             queue.add(r);
                         }
-                        Toast.makeText(getContext(), "Posts preloaded", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "Stories cached", Toast.LENGTH_SHORT).show();
                     } catch (JSONException e) {
                         e.printStackTrace();
-                        Toast.makeText(getContext(), "Preload failed", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "Caching failed", Toast.LENGTH_SHORT).show();
                     }
-                }, error -> Toast.makeText(getContext(), "Preload failed", Toast.LENGTH_SHORT).show());
+                }, error -> Toast.makeText(getContext(), "Caching failed", Toast.LENGTH_SHORT).show());
 
         queue.add(request);
     }
 
-    private void showPreloadedStories() {
-        showingPreloaded = true;
+    private void showCachedStories() {
+        showingCached = true;
         swipeRefreshLayout.setRefreshing(false);
 
         adapter.notifyItemRangeRemoved(1, stories.size());
         stories.clear();
         stories.add(new Story());
-        stories.addAll(Utils.loadPreloadedStories(getContext()));
+        stories.addAll(Utils.loadCachedStories(getContext()));
         loadedTo = stories.size() - 1;
         adapter.loadingFailed = false;
         adapter.loadingFailedServerError = false;

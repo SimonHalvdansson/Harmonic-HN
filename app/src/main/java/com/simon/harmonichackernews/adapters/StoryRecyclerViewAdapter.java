@@ -59,7 +59,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private ClickListener commentStoryClickListener;
     private SearchListener storiesSearchListener;
     private RefreshListener refreshListener;
-    private PreloadedListener preloadedListener;
+    private CachedListener cachedListener;
     private View.OnClickListener moreClickListener;
     private LongClickCoordinateListener longClickListener;
     private final boolean atSubmissions;
@@ -292,7 +292,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
             }
 
-            headerViewHolder.showPreloadedButton.setVisibility(loadingFailed && Utils.hasPreloadedStories(ctx) ? View.VISIBLE : View.GONE);
+            headerViewHolder.showCachedButton.setVisibility(loadingFailed && Utils.hasCachedStories(ctx) ? View.VISIBLE : View.GONE);
 
             headerViewHolder.loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
         } else if (holder instanceof SubmissionsHeaderViewHolder) {
@@ -402,7 +402,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final ImageButton moreButton;
         public final ImageButton searchButton;
         public final Button retryButton;
-        public final Button showPreloadedButton;
+        public final Button showCachedButton;
 
         public ArrayAdapter<CharSequence> typeAdapter;
 
@@ -423,13 +423,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             searchButton = view.findViewById(R.id.stories_header_search_button);
             searchEmptyContainer = view.findViewById(R.id.stories_header_search_empty_container);
             retryButton = view.findViewById(R.id.stories_header_retry_button);
-            showPreloadedButton = view.findViewById(R.id.stories_header_show_preloaded);
+            showCachedButton = view.findViewById(R.id.stories_header_show_cached);
             loadingIndicator = view.findViewById(R.id.stories_header_loading_indicator);
 
             retryButton.setOnClickListener((v) -> refreshListener.onRefresh());
-            showPreloadedButton.setOnClickListener(v -> {
-                if (preloadedListener != null) {
-                    preloadedListener.onShowPreloaded();
+            showCachedButton.setOnClickListener(v -> {
+                if (cachedListener != null) {
+                    cachedListener.onShowCached();
                 }
             });
 
@@ -587,8 +587,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         refreshListener = listener;
     }
 
-    public void setOnShowPreloadedListener(PreloadedListener listener) {
-        preloadedListener = listener;
+    public void setOnShowCachedListener(CachedListener listener) {
+        cachedListener = listener;
     }
 
     public void setOnMoreClickListener(View.OnClickListener listener) {
@@ -613,8 +613,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         void onRefresh();
     }
 
-    public interface PreloadedListener {
-        void onShowPreloaded();
+    public interface CachedListener {
+        void onShowCached();
     }
 
     public interface LongClickCoordinateListener {
