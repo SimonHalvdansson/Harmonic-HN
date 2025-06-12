@@ -4,6 +4,7 @@ import android.app.Dialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.content.DialogInterface;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -24,6 +25,7 @@ public class ManageUserTagsDialogFragment extends AppCompatDialogFragment {
     public static String TAG = "tag_manage_user_tags";
 
     private UserTagsAdapter adapter;
+    private Runnable dismissCallback;
 
     @NonNull
     @Override
@@ -51,8 +53,21 @@ public class ManageUserTagsDialogFragment extends AppCompatDialogFragment {
         return dialog;
     }
 
-    public static void showManageUserTagsDialog(FragmentManager fm) {
+    public static void showManageUserTagsDialog(FragmentManager fm, @Nullable Runnable callback) {
         ManageUserTagsDialogFragment fragment = new ManageUserTagsDialogFragment();
+        fragment.setDismissCallback(callback);
         fragment.show(fm, TAG);
+    }
+
+    public void setDismissCallback(@Nullable Runnable callback) {
+        this.dismissCallback = callback;
+    }
+
+    @Override
+    public void onDismiss(@NonNull DialogInterface dialog) {
+        super.onDismiss(dialog);
+        if (dismissCallback != null) {
+            dismissCallback.run();
+        }
     }
 }
