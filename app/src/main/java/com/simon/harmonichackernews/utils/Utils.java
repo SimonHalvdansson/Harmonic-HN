@@ -37,6 +37,7 @@ import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
+import androidx.core.util.Pair;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -56,6 +57,7 @@ import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -226,6 +228,8 @@ public class Utils {
 
         long limit = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
 
+        List<Pair<Long, Integer>> orderedIds = new ArrayList<>();
+
         for (String entry : cached) {
             String[] split = entry.split("-");
             if (split.length != 2) continue;
@@ -234,7 +238,13 @@ public class Utils {
             long time = Long.parseLong(split[1]);
             if (time < limit) continue;
 
-            String json = loadCachedStory(ctx, id);
+            orderedIds.add(new Pair<>(time, id));
+        }
+
+        Collections.sort(orderedIds, Comparator.comparingLong(p -> p.first));
+
+        for (Pair<Long, Integer> pair : orderedIds) {
+            String json = loadCachedStory(ctx, pair.second);
             if (json == null || json.equals(JSONParser.ALGOLIA_ERROR_STRING)) continue;
 
             try {
@@ -245,7 +255,6 @@ public class Utils {
             } catch (Exception ignored) {}
         }
 
-        Collections.sort(stories, (a, b) -> Integer.compare(b.time, a.time));
         return stories;
     }
 
