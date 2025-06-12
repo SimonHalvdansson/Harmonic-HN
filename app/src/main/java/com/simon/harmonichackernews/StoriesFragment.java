@@ -576,6 +576,8 @@ public class StoriesFragment extends Fragment {
                     }
                 } else if (item.getItemId() == R.id.menu_profile) {
                     UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), AccountUtils.getAccountUsername(requireActivity()));
+                } else if (item.getItemId() == R.id.menu_preload) {
+                    preloadPosts();
                 } else if (item.getItemId() == R.id.menu_submit) {
                     Intent submitIntent = new Intent(getContext(), ComposeActivity.class);
                     submitIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_POST);
