@@ -158,6 +158,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private RecyclerView.SmoothScroller smoothScroller;
     private LinearLayout scrollNavigation;
     private LinearProgressIndicator progressIndicator;
+    private float defaultWaveAmplitude;
+    private Handler waveHandler = new Handler(Looper.getMainLooper());
+    private Runnable waveDecayRunnable;
+    private long lastProgressUpdate;
     private LinearLayout bottomSheet;
     private WebView webView;
     private FrameLayout webViewContainer;
@@ -361,6 +365,24 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         progressIndicator = view.findViewById(R.id.webview_progress);
+        defaultWaveAmplitude = progressIndicator.getWaveAmplitude();
+        waveDecayRunnable = new Runnable() {
+            @Override
+            public void run() {
+                long elapsed = System.currentTimeMillis() - lastProgressUpdate;
+                if (elapsed >= 4000) {
+                    float amp = progressIndicator.getWaveAmplitude();
+                    float step = defaultWaveAmplitude / 10f;
+                    if (amp > 0f) {
+                        amp = Math.max(0f, amp - step);
+                        progressIndicator.setWaveAmplitude(amp);
+                        waveHandler.postDelayed(this, 200);
+                    }
+                }
+            }
+        };
+        lastProgressUpdate = System.currentTimeMillis();
+        waveHandler.postDelayed(waveDecayRunnable, 4000);
 
         if (integratedWebview) {
             initializeWebView();
@@ -800,24 +822,47 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             private ValueAnimator progressAnimator;
 
             public void onProgressChanged(WebView view, int newProgress) {
+                lastProgressUpdate = System.currentTimeMillis();
+                waveHandler.removeCallbacks(waveDecayRunnable);
+                waveHandler.postDelayed(waveDecayRunnable, 4000);
+
                 if (progressAnimator != null && progressAnimator.isRunning()) {
                     progressAnimator.cancel();
                 }
 
                 int current = progressIndicator.getProgress();
-                if (newProgress > current) {
+                if (newProgress >= 100) {
+                    progressIndicator.setVisibility(View.VISIBLE);
+                    progressAnimator = ValueAnimator.ofInt(current, 100);
+                    progressAnimator.setDuration(200);
+                    progressAnimator.addUpdateListener(anim -> {
+                        progressIndicator.setProgress((int) anim.getAnimatedValue());
+                    });
+                    progressAnimator.addListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            progressIndicator.setVisibility(View.GONE);
+                        }
+                    });
+                    progressAnimator.start();
+                } else if (newProgress > current) {
+                    progressIndicator.setVisibility(View.VISIBLE);
                     progressAnimator = ValueAnimator.ofInt(current, newProgress);
                     progressAnimator.setDuration(400);
                     progressAnimator.addUpdateListener(anim -> {
-                        int animatedValue = (int) anim.getAnimatedValue();
-                        progressIndicator.setProgress(animatedValue);
+                        progressIndicator.setProgress((int) anim.getAnimatedValue());
                     });
                     progressAnimator.start();
+
+                    if (progressIndicator.getWaveAmplitude() < defaultWaveAmplitude) {
+                        ValueAnimator ampAnim = ValueAnimator.ofFloat(progressIndicator.getWaveAmplitude(), defaultWaveAmplitude);
+                        ampAnim.setDuration(300);
+                        ampAnim.addUpdateListener(a -> progressIndicator.setWaveAmplitude((float) a.getAnimatedValue()));
+                        ampAnim.start();
+                    }
                 } else {
                     progressIndicator.setProgress(newProgress);
                 }
-
-                progressIndicator.setVisibility(newProgress < 100 ? View.VISIBLE : View.GONE);
             }
         });
 
