@@ -241,7 +241,8 @@ public class Utils {
             orderedIds.add(new Pair<>(time, id));
         }
 
-        Collections.sort(orderedIds, Comparator.comparingLong(p -> p.first));
+        //dont replace, is there for old API compatibility
+        Collections.sort(orderedIds, (a, b) -> Long.compare(a.first, b.first));
 
         for (Pair<Long, Integer> pair : orderedIds) {
             String json = loadCachedStory(ctx, pair.second);
@@ -250,12 +251,31 @@ public class Utils {
             try {
                 JSONObject obj = new JSONObject(json);
                 Story story = new Story();
-                JSONParser.updateStoryInformation(story, obj, true, 0, obj.getJSONArray("children").length() + 1);
+
+                JSONParser.updateStoryInformation(story, obj, true, -1, getTotalCommentCount(obj)+1);
                 stories.add(story);
             } catch (Exception ignored) {}
         }
 
         return stories;
+    }
+
+    private static int getTotalCommentCount(JSONObject storyJson) throws JSONException {
+        JSONArray topLevel = storyJson.optJSONArray("children");
+        if (topLevel == null) return 0;
+        return countRecursively(topLevel);
+    }
+
+    private static int countRecursively(JSONArray arr) throws JSONException {
+        int count = arr.length();
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject child = arr.getJSONObject(i);
+            JSONArray replies = child.optJSONArray("children");
+            if (replies != null && replies.length() > 0) {
+                count += countRecursively(replies);
+            }
+        }
+        return count;
     }
 
     public static ArrayList<Bookmark> loadBookmarks(Context ctx, boolean sorted) {
