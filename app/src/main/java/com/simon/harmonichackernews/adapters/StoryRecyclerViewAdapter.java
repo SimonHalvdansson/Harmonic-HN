@@ -59,6 +59,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private ClickListener commentStoryClickListener;
     private SearchListener storiesSearchListener;
     private RefreshListener refreshListener;
+    private CachedListener cachedListener;
     private View.OnClickListener moreClickListener;
     private LongClickCoordinateListener longClickListener;
     private final boolean atSubmissions;
@@ -291,6 +292,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
             }
 
+            headerViewHolder.showCachedButton.setVisibility(loadingFailed && Utils.hasCachedStories(ctx) ? View.VISIBLE : View.GONE);
+
             headerViewHolder.loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
         } else if (holder instanceof SubmissionsHeaderViewHolder) {
             final SubmissionsHeaderViewHolder submissionsHeaderViewHolder = (SubmissionsHeaderViewHolder) holder;
@@ -399,6 +402,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final ImageButton moreButton;
         public final ImageButton searchButton;
         public final Button retryButton;
+        public final Button showCachedButton;
 
         public ArrayAdapter<CharSequence> typeAdapter;
 
@@ -419,9 +423,15 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             searchButton = view.findViewById(R.id.stories_header_search_button);
             searchEmptyContainer = view.findViewById(R.id.stories_header_search_empty_container);
             retryButton = view.findViewById(R.id.stories_header_retry_button);
+            showCachedButton = view.findViewById(R.id.stories_header_show_cached);
             loadingIndicator = view.findViewById(R.id.stories_header_loading_indicator);
 
             retryButton.setOnClickListener((v) -> refreshListener.onRefresh());
+            showCachedButton.setOnClickListener(v -> {
+                if (cachedListener != null) {
+                    cachedListener.onShowCached();
+                }
+            });
 
             moreButton.setOnClickListener(moreClickListener);
 
@@ -577,6 +587,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         refreshListener = listener;
     }
 
+    public void setOnShowCachedListener(CachedListener listener) {
+        cachedListener = listener;
+    }
+
     public void setOnMoreClickListener(View.OnClickListener listener) {
         moreClickListener = listener;
     }
@@ -597,6 +611,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     public interface RefreshListener {
         void onRefresh();
+    }
+
+    public interface CachedListener {
+        void onShowCached();
     }
 
     public interface LongClickCoordinateListener {

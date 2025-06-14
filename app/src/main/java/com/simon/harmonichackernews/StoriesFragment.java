@@ -78,6 +78,8 @@ public class StoriesFragment extends Fragment {
     private boolean hideJobs, alwaysOpenComments, hideClicked;
     private String lastSearch;
 
+    private boolean showingCached = false;
+
     private int loadedTo = 0;
 
     public final static String[] hnUrls = new String[]{Utils.URL_TOP, Utils.URL_NEW, Utils.URL_BEST, Utils.URL_ASK, Utils.URL_SHOW, Utils.URL_JOBS};
@@ -194,6 +196,7 @@ public class StoriesFragment extends Fragment {
         return typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(getContext()));
     }
 
+
     private void setupAdapter() {
         adapter = new StoryRecyclerViewAdapter(stories,
                 SettingsUtils.shouldShowPoints(getContext()),
@@ -252,10 +255,12 @@ public class StoriesFragment extends Fragment {
         adapter.setOnCommentClickListener(this::clickedComments);
         adapter.setOnRefreshListener(this::attemptRefresh);
         adapter.setOnMoreClickListener(this::moreClick);
+        adapter.setOnShowCachedListener(this::showCachedStories);
 
         adapter.setOnTypeClickListener(index -> {
             if (index != adapter.type) {
                 adapter.type = index;
+                showingCached = false;
                 attemptRefresh();
             }
         });
@@ -556,6 +561,8 @@ public class StoriesFragment extends Fragment {
                     }
                 } else if (item.getItemId() == R.id.menu_profile) {
                     UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), AccountUtils.getAccountUsername(requireActivity()));
+                } else if (item.getItemId() == R.id.menu_cache) {
+                    cacheStories();
                 } else if (item.getItemId() == R.id.menu_submit) {
                     Intent submitIntent = new Intent(getContext(), ComposeActivity.class);
                     submitIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_POST);
@@ -579,6 +586,7 @@ public class StoriesFragment extends Fragment {
 
     public void attemptRefresh() {
         hideUpdateButton();
+        showingCached = false;
         if (adapter.searching) {
             search(lastSearch);
             return;
@@ -836,6 +844,43 @@ public class StoriesFragment extends Fragment {
             return true;
         }
         return false;
+    }
+
+    private void cacheStories() {
+        Toast.makeText(getContext(), "Caching stories...", Toast.LENGTH_SHORT).show();
+        StringRequest request = new StringRequest(Request.Method.GET, Utils.URL_TOP,
+                response -> {
+                    try {
+                        JSONArray arr = new JSONArray(response);
+                        for (int i = 0; i < Math.min(20, arr.length()); i++) {
+                            int id = arr.getInt(i);
+                            String url = "https://hn.algolia.com/api/v1/items/" + id;
+                            StringRequest r = new StringRequest(Request.Method.GET, url,
+                                    res -> Utils.cacheStory(getContext(), id, res), error -> {});
+                            queue.add(r);
+                        }
+                        Toast.makeText(getContext(), "Stories cached", Toast.LENGTH_SHORT).show();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                        Toast.makeText(getContext(), "Caching failed", Toast.LENGTH_SHORT).show();
+                    }
+                }, error -> Toast.makeText(getContext(), "Caching failed", Toast.LENGTH_SHORT).show());
+
+        queue.add(request);
+    }
+
+    private void showCachedStories() {
+        showingCached = true;
+        swipeRefreshLayout.setRefreshing(false);
+
+        adapter.notifyItemRangeRemoved(1, stories.size());
+        stories.clear();
+        stories.add(new Story());
+        stories.addAll(Utils.loadCachedStories(getContext()));
+        loadedTo = stories.size() - 1;
+        adapter.loadingFailed = false;
+        adapter.loadingFailedServerError = false;
+        adapter.notifyItemRangeChanged(0, stories.size());
     }
 
     private void hideUpdateButton() {

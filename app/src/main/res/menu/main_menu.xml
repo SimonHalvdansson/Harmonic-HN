@@ -14,6 +14,10 @@
         android:title="Profile" />
 
     <item
+        android:id="@+id/menu_cache"
+        android:title="Cache stories" />
+
+    <item
         android:id="@+id/menu_settings"
         android:title="Settings" />
 

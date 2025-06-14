@@ -35,6 +35,9 @@ import com.simon.harmonichackernews.BuildConfig;
 import com.simon.harmonichackernews.CommentsActivity;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
+import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.network.JSONParser;
+import androidx.core.util.Pair;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -54,6 +57,7 @@ import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -197,6 +201,81 @@ public class Utils {
 
     public static String loadCachedStory(Context ctx, int id) {
         return SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id);
+    }
+
+    public static boolean hasCachedStories(Context ctx) {
+        Set<String> cached = SettingsUtils.readStringSetFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
+        if (cached == null) {
+            return false;
+        }
+
+        long limit = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
+        for (String entry : cached) {
+            String[] split = entry.split("-");
+            if (split.length == 2 && Long.parseLong(split[1]) >= limit) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static ArrayList<Story> loadCachedStories(Context ctx) {
+        Set<String> cached = SettingsUtils.readStringSetFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
+        ArrayList<Story> stories = new ArrayList<>();
+        if (cached == null) {
+            return stories;
+        }
+
+        long limit = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
+
+        List<Pair<Long, Integer>> orderedIds = new ArrayList<>();
+
+        for (String entry : cached) {
+            String[] split = entry.split("-");
+            if (split.length != 2) continue;
+
+            int id = Integer.parseInt(split[0]);
+            long time = Long.parseLong(split[1]);
+            if (time < limit) continue;
+
+            orderedIds.add(new Pair<>(time, id));
+        }
+
+        //dont replace, is there for old API compatibility
+        Collections.sort(orderedIds, (a, b) -> Long.compare(a.first, b.first));
+
+        for (Pair<Long, Integer> pair : orderedIds) {
+            String json = loadCachedStory(ctx, pair.second);
+            if (json == null || json.equals(JSONParser.ALGOLIA_ERROR_STRING)) continue;
+
+            try {
+                JSONObject obj = new JSONObject(json);
+                Story story = new Story();
+
+                JSONParser.updateStoryInformation(story, obj, true, -1, getTotalCommentCount(obj)+1);
+                stories.add(story);
+            } catch (Exception ignored) {}
+        }
+
+        return stories;
+    }
+
+    private static int getTotalCommentCount(JSONObject storyJson) throws JSONException {
+        JSONArray topLevel = storyJson.optJSONArray("children");
+        if (topLevel == null) return 0;
+        return countRecursively(topLevel);
+    }
+
+    private static int countRecursively(JSONArray arr) throws JSONException {
+        int count = arr.length();
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject child = arr.getJSONObject(i);
+            JSONArray replies = child.optJSONArray("children");
+            if (replies != null && replies.length() > 0) {
+                count += countRecursively(replies);
+            }
+        }
+        return count;
     }
 
     public static ArrayList<Bookmark> loadBookmarks(Context ctx, boolean sorted) {
@@ -406,9 +485,12 @@ public class Utils {
 
     public static boolean isFirstAppStart(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true) && SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_HISTORIES).isEmpty()) {
-            sharedPref.edit().putBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, false).apply();
-            return true;
+        if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true)) {
+            String history = SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_HISTORIES);
+            if (TextUtils.isEmpty(history)) {
+                sharedPref.edit().putBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, false).apply();
+                return true;
+            }
         }
         return false;
     }
