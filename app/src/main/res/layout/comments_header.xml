@@ -434,7 +434,7 @@
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:background="@drawable/scrolling_helper_background"
-                android:textColor="#ddffffff"
+                android:textColor="#eeffffff"
                 android:text="AI Summary:"
                 android:textSize="14sp"
                 android:fontFamily="@font/product_sans"
@@ -442,6 +442,9 @@
                 android:layout_height="wrap_content"/>
 
             <TextView
+                tools:text="• Introduces algebraic effects: resumable “exceptions” that serve as a single primitive for custom control flow.\n• Shows how to build generators, coroutines, async/await, exception handling, and schedulers purely as libraries.\n• Demonstrates modeling services (databases, logging, randomness, allocation) as effects you can swap or mock via handlers.\n• Highlights cleaner APIs through implicit state/context threading and enforced purity/security (can IO, can Print) enabling deterministic replay/debugging."
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
                 android:layout_marginLeft="16dp"
                 android:layout_marginRight="16dp"
                 android:maxLines="10"
@@ -449,7 +452,6 @@
                 android:textColor="?attr/storyColorNormal"
                 android:fontFamily="@font/product_sans"
                 android:id="@+id/comments_header_summary"
-                tools:text="Article summary"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
