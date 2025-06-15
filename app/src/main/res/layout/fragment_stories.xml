@@ -30,8 +30,9 @@
         android:textStyle="bold"
         android:paddingLeft="32dp"
         android:paddingRight="32dp"
-        android:textColor="?attr/colorOnSecondary"
-        app:iconTint="?attr/colorOnSecondary"
+        android:textColor="#fff"
+        app:icon="@drawable/ic_action_refresh"
+        app:iconTint="#fff"
         android:backgroundTint="?attr/overlayButtonColor"
         android:layout_width="wrap_content"
         android:layout_height="56dp"    />

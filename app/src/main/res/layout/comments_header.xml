@@ -838,8 +838,8 @@
         android:layout_height="60dp" />
 
     <Button
-        android:layout_marginTop="6dp"
-        android:layout_marginBottom="4dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="8dp"
         android:visibility="visible"
         android:id="@+id/comments_header_refresh"
         android:layout_gravity="center_horizontal"
