@@ -2,7 +2,10 @@ package com.simon.harmonichackernews.utils;
 
 public class Changelog {
     static public String getHTML() {
-        return "<b>Version 2.2:</b><br>" +
+        return "<b>Version 2.2.1:</b><br>" +
+                "- Fixed issue when posting multiple comments / doing multiple upvotes in one session<br>" +
+                "<br>" +
+                "<b>Version 2.2:</b><br>" +
                 "- Added (experimental) ability to cache posts for when you're offline<br>" +
                 "- Fixed submit stories not working<br>" +
                 "- Added ability to set a Tag on a user to remember them<br>" +
