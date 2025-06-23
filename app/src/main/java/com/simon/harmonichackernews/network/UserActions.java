@@ -181,7 +181,7 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
                 .build();
 
         Handler main = new Handler(ctx.getMainLooper());
-        OkHttpClient client = NetworkComponent.getOkHttpClientInstance();
+        OkHttpClient client = NetworkComponent.getOkHttpClientInstanceWithCookies();
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
@@ -257,15 +257,25 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
                             .url(BASE_WEB_URL + "/" + SUBMIT_POST_PATH)
                             .post(submitForm.build())
                             .build();
-                    executeRequest(ctx, submitReq, cb);
+                    executeRequest(ctx, submitReq, cb, true);
                 });
             }
         });
     }
 
-
     public static void executeRequest(Context ctx, Request request, ActionCallback cb) {
-        OkHttpClient client = NetworkComponent.getOkHttpClientInstance();
+        executeRequest(ctx, request, cb, false);
+    }
+
+
+    public static void executeRequest(Context ctx, Request request, ActionCallback cb, boolean cookies) {
+        OkHttpClient client;
+        if (cookies) {
+            client = NetworkComponent.getOkHttpClientInstanceWithCookies();
+        }
+        else {
+            client = NetworkComponent.getOkHttpClientInstance();
+        }
 
         client.newCall(request).enqueue(new Callback() {
             final Handler mainHandler = new Handler(ctx.getMainLooper());

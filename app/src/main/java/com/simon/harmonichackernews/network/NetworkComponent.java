@@ -17,12 +17,37 @@ import okhttp3.Request;
 
 public class NetworkComponent {
     private static volatile OkHttpClient okHttpClientInstance;
+    private static volatile OkHttpClient okHttpClientCookieInstance;
+
     private static RequestQueue requestQueueInstance;
 
     public static OkHttpClient getOkHttpClientInstance() {
         if (okHttpClientInstance == null) {
             synchronized (NetworkComponent.class) {
                 if (okHttpClientInstance == null) {
+                    // set up an in-memory cookie store
+                    Interceptor userAgentInterceptor = chain -> {
+                        Request original = chain.request();
+                        Request withAgent = original.newBuilder()
+                                .header("User-Agent",
+                                        "Harmonic-HN-Android/" + BuildConfig.VERSION_NAME + "/" + BuildConfig.BUILD_TYPE)
+                                .build();
+                        return chain.proceed(withAgent);
+                    };
+
+                    okHttpClientInstance = new OkHttpClient.Builder()
+                            .addInterceptor(userAgentInterceptor)
+                            .build();
+                }
+            }
+        }
+        return okHttpClientInstance;
+    }
+
+    public static OkHttpClient getOkHttpClientInstanceWithCookies() {
+        if (okHttpClientCookieInstance == null) {
+            synchronized (NetworkComponent.class) {
+                if (okHttpClientCookieInstance == null) {
                     // set up an in-memory cookie store
                     CookieManager cookieManager = new CookieManager();
                     cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
@@ -36,15 +61,14 @@ public class NetworkComponent {
                         return chain.proceed(withAgent);
                     };
 
-                    okHttpClientInstance = new OkHttpClient.Builder()
-                            // JavaNetCookieJar comes from okhttp-urlconnection
+                    okHttpClientCookieInstance = new OkHttpClient.Builder()
                             .cookieJar(new JavaNetCookieJar(cookieManager))
                             .addInterceptor(userAgentInterceptor)
                             .build();
                 }
             }
         }
-        return okHttpClientInstance;
+        return okHttpClientCookieInstance;
     }
 
     public static RequestQueue getRequestQueueInstance(Context context) {
