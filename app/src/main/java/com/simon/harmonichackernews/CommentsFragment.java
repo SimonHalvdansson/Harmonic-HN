@@ -1190,7 +1190,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 adapter.loadingFailedServerError = false;
                 adapter.notifyItemChanged(0);
                 
-                Toast.makeText(getContext(), "Algolia API failed, using Official API", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Algolia API failed, using official HN API", Toast.LENGTH_SHORT).show();
             }
 
             @Override
