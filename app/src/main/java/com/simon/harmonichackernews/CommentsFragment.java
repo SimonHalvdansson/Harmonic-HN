@@ -96,6 +96,7 @@ import com.simon.harmonichackernews.data.WikipediaInfo;
 import com.simon.harmonichackernews.linkpreview.ArxivAbstractGetter;
 import com.simon.harmonichackernews.linkpreview.GitHubInfoGetter;
 import com.simon.harmonichackernews.linkpreview.WikipediaGetter;
+import com.simon.harmonichackernews.network.AlgoliaFallbackManager;
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
@@ -119,8 +120,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 import okhttp3.Call;
@@ -179,6 +184,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private String username;
     private Story story;
     private Set<String> filteredUsers;
+    
+    // Clean fallback management
+    private AlgoliaFallbackManager fallbackManager;
+    private boolean usingHNAPIFallback = false;
 
     public CommentsFragment() {
         super(R.layout.fragment_comments);
@@ -641,6 +650,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     }
                     BottomSheetBehavior.from(bottomSheet).setDraggable(recyclerView.computeVerticalScrollOffset() == 0);
                 }
+                
+                // Note: Infinite scroll removed - all comments now load at once via AlgoliaFallbackManager
             }
         });
         smoothScroller = new LinearSmoothScroller(requireContext()) {
@@ -1131,35 +1142,88 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void loadStoryAndComments(final int id, final String oldCachedResponse) {
-        String url = "https://hn.algolia.com/api/v1/items/" + id;
         lastLoaded = System.currentTimeMillis();
-
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                response -> {
-                    if (TextUtils.isEmpty(oldCachedResponse) || !oldCachedResponse.equals(response)) {
-                        handleJsonResponse(id, response, true, oldCachedResponse == null, false);
-                    }
-                    swipeRefreshLayout.setRefreshing(false);
-                }, error -> {
-            error.printStackTrace();
-
-            if (error instanceof com.android.volley.TimeoutError) {
-                adapter.loadingFailedServerError = true;
+        
+        // Initialize fallback manager
+        fallbackManager = new AlgoliaFallbackManager(getContext(), queue, requestTag, filteredUsers, new AlgoliaFallbackManager.FallbackListener() {
+            @Override
+            public void onAlgoliaSuccess(String response) {
+                usingHNAPIFallback = false;
+                if (TextUtils.isEmpty(oldCachedResponse) || !oldCachedResponse.equals(response)) {
+                    handleJsonResponse(id, response, true, oldCachedResponse == null, false);
+                }
+                swipeRefreshLayout.setRefreshing(false);
             }
 
-            if (error.networkResponse != null && error.networkResponse.statusCode == 404) {
+            @Override
+            public void onAlgoliaFailed() {
+                adapter.loadingFailed = true;
                 adapter.loadingFailedServerError = true;
+                adapter.commentsLoaded = true;
+                adapter.notifyItemChanged(0);
+                swipeRefreshLayout.setRefreshing(false);
             }
 
-            adapter.loadingFailed = true;
-            adapter.notifyItemChanged(0);
-            swipeRefreshLayout.setRefreshing(false);
+            @Override
+            public void onHNAPIStoryLoaded(Story loadedStory) {
+                usingHNAPIFallback = true;
+                
+                // Update story data
+                story.title = loadedStory.title;
+                story.by = loadedStory.by;
+                story.score = loadedStory.score;
+                story.time = loadedStory.time;
+                story.url = loadedStory.url;
+                story.isLink = loadedStory.isLink;
+                story.text = loadedStory.text;
+                story.kids = loadedStory.kids;
+                story.descendants = loadedStory.descendants;
+                
+                // Reset comments
+                int oldSize = comments.size();
+                if (oldSize > 1) {
+                    comments.subList(1, oldSize).clear();
+                    adapter.notifyItemRangeRemoved(1, oldSize - 1);
+                }
+                
+                adapter.loadingFailed = false;
+                adapter.loadingFailedServerError = false;
+                adapter.notifyItemChanged(0);
+                
+                Toast.makeText(getContext(), "Algolia API failed, using Official API", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onHNAPIFailed() {
+                adapter.loadingFailed = true;
+                adapter.loadingFailedServerError = false;
+                adapter.commentsLoaded = true;
+                adapter.notifyItemChanged(0);
+                swipeRefreshLayout.setRefreshing(false);
+            }
+
+            @Override
+            public void onAllCommentsLoaded(List<Comment> loadedComments) {
+                // Add all comments at once in proper tree order
+                comments.addAll(loadedComments);
+                adapter.notifyItemRangeInserted(1, loadedComments.size());
+                adapter.commentsLoaded = true;
+                updateNavigationVisibility();
+                adapter.notifyItemChanged(0);
+                swipeRefreshLayout.setRefreshing(false);
+            }
         });
+        
+        fallbackManager.loadComments(id, oldCachedResponse);
 
         if (story.pollOptions != null) {
             loadPollOptions();
         }
 
+        loadLinkPreviews();
+    }
+
+    private void loadLinkPreviews() {
         if (ArxivAbstractGetter.isValidArxivUrl(story.url) && SettingsUtils.shouldUseLinkPreviewArxiv(getContext())) {
             ArxivAbstractGetter.getAbstract(story.url, getContext(), new ArxivAbstractGetter.GetterCallback() {
                 @Override
@@ -1206,14 +1270,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             });
         }
-
-        stringRequest.setTag(requestTag);
-        stringRequest.setRetryPolicy(new DefaultRetryPolicy(
-                15000,
-                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
-                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
-
-        queue.add(stringRequest);
     }
 
     private void loadPollOptions() {

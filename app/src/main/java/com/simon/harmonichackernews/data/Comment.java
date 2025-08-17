@@ -19,6 +19,7 @@ public class Comment implements Serializable {
 
     public List<Comment> childComments = new ArrayList<>();
     public int sortOrder;
+    public int[] kidsIds; // For official HN API fallback - stores child comment IDs
 
     public Comment() {
 

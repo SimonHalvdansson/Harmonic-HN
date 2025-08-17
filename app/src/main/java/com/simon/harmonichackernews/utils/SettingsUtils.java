@@ -203,6 +203,10 @@ public class SettingsUtils {
         return getBooleanPref("pref_comments_swap_long", false, ctx);
     }
 
+    public static boolean shouldUseAlgoliaAPI(Context ctx) {
+        return getBooleanPref("pref_algolia_api", true, ctx);
+    }
+
     public static boolean getBooleanPref(String key, boolean backup, Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return prefs.getBoolean(key, backup);
