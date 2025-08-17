@@ -2,7 +2,10 @@ package com.simon.harmonichackernews.utils;
 
 public class Changelog {
     static public String getHTML() {
-        return "<b>Version 2.2.1:</b><br>" +
+        return  "<b>Version 2.2.2:</b><br>" +
+                "- As you probably noticed, there has been an Algolia API outage recently. Thanks to Amith KK for coding a quick official HN API fallback which is automatically used now in the event of outages<br>" +
+                "<br>" +
+                "<b>Version 2.2.1:</b><br>" +
                 "- Fixed issue when posting multiple comments / doing multiple upvotes in one session<br>" +
                 "<br>" +
                 "<b>Version 2.2:</b><br>" +
