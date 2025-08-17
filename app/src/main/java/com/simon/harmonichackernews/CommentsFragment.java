@@ -17,7 +17,6 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.PointF;
 import android.net.Uri;
-import android.opengl.Visibility;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -61,7 +60,6 @@ import androidx.appcompat.widget.PopupMenu;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
-import androidx.core.util.Consumer;
 import androidx.core.util.Pair;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
@@ -130,7 +128,7 @@ import java.util.Set;
 
 import okhttp3.Call;
 
-public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener, CommentsRecyclerViewAdapter.RequestSummaryCallback {
+public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener, CommentsRecyclerViewAdapter.RequestSummaryCallback, CommentsRecyclerViewAdapter.RetryListener {
 
     public final static String EXTRA_TITLE = "com.simon.harmonichackernews.EXTRA_TITLE";
     public final static String EXTRA_PDF_TITLE = "com.simon.harmonichackernews.EXTRA_PDF_TITLE";
@@ -335,7 +333,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         toggleBackPressedCallback(false);
         requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), backPressedCallback);
 
-        swipeRefreshLayout.setOnRefreshListener(this::refreshComments);
+        swipeRefreshLayout.setOnRefreshListener(this::onRetry);
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
         // This is how much the bottom sheet sticks up by default and also decides height of WebView
@@ -569,7 +567,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
 
         adapter.setOnCommentLongClickListener(this);
-        adapter.setRetryListener(this::refreshComments);
+        adapter.setRetryListener(this);
 
         adapter.setOnHeaderActionClickListener(new CommentsRecyclerViewAdapter.HeaderActionClickListener() {
             @Override
@@ -1136,9 +1134,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         destroyWebView();
     }
 
-    public void refreshComments() {
+    @Override
+    public void onRetry() {
         swipeRefreshLayout.setRefreshing(true);
         loadStoryAndComments(adapter.story.id, null);
+    }
+
+    @Override
+    public void onOpenInBrowser() {
+        Utils.launchInExternalBrowser(getActivity(), "https://news.ycombinator.com/item?id=" + story.id);
     }
 
     private void loadStoryAndComments(final int id, final String oldCachedResponse) {
@@ -1459,7 +1463,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 int id = item.getItemId();
 
                 if (id == R.id.menu_refresh) {
-                    refreshComments();
+                    onRetry();
                 } else if (id == R.id.menu_adblock) {
                     blockAds = false;
                     webView.reload();
