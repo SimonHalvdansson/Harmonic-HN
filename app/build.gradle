@@ -1,18 +1,18 @@
 plugins {
     id('com.android.application')
-    id 'org.jetbrains.kotlin.android'
+    id('org.jetbrains.kotlin.android')
 }
 
 android {
-
     namespace "com.simon.harmonichackernews"
     defaultConfig {
         applicationId "com.simon.harmonichackernews"
-        minSdkVersion 23
-        targetSdkVersion 35
         versionCode 66
         versionName "2.2.1"
-        compileSdk 35
+
+        minSdkVersion 23
+        targetSdkVersion 35
+        compileSdkVersion 35
         buildToolsVersion = "35.0.0"
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
@@ -39,7 +39,6 @@ android {
     buildFeatures {
         buildConfig true
     }
-
 }
 
 dependencies {
