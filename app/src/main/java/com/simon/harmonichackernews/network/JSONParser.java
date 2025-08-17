@@ -494,6 +494,94 @@ public class JSONParser {
         return input;
     }
 
+    // Official HN API parsing methods for fallback
+    public static boolean updateStoryWithOfficialHNResponse(Story story, String response) {
+        try {
+            JSONObject jsonObject = new JSONObject(response);
+            
+            // Check if this is a valid story response
+            if (!jsonObject.has("by") || jsonObject.names().length() == 2) {
+                return false;
+            }
+
+            story.by = jsonObject.optString("by", "");
+            story.id = jsonObject.optInt("id", story.id);
+            story.score = jsonObject.optInt("score", 0);
+            story.time = jsonObject.optInt("time", story.time);
+            story.title = jsonObject.optString("title", story.title);
+            story.descendants = jsonObject.optInt("descendants", 0);
+
+            if (jsonObject.has("type") && jsonObject.getString("type").equals("job")) {
+                story.isJob = true;
+            }
+
+            if (jsonObject.has("kids")) {
+                JSONArray kidsArray = jsonObject.getJSONArray("kids");
+                story.kids = new int[kidsArray.length()];
+                for (int i = 0; i < kidsArray.length(); i++) {
+                    story.kids[i] = kidsArray.getInt(i);
+                }
+            }
+
+            if (jsonObject.has("url")) {
+                story.url = jsonObject.getString("url");
+                story.isLink = true;
+            } else {
+                story.url = "https://news.ycombinator.com/item?id=" + story.id;
+                story.isLink = false;
+            }
+
+            if (jsonObject.has("text")) {
+                story.text = preprocessHtml(jsonObject.getString("text"));
+            }
+
+            updatePdfProperties(story);
+            
+            story.loaded = true;
+            story.loadingFailed = false;
+            
+            return true;
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static Comment parseOfficialHNCommentResponse(String response) throws JSONException {
+        JSONObject jsonObject = new JSONObject(response);
+
+        // Check if this is a deleted comment
+        if (jsonObject.has("deleted") && jsonObject.getBoolean("deleted")) {
+            return null;
+        }
+
+        Comment comment = new Comment();
+        comment.id = jsonObject.getInt("id");
+        comment.by = jsonObject.optString("by", "");
+        comment.time = jsonObject.getInt("time");
+        comment.parent = jsonObject.optInt("parent", 0);
+        comment.expanded = true;
+
+        if (jsonObject.has("text")) {
+            comment.text = preprocessHtml(jsonObject.getString("text"));
+        } else {
+            comment.text = "";
+        }
+
+        if (jsonObject.has("kids")) {
+            JSONArray kidsArray = jsonObject.getJSONArray("kids");
+            comment.children = kidsArray.length();
+            // Store kids for later loading
+            comment.kidsIds = new int[kidsArray.length()];
+            for (int i = 0; i < kidsArray.length(); i++) {
+                comment.kidsIds[i] = kidsArray.getInt(i);
+            }
+        } else {
+            comment.children = 0;
+            comment.kidsIds = null;
+        }
+
+        return comment;
+    }
+
 }
-
-
