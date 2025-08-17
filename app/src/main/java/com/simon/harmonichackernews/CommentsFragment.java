@@ -1499,6 +1499,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                             }
                         }
                     });
+                } else if (id == R.id.menu_comments_browser) {
+                    onOpenInBrowser();
                 }
 
                 return true;
