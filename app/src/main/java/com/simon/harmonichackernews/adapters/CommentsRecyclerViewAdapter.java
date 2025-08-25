@@ -334,7 +334,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             } else {
                 if (commentsLoaded) {
                     headerViewHolder.loadingIndicator.setVisibility(GONE);
-                    headerViewHolder.emptyView.setVisibility(story.descendants > 0 ? GONE : View.VISIBLE);
+                    headerViewHolder.emptyView.setVisibility(story.descendants > 0 || comments.size() > 1 ? GONE : View.VISIBLE);
                 } else {
                     headerViewHolder.loadingIndicator.setVisibility(View.VISIBLE);
                     headerViewHolder.emptyView.setVisibility(GONE);

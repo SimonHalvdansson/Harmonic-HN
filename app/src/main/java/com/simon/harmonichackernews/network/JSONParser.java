@@ -511,6 +511,14 @@ public class JSONParser {
             story.title = jsonObject.optString("title", story.title);
             story.descendants = jsonObject.optInt("descendants", 0);
 
+            //if a story is dead, it might not have a title. Right now we only do the fallback if
+            // the story is dead (can it have no title for another reason? The example post was
+            // "flagged" but the JSON said dead=true so let's go with that). If more cases show up,
+            //let's add those in then
+            if (TextUtils.isEmpty(story.title) && jsonObject.optBoolean("dead", false)) {
+                story.title = "[deleted]";
+            }
+
             if (jsonObject.has("type") && jsonObject.getString("type").equals("job")) {
                 story.isJob = true;
             }
