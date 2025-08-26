@@ -1165,6 +1165,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
             @Override
+            public void onUsingFallback() {
+                Toast.makeText(getContext(), "Algolia API failed, using official HN API", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
             public void onHNAPIStoryLoaded(Story loadedStory) {
                 usingHNAPIFallback = true;
                 
@@ -1189,8 +1194,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 adapter.loadingFailed = false;
                 adapter.loadingFailedServerError = false;
                 adapter.notifyItemChanged(0);
-                
-                Toast.makeText(getContext(), "Algolia API failed, using official HN API", Toast.LENGTH_SHORT).show();
             }
 
             @Override

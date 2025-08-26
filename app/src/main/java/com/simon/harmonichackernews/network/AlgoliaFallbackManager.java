@@ -17,6 +17,7 @@ public class AlgoliaFallbackManager implements HNAPICommentLoader.CommentLoadLis
     public interface FallbackListener {
         void onAlgoliaSuccess(String response);
         void onAlgoliaFailed();
+        void onUsingFallback();
         void onHNAPIStoryLoaded(Story story);
         void onHNAPIFailed();
         void onAllCommentsLoaded(List<Comment> comments);
@@ -64,7 +65,9 @@ public class AlgoliaFallbackManager implements HNAPICommentLoader.CommentLoadLis
                 if (error.networkResponse != null && 
                     (error.networkResponse.statusCode == 404 || error.networkResponse.statusCode >= 500) ||
                     error instanceof com.android.volley.TimeoutError) {
+
                     loadWithHNAPI(storyId);
+                    listener.onUsingFallback();
                 } else {
                     listener.onAlgoliaFailed();
                 }
