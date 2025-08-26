@@ -37,7 +37,7 @@
                     android:textStyle="bold"
                     android:fontFamily="@font/product_sans"
                     android:textSize="28dp"
-                    android:text="About Harmonic"
+                    android:text="Harmonic"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"/>
 
@@ -62,7 +62,7 @@
             android:fontFamily="@font/product_sans"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:text="Harmonic for Hacker News is developed by me, Simon Halvdansson, although as of 2023 the app is open source. The libraries used are listed below together with Materialistic by Hidroh which I've used for some network code and PDF integration.\n\nSince releasing Harmonic I've started my PhD in harmonic analysis (hence the name) so the pace of updates has been lower. I still use the app and read all the emails but don't have the same amount of time to respond and work on new features as earlier but hope to be able to keep Harmonic the (in my opinion) best Hacker News app on Android."/>
+            android:text="Harmonic for Hacker News is developed by me, Simon Halvdansson, although since 2023 the app is open source. The libraries used are listed below together with Materialistic by Hidroh which I've used for some network code and PDF integration.\n\nThe name 'Harmonic' comes from me choosing to study harmonic analysis at around the time of Harmonic's inception. I guess you could say something about 'waves' and 'news' but that's the rationale. Since then, I've finished my PhD in harmonic analysis and don't have the same amount of time to work on Harmonic but it's still my favorite pet project and I use the app daily. Seeing others contribute, open meaningful issues on GitHub or just tell me they like the app is always super nice and I'm very thankful to the community for helping with the maintenance. Together I think we can keep Harmonic the (in my opinion) best Hacker News client for Android!"/>
 
         <TextView
             android:textColor="?attr/textColorDisabled"
@@ -161,7 +161,7 @@
             android:textColor="?attr/storyColorNormal"
             app:iconTint="?attr/storyColorNormal"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
             android:onClick="openGithub"
             android:text="Harmonic on GitHub" />
 
@@ -172,7 +172,7 @@
             android:textColor="?attr/storyColorNormal"
             app:iconTint="?attr/storyColorNormal"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
             android:onClick="openChangelog"
             android:text="Changelog" />
 
@@ -185,7 +185,7 @@
             android:textColor="?attr/storyColorNormal"
             app:iconTint="?attr/storyColorNormal"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
             android:onClick="openPrivacy"
             android:text="Privacy policy" />
 
