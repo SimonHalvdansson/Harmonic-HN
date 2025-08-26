@@ -4,23 +4,21 @@ plugins {
 }
 
 android {
+    namespace = "com.simon.harmonichackernews"
+    compileSdk = 36
 
-    namespace "com.simon.harmonichackernews"
     defaultConfig {
-        applicationId "com.simon.harmonichackernews"
-        minSdkVersion 23
-        targetSdkVersion 35
-        versionCode 67
-        versionName "2.2.2"
-        compileSdk 35
-        buildToolsVersion = "35.0.0"
-
-        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        applicationId = "com.simon.harmonichackernews"
+        minSdk = 23
+        targetSdk = 36
+        versionCode = 67
+        versionName = "2.2.2"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
         jvmTarget = "1.8"
@@ -28,19 +26,24 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+            )
         }
     }
+
     lint {
-        disable 'NotificationPermission'
-    }
-    buildFeatures {
-        buildConfig true
+        disable += ["NotificationPermission"]
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
 }
+
 
 dependencies {
     implementation "androidx.lifecycle:lifecycle-viewmodel:2.9.1"
