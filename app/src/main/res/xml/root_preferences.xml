@@ -207,13 +207,6 @@
         app:title="Comments"
         android:layout="@layout/preference_category">
 
-        <SwitchPreferenceCompat
-            app:isPreferenceVisible="false"
-            app:key="pref_algolia_api"
-            app:icon="@drawable/ic_action_api"
-            app:defaultValue="true"
-            app:title="Use Algolia API"    />
-
         <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_text"
@@ -233,6 +226,16 @@
             app:entries="@array/comment_sorting"
             app:defaultValue="Default"
             app:entryValues="@array/comment_sorting"   />
+
+        <ListPreference
+            app:singleLineTitle="false"
+            app:key="pref_comments_provider"
+            app:icon="@drawable/ic_action_api"
+            app:title="Comments provider"
+            app:useSimpleSummaryProvider="true"
+            app:entries="@array/comments_provider_entries"
+            app:defaultValue="algolia"
+            app:entryValues="@array/comments_provider_values"   />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"

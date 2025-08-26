@@ -766,7 +766,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 public void onClick(View view) {
                     // This switches off the algolia API
                     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(view.getContext());
-                    prefs.edit().putBoolean("pref_algolia_api", false).apply();
+                    prefs.edit().putString("pref_comments_provider", "official").apply();
 
                     Toast.makeText(view.getContext(), "Deactivated Algolia API, this can be switched back in the settings. Try reloading", Toast.LENGTH_LONG).show();
                 }

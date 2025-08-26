@@ -204,7 +204,8 @@ public class SettingsUtils {
     }
 
     public static boolean shouldUseAlgoliaAPI(Context ctx) {
-        return getBooleanPref("pref_algolia_api", true, ctx);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return "algolia".equals(prefs.getString("pref_comments_provider", "algolia"));
     }
 
     public static boolean getBooleanPref(String key, boolean backup, Context ctx) {
