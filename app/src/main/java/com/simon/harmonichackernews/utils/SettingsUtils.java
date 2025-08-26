@@ -144,7 +144,7 @@ public class SettingsUtils {
     }
 
     public static boolean shouldDisableCommentsSwipeBack(Context ctx) {
-        return getBooleanPref("pref_comments_disable_swipeback", false, ctx);
+        return getBooleanPref("pref_comments_disable_swipeback", true, ctx);
     }
 
     public static boolean shouldShowTopLevelDepthIndicator(Context ctx) {
