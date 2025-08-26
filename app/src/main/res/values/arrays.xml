@@ -113,4 +113,14 @@
         <item>Favicon kit</item>
     </string-array>
 
+    <string-array name="comments_provider_entries">
+        <item>Algolia API</item>
+        <item>Official Hacker News API</item>
+    </string-array>
+
+    <string-array name="comments_provider_values">
+        <item>algolia</item>
+        <item>official</item>
+    </string-array>
+
 </resources>
