@@ -1319,6 +1319,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         // This is what we get if the Algolia API has not indexed the post,
         // we should attempt to show the user an option to switch API:s in this
         // server error case
+        // Actually, the response being a 404 should be captured by another part
+        // so this should never be called. Not that I dare remove it...
         if (response.equals(JSONParser.ALGOLIA_ERROR_STRING)) {
             adapter.loadingFailed = true;
             adapter.loadingFailedServerError = true;
