@@ -142,18 +142,12 @@ public class Utils {
 
                 InputStream fis2 = resources.openRawResource(R.raw.adblockserverlist);
                 BufferedReader br2 = new BufferedReader(new InputStreamReader(fis2));
-                if (fis2 != null) {
-                    try {
-                        while ((strLine2 = br2.readLine()) != null) {
-                            if (strLine2.startsWith(":::::")) {
-                                adSet.add(strLine2.substring(5));
-                            } else {
-                                adSet.add(strLine2);
-                            }
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                try {
+                    while ((strLine2 = br2.readLine()) != null) {
+                        adSet.add(strLine2);
                     }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
                 Utils.adservers = adSet;
             }
