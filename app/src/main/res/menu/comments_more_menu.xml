@@ -13,6 +13,10 @@
         android:title="Search comments"/>
 
     <item
+        android:id="@+id/menu_comments_browser"
+        android:title="Open comments in browser" />
+
+    <item
         android:id="@+id/menu_archive"
         android:title="View on archive.org" />
 

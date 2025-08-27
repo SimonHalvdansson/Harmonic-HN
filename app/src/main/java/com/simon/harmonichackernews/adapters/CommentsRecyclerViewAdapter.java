@@ -39,7 +39,6 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.google.android.material.snackbar.Snackbar;
-import com.simon.harmonichackernews.CommentsFragment;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.PollOption;
@@ -678,6 +677,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout actionsContainer;
         public final LinearLayout linkInfoContainer;
         public final Button retryButton;
+        public final Button openInBrowserButton;
         public final LinearLayout pollLayout;
         public final LinearLayout headerView;
 
@@ -725,6 +725,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentButtonParent = view.findViewById(R.id.comments_header_button_comment_parent);
             bookmarkButtonParent = view.findViewById(R.id.comments_header_button_bookmark_parent);
             retryButton = view.findViewById(R.id.comments_header_retry);
+            openInBrowserButton = view.findViewById(R.id.comments_header_open_in_browser);
             pollLayout = view.findViewById(R.id.comments_header_poll_layout);
             sheetRefreshButton = view.findViewById(R.id.comments_sheet_layout_refresh);
             sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
@@ -755,6 +756,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 
             retryButton.setOnClickListener((v) -> retryListener.onRetry());
+            openInBrowserButton.setOnClickListener((v) -> retryListener.onOpenInBrowser());
 
             refreshButton.setOnClickListener((v) -> {
                 showUpdate = false;
@@ -886,6 +888,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     public interface RetryListener {
         void onRetry();
+        void onOpenInBrowser();
     }
 
     public interface HeaderActionClickListener {
