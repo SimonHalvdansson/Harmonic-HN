@@ -21,7 +21,12 @@ public class CommentTreeBuilder {
         
         // Add to children map if it has a parent
         if (comment.parent != 0) {
-            childrenMap.computeIfAbsent(comment.parent, k -> new ArrayList<>()).add(comment);
+            List<Comment> list = childrenMap.get(comment.parent);
+            if (list == null) {
+                list = new ArrayList<>();
+                childrenMap.put(comment.parent, list);
+            }
+            list.add(comment);
         }
     }
     
