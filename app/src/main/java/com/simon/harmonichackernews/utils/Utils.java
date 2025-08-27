@@ -98,7 +98,7 @@ public class Utils {
     public final static String URL_SHOW = "https://hacker-news.firebaseio.com/v0/showstories.json";
     public final static String URL_JOBS = "https://hacker-news.firebaseio.com/v0/jobstories.json";
 
-    public static String adservers;
+    public static Set<String> adservers = new HashSet<>();
 
     public static void log(String s) {
         Log.d("HARMONIC_TAG", s);
@@ -138,21 +138,24 @@ public class Utils {
             @Override
             public void run() {
                 String strLine2;
-                StringBuilder adserversBuilder = new StringBuilder();
+                Set<String> adSet = new HashSet<>();
 
                 InputStream fis2 = resources.openRawResource(R.raw.adblockserverlist);
                 BufferedReader br2 = new BufferedReader(new InputStreamReader(fis2));
                 if (fis2 != null) {
                     try {
                         while ((strLine2 = br2.readLine()) != null) {
-                            adserversBuilder.append(strLine2);
-                            adserversBuilder.append("\n");
+                            if (strLine2.startsWith(":::::")) {
+                                adSet.add(strLine2.substring(5));
+                            } else {
+                                adSet.add(strLine2);
+                            }
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
-                Utils.adservers = String.valueOf(adserversBuilder);
+                Utils.adservers = adSet;
             }
         };
         AsyncTask.execute(r);

@@ -773,7 +773,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             // This will crash if we have already done this, which is fine
         }
 
-        if (blockAds && TextUtils.isEmpty(Utils.adservers)) {
+        if (blockAds && Utils.adservers.isEmpty()) {
             Utils.loadAdservers(getResources());
         }
 
@@ -1862,8 +1862,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 return super.shouldInterceptRequest(view, request);
             }
             ByteArrayInputStream EMPTY = new ByteArrayInputStream("".getBytes());
-            if (!TextUtils.isEmpty(Utils.adservers)) {
-                if (Utils.adservers.contains(":::::" + request.getUrl().getHost())) {
+            if (!Utils.adservers.isEmpty()) {
+                String host = request.getUrl().getHost();
+                if (host != null && Utils.adservers.contains(host)) {
                     Utils.log("Blocked: " + request.getUrl());
                     return new WebResourceResponse("text/plain", "utf-8", EMPTY);
                 }
