@@ -51,27 +51,31 @@
         android:layout_height="wrap_content">
 
         <Button
+            android:textSize="14sp"
             style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
             android:id="@+id/submissions_comment_button_story"
             android:textColor="?attr/storyColorNormal"
             android:text="Story"
             app:icon="@drawable/ic_action_news"
             app:iconTint="?attr/storyColorNormal"
-            android:layout_marginRight="4dp"
+            android:fontFamily="@font/product_sans_bold"
+            android:layout_marginRight="2dp"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
             android:layout_weight="1"/>
 
         <Button
+            android:textSize="14sp"
             style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
             android:id="@+id/submissions_comment_button_replies"
             android:textColor="?attr/storyColorNormal"
             app:icon="@drawable/ic_action_reply"
             app:iconTint="?attr/storyColorNormal"
+            android:fontFamily="@font/product_sans_bold"
             android:text="Replies"
-            android:layout_marginLeft="4dp"
+            android:layout_marginLeft="2dp"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
             android:layout_weight="1"/>
 
 

@@ -94,6 +94,7 @@
                 android:fontFamily="@font/product_sans" />
 
             <Button
+                android:textSize="14dp"
                 android:layout_marginTop="8dp"
                 style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
                 app:icon="@drawable/ic_action_open_new"
@@ -101,7 +102,7 @@
                 android:id="@+id/user_submissions_button"
                 android:fontFamily="@font/product_sans_bold"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="56dp"
                 android:textColor="?attr/storyColorNormal"
                 tools:text="Submissions" />
 
