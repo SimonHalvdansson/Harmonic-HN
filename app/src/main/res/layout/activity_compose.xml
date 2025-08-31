@@ -189,7 +189,7 @@
                 android:fontFamily="@font/product_sans_bold"
                 android:onClick="infoClick"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="56dp"
                 android:textColor="?attr/storyColorNormal"
                 android:layout_toLeftOf="@id/compose_submit"
                 android:layout_marginRight="16dp"
@@ -205,7 +205,7 @@
                 app:iconTint="@color/icon_button_selector"
                 android:textColor="@color/icon_button_selector"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="56dp"
                 android:layout_alignParentRight="true"
                 android:onClick="submit"
                 android:text="Submit" />
