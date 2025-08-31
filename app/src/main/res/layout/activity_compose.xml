@@ -177,40 +177,51 @@
             android:layout_width="match_parent"
             android:layout_height="1dp" />
 
-        <RelativeLayout
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:paddingLeft="16dp"
             android:paddingRight="16dp"
-            android:paddingBottom="8dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:paddingBottom="8dp">
 
-            <Button
-                android:textSize="14dp"
-                android:fontFamily="@font/product_sans_bold"
-                android:onClick="infoClick"
+            <com.google.android.material.floatingtoolbar.FloatingToolbarLayout
+                android:id="@+id/compose_toolbar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="?attr/storyColorNormal"
-                android:layout_toLeftOf="@id/compose_submit"
-                android:layout_marginRight="16dp"
-                style="?attr/materialButtonOutlinedStyle"
-                android:text="Formatting"/>
+                android:layout_gravity="start">
 
-            <Button
-                android:textSize="14dp"
-                android:fontFamily="@font/product_sans_bold"
+                <com.google.android.material.overflow.OverflowLinearLayout
+                    android:id="@+id/compose_toolbar_child"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/compose_formatting"
+                        style="@style/Widget.Material3.FloatingToolbar.IconButton"
+                        android:onClick="infoClick"
+                        android:contentDescription="Formatting info"
+                        app:icon="@drawable/ic_action_library_books" />
+
+                    <Button
+                        android:id="@+id/compose_placeholder"
+                        style="@style/Widget.Material3.FloatingToolbar.IconButton"
+                        android:contentDescription="Placeholder"
+                        app:icon="@drawable/ic_action_animation" />
+
+                </com.google.android.material.overflow.OverflowLinearLayout>
+
+            </com.google.android.material.floatingtoolbar.FloatingToolbarLayout>
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/compose_submit"
-                style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
-                app:icon="@drawable/ic_action_send"
-                app:iconTint="@color/icon_button_selector"
-                android:textColor="@color/icon_button_selector"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentRight="true"
+                android:layout_gravity="end"
                 android:onClick="submit"
-                android:text="Submit" />
+                app:srcCompat="@drawable/ic_action_send" />
 
-        </RelativeLayout>
+        </FrameLayout>
 
     </LinearLayout>
 
