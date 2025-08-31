@@ -89,7 +89,7 @@
         android:id="@+id/comments_header_arxiv_download"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        style="@style/Widget.Material3.Button.Icon"
+        style="@style/Widget.Material3Expressive.Button.IconButton"
         app:icon="@drawable/ic_action_download" />
 
 </LinearLayout>

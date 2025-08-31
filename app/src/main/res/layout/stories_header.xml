@@ -183,10 +183,11 @@
             android:layout_height="wrap_content"    />
 
         <Button
+            android:fontFamily="@font/product_sans_bold"
             android:layout_gravity="center_horizontal"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            style="@style/Widget.Material3.Button.ElevatedButton"
+            android:layout_height="56dp"
+            style="@style/Widget.Material3Expressive.Button.ElevatedButton"
             app:icon="@drawable/ic_action_refresh"
             android:textColor="?attr/colorOnSecondary"
             app:iconTint="?attr/colorOnSecondary"
@@ -195,16 +196,17 @@
             android:text="Retry"    />
 
         <Button
+            android:fontFamily="@font/product_sans_bold"
             android:id="@+id/stories_header_show_cached"
             android:layout_gravity="center_horizontal"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            style="@style/Widget.Material3.Button.ElevatedButton"
+            android:layout_height="56dp"
+            style="@style/Widget.Material3Expressive.Button.ElevatedButton"
             app:icon="@drawable/ic_action_library_books"
             android:textColor="?attr/colorOnSecondary"
             app:iconTint="?attr/colorOnSecondary"
             android:backgroundTint="?attr/colorSecondary"
-            android:text="@string/show_cached_stories" />
+            android:text="Show cached stories" />
 
     </LinearLayout>
 

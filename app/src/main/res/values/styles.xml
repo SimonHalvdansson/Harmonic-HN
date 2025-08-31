@@ -1,22 +1,22 @@
 <resources>
 
-    <style name="ThemeOverlay.App.MaterialAlertDialogMaterialDark" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+    <style name="ThemeOverlay.App.MaterialAlertDialogMaterialDark" parent="ThemeOverlay.Material3Expressive.MaterialAlertDialog">
         <item name="colorSurface">@color/material_you_neutral_900</item>
     </style>
 
-    <style name="ThemeOverlay.App.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+    <style name="ThemeOverlay.App.MaterialAlertDialog" parent="ThemeOverlay.Material3Expressive.MaterialAlertDialog">
         <item name="colorSurface">@color/background</item>
     </style>
 
-    <style name="ThemeOverlay.App.MaterialAlertDialogGray" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+    <style name="ThemeOverlay.App.MaterialAlertDialogGray" parent="ThemeOverlay.Material3Expressive.MaterialAlertDialog">
         <item name="colorSurface">@color/grayBackground</item>
     </style>
 
-    <style name="ThemeOverlay.App.MaterialAlertDialogMaterialLight" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+    <style name="ThemeOverlay.App.MaterialAlertDialogMaterialLight" parent="ThemeOverlay.Material3Expressive.MaterialAlertDialog">
         <item name="colorSurface">@color/material_you_50</item>
     </style>
 
-    <style name="snackbarTextStyle" parent="@style/Widget.Material3.Snackbar">
+    <style name="snackbarTextStyle" parent="@style/Widget.Material3Expressive.Button.TextButton.Snackbar">
         <item name="android:textColor">#222</item>
         <item name="android:textSize">14sp</item>
         <item name="android:fontFamily">@font/product_sans</item>
@@ -34,7 +34,7 @@
         <item name="widgetLayout">@layout/view_preference_switch</item>
     </style>
 
-    <style name="AlertDialogMaterialStyle" parent="@style/ThemeOverlay.Material3.MaterialAlertDialog">
+    <style name="AlertDialogMaterialStyle" parent="@style/ThemeOverlay.Material3Expressive.MaterialAlertDialog">
         <item name="android:colorBackground">?attr/colorSurfaceContainerHigh</item>
     </style>
 

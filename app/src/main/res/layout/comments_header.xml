@@ -848,7 +848,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:fontFamily="@font/product_sans"
-        style="@style/Widget.Material3.Button.ElevatedButton"
+        style="@style/Widget.Material3Expressive.Button.ElevatedButton"
         app:icon="@drawable/ic_action_refresh"
         android:textColor="?attr/colorOnSecondary"
         app:iconTint="?attr/colorOnSecondary"
@@ -877,8 +877,7 @@
             android:text="Loading failed"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"    />
-        <!-- TODO:Write the back end code for this, there's a hidden preference also for this and-->
-        <!-- TODO:we should be able to reuse some of the loading code from version 1.1 of the app-->
+
         <LinearLayout
             android:visibility="gone"
             android:id="@+id/comments_header_server_error"
@@ -898,37 +897,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"    />
 
-            <TextView
-                android:visibility="gone"
-                android:paddingBottom="6dp"
-                android:paddingRight="24dp"
-                android:paddingLeft="24dp"
-                android:fontFamily="@font/product_sans"
-                android:textSize="17sp"
-                android:textColor="?attr/storyColorNormal"
-                android:text="API Server error: This is most likely due to the Algolia HN API which Harmonic uses being down. You can switch to the official Hacker News API by clicking the button below. Historically, outages for the Algolia API are limited to a few hours but they can last longer."
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"    />
-
-            <Button
-                android:visibility="gone"
-                android:id="@+id/comments_header_server_error_switch_api"
-                android:layout_gravity="center_horizontal"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                style="@style/Widget.Material3.Button.ElevatedButton"
-                app:icon="@drawable/ic_action_cache"
-                android:textColor="?attr/storyColorNormal"
-                android:text="Switch API"    />
-
         </LinearLayout>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/comments_header_retry"
             android:layout_gravity="center_horizontal"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            style="@style/Widget.Material3.Button.ElevatedButton"
+            android:layout_height="56dp"
+            style="@style/Widget.Material3Expressive.Button.ElevatedButton"
             app:icon="@drawable/ic_action_refresh"
             android:textColor="?attr/colorOnSecondary"
             app:iconTint="?attr/colorOnSecondary"

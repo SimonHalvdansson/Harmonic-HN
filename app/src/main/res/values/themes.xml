@@ -4,8 +4,8 @@
 
     <!-- These base themes are so that we can tell the app that android:isLightTheme="false"
     which enables us to use darkened webview again!-->
-    <style name="AppThemeBase" parent="Theme.Material3.Dark.NoActionBar"></style>
-    <style name="AppThemeLightBase" parent="Theme.Material3.Light.NoActionBar"></style>
+    <style name="AppThemeBase" parent="Theme.Material3Expressive.Dark.NoActionBar"></style>
+    <style name="AppThemeLightBase" parent="Theme.Material3Expressive.Light.NoActionBar"></style>
 
     <!-- This is just for daynight, there is another theme resource in the night folder-->
     <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialLight"></style>
@@ -145,6 +145,8 @@
         <item name="commentCountIndicatorColor">@color/material_you_600</item>
         <item name="popupMenuBackground">@drawable/popup_background_material</item>
         <item name="secondaryTextColor">@color/material_you_secondary_40</item>
+
+        <item name="colorAccent">@color/material_you_600</item>
 
         <item name="colorPrimary">@color/material_you_third_400</item>
         <item name="colorPrimaryContainer">@color/material_you_third_700</item>

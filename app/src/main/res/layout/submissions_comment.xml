@@ -51,7 +51,7 @@
         android:layout_height="wrap_content">
 
         <Button
-            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
             android:id="@+id/submissions_comment_button_story"
             android:textColor="?attr/storyColorNormal"
             android:text="Story"
@@ -63,7 +63,7 @@
             android:layout_weight="1"/>
 
         <Button
-            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
             android:id="@+id/submissions_comment_button_replies"
             android:textColor="?attr/storyColorNormal"
             app:icon="@drawable/ic_action_reply"

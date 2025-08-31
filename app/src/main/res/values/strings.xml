@@ -14,8 +14,6 @@
         <item>History</item>
     </string-array>
 
-    <string name="show_cached_stories">Show cached stories</string>
-
     <string-array name="search_sorting_options">
         <item>Popularity</item>
         <item>Recent</item>

@@ -3,6 +3,9 @@ package com.simon.harmonichackernews.utils;
 public class Changelog {
     static public String getHTML() {
         return  "<b>Version 2.2.3:</b><br>" +
+                "- Material 3 Expressive design updates: New buttons, some improved colors<br>" +
+                "- Some improved edge-to-edge behavior<br>" +
+                "- Improved error message when no internet<br>" +
                 "- Fixed crash on Android API 23 devices when using HN API, sorry about this was in a rush for the fix<br>" +
                 "- Significantly improved performance of adblock, now barely makes a difference (~1ms per request)<br>" +
                 "- Added setting to use official HN API always if you want to<br>" +

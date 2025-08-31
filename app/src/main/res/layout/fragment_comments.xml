@@ -48,7 +48,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/webview_download"
-            style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
             app:icon="@drawable/ic_action_download"
             android:visibility="gone"
             android:textColor="?attr/storyColorNormal"

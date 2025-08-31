@@ -62,9 +62,8 @@ dependencies {
     implementation "androidx.window:window:1.4.0"
     implementation "androidx.window:window-java:1.4.0"
     implementation 'androidx.startup:startup-runtime:1.2.0'
-    implementation 'androidx.core:core:1.16.0'
 
-    implementation 'com.google.android.material:material:1.14.0-alpha01'
+    implementation 'com.google.android.material:material:1.14.0-alpha04'
 
     implementation 'com.android.volley:volley:1.2.1'
     implementation "com.squareup.okhttp3:okhttp:4.11.0"
