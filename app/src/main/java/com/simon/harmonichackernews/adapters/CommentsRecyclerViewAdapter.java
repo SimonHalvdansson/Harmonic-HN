@@ -632,7 +632,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout loadingFailed;
         public final TextView loadingFailedText;
         public final LinearLayout serverErrorLayout;
-        public final Button serverErrorSwitchApiButton;
         public final Button refreshButton;
         public final ImageButton userButton;
         public final ImageButton commentButton;
@@ -704,7 +703,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             loadingFailed = view.findViewById(R.id.comments_header_loading_failed);
             loadingFailedText = view.findViewById(R.id.comments_header_loading_failed_text);
             serverErrorLayout = view.findViewById(R.id.comments_header_server_error);
-            serverErrorSwitchApiButton = view.findViewById(R.id.comments_header_server_error_switch_api);
             refreshButton = view.findViewById(R.id.comments_header_refresh);
             favicon = view.findViewById(R.id.comments_header_favicon);
             linkInfoContainer = view.findViewById(R.id.comments_header_link_info_container);
@@ -759,17 +757,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             refreshButton.setOnClickListener((v) -> {
                 showUpdate = false;
                 retryListener.onRetry();
-            });
-
-            serverErrorSwitchApiButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    // This switches off the algolia API
-                    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(view.getContext());
-                    prefs.edit().putString("pref_comments_provider", "official").apply();
-
-                    Toast.makeText(view.getContext(), "Deactivated Algolia API, this can be switched back in the settings. Try reloading", Toast.LENGTH_LONG).show();
-                }
             });
 
             arxivDownloadButton.setOnClickListener((v) -> {

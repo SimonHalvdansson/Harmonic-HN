@@ -1158,7 +1158,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onAlgoliaFailed() {
                 adapter.loadingFailed = true;
-                adapter.loadingFailedServerError = true;
                 adapter.commentsLoaded = true;
                 adapter.notifyItemChanged(0);
                 swipeRefreshLayout.setRefreshing(false);
