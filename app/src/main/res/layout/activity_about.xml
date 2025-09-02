@@ -1,202 +1,198 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/about_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
 
-    <ScrollView
+    <LinearLayout
+        android:paddingLeft="@dimen/single_view_side_margin"
+        android:paddingRight="@dimen/single_view_side_margin"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:paddingTop="36dp"
+        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="wrap_content">
+
         <LinearLayout
-            android:id="@+id/about_container"
-            android:paddingLeft="@dimen/single_view_side_margin"
-            android:paddingRight="@dimen/single_view_side_margin"
-            android:layout_marginLeft="16dp"
-            android:layout_marginRight="16dp"
-            android:paddingTop="36dp"
-            android:orientation="vertical"
+            android:orientation="horizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
+            <ImageView
+                android:layout_gravity="center_vertical"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginRight="16dp"
+                android:src="@mipmap/ic_launcher" />
+
             <LinearLayout
-                android:orientation="horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="match_parent"
+                android:orientation="vertical">
 
-                <ImageView
-                    android:layout_gravity="center_vertical"
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
-                    android:layout_marginRight="16dp"
-                    android:src="@mipmap/ic_launcher" />
+                <TextView
+                    android:textColor="?attr/storyColorNormal"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/product_sans"
+                    android:textSize="32dp"
+                    android:text="Harmonic"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:textColor="?attr/storyColorNormal"
-                        android:textStyle="bold"
-                        android:fontFamily="@font/product_sans"
-                        android:textSize="32dp"
-                        android:text="Harmonic"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"/>
-
-                    <TextView
-                        android:textColor="?attr/storyColorDisabled"
-                        android:fontFamily="@font/product_sans"
-                        android:textStyle="bold"
-                        android:id="@+id/about_version"
-                        android:layout_marginTop="-4dp"
-                        tools:text="Version 1.3.3.7"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"/>
-
-                </LinearLayout>
+                <TextView
+                    android:textColor="?attr/storyColorDisabled"
+                    android:fontFamily="@font/product_sans"
+                    android:textStyle="bold"
+                    android:id="@+id/about_version"
+                    android:layout_marginTop="-4dp"
+                    tools:text="Version 1.3.3.7"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
 
             </LinearLayout>
 
-            <TextView
-                android:paddingTop="24dp"
-                android:paddingBottom="16dp"
-                android:textSize="16sp"
-                android:fontFamily="@font/product_sans"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:text="Harmonic for Hacker News is developed by me, Simon Halvdansson, although since 2023 the app is open source. The libraries used are listed below together with Materialistic by Hidroh which I've used for some network code and PDF integration.\n\nThe name 'Harmonic' comes from me choosing to study harmonic analysis at around the time of Harmonic's inception. I guess you could say something about 'waves' and 'news' but that's the rationale. Since then, I've finished my PhD in harmonic analysis and don't have the same amount of time to work on Harmonic but it's still my favorite pet project and I use the app daily. Seeing others contribute, open meaningful issues on GitHub or just tell me they like the app is always super nice and I'm very thankful to the community for helping with the maintenance. Together I think we can keep Harmonic the (in my opinion) best Hacker News client for Android!"/>
-
-            <TextView
-                android:textColor="?attr/textColorDisabled"
-                android:text="licenses:"
-                android:paddingBottom="2dp"
-                android:fontFamily="@font/product_sans"
-                android:textStyle="bold"
-                android:textSize="13dp"
-                android:textAllCaps="true"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:fontFamily="@font/product_sans"
-                android:text="• AndroidX by Google - Apache 2.0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:text="• Volley by Google - Apache 2.0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:text="• Material Components by Google - Apache 2.0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:text="• HtmlTextView by SufficientlySecure - Apache 2.0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:text="• OkHttp by Square - Apache 2.0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:text="• Picasso by Square - Apache 2.0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:text="• Shimmer by Facebook - BSD"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:text="• pdf.js by Mozilla - Apache 2.0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:text="• hidroh/Materialistic - Apache 2.0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:text="• jsoup - MIT"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:text="• gongwen/SwipeBackLayout - Apache 2.0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:textSize="14sp"
-                android:layout_marginTop="16dp"
-                android:fontFamily="@font/product_sans_bold"
-                style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
-                app:icon="@drawable/ic_link_preview_github"
-                android:textColor="?attr/storyColorNormal"
-                app:iconTint="?attr/storyColorNormal"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:onClick="openGithub"
-                android:text="Harmonic on GitHub" />
-
-            <com.google.android.material.button.MaterialButton
-                android:textSize="14sp"
-                android:fontFamily="@font/product_sans_bold"
-                style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
-                app:icon="@drawable/ic_action_update"
-                android:textColor="?attr/storyColorNormal"
-                app:iconTint="?attr/storyColorNormal"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:onClick="openChangelog"
-                android:text="Changelog" />
-
-            <com.google.android.material.button.MaterialButton
-                android:textSize="14sp"
-                android:fontFamily="@font/product_sans_bold"
-                style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
-                app:icon="@drawable/ic_action_policy"
-                android:textColor="?attr/storyColorNormal"
-                app:iconTint="?attr/storyColorNormal"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:onClick="openPrivacy"
-                android:text="Privacy policy" />
-
         </LinearLayout>
 
-    </ScrollView>
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <TextView
+            android:paddingTop="24dp"
+            android:paddingBottom="16dp"
+            android:textSize="16sp"
+            android:fontFamily="@font/product_sans"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Harmonic for Hacker News is developed by me, Simon Halvdansson, although since 2023 the app is open source. The libraries used are listed below together with Materialistic by Hidroh which I've used for some network code and PDF integration.\n\nThe name 'Harmonic' comes from me choosing to study harmonic analysis at around the time of Harmonic's inception. I guess you could say something about 'waves' and 'news' but that's the rationale. Since then, I've finished my PhD in harmonic analysis and don't have the same amount of time to work on Harmonic but it's still my favorite pet project and I use the app daily. Seeing others contribute, open meaningful issues on GitHub or just tell me they like the app is always super nice and I'm very thankful to the community for helping with the maintenance. Together I think we can keep Harmonic the (in my opinion) best Hacker News client for Android!"/>
+
+        <TextView
+            android:textColor="?attr/textColorDisabled"
+            android:text="licenses:"
+            android:paddingBottom="2dp"
+            android:fontFamily="@font/product_sans"
+            android:textStyle="bold"
+            android:textSize="13dp"
+            android:textAllCaps="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:fontFamily="@font/product_sans"
+            android:text="• AndroidX by Google - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• Volley by Google - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• Material Components by Google - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• HtmlTextView by SufficientlySecure - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• OkHttp by Square - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• Picasso by Square - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• Shimmer by Facebook - BSD"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• pdf.js by Mozilla - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• hidroh/Materialistic - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• jsoup - MIT"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• gongwen/SwipeBackLayout - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:textSize="14sp"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/product_sans_bold"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            app:icon="@drawable/ic_link_preview_github"
+            android:textColor="?attr/storyColorNormal"
+            app:iconTint="?attr/storyColorNormal"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:onClick="openGithub"
+            android:text="Harmonic on GitHub" />
+
+        <com.google.android.material.button.MaterialButton
+            android:textSize="14sp"
+            android:fontFamily="@font/product_sans_bold"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            app:icon="@drawable/ic_action_update"
+            android:textColor="?attr/storyColorNormal"
+            app:iconTint="?attr/storyColorNormal"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:onClick="openChangelog"
+            android:text="Changelog" />
+
+        <com.google.android.material.button.MaterialButton
+            android:textSize="14sp"
+            android:fontFamily="@font/product_sans_bold"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            app:icon="@drawable/ic_action_policy"
+            android:textColor="?attr/storyColorNormal"
+            app:iconTint="?attr/storyColorNormal"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:onClick="openPrivacy"
+            android:text="Privacy policy" />
+
+    </LinearLayout>
+
+</ScrollView>

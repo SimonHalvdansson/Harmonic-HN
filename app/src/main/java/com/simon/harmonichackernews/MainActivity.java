@@ -12,7 +12,6 @@ import android.widget.LinearLayout;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-
 import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -106,7 +105,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     private void updateFragmentLayout() {
-        if (Utils.isTablet(getResources()) && findViewById(R.id.main_fragments_container) != null) {
+        if (Utils.isTablet(getResources()) && findViewById(R.id.main_fragments_container) instanceof LinearLayout) {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     0,
                     ViewGroup.LayoutParams.MATCH_PARENT,
