@@ -9,6 +9,7 @@ public class Changelog {
                 "- Fixed crash on Android API 23 devices when using HN API, sorry about this was in a rush for the fix<br>" +
                 "- Significantly improved performance of adblock, now barely makes a difference (~1ms per request)<br>" +
                 "- Added setting to use official HN API always if you want to<br>" +
+                "- Added new auto day/night themes (thanks flofriday!)<br>" +
                 "<br>" +
                 "<b>Version 2.2.2:</b><br>" +
                 "- As you probably noticed, there has been an Algolia API outage recently. Thanks to Amith KK for coding a quick official HN API fallback which is automatically used now in the event of outages<br>" +
