@@ -12,6 +12,9 @@ The purpose of open-sourcing Harmonic is thus mainly to enable interested users 
 <a href="https://play.google.com/store/apps/details?id=com.simon.harmonichackernews">
 <img src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png" alt="Get it on Google Play" height="80">
 </a>
+<a href="https://apt.izzysoft.de/packages/com.simon.harmonichackernews">
+<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" height="80" alt="Get it at IzzyOnDroid">
+</a>
 
 # Features
 
