@@ -189,6 +189,7 @@
                 android:layout_height="wrap_content"/>
 
             <include
+                android:id="@+id/story_list_item"
                 layout="@layout/story_list_item"/>
 
             <TextView
