@@ -26,8 +26,8 @@ public class AboutActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        ActivityAboutBinding binding = ActivityAboutBinding.inflate(getLayoutInflater());
         ThemeUtils.setupTheme(this, false);
+        ActivityAboutBinding binding = ActivityAboutBinding.inflate(getLayoutInflater());
         final View root = binding.getRoot();
         setContentView(root);
 

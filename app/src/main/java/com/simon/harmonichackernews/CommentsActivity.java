@@ -6,11 +6,10 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 
-import androidx.activity.OnBackPressedCallback;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.gw.swipeback.SwipeBackLayout;
+import com.simon.harmonichackernews.databinding.ActivityCommentsBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.SplitChangeHandler;
 import com.simon.harmonichackernews.utils.ThemeUtils;
@@ -29,6 +28,8 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         swipeBack = !SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext());
 
         ThemeUtils.setupTheme(this, swipeBack);
+        ActivityCommentsBinding binding = ActivityCommentsBinding.inflate(getLayoutInflater());
+        final View root = binding.getRoot();
 
         /*this is a long story. On CommentsActivity, the default theme is dependent on the android version.
             For 24-29, we set SwipeBack as the default theme and do nothing more
@@ -41,8 +42,7 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         if (swipeBack && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             setTranslucent(true);
         }
-
-        setContentView(R.layout.activity_comments);
+        setContentView(root);
 
         CommentsFragment fragment = new CommentsFragment();
         fragment.setArguments(getIntent().getExtras());
@@ -51,7 +51,7 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         transaction.replace(R.id.comment_fragment_container_view, fragment);
         transaction.commit();
 
-        swipeBackLayout = findViewById(R.id.swipeBackLayout);
+        swipeBackLayout = binding.swipeBackLayout;
         this.splitChangeHandler = new SplitChangeHandler(this, swipeBackLayout);
 
         swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
