@@ -13,6 +13,12 @@
             <action android:name="android.intent.action.SENDTO"/>
             <data android:scheme="mailto" android:host="*" />
         </intent>
+
+        <!-- Used for Context#defaultBrowserPackageName() -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
     </queries>
 
     <application

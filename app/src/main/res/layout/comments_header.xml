@@ -911,6 +911,18 @@
             android:backgroundTint="?attr/colorSecondary"
             android:text="Retry"    />
 
+        <Button
+            android:id="@+id/comments_header_open_in_browser"
+            android:layout_gravity="center_horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            style="@style/Widget.Material3.Button.ElevatedButton"
+            app:icon="@drawable/ic_action_external_browser"
+            android:textColor="?attr/colorOnSecondary"
+            app:iconTint="?attr/colorOnSecondary"
+            android:backgroundTint="?attr/colorSecondary"
+            android:text="Open in browser"    />
+
     </LinearLayout>
 
     <LinearLayout
