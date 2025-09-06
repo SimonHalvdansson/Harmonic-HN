@@ -120,8 +120,8 @@
             app:defaultValue="false"
             app:icon="@drawable/ic_action_tablet"
             app:title="Enable foldable support"   />
-      
-      <SwitchPreferenceCompat
+
+        <SwitchPreferenceCompat
             app:isPreferenceVisible="@bool/before_android_15"
             app:singleLineTitle="false"
             app:key="pref_transparent_status_bar"
@@ -294,6 +294,13 @@
             app:defaultValue="true"
             app:icon="@drawable/ic_action_animation"
             app:title="Animate comments"    />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_comments_animation_navigation"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_comments_animation_navigation"
+            app:title="Animate comments navigation"    />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"

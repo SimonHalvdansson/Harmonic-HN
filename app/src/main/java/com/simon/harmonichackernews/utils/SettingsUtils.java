@@ -175,6 +175,10 @@ public class SettingsUtils {
         return getBooleanPref("pref_comments_animation", true, ctx);
     }
 
+    public static boolean shouldUseCommentsAnimationNavigation(Context ctx) {
+        return getBooleanPref("pref_comments_animation_navigation", true, ctx);
+    }
+
     public static boolean shouldUseCommentsScrollbar(Context ctx) {
         return getBooleanPref("pref_comments_scrollbar", false, ctx);
     }
