@@ -601,13 +601,21 @@ public class Utils {
     }
 
     public static void launchInExternalBrowser(Context ctx, String url) {
+        String defaultBrowserPackageName = ContextExtensionsKt.defaultBrowserPackageName(ctx);
+
         try {
             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            if (defaultBrowserPackageName != null) {
+                browserIntent.setPackage(defaultBrowserPackageName);
+            }
             ctx.startActivity(browserIntent);
         } catch (Exception e) {
             // failed for the first time, let's try to guess a fix to the url
             try {
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(URLUtil.guessUrl(url)));
+                if (defaultBrowserPackageName != null) {
+                    browserIntent.setPackage(defaultBrowserPackageName);
+                }
                 ctx.startActivity(browserIntent);
             } catch (Exception e1) {
                 // automated fix didn't work, let's try to do it manually
@@ -615,6 +623,9 @@ public class Utils {
                     if (!url.startsWith("http://") && !url.startsWith("https://"))
                         url = "http://" + url;
                     Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    if (defaultBrowserPackageName != null) {
+                        browserIntent.setPackage(defaultBrowserPackageName);
+                    }
                     ctx.startActivity(browserIntent);
                 } catch (Exception e2) {
                     Toast.makeText(ctx, "Couldn't open link to: " + url, Toast.LENGTH_SHORT).show();
