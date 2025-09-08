@@ -18,6 +18,7 @@
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/tag_dialog_edittext"
                 android:hint="Tag"
+                android:fontFamily="@font/product_sans"
                 android:inputType="textCapSentences"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
@@ -29,6 +30,7 @@
             android:layout_marginTop="20dp">
 
             <Button
+                android:fontFamily="@font/product_sans_bold"
                 android:id="@+id/tag_dialog_cancel"
                 style="?attr/materialButtonOutlinedStyle"
                 android:text="Cancel"
@@ -39,6 +41,7 @@
                 android:layout_height="wrap_content" />
 
             <Button
+                android:fontFamily="@font/product_sans_bold"
                 android:textColor="?attr/storyColorNormal"
                 android:id="@+id/tag_dialog_save"
                 style="@style/Widget.Material3Expressive.Button.OutlinedButton"

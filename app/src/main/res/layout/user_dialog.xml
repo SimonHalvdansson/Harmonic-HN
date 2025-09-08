@@ -77,13 +77,12 @@
 
             <TextView
                 android:id="@+id/user_meta"
-                android:layout_marginTop="4dp"
-                android:fontFamily="@font/product_sans"
+                android:fontFamily="@font/product_sans_bold"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="4dp"
                 android:textColor="?attr/textColorDefault"
-                android:text="Karma: 466  •  Created: Oct 18, 2019"/>
+                android:text="466 karma since Oct 18, 2019"/>
 
             <org.sufficientlysecure.htmltextview.HtmlTextView
                 android:id="@+id/user_about"
@@ -107,6 +106,7 @@
                 tools:text="Submissions" />
 
             <Button
+                android:fontFamily="@font/product_sans_bold"
                 app:icon="@drawable/ic_action_tag"
                 android:minWidth="10dp"
                 android:layout_marginTop="8dp"
@@ -118,6 +118,7 @@
                 android:text="Set tag" />
 
             <Button
+                android:fontFamily="@font/product_sans_bold"
                 app:icon="@drawable/ic_action_block"
                 android:minWidth="10dp"
                 android:id="@+id/user_block_button"
@@ -128,6 +129,7 @@
                 android:text="Block" />
 
             <Button
+                android:fontFamily="@font/product_sans_bold"
                 app:icon="@drawable/ic_action_report"
                 android:id="@+id/user_report_button"
                 style="@style/Widget.Material3Expressive.Button.TextButton"

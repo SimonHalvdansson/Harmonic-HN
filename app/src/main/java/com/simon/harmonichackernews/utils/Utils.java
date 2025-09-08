@@ -513,21 +513,21 @@ public class Utils {
         if (diff < MINUTE_MILLIS) {
             return "just now";
         } else if (diff < 2 * MINUTE_MILLIS) {
-            return "1 min";
+            return "1 m";
         } else if (diff < 50 * MINUTE_MILLIS) {
-            return diff / MINUTE_MILLIS + " mins";
+            return diff / MINUTE_MILLIS + " m";
         } else if (diff < 120 * MINUTE_MILLIS) {
-            return "1 hr";
+            return "1 h";
         } else if (diff < 24 * HOUR_MILLIS) {
-            return diff / HOUR_MILLIS + " hrs";
+            return diff / HOUR_MILLIS + " h";
         } else if (diff < 48 * HOUR_MILLIS) {
-            return "1 day";
+            return "1 d";
         } else if (diff < 365 * DAY_MILLIS) {
-            return diff / DAY_MILLIS + " days";
+            return diff / DAY_MILLIS + " d";
         } else if (diff < 2 * YEAR_MILLIS) {
-            return "1 year";
+            return "1 y";
         } else {
-            return diff / YEAR_MILLIS + " years";
+            return diff / YEAR_MILLIS + " y";
         }
     }
 
