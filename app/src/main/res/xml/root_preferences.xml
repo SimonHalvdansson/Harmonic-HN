@@ -259,6 +259,14 @@
             app:defaultValue="false" />
 
         <SwitchPreferenceCompat
+            app:dependency="pref_scroll_navigation"
+            app:singleLineTitle="false"
+            app:key="pref_comments_animation_navigation"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_comments_animation_navigation"
+            app:title="Animate comments navigation" />
+
+        <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_monochrome_comment_depth"
             app:icon="@drawable/ic_action_colors"
@@ -294,13 +302,6 @@
             app:defaultValue="true"
             app:icon="@drawable/ic_action_animation"
             app:title="Animate comments"    />
-
-        <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_comments_animation_navigation"
-            app:defaultValue="true"
-            app:icon="@drawable/ic_comments_animation_navigation"
-            app:title="Animate comments navigation"    />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
