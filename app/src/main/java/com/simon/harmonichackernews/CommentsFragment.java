@@ -14,6 +14,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.PointF;
 import android.net.Uri;
@@ -72,7 +73,6 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 
-import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
@@ -118,12 +118,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 
 import okhttp3.Call;
@@ -182,7 +178,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private String username;
     private Story story;
     private Set<String> filteredUsers;
-    
+    private int SCREEN_HEIGHT_IN_PIXELS = 100;
+
     // Clean fallback management
     private AlgoliaFallbackManager fallbackManager;
     private boolean usingHNAPIFallback = false;
@@ -407,15 +404,35 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         scrollIcon.setOnClickListener(null);
 
-        scrollNext.setOnClickListener((v) -> scrollNext());
+        scrollNext.setOnClickListener(v -> {
+            if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
+                smoothScrollNext();
+            } else {
+                scrollNext();
+            }
+        });
         scrollNext.setOnLongClickListener(v -> {
-            scrollLast();
+            if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
+                smoothScrollLast();
+            } else {
+                scrollLast();
+            }
             return true;
         });
 
-        scrollPrev.setOnClickListener((v) -> scrollPrevious());
+        scrollPrev.setOnClickListener(v -> {
+            if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
+                smoothScrollPrevious();
+            } else {
+                scrollPrevious();
+            }
+        });
         scrollPrev.setOnLongClickListener(v -> {
-            scrollTop();
+            if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
+                smoothScrollTop();
+            } else {
+                scrollTop();
+            }
             return true;
         });
 
@@ -648,7 +665,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     }
                     BottomSheetBehavior.from(bottomSheet).setDraggable(recyclerView.computeVerticalScrollOffset() == 0);
                 }
-                
+
                 // Note: Infinite scroll removed - all comments now load at once via AlgoliaFallbackManager
             }
         });
@@ -1018,6 +1035,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 adapter.notifyItemChanged(0);
             }
         }
+        saveScreenHeight();
     }
 
     @Override
@@ -1044,6 +1062,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 MainActivity.commentsScrollProgresses.add(recordScrollProgress());
             }
         }
+    }
+
+    private void saveScreenHeight() {
+        SCREEN_HEIGHT_IN_PIXELS = Resources.getSystem().getDisplayMetrics().heightPixels;
     }
 
     private void loadHeaderSpacer() {
@@ -1147,7 +1169,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     private void loadStoryAndComments(final int id, final String oldCachedResponse) {
         lastLoaded = System.currentTimeMillis();
-        
+
         // Initialize fallback manager
         fallbackManager = new AlgoliaFallbackManager(getContext(), queue, requestTag, filteredUsers, new AlgoliaFallbackManager.FallbackListener() {
             @Override
@@ -1162,6 +1184,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onAlgoliaFailed() {
                 adapter.loadingFailed = true;
+                adapter.loadingFailedServerError = true;
                 adapter.commentsLoaded = true;
                 adapter.notifyItemChanged(0);
                 swipeRefreshLayout.setRefreshing(false);
@@ -1175,7 +1198,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onHNAPIStoryLoaded(Story loadedStory) {
                 usingHNAPIFallback = true;
-                
+
                 // Update story data
                 story.title = loadedStory.title;
                 story.by = loadedStory.by;
@@ -1186,14 +1209,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 story.text = loadedStory.text;
                 story.kids = loadedStory.kids;
                 story.descendants = loadedStory.descendants;
-                
+
                 // Reset comments
                 int oldSize = comments.size();
                 if (oldSize > 1) {
                     comments.subList(1, oldSize).clear();
                     adapter.notifyItemRangeRemoved(1, oldSize - 1);
                 }
-                
+
                 adapter.loadingFailed = false;
                 adapter.loadingFailedServerError = false;
                 adapter.notifyItemChanged(0);
@@ -1219,7 +1242,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 swipeRefreshLayout.setRefreshing(false);
             }
         });
-        
+
         fallbackManager.loadComments(id, oldCachedResponse);
 
         if (story.pollOptions != null) {
@@ -1556,8 +1579,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         UserActions.upvote(getContext(), adapter.story.id, getParentFragmentManager());
     }
 
-    private void scrollTop() {
+    private void smoothScrollTop() {
         recyclerView.smoothScrollToPosition(0);
+    }
+
+    private void scrollTop() {
+        recyclerView.scrollToPosition(0);
     }
 
     private int findFirstVisiblePosition() {
@@ -1580,7 +1607,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         return firstVisible;
     }
 
-    private void scrollPrevious() {
+    private void smoothScrollPrevious() {
         if (layoutManager != null) {
             int firstVisible = findFirstVisiblePosition();
 
@@ -1597,7 +1624,34 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    public void scrollNext() {
+    private void scrollPrevious() {
+        View toScrollToCommentView = null;
+        if (layoutManager != null) {
+            int firstVisible = findFirstVisiblePosition();
+
+            int toScrollTo = 0;
+
+            for (int i = 0; i < firstVisible; i++) {
+                if (comments.get(i).depth == 0 || i == 0) {
+                    toScrollTo = i;
+                }
+            }
+
+            toScrollToCommentView = layoutManager.findViewByPosition(toScrollTo);
+            if (toScrollToCommentView != null) { // top comment visible, scroll to item with topInset
+                recyclerView.scrollBy(0, toScrollToCommentView.getTop() - topInset);
+            } else { // top comment not visible
+                toScrollToCommentView = layoutManager.findViewByPosition(toScrollTo);
+                while (toScrollToCommentView == null) { // scroll until find top comment
+                    recyclerView.scrollBy(0, -SCREEN_HEIGHT_IN_PIXELS);
+                    toScrollToCommentView = layoutManager.findViewByPosition(toScrollTo);
+                }
+                recyclerView.scrollBy(0, toScrollToCommentView.getTop() - topInset);
+            }
+        }
+    }
+
+    private void smoothScrollNext() {
         if (layoutManager != null) {
             int firstVisible = findFirstVisiblePosition();
 
@@ -1615,7 +1669,35 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    private void scrollLast() {
+    private void scrollNext() {
+        View toScrollToCommentView = null;
+        if (layoutManager != null) {
+            int firstVisible = findFirstVisiblePosition();
+
+            int toScrollTo = firstVisible;
+
+            for (int i = firstVisible + 1; i < comments.size(); i++) {
+                if (comments.get(i).depth == 0) {
+                    toScrollTo = i;
+                    break;
+                }
+            }
+
+            toScrollToCommentView = layoutManager.findViewByPosition(toScrollTo);
+            if (toScrollToCommentView != null) { // top comment visible, scroll to item with topInset
+                recyclerView.scrollBy(0, toScrollToCommentView.getTop() - topInset);
+            } else { // top comment not visible
+                toScrollToCommentView = layoutManager.findViewByPosition(toScrollTo);
+                while (toScrollToCommentView == null) { // scroll until find top comment
+                    recyclerView.scrollBy(0, SCREEN_HEIGHT_IN_PIXELS);
+                    toScrollToCommentView = layoutManager.findViewByPosition(toScrollTo);
+                }
+                recyclerView.scrollBy(0, toScrollToCommentView.getTop() - topInset);
+            }
+        }
+    }
+
+    private void smoothScrollLast() {
         if (layoutManager != null) {
             int firstVisible = layoutManager.findFirstVisibleItemPosition();
             int toScrollTo = firstVisible;
@@ -1628,6 +1710,32 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             smoothScroller.setTargetPosition(toScrollTo);
             layoutManager.startSmoothScroll(smoothScroller);
+        }
+    }
+
+    private void scrollLast() {
+        View toScrollToCommentView = null;
+        if (layoutManager != null) {
+            int firstVisible = layoutManager.findFirstVisibleItemPosition();
+            int toScrollTo = firstVisible;
+
+            for (int i = firstVisible + 1; i < comments.size(); i++) {
+                if (comments.get(i).depth == 0) {
+                    toScrollTo = i;
+                }
+            }
+
+            toScrollToCommentView = layoutManager.findViewByPosition(toScrollTo);
+            if (toScrollToCommentView != null) { // top comment visible, scroll to item with topInset
+                recyclerView.scrollBy(0, toScrollToCommentView.getTop() - topInset);
+            } else { // top comment not visible
+                toScrollToCommentView = layoutManager.findViewByPosition(toScrollTo);
+                while (toScrollToCommentView == null) { // scroll until find top comment
+                    recyclerView.scrollBy(0, SCREEN_HEIGHT_IN_PIXELS);
+                    toScrollToCommentView = layoutManager.findViewByPosition(toScrollTo);
+                }
+                recyclerView.scrollBy(0, toScrollToCommentView.getTop() - topInset);
+            }
         }
     }
 
