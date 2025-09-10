@@ -16,7 +16,7 @@
         <item name="colorSurface">@color/material_you_50</item>
     </style>
 
-    <style name="snackbarTextStyle" parent="@style/Widget.Material3Expressive.Button.TextButton.Snackbar">
+    <style name="snackbarTextStyle" parent="@style/Widget.Material3.Button.TextButton.Snackbar">
         <item name="android:textColor">#222</item>
         <item name="android:textSize">14sp</item>
         <item name="android:fontFamily">@font/product_sans</item>

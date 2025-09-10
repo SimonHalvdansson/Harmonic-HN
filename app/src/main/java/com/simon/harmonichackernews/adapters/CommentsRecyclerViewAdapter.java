@@ -273,7 +273,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 for (int i = 0; i < story.pollOptionArrayList.size(); i++) {
                     PollOption pollOption = story.pollOptionArrayList.get(i);
                     if (pollOption.loaded) {
-                        MaterialButton materialButton = new MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
+                        MaterialButton materialButton = new MaterialButton(ctx, null);
                         materialButton.setText(pollOption.text + " (" + pollOption.points + (pollOption.points == 1 ? " point" : " points") + ")");
 
                         materialButton.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorNormal));
