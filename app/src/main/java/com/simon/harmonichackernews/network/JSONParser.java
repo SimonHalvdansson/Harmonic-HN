@@ -200,6 +200,9 @@ public class JSONParser {
     }
 
     public static void updatePdfProperties(Story story) {
+        if (story == null || TextUtils.isEmpty(story.url)) {
+            return;
+        }
         if (story.url.endsWith(".pdf") || story.title.endsWith("[pdf]") || story.title.endsWith("(pdf)")) {
             story.pdfTitle = story.title;
 

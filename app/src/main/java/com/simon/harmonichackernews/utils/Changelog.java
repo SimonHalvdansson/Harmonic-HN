@@ -9,7 +9,9 @@ public class Changelog {
                 "- Fixed crash on Android API 23 devices when using HN API, sorry about this was in a rush for the fix<br>" +
                 "- Significantly improved performance of adblock, now barely makes a difference (~1ms per request)<br>" +
                 "- Added setting to use official HN API always if you want to<br>" +
-                "- Fixed bad behavior in comment detail view when in landscape mode<br>" +
+                "- Fixed some edge-to-edge issues<br>" +
+                "- Fix rare login crash<br>" +
+                "- Fixed crash when parsing weird post title related to PDF<br>" +
                 "- Added new auto day/night themes (thanks flofriday!)<br>" +
                 "- Added button to open HN comments in browser (thanks arkon!)<br>" +
                 "- Added toggle for comment navigation animation (thanks Hao Lu!)<br>" +

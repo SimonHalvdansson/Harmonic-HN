@@ -20,6 +20,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
+import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
 
 import okhttp3.Response;
@@ -87,19 +88,23 @@ public class LoginDialogFragment extends AppCompatDialogFragment {
                 UserActions.login(getContext(), new UserActions.ActionCallback() {
                     @Override
                     public void onSuccess(Response response) {
-                        requireActivity().runOnUiThread(() -> {
-                            Toast.makeText(getContext(), "Login successful", Toast.LENGTH_SHORT).show();
-                            dismiss();
-                        });
+                        if (getContext() == null) {
+                            return;
+                        }
+
+                        Utils.toast("Login successful", getContext());
+                        dismiss();
                     }
 
                     @Override
                     public void onFailure(String summary, String response) {
-                        requireActivity().runOnUiThread(() -> {
-                            AccountUtils.deleteAccountDetails(getContext());
-                            Toast.makeText(getContext(), "Login failed, bad credentials?", Toast.LENGTH_SHORT).show();
-                            dismiss();
-                        });
+                        if (getContext() == null) {
+                            return;
+                        }
+
+                        AccountUtils.deleteAccountDetails(getContext());
+                        Utils.toast("Login failed, bad credentials?", getContext());
+                        dismiss();
                     }
                 });
 
