@@ -341,14 +341,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @NonNull
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
-                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-                updateBottomSheetMargin(insets.bottom);
+                Insets systemInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                updateBottomSheetMargin(systemInsets.bottom);
 
                 Insets cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
                 int extraPadding = getResources().getDimensionPixelSize(R.dimen.extra_pane_padding);
-                bottomSheet.setPadding(cutoutInsets.left, 0, Math.max(cutoutInsets.right, extraPadding), 0);
+                bottomSheet.setPadding(Math.max(cutoutInsets.left, systemInsets.left), 0, Math.max(Math.max(cutoutInsets.right, extraPadding), systemInsets.right), 0);
 
-                webViewContainer.setPadding(0, insets.top, 0, 0);
+                webViewContainer.setPadding(0, systemInsets.top, 0, 0);
 
                 return windowInsets;
             }
