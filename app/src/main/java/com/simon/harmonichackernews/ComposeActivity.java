@@ -167,7 +167,7 @@ public class ComposeActivity extends AppCompatActivity {
             @NonNull
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
-                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime() | WindowInsetsCompat.Type.displayCutout());
                 int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
 
                 bottomContainer.setPadding(0, 0, 0, insets.bottom);

@@ -36,22 +36,23 @@ public class AboutActivity extends AppCompatActivity {
         final View container = binding.aboutContainer;
 
         // Remember original paddings
-        final int padStart = container.getPaddingStart();
+        final int padLeft  = container.getPaddingLeft();
         final int padTop   = container.getPaddingTop();
-        final int padEnd   = container.getPaddingEnd();
+        final int padRight = container.getPaddingRight();
         final int padBot   = container.getPaddingBottom();
 
         ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
-            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            Insets ime  = insets.getInsets(WindowInsetsCompat.Type.ime());
+            Insets bars   = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets ime    = insets.getInsets(WindowInsetsCompat.Type.ime());
+            Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
 
-            container.setPaddingRelative(
-                    padStart + bars.left,
+            container.setPadding(
+                    padLeft + Math.max(bars.left, cutout.left),
                     padTop   + bars.top,
-                    padEnd   + bars.right,
+                    padRight   + Math.max(bars.right, cutout.right),
                     padBot   + Math.max(bars.bottom, ime.bottom)
             );
-            return insets; // don’t consume
+            return insets;
         });
         ViewCompat.requestApplyInsets(root);
 

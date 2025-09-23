@@ -13,6 +13,7 @@
         android:paddingRight="@dimen/single_view_side_margin"
         android:layout_marginLeft="16dp"
         android:layout_marginRight="16dp"
+        android:paddingBottom="8dp"
         android:paddingTop="36dp"
         android:orientation="vertical"
         android:layout_width="match_parent"
