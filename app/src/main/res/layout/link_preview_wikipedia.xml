@@ -10,6 +10,7 @@
         android:id="@+id/comments_header_wikipedia_summary"
         android:textColor="?attr/storyColorNormal"
         android:textSize="15sp"
+        android:maxLines="40"
         android:paddingBottom="3dp"
         android:textIsSelectable="true"
         android:layout_width="wrap_content"
