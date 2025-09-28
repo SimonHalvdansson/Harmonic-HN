@@ -33,6 +33,7 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.StoriesFragment;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.utils.FontUtils;
@@ -278,6 +279,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 headerViewHolder.loadingIndicator.setVisibility(stories.size() == 1 && !loadingFailed && !loadingFailedServerError && (type != SettingsUtils.getBookmarksIndex(ctx.getResources())) ? View.VISIBLE : View.GONE);
             }
 
+            headerViewHolder.showingCachedText.setVisibility(StoriesFragment.showingCached ? View.VISIBLE : View.GONE);
+
             headerViewHolder.typeSpinner.setSelection(type);
 
             TooltipCompat.setTooltipText(headerViewHolder.searchButton, searching ? "Close" : "Search");
@@ -393,6 +396,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final LinearLayout container;
         public final LinearLayout loadingFailedLayout;
         public final TextView loadingFailedText;
+        public final TextView showingCachedText;
         public final TextView loadingFailedAlgoliaLayout;
         public final LinearLayout noBookmarksLayout;
         public final LinearLayout spinnerContainer;
@@ -414,6 +418,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             loadingFailedLayout = view.findViewById(R.id.stories_header_loading_failed);
             loadingFailedAlgoliaLayout = view.findViewById(R.id.stories_header_loading_failed_algolia);
             loadingFailedText = view.findViewById(R.id.stories_header_loading_failed_text);
+            showingCachedText = view.findViewById(R.id.stories_header_cached_stories_header);
             container = view.findViewById(R.id.stories_header_container);
             typeSpinner = view.findViewById(R.id.stories_header_spinner);
             noBookmarksLayout = view.findViewById(R.id.stories_header_no_bookmarks);

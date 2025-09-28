@@ -76,6 +76,15 @@
 
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/stories_header_cached_stories_header"
+        android:visibility="gone"
+        android:textAllCaps="true"
+        android:text="Cached stories"
+        android:fontFamily="@font/product_sans_bold"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
     <RelativeLayout
         android:id="@+id/stories_header_loading_indicator"
         android:layout_width="match_parent"

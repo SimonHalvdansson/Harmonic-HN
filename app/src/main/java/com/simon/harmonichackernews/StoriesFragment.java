@@ -78,7 +78,7 @@ public class StoriesFragment extends Fragment {
     private boolean hideJobs, alwaysOpenComments, hideClicked;
     private String lastSearch;
 
-    private boolean showingCached = false;
+    public static boolean showingCached = false;
 
     private int loadedTo = 0;
 
