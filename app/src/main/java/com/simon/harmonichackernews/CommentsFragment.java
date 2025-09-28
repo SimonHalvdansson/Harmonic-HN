@@ -1186,9 +1186,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
             @Override
-            public void onAlgoliaFailed() {
+            public void onAlgoliaFailed(boolean noInternet) {
                 adapter.loadingFailed = true;
-                adapter.loadingFailedServerError = true;
+                adapter.loadingFailedServerError = !noInternet;
                 adapter.commentsLoaded = true;
                 adapter.notifyItemChanged(0);
                 swipeRefreshLayout.setRefreshing(false);

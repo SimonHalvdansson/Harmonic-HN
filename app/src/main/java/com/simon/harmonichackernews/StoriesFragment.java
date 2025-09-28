@@ -580,6 +580,14 @@ public class StoriesFragment extends Fragment {
         menu.findItem(R.id.menu_log).setTitle(loggedIn ? "Log out" : "Log in");
         menu.findItem(R.id.menu_profile).setVisible(loggedIn);
         menu.findItem(R.id.menu_submit).setVisible(loggedIn);
+        //first only show cache button if we're not already looking at the cache
+        menu.findItem(R.id.menu_cache).setVisible(!showingCached);
+        //also if we don't have internet, no need to show at all
+        if (getContext() != null) {
+            if (!Utils.isNetworkAvailable(getContext())) {
+                menu.findItem(R.id.menu_cache).setVisible(false);
+            }
+        }
 
         popup.show();
     }
