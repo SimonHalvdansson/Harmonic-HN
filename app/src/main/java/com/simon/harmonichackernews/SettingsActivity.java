@@ -93,6 +93,15 @@ public class SettingsActivity extends AppCompatActivity {
             updateTimedRangeSummary();
             updateUserTagsSubtitle();
 
+            findPreference("pref_special_nighttime").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
+                    changePrefStatus(findPreference("pref_theme_timed_range"), (boolean) newValue);
+                    changePrefStatus(findPreference("pref_theme_nighttime"), (boolean) newValue);
+                    return true;
+                }
+            });
+
             findPreference("pref_default_story_type").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
@@ -139,6 +148,11 @@ public class SettingsActivity extends AppCompatActivity {
             changePrefStatus(findPreference("pref_show_points"), !compact);
             changePrefStatus(findPreference("pref_show_comments_count"), !compact);
             changePrefStatus(findPreference("pref_thumbnails"), !compact);
+
+            boolean specialNighttime = SettingsUtils.shouldUseSpecialNighttimeTheme(getContext());
+
+            changePrefStatus(findPreference("pref_theme_timed_range"), specialNighttime);
+            changePrefStatus(findPreference("pref_theme_nighttime"), specialNighttime);
 
             findPreference("pref_transparent_status_bar").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override

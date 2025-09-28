@@ -22,14 +22,12 @@
             app:title="Special nighttime theme"    />
 
         <Preference
-            app:dependency="pref_special_nighttime"
             app:singleLineTitle="false"
             app:key="pref_theme_timed_range"
             app:icon="@drawable/ic_action_time"
             app:title="Timed range"    />
 
         <ListPreference
-            app:dependency="pref_special_nighttime"
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_dark_mode"
             app:title="Nighttime theme"
