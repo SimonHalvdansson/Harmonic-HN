@@ -139,6 +139,10 @@ public class SettingsUtils {
         return getBooleanPref("pref_webview_match_theme", false, ctx);
     }
 
+    public static boolean shouldCloseWebViewOnBack(Context ctx) {
+        return getBooleanPref("pref_close_webview_on_back", false, ctx);
+    }
+
     public static boolean shouldBlockAds(Context ctx) {
         return getBooleanPref("pref_webview_adblock", false, ctx);
     }
