@@ -172,7 +172,6 @@
             app:title="Integrated WebView"    />
 
         <ListPreference
-            app:dependency="pref_webview"
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_cache"
             app:title="Preload websites"
@@ -183,7 +182,6 @@
             app:entryValues="@array/preload_values"   />
 
         <SwitchPreferenceCompat
-            app:dependency="pref_webview"
             app:singleLineTitle="false"
             app:key="pref_webview_match_theme"
             app:defaultValue="false"
@@ -191,7 +189,6 @@
             app:title="Match WebView dark mode to theme"    />
 
         <SwitchPreferenceCompat
-            app:dependency="pref_webview"
             app:singleLineTitle="false"
             app:key="pref_webview_adblock"
             app:defaultValue="false"

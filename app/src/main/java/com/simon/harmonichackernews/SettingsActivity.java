@@ -144,6 +144,23 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
+            findPreference("pref_webview").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
+                    changePrefStatus(findPreference("pref_preload_webview"), (boolean) newValue);
+                    changePrefStatus(findPreference("pref_webview_match_theme"), (boolean) newValue);
+                    changePrefStatus(findPreference("pref_webview_adblock"), (boolean) newValue);
+
+                    return true;
+                }
+            });
+
+            boolean integratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
+
+            changePrefStatus(findPreference("pref_preload_webview"), integratedWebview);
+            changePrefStatus(findPreference("pref_webview_match_theme"), integratedWebview);
+            changePrefStatus(findPreference("pref_webview_adblock"), integratedWebview);
+
             boolean compact = SettingsUtils.shouldUseCompactView(getContext());
 
             changePrefStatus(findPreference("pref_show_points"), !compact);
