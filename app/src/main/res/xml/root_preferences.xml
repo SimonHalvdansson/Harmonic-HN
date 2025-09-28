@@ -263,6 +263,14 @@
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
+            app:key="pref_comments_volume_navigation"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_swipe_vertical"
+            app:title="Use volume buttons for navigation"
+            app:summary="Press volume keys to move between top level comments" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
             app:key="pref_monochrome_comment_depth"
             app:icon="@drawable/ic_action_colors"
             app:defaultValue="false"

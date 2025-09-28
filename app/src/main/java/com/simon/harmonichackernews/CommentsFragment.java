@@ -411,13 +411,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         scrollIcon.setOnClickListener(null);
 
-        scrollNext.setOnClickListener(v -> {
-            if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
-                smoothScrollNext();
-            } else {
-                scrollNext();
-            }
-        });
+        scrollNext.setOnClickListener(v -> navigateToNextComment());
         scrollNext.setOnLongClickListener(v -> {
             if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
                 smoothScrollLast();
@@ -427,13 +421,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return true;
         });
 
-        scrollPrev.setOnClickListener(v -> {
-            if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
-                smoothScrollPrevious();
-            } else {
-                scrollPrevious();
-            }
-        });
+        scrollPrev.setOnClickListener(v -> navigateToPreviousComment());
         scrollPrev.setOnLongClickListener(v -> {
             if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
                 smoothScrollTop();
@@ -1618,6 +1606,30 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         }
         return firstVisible;
+    }
+
+    public void navigateToNextComment() {
+        if (!isAdded()) {
+            return;
+        }
+
+        if (SettingsUtils.shouldUseCommentsAnimationNavigation(requireContext())) {
+            smoothScrollNext();
+        } else {
+            scrollNext();
+        }
+    }
+
+    public void navigateToPreviousComment() {
+        if (!isAdded()) {
+            return;
+        }
+
+        if (SettingsUtils.shouldUseCommentsAnimationNavigation(requireContext())) {
+            smoothScrollPrevious();
+        } else {
+            scrollPrevious();
+        }
     }
 
     private void smoothScrollPrevious() {
