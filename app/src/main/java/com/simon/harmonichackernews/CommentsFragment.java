@@ -40,6 +40,7 @@ import android.webkit.RenderProcessGoneDetail;
 import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -143,6 +144,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_SHOW_WEBSITE = "com.simon.harmonichackernews.EXTRA_SHOW_WEBSITE";
     private final static String PDF_MIME_TYPE = "application/pdf";
     private final static String PDF_LOADER_URL = "file:///android_asset/pdf/index.html";
+    private final static String OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html";
 
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
@@ -179,6 +181,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private Story story;
     private Set<String> filteredUsers;
     private int SCREEN_HEIGHT_IN_PIXELS = 100;
+    private boolean showingErrorPage = false;
 
     // Clean fallback management
     private AlgoliaFallbackManager fallbackManager;
@@ -883,6 +886,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (webView == null) {
             return;
         }
+        if (!OFFLINE_PAGE_URL.equals(url)) {
+            showingErrorPage = false;
+        }
         if (url.equals(PDF_LOADER_URL)) {
             PdfAndroidJavascriptBridge pdfAndroidJavascriptBridge = new PdfAndroidJavascriptBridge(pdfFilePath, new PdfAndroidJavascriptBridge.Callbacks() {
                 @Override
@@ -903,6 +909,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         webView.loadUrl(url);
+        if (OFFLINE_PAGE_URL.equals(url)) {
+            showingErrorPage = true;
+        }
     }
 
     private void downloadPdf(String url, String contentDisposition, String mimetype, Context ctx) {
@@ -1931,6 +1940,18 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
     }
 
+    private boolean shouldShowOfflineFallback(int errorCode) {
+        switch (errorCode) {
+            case WebViewClient.ERROR_HOST_LOOKUP:
+            case WebViewClient.ERROR_CONNECT:
+            case WebViewClient.ERROR_TIMEOUT:
+            case WebViewClient.ERROR_UNKNOWN:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     public class MyWebViewClient extends WebViewClient {
 
         @Override
@@ -2022,6 +2043,33 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             // instance, specify logic for how the app continues executing, and
             // return "true" instead.
             return true;
+        }
+
+        private void showOfflineFallback(WebView view) {
+            if (view == null || showingErrorPage) {
+                return;
+            }
+            view.stopLoading();
+            CommentsFragment.this.loadUrl(OFFLINE_PAGE_URL);
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            if (shouldShowOfflineFallback(errorCode)) {
+                showOfflineFallback(view);
+            } else {
+                super.onReceivedError(view, errorCode, description, failingUrl);
+            }
+        }
+
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && request.isForMainFrame() && shouldShowOfflineFallback(error.getErrorCode())) {
+                showOfflineFallback(view);
+            } else {
+                super.onReceivedError(view, request, error);
+            }
         }
     }
 
