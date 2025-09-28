@@ -109,6 +109,7 @@ public class SettingsActivity extends AppCompatActivity {
                     changePrefStatus(findPreference("pref_show_points"), !(boolean) newValue);
                     changePrefStatus(findPreference("pref_show_comments_count"), !(boolean) newValue);
                     changePrefStatus(findPreference("pref_thumbnails"), !(boolean) newValue);
+                    changePrefStatus(findPreference("pref_favicon_provider"), !(boolean) newValue);
 
                     return true;
                 }
@@ -139,6 +140,20 @@ public class SettingsActivity extends AppCompatActivity {
             changePrefStatus(findPreference("pref_show_points"), !compact);
             changePrefStatus(findPreference("pref_show_comments_count"), !compact);
             changePrefStatus(findPreference("pref_thumbnails"), !compact);
+
+            if (SettingsUtils.shouldShowThumbnails(getContext())) {
+                changePrefStatus(findPreference("pref_favicon_provider"), !compact);
+            } else {
+                changePrefStatus(findPreference("pref_favicon_provider"), false);
+            }
+
+            findPreference("pref_thumbnails").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
+                    changePrefStatus(findPreference("pref_favicon_provider"), (boolean) newValue);
+                    return true;
+                }
+            });
 
             findPreference("pref_transparent_status_bar").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
