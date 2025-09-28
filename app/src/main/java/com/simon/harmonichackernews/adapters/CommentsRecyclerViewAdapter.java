@@ -417,10 +417,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             });
 
             headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
-            headerViewHolder.bookmarkButtonParent.setVisibility(story.isComment ? GONE : View.VISIBLE);
+            headerViewHolder.bookmarkButtonParent.setVisibility(story.isComment ? GONE : VISIBLE);
             headerViewHolder.commentButtonParent.setVisibility(Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time) ? GONE : View.VISIBLE);
 
-            headerViewHolder.loadingFailed.setVisibility(loadingFailed ? View.VISIBLE : GONE);
+            headerViewHolder.loadingFailed.setVisibility(loadingFailed ? VISIBLE : GONE);
             if (loadingFailed) {
                 if (!Utils.isNetworkAvailable(ctx)) {
                     headerViewHolder.loadingFailedText.setText("No internet connection");
@@ -429,7 +429,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             }
 
-            headerViewHolder.serverErrorLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : GONE);
+            headerViewHolder.serverErrorText.setVisibility(loadingFailedServerError ? VISIBLE : GONE);
+            headerViewHolder.openInBrowserButton.setVisibility(loadingFailedServerError ? VISIBLE : GONE);
 
         } else if (holder instanceof ItemViewHolder) {
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
@@ -630,7 +631,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LoadingIndicator loadingIndicator;
         public final LinearLayout loadingFailed;
         public final TextView loadingFailedText;
-        public final LinearLayout serverErrorLayout;
+        public final TextView serverErrorText;
         public final Button refreshButton;
         public final ImageButton userButton;
         public final ImageButton commentButton;
@@ -702,7 +703,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             loadingIndicator = view.findViewById(R.id.comments_header_loading);
             loadingFailed = view.findViewById(R.id.comments_header_loading_failed);
             loadingFailedText = view.findViewById(R.id.comments_header_loading_failed_text);
-            serverErrorLayout = view.findViewById(R.id.comments_header_server_error);
+            serverErrorText = view.findViewById(R.id.comments_header_server_error);
             refreshButton = view.findViewById(R.id.comments_header_refresh);
             favicon = view.findViewById(R.id.comments_header_favicon);
             linkInfoContainer = view.findViewById(R.id.comments_header_link_info_container);

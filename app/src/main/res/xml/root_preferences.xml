@@ -67,6 +67,16 @@
             app:icon="@drawable/ic_action_web"
             app:title="Show story thumbnails"    />
 
+        <ListPreference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_web"
+            app:title="Favicon provider"
+            app:key="pref_favicon_provider"
+            app:useSimpleSummaryProvider="true"
+            app:entries="@array/favicon_providers"
+            app:defaultValue="Google"
+            app:entryValues="@array/favicon_providers"   />
+
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_show_points"
@@ -126,16 +136,6 @@
             app:defaultValue="false"
             app:icon="@drawable/ic_action_visibility"
             app:title="Transparent status bar"    />
-
-        <ListPreference
-            app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_web"
-            app:title="Favicon provider"
-            app:key="pref_favicon_provider"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/favicon_providers"
-            app:defaultValue="Google"
-            app:entryValues="@array/favicon_providers"   />
 
         <ListPreference
             app:singleLineTitle="false"
@@ -239,7 +239,7 @@
             app:singleLineTitle="false"
             app:key="pref_collapse_parent"
             app:icon="@drawable/ic_action_comment"
-            app:title="Hide text of collapsed comment"    />
+            app:title="Hide text of collapsed comments"    />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
@@ -306,7 +306,7 @@
             app:key="pref_comments_scrollbar"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_swipe_vertical"
-            app:title="Scrollbar"    />
+            app:title="Show scrollbar"    />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"

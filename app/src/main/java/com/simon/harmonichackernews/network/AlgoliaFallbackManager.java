@@ -16,7 +16,7 @@ public class AlgoliaFallbackManager implements HNAPICommentLoader.CommentLoadLis
     
     public interface FallbackListener {
         void onAlgoliaSuccess(String response);
-        void onAlgoliaFailed();
+        void onAlgoliaFailed(boolean noInternet);
         void onUsingFallback();
         void onHNAPIStoryLoaded(Story story);
         void onHNAPIFailed();
@@ -69,7 +69,7 @@ public class AlgoliaFallbackManager implements HNAPICommentLoader.CommentLoadLis
                     loadWithHNAPI(storyId);
                     listener.onUsingFallback();
                 } else {
-                    listener.onAlgoliaFailed();
+                    listener.onAlgoliaFailed(error.networkResponse == null);
                 }
             });
             
