@@ -4,6 +4,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.KeyEvent;
 import android.view.View;
 
 import androidx.fragment.app.FragmentTransaction;
@@ -20,6 +21,7 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     private SwipeBackLayout swipeBackLayout;
     private SplitChangeHandler splitChangeHandler;
     private boolean swipeBack = false;
+    private CommentsFragment commentsFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,11 +46,11 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         }
         setContentView(root);
 
-        CommentsFragment fragment = new CommentsFragment();
-        fragment.setArguments(getIntent().getExtras());
+        commentsFragment = new CommentsFragment();
+        commentsFragment.setArguments(getIntent().getExtras());
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.setReorderingAllowed(true);
-        transaction.replace(R.id.comment_fragment_container_view, fragment);
+        transaction.replace(R.id.comment_fragment_container_view, commentsFragment);
         transaction.commit();
 
         swipeBackLayout = binding.swipeBackLayout;
@@ -123,5 +125,25 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     protected void onDestroy() {
         super.onDestroy();
         splitChangeHandler.teardown();
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        String volumeNavigationMode = SettingsUtils.getCommentsVolumeNavigationMode(getApplicationContext());
+        if (!SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED.equals(volumeNavigationMode)) {
+            boolean topLevelOnly = SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL.equals(volumeNavigationMode);
+            if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                if (commentsFragment != null) {
+                    commentsFragment.navigateToNextComment(topLevelOnly);
+                }
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                if (commentsFragment != null) {
+                    commentsFragment.navigateToPreviousComment(topLevelOnly);
+                }
+                return true;
+            }
+        }
+        return super.onKeyDown(keyCode, event);
     }
 }

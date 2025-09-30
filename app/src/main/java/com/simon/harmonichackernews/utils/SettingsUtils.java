@@ -179,6 +179,24 @@ public class SettingsUtils {
         return getBooleanPref("pref_comments_animation_navigation", true, ctx);
     }
 
+    public static final String COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED = "disabled";
+    public static final String COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL = "top_level";
+    public static final String COMMENTS_VOLUME_NAVIGATION_MODE_ALL = "all";
+    private static final String PREF_COMMENTS_VOLUME_NAVIGATION = "pref_comments_volume_navigation";
+
+    public static boolean shouldUseCommentsVolumeNavigation(Context ctx) {
+        return !COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED.equals(getCommentsVolumeNavigationMode(ctx));
+    }
+
+    public static boolean shouldVolumeNavigationTargetTopLevel(Context ctx) {
+        return COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL.equals(getCommentsVolumeNavigationMode(ctx));
+    }
+
+    public static String getCommentsVolumeNavigationMode(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return prefs.getString(PREF_COMMENTS_VOLUME_NAVIGATION, COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED);
+    }
+
     public static boolean shouldUseCommentsScrollbar(Context ctx) {
         return getBooleanPref("pref_comments_scrollbar", false, ctx);
     }

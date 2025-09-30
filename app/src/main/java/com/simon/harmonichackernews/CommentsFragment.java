@@ -411,13 +411,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         scrollIcon.setOnClickListener(null);
 
-        scrollNext.setOnClickListener(v -> {
-            if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
-                smoothScrollNext();
-            } else {
-                scrollNext();
-            }
-        });
+        scrollNext.setOnClickListener(v -> navigateToNextComment());
         scrollNext.setOnLongClickListener(v -> {
             if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
                 smoothScrollLast();
@@ -427,13 +421,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return true;
         });
 
-        scrollPrev.setOnClickListener(v -> {
-            if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
-                smoothScrollPrevious();
-            } else {
-                scrollPrevious();
-            }
-        });
+        scrollPrev.setOnClickListener(v -> navigateToPreviousComment());
         scrollPrev.setOnLongClickListener(v -> {
             if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
                 smoothScrollTop();
@@ -1620,35 +1608,55 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         return firstVisible;
     }
 
-    private void smoothScrollPrevious() {
+    public void navigateToNextComment() {
+        navigateToNextComment(true);
+    }
+
+    public void navigateToNextComment(boolean topLevelOnly) {
+        if (!isAdded()) {
+            return;
+        }
+
+        if (SettingsUtils.shouldUseCommentsAnimationNavigation(requireContext())) {
+            smoothScrollNext(topLevelOnly);
+        } else {
+            scrollNext(topLevelOnly);
+        }
+    }
+
+    public void navigateToPreviousComment() {
+        navigateToPreviousComment(true);
+    }
+
+    public void navigateToPreviousComment(boolean topLevelOnly) {
+        if (!isAdded()) {
+            return;
+        }
+
+        if (SettingsUtils.shouldUseCommentsAnimationNavigation(requireContext())) {
+            smoothScrollPrevious(topLevelOnly);
+        } else {
+            scrollPrevious(topLevelOnly);
+        }
+    }
+
+    private void smoothScrollPrevious(boolean topLevelOnly) {
         if (layoutManager != null) {
             int firstVisible = findFirstVisiblePosition();
 
-            int toScrollTo = 0;
-
-            for (int i = 0; i < firstVisible; i++) {
-                if (comments.get(i).depth == 0 || i == 0) {
-                    toScrollTo = i;
-                }
-            }
+            int toScrollTo = findPreviousCommentPosition(firstVisible, topLevelOnly);
 
             smoothScroller.setTargetPosition(toScrollTo);
             layoutManager.startSmoothScroll(smoothScroller);
         }
     }
 
-    private void scrollPrevious() {
+    private void scrollPrevious(boolean topLevelOnly) {
         View toScrollToCommentView = null;
         if (layoutManager != null) {
             int firstVisible = findFirstVisiblePosition();
 
-            int toScrollTo = 0;
-
-            for (int i = 0; i < firstVisible; i++) {
-                if (comments.get(i).depth == 0 || i == 0) {
-                    toScrollTo = i;
-                }
-            }
+            int toScrollTo = findPreviousCommentPosition(firstVisible, topLevelOnly);
 
             toScrollToCommentView = layoutManager.findViewByPosition(toScrollTo);
             if (toScrollToCommentView != null) { // top comment visible, scroll to item with topInset
@@ -1664,37 +1672,23 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    private void smoothScrollNext() {
+    private void smoothScrollNext(boolean topLevelOnly) {
         if (layoutManager != null) {
             int firstVisible = findFirstVisiblePosition();
 
-            int toScrollTo = firstVisible;
-
-            for (int i = firstVisible + 1; i < comments.size(); i++) {
-                if (comments.get(i).depth == 0) {
-                    toScrollTo = i;
-                    break;
-                }
-            }
+            int toScrollTo = findNextCommentPosition(firstVisible, topLevelOnly);
 
             smoothScroller.setTargetPosition(toScrollTo);
             layoutManager.startSmoothScroll(smoothScroller);
         }
     }
 
-    private void scrollNext() {
+    private void scrollNext(boolean topLevelOnly) {
         View toScrollToCommentView = null;
         if (layoutManager != null) {
             int firstVisible = findFirstVisiblePosition();
 
-            int toScrollTo = firstVisible;
-
-            for (int i = firstVisible + 1; i < comments.size(); i++) {
-                if (comments.get(i).depth == 0) {
-                    toScrollTo = i;
-                    break;
-                }
-            }
+            int toScrollTo = findNextCommentPosition(firstVisible, topLevelOnly);
 
             toScrollToCommentView = layoutManager.findViewByPosition(toScrollTo);
             if (toScrollToCommentView != null) { // top comment visible, scroll to item with topInset
@@ -1708,6 +1702,50 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 recyclerView.scrollBy(0, toScrollToCommentView.getTop() - topInset);
             }
         }
+    }
+
+    private int findPreviousCommentPosition(int firstVisible, boolean topLevelOnly) {
+        if (comments == null || comments.isEmpty()) {
+            return 0;
+        }
+
+        int safeFirstVisible = Math.max(0, Math.min(firstVisible, comments.size() - 1));
+
+        if (safeFirstVisible <= 0) {
+            return 0;
+        }
+
+        if (!topLevelOnly) {
+            return Math.max(safeFirstVisible - 1, 0);
+        }
+
+        for (int i = safeFirstVisible - 1; i >= 0; i--) {
+            if (comments.get(i).depth == 0 || i == 0) {
+                return i;
+            }
+        }
+
+        return 0;
+    }
+
+    private int findNextCommentPosition(int firstVisible, boolean topLevelOnly) {
+        if (comments == null || comments.isEmpty()) {
+            return 0;
+        }
+
+        int safeFirstVisible = Math.max(0, Math.min(firstVisible, comments.size() - 1));
+
+        if (!topLevelOnly) {
+            return Math.min(safeFirstVisible + 1, comments.size() - 1);
+        }
+
+        for (int i = safeFirstVisible + 1; i < comments.size(); i++) {
+            if (comments.get(i).depth == 0) {
+                return i;
+            }
+        }
+
+        return safeFirstVisible;
     }
 
     private void smoothScrollLast() {

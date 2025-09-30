@@ -261,6 +261,16 @@
             app:icon="@drawable/ic_comments_animation_navigation"
             app:title="Animate comments navigation" />
 
+        <ListPreference
+            app:singleLineTitle="false"
+            app:key="pref_comments_volume_navigation"
+            app:defaultValue="disabled"
+            app:icon="@drawable/ic_action_swipe_vertical"
+            app:title="Volume buttons for navigation"
+            app:entries="@array/comments_volume_navigation_entries"
+            app:entryValues="@array/comments_volume_navigation_values"
+            app:useSimpleSummaryProvider="true" />
+
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_monochrome_comment_depth"

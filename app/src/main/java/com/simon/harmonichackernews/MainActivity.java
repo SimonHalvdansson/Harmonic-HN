@@ -6,6 +6,7 @@ import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Html;
+import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
@@ -102,6 +103,26 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                 overridePendingTransition(R.anim.activity_in_animation, R.anim.hold);
             }
         }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        String volumeNavigationMode = SettingsUtils.getCommentsVolumeNavigationMode(getApplicationContext());
+        if (!SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED.equals(volumeNavigationMode)) {
+            boolean topLevelOnly = SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL.equals(volumeNavigationMode);
+            CommentsFragment fragment = (CommentsFragment) getSupportFragmentManager()
+                    .findFragmentById(R.id.main_fragment_comments_container);
+            if (fragment != null && fragment.isAdded()) {
+                if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                    fragment.navigateToNextComment(topLevelOnly);
+                    return true;
+                } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                    fragment.navigateToPreviousComment(topLevelOnly);
+                    return true;
+                }
+            }
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
     private void updateFragmentLayout() {
