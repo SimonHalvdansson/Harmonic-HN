@@ -88,7 +88,6 @@ public class SettingsActivity extends AppCompatActivity {
 
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-            SettingsUtils.migrateCommentsVolumeNavigationPreference(requireContext());
             setPreferencesFromResource(R.xml.root_preferences, rootKey);
 
             updateTimedRangeSummary();

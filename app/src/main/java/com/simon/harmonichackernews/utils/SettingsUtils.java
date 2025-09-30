@@ -11,7 +11,6 @@ import androidx.preference.PreferenceManager;
 import com.simon.harmonichackernews.R;
 
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 public class SettingsUtils {
@@ -185,11 +184,6 @@ public class SettingsUtils {
     public static final String COMMENTS_VOLUME_NAVIGATION_MODE_ALL = "all";
     private static final String PREF_COMMENTS_VOLUME_NAVIGATION = "pref_comments_volume_navigation";
 
-    public static void migrateCommentsVolumeNavigationPreference(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        migrateCommentsVolumeNavigationPreference(prefs);
-    }
-
     public static boolean shouldUseCommentsVolumeNavigation(Context ctx) {
         return !COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED.equals(getCommentsVolumeNavigationMode(ctx));
     }
@@ -200,24 +194,7 @@ public class SettingsUtils {
 
     public static String getCommentsVolumeNavigationMode(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        migrateCommentsVolumeNavigationPreference(prefs);
         return prefs.getString(PREF_COMMENTS_VOLUME_NAVIGATION, COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED);
-    }
-
-    private static void migrateCommentsVolumeNavigationPreference(SharedPreferences prefs) {
-        Map<String, ?> allPrefs = prefs.getAll();
-        if (!allPrefs.containsKey(PREF_COMMENTS_VOLUME_NAVIGATION)) {
-            return;
-        }
-
-        Object rawValue = allPrefs.get(PREF_COMMENTS_VOLUME_NAVIGATION);
-        if (rawValue instanceof Boolean) {
-            boolean legacyValue = (Boolean) rawValue;
-            String migratedValue = legacyValue
-                    ? COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL
-                    : COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED;
-            prefs.edit().putString(PREF_COMMENTS_VOLUME_NAVIGATION, migratedValue).apply();
-        }
     }
 
     public static boolean shouldUseCommentsScrollbar(Context ctx) {
