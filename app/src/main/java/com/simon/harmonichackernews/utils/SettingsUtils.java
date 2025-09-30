@@ -179,8 +179,30 @@ public class SettingsUtils {
         return getBooleanPref("pref_comments_animation_navigation", true, ctx);
     }
 
+    public static final String COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED = "disabled";
+    public static final String COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL = "top_level";
+    public static final String COMMENTS_VOLUME_NAVIGATION_MODE_ALL = "all";
+
     public static boolean shouldUseCommentsVolumeNavigation(Context ctx) {
-        return getBooleanPref("pref_comments_volume_navigation", false, ctx);
+        return !COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED.equals(getCommentsVolumeNavigationMode(ctx));
+    }
+
+    public static boolean shouldVolumeNavigationTargetTopLevel(Context ctx) {
+        return COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL.equals(getCommentsVolumeNavigationMode(ctx));
+    }
+
+    public static String getCommentsVolumeNavigationMode(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        try {
+            return prefs.getString("pref_comments_volume_navigation", COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED);
+        } catch (ClassCastException exception) {
+            boolean legacyValue = prefs.getBoolean("pref_comments_volume_navigation", false);
+            String migratedValue = legacyValue
+                    ? COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL
+                    : COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED;
+            prefs.edit().putString("pref_comments_volume_navigation", migratedValue).apply();
+            return migratedValue;
+        }
     }
 
     public static boolean shouldUseCommentsScrollbar(Context ctx) {

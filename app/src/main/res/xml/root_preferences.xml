@@ -261,13 +261,15 @@
             app:icon="@drawable/ic_comments_animation_navigation"
             app:title="Animate comments navigation" />
 
-        <SwitchPreferenceCompat
+        <ListPreference
             app:singleLineTitle="false"
             app:key="pref_comments_volume_navigation"
-            app:defaultValue="false"
+            app:defaultValue="disabled"
             app:icon="@drawable/ic_action_swipe_vertical"
-            app:title="Use volume buttons for navigation"
-            app:summary="Press volume keys to move between top level comments" />
+            app:title="Volume buttons for navigation"
+            app:entries="@array/comments_volume_navigation_entries"
+            app:entryValues="@array/comments_volume_navigation_values"
+            app:useSimpleSummaryProvider="true" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"

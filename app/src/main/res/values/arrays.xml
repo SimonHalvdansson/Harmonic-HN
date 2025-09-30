@@ -127,4 +127,16 @@
         <item>official</item>
     </string-array>
 
+    <string-array name="comments_volume_navigation_entries">
+        <item>Disabled</item>
+        <item>Top level comments</item>
+        <item>All comments</item>
+    </string-array>
+
+    <string-array name="comments_volume_navigation_values">
+        <item>disabled</item>
+        <item>top_level</item>
+        <item>all</item>
+    </string-array>
+
 </resources>

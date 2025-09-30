@@ -129,15 +129,17 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (SettingsUtils.shouldUseCommentsVolumeNavigation(getApplicationContext())) {
-            if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+        String volumeNavigationMode = SettingsUtils.getCommentsVolumeNavigationMode(getApplicationContext());
+        if (!SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED.equals(volumeNavigationMode)) {
+            boolean topLevelOnly = SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL.equals(volumeNavigationMode);
+            if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
                 if (commentsFragment != null) {
-                    commentsFragment.navigateToNextComment();
+                    commentsFragment.navigateToNextComment(topLevelOnly);
                 }
                 return true;
-            } else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
                 if (commentsFragment != null) {
-                    commentsFragment.navigateToPreviousComment();
+                    commentsFragment.navigateToPreviousComment(topLevelOnly);
                 }
                 return true;
             }
