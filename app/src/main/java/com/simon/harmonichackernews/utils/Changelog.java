@@ -2,7 +2,11 @@ package com.simon.harmonichackernews.utils;
 
 public class Changelog {
     static public String getHTML() {
-        return  "<b>Version 2.2.3:</b><br>" +
+        return  "<b>Version 2.2.4:</b><br>" +
+                "- Added option to navigate comments using volume buttons<br>" +
+                "- Improved offline behavior<br>" +
+                "<br>" +
+                "<b>Version 2.2.3:</b><br>" +
                 "- Material 3 Expressive design updates: New buttons, some improved colors<br>" +
                 "- Some improved edge-to-edge behavior<br>" +
                 "- Improved error message when no internet<br>" +

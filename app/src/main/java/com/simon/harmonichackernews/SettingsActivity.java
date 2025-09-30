@@ -124,15 +124,6 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
 
-            findPreference("pref_scroll_navigation").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-                    changePrefStatus(findPreference("pref_comments_animation_navigation"), (boolean) newValue);
-
-                    return true;
-                }
-            });
-
             findPreference("pref_foldable_support").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
