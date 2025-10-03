@@ -53,6 +53,7 @@ import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.BackEventCompat;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -311,10 +312,38 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         backPressedCallback = new OnBackPressedCallback(true) {
+
+            @Override
+            public void handleOnBackCancelled() {
+                if (willExpandBottomSheetOnBack()) {
+                    bottomSheet.setTranslationY(0f);
+                }
+            }
+
+            @Override
+            public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
+                if (willExpandBottomSheetOnBack()) {
+                    bottomSheet.setTranslationY(backEvent.getProgress() * -500);
+                }
+            }
+
+            @Override
+            public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
+                if (willExpandBottomSheetOnBack()) {
+                    bottomSheet.setTranslationY(backEvent.getProgress() * -500);
+                }
+            }
+
             @Override
             public void handleOnBackPressed() {
                 boolean webViewVisible = BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
-                if (webViewVisible) {
+                if (willExpandBottomSheetOnBack()) {
+                    // If the webView can't go back but the back handler is enabled,
+                    // it means that the closeWebViewOnBack == true
+                    BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
+                    bottomSheet.setTranslationY(0f);
+                    return;
+                } else if (webViewVisible) {
                     if (webView.canGoBack()) {
                         if (downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
                             webView.setVisibility(View.VISIBLE);
@@ -322,10 +351,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         } else {
                             webView.goBack();
                         }
-                    } else {
-                        // If the webView can't go back but the back handler is enabled,
-                        // it means that the closeWebViewOnBack == true
-                        BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
                     }
 
                     return;
@@ -335,6 +360,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (!SettingsUtils.shouldDisableCommentsSwipeBack(getContext()) && !Utils.isTablet(getResources())) {
                     requireActivity().overridePendingTransition(0, R.anim.activity_out_animation);
                 }
+            }
+
+            private boolean willExpandBottomSheetOnBack() {
+                boolean webViewVisible = BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
+                return webViewVisible && !webView.canGoBack();
             }
         };
 
