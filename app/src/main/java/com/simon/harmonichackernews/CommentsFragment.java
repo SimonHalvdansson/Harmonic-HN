@@ -54,6 +54,7 @@ import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.BackEventCompat;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -174,6 +175,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean blockAds = true;
     private boolean startedLoading = false;
     private boolean initializedWebView = false;
+    private boolean closeWebViewOnBack = false;
     private int topInset = 0;
     private long lastLoaded = 0;
     private OnBackPressedCallback backPressedCallback;
@@ -291,6 +293,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         preloadWebview = SettingsUtils.shouldPreloadWebView(getContext());
         matchWebviewTheme = SettingsUtils.shouldMatchWebViewTheme(getContext());
         blockAds = SettingsUtils.shouldBlockAds(getContext());
+        closeWebViewOnBack = SettingsUtils.shouldCloseWebViewOnBack(getContext());
 
         webView = view.findViewById(R.id.comments_webview);
         downloadButton = view.findViewById(R.id.webview_download);
@@ -312,15 +315,47 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         backPressedCallback = new OnBackPressedCallback(true) {
+
+            @Override
+            public void handleOnBackCancelled() {
+                if (willExpandBottomSheetOnBack()) {
+                    bottomSheet.setTranslationY(0f);
+                }
+            }
+
+            @Override
+            public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
+                if (willExpandBottomSheetOnBack()) {
+                    bottomSheet.setTranslationY(backEvent.getProgress() * -500);
+                }
+            }
+
+            @Override
+            public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
+                if (willExpandBottomSheetOnBack()) {
+                    bottomSheet.setTranslationY(backEvent.getProgress() * -500);
+                }
+            }
+
             @Override
             public void handleOnBackPressed() {
-                if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED && webView.canGoBack()) {
-                    if (downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
-                        webView.setVisibility(View.VISIBLE);
-                        downloadButton.setVisibility(View.GONE);
-                    } else {
-                        webView.goBack();
+                boolean webViewVisible = BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
+                if (willExpandBottomSheetOnBack()) {
+                    // If the webView can't go back but the back handler is enabled,
+                    // it means that the closeWebViewOnBack == true
+                    BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
+                    bottomSheet.setTranslationY(0f);
+                    return;
+                } else if (webViewVisible) {
+                    if (webView.canGoBack()) {
+                        if (downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
+                            webView.setVisibility(View.VISIBLE);
+                            downloadButton.setVisibility(View.GONE);
+                        } else {
+                            webView.goBack();
+                        }
                     }
+
                     return;
                 }
 
@@ -329,8 +364,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     requireActivity().overridePendingTransition(0, R.anim.activity_out_animation);
                 }
             }
+
+            private boolean willExpandBottomSheetOnBack() {
+                boolean webViewVisible = BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
+                return webViewVisible && !webView.canGoBack();
+            }
         };
-        toggleBackPressedCallback(false);
+
         requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), backPressedCallback);
 
         swipeRefreshLayout.setOnRefreshListener(this::onRetry);
@@ -361,6 +401,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (!showWebsite) {
             BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
         }
+        syncOnBackPressedCallbackEnabledState();
 
         if (callback != null) {
             callback.onSwitchView(showWebsite);
@@ -453,6 +494,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 return true;
             }
         });
+    }
+
+    private void syncOnBackPressedCallbackEnabledState() {
+        if (closeWebViewOnBack) {
+            toggleBackPressedCallback(webView != null &&
+                    BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED);
+        } else {
+            toggleBackPressedCallback(webView != null && webView.canGoBack());
+        }
     }
 
     private void toggleBackPressedCallback(boolean newStatus) {
@@ -695,11 +745,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View view, int newState) {
-                if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
-                    toggleBackPressedCallback(webView != null && webView.canGoBack());
-                } else {
-                    toggleBackPressedCallback(false);
-                }
+                syncOnBackPressedCallbackEnabledState();
             }
 
             @Override
@@ -750,7 +796,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COLLAPSED, 600);
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_HEADER, 1);
     }
-
 
     @SuppressLint({"RequiresFeature", "SetJavaScriptEnabled"})
     @SuppressWarnings("deprecation")
@@ -2000,7 +2045,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
                 // If we are at the webview and we just loaded, recheck the canGoBack status
-                toggleBackPressedCallback(webView != null && webView.canGoBack());
+                syncOnBackPressedCallbackEnabledState();
             }
         }
 
