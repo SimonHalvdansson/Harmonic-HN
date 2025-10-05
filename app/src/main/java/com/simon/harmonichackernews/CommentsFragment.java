@@ -147,6 +147,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static String PDF_LOADER_URL = "file:///android_asset/pdf/index.html";
     private final static String OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html";
 
+    private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
+
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
     private RequestQueue queue;
@@ -326,14 +328,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
                 if (willExpandBottomSheetOnBack()) {
-                    bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), 70));
+                    bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
                 }
             }
 
             @Override
             public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
                 if (willExpandBottomSheetOnBack()) {
-                    bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), 70));
+                    bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
                 }
             }
 
