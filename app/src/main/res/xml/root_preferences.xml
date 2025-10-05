@@ -171,6 +171,15 @@
             app:icon="@drawable/ic_action_browser"
             app:title="Integrated WebView"    />
 
+        <SwitchPreferenceCompat
+            app:dependency="pref_webview"
+            app:singleLineTitle="false"
+            app:key="pref_close_webview_on_back"
+            app:defaultValue="false"
+            app:summary="Back navigation closes integrated WebView"
+            app:icon="@drawable/ic_action_back"
+            app:title="Go back to comments"    />
+
         <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_cache"
