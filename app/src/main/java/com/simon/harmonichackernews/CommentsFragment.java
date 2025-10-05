@@ -326,14 +326,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
                 if (willExpandBottomSheetOnBack()) {
-                    bottomSheet.setTranslationY(backEvent.getProgress() * -500);
+                    bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), 70));
                 }
             }
 
             @Override
             public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
                 if (willExpandBottomSheetOnBack()) {
-                    bottomSheet.setTranslationY(backEvent.getProgress() * -500);
+                    bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), 70));
                 }
             }
 
