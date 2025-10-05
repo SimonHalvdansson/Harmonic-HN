@@ -175,206 +175,205 @@
         android:foreground="?selectableItemBackground"
         android:layout_height="wrap_content"
         android:layout_width="match_parent"
+        android:orientation="vertical"
         android:paddingBottom="8dp"
-        android:paddingTop="@dimen/comments_header_top_padding"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp">
+        android:paddingTop="@dimen/comments_header_top_padding">
+
+        <TextView
+            android:id="@+id/comments_header_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:fontFamily="@font/product_sans"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="27sp"
+            android:textStyle="bold"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            tools:text="Court dismisses Genius lawsuit over lyrics-scraping by Google" />
 
         <LinearLayout
+            android:id="@+id/comments_header_link_info_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:layout_marginTop="3dp"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/comments_header_favicon"
+                android:layout_width="17dp"
+                android:layout_height="17dp"
+                android:layout_marginRight="4dp"
+                android:src="@drawable/ic_action_web" />
 
             <TextView
-                android:id="@+id/comments_header_title"
-                android:background="@android:color/transparent"
-                android:fontFamily="@font/product_sans"
+                android:id="@+id/comments_header_url"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="27sp"
-                android:textStyle="bold"
-                android:textColor="?attr/storyColorNormal"
-                tools:text="Court dismisses Genius lawsuit over lyrics-scraping by Google" />
+                android:fontFamily="@font/product_sans"
+                android:textColor="?attr/textColorDefault"
+                tools:text="(rankscience.com)" />
+
+        </LinearLayout>
+
+        <org.sufficientlysecure.htmltextview.HtmlTextView
+            android:id="@+id/comments_header_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="@font/product_sans"
+            android:paddingBottom="3dp"
+            android:textColor="?attr/storyColorNormal"
+            android:textIsSelectable="true"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:textSize="15sp"
+            android:visibility="gone"
+            tools:text="This is a bunch of text because the text was actually a text post, who would have known?"
+            tools:visibility="visible" />
+
+        <LinearLayout
+            android:id="@+id/comments_header_info_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginRight="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/abstract_background"
+            android:orientation="vertical"
+            android:paddingLeft="16dp"
+            android:paddingTop="12dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="12dp"
+            android:visibility="visible">
+
+            <TextView
+                android:id="@+id/comments_header_info_header"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/product_sans"
+                android:text="Abstract:"
+                android:textAllCaps="true"
+                android:textColor="?attr/textColorHighlighted"
+                android:textSize="13dp"
+                android:textStyle="bold" />
+
+            <include layout="@layout/link_preview_wikipedia" />
+
+            <include layout="@layout/link_preview_arxiv" />
+
+            <include layout="@layout/link_preview_github" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/comments_header_poll_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:paddingTop="6dp"
+            android:visibility="gone">
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/comments_header_meta_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingLeft="17dp"
+            android:paddingRight="16dp">
 
             <LinearLayout
-                android:orientation="vertical"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
 
-                <LinearLayout
-                    android:id="@+id/comments_header_link_info_container"
-                    android:layout_marginTop="3dp"
-                    android:orientation="horizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+                <ImageView
+                    android:id="@+id/comments_header_meta_votes_icon"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_marginTop="2dp"
+                    android:src="@drawable/ic_action_thumbs_up" />
 
-                    <ImageView
-                        android:id="@+id/comments_header_favicon"
-                        android:src="@drawable/ic_action_web"
-                        android:layout_marginRight="4dp"
-                        android:layout_width="17dp"
-                        android:layout_height="17dp"    />
-
-                    <TextView
-                        android:id="@+id/comments_header_url"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="?attr/textColorDefault"
-                        tools:text="(rankscience.com)"
-                        android:fontFamily="@font/product_sans" />
-
-                </LinearLayout>
-
-                <org.sufficientlysecure.htmltextview.HtmlTextView
-                    android:id="@+id/comments_header_text"
-                    android:visibility="gone"
-                    android:layout_marginTop="4dp"
-                    android:text="This is a bunch of text because the text was actually a text post, who would have known?"
-                    android:textColor="?attr/storyColorNormal"
-                    android:textSize="15sp"
-                    android:paddingBottom="3dp"
-                    android:textIsSelectable="true"
+                <TextView
+                    android:id="@+id/comments_header_meta_votes"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/product_sans" />
+                    android:layout_marginLeft="3dp"
+                    android:layout_marginRight="10dp"
+                    android:fontFamily="@font/product_sans"
+                    android:text="87"
+                    android:textColor="?attr/textColorDefault" />
 
-                <LinearLayout
-                    android:id="@+id/comments_header_info_container"
-                    android:layout_marginTop="8dp"
-                    android:layout_marginBottom="8dp"
-                    android:background="@drawable/abstract_background"
-                    android:paddingLeft="16dp"
-                    android:paddingRight="16dp"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp"
-                    android:visibility="visible"
-                    android:layout_width="match_parent"
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_marginTop="2dp"
+                    android:src="@drawable/ic_action_comment" />
+
+                <TextView
+                    android:id="@+id/comments_header_meta_comments"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_marginLeft="3dp"
+                    android:layout_marginRight="10dp"
+                    android:fontFamily="@font/product_sans"
+                    android:text="29"
+                    android:textColor="?attr/textColorDefault" />
 
-                    <TextView
-                        android:id="@+id/comments_header_info_header"
-                        android:textColor="?attr/textColorHighlighted"
-                        android:text="Abstract:"
-                        android:fontFamily="@font/product_sans"
-                        android:textStyle="bold"
-                        android:textSize="13dp"
-                        android:textAllCaps="true"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"/>
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_marginTop="2dp"
+                    android:src="@drawable/ic_action_time" />
 
-                    <include layout="@layout/link_preview_wikipedia" />
-
-                    <include layout="@layout/link_preview_arxiv" />
-
-                    <include layout="@layout/link_preview_github" />
-
-                </LinearLayout>
-
-                <LinearLayout
-                    android:paddingTop="6dp"
-                    android:id="@+id/comments_header_poll_layout"
-                    android:visibility="gone"
-                    android:orientation="vertical"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/comments_header_meta_container"
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/comments_header_meta_time"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:paddingLeft="1dp"
-                    android:orientation="horizontal">
+                    android:layout_marginLeft="3dp"
+                    android:layout_marginRight="10dp"
+                    android:fontFamily="@font/product_sans"
+                    android:text="2 hrs "
+                    android:textColor="?attr/textColorDefault" />
 
-                    <LinearLayout
-                        android:layout_marginTop="6dp"
-                        android:orientation="horizontal"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content">
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_marginTop="2dp"
+                    android:src="@drawable/ic_action_user" />
 
-                        <ImageView
-                            android:id="@+id/comments_header_meta_votes_icon"
-                            android:layout_marginTop="2dp"
-                            android:src="@drawable/ic_action_thumbs_up"
-                            android:layout_width="14dp"
-                            android:layout_height="14dp"/>
-
-                        <TextView
-                            android:id="@+id/comments_header_meta_votes"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginRight="10dp"
-                            android:textColor="?attr/textColorDefault"
-                            android:layout_marginLeft="3dp"
-                            android:fontFamily="@font/product_sans"
-                            android:text="87"/>
-
-                        <ImageView
-                            android:layout_marginTop="2dp"
-                            android:src="@drawable/ic_action_comment"
-                            android:layout_width="14dp"
-                            android:layout_height="14dp"/>
-
-                        <TextView
-                            android:id="@+id/comments_header_meta_comments"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginRight="10dp"
-                            android:textColor="?attr/textColorDefault"
-                            android:layout_marginLeft="3dp"
-                            android:fontFamily="@font/product_sans"
-                            android:text="29"/>
-
-                        <ImageView
-                            android:layout_marginTop="2dp"
-                            android:src="@drawable/ic_action_time"
-                            android:layout_width="14dp"
-                            android:layout_height="14dp"/>
-
-                        <TextView
-                            android:id="@+id/comments_header_meta_time"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginRight="10dp"
-                            android:textColor="?attr/textColorDefault"
-                            android:layout_marginLeft="3dp"
-                            android:fontFamily="@font/product_sans"
-                            android:text="2 hrs "/>
-
-                        <ImageView
-                            android:layout_marginTop="2dp"
-                            android:src="@drawable/ic_action_user"
-                            android:layout_width="14dp"
-                            android:layout_height="14dp"/>
-
-                        <TextView
-                            android:id="@+id/comments_header_meta_by"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="?attr/textColorDefault"
-                            android:layout_marginLeft="3dp"
-                            android:fontFamily="@font/product_sans"
-                            android:text="fortran77"/>
-
-                    </LinearLayout>
-
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="0dp"
-                        android:layout_weight="1" />
-
-                    <ImageView
-                        android:id="@+id/comments_header_link_image"
-                        android:src="@drawable/ic_action_link"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"/>
-
-                </LinearLayout>
+                <TextView
+                    android:id="@+id/comments_header_meta_by"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="3dp"
+                    android:fontFamily="@font/product_sans"
+                    android:text="fortran77"
+                    android:textColor="?attr/textColorDefault" />
 
             </LinearLayout>
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <ImageView
+                android:id="@+id/comments_header_link_image"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_action_link" />
+
         </LinearLayout>
+
     </LinearLayout>
 
     <LinearLayout
