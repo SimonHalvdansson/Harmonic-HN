@@ -322,6 +322,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void handleOnBackCancelled() {
                 if (willExpandBottomSheetOnBack()) {
                     bottomSheet.setTranslationY(0f);
+                    try {
+                        adapter.bottomSheet.findViewById(R.id.comment_sheet_buttons_container).setAlpha(1f);
+                        adapter.bottomSheet.findViewById(R.id.comments_header).setAlpha(0f);
+                    } catch (Exception ignored) {
+
+                    }
                 }
             }
 
@@ -329,6 +335,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
                 if (willExpandBottomSheetOnBack()) {
                     bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
+                    try {
+                        adapter.bottomSheet.findViewById(R.id.comment_sheet_buttons_container).setAlpha(1f-backEvent.getProgress()*0.7f);
+                        adapter.bottomSheet.findViewById(R.id.comments_header).setAlpha(backEvent.getProgress()*0.7f);
+                    } catch (Exception ignored) {
+
+                    }
                 }
             }
 
@@ -336,6 +348,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
                 if (willExpandBottomSheetOnBack()) {
                     bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
+                    try {
+                        adapter.bottomSheet.findViewById(R.id.comment_sheet_buttons_container).setAlpha(1f-backEvent.getProgress()*0.7f);
+                        adapter.bottomSheet.findViewById(R.id.comments_header).setAlpha(backEvent.getProgress()*0.7f);
+                    } catch (Exception ignored) {
+
+                    }
                 }
             }
 
