@@ -198,6 +198,7 @@
 
             <Button
                 android:textSize="14dp"
+                app:iconPadding="8dp"
                 android:fontFamily="@font/product_sans_bold"
                 android:id="@+id/compose_submit"
                 style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
