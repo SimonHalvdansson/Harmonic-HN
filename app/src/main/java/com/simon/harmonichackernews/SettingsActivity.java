@@ -12,6 +12,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
+import android.net.Uri;
+import android.provider.Settings;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -22,6 +24,7 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.timepicker.MaterialTimePicker;
 import com.google.android.material.timepicker.TimeFormat;
@@ -144,6 +147,23 @@ public class SettingsActivity extends AppCompatActivity {
                     changePrefStatus(findPreference("pref_webview_adblock"), (boolean) newValue);
                     changePrefStatus(findPreference("pref_close_webview_on_back"), (boolean) newValue);
 
+                    return true;
+                }
+            });
+
+            Preference openHnLinksPreference = findPreference("pref_open_hn_links_in_harmonic");
+            openHnLinksPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(@NonNull Preference preference) {
+                    new MaterialAlertDialogBuilder(requireContext())
+                            .setMessage("Since Harmonic does not own the domain news.ycombinator.com intercepting links needs to be enabled by the user manually.")
+                            .setNeutralButton("Go to settings", (dialog, which) -> {
+                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                intent.setData(Uri.fromParts("package", requireContext().getPackageName(), null));
+                                startActivity(intent);
+                                Toast.makeText(requireContext(), "The option should be under \"Open by default\"", Toast.LENGTH_LONG).show();
+                            })
+                            .show();
                     return true;
                 }
             });
