@@ -423,6 +423,12 @@
 
         <Preference
             app:singleLineTitle="false"
+            app:key="pref_open_hn_links_in_harmonic"
+            app:icon="@drawable/ic_action_browser"
+            app:title="Open Hacker News links in Harmonic"    />
+
+        <Preference
+            app:singleLineTitle="false"
             app:key="pref_export_bookmarks"
             app:title="Export bookmarks"
             app:summary="Exports to text file where first number of each line is post ID"
