@@ -189,7 +189,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     // Clean fallback management
     private AlgoliaFallbackManager fallbackManager;
-    private boolean usingHNAPIFallback = false;
 
     public CommentsFragment() {
         super(R.layout.fragment_comments);
@@ -1240,7 +1239,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         fallbackManager = new AlgoliaFallbackManager(getContext(), queue, requestTag, filteredUsers, new AlgoliaFallbackManager.FallbackListener() {
             @Override
             public void onAlgoliaSuccess(String response) {
-                usingHNAPIFallback = false;
                 if (TextUtils.isEmpty(oldCachedResponse) || !oldCachedResponse.equals(response)) {
                     handleJsonResponse(id, response, true, oldCachedResponse == null, false);
                 }
@@ -1263,8 +1261,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onHNAPIStoryLoaded(Story loadedStory) {
-                usingHNAPIFallback = true;
-
                 // Update story data
                 story.title = loadedStory.title;
                 story.by = loadedStory.by;

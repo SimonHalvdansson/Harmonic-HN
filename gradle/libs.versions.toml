@@ -7,32 +7,32 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 
 [libraries]
-androidx-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.9.1"
-androidx-lifecycle-viewmodel-ktx = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.1"
+androidx-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.9.4"
+androidx-lifecycle-viewmodel-ktx = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4"
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-recyclerview = "androidx.recyclerview:recyclerview:1.4.0"
-androidx-browser = "androidx.browser:browser:1.8.0"
+androidx-browser = "androidx.browser:browser:1.9.0"
 androidx-cardview = "androidx.cardview:cardview:1.0.0"
-androidx-fragment = "androidx.fragment:fragment:1.8.8"
+androidx-fragment = "androidx.fragment:fragment:1.8.9"
 androidx-preference = "androidx.preference:preference:1.2.1"
-androidx-security = "androidx.security:security-crypto:1.1.0-beta01"
+androidx-security = "androidx.security:security-crypto:1.1.0"
 androidx-swiperefreshlayout = "androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-beta01"
 androidx-webkit = "androidx.webkit:webkit:1.14.0"
-androidx-activity = "androidx.activity:activity:1.10.1"
-androidx-window = "androidx.window:window:1.4.0"
-androidx-window-java = "androidx.window:window-java:1.4.0"
+androidx-activity = "androidx.activity:activity:1.11.0"
+androidx-window = "androidx.window:window:1.5.0"
+androidx-window-java = "androidx.window:window-java:1.5.0"
 androidx-startup = "androidx.startup:startup-runtime:1.2.0"
 
-materialui = "com.google.android.material:material:1.14.0-alpha04"
+materialui = "com.google.android.material:material:1.14.0-alpha05"
 
 volley = "com.android.volley:volley:1.2.1"
 
-okhttp-core = "com.squareup.okhttp3:okhttp:4.11.0"
+okhttp-core = "com.squareup.okhttp3:okhttp:5.2.0"
 okhttp-urlconnection = "com.squareup.okhttp3:okhttp-urlconnection:4.10.0"
 
 shimmer = "com.facebook.shimmer:shimmer:0.5.0"
 picasso = "com.squareup.picasso:picasso:2.8"
-jsoup = "org.jsoup:jsoup:1.16.2"
+jsoup = "org.jsoup:jsoup:1.21.2"
 
 [bundles]
 androidx-lifecycle = ["androidx-lifecycle-viewmodel", "androidx-lifecycle-viewmodel-ktx"]
