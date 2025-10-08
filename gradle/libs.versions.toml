@@ -28,7 +28,7 @@ materialui = "com.google.android.material:material:1.14.0-alpha05"
 volley = "com.android.volley:volley:1.2.1"
 
 okhttp-core = "com.squareup.okhttp3:okhttp:5.2.0"
-okhttp-urlconnection = "com.squareup.okhttp3:okhttp-urlconnection:4.10.0"
+okhttp-urlconnection = "com.squareup.okhttp3:okhttp-urlconnection:5.2.0"
 
 shimmer = "com.facebook.shimmer:shimmer:0.5.0"
 picasso = "com.squareup.picasso:picasso:2.8"

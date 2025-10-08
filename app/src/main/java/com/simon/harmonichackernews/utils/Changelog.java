@@ -4,7 +4,7 @@ public class Changelog {
     static public String getHTML() {
         return  "<b>Version 2.2.4:</b><br>" +
                 "- Added option to navigate comments using volume buttons<br>" +
-                "- Added option for back navigation to move from WebView -> Comments instead of WebView -> Main screen (thanks Łukasz Wasylkowski!)<br" +
+                "- Added option for back navigation to move from WebView -> Comments instead of WebView -> Main screen (thanks Łukasz Wasylkowski!)<br>" +
                 "- Minor design fixes<br>" +
                 "- Added button in setting to help the user intercept news.ycombinator.com links<br>" +
                 "- Improved offline behavior<br>" +
