@@ -29,8 +29,8 @@ public class FaviconLoader {
 
     private static String getFaviconUrl(String host, String faviconProvider) {
         switch (faviconProvider) {
-            case "Favicon kit":
-                return "https://api.faviconkit.com/" + host;
+            case "Twenty icons":
+                return "https://twenty-icons.com/" + host;
             case "Google":
                 return "https://www.google.com/s2/favicons?domain=" + host + "&sz=128";
             case "DuckDuckGo":
