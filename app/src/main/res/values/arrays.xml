@@ -114,7 +114,7 @@
     <string-array name="favicon_providers">
         <item>Google</item>
         <item>DuckDuckGo</item>
-        <item>Favicon kit</item>
+        <item>Twenty icons</item>
     </string-array>
 
     <string-array name="comments_provider_entries">
