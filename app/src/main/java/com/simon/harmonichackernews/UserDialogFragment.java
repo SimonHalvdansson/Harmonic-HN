@@ -167,10 +167,16 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                                 blockButton.setVisibility(GONE);
                                 tagButton.setVisibility(GONE);
                             } else {
+                                boolean isBlocked = Utils.getFilteredUsers(getContext()).contains(userName);
+                                blockButton.setText(isBlocked ? "Unblock" : "Block");
+
                                 reportButton.setVisibility(View.VISIBLE);
                                 blockButton.setVisibility(View.VISIBLE);
                                 tagButton.setVisibility(View.VISIBLE);
                             }
+
+
+
 
                             reportButton.setOnClickListener(new View.OnClickListener() {
                                 @Override
@@ -191,9 +197,20 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             blockButton.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
-                                    if (Utils.addFilteredUser(getContext(), userName)) {
-                                        Toast.makeText(getContext(), "You will no longer see comments from " + userName, Toast.LENGTH_SHORT).show();
-                                        dialog.dismiss();
+                                    boolean isBlocked = Utils.getFilteredUsers(getContext()).contains(userName);
+
+                                    if (isBlocked) {
+                                        if (Utils.removeFilteredUser(getContext(), userName)) {
+                                            Toast.makeText(getContext(), "Unblocked " + userName, Toast.LENGTH_SHORT).show();
+                                            if (blockButton != null) {
+                                                blockButton.setText("Block");
+                                            }
+                                        }
+                                    } else {
+                                        if (Utils.addFilteredUser(getContext(), userName)) {
+                                            Toast.makeText(getContext(), "You will no longer see comments from " + userName, Toast.LENGTH_SHORT).show();
+                                            dialog.dismiss();
+                                        }
                                     }
                                 }
                             });

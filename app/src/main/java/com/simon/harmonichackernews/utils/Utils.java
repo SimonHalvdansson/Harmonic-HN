@@ -402,6 +402,30 @@ public class Utils {
         return usernames;
     }
 
+    public static boolean removeFilteredUser(Context ctx, String username) {
+        if (TextUtils.isEmpty(username)) return false;
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        // Grab current set, add new entry
+        Set<String> users = getFilteredUsers(ctx);
+        users.remove(username.toLowerCase().trim());
+
+        // Join back into comma-separated string
+        StringBuilder sb = new StringBuilder();
+        Iterator<String> iter = users.iterator();
+        while (iter.hasNext()) {
+            sb.append(iter.next());
+            if (iter.hasNext()) sb.append(",");
+        }
+
+        // Persist updated list
+        prefs.edit()
+                .putString("pref_filter_users", sb.toString())
+                .apply();
+
+        return true;
+    }
+
     public static boolean addFilteredUser(Context ctx, String username) {
         if (TextUtils.isEmpty(username)) return false;
 
@@ -422,7 +446,6 @@ public class Utils {
         prefs.edit()
                 .putString("pref_filter_users", sb.toString())
                 .apply();
-
 
         return true;
     }
