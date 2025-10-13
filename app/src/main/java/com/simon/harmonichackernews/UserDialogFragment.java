@@ -158,7 +158,9 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                             });
 
                             String currentTag = Utils.getUserTag(getContext(), userName);
-                            tagButton.setOnClickListener(v -> showTagDialog(userName, currentTag));
+                            tagButton.setOnClickListener(v -> showTagDialog(userName, Utils.getUserTag(getContext(), userName)));
+
+                            tagButton.setText("Set tag" + (TextUtils.isEmpty(currentTag) ? "" : " (" + currentTag + ")"));
 
                             if (userName.equals(AccountUtils.getAccountUsername(getContext()))) {
                                 reportButton.setVisibility(GONE);
@@ -289,6 +291,11 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         save.setOnClickListener(v -> {
             String tag = editText.getText() != null ? editText.getText().toString().trim() : "";
             Utils.setUserTag(getContext(), userName, tag);
+
+            if (tagButton != null) {
+                tagButton.setText("Set tag" + (TextUtils.isEmpty(tag) ? "" : " (" + tag + ")"));
+            }
+
             if (setTagCallback != null) {
                 setTagCallback.onResult(true);
             }
