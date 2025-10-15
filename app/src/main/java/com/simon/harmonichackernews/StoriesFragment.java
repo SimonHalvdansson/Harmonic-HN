@@ -81,6 +81,8 @@ public class StoriesFragment extends Fragment {
     public static boolean showingCached = false;
 
     private int loadedTo = 0;
+    private boolean paginationMode = false;
+    private static final int PAGINATION_PAGE_SIZE = 30;
 
     public final static String[] hnUrls = new String[]{Utils.URL_TOP, Utils.URL_NEW, Utils.URL_BEST, Utils.URL_ASK, Utils.URL_SHOW, Utils.URL_JOBS};
 
@@ -150,7 +152,8 @@ public class StoriesFragment extends Fragment {
             public void onScrolled(@NotNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
 
-                if (!adapter.searching) {
+                // Only enable infinite scroll if pagination mode is OFF
+                if (!adapter.searching && !paginationMode) {
                     lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
 
                     int visibleThreshold = 17;
@@ -198,6 +201,8 @@ public class StoriesFragment extends Fragment {
 
 
     private void setupAdapter() {
+        paginationMode = SettingsUtils.shouldUsePaginationMode(getContext());
+
         adapter = new StoryRecyclerViewAdapter(stories,
                 SettingsUtils.shouldShowPoints(getContext()),
                 SettingsUtils.shouldShowCommentsCount(getContext()),
@@ -211,6 +216,9 @@ public class StoriesFragment extends Fragment {
                 null,
                 getPreferredTypeIndex()
         );
+
+        adapter.paginationMode = paginationMode;
+        adapter.visibleStoryCount = paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
 
         adapter.setOnLinkClickListener(position -> {
             if (position == RecyclerView.NO_POSITION) {
@@ -256,6 +264,27 @@ public class StoriesFragment extends Fragment {
         adapter.setOnRefreshListener(this::attemptRefresh);
         adapter.setOnMoreClickListener(this::moreClick);
         adapter.setOnShowCachedListener(this::showCachedStories);
+
+        // Set up pagination "Load More" button click listener
+        adapter.setOnLoadMoreClickListener(v -> {
+            if (paginationMode) {
+                // Load next batch of stories
+                int oldLoadedTo = loadedTo;
+                int newLoadedTo = Math.min(
+                        loadedTo + PAGINATION_PAGE_SIZE,
+                        stories.size() - 1
+                );
+
+                // Load the next batch of stories
+                for (int i = oldLoadedTo + 1; i <= newLoadedTo; i++) {
+                    loadedTo = i;
+                    loadStory(stories.get(i), 0);
+                }
+
+                // Update adapter to show more items
+                adapter.loadNextPage();
+            }
+        });
 
         adapter.setOnTypeClickListener(index -> {
             if (index != adapter.type) {
@@ -414,6 +443,14 @@ public class StoriesFragment extends Fragment {
             adapter.leftAlign = !adapter.leftAlign;
             setupAdapter();
             recyclerView.setAdapter(adapter);
+        }
+
+        boolean newPaginationMode = SettingsUtils.shouldUsePaginationMode(getContext());
+        if (paginationMode != newPaginationMode) {
+            paginationMode = newPaginationMode;
+            adapter.paginationMode = paginationMode;
+            adapter.visibleStoryCount = paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
+            adapter.notifyDataSetChanged();
         }
 
         if (TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(SettingsUtils.getPreferredFont(getContext()))) {
@@ -639,8 +676,10 @@ public class StoriesFragment extends Fragment {
 
                 stories.add(s);
                 adapter.notifyItemInserted(i + 1);
-                if (i < 20) {
+                int initialLoadCount = paginationMode ? PAGINATION_PAGE_SIZE : 20;
+                if (i < initialLoadCount) {
                     loadStory(stories.get(i + 1), 0);
+                    loadedTo = i + 1;
                 }
             }
 
@@ -661,8 +700,10 @@ public class StoriesFragment extends Fragment {
 
                 stories.add(s);
                 adapter.notifyItemInserted(i + 1);
-                if (i < 20) {
+                int initialLoadCount = paginationMode ? PAGINATION_PAGE_SIZE : 20;
+                if (i < initialLoadCount) {
                     loadStory(stories.get(i + 1), 0);
+                    loadedTo = i + 1;
                 }
             }
 
@@ -710,6 +751,14 @@ public class StoriesFragment extends Fragment {
                         }
 
                         adapter.notifyItemChanged(0);
+
+                        // Load initial batch of stories
+                        int initialLoadCount = paginationMode ? PAGINATION_PAGE_SIZE : 20;
+                        int storiesToLoad = Math.min(initialLoadCount, stories.size() - 1);
+                        for (int i = 1; i <= storiesToLoad; i++) {
+                            loadedTo = i;
+                            loadStory(stories.get(i), 0);
+                        }
 
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -818,6 +867,9 @@ public class StoriesFragment extends Fragment {
 
                         adapter.notifyItemRangeInserted(1, stories.size());
                         adapter.notifyItemChanged(0);
+
+                        // Set loadedTo for Algolia stories (they're already fully loaded)
+                        loadedTo = stories.size() - 1;
 
                     } catch (JSONException e) {
                         e.printStackTrace();

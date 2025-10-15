@@ -124,6 +124,14 @@
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
+            app:key="pref_pagination_mode"
+            app:defaultValue="false"
+            app:summary="Show 30 stories at a time with a 'Load More' button"
+            app:icon="@drawable/ic_action_swipe_vertical"
+            app:title="Use pagination instead of infinite scroll"    />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
             app:key="pref_foldable_support"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_tablet"

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="center">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/load_more_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Load 30 more stories"
+        android:textAllCaps="false"
+        style="@style/Widget.Material3.Button.OutlinedButton" />
+
+</LinearLayout>
