@@ -1,9 +1,13 @@
 <a href="https://github.com/SimonHalvdansson/Harmonic-HN#readme">
-<p align="center"> <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Harmonic for Hacker News" /> </p></a>
+<div align="center"> <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Harmonic for Hacker News" /> </div></a>
 
 # Harmonic for Hacker News
 
-Harmonic for Hacker News is an Android Hacker News client which is meant to be modern, fast and well thought out. You can find it on Google Play for download.
+Harmonic for Hacker News is an Android Hacker News client which is meant to be modern, fast and fully featured.
+
+<p align="center">
+  <img src="google play/Screenshot_20251016-175525.png" width="20%"/><img src="google play/Screenshot_20251016-175645.png" width="20%"/><img src="google play/Screenshot_20251016-175725.png" width="20%"/><img src="google play/Screenshot_20251016-175746.png" width="20%"/><img src="google play/Screenshot_20251016-175758.png" width="20%"/>
+</p>
 
 This has been my personal side project since 2020 and since starting my PhD in 2021 the time I have to dedicate to Harmonic has decreased. My personal philosophy on side projects is that the most important thing is building something that is actually shipped. Since much of my knowledge on building Android apps is ~10 years old, Harmonic does not use Kotlin or the latest Android API's and is probably not the easiest app to dig into the source code of. However, it is shipped, and it works fairly well in my opinion at least. :)
 
