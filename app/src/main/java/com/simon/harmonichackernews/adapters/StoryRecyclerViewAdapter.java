@@ -62,6 +62,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private RefreshListener refreshListener;
     private CachedListener cachedListener;
     private View.OnClickListener moreClickListener;
+    private View.OnClickListener loadMoreClickListener;
     private LongClickCoordinateListener longClickListener;
     private final boolean atSubmissions;
     private final String submitter;
@@ -70,6 +71,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final int TYPE_HEADER_SUBMISSIONS = 1;
     private static final int TYPE_STORY = 2;
     private static final int TYPE_COMMENT = 3;
+    private static final int TYPE_LOAD_MORE_BUTTON = 4;
 
     public boolean loadingFailed = false;
     public boolean loadingFailedServerError = false;
@@ -85,6 +87,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public int hotness;
     public int type;
     public boolean searching = false;
+
+    public boolean paginationMode = false;
+    public static final int PAGINATION_PAGE_SIZE = 30;
+    public int visibleStoryCount = 30;
 
     public String lastSearch = "";
 
@@ -125,6 +131,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return new MainHeaderViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stories_header, parent, false));
         } else if (viewType == TYPE_HEADER_SUBMISSIONS) {
             return new SubmissionsHeaderViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.submissions_header, parent, false));
+        } else if (viewType == TYPE_LOAD_MORE_BUTTON) {
+            return new LoadMoreViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.load_more_button, parent, false));
         } else {
             return new CommentViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.submissions_comment, parent, false));
         }
@@ -133,10 +141,26 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NotNull final RecyclerView.ViewHolder holder, int position) {
+        if (holder instanceof LoadMoreViewHolder) {
+            LoadMoreViewHolder loadMoreHolder = (LoadMoreViewHolder) holder;
+            // stories[0] is header, actual story count = stories.size() - 1
+            int remainingStories = (stories.size() - 1) - visibleStoryCount;
+
+            loadMoreHolder.loadMoreButton.setOnClickListener(v -> {
+                if (loadMoreClickListener != null) {
+                    loadMoreClickListener.onClick(v);
+                }
+            });
+            return;
+        }
+
         if (holder instanceof StoryViewHolder) {
             final StoryViewHolder storyViewHolder = (StoryViewHolder) holder;
             final Context ctx = storyViewHolder.itemView.getContext();
 
+            // Position 0 is header (handled separately), positions 1+ are stories
+            // stories[0] is empty header, stories[1+] are actual stories
+            // So adapter position N maps to stories[N]
             storyViewHolder.story = stories.get(position);
             if (showIndex) {
                 storyViewHolder.indexTextView.setText(position + ".");
@@ -325,17 +349,31 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public int getItemViewType(int position) {
         if (position == 0) {
             return atSubmissions ? TYPE_HEADER_SUBMISSIONS : TYPE_HEADER_MAIN;
+        }
+
+        // Check if this is the "Load More" button position
+        // stories[0] is header, so actual story count = stories.size() - 1
+        if (paginationMode && !atSubmissions && position == visibleStoryCount + 1 && visibleStoryCount < stories.size() - 1) {
+            return TYPE_LOAD_MORE_BUTTON;
+        }
+
+        if (atSubmissions) {
+            return stories.get(position).isComment ? TYPE_COMMENT : TYPE_STORY;
         } else {
-            if (atSubmissions) {
-                return stories.get(position).isComment ? TYPE_COMMENT : TYPE_STORY;
-            } else {
-                return TYPE_STORY;
-            }
+            return TYPE_STORY;
         }
     }
 
     @Override
     public int getItemCount() {
+        if (paginationMode && !atSubmissions && visibleStoryCount < stories.size() - 1) {
+            // Header + visible stories + Load More button
+            // stories[0] is header, stories[1..N] are actual stories
+            // So if visibleStoryCount = 30, we show positions 0-31 (header + 30 stories + button)
+            return visibleStoryCount + 2;
+        }
+        // stories[0] is header, stories[1..N] are actual stories
+        // getItemCount should equal stories.size() so positions map directly to indices
         return stories.size();
     }
 
@@ -600,6 +638,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         moreClickListener = listener;
     }
 
+    public void setOnLoadMoreClickListener(View.OnClickListener listener) {
+        loadMoreClickListener = listener;
+    }
+
     public interface ClickListener {
         void onItemClick(int position);
     }
@@ -624,6 +666,36 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     public interface LongClickCoordinateListener {
         boolean onLongClick(View v, int position, int x, int y);
+    }
+
+    public static class LoadMoreViewHolder extends RecyclerView.ViewHolder {
+        public Button loadMoreButton;
+
+        public LoadMoreViewHolder(View view) {
+            super(view);
+            loadMoreButton = view.findViewById(R.id.load_more_button);
+        }
+    }
+
+    public void loadNextPage() {
+        int oldVisibleCount = visibleStoryCount;
+        // stories[0] is header, actual story count = stories.size() - 1
+        visibleStoryCount = Math.min(visibleStoryCount + PAGINATION_PAGE_SIZE, stories.size() - 1);
+
+        // Notify about the new items that are now visible
+        int itemsAdded = visibleStoryCount - oldVisibleCount;
+        if (itemsAdded > 0) {
+            notifyItemRangeInserted(oldVisibleCount + 1, itemsAdded);
+        }
+
+        // Update or remove the button
+        if (visibleStoryCount >= stories.size() - 1) {
+            // All stories are visible, remove the button
+            notifyItemRemoved(visibleStoryCount + 1);
+        } else {
+            // More stories remain, update the button text
+            notifyItemChanged(visibleStoryCount + 1);
+        }
     }
 
 }

@@ -229,6 +229,10 @@ public class SettingsUtils {
         return getBooleanPref("pref_comments_swap_long", false, ctx);
     }
 
+    public static boolean shouldUsePaginationMode(Context ctx) {
+        return getBooleanPref("pref_pagination_mode", false, ctx);
+    }
+
     public static boolean shouldUseAlgoliaAPI(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return "algolia".equals(prefs.getString("pref_comments_provider", "algolia"));
