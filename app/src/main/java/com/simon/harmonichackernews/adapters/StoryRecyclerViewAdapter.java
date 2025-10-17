@@ -145,9 +145,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             LoadMoreViewHolder loadMoreHolder = (LoadMoreViewHolder) holder;
             // stories[0] is header, actual story count = stories.size() - 1
             int remainingStories = (stories.size() - 1) - visibleStoryCount;
-            int nextBatchSize = Math.min(PAGINATION_PAGE_SIZE, remainingStories);
-
-            loadMoreHolder.loadMoreButton.setText("Load " + nextBatchSize + " more stories");
 
             loadMoreHolder.loadMoreButton.setOnClickListener(v -> {
                 if (loadMoreClickListener != null) {
