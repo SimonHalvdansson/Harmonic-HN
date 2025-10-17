@@ -6,7 +6,7 @@
 Harmonic for Hacker News is a Hacker News client for Android which is feature rich, nicely designed and has a ton of customization options!
 
 <p align="center">
-  <img src="google play/Screenshot_20251016-175525.png" width="20%"/><img src="google play/Screenshot_20251016-175645.png" width="20%"/><img src="google play/Screenshot_20251016-175725.png" width="20%"/><img src="google play/Screenshot_20251016-175746.png" width="20%"/><img src="google play/Screenshot_20251016-175758.png" width="20%"/>
+  <img src="google play/Screenshot_20251016-175525-min.png" width="20%"/><img src="google play/Screenshot_20251016-175645-min.png" width="20%"/><img src="google play/Screenshot_20251016-175725-min.png" width="20%"/><img src="google play/Screenshot_20251016-175746-min.png" width="20%"/><img src="google play/Screenshot_20251016-175758-min.png" width="20%"/>
 </p>
 
 This has been my personal side project since 2020 and since starting my PhD in 2021 the time I have to dedicate to Harmonic has decreased. My personal philosophy on side projects is that the most important thing is building something that is actually shipped. Since much of my knowledge on building Android apps is ~10 years old, Harmonic does not use Kotlin or the latest Android API's and is probably not the easiest app to dig into the source code of. However, it is shipped, and the user experience stays top notch.
