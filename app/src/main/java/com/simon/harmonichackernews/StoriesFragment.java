@@ -289,7 +289,6 @@ public class StoriesFragment extends Fragment {
         adapter.setOnTypeClickListener(index -> {
             if (index != adapter.type) {
                 adapter.type = index;
-                showingCached = false;
                 attemptRefresh();
             }
         });
@@ -631,7 +630,6 @@ public class StoriesFragment extends Fragment {
 
     public void attemptRefresh() {
         hideUpdateButton();
-        showingCached = false;
         if (adapter.searching) {
             search(lastSearch);
             return;
@@ -668,6 +666,7 @@ public class StoriesFragment extends Fragment {
 
             stories.clear();
             stories.add(new Story());
+            showingCached = false;
 
             ArrayList<Bookmark> bookmarks = Utils.loadBookmarks(getContext(), true);
 
@@ -693,6 +692,7 @@ public class StoriesFragment extends Fragment {
 
             stories.clear();
             stories.add(new Story());
+            showingCached = false;
             List<History> histories = UtilsKt.INSTANCE.loadHistories(requireContext(), true);
 
             for (int i = 0; i < histories.size(); i++) {
@@ -726,6 +726,7 @@ public class StoriesFragment extends Fragment {
 
                         stories.clear();
                         stories.add(new Story());
+                        showingCached = false;
 
                         for (int i = 0; i < jsonArray.length(); i++) {
                             int id = Integer.parseInt(jsonArray.get(i).toString());
@@ -804,17 +805,17 @@ public class StoriesFragment extends Fragment {
     }
 
     private void loadTopStoriesSince(int start_i) {
-        loadAlgolia("https://hn.algolia.com/api/v1/search?tags=story&numericFilters=created_at_i>" + start_i + "&hitsPerPage=200", true);
+        loadAlgolia("https://hn.algolia.com/api/v1/search?tags=story&numericFilters=created_at_i>" + start_i + "&hitsPerPage=200");
     }
 
     private void search(String query) {
         lastSearch = query;
         adapter.lastSearch = query;
 
-        loadAlgolia("https://hn.algolia.com/api/v1/search_by_date?query=" + query + "&tags=story&hitsPerPage=200&typoTolerance=min", false);
+        loadAlgolia("https://hn.algolia.com/api/v1/search_by_date?query=" + query + "&tags=story&hitsPerPage=200&typoTolerance=min");
     }
 
-    private void loadAlgolia(String url, boolean markClicked) {
+    private void loadAlgolia(String url) {
         swipeRefreshLayout.setEnabled(true);
         swipeRefreshLayout.setRefreshing(true);
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
@@ -825,6 +826,7 @@ public class StoriesFragment extends Fragment {
 
                         stories.clear();
                         stories.add(new Story());
+                        showingCached = false;
 
                         adapter.notifyItemRangeRemoved(1, oldSize + 1);
 
@@ -864,6 +866,7 @@ public class StoriesFragment extends Fragment {
 
                         adapter.loadingFailed = false;
                         adapter.loadingFailedServerError = false;
+                        showingCached = false;
 
                         adapter.notifyItemRangeInserted(1, stories.size());
                         adapter.notifyItemChanged(0);
