@@ -1,5 +1,4 @@
-<a href="https://github.com/SimonHalvdansson/Harmonic-HN#readme">
-<div align="center"> <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Harmonic for Hacker News" /> </div></a>
+<div align="center"> <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Harmonic for Hacker News" /> </div>
 
 # Harmonic for Hacker News
 
