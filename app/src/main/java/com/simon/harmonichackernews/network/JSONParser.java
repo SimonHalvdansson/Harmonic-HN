@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.StoryUpdate;
+import com.simon.harmonichackernews.utils.Utils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -14,6 +15,8 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class JSONParser {
 
@@ -53,12 +56,12 @@ public class JSONParser {
             }
 
             if (hit.has("story_text") && !hit.getString("story_text").equals(JSON_NULL_LITERAL)) {
-                story.text = hit.getString("story_text");
+                story.text = preprocessHtml(hit.getString("story_text"));
             }
 
             if (isComment) {
                 story.isComment = true;
-                story.text = hit.getString("comment_text");
+                story.text = preprocessHtml(hit.getString("comment_text"));
                 story.commentMasterTitle = hit.getString("story_title");
                 story.commentMasterId = hit.getInt("story_id");
                 if (hit.has("story_url") && !hit.getString("story_url").equals(JSON_NULL_LITERAL)) {
@@ -493,6 +496,8 @@ public class JSONParser {
         }
 
         input = input.replace("<pre>", "<div><tt>").replace("</pre>", "</tt></div>");
+
+        input = Utils.linkify(input);
 
         return input;
     }

@@ -66,6 +66,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import kotlin.Suppress;
 
@@ -846,6 +848,98 @@ public class Utils {
         NetworkCapabilities caps = cm.getNetworkCapabilities(net);
         return caps != null &&
                 caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+    }
+
+    public static String linkify(String input) {
+        if (input == null || input.isEmpty()) return input;
+
+        // Existing <a>...</a> blocks: keep as-is
+        Pattern aTag = Pattern.compile("(?is)<a\\b[^>]*>.*?</a>");
+
+        // Accept http(s) with either // or HTML-escaped slashes (&#x2F; or &#47;)
+        // Require a dot in the host. Stop at spaces or angle/quote chars.
+        String slash = "(?:/{1}|(?:&#x2F;)|(?:&#47;))";
+        Pattern url = Pattern.compile(
+                "(https?:" + slash + slash + "(?=[^\\s<>\"]*\\.)[^\\s<>\"]+)"
+        );
+
+        String trailing = ".,;:!?)";
+        StringBuilder out = new StringBuilder(input.length());
+        Matcher a = aTag.matcher(input);
+        int idx = 0;
+
+        // Helper-like inline blocks only
+        while (a.find()) {
+            String segment = input.substring(idx, a.start());
+            Matcher m = url.matcher(segment);
+            StringBuffer sb = new StringBuffer(segment.length());
+
+            while (m.find()) {
+                String u = m.group();
+
+                // Trim common trailing punctuation
+                int end = u.length();
+                while (end > 0 && trailing.indexOf(u.charAt(end - 1)) >= 0) end--;
+
+                // Balance unmatched ')'
+                if (end > 0 && u.charAt(end - 1) == ')') {
+                    int opens = 0, closes = 0;
+                    for (int i = 0; i < end; i++) {
+                        char c = u.charAt(i);
+                        if (c == '(') opens++;
+                        else if (c == ')') closes++;
+                    }
+                    if (closes > opens) end--;
+                }
+
+                String core = u.substring(0, end);
+                String rest = u.substring(end);
+
+                // Normalize HTML-escaped slashes in the URL for href and text
+                String normalized = core
+                        .replace("&#x2F;", "/")
+                        .replace("&#47;", "/");
+
+                String rep = "<a href=\"" + normalized + "\">" + normalized + "</a>" + rest;
+                m.appendReplacement(sb, Matcher.quoteReplacement(rep));
+            }
+            m.appendTail(sb);
+            out.append(sb);
+
+            // Keep existing anchor untouched
+            out.append(a.group());
+            idx = a.end();
+        }
+
+        // Tail after last <a>
+        String segment = input.substring(idx);
+        Matcher m = url.matcher(segment);
+        StringBuffer sb = new StringBuffer(segment.length());
+        while (m.find()) {
+            String u = m.group();
+            int end = u.length();
+            while (end > 0 && trailing.indexOf(u.charAt(end - 1)) >= 0) end--;
+            if (end > 0 && u.charAt(end - 1) == ')') {
+                int opens = 0, closes = 0;
+                for (int i = 0; i < end; i++) {
+                    char c = u.charAt(i);
+                    if (c == '(') opens++;
+                    else if (c == ')') closes++;
+                }
+                if (closes > opens) end--;
+            }
+            String core = u.substring(0, end);
+            String rest = u.substring(end);
+            String normalized = core
+                    .replace("&#x2F;", "/")
+                    .replace("&#47;", "/");
+            String rep = "<a href=\"" + normalized + "\">" + normalized + "</a>" + rest;
+            m.appendReplacement(sb, Matcher.quoteReplacement(rep));
+        }
+        m.appendTail(sb);
+        out.append(sb);
+
+        return out.toString();
     }
 
 }
