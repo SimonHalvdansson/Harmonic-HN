@@ -45,7 +45,7 @@
 
             <TextView
                 android:paddingTop="16dp"
-                android:paddingBottom="20dp"
+                android:paddingBottom="12dp"
                 android:textSize="16sp"
                 android:fontFamily="@font/product_sans"
                 android:layout_width="wrap_content"
@@ -53,10 +53,11 @@
                 android:text="Before we get started, you can change some options here to customize the app to your liking."/>
 
             <TextView
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="14dp"
                 android:text="Theme:"
                 android:textStyle="bold"
                 android:textSize="18sp"
+                android:paddingBottom="4dp"
                 android:textColor="?attr/storyColorNormal"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -68,10 +69,12 @@
                 android:layout_height="wrap_content">
 
                 <Button
+                    android:fontFamily="@font/product_sans_bold"
                     android:id="@+id/welcome_button_material_daynight"
                     style="?attr/materialButtonOutlinedStyle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:minHeight="52dp"
                     android:layout_gravity="right"
                     android:layout_weight="1"
                     android:tag="material_daynight"
@@ -79,6 +82,7 @@
                     android:textColor="?attr/storyColorNormal" />
 
                 <Button
+                    android:fontFamily="@font/product_sans_bold"
                     style="?attr/materialButtonOutlinedStyle"
                     android:id="@+id/welcome_button_material_dark"
                     android:textColor="?attr/storyColorNormal"
@@ -87,17 +91,20 @@
                     android:layout_marginLeft="8dp"
                     android:layout_marginRight="8dp"
                     android:layout_height="wrap_content"
+                    android:minHeight="52dp"
                     android:layout_gravity="right"
                     android:tag="material_dark"
                     android:text="Material You (dark)"/>
 
                 <Button
+                    android:fontFamily="@font/product_sans_bold"
                     style="?attr/materialButtonOutlinedStyle"
                     android:id="@+id/welcome_button_material_light"
                     android:textColor="?attr/storyColorNormal"
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
+                    android:minHeight="52dp"
                     android:layout_gravity="right"
                     android:tag="material_light"
                     android:text="Material You (light)"/>
@@ -110,23 +117,27 @@
                 android:layout_height="wrap_content">
 
                 <Button
+                    android:fontFamily="@font/product_sans_bold"
                     style="?attr/materialButtonOutlinedStyle"
                     android:id="@+id/welcome_button_dark"
                     android:textColor="?attr/storyColorNormal"
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
+                    android:minHeight="52dp"
                     android:layout_gravity="right"
                     android:tag="dark"
                     android:text="Dark"/>
 
                 <Button
+                    android:fontFamily="@font/product_sans_bold"
                     style="?attr/materialButtonOutlinedStyle"
                     android:id="@+id/welcome_button_gray"
                     android:textColor="?attr/storyColorNormal"
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
+                    android:minHeight="52dp"
                     android:layout_marginLeft="8dp"
                     android:layout_marginRight="8dp"
                     android:layout_gravity="right"
@@ -134,12 +145,14 @@
                     android:text="Gray"/>
 
                 <Button
+                    android:fontFamily="@font/product_sans_bold"
                     style="?attr/materialButtonOutlinedStyle"
                     android:id="@+id/welcome_button_black"
                     android:textColor="?attr/storyColorNormal"
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
+                    android:minHeight="52dp"
                     android:layout_gravity="right"
                     android:tag="amoled"
                     android:text="Black"/>
@@ -152,6 +165,7 @@
                 android:layout_height="wrap_content">
 
                 <Button
+                    android:fontFamily="@font/product_sans_bold"
                     style="?attr/materialButtonOutlinedStyle"
                     android:id="@+id/welcome_button_light"
                     android:textColor="?attr/storyColorNormal"
@@ -159,11 +173,13 @@
                     android:layout_weight="1"
                     android:layout_marginRight="8dp"
                     android:layout_height="wrap_content"
+                    android:minHeight="52dp"
                     android:layout_gravity="right"
                     android:tag="light"
                     android:text="Light"/>
 
                 <Button
+                    android:fontFamily="@font/product_sans_bold"
                     style="?attr/materialButtonOutlinedStyle"
                     android:id="@+id/welcome_button_white"
                     android:textColor="?attr/storyColorNormal"
@@ -171,6 +187,7 @@
                     android:layout_weight="1"
                     android:layout_marginLeft="8dp"
                     android:layout_height="wrap_content"
+                    android:minHeight="52dp"
                     android:layout_gravity="right"
                     android:tag="white"
                     android:text="White"/>
@@ -179,12 +196,13 @@
 
             <TextView
                 android:textColor="?attr/textColorDisabled"
-                android:text="Preview:"
+                android:text="Preview"
                 android:fontFamily="@font/product_sans"
                 android:textStyle="bold"
                 android:textSize="13dp"
                 android:textAllCaps="true"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="-6dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
@@ -193,7 +211,7 @@
                 layout="@layout/story_list_item"/>
 
             <TextView
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:text="Quick settings:"
                 android:textStyle="bold"
                 android:textSize="18sp"
