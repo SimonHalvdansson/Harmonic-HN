@@ -866,6 +866,24 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         webView.getSettings().setUseWideViewPort(true);
         webView.getSettings().setLoadWithOverviewMode(true);
 
+        // Add long-press handling for links
+        webView.setOnLongClickListener(v -> {
+            WebView.HitTestResult result = webView.getHitTestResult();
+            int type = result.getType();
+
+            // Check if the long-pressed element is a link
+            if (type == WebView.HitTestResult.SRC_ANCHOR_TYPE ||
+                    type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+
+                String url = result.getExtra();
+                if (url != null) {
+                    showLinkOptionsDialog(url);
+                    return true;
+                }
+            }
+            return false;
+        });
+
         webView.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String userAgent,
@@ -928,6 +946,57 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             }
         }, 2000); // Start the animation after 2 seconds
+    }
+
+    private void showLinkOptionsDialog(String url) {
+        if (!isAdded() || requireActivity().isFinishing()) {
+            return;
+        }
+
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
+        builder.setTitle("Link Options");
+
+        String[] options = {
+                "Open in Browser",
+                "Open in Custom Tab",
+                "Copy Link",
+                "Share Link"
+        };
+
+        builder.setItems(options, (dialog, which) -> {
+            switch (which) {
+                case 0: // Open in Browser
+                    Utils.launchInExternalBrowser(requireContext(), url);
+                    break;
+                case 1: // Open in Custom Tab
+                    Utils.launchCustomTab(requireContext(), url);
+                    break;
+                case 2: // Copy Link
+                    copyLinkToClipboard(url);
+                    break;
+                case 3: // Share Link
+                    try {
+                        startActivity(ShareUtils.getShareIntent(url));
+                    } catch (Exception e) {
+                        Toast.makeText(requireContext(), "Unable to share link", Toast.LENGTH_SHORT).show();
+                    }
+                    break;
+            }
+        });
+
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void copyLinkToClipboard(String url) {
+        ClipboardManager clipboard = (ClipboardManager)
+                requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("Link", url);
+        clipboard.setPrimaryClip(clip);
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            Toast.makeText(requireContext(), "Link copied to clipboard", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void loadUrl(String url) {
