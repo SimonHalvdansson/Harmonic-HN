@@ -303,7 +303,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 headerViewHolder.loadingIndicator.setVisibility(stories.size() == 1 && !loadingFailed && !loadingFailedServerError && (type != SettingsUtils.getBookmarksIndex(ctx.getResources())) ? View.VISIBLE : View.GONE);
             }
 
-            headerViewHolder.showingCachedText.setVisibility(StoriesFragment.showingCached ? View.VISIBLE : View.GONE);
+            headerViewHolder.showingCachedText.setVisibility(StoriesFragment.showingCached && !searching ? View.VISIBLE : View.GONE);
 
             headerViewHolder.typeSpinner.setSelection(type);
 
