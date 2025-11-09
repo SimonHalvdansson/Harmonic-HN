@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#ffde03</color>
-    <color name="colorPrimaryDark">#c7ad00</color>
-    <color name="colorAccent">#ffde03</color>
+    <color name="colorPrimary">#FF959E</color>
+    <color name="colorPrimaryDark">#99595e</color>
+    <color name="colorAccent">#FF959E</color>
 
     <color name="statusBarColor">@color/background</color>
     <color name="statusBarColorTransparent">@android:color/transparent</color>
@@ -42,7 +42,7 @@
     <color name="lightOpCommentColor">#356858</color>
     <color name="lightSelfCommentColor">#3f51b5</color>
 
-    <color name="commentIndentIndicatorColor1">#ffde03</color>
+    <color name="commentIndentIndicatorColor1">#FF959E</color>
     <color name="commentIndentIndicatorColor2">#3f51b5</color>
     <color name="commentIndentIndicatorColor3">#ff0266</color>
     <color name="commentIndentIndicatorColor4">#1EB980</color>
