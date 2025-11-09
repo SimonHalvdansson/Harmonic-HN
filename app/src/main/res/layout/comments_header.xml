@@ -864,10 +864,15 @@
         android:orientation="vertical"
         android:layout_height="wrap_content">
 
+        <ImageView
+            android:src="@drawable/ic_action_no_internet"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"/>
+
         <TextView
             android:id="@+id/comments_header_loading_failed_text"
             android:gravity="center"
-            android:paddingTop="24dp"
+            android:paddingTop="2dp"
             android:paddingBottom="6dp"
             android:paddingRight="24dp"
             android:paddingLeft="24dp"
