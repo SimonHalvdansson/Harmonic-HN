@@ -26,6 +26,8 @@ public class Story {
     public RepoInfo repoInfo;
     public ArxivInfo arxivInfo;
     public WikipediaInfo wikiInfo;
+    public NitterInfo nitterInfo;
+
     public boolean isLink;
     public boolean isJob = false;
     public boolean loadingFailed = false;
@@ -89,7 +91,7 @@ public class Story {
     }
 
     public boolean hasExtraInfo() {
-        return arxivInfo != null || repoInfo != null || wikiInfo != null;
+        return arxivInfo != null || repoInfo != null || wikiInfo != null || nitterInfo != null;
     }
 
 }

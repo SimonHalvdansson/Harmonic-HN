@@ -48,6 +48,7 @@ import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
+import com.squareup.picasso.Picasso;
 
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
@@ -265,6 +266,35 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
                 headerViewHolder.infoHeader.setText("WIKIPEDIA SUMMARY:");
                 headerViewHolder.wikiSummary.setHtml(story.wikiInfo.summary);
+            }
+
+            if (story.nitterInfo != null) {
+                headerViewHolder.nitterContainer.setVisibility(View.VISIBLE);
+                headerViewHolder.infoHeader.setText(story.nitterInfo.userName + " " + story.nitterInfo.userTag);
+
+                headerViewHolder.nitterText.setHtml(story.nitterInfo.text);
+                headerViewHolder.nitterDate.setText(story.nitterInfo.date);
+                headerViewHolder.nitterReplyCount.setText(String.valueOf(story.nitterInfo.replyCount));
+                headerViewHolder.nitterReposts.setText(String.valueOf(story.nitterInfo.reposts));
+                headerViewHolder.nitterQuotes.setText(String.valueOf(story.nitterInfo.quotes));
+                headerViewHolder.nitterLikes.setText(String.valueOf(story.nitterInfo.likes));
+
+                if (story.nitterInfo.quotes.equals("")) {
+                    headerViewHolder.nitterQuotes.setVisibility(GONE);
+                    headerViewHolder.nitterQuotesImageView.setVisibility(GONE);
+                }
+
+                if (story.nitterInfo.imgSrc != null) {
+                    headerViewHolder.nitterImage.setVisibility(VISIBLE);
+                    try {
+                        Picasso.get()
+                                .load(story.nitterInfo.imgSrc)
+                                .into(headerViewHolder.nitterImage);
+                    } catch (Exception e){
+                        e.printStackTrace();
+                    };
+                }
+
             }
 
             if (story.pollOptionArrayList != null) {
@@ -625,6 +655,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout githubContainer;
         public final LinearLayout arxivContainer;
         public final LinearLayout wikiContainer;
+        public final LinearLayout nitterContainer;
+
         public final TextView infoHeader;
         public final LinearLayout emptyView;
         public final TextView emptyViewText;
@@ -668,6 +700,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final Button arxivDownloadButton;
 
         public final HtmlTextView wikiSummary;
+
+        public final HtmlTextView nitterText;
+        public final TextView nitterDate;
+        public final TextView nitterReplyCount;
+        public final TextView nitterReposts;
+        public final TextView nitterQuotes;
+        public final TextView nitterLikes;
+        public final ImageView nitterQuotesImageView;
+        public final ImageView nitterImage;
 
         public final ImageView favicon;
         public final RelativeLayout sheetRefreshButton;
@@ -754,6 +795,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 
+            nitterContainer = view.findViewById(R.id.comments_header_nitter_container);
+            nitterText = view.findViewById(R.id.comments_header_nitter_text);
+            nitterDate = view.findViewById(R.id.comments_header_nitter_date);
+            nitterReplyCount = view.findViewById(R.id.comments_header_nitter_reply_count);
+            nitterReposts = view.findViewById(R.id.comments_header_nitter_reposts);
+            nitterQuotes = view.findViewById(R.id.comments_header_nitter_quotes);
+            nitterLikes = view.findViewById(R.id.comments_header_nitter_likes);
+            nitterQuotesImageView = view.findViewById(R.id.comments_header_nitter_quotes_image);
+            nitterImage = view.findViewById(R.id.comments_header_nitter_image);
+
             retryButton.setOnClickListener((v) -> retryListener.onRetry());
             openInBrowserButton.setOnClickListener((v) -> retryListener.onOpenInBrowser());
 
@@ -807,6 +858,23 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 @Override
                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
                     Utils.launchCustomTab(view.getContext(), story.repoInfo.website);
+                    return false;
+                }
+            });
+
+            nitterText.setOnClickATagListener(new OnClickATagListener() {
+                @Override
+                public boolean onClick(View widget, String spannedText, @Nullable String href) {
+                    if (TextUtils.isEmpty(href)) {
+                        return false;
+                    }
+                    if (spannedText.startsWith("#") && href.startsWith("/search?q=")) {
+                        Utils.launchCustomTab(widget.getContext(), "https://www.x.com/" + href);
+                    } else if (spannedText.startsWith("@") && href.startsWith("/")) {
+                        Utils.launchCustomTab(widget.getContext(), "https://www.x.com/" + href);
+                    } else {
+                        Utils.launchCustomTab(widget.getContext(), href);
+                    }
                     return false;
                 }
             });

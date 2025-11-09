@@ -89,12 +89,14 @@ import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.ArxivInfo;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
+import com.simon.harmonichackernews.data.NitterInfo;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.RepoInfo;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.data.WikipediaInfo;
 import com.simon.harmonichackernews.linkpreview.ArxivAbstractGetter;
 import com.simon.harmonichackernews.linkpreview.GitHubInfoGetter;
+import com.simon.harmonichackernews.linkpreview.NitterGetter;
 import com.simon.harmonichackernews.linkpreview.WikipediaGetter;
 import com.simon.harmonichackernews.network.AlgoliaFallbackManager;
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
@@ -852,7 +854,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         webView.setWebViewClient(new MyWebViewClient());
-        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(requireContext())) || showWebsite) {
+        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(requireContext())) || showWebsite || (NitterGetter.isConvertibleToNitter(story.url) && SettingsUtils.shouldUseLinkPreviewX(getContext()))) {
             loadUrl(story.url);
             startedLoading = true;
         }
@@ -958,6 +960,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             webView.setInitialScale(100);
             webView.getSettings().setLoadWithOverviewMode(true);
             webView.getSettings().setUseWideViewPort(true);
+        }
+
+        if (NitterGetter.isConvertibleToNitter(url) && SettingsUtils.shouldRedirectNitter(getContext())) {
+            url = NitterGetter.convertToNitterUrl(url);
         }
 
         webView.loadUrl(url);
@@ -2062,6 +2068,23 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
                 // If we are at the webview and we just loaded, recheck the canGoBack status
                 syncOnBackPressedCallbackEnabledState();
+            }
+
+            if (NitterGetter.isValidNitterUrl(url) && SettingsUtils.shouldUseLinkPreviewX(getContext())) {
+                NitterGetter.getInfo(view, getContext(), new NitterGetter.GetterCallback() {
+                    @Override
+                    public void onSuccess(NitterInfo nitterInfo) {
+                        story.nitterInfo = nitterInfo;
+                        if (adapter != null) {
+                            adapter.notifyItemChanged(0);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(String reason) {
+
+                    }
+                });
             }
         }
 

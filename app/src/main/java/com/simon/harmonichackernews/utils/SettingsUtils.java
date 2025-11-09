@@ -221,6 +221,14 @@ public class SettingsUtils {
         return getBooleanPref("pref_link_preview_wikipedia", false, ctx);
     }
 
+    public static boolean shouldRedirectNitter(Context ctx) {
+        return getBooleanPref("pref_redirect_nitter", false, ctx);
+    }
+
+    public static boolean shouldUseLinkPreviewX(Context ctx) {
+        return getBooleanPref("pref_link_preview_x", false, ctx);
+    }
+
     public static boolean shouldShowChangelog(Context ctx) {
         return getBooleanPref("pref_show_changelog", true, ctx);
     }

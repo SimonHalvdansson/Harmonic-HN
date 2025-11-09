@@ -213,6 +213,13 @@
             app:icon="@drawable/ic_action_block"
             app:title="Block WebView ads"    />
 
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_redirect_nitter"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_redirect"
+            app:title="Redirect Twitter/X to Nitter"    />
+
     </PreferenceCategory>
 
     <PreferenceCategory
@@ -363,6 +370,14 @@
             app:title="Wikipedia"
             app:defaultValue="true"
             app:key="pref_link_preview_wikipedia"/>
+
+        <SwitchPreferenceCompat
+            app:icon="@drawable/ic_link_preview_x"
+            app:title="Twitter/X"
+            app:dependency="pref_redirect_nitter"
+            app:summary="Requires Nitter redirect to be active"
+            app:defaultValue="true"
+            app:key="pref_link_preview_x"/>
 
     </PreferenceCategory>
 

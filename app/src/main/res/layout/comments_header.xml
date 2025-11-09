@@ -267,6 +267,8 @@
 
             <include layout="@layout/link_preview_github" />
 
+            <include layout="@layout/link_preview_nitter" />
+
         </LinearLayout>
 
         <LinearLayout
