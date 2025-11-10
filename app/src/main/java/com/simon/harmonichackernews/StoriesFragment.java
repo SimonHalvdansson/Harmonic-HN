@@ -40,6 +40,7 @@ import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.data.History;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.network.BackgroundJSONParser;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
@@ -820,63 +821,70 @@ public class StoriesFragment extends Fragment {
         swipeRefreshLayout.setRefreshing(true);
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
-                    swipeRefreshLayout.setRefreshing(false);
-                    try {
-                        int oldSize = stories.size();
+                    // Parse JSON on background thread
+                    BackgroundJSONParser.parseAlgoliaJson(response, new BackgroundJSONParser.AlgoliaParseCallback() {
+                        @Override
+                        public void onParseSuccess(List<Story> parsedStories) {
+                            swipeRefreshLayout.setRefreshing(false);
 
-                        stories.clear();
-                        stories.add(new Story());
-                        showingCached = false;
+                            int oldSize = stories.size();
 
-                        adapter.notifyItemRangeRemoved(1, oldSize + 1);
+                            stories.clear();
+                            stories.add(new Story());
+                            showingCached = false;
 
-                        stories.addAll(JSONParser.algoliaJsonToStories(response));
+                            adapter.notifyItemRangeRemoved(1, oldSize + 1);
 
-                        Iterator<Story> iterator = stories.iterator();
-                        while (iterator.hasNext()) {
-                            Story story = iterator.next();
-                            story.clicked = HistoriesUtils.INSTANCE.isHistoryExist(story.id);
+                            stories.addAll(parsedStories);
 
-                            if (story.title != null) {
-                                // lets check if we should remove the post because of filter
-                                for (String phrase : filterWords) {
-                                    if (story.title.toLowerCase().contains(phrase.toLowerCase())) {
-                                        iterator.remove();
-                                        break;
-                                    }
-                                }
-                                // or domain name
-                                for (String phrase : filterDomains) {
-                                    try {
-                                        String domain = Utils.getDomainName(story.url);
-                                        if (domain.toLowerCase().contains(phrase.toLowerCase())) {
+                            Iterator<Story> iterator = stories.iterator();
+                            while (iterator.hasNext()) {
+                                Story story = iterator.next();
+                                story.clicked = HistoriesUtils.INSTANCE.isHistoryExist(story.id);
+
+                                if (story.title != null) {
+                                    for (String phrase : filterWords) {
+                                        if (story.title.toLowerCase().contains(phrase.toLowerCase())) {
                                             iterator.remove();
                                             break;
                                         }
-                                    } catch (Exception e) {
-                                        //nothing
                                     }
+                                    // or domain name
+                                    for (String phrase : filterDomains) {
+                                        try {
+                                            String domain = Utils.getDomainName(story.url);
+                                            if (domain.toLowerCase().contains(phrase.toLowerCase())) {
+                                                iterator.remove();
+                                                break;
+                                            }
+                                        } catch (Exception e) {
+                                            //nothing
+                                        }
+                                    }
+                                }
+
+                                if (hideClicked && story.clicked) {
+                                    iterator.remove();
                                 }
                             }
 
-                            if (hideClicked && story.clicked) {
-                                iterator.remove();
-                            }
+                            adapter.loadingFailed = false;
+                            adapter.loadingFailedServerError = false;
+                            showingCached = false;
+
+                            adapter.notifyItemRangeInserted(1, stories.size());
+                            adapter.notifyItemChanged(0);
+
+                            // Set loadedTo for Algolia stories (they're already fully loaded)
+                            loadedTo = stories.size() - 1;
                         }
 
-                        adapter.loadingFailed = false;
-                        adapter.loadingFailedServerError = false;
-                        showingCached = false;
-
-                        adapter.notifyItemRangeInserted(1, stories.size());
-                        adapter.notifyItemChanged(0);
-
-                        // Set loadedTo for Algolia stories (they're already fully loaded)
-                        loadedTo = stories.size() - 1;
-
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
+                        @Override
+                        public void onParseError(JSONException error) {
+                            swipeRefreshLayout.setRefreshing(false);
+                            error.printStackTrace();
+                        }
+                    });
 
                 }, error -> {
             if (error.networkResponse != null && error.networkResponse.statusCode == 404) {

@@ -15,6 +15,7 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.network.BackgroundJSONParser;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -25,6 +26,7 @@ import com.simon.harmonichackernews.utils.ViewUtils;
 import org.json.JSONException;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class SubmissionsActivity extends AppCompatActivity {
 
@@ -155,26 +157,34 @@ public class SubmissionsActivity extends AppCompatActivity {
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
-                    swipeRefreshLayout.setRefreshing(false);
-                    try {
-                        int oldSize = submissions.size();
+                    // Parse JSON on background thread
+                    BackgroundJSONParser.parseAlgoliaJson(response, new BackgroundJSONParser.AlgoliaParseCallback() {
+                        @Override
+                        public void onParseSuccess(List<Story> parsedStories) {
+                            swipeRefreshLayout.setRefreshing(false);
 
-                        submissions.clear();
-                        submissions.add(new Story());
+                            int oldSize = submissions.size();
 
-                        adapter.notifyItemRangeRemoved(1, oldSize + 1);
+                            submissions.clear();
+                            submissions.add(new Story());
 
-                        submissions.addAll(JSONParser.algoliaJsonToStories(response));
+                            adapter.notifyItemRangeRemoved(1, oldSize + 1);
 
-                        adapter.loadingFailed = false;
-                        adapter.loadingFailedServerError = false;
+                            submissions.addAll(parsedStories);
 
-                        adapter.notifyItemRangeInserted(1, submissions.size());
-                        adapter.notifyItemChanged(0);
+                            adapter.loadingFailed = false;
+                            adapter.loadingFailedServerError = false;
 
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
+                            adapter.notifyItemRangeInserted(1, submissions.size());
+                            adapter.notifyItemChanged(0);
+                        }
+
+                        @Override
+                        public void onParseError(JSONException error) {
+                            swipeRefreshLayout.setRefreshing(false);
+                            error.printStackTrace();
+                        }
+                    });
 
                 }, error -> {
             if (error.networkResponse != null && error.networkResponse.statusCode == 404) {
