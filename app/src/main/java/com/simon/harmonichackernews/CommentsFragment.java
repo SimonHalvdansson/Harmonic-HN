@@ -689,7 +689,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_REFRESH:
-                        webView.reload();
+                        if (showingErrorPage && !TextUtils.isEmpty(lastFailedWebViewUrl)) {
+                            retryingFailedWebViewUrl = true;
+                            loadUrl(lastFailedWebViewUrl);
+                        } else {
+                            webView.reload();
+                        }
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_EXPAND:
@@ -1244,13 +1249,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(true);
         }
-
-        if (showingErrorPage && !TextUtils.isEmpty(lastFailedWebViewUrl)) {
-            retryingFailedWebViewUrl = true;
-            loadUrl(lastFailedWebViewUrl);
-        } else {
-            loadStoryAndComments(adapter.story.id, null);
-        }
+        loadStoryAndComments(adapter.story.id, null);
     }
 
     @Override
