@@ -30,13 +30,25 @@ public class NitterGetter {
 
     public static boolean isConvertibleToNitter(String url) {
         try {
-            URL parsedUrl = new URL(url);
-            String host = parsedUrl.getHost();
-            return host.equals("twitter.com") || host.equals("x.com");
-        } catch (MalformedURLException e) {
-            return false; // URL is not valid
+            java.net.URL u = new java.net.URL(url);
+            String host = u.getHost();
+            if (host == null) return false;
+
+            host = host.toLowerCase(java.util.Locale.ROOT);
+            if (host.startsWith("www.")) host = host.substring(4);
+            if (host.startsWith("mobile.")) host = host.substring(7);
+            if (!host.equals("twitter.com") && !host.equals("x.com")) return false;
+
+            String path = u.getPath();
+            if (path == null) return false;
+
+            // /<handle>/status/<digits> or /i/web/status/<digits>, allow trailing segments like /photo/1
+            return path.matches("^/(?:[A-Za-z0-9_]{1,15}/status/\\d+|i/web/status/\\d+)(?:/[^/]*)*$");
+        } catch (java.net.MalformedURLException e) {
+            return false;
         }
     }
+
 
     public static String convertToNitterUrl(String url) {
         return url.replace("twitter.com", "nitter.net").replace("x.com", "nitter.net");
@@ -49,7 +61,7 @@ public class NitterGetter {
                 "var imgElement = document.querySelector('.main-tweet .attachment.image img');" +
                 "var beforeImgElement = document.querySelector('.before-tweet .attachment.image img');" +
                 "var imgSrc = imgElement ? (window.location.origin + imgElement.getAttribute('src')) : null;" +
-                "var beforeImgSrc = beforeImgElement ? (window.location.origin + beforeImgElement.getAttribute('src')) : null;" +  // Fixed this line
+                "var beforeImgSrc = beforeImgElement ? (window.location.origin + beforeImgElement.getAttribute('src')) : null;" +
                 "var beforeTweet = document.querySelector('.before-tweet');" +
                 "return JSON.stringify({" +
                 "   text: document.querySelector('.main-tweet .tweet-content').innerHTML," +
@@ -93,7 +105,7 @@ public class NitterGetter {
                     nitterInfo.imgSrc = null;
                 }
 
-                if (nitterInfo.beforeImgSrc != null && nitterInfo.beforeImgSrc.equals("null")) {
+                if (nitterInfo.beforeImgSrc.equals("null")) {
                     nitterInfo.beforeImgSrc = null;
                 }
 

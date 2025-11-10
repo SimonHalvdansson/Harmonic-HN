@@ -279,9 +279,19 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.nitterQuotes.setText(String.valueOf(story.nitterInfo.quotes));
                 headerViewHolder.nitterLikes.setText(String.valueOf(story.nitterInfo.likes));
 
-                if (story.nitterInfo.quotes.equals("")) {
+                if (TextUtils.isEmpty(story.nitterInfo.reposts)) {
+                    headerViewHolder.nitterReposts.setVisibility(GONE);
+                    headerViewHolder.nitterRetweetImageView.setVisibility(GONE);
+                }
+
+                if (TextUtils.isEmpty(story.nitterInfo.quotes)) {
                     headerViewHolder.nitterQuotes.setVisibility(GONE);
                     headerViewHolder.nitterQuotesImageView.setVisibility(GONE);
+                }
+
+                if (TextUtils.isEmpty(story.nitterInfo.likes)) {
+                    headerViewHolder.nitterLikes.setVisibility(GONE);
+                    headerViewHolder.nitterLikesImageView.setVisibility(GONE);
                 }
 
                 if (story.nitterInfo.imgSrc != null) {
@@ -707,7 +717,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView nitterReposts;
         public final TextView nitterQuotes;
         public final TextView nitterLikes;
+        public final ImageView nitterLikesImageView;
         public final ImageView nitterQuotesImageView;
+        public final ImageView nitterRetweetImageView;
+
         public final ImageView nitterImage;
 
         public final ImageView favicon;
@@ -802,7 +815,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             nitterReposts = view.findViewById(R.id.comments_header_nitter_reposts);
             nitterQuotes = view.findViewById(R.id.comments_header_nitter_quotes);
             nitterLikes = view.findViewById(R.id.comments_header_nitter_likes);
+            nitterLikesImageView = view.findViewById(R.id.comments_header_nitter_likes_image);
             nitterQuotesImageView = view.findViewById(R.id.comments_header_nitter_quotes_image);
+            nitterRetweetImageView = view.findViewById(R.id.comments_header_nitter_reposts_image);
             nitterImage = view.findViewById(R.id.comments_header_nitter_image);
 
             retryButton.setOnClickListener((v) -> retryListener.onRetry());

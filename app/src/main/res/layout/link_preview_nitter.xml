@@ -4,6 +4,8 @@
     android:id="@+id/comments_header_nitter_container"
     android:layout_width="match_parent"
     android:visibility="gone"
+    tools:visibility="visible"
+    tools:layout_marginTop="100dp"
     android:layout_height="wrap_content">
 
     <org.sufficientlysecure.htmltextview.HtmlTextView
@@ -43,7 +45,7 @@
             android:id="@+id/comments_header_nitter_date"
             android:fontFamily="@font/product_sans"
             android:paddingLeft="2dp"
-            android:paddingRight="5dp"
+            android:paddingRight="7dp"
             android:text="Nov 3"
             android:textSize="13sp"
             android:layout_width="wrap_content"
@@ -58,13 +60,14 @@
             android:id="@+id/comments_header_nitter_reply_count"
             android:fontFamily="@font/product_sans"
             android:paddingLeft="1dp"
-            android:paddingRight="5dp"
+            android:paddingRight="7dp"
             android:text="12"
             android:textSize="13sp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
 
         <ImageView
+            android:id="@+id/comments_header_nitter_reposts_image"
             android:src="@drawable/ic_action_retweet"
             android:layout_width="15dp"
             android:layout_height="16dp"/>
@@ -73,7 +76,7 @@
             android:id="@+id/comments_header_nitter_reposts"
             android:fontFamily="@font/product_sans"
             android:paddingLeft="1dp"
-            android:paddingRight="4dp"
+            android:paddingRight="6dp"
             android:text="3,709"
             android:textSize="13sp"
             android:layout_width="wrap_content"
@@ -89,13 +92,14 @@
             android:id="@+id/comments_header_nitter_quotes"
             android:fontFamily="@font/product_sans"
             android:paddingLeft="0dp"
-            android:paddingRight="7dp"
+            android:paddingRight="8dp"
             android:text="118"
             android:textSize="13sp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
 
         <ImageView
+            android:id="@+id/comments_header_nitter_likes_image"
             android:src="@drawable/ic_action_thumbs_up"
             android:layout_width="12dp"
             android:layout_height="16dp"/>
