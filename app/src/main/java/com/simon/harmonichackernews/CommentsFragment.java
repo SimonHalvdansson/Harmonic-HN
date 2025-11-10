@@ -373,7 +373,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                             webView.setVisibility(View.VISIBLE);
                             downloadButton.setVisibility(View.GONE);
                         } else {
-                            webView.goBack();
+                            if (showingErrorPage && webView.canGoBackOrForward(-2)) {
+                                showingErrorPage = false;
+                                webView.goBackOrForward(-2);
+                            } else {
+                                webView.goBack();
+                            }
                         }
                     }
 
