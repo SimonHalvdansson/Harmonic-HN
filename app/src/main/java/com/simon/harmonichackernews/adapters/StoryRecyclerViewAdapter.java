@@ -481,7 +481,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             searchEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
                 @Override
                 public boolean onEditorAction(TextView textView, int actionId, KeyEvent keyEvent) {
-                    if (actionId != EditorInfo.IME_ACTION_SEARCH) {
+                    boolean isKeyboardSearchAction = actionId == EditorInfo.IME_ACTION_SEARCH;
+                    boolean isHardwareEnterKey = keyEvent != null
+                            && keyEvent.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                            && keyEvent.getAction() == KeyEvent.ACTION_DOWN;
+
+                    if (!isKeyboardSearchAction && !isHardwareEnterKey) {
                         return false;
                     }
 
