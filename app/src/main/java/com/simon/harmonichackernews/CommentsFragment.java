@@ -15,6 +15,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.PointF;
 import android.net.Uri;
@@ -188,6 +189,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private Set<String> filteredUsers;
     private int SCREEN_HEIGHT_IN_PIXELS = 100;
     private boolean showingErrorPage = false;
+    @Nullable
+    private String lastFailedWebViewUrl;
+    @Nullable
+    private String lastRequestedWebViewUrl;
+    private boolean retryingFailedWebViewUrl = false;
 
     // Clean fallback management
     private AlgoliaFallbackManager fallbackManager;
@@ -373,7 +379,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                             webView.setVisibility(View.VISIBLE);
                             downloadButton.setVisibility(View.GONE);
                         } else {
-                            webView.goBack();
+                            if (showingErrorPage && webView.canGoBackOrForward(-2)) {
+                                showingErrorPage = false;
+                                webView.goBackOrForward(-2);
+                            } else {
+                                webView.goBack();
+                            }
                         }
                     }
 
@@ -678,7 +689,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_REFRESH:
-                        webView.reload();
+                        if (showingErrorPage && !TextUtils.isEmpty(lastFailedWebViewUrl)) {
+                            retryingFailedWebViewUrl = true;
+                            loadUrl(lastFailedWebViewUrl);
+                        } else {
+                            webView.reload();
+                        }
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_EXPAND:
@@ -942,6 +958,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         if (!OFFLINE_PAGE_URL.equals(url)) {
             showingErrorPage = false;
+            lastRequestedWebViewUrl = url;
         }
         if (url.equals(PDF_LOADER_URL)) {
             PdfAndroidJavascriptBridge pdfAndroidJavascriptBridge = new PdfAndroidJavascriptBridge(pdfFilePath, new PdfAndroidJavascriptBridge.Callbacks() {
@@ -1229,7 +1246,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onRetry() {
-        swipeRefreshLayout.setRefreshing(true);
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setRefreshing(true);
+        }
         loadStoryAndComments(adapter.story.id, null);
     }
 
@@ -2060,10 +2079,25 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public class MyWebViewClient extends WebViewClient {
 
         @Override
+        public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            super.onPageStarted(view, url, favicon);
+            if (!OFFLINE_PAGE_URL.equals(url)) {
+                lastRequestedWebViewUrl = url;
+            }
+        }
+
+        @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
             webView.setBackgroundColor(Color.WHITE);
             webViewBackdrop.setVisibility(View.GONE);
+
+            if (retryingFailedWebViewUrl) {
+                if (swipeRefreshLayout != null) {
+                    swipeRefreshLayout.setRefreshing(false);
+                }
+                retryingFailedWebViewUrl = false;
+            }
 
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
                 // If we are at the webview and we just loaded, recheck the canGoBack status
@@ -2167,9 +2201,20 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return true;
         }
 
-        private void showOfflineFallback(WebView view) {
+        private void showOfflineFallback(WebView view, @Nullable String failingUrl) {
             if (view == null || showingErrorPage) {
                 return;
+            }
+            if (!TextUtils.isEmpty(failingUrl)) {
+                lastFailedWebViewUrl = failingUrl;
+            } else if (lastRequestedWebViewUrl != null) {
+                lastFailedWebViewUrl = lastRequestedWebViewUrl;
+            } else if (view.getUrl() != null && !TextUtils.isEmpty(view.getUrl()) && !OFFLINE_PAGE_URL.equals(view.getUrl())) {
+                lastFailedWebViewUrl = view.getUrl();
+            }
+            retryingFailedWebViewUrl = false;
+            if (swipeRefreshLayout != null) {
+                swipeRefreshLayout.setRefreshing(false);
             }
             view.stopLoading();
             CommentsFragment.this.loadUrl(OFFLINE_PAGE_URL);
@@ -2179,7 +2224,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         @SuppressWarnings("deprecation")
         public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
             if (shouldShowOfflineFallback(errorCode)) {
-                showOfflineFallback(view);
+                showOfflineFallback(view, failingUrl);
             } else {
                 super.onReceivedError(view, errorCode, description, failingUrl);
             }
@@ -2188,7 +2233,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && request.isForMainFrame() && shouldShowOfflineFallback(error.getErrorCode())) {
-                showOfflineFallback(view);
+                showOfflineFallback(view, request.getUrl() != null ? request.getUrl().toString() : null);
             } else {
                 super.onReceivedError(view, request, error);
             }
