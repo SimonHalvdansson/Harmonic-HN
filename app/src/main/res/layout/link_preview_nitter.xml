@@ -32,107 +32,113 @@
         android:layout_marginTop="6dp"
         android:layout_marginBottom="8dp" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/comments_header_nitter_button_open"
-        android:fontFamily="@font/product_sans_bold"
-        app:icon="@drawable/ic_link_preview_x"
-        android:textSize="14sp"
-        android:textColor="#eee"
-        app:backgroundTint="#000"
-        android:layout_marginTop="1dp"
-        android:layout_marginBottom="7dp"
-        android:elevation="4dp"
-        android:text="Open in app"
-        style="@style/Widget.Material3Expressive.Button.IconButton.Filled"
-        android:layout_width="wrap_content"
-        android:layout_gravity="right"
-        app:iconPadding="20dp"
-        android:layout_height="56dp"/>
-
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <ImageView
-            android:src="@drawable/ic_action_date"
-            android:layout_width="14dp"
-            android:layout_height="16dp"/>
+        <LinearLayout
+            android:layout_gravity="center_vertical"
+            android:orientation="vertical"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content">
 
-        <TextView
-            android:id="@+id/comments_header_nitter_date"
-            android:fontFamily="@font/product_sans"
-            android:paddingLeft="2dp"
-            android:paddingRight="6dp"
-            android:text="Nov 3"
-            android:textSize="13sp"
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <ImageView
+                    android:src="@drawable/ic_action_date"
+                    android:layout_width="14dp"
+                    android:layout_height="16dp"/>
+
+                <TextView
+                    android:id="@+id/comments_header_nitter_date"
+                    android:fontFamily="@font/product_sans"
+                    android:paddingLeft="2dp"
+                    android:paddingRight="8dp"
+                    android:text="Nov 3"
+                    android:textSize="13sp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+
+                <ImageView
+                    android:id="@+id/comments_header_nitter_reply_image"
+                    android:src="@drawable/ic_action_reply"
+                    android:layout_width="15dp"
+                    android:layout_height="16dp"/>
+
+                <TextView
+                    android:id="@+id/comments_header_nitter_reply_count"
+                    android:fontFamily="@font/product_sans"
+                    android:paddingLeft="1dp"
+                    android:paddingRight="7dp"
+                    android:text="12"
+                    android:textSize="13sp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <ImageView
+                    android:id="@+id/comments_header_nitter_reposts_image"
+                    android:src="@drawable/ic_action_retweet"
+                    android:layout_width="15dp"
+                    android:layout_height="16dp"/>
+
+                <TextView
+                    android:id="@+id/comments_header_nitter_reposts"
+                    android:fontFamily="@font/product_sans"
+                    android:paddingLeft="1dp"
+                    android:paddingRight="8dp"
+                    android:text="3,709"
+                    android:textSize="13sp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+
+                <ImageView
+                    android:id="@+id/comments_header_nitter_likes_image"
+                    android:src="@drawable/ic_action_thumbs_up"
+                    android:layout_width="12dp"
+                    android:layout_height="16dp"/>
+
+                <TextView
+                    android:id="@+id/comments_header_nitter_likes"
+                    android:fontFamily="@font/product_sans"
+                    android:paddingLeft="2dp"
+                    android:paddingRight="4dp"
+                    android:text="4,651"
+                    android:textSize="13sp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/comments_header_nitter_button_open"
+            android:fontFamily="@font/product_sans_bold"
+            app:icon="@drawable/ic_link_preview_x"
+            android:textSize="14sp"
+            android:textColor="#eee"
+            app:backgroundTint="#000"
+            android:elevation="4dp"
+            android:text="Open in app"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Filled"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
-        <ImageView
-            android:id="@+id/comments_header_nitter_reply_image"
-            android:src="@drawable/ic_action_reply"
-            android:layout_width="15dp"
-            android:layout_height="16dp"/>
-
-        <TextView
-            android:id="@+id/comments_header_nitter_reply_count"
-            android:fontFamily="@font/product_sans"
-            android:paddingLeft="1dp"
-            android:paddingRight="7dp"
-            android:text="12"
-            android:textSize="13sp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
-        <ImageView
-            android:id="@+id/comments_header_nitter_reposts_image"
-            android:src="@drawable/ic_action_retweet"
-            android:layout_width="15dp"
-            android:layout_height="16dp"/>
-
-        <TextView
-            android:id="@+id/comments_header_nitter_reposts"
-            android:fontFamily="@font/product_sans"
-            android:paddingLeft="1dp"
-            android:paddingRight="6dp"
-            android:text="3,709"
-            android:textSize="13sp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
-        <ImageView
-            android:id="@+id/comments_header_nitter_quotes_image"
-            android:src="@drawable/ic_action_quote"
-            android:layout_width="15dp"
-            android:layout_height="16dp"/>
-
-        <TextView
-            android:id="@+id/comments_header_nitter_quotes"
-            android:fontFamily="@font/product_sans"
-            android:paddingLeft="0dp"
-            android:paddingRight="8dp"
-            android:text="118"
-            android:textSize="13sp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
-        <ImageView
-            android:id="@+id/comments_header_nitter_likes_image"
-            android:src="@drawable/ic_action_thumbs_up"
-            android:layout_width="12dp"
-            android:layout_height="16dp"/>
-
-        <TextView
-            android:id="@+id/comments_header_nitter_likes"
-            android:fontFamily="@font/product_sans"
-            android:paddingLeft="2dp"
-            android:paddingRight="4dp"
-            android:text="4,651"
-            android:textSize="13sp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_gravity="right"
+            app:iconPadding="20dp"
+            android:layout_height="56dp"/>
 
     </LinearLayout>
+
 
 </LinearLayout>

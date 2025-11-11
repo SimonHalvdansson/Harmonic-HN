@@ -279,7 +279,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.nitterDate.setText(story.nitterInfo.date);
                 headerViewHolder.nitterReplyCount.setText(String.valueOf(story.nitterInfo.replyCount));
                 headerViewHolder.nitterReposts.setText(String.valueOf(story.nitterInfo.reposts));
-                headerViewHolder.nitterQuotes.setText(String.valueOf(story.nitterInfo.quotes));
                 headerViewHolder.nitterLikes.setText(String.valueOf(story.nitterInfo.likes));
 
                 headerViewHolder.nitterButton.setOnClickListener(new View.OnClickListener() {
@@ -297,11 +296,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 if (TextUtils.isEmpty(story.nitterInfo.reposts)) {
                     headerViewHolder.nitterReposts.setVisibility(GONE);
                     headerViewHolder.nitterRetweetImageView.setVisibility(GONE);
-                }
-
-                if (TextUtils.isEmpty(story.nitterInfo.quotes)) {
-                    headerViewHolder.nitterQuotes.setVisibility(GONE);
-                    headerViewHolder.nitterQuotesImageView.setVisibility(GONE);
                 }
 
                 if (TextUtils.isEmpty(story.nitterInfo.likes)) {
@@ -731,10 +725,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView nitterDate;
         public final TextView nitterReplyCount;
         public final TextView nitterReposts;
-        public final TextView nitterQuotes;
         public final TextView nitterLikes;
         public final ImageView nitterLikesImageView;
-        public final ImageView nitterQuotesImageView;
         public final ImageView nitterRetweetImageView;
         public final ImageView nitterReplyImageView;
 
@@ -831,10 +823,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             nitterButton = view.findViewById(R.id.comments_header_nitter_button_open);
             nitterReplyCount = view.findViewById(R.id.comments_header_nitter_reply_count);
             nitterReposts = view.findViewById(R.id.comments_header_nitter_reposts);
-            nitterQuotes = view.findViewById(R.id.comments_header_nitter_quotes);
             nitterLikes = view.findViewById(R.id.comments_header_nitter_likes);
             nitterLikesImageView = view.findViewById(R.id.comments_header_nitter_likes_image);
-            nitterQuotesImageView = view.findViewById(R.id.comments_header_nitter_quotes_image);
             nitterRetweetImageView = view.findViewById(R.id.comments_header_nitter_reposts_image);
             nitterReplyImageView = view.findViewById(R.id.comments_header_nitter_reply_image);
             nitterImage = view.findViewById(R.id.comments_header_nitter_image);
