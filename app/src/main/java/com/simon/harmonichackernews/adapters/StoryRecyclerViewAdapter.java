@@ -4,6 +4,9 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.Selection;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -19,7 +22,6 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -32,6 +34,7 @@ import androidx.appcompat.widget.TooltipCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.search.SearchBar;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.StoriesFragment;
 import com.simon.harmonichackernews.data.Story;
@@ -285,14 +288,17 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             headerViewHolder.searchButton.setImageResource(searching ? R.drawable.ic_action_cancel : R.drawable.ic_action_search);
 
-            headerViewHolder.searchEditText.setVisibility(searching ? View.VISIBLE : View.GONE);
-            headerViewHolder.searchEditText.setText(stories.get(0).title);
+            headerViewHolder.searchBar.setVisibility(searching ? View.VISIBLE : View.GONE);
+            headerViewHolder.searchBar.setText(stories.get(0).title);
 
             if (searching) {
                 headerViewHolder.loadingIndicator.setVisibility(View.GONE);
-                headerViewHolder.searchEditText.requestFocus();
-                headerViewHolder.searchEditText.setText(lastSearch);
-                headerViewHolder.searchEditText.setSelection(lastSearch.length());
+                headerViewHolder.searchTextView.requestFocus();
+                headerViewHolder.searchBar.setText(lastSearch);
+                Editable editableText = headerViewHolder.searchTextView.getEditableText();
+                if (editableText != null) {
+                    Selection.setSelection(editableText, lastSearch.length());
+                }
 
                 headerViewHolder.searchEmptyContainer.setVisibility(stories.size() == 1 ? View.VISIBLE : View.GONE);
                 headerViewHolder.noBookmarksLayout.setVisibility(View.GONE);
@@ -440,7 +446,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final LinearLayout spinnerContainer;
         public final LinearLayout searchEmptyContainer;
         public final RelativeLayout loadingIndicator;
-        public final EditText searchEditText;
+        public final SearchBar searchBar;
+        public final TextView searchTextView;
         public final ImageButton moreButton;
         public final ImageButton searchButton;
         public final Button retryButton;
@@ -460,7 +467,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             container = view.findViewById(R.id.stories_header_container);
             typeSpinner = view.findViewById(R.id.stories_header_spinner);
             noBookmarksLayout = view.findViewById(R.id.stories_header_no_bookmarks);
-            searchEditText = view.findViewById(R.id.stories_header_search_edittext);
+            searchBar = view.findViewById(R.id.stories_header_search_bar);
+            searchTextView = searchBar.getTextView();
             moreButton = view.findViewById(R.id.stories_header_more);
             spinnerContainer = view.findViewById(R.id.stories_header_spinner_container);
             searchButton = view.findViewById(R.id.stories_header_search_button);
@@ -476,9 +484,15 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
             });
 
+            searchTextView.setSingleLine(true);
+            searchTextView.setFocusable(true);
+            searchTextView.setFocusableInTouchMode(true);
+            searchTextView.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+            searchTextView.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+
             moreButton.setOnClickListener(moreClickListener);
 
-            searchEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            searchTextView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
                 @Override
                 public boolean onEditorAction(TextView textView, int actionId, KeyEvent keyEvent) {
                     boolean isKeyboardSearchAction = actionId == EditorInfo.IME_ACTION_SEARCH;
@@ -537,7 +551,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         private void doSearch() {
-            storiesSearchListener.onQueryTextSubmit(searchEditText.getText().toString());
+            storiesSearchListener.onQueryTextSubmit(searchBar.getText().toString());
         }
     }
 

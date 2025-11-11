@@ -33,20 +33,14 @@
 
         </LinearLayout>
 
-        <EditText
-            android:visibility="gone"
-            android:focusable="true"
-            android:drawableLeft="@drawable/ic_action_search"
-            android:id="@+id/stories_header_search_edittext"
-            android:drawablePadding="6dp"
-            android:hint="Search posts"
-            android:fontFamily="@font/product_sans"
-            android:singleLine="true"
-            android:imeOptions="actionSearch"
-            android:inputType="textCapSentences"
+        <com.google.android.material.search.SearchBar
+            android:id="@+id/stories_header_search_bar"
             android:layout_width="0dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_height="56dp"    />
+            android:hint="Search posts"
+            android:visibility="gone"
+            app:navigationIcon="@drawable/ic_action_search" />
 
         <LinearLayout
             android:orientation="horizontal"
