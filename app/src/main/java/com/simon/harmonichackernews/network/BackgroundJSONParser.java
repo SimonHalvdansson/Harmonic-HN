@@ -75,43 +75,4 @@ public class BackgroundJSONParser {
             }
         });
     }
-
-    /**
-     * Update story with Algolia response on a background thread
-     * @param story The story to update
-     * @param jsonResponse The JSON string to parse
-     * @param callback Callback to receive results on main thread
-     */
-    public static void updateStoryWithAlgoliaResponse(final Story story, final String jsonResponse, final StoryUpdateCallback callback) {
-        executorService.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    JSONParser.updateStoryWithAlgoliaResponse(story, jsonResponse);
-
-                    mainHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            callback.onParseSuccess();
-                        }
-                    });
-                } catch (final Exception e) {
-                    mainHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (e instanceof JSONException) {
-                                callback.onParseError((JSONException) e);
-                            } else {
-                                callback.onParseError(new JSONException(e.getMessage()));
-                            }
-                        }
-                    });
-                }
-            }
-        });
-    }
-
-    public static void shutdown() {
-        executorService.shutdown();
-    }
 }
