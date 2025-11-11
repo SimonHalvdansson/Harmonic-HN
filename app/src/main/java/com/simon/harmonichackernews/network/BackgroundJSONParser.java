@@ -30,21 +30,6 @@ public class BackgroundJSONParser {
         void onParseError(JSONException error);
     }
 
-    public interface StoryUpdateCallback {
-        /**
-         * Called on the main thread when parsing succeeds
-         */
-        void onParseSuccess();
-
-        /**
-         * Called on the main thread when parsing fails
-         * @param error The exception that occurred
-         */
-        void onParseError(JSONException error);
-    }
-
-
-
     /**
      * Parse Algolia JSON response on a background thread
      * @param jsonResponse The JSON string to parse
