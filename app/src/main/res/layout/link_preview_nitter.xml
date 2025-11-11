@@ -1,5 +1,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:id="@+id/comments_header_nitter_container"
     android:layout_width="match_parent"
@@ -31,6 +32,23 @@
         android:layout_marginTop="6dp"
         android:layout_marginBottom="8dp" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/comments_header_nitter_button_open"
+        android:fontFamily="@font/product_sans_bold"
+        app:icon="@drawable/ic_link_preview_x"
+        android:textSize="14sp"
+        android:textColor="#eee"
+        app:backgroundTint="#000"
+        android:layout_marginTop="1dp"
+        android:layout_marginBottom="7dp"
+        android:elevation="4dp"
+        android:text="Open in app"
+        style="@style/Widget.Material3Expressive.Button.IconButton.Filled"
+        android:layout_width="wrap_content"
+        android:layout_gravity="right"
+        app:iconPadding="20dp"
+        android:layout_height="56dp"/>
+
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
@@ -45,13 +63,14 @@
             android:id="@+id/comments_header_nitter_date"
             android:fontFamily="@font/product_sans"
             android:paddingLeft="2dp"
-            android:paddingRight="7dp"
+            android:paddingRight="6dp"
             android:text="Nov 3"
             android:textSize="13sp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
 
         <ImageView
+            android:id="@+id/comments_header_nitter_reply_image"
             android:src="@drawable/ic_action_reply"
             android:layout_width="15dp"
             android:layout_height="16dp"/>

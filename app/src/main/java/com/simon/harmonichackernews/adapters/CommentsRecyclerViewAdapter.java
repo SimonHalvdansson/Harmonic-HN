@@ -6,7 +6,10 @@ import static android.view.View.VISIBLE;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -278,6 +281,18 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.nitterReposts.setText(String.valueOf(story.nitterInfo.reposts));
                 headerViewHolder.nitterQuotes.setText(String.valueOf(story.nitterInfo.quotes));
                 headerViewHolder.nitterLikes.setText(String.valueOf(story.nitterInfo.likes));
+
+                headerViewHolder.nitterButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Utils.launchCustomTab(v.getContext(), story.url);
+                    }
+                });
+
+                if (TextUtils.isEmpty(story.nitterInfo.replyCount)) {
+                    headerViewHolder.nitterReplyCount.setVisibility(GONE);
+                    headerViewHolder.nitterReplyImageView.setVisibility(GONE);
+                }
 
                 if (TextUtils.isEmpty(story.nitterInfo.reposts)) {
                     headerViewHolder.nitterReposts.setVisibility(GONE);
@@ -712,6 +727,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final HtmlTextView wikiSummary;
 
         public final HtmlTextView nitterText;
+        public final Button nitterButton;
         public final TextView nitterDate;
         public final TextView nitterReplyCount;
         public final TextView nitterReposts;
@@ -720,6 +736,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final ImageView nitterLikesImageView;
         public final ImageView nitterQuotesImageView;
         public final ImageView nitterRetweetImageView;
+        public final ImageView nitterReplyImageView;
 
         public final ImageView nitterImage;
 
@@ -811,6 +828,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             nitterContainer = view.findViewById(R.id.comments_header_nitter_container);
             nitterText = view.findViewById(R.id.comments_header_nitter_text);
             nitterDate = view.findViewById(R.id.comments_header_nitter_date);
+            nitterButton = view.findViewById(R.id.comments_header_nitter_button_open);
             nitterReplyCount = view.findViewById(R.id.comments_header_nitter_reply_count);
             nitterReposts = view.findViewById(R.id.comments_header_nitter_reposts);
             nitterQuotes = view.findViewById(R.id.comments_header_nitter_quotes);
@@ -818,6 +836,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             nitterLikesImageView = view.findViewById(R.id.comments_header_nitter_likes_image);
             nitterQuotesImageView = view.findViewById(R.id.comments_header_nitter_quotes_image);
             nitterRetweetImageView = view.findViewById(R.id.comments_header_nitter_reposts_image);
+            nitterReplyImageView = view.findViewById(R.id.comments_header_nitter_reply_image);
             nitterImage = view.findViewById(R.id.comments_header_nitter_image);
 
             retryButton.setOnClickListener((v) -> retryListener.onRetry());
