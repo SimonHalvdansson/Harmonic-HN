@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.adapters;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.text.SpannableStringBuilder;
@@ -252,7 +253,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.metaFavicon.setVisibility(thumbnails ? View.VISIBLE : View.GONE);
 
                 if (storyViewHolder.story.loadingFailed) {
-                    storyViewHolder.titleView.setText("Loading failed, click to retry");
+                    Context ctxStory = storyViewHolder.itemView.getContext();
+                    if (!Utils.isNetworkAvailable(ctxStory)) {
+                        storyViewHolder.titleView.setText("No internet connection, click to retry");
+                    } else {
+                        storyViewHolder.titleView.setText("Loading failed, click to retry");
+                    }
                     storyViewHolder.metaContainer.setVisibility(View.GONE);
                     storyViewHolder.commentsView.setVisibility(View.GONE);
                 }
@@ -318,6 +324,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     headerViewHolder.loadingFailedText.setText("Loading failed");
                 }
             }
+
+            // Show the "Open Settings" button if airplane mode is on
+            headerViewHolder.openSettingsButton.setVisibility(
+                    loadingFailed && !Utils.isNetworkAvailable(ctx) && Utils.isAirplaneModeOn(ctx)
+                    ? View.VISIBLE : View.GONE);
 
             headerViewHolder.showCachedButton.setVisibility(loadingFailed && Utils.hasCachedStories(ctx) ? View.VISIBLE : View.GONE);
 
@@ -445,6 +456,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final ImageButton searchButton;
         public final Button retryButton;
         public final Button showCachedButton;
+        public final Button openSettingsButton;
 
         public ArrayAdapter<CharSequence> typeAdapter;
 
@@ -467,9 +479,14 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             searchEmptyContainer = view.findViewById(R.id.stories_header_search_empty_container);
             retryButton = view.findViewById(R.id.stories_header_retry_button);
             showCachedButton = view.findViewById(R.id.stories_header_show_cached);
+            openSettingsButton = view.findViewById(R.id.stories_header_open_settings);
             loadingIndicator = view.findViewById(R.id.stories_header_loading_indicator);
 
             retryButton.setOnClickListener((v) -> refreshListener.onRefresh());
+            openSettingsButton.setOnClickListener(v -> {
+                Intent intent = new Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS);
+                ctx.startActivity(intent);
+            });
             showCachedButton.setOnClickListener(v -> {
                 if (cachedListener != null) {
                     cachedListener.onShowCached();

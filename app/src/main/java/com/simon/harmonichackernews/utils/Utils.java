@@ -165,7 +165,7 @@ public class Utils {
         if (cachedStories == null) {
             cachedStories = new HashSet<>();
         }
-        // if there already exists a story with the same id, remove it from list of cached since 
+        // if there already exists a story with the same id, remove it from list of cached since
         // we're only saving the latest one
         if (!cachedStories.isEmpty()) {
             for (Iterator<String> iterator = cachedStories.iterator(); iterator.hasNext();) {
@@ -189,7 +189,7 @@ public class Utils {
                     oldestId = Integer.parseInt(idAndDate[0]);
                 }
             }
-            
+
             cachedStories.remove(oldestId + "-" + oldestTime);
 
             ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE).edit().remove(KEY_SHARED_PREFERENCES_CACHED_STORY + oldestId).apply();
@@ -765,7 +765,7 @@ public class Utils {
 
         return initialTime <= currentTime && currentTime < finalTime;
     }
-    
+
     public static void setNighttimeHours(int fromHour, int fromMinute, int toHour, int toMinute, Context ctx) {
         SettingsUtils.saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_HOUR, fromHour + "");
         SettingsUtils.saveStringToSharedPreferences(ctx, KEY_NIGHTTIME_FROM_MINUTE, fromMinute + "");
@@ -848,6 +848,12 @@ public class Utils {
         NetworkCapabilities caps = cm.getNetworkCapabilities(net);
         return caps != null &&
                 caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+    }
+
+    public static boolean isAirplaneModeOn(Context context) {
+        return android.provider.Settings.Global.getInt(
+                context.getContentResolver(),
+                android.provider.Settings.Global.AIRPLANE_MODE_ON, 0) != 0;
     }
 
     public static String linkify(String input) {

@@ -481,6 +481,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.serverErrorText.setVisibility(loadingFailedServerError ? VISIBLE : GONE);
             headerViewHolder.openInBrowserButton.setVisibility(loadingFailedServerError ? VISIBLE : GONE);
 
+            // Show the "Open Settings" button if airplane mode is on
+            headerViewHolder.openSettingsButton.setVisibility(
+                    loadingFailed && !Utils.isNetworkAvailable(ctx) && Utils.isAirplaneModeOn(ctx)
+                    ? VISIBLE : GONE);
+
         } else if (holder instanceof ItemViewHolder) {
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
             Comment comment = comments.get(holder.getBindingAdapterPosition());
@@ -741,6 +746,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout linkInfoContainer;
         public final Button retryButton;
         public final Button openInBrowserButton;
+        public final Button openSettingsButton;
         public final LinearLayout pollLayout;
         public final LinearLayout headerView;
 
@@ -788,6 +794,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             bookmarkButtonParent = view.findViewById(R.id.comments_header_button_bookmark_parent);
             retryButton = view.findViewById(R.id.comments_header_retry);
             openInBrowserButton = view.findViewById(R.id.comments_header_open_in_browser);
+            openSettingsButton = view.findViewById(R.id.comments_header_open_settings);
             pollLayout = view.findViewById(R.id.comments_header_poll_layout);
             sheetRefreshButton = view.findViewById(R.id.comments_sheet_layout_refresh);
             sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
@@ -831,6 +838,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             retryButton.setOnClickListener((v) -> retryListener.onRetry());
             openInBrowserButton.setOnClickListener((v) -> retryListener.onOpenInBrowser());
+            openSettingsButton.setOnClickListener(v -> {
+                Intent intent = new Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS);
+                view.getContext().startActivity(intent);
+            });
 
             refreshButton.setOnClickListener((v) -> {
                 showUpdate = false;
