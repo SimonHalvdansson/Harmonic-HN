@@ -7,6 +7,7 @@ public class Changelog {
                 "- Added back Nitter integration. Enable it in the settings to redirect x.com to Nitter and get link previews inside Harmonic<br>" +
                 "- Added option to use pagination instead of infinite scroll (thanks Elias Floreteng!)<br>" +
                 "- Minor changes to blocking UX<br>" +
+                "- Added error message when post title is more than 80 characters (thanks Jonathan Hult!)<br>" +
                 "- Added linkification for misformatted HN post text<br>" +
                 "- Couple of assorted design tweaks<br>" +
                 "<br>" +
