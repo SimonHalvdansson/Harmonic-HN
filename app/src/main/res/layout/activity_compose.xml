@@ -82,7 +82,9 @@
         android:layout_marginTop="16dp"
         android:layout_marginLeft="16dp"
         android:layout_marginRight="16dp"
-        android:layout_width="match_parent">
+        android:layout_width="match_parent"
+        app:counterEnabled="true"
+        app:counterMaxLength="@integer/title_max_length">
 
         <com.google.android.material.textfield.TextInputEditText
             android:hint="Title"

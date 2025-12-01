@@ -74,6 +74,7 @@ public class ComposeActivity extends AppCompatActivity {
     private String parentText;
     private String user;
     private int type;
+    private int titleMaxLength;
 
     private OnBackPressedCallback backPressedCallback;
 
@@ -101,7 +102,7 @@ public class ComposeActivity extends AppCompatActivity {
         LinearLayout bottomContainer = findViewById(R.id.compose_bottom_container);
         LinearLayout container = findViewById(R.id.compose_container);
 
-
+        titleMaxLength = getResources().getInteger(R.integer.title_max_length);
 
         Intent intent = getIntent();
         id = intent.getIntExtra(EXTRA_ID, -1);
@@ -259,14 +260,23 @@ public class ComposeActivity extends AppCompatActivity {
     }
 
     private void updateEnabledStatuses() {
-        boolean enable;
+        final boolean enable;
 
         if (type == TYPE_POST) {
-            boolean hasTitle = !TextUtils.isEmpty(editTextTitle.getText().toString());
-            boolean hasUrl = !TextUtils.isEmpty(editTextUrl.getText().toString());
-            boolean hasText = !TextUtils.isEmpty(editTextText.getText().toString());
+            final String title = editTextTitle.getText().toString();
+            final boolean titleTooLong = title.length() > titleMaxLength;
 
-            enable = hasTitle && (hasText || hasUrl);
+            if (titleTooLong) {
+                titleContainer.setError("Title must be " + titleMaxLength + " characters or less");
+            } else {
+                titleContainer.setError(null);
+            }
+
+            final boolean validTitle = !TextUtils.isEmpty(title) && !titleTooLong;
+            final boolean hasUrl = !TextUtils.isEmpty(editTextUrl.getText().toString());
+            final boolean hasText = !TextUtils.isEmpty(editTextText.getText().toString());
+
+            enable = validTitle && (hasText || hasUrl);
         } else {
             enable = !TextUtils.isEmpty(editText.getText().toString());
         }
