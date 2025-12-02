@@ -10,6 +10,7 @@ public class Changelog {
                 "- Added error message when post title is more than 80 characters (thanks Jonathan Hult!)<br>" +
                 "- Added linkification for misformatted HN post text<br>" +
                 "- Couple of assorted design tweaks<br>" +
+                "- Fixed rare crash with empty post titles<br>" +
                 "<br>" +
                 "<b>Version 2.2.4:</b><br>" +
                 "- Added option to navigate comments using volume buttons<br>" +
