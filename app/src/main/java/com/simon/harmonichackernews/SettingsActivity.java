@@ -150,6 +150,18 @@ public class SettingsActivity extends AppCompatActivity {
                     return true;
                 }
             });
+            findPreference("pref_redirect_nitter").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
+
+                    changePrefStatus(findPreference("pref_link_preview_x"), (boolean) newValue);
+                    findPreference("pref_link_preview_x").setSummary((boolean) newValue ? "" : "Requires Nitter redirect to be active");
+
+                    return true;
+                }
+            });
+
+
 
             Preference openHnLinksPreference = findPreference("pref_open_hn_links_in_harmonic");
             openHnLinksPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
@@ -167,6 +179,11 @@ public class SettingsActivity extends AppCompatActivity {
                     return true;
                 }
             });
+
+            boolean redirectNitter = SettingsUtils.shouldRedirectNitter(getContext());
+
+            findPreference("pref_link_preview_x").setSummary(redirectNitter ? "" : "Requires Nitter redirect to be active");
+            changePrefStatus(findPreference("pref_link_preview_x"), redirectNitter);
 
             boolean integratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
 

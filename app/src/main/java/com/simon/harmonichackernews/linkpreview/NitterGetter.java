@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.linkpreview;
 
 import android.content.Context;
 import android.text.TextUtils;
+import android.webkit.ValueCallback;
 import android.webkit.WebView;
 import android.widget.Toast;
 
@@ -70,7 +71,6 @@ public class NitterGetter {
                 "   date: document.querySelector('.main-tweet .tweet-date').textContent," +
                 "   replyCount: document.querySelector('.main-tweet .icon-comment').parentNode.textContent.trim()," +
                 "   reposts: document.querySelector('.main-tweet .icon-retweet').parentNode.textContent.trim()," +
-                "   quotes: document.querySelector('.main-tweet .icon-quote').parentNode.textContent.trim()," +
                 "   likes: document.querySelector('.main-tweet .icon-heart').parentNode.textContent.trim()," +
                 "   beforeName: beforeTweet ? beforeTweet.querySelector('.fullname').textContent : null," +
                 "   beforeTag: beforeTweet ? beforeTweet.querySelector('.username').textContent : null," +
@@ -79,42 +79,45 @@ public class NitterGetter {
                 "   beforeImgSrc: beforeImgSrc," +
                 "   imgSrc: imgSrc" +
                 "});" +
-                "}) ();", resp -> {
-            try {
-                //Get rid of double escaping things or something like that...
-                resp = resp.substring(1, resp.length() - 1).replace("\\\"", "\"").replace("\\\\", "\\");
+                "}) ();", new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String resp) {
+                try {
+                    //Get rid of double escaping things or something like that...
+                    resp = resp.substring(1, resp.length() - 1).replace("\\\"", "\"").replace("\\\\", "\\");
 
-                JSONObject jsonObject = new JSONObject(resp);
-                nitterInfo.text = jsonObject.getString("text").replace("\n", "<br>");
-                nitterInfo.userName = jsonObject.getString("userName");
-                nitterInfo.userTag = jsonObject.getString("userTag");
-                nitterInfo.date = jsonObject.getString("date");
-                nitterInfo.replyCount = jsonObject.getString("replyCount");
-                nitterInfo.reposts = jsonObject.getString("reposts");
-                nitterInfo.quotes = jsonObject.getString("quotes");
-                nitterInfo.likes = jsonObject.getString("likes");
-                nitterInfo.imgSrc = jsonObject.optString("imgSrc");
+                    JSONObject jsonObject = new JSONObject(resp);
+                    nitterInfo.text = jsonObject.getString("text").replace("\n", "<br>");
+                    nitterInfo.userName = jsonObject.getString("userName");
+                    nitterInfo.userTag = jsonObject.getString("userTag");
+                    nitterInfo.date = jsonObject.getString("date");
+                    nitterInfo.replyCount = jsonObject.getString("replyCount");
+                    nitterInfo.reposts = jsonObject.getString("reposts");
+                    nitterInfo.likes = jsonObject.getString("likes");
+                    nitterInfo.imgSrc = jsonObject.optString("imgSrc");
 
-                nitterInfo.beforeUserName = jsonObject.optString("beforeName");
-                nitterInfo.beforeUserTag = jsonObject.optString("beforeTag");
-                nitterInfo.beforeText = jsonObject.optString("beforeText");
-                nitterInfo.beforeDate = jsonObject.optString("beforeDate");
-                nitterInfo.beforeImgSrc = jsonObject.optString("beforeImgSrc");
+                    nitterInfo.beforeUserName = jsonObject.optString("beforeName");
+                    nitterInfo.beforeUserTag = jsonObject.optString("beforeTag");
+                    nitterInfo.beforeText = jsonObject.optString("beforeText");
+                    nitterInfo.beforeDate = jsonObject.optString("beforeDate");
+                    nitterInfo.beforeImgSrc = jsonObject.optString("beforeImgSrc");
 
-                if (nitterInfo.imgSrc != null && nitterInfo.imgSrc.equals("null")) {
-                    nitterInfo.imgSrc = null;
+                    if (nitterInfo.imgSrc != null && nitterInfo.imgSrc.equals("null")) {
+                        nitterInfo.imgSrc = null;
+                    }
+
+                    if (nitterInfo.beforeImgSrc.equals("null")) {
+                        nitterInfo.beforeImgSrc = null;
+                    }
+
+                    callback.onSuccess(nitterInfo);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    callback.onFailure("Failed at getting Nitter info");
                 }
-
-                if (nitterInfo.beforeImgSrc.equals("null")) {
-                    nitterInfo.beforeImgSrc = null;
-                }
-
-                callback.onSuccess(nitterInfo);
-            } catch (Exception e) {
-                e.printStackTrace();
-                callback.onFailure("Failed at getting Nitter info");
             }
         });
+
     }
 
     public interface GetterCallback {

@@ -373,8 +373,7 @@
 
         <SwitchPreferenceCompat
             app:icon="@drawable/ic_link_preview_x"
-            app:title="Twitter/X"
-            app:dependency="pref_redirect_nitter"
+            app:title="Twitter/X (unstable)"
             app:summary="Requires Nitter redirect to be active"
             app:defaultValue="true"
             app:key="pref_link_preview_x"/>
