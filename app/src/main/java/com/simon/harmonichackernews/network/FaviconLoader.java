@@ -7,7 +7,9 @@ import androidx.core.content.ContextCompat;
 
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.utils.Utils;
-import com.squareup.picasso.Picasso;
+
+import coil.Coil;
+import coil.request.ImageRequest;
 
 import java.util.Objects;
 
@@ -18,12 +20,14 @@ public class FaviconLoader {
             String host = Utils.getDomainName(url);
             int faviconSize = Utils.pxFromDpInt(ctx.getResources(), 17);
 
-            Picasso.get()
-                    .load(getFaviconUrl(host, faviconProvider))
-                    .resize(faviconSize, faviconSize)
-                    .onlyScaleDown()
+            ImageRequest request = new ImageRequest.Builder(ctx)
+                    .data(getFaviconUrl(host, faviconProvider))
+                    .size(faviconSize, faviconSize)
                     .placeholder(Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_action_web)))
-                    .into(into);
+                    .target(into)
+                    .build();
+
+            Coil.imageLoader(ctx).enqueue(request);
         } catch (Exception ignored){};
     }
 

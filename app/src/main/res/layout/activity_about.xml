@@ -118,7 +118,7 @@
         <TextView
             android:paddingTop="3dp"
             android:paddingBottom="3dp"
-            android:text="• Picasso by Square - Apache 2.0"
+            android:text="• Coil by Instacart - Apache 2.0"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
 
