@@ -51,7 +51,8 @@ import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
-import com.squareup.picasso.Picasso;
+import coil.Coil;
+import coil.request.ImageRequest;
 
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
@@ -306,9 +307,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 if (story.nitterInfo.imgSrc != null) {
                     headerViewHolder.nitterImage.setVisibility(VISIBLE);
                     try {
-                        Picasso.get()
-                                .load(story.nitterInfo.imgSrc)
-                                .into(headerViewHolder.nitterImage);
+                        ImageRequest request = new ImageRequest.Builder(ctx)
+                                .data(story.nitterInfo.imgSrc)
+                                .target(headerViewHolder.nitterImage)
+                                .build();
+                        Coil.imageLoader(ctx).enqueue(request);
                     } catch (Exception e){
                         e.printStackTrace();
                     };
