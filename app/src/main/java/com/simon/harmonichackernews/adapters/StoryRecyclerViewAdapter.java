@@ -9,6 +9,7 @@ import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ImageSpan;
 import android.util.TypedValue;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -141,6 +142,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NotNull final RecyclerView.ViewHolder holder, int position) {
+        if (stories.isEmpty() || position < 0 || position >= stories.size()) {
+            Log.w("StoryRecyclerView", "Attempted to bind view with no data; skipping bind to avoid crash");
+            return;
+        }
+
         if (holder instanceof LoadMoreViewHolder) {
             LoadMoreViewHolder loadMoreHolder = (LoadMoreViewHolder) holder;
             // stories[0] is header, actual story count = stories.size() - 1
@@ -347,6 +353,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     @Override
     public int getItemViewType(int position) {
+        if (stories.isEmpty() || position < 0 || position >= stories.size()) {
+            Log.w("StoryRecyclerView", "Invalid position " + position + " for empty or undersized story list; using header view type");
+            return atSubmissions ? TYPE_HEADER_SUBMISSIONS : TYPE_HEADER_MAIN;
+        }
+
         if (position == 0) {
             return atSubmissions ? TYPE_HEADER_SUBMISSIONS : TYPE_HEADER_MAIN;
         }
