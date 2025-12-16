@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.widget.ImageView;
 
 import androidx.core.content.ContextCompat;
@@ -19,11 +20,14 @@ public class FaviconLoader {
         try {
             String host = Utils.getDomainName(url);
             int faviconSize = Utils.pxFromDpInt(ctx.getResources(), 17);
+            Drawable webDrawable = Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_action_web));
 
             ImageRequest request = new ImageRequest.Builder(ctx)
                     .data(getFaviconUrl(host, faviconProvider))
                     .size(faviconSize, faviconSize)
-                    .placeholder(Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_action_web)))
+                    .placeholder(webDrawable)
+                    .error(webDrawable)
+                    .fallback(webDrawable)
                     .target(into)
                     .build();
 
