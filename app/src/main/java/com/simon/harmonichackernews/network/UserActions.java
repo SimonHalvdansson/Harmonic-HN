@@ -302,7 +302,7 @@ private static final String HEADER_SET_COOKIE = "set-cookie";
                         cb.onFailure("Bad login",
                                 "Your session has expired or credentials are invalid. Logged out.");
                     } else if (body.contains("Validation required. If this doesn't work, you can email")) {
-                        cb.onFailure("Rate limit reached", body);
+                        cb.onFailure("Rate limit reached", "HN is temporarily requiring users to complete a CAPTCHA to proceed. Harmonic does not yet support this, apologies for the inconvenience. You can try again later or go via the official website.");
                     } else {
                         // HN will send a 302 → the new post, but OkHttp follows redirects by default.
                         cb.onSuccess(response);
