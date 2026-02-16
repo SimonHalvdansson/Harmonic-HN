@@ -61,7 +61,7 @@
             android:layout_marginTop="20dp"
             android:textSize="13sp"
             android:layout_marginBottom="4dp"
-            android:text="Your information is only saved locally and used for API calls."
+            android:text="Your information is only saved locally and used for API calls. If you have issues with login, try the official HN website to confirm if it as issue with the app or the website."
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
 
@@ -70,7 +70,7 @@
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="How does it work?" />
+            android:text="How does login work?" />
 
         <LinearLayout
             android:layout_marginTop="4dp"
