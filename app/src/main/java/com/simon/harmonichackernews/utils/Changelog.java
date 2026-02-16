@@ -3,7 +3,11 @@ package com.simon.harmonichackernews.utils;
 
 public class Changelog {
     static public String getHTML() {
-        return  "<b>Version 2.2.5:</b><br>" +
+        return  "<b>Version 2.2.6:</b><br>" +
+                "- Updated behavior when met with HN CAPTCHA<br>" +
+                "- Switched to new library for loading thumbnails<br>" +
+                "<br>" +
+                "<b>Version 2.2.5:</b><br>" +
                 "- Added back Nitter integration. Enable it in the settings to redirect x.com to Nitter and get link previews inside Harmonic<br>" +
                 "- Added option to use pagination instead of infinite scroll (thanks Elias Floreteng!)<br>" +
                 "- Minor changes to blocking UX<br>" +
