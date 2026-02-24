@@ -36,7 +36,7 @@
 
         <activity
             android:name=".SettingsActivity"
-            android:configChanges="orientation|screenSize"/>
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"/>
         <activity
             android:name=".WelcomeActivity"
             android:configChanges="orientation|screenSize"/>

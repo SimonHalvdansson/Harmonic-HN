@@ -1,0 +1,98 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        app:title="WebView"
+        android:layout="@layout/preference_category">
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_webview"
+            app:defaultValue="true"
+            app:summary="Opens websites in the app which has a hit on performance"
+            app:icon="@drawable/ic_action_browser"
+            app:title="Integrated WebView" />
+
+        <SwitchPreferenceCompat
+            app:dependency="pref_webview"
+            app:singleLineTitle="false"
+            app:key="pref_close_webview_on_back"
+            app:defaultValue="false"
+            app:summary="Back navigation closes integrated WebView"
+            app:icon="@drawable/ic_action_back"
+            app:title="Go back to comments" />
+
+        <ListPreference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_cache"
+            app:title="Preload websites"
+            app:key="pref_preload_webview"
+            app:useSimpleSummaryProvider="true"
+            app:entries="@array/preload_entries"
+            app:defaultValue="never"
+            app:entryValues="@array/preload_values" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_webview_match_theme"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_invert"
+            app:title="Match WebView dark mode to theme" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_webview_adblock"
+            app:defaultValue="false"
+            app:summary="May cause some sites to stop working and has a small performance penalty"
+            app:icon="@drawable/ic_action_block"
+            app:title="Block WebView ads" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="Browser &amp; Links"
+        android:layout="@layout/preference_category">
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_external_browser"
+            app:defaultValue="false"
+            app:title="Use external browser"
+            app:summary="In place of custom tabs"
+            app:icon="@drawable/ic_action_external_browser" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_redirect_nitter"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_redirect"
+            app:title="Redirect Twitter/X to Nitter" />
+
+        <SwitchPreferenceCompat
+            app:icon="@drawable/ic_link_preview_arxiv"
+            app:title="ArXiV"
+            app:defaultValue="true"
+            app:key="pref_link_preview_arxiv" />
+
+        <SwitchPreferenceCompat
+            app:icon="@drawable/ic_link_preview_github"
+            app:title="GitHub"
+            app:defaultValue="true"
+            app:key="pref_link_preview_github" />
+
+        <SwitchPreferenceCompat
+            app:icon="@drawable/ic_link_preview_wikipedia"
+            app:title="Wikipedia"
+            app:defaultValue="true"
+            app:key="pref_link_preview_wikipedia" />
+
+        <SwitchPreferenceCompat
+            app:icon="@drawable/ic_link_preview_x"
+            app:title="Twitter/X (unstable)"
+            app:summary="Requires Nitter redirect to be active"
+            app:defaultValue="true"
+            app:key="pref_link_preview_x" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

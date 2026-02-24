@@ -1,0 +1,51 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <Preference
+        app:key="pref_header_appearance"
+        app:title="Appearance"
+        app:summary="Theme, font, hotness highlighting"
+        app:icon="@drawable/ic_action_style"
+        app:fragment="com.simon.harmonichackernews.settings.AppearancePreferenceFragment" />
+
+    <Preference
+        app:key="pref_header_stories"
+        app:title="Stories"
+        app:summary="Compact view, thumbnails, pagination, foldable"
+        app:icon="@drawable/ic_action_bookmark_border"
+        app:fragment="com.simon.harmonichackernews.settings.StoriesPreferenceFragment" />
+
+    <Preference
+        app:key="pref_header_web_links"
+        app:title="Web &amp; Links"
+        app:summary="WebView, browser, link previews"
+        app:icon="@drawable/ic_action_browser"
+        app:fragment="com.simon.harmonichackernews.settings.WebLinksPreferenceFragment" />
+
+    <Preference
+        app:key="pref_header_comments"
+        app:title="Comments"
+        app:summary="Text size, sorting, navigation, animations"
+        app:icon="@drawable/ic_action_comment"
+        app:fragment="com.simon.harmonichackernews.settings.CommentsPreferenceFragment" />
+
+    <Preference
+        app:key="pref_header_filters_tags"
+        app:title="Filters &amp; Tags"
+        app:summary="Story filters, domain filters, user tags"
+        app:icon="@drawable/ic_action_filter"
+        app:fragment="com.simon.harmonichackernews.settings.FiltersTagsPreferenceFragment" />
+
+    <Preference
+        app:key="pref_header_data_storage"
+        app:title="Data &amp; Storage"
+        app:summary="Bookmarks, history, changelogs"
+        app:icon="@drawable/ic_action_clear"
+        app:fragment="com.simon.harmonichackernews.settings.DataStoragePreferenceFragment" />
+
+    <Preference
+        app:key="pref_about"
+        app:title="About"
+        app:icon="@drawable/ic_action_info" />
+
+</PreferenceScreen>
