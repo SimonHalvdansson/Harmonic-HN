@@ -100,4 +100,12 @@ public class WidgetConfigActivity extends AppCompatActivity {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         return prefs.getString(KEY_FEED_NAME_PREFIX + appWidgetId, null);
     }
+
+    static void clearPreferences(android.content.Context context, int appWidgetId) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        prefs.edit()
+                .remove(KEY_FEED_TYPE_PREFIX + appWidgetId)
+                .remove(KEY_FEED_NAME_PREFIX + appWidgetId)
+                .apply();
+    }
 }

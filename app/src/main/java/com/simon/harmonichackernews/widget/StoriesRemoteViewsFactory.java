@@ -27,11 +27,12 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
 
     private static final int MAX_STORIES = 15;
     private static final String PREFS_NAME = "widget_stories_cache";
-    private static final String KEY_LAST_UPDATED = "last_updated";
+    private static final String KEY_LAST_UPDATED_PREFIX = "last_updated_";
 
     private final Context context;
     private final int appWidgetId;
     private final List<Story> stories = new ArrayList<>();
+    private boolean fetchFailed = false;
 
     public StoriesRemoteViewsFactory(Context context, int appWidgetId) {
         this.context = context;
@@ -45,6 +46,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
     @Override
     public void onDataSetChanged() {
         stories.clear();
+        fetchFailed = false;
 
         try {
             OkHttpClient client = NetworkComponent.getOkHttpClientInstance();
@@ -55,46 +57,57 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
                     .url(feedUrl)
                     .build();
 
-            Response idsResponse = client.newCall(idsRequest).execute();
-            if (!idsResponse.isSuccessful() || idsResponse.body() == null) {
-                return;
-            }
+            try (Response idsResponse = client.newCall(idsRequest).execute()) {
+                if (!idsResponse.isSuccessful() || idsResponse.body() == null) {
+                    fetchFailed = true;
+                    StoriesWidgetProvider.updateRefreshError(context, appWidgetId);
+                    return;
+                }
 
-            String idsBody = idsResponse.body().string();
-            JSONArray idsArray = new JSONArray(idsBody);
+                String idsBody = idsResponse.body().string();
+                JSONArray idsArray = new JSONArray(idsBody);
 
-            int count = Math.min(idsArray.length(), MAX_STORIES);
+                int count = Math.min(idsArray.length(), MAX_STORIES);
 
-            // Fetch each story
-            for (int i = 0; i < count; i++) {
-                int storyId = idsArray.getInt(i);
-                String storyUrl = "https://hacker-news.firebaseio.com/v0/item/" + storyId + ".json";
+                // Fetch each story
+                for (int i = 0; i < count; i++) {
+                    int storyId = idsArray.getInt(i);
+                    String storyUrl = "https://hacker-news.firebaseio.com/v0/item/" + storyId + ".json";
 
-                Request storyRequest = new Request.Builder()
-                        .url(storyUrl)
-                        .build();
+                    Request storyRequest = new Request.Builder()
+                            .url(storyUrl)
+                            .build();
 
-                try {
-                    Response storyResponse = client.newCall(storyRequest).execute();
-                    if (storyResponse.isSuccessful() && storyResponse.body() != null) {
-                        String storyBody = storyResponse.body().string();
-                        Story story = new Story();
-                        story.id = storyId;
-                        if (JSONParser.updateStoryWithHNJson(storyBody, story, false)) {
-                            stories.add(story);
+                    try (Response storyResponse = client.newCall(storyRequest).execute()) {
+                        if (storyResponse.isSuccessful() && storyResponse.body() != null) {
+                            String storyBody = storyResponse.body().string();
+                            Story story = new Story();
+                            story.id = storyId;
+                            if (JSONParser.updateStoryWithHNJson(storyBody, story, false)) {
+                                stories.add(story);
+                            }
                         }
+                    } catch (Exception e) {
+                        // Skip this story on error
                     }
-                } catch (Exception e) {
-                    // Skip this story on error
                 }
             }
 
-            // Save last updated time
+            if (stories.isEmpty()) {
+                fetchFailed = true;
+                StoriesWidgetProvider.updateRefreshError(context, appWidgetId);
+                return;
+            }
+
+            // Save last updated time only on successful fetch
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            prefs.edit().putLong(KEY_LAST_UPDATED, System.currentTimeMillis()).apply();
+            prefs.edit().putLong(KEY_LAST_UPDATED_PREFIX + appWidgetId, System.currentTimeMillis()).apply();
 
         } catch (Exception e) {
             e.printStackTrace();
+            fetchFailed = true;
+            StoriesWidgetProvider.updateRefreshError(context, appWidgetId);
+            return;
         }
 
         // Notify widget to stop spinner and show updated time
@@ -183,8 +196,13 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         return true;
     }
 
-    public static long getLastUpdated(Context context) {
+    public static long getLastUpdated(Context context, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        return prefs.getLong(KEY_LAST_UPDATED, 0);
+        return prefs.getLong(KEY_LAST_UPDATED_PREFIX + appWidgetId, 0);
+    }
+
+    static void clearPreferences(Context context, int appWidgetId) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().remove(KEY_LAST_UPDATED_PREFIX + appWidgetId).apply();
     }
 }

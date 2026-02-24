@@ -17,6 +17,7 @@ import com.simon.harmonichackernews.R;
 public class StoriesWidgetProvider extends AppWidgetProvider {
 
     private static final String ACTION_REFRESH = "com.simon.harmonichackernews.widget.ACTION_REFRESH";
+    private static final String EXTRA_APPWIDGET_ID = "refresh_appwidget_id";
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -31,17 +32,30 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
 
         if (ACTION_REFRESH.equals(intent.getAction())) {
             AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-            int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
-                    new ComponentName(context, StoriesWidgetProvider.class));
+            int appWidgetId = intent.getIntExtra(EXTRA_APPWIDGET_ID,
+                    AppWidgetManager.INVALID_APPWIDGET_ID);
 
-            // Show loading spinner on all widgets
-            for (int appWidgetId : appWidgetIds) {
+            if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                // Refresh only the tapped widget
                 showRefreshing(context, appWidgetManager, appWidgetId);
+                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_stories_list);
+            } else {
+                // Fallback: refresh all widgets
+                int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
+                        new ComponentName(context, StoriesWidgetProvider.class));
+                for (int id : appWidgetIds) {
+                    showRefreshing(context, appWidgetManager, id);
+                }
+                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_stories_list);
             }
+        }
+    }
 
-            // Notify data changed to trigger onDataSetChanged in factory
-            // Factory will call updateRefreshDone() when finished
-            appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_stories_list);
+    @Override
+    public void onDeleted(Context context, int[] appWidgetIds) {
+        for (int appWidgetId : appWidgetIds) {
+            WidgetConfigActivity.clearPreferences(context, appWidgetId);
+            StoriesRemoteViewsFactory.clearPreferences(context, appWidgetId);
         }
     }
 
@@ -63,11 +77,12 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.widget_header, mainPendingIntent);
 
-        // Refresh button click -> send ACTION_REFRESH broadcast
+        // Refresh button click -> send ACTION_REFRESH broadcast with widget ID
         Intent refreshIntent = new Intent(context, StoriesWidgetProvider.class);
         refreshIntent.setAction(ACTION_REFRESH);
+        refreshIntent.putExtra(EXTRA_APPWIDGET_ID, appWidgetId);
         PendingIntent refreshPendingIntent = PendingIntent.getBroadcast(
-                context, 0, refreshIntent,
+                context, appWidgetId, refreshIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent);
 
@@ -111,23 +126,27 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
         views.setViewVisibility(R.id.widget_refresh_button, View.VISIBLE);
         views.setViewVisibility(R.id.widget_refresh_progress, View.GONE);
-        views.setTextViewText(R.id.widget_updated_text, formatUpdatedTime(context));
+        views.setTextViewText(R.id.widget_updated_text, formatUpdatedTime(context, appWidgetId));
         appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views);
     }
 
-    static String formatUpdatedTime(Context context) {
-        long lastUpdated = StoriesRemoteViewsFactory.getLastUpdated(context);
+    static void updateRefreshError(Context context, int appWidgetId) {
+        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
+        views.setViewVisibility(R.id.widget_refresh_button, View.VISIBLE);
+        views.setViewVisibility(R.id.widget_refresh_progress, View.GONE);
+        views.setTextViewText(R.id.widget_empty_text, "Couldn\u2019t load stories");
+        // Keep previous timestamp if any
+        views.setTextViewText(R.id.widget_updated_text, formatUpdatedTime(context, appWidgetId));
+        appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views);
+    }
+
+    static String formatUpdatedTime(Context context, int appWidgetId) {
+        long lastUpdated = StoriesRemoteViewsFactory.getLastUpdated(context, appWidgetId);
         if (lastUpdated == 0) {
             return "";
         }
-        long minutesAgo = (System.currentTimeMillis() - lastUpdated) / 60000;
-        if (minutesAgo < 1) {
-            return "now";
-        } else if (minutesAgo < 60) {
-            return minutesAgo + "m";
-        } else {
-            long hoursAgo = minutesAgo / 60;
-            return hoursAgo + "h";
-        }
+        return android.text.format.DateFormat.getTimeFormat(context)
+                .format(new java.util.Date(lastUpdated));
     }
 }
