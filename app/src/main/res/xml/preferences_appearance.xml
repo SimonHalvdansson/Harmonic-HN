@@ -1,0 +1,65 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <ListPreference
+        app:singleLineTitle="false"
+        app:icon="@drawable/ic_action_style"
+        app:title="Theme"
+        app:key="pref_theme"
+        app:useSimpleSummaryProvider="true"
+        app:entries="@array/theme_entries"
+        app:defaultValue="material_daynight"
+        app:entryValues="@array/theme_values" />
+
+    <SwitchPreferenceCompat
+        app:singleLineTitle="false"
+        app:key="pref_special_nighttime"
+        app:defaultValue="false"
+        app:icon="@drawable/ic_action_night"
+        app:title="Special nighttime theme" />
+
+    <Preference
+        app:singleLineTitle="false"
+        app:key="pref_theme_timed_range"
+        app:icon="@drawable/ic_action_time"
+        app:title="Timed range" />
+
+    <ListPreference
+        app:singleLineTitle="false"
+        app:icon="@drawable/ic_action_dark_mode"
+        app:title="Nighttime theme"
+        app:key="pref_theme_nighttime"
+        app:useSimpleSummaryProvider="true"
+        app:entries="@array/theme_entries"
+        app:defaultValue="dark"
+        app:entryValues="@array/theme_values" />
+
+    <ListPreference
+        app:singleLineTitle="false"
+        app:icon="@drawable/ic_action_font"
+        app:title="Title and comment font"
+        app:key="pref_font"
+        app:useSimpleSummaryProvider="true"
+        app:entries="@array/font_entries"
+        app:defaultValue="productsans"
+        app:entryValues="@array/font_values" />
+
+    <ListPreference
+        app:singleLineTitle="false"
+        app:icon="@drawable/ic_action_whatshot"
+        app:title="Highlight hot stories"
+        app:key="pref_hotness"
+        app:useSimpleSummaryProvider="true"
+        app:entries="@array/hotness_entries"
+        app:defaultValue="-1"
+        app:entryValues="@array/hotness_values" />
+
+    <SwitchPreferenceCompat
+        app:isPreferenceVisible="@bool/before_android_15"
+        app:singleLineTitle="false"
+        app:key="pref_transparent_status_bar"
+        app:defaultValue="false"
+        app:icon="@drawable/ic_action_visibility"
+        app:title="Transparent status bar" />
+
+</PreferenceScreen>

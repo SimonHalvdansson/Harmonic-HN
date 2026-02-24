@@ -1,0 +1,135 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        app:title="Display"
+        android:layout="@layout/preference_category">
+
+        <ListPreference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_text"
+            app:title="Comments text size"
+            app:key="pref_comment_text_size"
+            app:useSimpleSummaryProvider="true"
+            app:entries="@array/font_size_entries"
+            app:defaultValue="15"
+            app:entryValues="@array/font_size_values" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_monochrome_comment_depth"
+            app:icon="@drawable/ic_action_colors"
+            app:defaultValue="false"
+            app:title="Monochrome thread indicators" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_top_level_thread_indicators"
+            app:icon="@drawable/ic_action_align_left"
+            app:defaultValue="false"
+            app:summary="Makes it easier to separate top level comments"
+            app:title="Show top level thread indicators" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_comments_scrollbar"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_swipe_vertical"
+            app:title="Show scrollbar" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_comments_animation"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_animation"
+            app:title="Animate comments" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="Interaction"
+        android:layout="@layout/preference_category">
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_collapse_parent"
+            app:icon="@drawable/ic_action_comment"
+            app:title="Hide text of collapsed comments" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            android:defaultValue="false"
+            app:key="pref_collapse_top_level"
+            app:icon="@drawable/ic_action_minimize"
+            app:title="Auto-collapse top level comments" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_comments_swap_long"
+            app:defaultValue="false"
+            app:summaryOn="Current: Tap for options"
+            app:summaryOff="Current: Tap to hide/expand"
+            app:icon="@drawable/ic_action_touch"
+            app:title="Swap tap/long press behavior" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_comments_disable_swipeback"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_swipe"
+            app:title="Disable swipe back from comments" />
+
+        <ListPreference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_filter"
+            app:title="Comment sorting"
+            app:key="pref_comment_sorting"
+            app:useSimpleSummaryProvider="true"
+            app:entries="@array/comment_sorting"
+            app:defaultValue="Default"
+            app:entryValues="@array/comment_sorting" />
+
+        <ListPreference
+            app:singleLineTitle="false"
+            app:key="pref_comments_provider"
+            app:icon="@drawable/ic_action_api"
+            app:title="Comments provider"
+            app:useSimpleSummaryProvider="true"
+            app:entries="@array/comments_provider_entries"
+            app:defaultValue="algolia"
+            app:entryValues="@array/comments_provider_values" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="Navigation"
+        android:layout="@layout/preference_category">
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_scroll_navigation"
+            app:icon="@drawable/ic_action_explore"
+            app:title="Show navigation buttons"
+            app:summary="Navigate between top level comments"
+            app:defaultValue="false" />
+
+        <ListPreference
+            app:singleLineTitle="false"
+            app:key="pref_comments_volume_navigation"
+            app:defaultValue="disabled"
+            app:icon="@drawable/ic_action_swipe_vertical"
+            app:title="Volume buttons for navigation"
+            app:entries="@array/comments_volume_navigation_entries"
+            app:entryValues="@array/comments_volume_navigation_values"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_comments_animation_navigation"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_comments_animation_navigation"
+            app:title="Animate comments navigation" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
