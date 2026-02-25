@@ -11,12 +11,12 @@
 
     <TextView
         android:id="@+id/widget_story_index"
-        android:layout_width="22dp"
+        android:layout_width="18dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="4dp"
+        android:layout_marginEnd="2dp"
         android:layout_marginTop="1dp"
         android:gravity="end"
-        android:textColor="#999999"
+        android:textColor="@color/widget_story_index"
         android:textSize="14sp" />
 
     <LinearLayout
@@ -31,7 +31,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="@font/product_sans"
-            android:textColor="#2f2f2f"
+            android:textColor="@color/widget_story_title"
             android:textSize="15sp"
             android:textStyle="bold" />
 
@@ -41,7 +41,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="1dp"
             android:fontFamily="@font/product_sans"
-            android:textColor="#4a4a4a"
+            android:textColor="@color/widget_story_meta"
             android:textSize="12sp" />
 
     </LinearLayout>

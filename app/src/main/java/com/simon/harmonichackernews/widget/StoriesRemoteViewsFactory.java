@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.widget;
 
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -11,10 +13,13 @@ import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
-import com.simon.harmonichackernews.utils.ThemeUtils;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 import org.json.JSONArray;
+
+import android.os.Handler;
+import android.os.Looper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,10 +33,12 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
     private static final int MAX_STORIES = 15;
     private static final String PREFS_NAME = "widget_stories_cache";
     private static final String KEY_LAST_UPDATED_PREFIX = "last_updated_";
+    private static final String KEY_SKIP_FETCH_PREFIX = "skip_fetch_";
 
     private final Context context;
     private final int appWidgetId;
     private final List<Story> stories = new ArrayList<>();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private boolean fetchFailed = false;
 
     public StoriesRemoteViewsFactory(Context context, int appWidgetId) {
@@ -43,10 +50,35 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
     public void onCreate() {
     }
 
+    public static void setSkipFetch(Context context, int appWidgetId, boolean skip) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putBoolean(KEY_SKIP_FETCH_PREFIX + appWidgetId, skip).commit();
+    }
+
+    public static void setSkipFetchAll(Context context, boolean skip) {
+        AppWidgetManager awm = AppWidgetManager.getInstance(context);
+        int[] ids = awm.getAppWidgetIds(
+                new ComponentName(context, StoriesWidgetProvider.class));
+        SharedPreferences.Editor editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit();
+        for (int id : ids) {
+            editor.putBoolean(KEY_SKIP_FETCH_PREFIX + id, skip);
+        }
+        editor.commit();
+    }
+
     @Override
     public void onDataSetChanged() {
-        stories.clear();
+        // Skip fetch if flag is set and we already have data (e.g. after partiallyUpdateAppWidget
+        // which triggers onDataSetChanged). The flag is NOT cleared here — it stays set until the
+        // provider explicitly clears it before a deliberate refresh.
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String skipKey = KEY_SKIP_FETCH_PREFIX + appWidgetId;
+        if (prefs.getBoolean(skipKey, false) && !stories.isEmpty()) {
+            return;
+        }
+
         fetchFailed = false;
+        List<Story> freshStories = new ArrayList<>();
 
         try {
             OkHttpClient client = NetworkComponent.getOkHttpClientInstance();
@@ -60,7 +92,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
             try (Response idsResponse = client.newCall(idsRequest).execute()) {
                 if (!idsResponse.isSuccessful() || idsResponse.body() == null) {
                     fetchFailed = true;
-                    StoriesWidgetProvider.updateRefreshError(context, appWidgetId);
+                    postRefreshError();
                     return;
                 }
 
@@ -84,7 +116,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
                             Story story = new Story();
                             story.id = storyId;
                             if (JSONParser.updateStoryWithHNJson(storyBody, story, false)) {
-                                stories.add(story);
+                                freshStories.add(story);
                             }
                         }
                     } catch (Exception e) {
@@ -93,25 +125,41 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
                 }
             }
 
-            if (stories.isEmpty()) {
+            if (freshStories.isEmpty()) {
                 fetchFailed = true;
-                StoriesWidgetProvider.updateRefreshError(context, appWidgetId);
+                postRefreshError();
                 return;
             }
 
+            // Swap in new data only on success — keeps stale data visible during fetch
+            stories.clear();
+            stories.addAll(freshStories);
+
             // Save last updated time only on successful fetch
-            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            prefs.edit().putLong(KEY_LAST_UPDATED_PREFIX + appWidgetId, System.currentTimeMillis()).apply();
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit().putLong(KEY_LAST_UPDATED_PREFIX + appWidgetId, System.currentTimeMillis()).apply();
 
         } catch (Exception e) {
             e.printStackTrace();
             fetchFailed = true;
-            StoriesWidgetProvider.updateRefreshError(context, appWidgetId);
+            postRefreshError();
             return;
         }
 
-        // Notify widget to stop spinner and show updated time
-        StoriesWidgetProvider.updateRefreshDone(context, appWidgetId);
+        // Set skip_fetch BEFORE posting the UI update. partiallyUpdateAppWidget triggers the
+        // framework to call onDataSetChanged again — the flag ensures it skips the fetch.
+        setSkipFetch(context, appWidgetId, true);
+        postRefreshDone();
+    }
+
+    private void postRefreshDone() {
+        final int widgetId = appWidgetId;
+        mainHandler.post(() -> StoriesWidgetProvider.updateRefreshDone(context, widgetId));
+    }
+
+    private void postRefreshError() {
+        final int widgetId = appWidgetId;
+        mainHandler.post(() -> StoriesWidgetProvider.updateRefreshError(context, widgetId));
     }
 
     @Override
@@ -127,15 +175,16 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
     @Override
     public RemoteViews getViewAt(int position) {
         if (position >= stories.size()) {
-            return null;
+            return getLoadingView();
         }
 
         Story story = stories.get(position);
-        boolean darkMode = ThemeUtils.isDarkMode(context);
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_story_item);
 
         // Index
+        boolean showIndex = SettingsUtils.shouldShowIndex(context);
+        views.setViewVisibility(R.id.widget_story_index, showIndex ? android.view.View.VISIBLE : android.view.View.GONE);
         views.setTextViewText(R.id.widget_story_index, (position + 1) + ".");
 
         // Title
@@ -153,16 +202,13 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         meta += " · " + Utils.getTimeAgo(story.time);
         views.setTextViewText(R.id.widget_story_meta, meta);
 
-        // Apply theme colors
-        if (darkMode) {
-            views.setTextColor(R.id.widget_story_index, 0xFF777777);
-            views.setTextColor(R.id.widget_story_title, 0xFFdfdfdf);
-            views.setTextColor(R.id.widget_story_meta, 0xFFbbbbcc);
-        } else {
-            views.setTextColor(R.id.widget_story_index, 0xFF999999);
-            views.setTextColor(R.id.widget_story_title, 0xFF2f2f2f);
-            views.setTextColor(R.id.widget_story_meta, 0xFF4a4a4a);
-        }
+        // Apply theme colors from resources (auto day/night via values-night)
+        int indexColor = context.getResources().getColor(R.color.widget_story_index, context.getTheme());
+        int titleColor = context.getResources().getColor(R.color.widget_story_title, context.getTheme());
+        int metaColor = context.getResources().getColor(R.color.widget_story_meta, context.getTheme());
+        views.setTextColor(R.id.widget_story_index, indexColor);
+        views.setTextColor(R.id.widget_story_title, titleColor);
+        views.setTextColor(R.id.widget_story_meta, metaColor);
 
         // Fill-in intent for item click -> CommentsActivity
         Intent fillInIntent = new Intent();
@@ -203,6 +249,9 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
 
     static void clearPreferences(Context context, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        prefs.edit().remove(KEY_LAST_UPDATED_PREFIX + appWidgetId).apply();
+        prefs.edit()
+                .remove(KEY_LAST_UPDATED_PREFIX + appWidgetId)
+                .remove(KEY_SKIP_FETCH_PREFIX + appWidgetId)
+                .apply();
     }
 }

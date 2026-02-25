@@ -54,10 +54,10 @@ public class WidgetConfigActivity extends AppCompatActivity {
             int checkedId = feedGroup.getCheckedRadioButtonId();
             if (checkedId == R.id.widget_config_new) {
                 feedUrl = Utils.URL_NEW;
-                feedName = "New";
+                feedName = "New stories";
             } else if (checkedId == R.id.widget_config_best) {
                 feedUrl = Utils.URL_BEST;
-                feedName = "Best";
+                feedName = "Best stories";
             } else if (checkedId == R.id.widget_config_ask) {
                 feedUrl = Utils.URL_ASK;
                 feedName = "Ask HN";
@@ -69,7 +69,7 @@ public class WidgetConfigActivity extends AppCompatActivity {
                 feedName = "Jobs";
             } else {
                 feedUrl = Utils.URL_TOP;
-                feedName = "Top";
+                feedName = "Top stories";
             }
 
             // Save config

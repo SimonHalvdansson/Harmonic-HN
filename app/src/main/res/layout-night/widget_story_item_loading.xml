@@ -25,13 +25,13 @@
             android:layout_width="200dp"
             android:layout_height="14dp"
             android:layout_marginTop="2dp"
-            android:background="#12000000" />
+            android:background="#12FFFFFF" />
 
         <View
             android:layout_width="120dp"
             android:layout_height="10dp"
             android:layout_marginTop="5dp"
-            android:background="#08000000" />
+            android:background="#08FFFFFF" />
 
     </LinearLayout>
 

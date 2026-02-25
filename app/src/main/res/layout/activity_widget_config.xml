@@ -1,93 +1,139 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center_horizontal"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:fitsSystemWindows="true">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:fontFamily="@font/product_sans"
-        android:text="Configure Widget"
-        android:textColor="?android:attr/textColorPrimary"
-        android:textSize="22sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Choose which feed to display"
-        android:textColor="?android:attr/textColorSecondary"
-        android:textSize="14sp" />
-
-    <RadioGroup
-        android:id="@+id/widget_config_feed_group"
+    <LinearLayout
+        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp">
+        android:layout_height="wrap_content">
 
-        <RadioButton
-            android:id="@+id/widget_config_top"
+        <LinearLayout
+            android:paddingLeft="@dimen/single_view_side_margin"
+            android:paddingRight="@dimen/single_view_side_margin"
+            android:layout_marginLeft="16dp"
+            android:layout_marginRight="16dp"
+            android:paddingTop="40dp"
+            android:orientation="vertical"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:text="Top Stories"
-            android:textSize="16sp"
-            android:checked="true" />
+            android:layout_height="wrap_content">
 
-        <RadioButton
-            android:id="@+id/widget_config_new"
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/product_sans"
+                android:text="Configure Widget"
+                android:textColor="?attr/storyColorNormal"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/product_sans"
+                android:text="Choose which feed to display"
+                android:textColor="?attr/textColorDefault"
+                android:textSize="14sp" />
+
+            <RadioGroup
+                android:id="@+id/widget_config_feed_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp">
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/widget_config_top"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:fontFamily="@font/product_sans"
+                    android:text="Top Stories"
+                    android:textColor="?attr/storyColorNormal"
+                    android:textSize="16sp"
+                    android:checked="true" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/widget_config_new"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:fontFamily="@font/product_sans"
+                    android:text="New Stories"
+                    android:textColor="?attr/storyColorNormal"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/widget_config_best"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:fontFamily="@font/product_sans"
+                    android:text="Best Stories"
+                    android:textColor="?attr/storyColorNormal"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/widget_config_ask"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:fontFamily="@font/product_sans"
+                    android:text="Ask HN"
+                    android:textColor="?attr/storyColorNormal"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/widget_config_show"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:fontFamily="@font/product_sans"
+                    android:text="Show HN"
+                    android:textColor="?attr/storyColorNormal"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/widget_config_jobs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:fontFamily="@font/product_sans"
+                    android:text="Jobs"
+                    android:textColor="?attr/storyColorNormal"
+                    android:textSize="16sp" />
+
+            </RadioGroup>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:paddingTop="24dp"
+            android:paddingLeft="@dimen/single_view_side_margin"
+            android:paddingRight="@dimen/single_view_side_margin"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:text="New Stories"
-            android:textSize="16sp" />
+            android:layout_height="wrap_content">
 
-        <RadioButton
-            android:id="@+id/widget_config_best"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:text="Best Stories"
-            android:textSize="16sp" />
+            <Button
+                android:id="@+id/widget_config_confirm"
+                android:fontFamily="@font/product_sans"
+                android:textStyle="bold"
+                android:layout_marginLeft="16dp"
+                android:layout_marginRight="16dp"
+                android:backgroundTint="?attr/colorSecondary"
+                android:textColor="?attr/colorOnSecondary"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="16dp"
+                android:elevation="6dp"
+                android:stateListAnimator="@null"
+                android:text="Confirm"
+                android:textAllCaps="false" />
 
-        <RadioButton
-            android:id="@+id/widget_config_ask"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:text="Ask HN"
-            android:textSize="16sp" />
+        </LinearLayout>
 
-        <RadioButton
-            android:id="@+id/widget_config_show"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:text="Show HN"
-            android:textSize="16sp" />
+    </LinearLayout>
 
-        <RadioButton
-            android:id="@+id/widget_config_jobs"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:text="Jobs"
-            android:textSize="16sp" />
-
-    </RadioGroup>
-
-    <Button
-        android:id="@+id/widget_config_confirm"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:fontFamily="@font/product_sans"
-        android:text="Confirm"
-        android:textAllCaps="false" />
-
-</LinearLayout>
+</ScrollView>

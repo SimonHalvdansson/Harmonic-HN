@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -18,9 +19,12 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
 
     private static final String ACTION_REFRESH = "com.simon.harmonichackernews.widget.ACTION_REFRESH";
     private static final String EXTRA_APPWIDGET_ID = "refresh_appwidget_id";
+    private static int lastNightMode = -1;
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+        lastNightMode = context.getResources().getConfiguration().uiMode
+                & Configuration.UI_MODE_NIGHT_MASK;
         for (int appWidgetId : appWidgetIds) {
             updateWidget(context, appWidgetManager, appWidgetId);
         }
@@ -30,13 +34,23 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
 
-        if (ACTION_REFRESH.equals(intent.getAction())) {
+        // Initialize lastNightMode on first receive after process restart
+        // to avoid spurious config-change re-renders
+        if (lastNightMode == -1) {
+            lastNightMode = context.getResources().getConfiguration().uiMode
+                    & Configuration.UI_MODE_NIGHT_MASK;
+        }
+
+        String action = intent.getAction();
+
+        if (ACTION_REFRESH.equals(action)) {
             AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
             int appWidgetId = intent.getIntExtra(EXTRA_APPWIDGET_ID,
                     AppWidgetManager.INVALID_APPWIDGET_ID);
 
             if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
                 // Refresh only the tapped widget
+                StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false);
                 showRefreshing(context, appWidgetManager, appWidgetId);
                 appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_stories_list);
             } else {
@@ -44,8 +58,26 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
                 int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
                         new ComponentName(context, StoriesWidgetProvider.class));
                 for (int id : appWidgetIds) {
+                    StoriesRemoteViewsFactory.setSkipFetch(context, id, false);
                     showRefreshing(context, appWidgetManager, id);
                 }
+                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_stories_list);
+            }
+        } else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
+            int currentNightMode = context.getResources().getConfiguration().uiMode
+                    & Configuration.UI_MODE_NIGHT_MASK;
+            if (currentNightMode != lastNightMode) {
+                lastNightMode = currentNightMode;
+                boolean night = currentNightMode == Configuration.UI_MODE_NIGHT_YES;
+                AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+                int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
+                        new ComponentName(context, StoriesWidgetProvider.class));
+                // Update header/background colors without resetting the adapter
+                for (int id : appWidgetIds) {
+                    applyThemeColors(context, appWidgetManager, id, night);
+                }
+                // Re-render list items with new colors (skip network fetch)
+                StoriesRemoteViewsFactory.setSkipFetchAll(context, true);
                 appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_stories_list);
             }
         }
@@ -60,6 +92,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     }
 
     static void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
 
         // Set up RemoteViewsService adapter for the ListView
@@ -96,11 +129,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
 
         // Set header title based on configured feed
         String feedName = WidgetConfigActivity.getFeedName(context, appWidgetId);
-        if (feedName != null) {
-            views.setTextViewText(R.id.widget_title, "Harmonic \u00b7 " + feedName);
-        } else {
-            views.setTextViewText(R.id.widget_title, "Harmonic");
-        }
+        views.setTextViewText(R.id.widget_title, feedName != null ? feedName : "Top stories");
 
         // Show refreshing state initially
         views.setViewVisibility(R.id.widget_refresh_button, View.GONE);
@@ -118,6 +147,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
         views.setViewVisibility(R.id.widget_refresh_button, View.GONE);
         views.setViewVisibility(R.id.widget_refresh_progress, View.VISIBLE);
         views.setTextViewText(R.id.widget_updated_text, "");
+        views.setTextViewText(R.id.widget_empty_text, "Loading stories\u2026");
         appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views);
     }
 
@@ -138,6 +168,19 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_empty_text, "Couldn\u2019t load stories");
         // Keep previous timestamp if any
         views.setTextViewText(R.id.widget_updated_text, formatUpdatedTime(context, appWidgetId));
+        appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views);
+    }
+
+    private static void applyThemeColors(Context context, AppWidgetManager appWidgetManager,
+                                           int appWidgetId, boolean night) {
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
+        views.setInt(R.id.widget_root, "setBackgroundResource",
+                night ? R.drawable.widget_background_dark : R.drawable.widget_background);
+        int titleColor = context.getResources().getColor(R.color.widget_title, context.getTheme());
+        int secondaryColor = context.getResources().getColor(R.color.widget_secondary_text, context.getTheme());
+        views.setTextColor(R.id.widget_title, titleColor);
+        views.setTextColor(R.id.widget_updated_text, secondaryColor);
+        views.setTextColor(R.id.widget_empty_text, secondaryColor);
         appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views);
     }
 

@@ -1,28 +1,19 @@
 package com.simon.harmonichackernews;
 
-import static com.simon.harmonichackernews.utils.UtilsKt.KEY_SHARED_PREFERENCES_HISTORIES;
-
 import android.app.Activity;
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.text.format.DateFormat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
-import android.net.Uri;
-import android.provider.Settings;
-
-import androidx.activity.OnBackPressedCallback;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
-import androidx.preference.Preference;
-import androidx.preference.PreferenceFragmentCompat;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
@@ -33,14 +24,24 @@ import com.simon.harmonichackernews.utils.HistoriesUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
-import com.simon.harmonichackernews.utils.UtilsKt;
+import com.simon.harmonichackernews.widget.StoriesRemoteViewsFactory;
+import com.simon.harmonichackernews.widget.StoriesWidgetProvider;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
+
+import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.recyclerview.widget.RecyclerView;
+
+import static com.simon.harmonichackernews.utils.UtilsKt.KEY_SHARED_PREFERENCES_HISTORIES;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -223,6 +224,21 @@ public class SettingsActivity extends AppCompatActivity {
                     intent.putExtra(EXTRA_REQUEST_RESTART, true);
                     requireContext().startActivity(intent);
                     requireActivity().finish();
+                    return true;
+                }
+            });
+
+            findPreference("pref_show_index").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
+                    // Re-render widget list items to show/hide indices (no network fetch)
+                    AppWidgetManager awm = AppWidgetManager.getInstance(requireContext());
+                    int[] ids = awm.getAppWidgetIds(
+                            new ComponentName(requireContext(), StoriesWidgetProvider.class));
+                    if (ids.length > 0) {
+                        StoriesRemoteViewsFactory.setSkipFetchAll(requireContext(), true);
+                        awm.notifyAppWidgetViewDataChanged(ids, R.id.widget_stories_list);
+                    }
                     return true;
                 }
             });
