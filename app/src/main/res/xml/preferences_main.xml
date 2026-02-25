@@ -40,7 +40,7 @@
         app:key="pref_header_data_storage"
         app:title="Data &amp; Storage"
         app:summary="Bookmarks, history, changelogs"
-        app:icon="@drawable/ic_action_clear"
+        app:icon="@drawable/ic_action_library_books"
         app:fragment="com.simon.harmonichackernews.settings.DataStoragePreferenceFragment" />
 
     <Preference

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.SettingsActivity;
 
 public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
 
@@ -87,6 +89,17 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
             return (SettingsCallback) getActivity();
         }
         return null;
+    }
+
+    protected void restartSettingsActivity() {
+        SettingsCallback callback = getSettingsCallback();
+        if (callback != null) {
+            callback.onRequestRestart();
+        }
+        Intent intent = new Intent(getContext(), SettingsActivity.class);
+        intent.putExtra(SettingsActivity.EXTRA_REQUEST_RESTART, true);
+        requireContext().startActivity(intent);
+        requireActivity().finish();
     }
 
     protected void changePrefStatus(Preference pref, boolean newStatus) {

@@ -18,18 +18,15 @@ import com.simon.harmonichackernews.R;
 
 public class SettingsHeaderFragment extends BaseSettingsFragment {
 
-    private String selectedKey = "pref_header_appearance";
+    public static final String DEFAULT_KEY = "pref_header_appearance";
+
+    private String selectedKey = DEFAULT_KEY;
     private GradientDrawable selectedDrawable;
     private RecyclerView.OnChildAttachStateChangeListener attachListener;
 
     @Override
     protected String getToolbarTitle() {
         return "Settings";
-    }
-
-    @Override
-    protected boolean showNavigationIcon() {
-        return false;
     }
 
     @Override

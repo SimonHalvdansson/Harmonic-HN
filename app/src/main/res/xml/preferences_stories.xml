@@ -1,122 +1,140 @@
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <ListPreference
-        app:singleLineTitle="false"
-        app:icon="@drawable/ic_action_bookmark_border"
-        app:title="Default starting page"
-        app:key="pref_default_story_type"
-        app:useSimpleSummaryProvider="true"
-        app:entries="@array/sorting_options"
-        app:defaultValue="Top Stories"
-        app:entryValues="@array/sorting_options" />
+    <PreferenceCategory
+        app:title="Layout"
+        android:layout="@layout/preference_category">
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_compact_view"
-        app:summary="Hides points, domain and time"
-        app:icon="@drawable/ic_action_compact"
-        app:title="Compact stories" />
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_compact_view"
+            app:summary="Hides points, domain and time"
+            app:icon="@drawable/ic_action_compact"
+            app:title="Compact stories" />
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:defaultValue="true"
-        app:key="pref_thumbnails"
-        app:icon="@drawable/ic_action_web"
-        app:title="Show story thumbnails" />
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_compact_header"
+            app:defaultValue="false"
+            app:summary="Smaller margins for 'Top stories' header"
+            app:icon="@drawable/ic_action_horizontal_split"
+            app:title="Compact header" />
 
-    <ListPreference
-        app:singleLineTitle="false"
-        app:icon="@drawable/ic_action_web"
-        app:title="Favicon provider"
-        app:key="pref_favicon_provider"
-        app:useSimpleSummaryProvider="true"
-        app:entries="@array/favicon_providers"
-        app:defaultValue="Google"
-        app:entryValues="@array/favicon_providers" />
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_show_index"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_index"
+            app:title="Show story indices" />
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_show_points"
-        app:defaultValue="true"
-        app:icon="@drawable/ic_action_thumbs"
-        app:title="Show story points" />
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_left_align"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_hand"
+            app:title="Left align comments button" />
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_show_comments_count"
-        app:defaultValue="true"
-        app:icon="@drawable/ic_action_comment"
-        app:title="Show comment count" />
+    </PreferenceCategory>
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_show_index"
-        app:defaultValue="false"
-        app:icon="@drawable/ic_action_index"
-        app:title="Show story indices" />
+    <PreferenceCategory
+        app:title="Content"
+        android:layout="@layout/preference_category">
 
-    <SwitchPreferenceCompat
-        app:isPreferenceVisible="false"
-        app:singleLineTitle="false"
-        app:key="pref_show_pdf_badge"
-        app:defaultValue="true"
-        app:summary="Instead of titles ending in [PDF]"
-        app:icon="@drawable/ic_action_pdf"
-        app:title="Show PDF badge" />
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:defaultValue="true"
+            app:key="pref_thumbnails"
+            app:icon="@drawable/ic_action_web"
+            app:title="Show story thumbnails" />
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_compact_header"
-        app:defaultValue="false"
-        app:summary="Smaller margins for 'Top stories' header"
-        app:icon="@drawable/ic_action_horizontal_split"
-        app:title="Compact header" />
+        <ListPreference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_web"
+            app:title="Favicon provider"
+            app:key="pref_favicon_provider"
+            app:useSimpleSummaryProvider="true"
+            app:entries="@array/favicon_providers"
+            app:defaultValue="Google"
+            app:entryValues="@array/favicon_providers" />
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_left_align"
-        app:defaultValue="false"
-        app:icon="@drawable/ic_action_hand"
-        app:title="Left align comments button" />
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_show_points"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_thumbs"
+            app:title="Show story points" />
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_pagination_mode"
-        app:defaultValue="false"
-        app:summary="Puts a 'Load more' button at the bottom of the main screen"
-        app:icon="@drawable/ic_action_swipe_vertical"
-        app:title="Use pagination instead of infinite scroll" />
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_show_comments_count"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_comment"
+            app:title="Show comment count" />
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_foldable_support"
-        app:defaultValue="false"
-        app:icon="@drawable/ic_action_tablet"
-        app:title="Enable foldable support" />
+        <SwitchPreferenceCompat
+            app:isPreferenceVisible="false"
+            app:singleLineTitle="false"
+            app:key="pref_show_pdf_badge"
+            app:defaultValue="true"
+            app:summary="Instead of titles ending in [PDF]"
+            app:icon="@drawable/ic_action_pdf"
+            app:title="Show PDF badge" />
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_always_open_comments"
-        app:icon="@drawable/ic_action_skip"
-        app:defaultValue="false"
-        app:summary="Clicking a story takes you directly to the comments view"
-        app:title="Always open comments" />
+    </PreferenceCategory>
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_hide_jobs"
-        app:defaultValue="false"
-        app:icon="@drawable/ic_action_work_off"
-        app:summary="Includes &quot;Who is hiring&quot; posts"
-        app:title="Hide job posts" />
+    <PreferenceCategory
+        app:title="Behavior"
+        android:layout="@layout/preference_category">
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_hide_clicked"
-        app:defaultValue="false"
-        app:icon="@drawable/ic_action_hide"
-        app:summary="Applies on refresh"
-        app:title="Hide clicked posts" />
+        <ListPreference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_bookmark_border"
+            app:title="Default starting page"
+            app:key="pref_default_story_type"
+            app:useSimpleSummaryProvider="true"
+            app:entries="@array/sorting_options"
+            app:defaultValue="Top Stories"
+            app:entryValues="@array/sorting_options" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_always_open_comments"
+            app:icon="@drawable/ic_action_skip"
+            app:defaultValue="false"
+            app:summary="Clicking a story takes you directly to the comments view"
+            app:title="Always open comments" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_pagination_mode"
+            app:defaultValue="false"
+            app:summary="Puts a 'Load more' button at the bottom of the main screen"
+            app:icon="@drawable/ic_action_swipe_vertical"
+            app:title="Use pagination instead of infinite scroll" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_hide_jobs"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_work_off"
+            app:summary="Includes &quot;Who is hiring&quot; posts"
+            app:title="Hide job posts" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_hide_clicked"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_hide"
+            app:summary="Applies on refresh"
+            app:title="Hide clicked posts" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_foldable_support"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_tablet"
+            app:title="Enable foldable support" />
+
+    </PreferenceCategory>
 
 </PreferenceScreen>

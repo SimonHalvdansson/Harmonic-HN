@@ -46,7 +46,7 @@ public class SettingsActivity extends AppCompatActivity implements
 
     private static final Map<String, String> FRAGMENT_TO_KEY = new HashMap<>();
     static {
-        FRAGMENT_TO_KEY.put(AppearancePreferenceFragment.class.getName(), "pref_header_appearance");
+        FRAGMENT_TO_KEY.put(AppearancePreferenceFragment.class.getName(), SettingsHeaderFragment.DEFAULT_KEY);
         FRAGMENT_TO_KEY.put(StoriesPreferenceFragment.class.getName(), "pref_header_stories");
         FRAGMENT_TO_KEY.put(WebLinksPreferenceFragment.class.getName(), "pref_header_web_links");
         FRAGMENT_TO_KEY.put(CommentsPreferenceFragment.class.getName(), "pref_header_comments");
@@ -60,7 +60,7 @@ public class SettingsActivity extends AppCompatActivity implements
     private boolean needsRestart = false;
     private boolean isTwoPane = false;
     private String currentDetailClassName = AppearancePreferenceFragment.class.getName();
-    private String currentDetailKey = "pref_header_appearance";
+    private String currentDetailKey = SettingsHeaderFragment.DEFAULT_KEY;
     private OnBackPressedCallback backPressedCallback;
 
     @Override
@@ -77,7 +77,7 @@ public class SettingsActivity extends AppCompatActivity implements
             currentDetailClassName = savedInstanceState.getString(STATE_DETAIL_CLASS,
                     AppearancePreferenceFragment.class.getName());
             currentDetailKey = savedInstanceState.getString(STATE_DETAIL_KEY,
-                    "pref_header_appearance");
+                    SettingsHeaderFragment.DEFAULT_KEY);
             needsRestart = savedInstanceState.getBoolean(STATE_NEEDS_RESTART, false);
             isTwoPane = savedInstanceState.getBoolean(STATE_TWO_PANE, false);
         }
@@ -222,8 +222,6 @@ public class SettingsActivity extends AppCompatActivity implements
                             .instantiate(getClassLoader(), currentDetailClassName);
                     fm.beginTransaction()
                             .remove(detailFragment)
-                            .commit();
-                    fm.beginTransaction()
                             .replace(R.id.settings, detail)
                             .addToBackStack(null)
                             .commit();
