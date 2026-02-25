@@ -85,7 +85,7 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
             String textToSave = SettingsUtils.readStringFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS);
 
             if (TextUtils.isEmpty(textToSave)) {
-                Snackbar.make(getView(), "No bookmarks to export", Snackbar.LENGTH_SHORT).show();
+                Snackbar.make(requireView(), "No bookmarks to export", Snackbar.LENGTH_SHORT).show();
                 return false;
             }
 

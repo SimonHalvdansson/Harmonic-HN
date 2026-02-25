@@ -68,6 +68,12 @@
             app:icon="@drawable/ic_action_redirect"
             app:title="Redirect Twitter/X to Nitter" />
 
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="Link Previews"
+        android:layout="@layout/preference_category">
+
         <SwitchPreferenceCompat
             app:icon="@drawable/ic_link_preview_arxiv"
             app:title="ArXiV"

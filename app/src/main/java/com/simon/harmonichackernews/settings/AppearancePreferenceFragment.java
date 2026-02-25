@@ -1,18 +1,11 @@
 package com.simon.harmonichackernews.settings;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.text.format.DateFormat;
-import android.view.View;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.preference.Preference;
 
 import com.google.android.material.timepicker.MaterialTimePicker;
 import com.google.android.material.timepicker.TimeFormat;
 import com.simon.harmonichackernews.R;
-import com.simon.harmonichackernews.SettingsActivity;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -43,26 +36,12 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment {
         });
 
         findPreference("pref_theme").setOnPreferenceChangeListener((preference, newValue) -> {
-            SettingsCallback callback = getSettingsCallback();
-            if (callback != null) {
-                callback.onRequestRestart();
-            }
-            Intent intent = new Intent(getContext(), SettingsActivity.class);
-            intent.putExtra(SettingsActivity.EXTRA_REQUEST_RESTART, true);
-            requireContext().startActivity(intent);
-            requireActivity().finish();
+            restartSettingsActivity();
             return true;
         });
 
         findPreference("pref_transparent_status_bar").setOnPreferenceChangeListener((preference, newValue) -> {
-            SettingsCallback callback = getSettingsCallback();
-            if (callback != null) {
-                callback.onRequestRestart();
-            }
-            Intent intent = new Intent(getContext(), SettingsActivity.class);
-            intent.putExtra(SettingsActivity.EXTRA_REQUEST_RESTART, true);
-            requireContext().startActivity(intent);
-            requireActivity().finish();
+            restartSettingsActivity();
             return true;
         });
 
