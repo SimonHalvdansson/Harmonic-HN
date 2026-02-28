@@ -202,14 +202,6 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         meta += " · " + Utils.getTimeAgo(story.time);
         views.setTextViewText(R.id.widget_story_meta, meta);
 
-        // Apply theme colors from resources (auto day/night via values-night)
-        int indexColor = context.getResources().getColor(R.color.widget_story_index, context.getTheme());
-        int titleColor = context.getResources().getColor(R.color.widget_story_title, context.getTheme());
-        int metaColor = context.getResources().getColor(R.color.widget_story_meta, context.getTheme());
-        views.setTextColor(R.id.widget_story_index, indexColor);
-        views.setTextColor(R.id.widget_story_title, titleColor);
-        views.setTextColor(R.id.widget_story_meta, metaColor);
-
         // Fill-in intent for item click -> CommentsActivity
         Intent fillInIntent = new Intent();
         fillInIntent.putExtras(story.toBundle());

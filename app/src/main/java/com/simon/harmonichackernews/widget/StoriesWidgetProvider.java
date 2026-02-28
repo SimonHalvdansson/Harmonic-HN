@@ -176,11 +176,8 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
         views.setInt(R.id.widget_root, "setBackgroundResource",
                 night ? R.drawable.widget_background_dark : R.drawable.widget_background);
-        int titleColor = context.getResources().getColor(R.color.widget_title, context.getTheme());
-        int secondaryColor = context.getResources().getColor(R.color.widget_secondary_text, context.getTheme());
-        views.setTextColor(R.id.widget_title, titleColor);
-        views.setTextColor(R.id.widget_updated_text, secondaryColor);
-        views.setTextColor(R.id.widget_empty_text, secondaryColor);
+        // Rebind icon drawable so its resource-based tint is re-resolved for the new mode.
+        views.setImageViewResource(R.id.widget_refresh_button, R.drawable.ic_action_refresh);
         appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views);
     }
 

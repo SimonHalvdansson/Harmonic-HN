@@ -52,6 +52,7 @@
                 android:layout_height="36dp"
                 android:padding="6dp"
                 android:src="@drawable/ic_action_refresh"
+                android:tint="@color/widget_title"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Refresh" />
 

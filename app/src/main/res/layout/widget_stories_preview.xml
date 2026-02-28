@@ -35,7 +35,8 @@
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:padding="6dp"
-            android:src="@drawable/ic_action_refresh" />
+            android:src="@drawable/ic_action_refresh"
+            android:tint="@color/widget_title" />
 
     </LinearLayout>
 
