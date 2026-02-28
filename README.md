@@ -12,7 +12,11 @@ This has been my personal side project since 2020 and since starting my PhD in 2
 
 # Contributing
 
-If you would like to see a change in Harmonic, feel free to open an issue or create a PR. Historically, most PRs are merged and I might make some design changes to make sure Harmonic stays consistent. Try to stay within the general code style of the codebase but I make no claim that the current state is holy by any means. Harmonic is meant to be beautiful from the front more so than the back and user experience is king. With that said, PRs which clean up the code or improve structure are very welcome as well. When a PR adds a new user-facing feature, I will add that feature to the changelog after merging. If you do NOT want your name there, let me know by e.g., writing so in the PR. 
+If you would like to see a change in Harmonic, feel free to open an issue or create a PR. Historically, most PRs are merged and I might make some design changes to make sure Harmonic stays consistent. Try to stay within the general code style of the codebase but I make no claim that the current state is holy by any means. Harmonic is meant to be beautiful from the front more so than the back and user experience is king. With that said, PRs which clean up the code or improve structure are very welcome as well. When a PR adds a new user-facing feature, I will add that feature to the changelog after merging. If you do NOT want your name there, let me know by e.g., writing so in the PR.
+
+### AI-aided PRs
+
+Using your favorite LLM workflow to create PRs is completely fine - anything that gets the job done. As always, still build the app (this should be hassle-free) and try out your changes to make sure they work before before submitting a PR.
 
 # Features
 
