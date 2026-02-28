@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="splash_screen_background">@color/material_you_neutral_900</color>
+
+    <!-- Widget colors (dark mode overrides) -->
+    <color name="widget_title">@color/darkStoryColorNormal</color>
+    <color name="widget_secondary_text">@color/darkTextColorDisabled</color>
+    <color name="widget_story_index">@color/darkTextColorDisabled</color>
+    <color name="widget_story_title">@color/darkStoryColorNormal</color>
+    <color name="widget_story_meta">@color/darkTextColorDefault</color>
 </resources>
