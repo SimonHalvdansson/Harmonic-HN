@@ -68,13 +68,12 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
                     & Configuration.UI_MODE_NIGHT_MASK;
             if (currentNightMode != lastNightMode) {
                 lastNightMode = currentNightMode;
-                boolean night = currentNightMode == Configuration.UI_MODE_NIGHT_YES;
                 AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
                 int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
                         new ComponentName(context, StoriesWidgetProvider.class));
                 // Update header/background colors without resetting the adapter
                 for (int id : appWidgetIds) {
-                    applyThemeColors(context, appWidgetManager, id, night);
+                    applyThemeColors(context, appWidgetManager, id);
                 }
                 // Re-render list items with new colors (skip network fetch)
                 StoriesRemoteViewsFactory.setSkipFetchAll(context, true);
@@ -176,10 +175,9 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     }
 
     private static void applyThemeColors(Context context, AppWidgetManager appWidgetManager,
-                                           int appWidgetId, boolean night) {
+                                         int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
-        views.setInt(R.id.widget_root, "setBackgroundResource",
-                night ? R.drawable.widget_background_dark : R.drawable.widget_background);
+        views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_background);
         // Rebind icon drawable so its resource-based tint is re-resolved for the new mode.
         views.setImageViewResource(R.id.widget_refresh_button, R.drawable.ic_action_refresh);
         appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views);

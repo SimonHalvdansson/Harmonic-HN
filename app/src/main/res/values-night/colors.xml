@@ -3,6 +3,7 @@
     <color name="splash_screen_background">@color/material_you_neutral_900</color>
 
     <!-- Widget colors (dark mode overrides) -->
+    <color name="widget_background_surface">@color/material_you_neutral_900</color>
     <color name="widget_title">@color/darkStoryColorNormal</color>
     <color name="widget_secondary_text">@color/darkTextColorDisabled</color>
     <color name="widget_story_index">@color/darkTextColorDisabled</color>

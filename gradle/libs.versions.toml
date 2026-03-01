@@ -7,7 +7,7 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 
 [libraries]
-androidx-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.9.4"
+androidx-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.10.0"
 androidx-lifecycle-viewmodel-ktx = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4"
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-recyclerview = "androidx.recyclerview:recyclerview:1.4.0"
