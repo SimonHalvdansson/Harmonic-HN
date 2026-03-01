@@ -10,6 +10,7 @@
 
     <dimen name="comments_header_text_size">12dp</dimen>
     <dimen name="comments_header_action_padding">0dp</dimen>
+    <dimen name="widget_corner_radius">16dp</dimen>
 
     <integer name="stories_pane_weight">4</integer>
 
