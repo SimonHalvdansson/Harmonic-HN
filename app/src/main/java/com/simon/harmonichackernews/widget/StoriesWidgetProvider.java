@@ -93,6 +93,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
 
     static void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false);
+        StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, true);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
 
         // Set up RemoteViewsService adapter for the ListView
@@ -143,6 +144,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     }
 
     private static void showRefreshing(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, true);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
         views.setViewVisibility(R.id.widget_refresh_button, View.GONE);
         views.setViewVisibility(R.id.widget_refresh_progress, View.VISIBLE);
@@ -152,6 +154,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     }
 
     static void updateRefreshDone(Context context, int appWidgetId) {
+        StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, false);
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
         views.setViewVisibility(R.id.widget_refresh_button, View.VISIBLE);
@@ -161,6 +164,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     }
 
     static void updateRefreshError(Context context, int appWidgetId) {
+        StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, false);
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
         views.setViewVisibility(R.id.widget_refresh_button, View.VISIBLE);

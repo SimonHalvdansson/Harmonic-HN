@@ -34,6 +34,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
     private static final String PREFS_NAME = "widget_stories_cache";
     private static final String KEY_LAST_UPDATED_PREFIX = "last_updated_";
     private static final String KEY_SKIP_FETCH_PREFIX = "skip_fetch_";
+    private static final String KEY_REFRESHING_PREFIX = "refreshing_";
 
     private final Context context;
     private final int appWidgetId;
@@ -66,6 +67,16 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         editor.commit();
     }
 
+    static void setRefreshing(Context context, int appWidgetId, boolean refreshing) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putBoolean(KEY_REFRESHING_PREFIX + appWidgetId, refreshing).apply();
+    }
+
+    private static boolean isRefreshing(Context context, int appWidgetId) {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean(KEY_REFRESHING_PREFIX + appWidgetId, false);
+    }
+
     @Override
     public void onDataSetChanged() {
         // Skip fetch if flag is set and we already have data (e.g. after partiallyUpdateAppWidget
@@ -74,6 +85,10 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String skipKey = KEY_SKIP_FETCH_PREFIX + appWidgetId;
         if (prefs.getBoolean(skipKey, false) && !stories.isEmpty()) {
+            // If the UI is still showing refresh in progress, reconcile it once without refetching.
+            if (isRefreshing(context, appWidgetId)) {
+                postRefreshDone();
+            }
             return;
         }
 
@@ -244,6 +259,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         prefs.edit()
                 .remove(KEY_LAST_UPDATED_PREFIX + appWidgetId)
                 .remove(KEY_SKIP_FETCH_PREFIX + appWidgetId)
+                .remove(KEY_REFRESHING_PREFIX + appWidgetId)
                 .apply();
     }
 }
