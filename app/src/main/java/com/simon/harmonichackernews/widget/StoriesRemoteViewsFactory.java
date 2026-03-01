@@ -201,7 +201,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         views.setTextViewText(R.id.widget_story_title, story.title);
 
         // Meta: score + domain + time
-        String meta = story.score + " pts";
+        String meta = story.score + (story.score == 1 ? " pt" : " pts");
         if (story.url != null && story.isLink) {
             try {
                 String domain = Utils.getDomainName(story.url);
