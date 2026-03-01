@@ -40,7 +40,6 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
     private final int appWidgetId;
     private final List<Story> stories = new ArrayList<>();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private boolean fetchFailed = false;
 
     public StoriesRemoteViewsFactory(Context context, int appWidgetId) {
         this.context = context;
@@ -92,7 +91,6 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
             return;
         }
 
-        fetchFailed = false;
         List<Story> freshStories = new ArrayList<>();
 
         try {
@@ -105,8 +103,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
                     .build();
 
             try (Response idsResponse = client.newCall(idsRequest).execute()) {
-                if (!idsResponse.isSuccessful() || idsResponse.body() == null) {
-                    fetchFailed = true;
+                if (!idsResponse.isSuccessful()) {
                     postRefreshError();
                     return;
                 }
@@ -141,7 +138,6 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
             }
 
             if (freshStories.isEmpty()) {
-                fetchFailed = true;
                 postRefreshError();
                 return;
             }
@@ -156,7 +152,6 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
 
         } catch (Exception e) {
             e.printStackTrace();
-            fetchFailed = true;
             postRefreshError();
             return;
         }
