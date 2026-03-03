@@ -77,7 +77,8 @@
         android:paddingBottom="8dp">
 
         <TextView
-            android:layout_width="18dp"
+            android:layout_width="20dp"
+            android:layout_marginStart="-1dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="2dp"
             android:layout_marginTop="1dp"
@@ -105,7 +106,6 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
                 android:fontFamily="@font/product_sans"
                 android:text="256 points · 142 comments"
                 android:textColor="@color/widget_story_meta"
@@ -126,7 +126,8 @@
         android:paddingBottom="8dp">
 
         <TextView
-            android:layout_width="18dp"
+            android:layout_width="20dp"
+            android:layout_marginStart="-1dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="2dp"
             android:layout_marginTop="1dp"
@@ -154,7 +155,6 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
                 android:fontFamily="@font/product_sans"
                 android:text="189 points · 97 comments"
                 android:textColor="@color/widget_story_meta"
@@ -175,7 +175,8 @@
         android:paddingBottom="8dp">
 
         <TextView
-            android:layout_width="18dp"
+            android:layout_width="20dp"
+            android:layout_marginStart="-1dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="2dp"
             android:layout_marginTop="1dp"
@@ -203,7 +204,6 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
                 android:fontFamily="@font/product_sans"
                 android:text="134 points · 85 comments"
                 android:textColor="@color/widget_story_meta"

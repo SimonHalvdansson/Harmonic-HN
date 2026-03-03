@@ -40,7 +40,6 @@
             android:id="@+id/widget_story_meta"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="1dp"
             android:fontFamily="@font/product_sans"
             android:textColor="@color/widget_story_meta"
             android:textSize="12sp" />
