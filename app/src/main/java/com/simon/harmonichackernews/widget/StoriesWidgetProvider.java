@@ -20,13 +20,10 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
 
     private static final String ACTION_REFRESH = "com.simon.harmonichackernews.widget.ACTION_REFRESH";
     private static final String EXTRA_APPWIDGET_ID = "refresh_appwidget_id";
-    private static int lastNightMode = -1;
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         Utils.log("WidgetProvider onUpdate count=" + (appWidgetIds == null ? 0 : appWidgetIds.length));
-        lastNightMode = context.getResources().getConfiguration().uiMode
-                & Configuration.UI_MODE_NIGHT_MASK;
         for (int appWidgetId : appWidgetIds) {
             updateWidget(context, appWidgetManager, appWidgetId);
         }
@@ -35,13 +32,6 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     @Override
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
-
-        // Initialize lastNightMode on first receive after process restart
-        // to avoid spurious config-change re-renders
-        if (lastNightMode == -1) {
-            lastNightMode = context.getResources().getConfiguration().uiMode
-                    & Configuration.UI_MODE_NIGHT_MASK;
-        }
 
         String action = intent.getAction();
         Utils.log("WidgetProvider onReceive action=" + action);
@@ -66,23 +56,6 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
                     StoriesRemoteViewsFactory.setSkipFetch(context, id, false);
                     showRefreshing(context, appWidgetManager, id);
                 }
-                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_stories_list);
-            }
-        } else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
-            int currentNightMode = context.getResources().getConfiguration().uiMode
-                    & Configuration.UI_MODE_NIGHT_MASK;
-            if (currentNightMode != lastNightMode) {
-                Utils.log("WidgetProvider configuration changed, night mode switched");
-                lastNightMode = currentNightMode;
-                AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-                int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
-                        new ComponentName(context, StoriesWidgetProvider.class));
-                // Update header/background colors without resetting the adapter
-                for (int id : appWidgetIds) {
-                    applyThemeColors(context, appWidgetManager, id);
-                }
-                // Re-render list items with new colors (skip network fetch)
-                StoriesRemoteViewsFactory.setSkipFetchAll(context, true);
                 appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_stories_list);
             }
         }
@@ -158,9 +131,6 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
                                          int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
         bindWidgetCommonViews(context, views, appWidgetId);
-        views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_background);
-        // Rebind icon drawable so its resource-based tint is re-resolved for the new mode.
-        views.setImageViewResource(R.id.widget_refresh_button, R.drawable.ic_action_refresh);
         appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views);
     }
 

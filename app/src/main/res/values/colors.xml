@@ -97,4 +97,6 @@
     <color name="widget_story_index">@color/lightTextColorDisabled</color>
     <color name="widget_story_title">@color/lightStoryColorNormal</color>
     <color name="widget_story_meta">@color/lightTextColorDefault</color>
+    <color name="widget_drawable_color">@color/lightDrawableColor</color>
+
 </resources>

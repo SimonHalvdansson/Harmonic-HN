@@ -9,4 +9,5 @@
     <color name="widget_story_index">@color/darkTextColorDisabled</color>
     <color name="widget_story_title">@color/darkStoryColorNormal</color>
     <color name="widget_story_meta">@color/darkTextColorDefault</color>
+    <color name="widget_drawable_color">@color/darkDrawableColor</color>
 </resources>
