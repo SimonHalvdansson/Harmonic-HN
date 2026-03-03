@@ -31,7 +31,6 @@ import okhttp3.Response;
 
 public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViewsFactory {
 
-    private static final int MAX_STORIES = 15;
     private static final String PREFS_NAME = "widget_stories_cache";
     private static final String KEY_LAST_UPDATED_PREFIX = "last_updated_";
     private static final String KEY_SKIP_FETCH_PREFIX = "skip_fetch_";
@@ -134,10 +133,12 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
 
                 String idsBody = idsResponse.body().string();
                 JSONArray idsArray = new JSONArray(idsBody);
-                int count = Math.min(idsArray.length(), MAX_STORIES);
+                int storyCount = WidgetConfigActivity.getStoryCount(context, appWidgetId);
+                int count = Math.min(idsArray.length(), storyCount);
 
                 Utils.log("WidgetFactory ids fetched widgetId=" + appWidgetId
                         + " totalIds=" + idsArray.length()
+                        + " configuredCount=" + storyCount
                         + " fetchCount=" + count);
 
                 for (int i = 0; i < count; i++) {

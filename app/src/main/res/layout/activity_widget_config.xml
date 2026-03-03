@@ -29,20 +29,11 @@
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:fontFamily="@font/product_sans"
-                android:text="Choose which feed to display"
-                android:textColor="?attr/textColorDefault"
-                android:textSize="14sp" />
-
             <RadioGroup
                 android:id="@+id/widget_config_feed_group"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp">
+                android:layout_marginTop="16dp">
 
                 <com.google.android.material.radiobutton.MaterialRadioButton
                     android:id="@+id/widget_config_top"
@@ -107,6 +98,70 @@
 
             </RadioGroup>
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:fontFamily="@font/product_sans"
+                android:text="Number of stories to show"
+                android:textColor="?attr/textColorDefault"
+                android:textSize="14sp" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/widget_config_story_count_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:checkedButton="@id/widget_config_count_20"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/widget_config_count_10"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:checkable="true"
+                    android:fontFamily="@font/product_sans_bold"
+                    android:text="10"
+                    android:textAllCaps="false" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/widget_config_count_20"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:checkable="true"
+                    android:fontFamily="@font/product_sans_bold"
+                    android:text="20"
+                    android:textAllCaps="false" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/widget_config_count_30"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:checkable="true"
+                    android:fontFamily="@font/product_sans_bold"
+                    android:text="30"
+                    android:textAllCaps="false" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/widget_config_count_40"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:checkable="true"
+                    android:fontFamily="@font/product_sans_bold"
+                    android:text="40"
+                    android:textAllCaps="false" />
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
         </LinearLayout>
 
         <LinearLayout
@@ -125,7 +180,7 @@
                 android:backgroundTint="?attr/colorSecondary"
                 android:textColor="?attr/colorOnSecondary"
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
+                android:layout_height="56dp"
                 android:layout_marginBottom="16dp"
                 android:elevation="6dp"
                 android:stateListAnimator="@null"
