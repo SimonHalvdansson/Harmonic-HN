@@ -14,6 +14,7 @@ import android.widget.RemoteViews;
 import com.simon.harmonichackernews.CommentsActivity;
 import com.simon.harmonichackernews.MainActivity;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.utils.Utils;
 
 public class StoriesWidgetProvider extends AppWidgetProvider {
 
@@ -23,6 +24,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+        Utils.log("WidgetProvider onUpdate count=" + (appWidgetIds == null ? 0 : appWidgetIds.length));
         lastNightMode = context.getResources().getConfiguration().uiMode
                 & Configuration.UI_MODE_NIGHT_MASK;
         for (int appWidgetId : appWidgetIds) {
@@ -42,6 +44,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
         }
 
         String action = intent.getAction();
+        Utils.log("WidgetProvider onReceive action=" + action);
 
         if (ACTION_REFRESH.equals(action)) {
             AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
@@ -49,11 +52,13 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
                     AppWidgetManager.INVALID_APPWIDGET_ID);
 
             if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                Utils.log("WidgetProvider refresh request widgetId=" + appWidgetId);
                 // Refresh only the tapped widget
                 StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false);
                 showRefreshing(context, appWidgetManager, appWidgetId);
                 appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_stories_list);
             } else {
+                Utils.log("WidgetProvider refresh request missing widget id, fallback to all widgets");
                 // Fallback: refresh all widgets
                 int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
                         new ComponentName(context, StoriesWidgetProvider.class));
@@ -67,6 +72,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
             int currentNightMode = context.getResources().getConfiguration().uiMode
                     & Configuration.UI_MODE_NIGHT_MASK;
             if (currentNightMode != lastNightMode) {
+                Utils.log("WidgetProvider configuration changed, night mode switched");
                 lastNightMode = currentNightMode;
                 AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
                 int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
@@ -84,6 +90,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onDeleted(Context context, int[] appWidgetIds) {
+        Utils.log("WidgetProvider onDeleted count=" + (appWidgetIds == null ? 0 : appWidgetIds.length));
         for (int appWidgetId : appWidgetIds) {
             WidgetConfigActivity.clearPreferences(context, appWidgetId);
             StoriesRemoteViewsFactory.clearPreferences(context, appWidgetId);
@@ -91,45 +98,11 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     }
 
     static void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        Utils.log("WidgetProvider updateWidget widgetId=" + appWidgetId + " start");
         StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false);
         StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, true);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
-
-        // Set up RemoteViewsService adapter for the ListView
-        Intent serviceIntent = new Intent(context, StoriesWidgetService.class);
-        serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-        serviceIntent.setData(Uri.parse(serviceIntent.toUri(Intent.URI_INTENT_SCHEME)));
-        views.setRemoteAdapter(R.id.widget_stories_list, serviceIntent);
-        views.setEmptyView(R.id.widget_stories_list, R.id.widget_empty_text);
-
-        // Header click -> open MainActivity
-        Intent mainIntent = new Intent(context, MainActivity.class);
-        mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent mainPendingIntent = PendingIntent.getActivity(
-                context, 0, mainIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(R.id.widget_header, mainPendingIntent);
-
-        // Refresh button click -> send ACTION_REFRESH broadcast with widget ID
-        Intent refreshIntent = new Intent(context, StoriesWidgetProvider.class);
-        refreshIntent.setAction(ACTION_REFRESH);
-        refreshIntent.putExtra(EXTRA_APPWIDGET_ID, appWidgetId);
-        PendingIntent refreshPendingIntent = PendingIntent.getBroadcast(
-                context, appWidgetId, refreshIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent);
-
-        // Item click template -> open CommentsActivity
-        Intent itemIntent = new Intent(context, CommentsActivity.class);
-        itemIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        PendingIntent itemPendingIntent = PendingIntent.getActivity(
-                context, 1, itemIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-        views.setPendingIntentTemplate(R.id.widget_stories_list, itemPendingIntent);
-
-        // Set header title based on configured feed
-        String feedName = WidgetConfigActivity.getFeedName(context, appWidgetId);
-        views.setTextViewText(R.id.widget_title, feedName != null ? feedName : "Top stories");
+        bindWidgetCommonViews(context, views, appWidgetId);
 
         // Show refreshing state initially
         views.setViewVisibility(R.id.widget_refresh_button, View.GONE);
@@ -139,12 +112,15 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
         appWidgetManager.updateAppWidget(appWidgetId, views);
 
         // Trigger data refresh — factory will call updateRefreshDone() when finished
+        Utils.log("WidgetProvider updateWidget widgetId=" + appWidgetId + " notify data changed");
         appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_stories_list);
     }
 
     private static void showRefreshing(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        Utils.log("WidgetProvider showRefreshing widgetId=" + appWidgetId);
         StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, true);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
+        bindWidgetCommonViews(context, views, appWidgetId);
         views.setViewVisibility(R.id.widget_refresh_button, View.GONE);
         views.setViewVisibility(R.id.widget_refresh_progress, View.VISIBLE);
         views.setTextViewText(R.id.widget_updated_text, "");
@@ -153,9 +129,11 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     }
 
     static void updateRefreshDone(Context context, int appWidgetId) {
+        Utils.log("WidgetProvider updateRefreshDone widgetId=" + appWidgetId);
         StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, false);
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
+        bindWidgetCommonViews(context, views, appWidgetId);
         views.setViewVisibility(R.id.widget_refresh_button, View.VISIBLE);
         views.setViewVisibility(R.id.widget_refresh_progress, View.GONE);
         views.setTextViewText(R.id.widget_updated_text, formatUpdatedTime(context, appWidgetId));
@@ -163,9 +141,11 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     }
 
     static void updateRefreshError(Context context, int appWidgetId) {
+        Utils.log("WidgetProvider updateRefreshError widgetId=" + appWidgetId);
         StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, false);
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
+        bindWidgetCommonViews(context, views, appWidgetId);
         views.setViewVisibility(R.id.widget_refresh_button, View.VISIBLE);
         views.setViewVisibility(R.id.widget_refresh_progress, View.GONE);
         views.setTextViewText(R.id.widget_empty_text, "Couldn\u2019t load stories");
@@ -177,10 +157,46 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     private static void applyThemeColors(Context context, AppWidgetManager appWidgetManager,
                                          int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
+        bindWidgetCommonViews(context, views, appWidgetId);
         views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_background);
         // Rebind icon drawable so its resource-based tint is re-resolved for the new mode.
         views.setImageViewResource(R.id.widget_refresh_button, R.drawable.ic_action_refresh);
         appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views);
+    }
+
+    private static void bindWidgetCommonViews(Context context, RemoteViews views, int appWidgetId) {
+        // Keep collection adapter bindings present on every update so launcher-side refresh
+        // notifications always resolve to a known collection view.
+        Intent serviceIntent = new Intent(context, StoriesWidgetService.class);
+        serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+        serviceIntent.setData(Uri.parse(serviceIntent.toUri(Intent.URI_INTENT_SCHEME)));
+        views.setRemoteAdapter(R.id.widget_stories_list, serviceIntent);
+        views.setEmptyView(R.id.widget_stories_list, R.id.widget_empty_text);
+
+        Intent mainIntent = new Intent(context, MainActivity.class);
+        mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent mainPendingIntent = PendingIntent.getActivity(
+                context, 0, mainIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        views.setOnClickPendingIntent(R.id.widget_header, mainPendingIntent);
+
+        Intent refreshIntent = new Intent(context, StoriesWidgetProvider.class);
+        refreshIntent.setAction(ACTION_REFRESH);
+        refreshIntent.putExtra(EXTRA_APPWIDGET_ID, appWidgetId);
+        PendingIntent refreshPendingIntent = PendingIntent.getBroadcast(
+                context, appWidgetId, refreshIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent);
+
+        Intent itemIntent = new Intent(context, CommentsActivity.class);
+        itemIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent itemPendingIntent = PendingIntent.getActivity(
+                context, 1, itemIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+        views.setPendingIntentTemplate(R.id.widget_stories_list, itemPendingIntent);
+
+        String feedName = WidgetConfigActivity.getFeedName(context, appWidgetId);
+        views.setTextViewText(R.id.widget_title, feedName != null ? feedName : "Top stories");
     }
 
     static String formatUpdatedTime(Context context, int appWidgetId) {

@@ -79,10 +79,6 @@ public class WidgetConfigActivity extends AppCompatActivity {
                     .putString(KEY_FEED_NAME_PREFIX + appWidgetId, feedName)
                     .apply();
 
-            // Trigger widget update
-            AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
-            StoriesWidgetProvider.updateWidget(this, appWidgetManager, appWidgetId);
-
             // Set result and finish
             Intent resultValue = new Intent();
             resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);

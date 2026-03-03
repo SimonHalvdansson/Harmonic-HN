@@ -23,6 +23,7 @@ import android.os.Looper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -35,6 +36,8 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
     private static final String KEY_LAST_UPDATED_PREFIX = "last_updated_";
     private static final String KEY_SKIP_FETCH_PREFIX = "skip_fetch_";
     private static final String KEY_REFRESHING_PREFIX = "refreshing_";
+    private static final long CALL_TIMEOUT_SECONDS = 15;
+    private static final long TOTAL_FETCH_TIMEOUT_MS = 60_000;
 
     private final Context context;
     private final int appWidgetId;
@@ -48,9 +51,11 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
 
     @Override
     public void onCreate() {
+        Utils.log("WidgetFactory onCreate widgetId=" + appWidgetId);
     }
 
     public static void setSkipFetch(Context context, int appWidgetId, boolean skip) {
+        Utils.log("WidgetFactory setSkipFetch widgetId=" + appWidgetId + " skip=" + skip);
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit().putBoolean(KEY_SKIP_FETCH_PREFIX + appWidgetId, skip).commit();
     }
@@ -59,6 +64,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         AppWidgetManager awm = AppWidgetManager.getInstance(context);
         int[] ids = awm.getAppWidgetIds(
                 new ComponentName(context, StoriesWidgetProvider.class));
+        Utils.log("WidgetFactory setSkipFetchAll count=" + ids.length + " skip=" + skip);
         SharedPreferences.Editor editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit();
         for (int id : ids) {
             editor.putBoolean(KEY_SKIP_FETCH_PREFIX + id, skip);
@@ -67,6 +73,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
     }
 
     static void setRefreshing(Context context, int appWidgetId, boolean refreshing) {
+        Utils.log("WidgetFactory setRefreshing widgetId=" + appWidgetId + " refreshing=" + refreshing);
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit().putBoolean(KEY_REFRESHING_PREFIX + appWidgetId, refreshing).apply();
     }
@@ -78,43 +85,69 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
 
     @Override
     public void onDataSetChanged() {
-        // Skip fetch if flag is set and we already have data (e.g. after partiallyUpdateAppWidget
-        // which triggers onDataSetChanged). The flag is NOT cleared here — it stays set until the
-        // provider explicitly clears it before a deliberate refresh.
+        long startedAt = System.currentTimeMillis();
+        boolean terminalStatePosted = false;
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String skipKey = KEY_SKIP_FETCH_PREFIX + appWidgetId;
-        if (prefs.getBoolean(skipKey, false) && !stories.isEmpty()) {
-            // If the UI is still showing refresh in progress, reconcile it once without refetching.
-            if (isRefreshing(context, appWidgetId)) {
-                postRefreshDone();
-            }
-            return;
-        }
+        boolean skipFetch = prefs.getBoolean(skipKey, false);
+        boolean refreshing = isRefreshing(context, appWidgetId);
 
-        List<Story> freshStories = new ArrayList<>();
+        Utils.log("WidgetFactory onDataSetChanged start widgetId=" + appWidgetId
+                + " skipFetch=" + skipFetch
+                + " refreshing=" + refreshing
+                + " inMemoryStories=" + stories.size());
 
         try {
-            OkHttpClient client = NetworkComponent.getOkHttpClientInstance();
+            if (skipFetch && !stories.isEmpty()) {
+                if (refreshing) {
+                    Utils.log("WidgetFactory skip fetch and reconcile refresh widgetId=" + appWidgetId);
+                    postRefreshDone();
+                    terminalStatePosted = true;
+                } else {
+                    Utils.log("WidgetFactory skip fetch widgetId=" + appWidgetId);
+                }
+                return;
+            }
 
-            // Fetch story IDs using configured feed type
+            List<Story> freshStories = new ArrayList<>();
+            int storyFetchErrors = 0;
+
+            OkHttpClient client = NetworkComponent.getOkHttpClientInstance()
+                    .newBuilder()
+                    .callTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .build();
+
             String feedUrl = WidgetConfigActivity.getFeedUrl(context, appWidgetId);
+            Utils.log("WidgetFactory fetch ids widgetId=" + appWidgetId + " url=" + feedUrl);
             Request idsRequest = new Request.Builder()
                     .url(feedUrl)
                     .build();
 
             try (Response idsResponse = client.newCall(idsRequest).execute()) {
-                if (!idsResponse.isSuccessful()) {
+                if (!idsResponse.isSuccessful() || idsResponse.body() == null) {
+                    Utils.log("WidgetFactory ids request failed widgetId=" + appWidgetId
+                            + " code=" + idsResponse.code());
                     postRefreshError();
+                    terminalStatePosted = true;
                     return;
                 }
 
                 String idsBody = idsResponse.body().string();
                 JSONArray idsArray = new JSONArray(idsBody);
-
                 int count = Math.min(idsArray.length(), MAX_STORIES);
 
-                // Fetch each story
+                Utils.log("WidgetFactory ids fetched widgetId=" + appWidgetId
+                        + " totalIds=" + idsArray.length()
+                        + " fetchCount=" + count);
+
                 for (int i = 0; i < count; i++) {
+                    long elapsedMs = System.currentTimeMillis() - startedAt;
+                    if (elapsedMs > TOTAL_FETCH_TIMEOUT_MS) {
+                        Utils.log("WidgetFactory total timeout reached widgetId=" + appWidgetId
+                                + " elapsedMs=" + elapsedMs);
+                        break;
+                    }
+
                     int storyId = idsArray.getInt(i);
                     String storyUrl = "https://hacker-news.firebaseio.com/v0/item/" + storyId + ".json";
 
@@ -129,51 +162,77 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
                             story.id = storyId;
                             if (JSONParser.updateStoryWithHNJson(storyBody, story, false)) {
                                 freshStories.add(story);
+                            } else {
+                                storyFetchErrors++;
                             }
+                        } else {
+                            storyFetchErrors++;
                         }
                     } catch (Exception e) {
-                        // Skip this story on error
+                        storyFetchErrors++;
                     }
                 }
             }
 
             if (freshStories.isEmpty()) {
+                Utils.log("WidgetFactory no stories fetched widgetId=" + appWidgetId);
                 postRefreshError();
+                terminalStatePosted = true;
                 return;
             }
 
-            // Swap in new data only on success — keeps stale data visible during fetch
+            Utils.log("WidgetFactory fetch complete widgetId=" + appWidgetId
+                    + " stories=" + freshStories.size()
+                    + " storyErrors=" + storyFetchErrors
+                    + " elapsedMs=" + (System.currentTimeMillis() - startedAt));
+
             stories.clear();
             stories.addAll(freshStories);
 
-            // Save last updated time only on successful fetch
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     .edit().putLong(KEY_LAST_UPDATED_PREFIX + appWidgetId, System.currentTimeMillis()).apply();
 
-        } catch (Exception e) {
-            e.printStackTrace();
+            setSkipFetch(context, appWidgetId, true);
+            postRefreshDone();
+            terminalStatePosted = true;
+        } catch (Throwable t) {
+            Utils.log("WidgetFactory onDataSetChanged failed widgetId=" + appWidgetId + " error=" + t);
             postRefreshError();
-            return;
+            terminalStatePosted = true;
+        } finally {
+            boolean refreshingNow = isRefreshing(context, appWidgetId);
+            Utils.log("WidgetFactory onDataSetChanged end widgetId=" + appWidgetId
+                    + " terminalPosted=" + terminalStatePosted
+                    + " refreshingNow=" + refreshingNow
+                    + " elapsedMs=" + (System.currentTimeMillis() - startedAt));
+            if (!terminalStatePosted && refreshingNow) {
+                Utils.log("WidgetFactory forcing refresh error widgetId=" + appWidgetId);
+                postRefreshError();
+            }
         }
-
-        // Set skip_fetch BEFORE posting the UI update. partiallyUpdateAppWidget triggers the
-        // framework to call onDataSetChanged again — the flag ensures it skips the fetch.
-        setSkipFetch(context, appWidgetId, true);
-        postRefreshDone();
     }
 
     private void postRefreshDone() {
         final int widgetId = appWidgetId;
-        mainHandler.post(() -> StoriesWidgetProvider.updateRefreshDone(context, widgetId));
+        Utils.log("WidgetFactory postRefreshDone queued widgetId=" + widgetId);
+        mainHandler.post(() -> {
+            Utils.log("WidgetFactory postRefreshDone run widgetId=" + widgetId);
+            StoriesWidgetProvider.updateRefreshDone(context, widgetId);
+        });
     }
 
     private void postRefreshError() {
         final int widgetId = appWidgetId;
-        mainHandler.post(() -> StoriesWidgetProvider.updateRefreshError(context, widgetId));
+        Utils.log("WidgetFactory postRefreshError queued widgetId=" + widgetId);
+        mainHandler.post(() -> {
+            Utils.log("WidgetFactory postRefreshError run widgetId=" + widgetId);
+            StoriesWidgetProvider.updateRefreshError(context, widgetId);
+        });
     }
 
     @Override
     public void onDestroy() {
+        Utils.log("WidgetFactory onDestroy widgetId=" + appWidgetId + " stories=" + stories.size());
         stories.clear();
     }
 
@@ -205,11 +264,11 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         if (story.url != null && story.isLink) {
             try {
                 String domain = Utils.getDomainName(story.url);
-                meta += " · " + domain;
+                meta += " \u00B7 " + domain;
             } catch (Exception ignored) {
             }
         }
-        meta += " · " + Utils.getTimeAgo(story.time);
+        meta += " \u00B7 " + Utils.getTimeAgo(story.time);
         views.setTextViewText(R.id.widget_story_meta, meta);
 
         // Fill-in intent for item click -> CommentsActivity
