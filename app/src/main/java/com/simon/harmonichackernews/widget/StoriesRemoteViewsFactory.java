@@ -77,7 +77,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
                 .edit().putBoolean(KEY_REFRESHING_PREFIX + appWidgetId, refreshing).apply();
     }
 
-    private static boolean isRefreshing(Context context, int appWidgetId) {
+    static boolean isRefreshing(Context context, int appWidgetId) {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .getBoolean(KEY_REFRESHING_PREFIX + appWidgetId, false);
     }
@@ -110,6 +110,8 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
 
             List<Story> freshStories = new ArrayList<>();
             int storyFetchErrors = 0;
+            int visibleStoryCount = WidgetConfigActivity.getStoryCount(context, appWidgetId);
+            int fetchStoryCount = WidgetConfigActivity.getFetchStoryCount(context, appWidgetId);
 
             OkHttpClient client = NetworkComponent.getOkHttpClientInstance()
                     .newBuilder()
@@ -133,12 +135,12 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
 
                 String idsBody = idsResponse.body().string();
                 JSONArray idsArray = new JSONArray(idsBody);
-                int storyCount = WidgetConfigActivity.getStoryCount(context, appWidgetId);
-                int count = Math.min(idsArray.length(), storyCount);
+                int count = Math.min(idsArray.length(), fetchStoryCount);
 
                 Utils.log("WidgetFactory ids fetched widgetId=" + appWidgetId
                         + " totalIds=" + idsArray.length()
-                        + " configuredCount=" + storyCount
+                        + " visibleCount=" + visibleStoryCount
+                        + " fetchTarget=" + fetchStoryCount
                         + " fetchCount=" + count);
 
                 for (int i = 0; i < count; i++) {
@@ -186,6 +188,10 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
                     + " stories=" + freshStories.size()
                     + " storyErrors=" + storyFetchErrors
                     + " elapsedMs=" + (System.currentTimeMillis() - startedAt));
+
+            if (freshStories.size() > visibleStoryCount) {
+                freshStories = new ArrayList<>(freshStories.subList(0, visibleStoryCount));
+            }
 
             stories.clear();
             stories.addAll(freshStories);

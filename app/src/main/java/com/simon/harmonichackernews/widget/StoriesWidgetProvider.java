@@ -25,7 +25,7 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         Utils.log("WidgetProvider onUpdate count=" + (appWidgetIds == null ? 0 : appWidgetIds.length));
         for (int appWidgetId : appWidgetIds) {
-            updateWidget(context, appWidgetManager, appWidgetId);
+            refreshWidgetSilently(context, appWidgetManager, appWidgetId);
         }
     }
 
@@ -86,6 +86,27 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
 
         // Trigger data refresh — factory will call updateRefreshDone() when finished
         Utils.log("WidgetProvider updateWidget widgetId=" + appWidgetId + " notify data changed");
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_stories_list);
+    }
+
+    private static void refreshWidgetSilently(Context context, AppWidgetManager appWidgetManager,
+                                              int appWidgetId) {
+        boolean refreshing = StoriesRemoteViewsFactory.isRefreshing(context, appWidgetId);
+        Utils.log("WidgetProvider refreshWidgetSilently widgetId=" + appWidgetId
+                + " refreshing=" + refreshing);
+        StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false);
+
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
+        bindWidgetCommonViews(context, views, appWidgetId);
+        views.setViewVisibility(R.id.widget_refresh_button, refreshing ? View.GONE : View.VISIBLE);
+        views.setViewVisibility(R.id.widget_refresh_progress, refreshing ? View.VISIBLE : View.GONE);
+        views.setTextViewText(R.id.widget_updated_text, formatUpdatedTime(context, appWidgetId));
+        if (refreshing) {
+            views.setTextViewText(R.id.widget_empty_text, "Loading stories\u2026");
+        }
+
+        appWidgetManager.updateAppWidget(appWidgetId, views);
+        Utils.log("WidgetProvider refreshWidgetSilently widgetId=" + appWidgetId + " notify data changed");
         appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_stories_list);
     }
 

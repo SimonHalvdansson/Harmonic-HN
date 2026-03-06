@@ -124,7 +124,7 @@
                     android:layout_weight="1"
                     android:checkable="true"
                     android:fontFamily="@font/product_sans_bold"
-                    android:text="10"
+                    android:text="8"
                     android:textAllCaps="false" />
 
                 <com.google.android.material.button.MaterialButton
@@ -135,7 +135,7 @@
                     android:layout_weight="1"
                     android:checkable="true"
                     android:fontFamily="@font/product_sans_bold"
-                    android:text="20"
+                    android:text="16"
                     android:textAllCaps="false" />
 
                 <com.google.android.material.button.MaterialButton
@@ -146,18 +146,7 @@
                     android:layout_weight="1"
                     android:checkable="true"
                     android:fontFamily="@font/product_sans_bold"
-                    android:text="30"
-                    android:textAllCaps="false" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/widget_config_count_40"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:checkable="true"
-                    android:fontFamily="@font/product_sans_bold"
-                    android:text="40"
+                    android:text="24"
                     android:textAllCaps="false" />
 
             </com.google.android.material.button.MaterialButtonToggleGroup>
