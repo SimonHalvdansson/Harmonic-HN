@@ -1,0 +1,55 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        app:title="Bookmarks"
+        android:layout="@layout/preference_category">
+
+        <Preference
+            app:singleLineTitle="false"
+            app:key="pref_export_bookmarks"
+            app:title="Export bookmarks"
+            app:summary="Exports to text file where first number of each line is post ID"
+            app:icon="@drawable/ic_action_bookmark_border" />
+
+        <Preference
+            app:singleLineTitle="false"
+            app:key="pref_import_bookmarks"
+            app:title="Import bookmarks"
+            app:summary="Overwrites current bookmarks"
+            app:icon="@drawable/ic_action_bookmark_filled" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="History"
+        android:layout="@layout/preference_category">
+
+        <Preference
+            app:singleLineTitle="false"
+            app:key="pref_clear_clicked_stories"
+            app:title="Clear clicked stories"
+            app:icon="@drawable/ic_action_clear" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="Other"
+        android:layout="@layout/preference_category">
+
+        <Preference
+            app:singleLineTitle="false"
+            app:key="pref_open_hn_links_in_harmonic"
+            app:icon="@drawable/ic_action_browser"
+            app:title="Open Hacker News links in Harmonic" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_show_changelog"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_update"
+            app:title="Show update changelogs" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

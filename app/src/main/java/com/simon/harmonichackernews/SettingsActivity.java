@@ -1,53 +1,66 @@
 package com.simon.harmonichackernews;
 
-import android.app.Activity;
-import android.appwidget.AppWidgetManager;
-import android.content.ComponentName;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.Settings;
-import android.text.TextUtils;
-import android.text.format.DateFormat;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
-
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.snackbar.Snackbar;
-import com.google.android.material.timepicker.MaterialTimePicker;
-import com.google.android.material.timepicker.TimeFormat;
-import com.simon.harmonichackernews.data.Bookmark;
-import com.simon.harmonichackernews.utils.HistoriesUtils;
-import com.simon.harmonichackernews.utils.SettingsUtils;
-import com.simon.harmonichackernews.utils.ThemeUtils;
-import com.simon.harmonichackernews.utils.Utils;
-import com.simon.harmonichackernews.widget.StoriesRemoteViewsFactory;
-import com.simon.harmonichackernews.widget.StoriesWidgetProvider;
-
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
+import android.widget.LinearLayout;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
-import androidx.recyclerview.widget.RecyclerView;
+import androidx.window.layout.WindowMetrics;
+import androidx.window.layout.WindowMetricsCalculator;
 
-import static com.simon.harmonichackernews.utils.UtilsKt.KEY_SHARED_PREFERENCES_HISTORIES;
+import com.simon.harmonichackernews.settings.AppearancePreferenceFragment;
+import com.simon.harmonichackernews.settings.CommentsPreferenceFragment;
+import com.simon.harmonichackernews.settings.DataStoragePreferenceFragment;
+import com.simon.harmonichackernews.settings.FiltersTagsPreferenceFragment;
+import com.simon.harmonichackernews.settings.SettingsCallback;
+import com.simon.harmonichackernews.settings.SettingsHeaderFragment;
+import com.simon.harmonichackernews.settings.StoriesPreferenceFragment;
+import com.simon.harmonichackernews.settings.WebLinksPreferenceFragment;
+import com.simon.harmonichackernews.utils.ThemeUtils;
 
-public class SettingsActivity extends AppCompatActivity {
+import java.util.HashMap;
+import java.util.Map;
+
+public class SettingsActivity extends AppCompatActivity implements
+        PreferenceFragmentCompat.OnPreferenceStartFragmentCallback,
+        SettingsCallback {
+
+    private static final int TWO_PANE_MIN_WIDTH_DP = 600;
+    private static final int TWO_PANE_SPACER_DP = 16;
+    private static final int TWO_PANE_LIST_WEIGHT = 2;
+    private static final int TWO_PANE_DETAIL_WEIGHT = 3;
+
+    private static final String STATE_DETAIL_CLASS = "state_detail_class";
+    private static final String STATE_DETAIL_KEY = "state_detail_key";
+    private static final String STATE_NEEDS_RESTART = "state_needs_restart";
+    private static final String STATE_TWO_PANE = "state_two_pane";
+
+    private static final Map<String, String> FRAGMENT_TO_KEY = new HashMap<>();
+    static {
+        FRAGMENT_TO_KEY.put(AppearancePreferenceFragment.class.getName(), SettingsHeaderFragment.DEFAULT_KEY);
+        FRAGMENT_TO_KEY.put(StoriesPreferenceFragment.class.getName(), "pref_header_stories");
+        FRAGMENT_TO_KEY.put(WebLinksPreferenceFragment.class.getName(), "pref_header_web_links");
+        FRAGMENT_TO_KEY.put(CommentsPreferenceFragment.class.getName(), "pref_header_comments");
+        FRAGMENT_TO_KEY.put(FiltersTagsPreferenceFragment.class.getName(), "pref_header_filters_tags");
+        FRAGMENT_TO_KEY.put(DataStoragePreferenceFragment.class.getName(), "pref_header_data_storage");
+    }
 
     private static boolean requestFullRestart = false;
     public final static String EXTRA_REQUEST_RESTART = "EXTRA_REQUEST_RESTART";
 
+    private boolean needsRestart = false;
+    private boolean isTwoPane = false;
+    private String currentDetailClassName = AppearancePreferenceFragment.class.getName();
+    private String currentDetailKey = SettingsHeaderFragment.DEFAULT_KEY;
     private OnBackPressedCallback backPressedCallback;
 
     @Override
@@ -60,425 +73,229 @@ public class SettingsActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_settings);
 
-        updatePadding();
+        if (savedInstanceState != null) {
+            currentDetailClassName = savedInstanceState.getString(STATE_DETAIL_CLASS,
+                    AppearancePreferenceFragment.class.getName());
+            currentDetailKey = savedInstanceState.getString(STATE_DETAIL_KEY,
+                    SettingsHeaderFragment.DEFAULT_KEY);
+            needsRestart = savedInstanceState.getBoolean(STATE_NEEDS_RESTART, false);
+            isTwoPane = savedInstanceState.getBoolean(STATE_TWO_PANE, false);
+        }
 
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.settings, new SettingsFragment())
-                .commit();
+        setupTwoPane();
 
-        backPressedCallback = new OnBackPressedCallback(true) {
+        if (savedInstanceState == null) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.settings, new SettingsHeaderFragment())
+                    .commit();
+
+            if (isTwoPane) {
+                Fragment detail = getSupportFragmentManager().getFragmentFactory()
+                        .instantiate(getClassLoader(), currentDetailClassName);
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.settings_detail, detail)
+                        .commit();
+            }
+        } else if (isTwoPane) {
+            // Restore header selection highlight after process death
+            getSupportFragmentManager().executePendingTransactions();
+            Fragment header = getSupportFragmentManager().findFragmentById(R.id.settings);
+            if (header instanceof SettingsHeaderFragment) {
+                ((SettingsHeaderFragment) header).setSelectedKey(currentDetailKey);
+            }
+        }
+
+        backPressedCallback = new OnBackPressedCallback(false) {
             @Override
             public void handleOnBackPressed() {
-                handleExit();
+                FragmentManager fm = getSupportFragmentManager();
+                if (fm.getBackStackEntryCount() > 0) {
+                    // Pop sub-screen first, then re-evaluate
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                    setEnabled(needsRestart);
+                } else if (needsRestart) {
+                    handleExit();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
             }
         };
         getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
-        backPressedCallback.setEnabled(false);
 
         if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_REQUEST_RESTART, false)) {
+            needsRestart = true;
+        }
+
+        if (needsRestart) {
             backPressedCallback.setEnabled(true);
         }
     }
 
-    public static class SettingsFragment extends PreferenceFragmentCompat {
+    private void setupTwoPane() {
+        boolean wasTwoPane = isTwoPane;
 
-        private static final int WRITE_REQUEST_CODE = 101;
-        private static final int READ_REQUEST_CODE = 102;
+        WindowMetrics metrics = WindowMetricsCalculator.getOrCreate()
+                .computeCurrentWindowMetrics(this);
+        float density = getResources().getDisplayMetrics().density;
+        float widthDp = metrics.getBounds().width() / density;
 
-        public SettingsFragment() {
+        View root = findViewById(R.id.settings_linear_layout);
+        View settingsPane = findViewById(R.id.settings);
+        View detailPane = findViewById(R.id.settings_detail);
+        View spacer = findViewById(R.id.settings_pane_spacer);
 
+        if (widthDp >= TWO_PANE_MIN_WIDTH_DP && detailPane != null) {
+            isTwoPane = true;
+
+            detailPane.setVisibility(View.VISIBLE);
+            detailPane.setLayoutParams(new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, TWO_PANE_DETAIL_WEIGHT));
+
+            if (spacer != null) {
+                spacer.setVisibility(View.VISIBLE);
+                ViewGroup.LayoutParams spacerParams = spacer.getLayoutParams();
+                spacerParams.width = Math.round(TWO_PANE_SPACER_DP * density);
+                spacer.setLayoutParams(spacerParams);
+            }
+
+            settingsPane.setLayoutParams(new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, TWO_PANE_LIST_WEIGHT));
+
+            int padding = getResources().getDimensionPixelSize(R.dimen.extra_pane_padding);
+            root.setPadding(padding, 0, padding, 0);
+
+        } else {
+            isTwoPane = false;
+
+            if (detailPane != null) {
+                detailPane.setVisibility(View.GONE);
+            }
+            if (spacer != null) {
+                spacer.setVisibility(View.GONE);
+            }
+
+            settingsPane.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+            int padding = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
+            root.setPadding(padding, 0, padding, 0);
         }
 
-        @Override
-        public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-            setPreferencesFromResource(R.xml.root_preferences, rootKey);
-
-            updateTimedRangeSummary();
-            updateUserTagsSubtitle();
-
-            findPreference("pref_special_nighttime").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-                    changePrefStatus(findPreference("pref_theme_timed_range"), (boolean) newValue);
-                    changePrefStatus(findPreference("pref_theme_nighttime"), (boolean) newValue);
-                    return true;
-                }
-            });
-
-            findPreference("pref_default_story_type").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-                    if (getActivity() != null && getActivity() instanceof SettingsActivity) {
-                        ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
+        // Handle fragment migration on fold/unfold
+        Fragment existingFragment = getSupportFragmentManager().findFragmentById(R.id.settings);
+        if (existingFragment != null && wasTwoPane != isTwoPane) {
+            FragmentManager fm = getSupportFragmentManager();
+            if (isTwoPane) {
+                // Single-pane -> two-pane: remember what the user was viewing
+                Fragment currentSingle = fm.findFragmentById(R.id.settings);
+                if (currentSingle != null && !(currentSingle instanceof SettingsHeaderFragment)) {
+                    currentDetailClassName = currentSingle.getClass().getName();
+                    String key = FRAGMENT_TO_KEY.get(currentDetailClassName);
+                    if (key != null) {
+                        currentDetailKey = key;
                     }
-                    return true;
                 }
-            });
 
-            findPreference("pref_compact_view").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-                    changePrefStatus(findPreference("pref_show_points"), !(boolean) newValue);
-                    changePrefStatus(findPreference("pref_show_comments_count"), !(boolean) newValue);
-                    changePrefStatus(findPreference("pref_thumbnails"), !(boolean) newValue);
-                    changePrefStatus(findPreference("pref_favicon_provider"), !(boolean) newValue);
+                fm.popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
 
-                    return true;
+                Fragment detail = fm.getFragmentFactory()
+                        .instantiate(getClassLoader(), currentDetailClassName);
+                fm.beginTransaction()
+                        .replace(R.id.settings_detail, detail)
+                        .commit();
+
+                // Update header selection
+                fm.executePendingTransactions();
+                Fragment header = fm.findFragmentById(R.id.settings);
+                if (header instanceof SettingsHeaderFragment) {
+                    ((SettingsHeaderFragment) header).setSelectedKey(currentDetailKey);
                 }
-            });
-
-            findPreference("pref_foldable_support").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-                    if (getActivity() != null && getActivity() instanceof SettingsActivity) {
-                        ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
-                    }
-                    requestFullRestart = true;
-                    return true;
-                }
-            });
-
-            findPreference("pref_webview").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-
-                    changePrefStatus(findPreference("pref_preload_webview"), (boolean) newValue);
-                    changePrefStatus(findPreference("pref_webview_match_theme"), (boolean) newValue);
-                    changePrefStatus(findPreference("pref_webview_adblock"), (boolean) newValue);
-                    changePrefStatus(findPreference("pref_close_webview_on_back"), (boolean) newValue);
-
-                    return true;
-                }
-            });
-            findPreference("pref_redirect_nitter").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-
-                    changePrefStatus(findPreference("pref_link_preview_x"), (boolean) newValue);
-                    findPreference("pref_link_preview_x").setSummary((boolean) newValue ? "" : "Requires Nitter redirect to be active");
-
-                    return true;
-                }
-            });
-
-
-
-            Preference openHnLinksPreference = findPreference("pref_open_hn_links_in_harmonic");
-            openHnLinksPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(@NonNull Preference preference) {
-                    new MaterialAlertDialogBuilder(requireContext())
-                            .setMessage("Since Harmonic does not own the domain news.ycombinator.com intercepting links needs to be enabled by the user manually.")
-                            .setNeutralButton("Go to settings", (dialog, which) -> {
-                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                intent.setData(Uri.fromParts("package", requireContext().getPackageName(), null));
-                                startActivity(intent);
-                                Toast.makeText(requireContext(), "The option should be under \"Open by default\"", Toast.LENGTH_LONG).show();
-                            })
-                            .show();
-                    return true;
-                }
-            });
-
-            boolean redirectNitter = SettingsUtils.shouldRedirectNitter(getContext());
-
-            findPreference("pref_link_preview_x").setSummary(redirectNitter ? "" : "Requires Nitter redirect to be active");
-            changePrefStatus(findPreference("pref_link_preview_x"), redirectNitter);
-
-            boolean integratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
-
-            changePrefStatus(findPreference("pref_preload_webview"), integratedWebview);
-            changePrefStatus(findPreference("pref_webview_match_theme"), integratedWebview);
-            changePrefStatus(findPreference("pref_webview_adblock"), integratedWebview);
-            changePrefStatus(findPreference("pref_close_webview_on_back"), integratedWebview);
-
-            boolean compact = SettingsUtils.shouldUseCompactView(getContext());
-
-            changePrefStatus(findPreference("pref_show_points"), !compact);
-            changePrefStatus(findPreference("pref_show_comments_count"), !compact);
-            changePrefStatus(findPreference("pref_thumbnails"), !compact);
-
-            boolean specialNighttime = SettingsUtils.shouldUseSpecialNighttimeTheme(getContext());
-
-            changePrefStatus(findPreference("pref_theme_timed_range"), specialNighttime);
-            changePrefStatus(findPreference("pref_theme_nighttime"), specialNighttime);
-            if (SettingsUtils.shouldShowThumbnails(getContext())) {
-                changePrefStatus(findPreference("pref_favicon_provider"), !compact);
             } else {
-                changePrefStatus(findPreference("pref_favicon_provider"), false);
-            }
-
-            findPreference("pref_thumbnails").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-                    changePrefStatus(findPreference("pref_favicon_provider"), (boolean) newValue);
-                    return true;
+                // Two-pane -> single-pane: move detail into main pane
+                Fragment detailFragment = fm.findFragmentById(R.id.settings_detail);
+                if (detailFragment != null) {
+                    Fragment detail = fm.getFragmentFactory()
+                            .instantiate(getClassLoader(), currentDetailClassName);
+                    fm.beginTransaction()
+                            .remove(detailFragment)
+                            .replace(R.id.settings, detail)
+                            .addToBackStack(null)
+                            .commit();
                 }
-            });
-
-            findPreference("pref_transparent_status_bar").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-                    Intent intent = new Intent(getContext(), SettingsActivity.class);
-                    intent.putExtra(EXTRA_REQUEST_RESTART, true);
-                    requireContext().startActivity(intent);
-                    requireActivity().finish();
-                    return true;
-                }
-            });
-
-            findPreference("pref_show_index").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-                    // Re-render widget list items to show/hide indices (no network fetch)
-                    AppWidgetManager awm = AppWidgetManager.getInstance(requireContext());
-                    int[] ids = awm.getAppWidgetIds(
-                            new ComponentName(requireContext(), StoriesWidgetProvider.class));
-                    if (ids.length > 0) {
-                        StoriesRemoteViewsFactory.setSkipFetchAll(requireContext(), true);
-                        awm.notifyAppWidgetViewDataChanged(ids, R.id.widget_stories_list);
-                    }
-                    return true;
-                }
-            });
-
-            findPreference("pref_about").setSummary("Version " + BuildConfig.VERSION_NAME);
-
-            final Fragment f = this;
-
-            findPreference("pref_theme").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-                    Intent intent = new Intent(getContext(), SettingsActivity.class);
-                    intent.putExtra(EXTRA_REQUEST_RESTART, true);
-                    requireContext().startActivity(intent);
-                    requireActivity().finish();
-                    return true;
-                }
-            });
-
-            findPreference("pref_theme_timed_range").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(@NonNull Preference preference) {
-                    int[] nighttimeHours = Utils.getNighttimeHours(getContext());
-
-                    MaterialTimePicker fromTimePicker = new MaterialTimePicker.Builder()
-                            .setTimeFormat(DateFormat.is24HourFormat(getContext()) ? TimeFormat.CLOCK_24H : TimeFormat.CLOCK_12H)
-                            .setHour(nighttimeHours[0])
-                            .setMinute(nighttimeHours[1])
-                            .setTitleText("From:")
-                            .build();
-
-                    fromTimePicker.addOnPositiveButtonClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View view) {
-                            MaterialTimePicker toTimePicker = new MaterialTimePicker.Builder()
-                                    .setTimeFormat(DateFormat.is24HourFormat(getContext()) ? TimeFormat.CLOCK_24H : TimeFormat.CLOCK_12H)
-                                    .setHour(nighttimeHours[2])
-                                    .setMinute(nighttimeHours[3])
-                                    .setTitleText("To:")
-                                    .build();
-                            toTimePicker.addOnPositiveButtonClickListener(new View.OnClickListener() {
-                                @Override
-                                public void onClick(View view) {
-                                    Utils.setNighttimeHours(fromTimePicker.getHour(), fromTimePicker.getMinute(), toTimePicker.getHour(), toTimePicker.getMinute(), getContext());
-                                    updateTimedRangeSummary();
-                                }
-                            });
-                            toTimePicker.show(getParentFragmentManager(), "to_picker_tag");
-                        }
-                    });
-                    fromTimePicker.show(getParentFragmentManager(), "from_picker_tag");
-                    return false;
-                }
-            });
-
-            findPreference("pref_export_bookmarks").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(@NonNull Preference preference) {
-
-                    String textToSave = SettingsUtils.readStringFromSharedPreferences(requireContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS);
-
-                    if (TextUtils.isEmpty(textToSave)) {
-                        Snackbar.make(
-                                getView(),
-                                "No bookmarks to export",
-                                Snackbar.LENGTH_SHORT).show();
-                        return false;
-                    }
-
-                    // when you create document, you need to add Intent.ACTION_CREATE_DOCUMENT
-                    Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-                    intent.addCategory(Intent.CATEGORY_OPENABLE);
-
-                    intent.setType("text/plain");
-
-                    Calendar cal = Calendar.getInstance();
-                    intent.putExtra(Intent.EXTRA_TITLE, "HarmonicBookmarks" + cal.get(Calendar.YEAR) + "-" + (cal.get(Calendar.MONTH) + 1) + "-" + cal.get(Calendar.DAY_OF_MONTH) + ".txt");
-
-                    startActivityForResult(intent, WRITE_REQUEST_CODE);
-                    return false;
-                }
-            });
-
-            findPreference("pref_import_bookmarks").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(@NonNull Preference preference) {
-                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                    intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    intent.setType("text/plain");
-
-                    startActivityForResult(intent, READ_REQUEST_CODE);
-
-                    return false;
-                }
-            });
-
-            findPreference("pref_manage_user_tags").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(@NonNull Preference preference) {
-                    ManageUserTagsDialogFragment.showManageUserTagsDialog(getParentFragmentManager(), new Runnable() {
-                        @Override
-                        public void run() {
-                            updateUserTagsSubtitle();
-                        }
-                    });
-                    return false;
-                }
-            });
-
-            findPreference("pref_clear_clicked_stories").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(@NonNull Preference preference) {
-                    int oldCount = HistoriesUtils.INSTANCE.size();
-
-                    SettingsUtils.saveStringToSharedPreferences(getContext(), KEY_SHARED_PREFERENCES_HISTORIES, "");
-                    if (getActivity() != null && getActivity() instanceof SettingsActivity) {
-                        ((SettingsActivity) getActivity()).backPressedCallback.setEnabled(true);
-                    }
-
-                    Snackbar snackbar = Snackbar.make(
-                            requireView(),
-                            "Cleared " + oldCount + (oldCount == 1 ? " entry" : " entries"),
-                            Snackbar.LENGTH_SHORT);
-
-                    snackbar.show();
-
-                    return false;
-                }
-            });
-
-            findPreference("pref_about").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-                @Override
-                public boolean onPreferenceClick(@NonNull Preference preference) {
-                    startActivity(new Intent(getContext(), AboutActivity.class));
-
-                    return false;
-                }
-            });
-        }
-
-        @Override
-        public void onActivityResult(int requestCode, int resultCode, Intent data) {
-            super.onActivityResult(requestCode, resultCode, data);
-
-            if (resultCode == Activity.RESULT_OK && getContext() != null && data != null && data.getData() != null) {
-                if (requestCode == WRITE_REQUEST_CODE) {
-                    try {
-                        Utils.writeInFile(
-                                getContext(),
-                                data.getData(),
-                                SettingsUtils.readStringFromSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS));
-                    } catch (Exception e) {
-                        Toast.makeText(getContext(), "Write error", Toast.LENGTH_SHORT).show();
-                        e.printStackTrace();
-                    }
-                } else if (requestCode == READ_REQUEST_CODE) {
-                    try {
-                        String content = Utils.readFileContent(getContext(), data.getData());
-                        ArrayList<Bookmark> bookmarks = Utils.loadBookmarks(true, content);
-                        if (!bookmarks.isEmpty()) {
-                            // save the new bookmarks
-                            SettingsUtils.saveStringToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS, content);
-                            Toast.makeText(getContext(), "Loaded " + bookmarks.size() + " bookmarks", Toast.LENGTH_SHORT).show();
-                        } else {
-                            Toast.makeText(getContext(), "File contained no bookmarks", Toast.LENGTH_SHORT).show();
-                        }
-                    } catch (Exception e) {
-                        Toast.makeText(getContext(), "Read error", Toast.LENGTH_SHORT).show();
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-
-        @Override
-        public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-            super.onViewCreated(view, savedInstanceState);
-            setDivider(null);
-        }
-
-        @Override
-        public void onResume() {
-            super.onResume();
-            updateUserTagsSubtitle();
-        }
-
-        @NonNull
-        @Override
-        public RecyclerView onCreateRecyclerView(@NonNull LayoutInflater inflater, @NonNull ViewGroup parent, @Nullable Bundle savedInstanceState) {
-            RecyclerView recycler = super.onCreateRecyclerView(inflater, parent, savedInstanceState);
-            recycler.setFitsSystemWindows(true);
-            return recycler;
-        }
-
-        private void updateTimedRangeSummary() {
-            int[] nighttimeHours = Utils.getNighttimeHours(getContext());
-
-            if (DateFormat.is24HourFormat(getContext())) {
-                findPreference("pref_theme_timed_range").setSummary((nighttimeHours[0] < 10 ? "0" : "") + nighttimeHours[0] + ":" + (nighttimeHours[1] < 10 ? "0" : "") + nighttimeHours[1] + " - " + (nighttimeHours[2] < 10 ? "0" : "") + nighttimeHours[2] + ":" + (nighttimeHours[3] < 10 ? "0" : "") + nighttimeHours[3]);
-
-            } else {
-                SimpleDateFormat df = new SimpleDateFormat("h:mm a");
-                Date dateFrom = new Date(0, 0, 0, nighttimeHours[0], nighttimeHours[1]);
-                Date dateTo = new Date(0, 0, 0, nighttimeHours[2], nighttimeHours[3]);
-
-                findPreference("pref_theme_timed_range").setSummary(df.format(dateFrom) + " - " + df.format(dateTo));
-            }
-        }
-
-        private void updateUserTagsSubtitle() {
-            Preference pref = findPreference("pref_manage_user_tags");
-            if (pref != null && getContext() != null) {
-                int count = Utils.getUserTags(getContext()).size();
-                if (count > 0) {
-                    pref.setSummary(count + " user" + (count == 1 ? "" : "s") + " with tag" + (count == 1 ? "" : "s"));
-                    changePrefStatus(pref, true);
-                } else {
-                    pref.setSummary("");
-                    changePrefStatus(pref, false);
-                }
-            }
-        }
-
-        private void changePrefStatus(Preference pref, boolean newStatus) {
-            if (pref != null) {
-                pref.setEnabled(newStatus);
-                pref.getIcon().setAlpha(newStatus ? 255 : 120);
             }
         }
     }
 
     @Override
-    public void onConfigurationChanged(@NonNull Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        updatePadding();
+    public boolean onPreferenceStartFragment(@NonNull PreferenceFragmentCompat caller, @NonNull Preference pref) {
+        String fragmentClassName = pref.getFragment();
+        if (fragmentClassName == null) {
+            return false;
+        }
+
+        currentDetailClassName = fragmentClassName;
+        currentDetailKey = pref.getKey();
+
+        Fragment fragment = getSupportFragmentManager().getFragmentFactory()
+                .instantiate(getClassLoader(), fragmentClassName);
+        fragment.setArguments(pref.getExtras());
+
+        if (isTwoPane) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.settings_detail, fragment)
+                    .commit();
+
+            Fragment headerFragment = getSupportFragmentManager().findFragmentById(R.id.settings);
+            if (headerFragment instanceof SettingsHeaderFragment) {
+                ((SettingsHeaderFragment) headerFragment).setSelectedKey(pref.getKey());
+            }
+        } else {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.settings, fragment)
+                    .addToBackStack(null)
+                    .commit();
+        }
+
+        return true;
     }
 
-    private void updatePadding() {
-        int extraPadding = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
-        findViewById(R.id.settings_linear_layout).setPadding(extraPadding, 0, extraPadding, 0);
+    @Override
+    public void onRequestRestart() {
+        needsRestart = true;
+        backPressedCallback.setEnabled(true);
+    }
+
+    @Override
+    public void onRequestFullRestart() {
+        needsRestart = true;
+        requestFullRestart = true;
+        backPressedCallback.setEnabled(true);
+    }
+
+    @Override
+    public boolean isTwoPane() {
+        return isTwoPane;
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        setupTwoPane();
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(STATE_DETAIL_CLASS, currentDetailClassName);
+        outState.putString(STATE_DETAIL_KEY, currentDetailKey);
+        outState.putBoolean(STATE_NEEDS_RESTART, needsRestart);
+        outState.putBoolean(STATE_TWO_PANE, isTwoPane);
     }
 
     private void handleExit() {
