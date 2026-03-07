@@ -74,7 +74,6 @@ public class SubmissionsActivity extends AppCompatActivity {
                 getIntent().getStringExtra(KEY_USER),
                 -1);
 
-        adapter.setOnRefreshListener(this::loadSubmissions);
         adapter.setOnCommentClickListener(new StoryRecyclerViewAdapter.ClickListener() {
             @Override
             public void onItemClick(int position) {
@@ -172,11 +171,7 @@ public class SubmissionsActivity extends AppCompatActivity {
 
                             submissions.addAll(parsedStories);
 
-                            adapter.loadingFailed = false;
-                            adapter.loadingFailedServerError = false;
-
                             adapter.notifyItemRangeInserted(1, submissions.size());
-                            adapter.notifyItemChanged(0);
                         }
 
                         @Override
@@ -187,14 +182,8 @@ public class SubmissionsActivity extends AppCompatActivity {
                     });
 
                 }, error -> {
-            if (error.networkResponse != null && error.networkResponse.statusCode == 404) {
-                adapter.loadingFailedServerError = true;
-            }
-
             error.printStackTrace();
             swipeRefreshLayout.setRefreshing(false);
-            adapter.loadingFailed = true;
-            adapter.notifyItemChanged(0);
         });
 
         queue.add(stringRequest);

@@ -4,12 +4,13 @@
     android:id="@+id/stories_header_container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingTop="38dp"
-    android:layout_marginStart="16dp"
-    android:layout_marginEnd="16dp"
     android:orientation="vertical"
-    android:paddingBottom="24dp">
-    <!-- Above paddings are not respected, set in code -->
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="24dp"
+    android:background="?android:attr/windowBackground"
+    app:layout_scrollFlags="scroll|enterAlways|snap">
+    <!-- paddingTop applied dynamically via window insets -->
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -223,5 +224,12 @@
             android:text="Show cached stories" />
 
     </LinearLayout>
+
+    <View
+        android:id="@+id/stories_header_separator"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:alpha="0"
+        android:background="?android:attr/listDivider" />
 
 </LinearLayout>
