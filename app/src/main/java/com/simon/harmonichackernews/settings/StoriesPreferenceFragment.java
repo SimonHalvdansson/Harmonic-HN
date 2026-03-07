@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.settings;
 
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -7,6 +9,8 @@ import androidx.preference.Preference;
 
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.widget.StoriesRemoteViewsFactory;
+import com.simon.harmonichackernews.widget.StoriesWidgetProvider;
 
 public class StoriesPreferenceFragment extends BaseSettingsFragment {
 
@@ -41,6 +45,18 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
 
         findPreference("pref_thumbnails").setOnPreferenceChangeListener((preference, newValue) -> {
             changePrefStatus(findPreference("pref_favicon_provider"), (boolean) newValue);
+            return true;
+        });
+
+        findPreference("pref_show_index").setOnPreferenceChangeListener((preference, newValue) -> {
+            // Re-render widget list items to show/hide indices (no network fetch)
+            AppWidgetManager awm = AppWidgetManager.getInstance(requireContext());
+            int[] ids = awm.getAppWidgetIds(
+                    new ComponentName(requireContext(), StoriesWidgetProvider.class));
+            if (ids.length > 0) {
+                StoriesRemoteViewsFactory.setSkipFetchAll(requireContext(), true);
+                awm.notifyAppWidgetViewDataChanged(ids, R.id.widget_stories_list);
+            }
             return true;
         });
 

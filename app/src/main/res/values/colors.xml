@@ -89,4 +89,14 @@
     <color name="material_you_neutral_variant50">#70777C</color>
 
     <color name="splash_screen_background">@color/material_you_neutral_50</color>
+
+    <!-- Widget colors (light mode defaults) -->
+    <color name="widget_background_surface">@color/material_you_neutral_50</color>
+    <color name="widget_title">@color/lightStoryColorNormal</color>
+    <color name="widget_secondary_text">@color/lightTextColorDisabled</color>
+    <color name="widget_story_index">@color/lightTextColorDisabled</color>
+    <color name="widget_story_title">@color/lightStoryColorNormal</color>
+    <color name="widget_story_meta">@color/lightTextColorDefault</color>
+    <color name="widget_drawable_color">@color/lightDrawableColor</color>
+
 </resources>

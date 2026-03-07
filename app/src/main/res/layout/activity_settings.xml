@@ -2,7 +2,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/settings_linear_layout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="horizontal">
 
     <FrameLayout
         android:id="@+id/settings"

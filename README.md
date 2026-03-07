@@ -10,11 +10,15 @@ Harmonic for Hacker News is a Hacker News client for Android which is feature ri
 
 This has been my personal side project since 2020 and since starting my PhD in 2021 the time I have to dedicate to Harmonic has decreased. My personal philosophy on side projects is that the most important thing is building something that is actually shipped. Since much of my knowledge on building Android apps is ~10 years old, Harmonic does not use Kotlin or the latest Android API's and is probably not the easiest app to dig into the source code of. However, it is shipped, and the user experience stays top notch.
 
-# Contributing
+## Contributing
 
-If you would like to see a change in Harmonic, feel free to open an issue or create a PR. Historically, most PRs are merged and I might make some design changes to make sure Harmonic stays consistent. Try to stay within the general code style of the codebase but I make no claim that the current state is holy by any means. Harmonic is meant to be beautiful from the front more so than the back and user experience is king. With that said, PRs which clean up the code or improve structure are very welcome as well. When a PR adds a new user-facing feature, I will add that feature to the changelog after merging. If you do NOT want your name there, let me know by e.g., writing so in the PR. 
+If you would like to see a change in Harmonic, feel free to open an issue or create a PR. Historically, most PRs are merged and I might make some design changes to make sure Harmonic stays consistent. Try to stay within the general code style of the codebase but I make no claim that the current state is holy by any means. Harmonic is meant to be beautiful from the front more so than the back and user experience is king. With that said, PRs which clean up the code or improve structure are very welcome as well. When a PR adds a new user-facing feature, I will add that feature to the changelog after merging. If you do NOT want your name there, let me know by e.g., writing so in the PR.
 
-# Features
+### AI-aided PRs
+
+Using your favorite LLM workflow to create PRs is completely fine - anything that gets the job done. As always, still build the app (this should be hassle-free) and try out your changes to make sure they work before before submitting a PR.
+
+## Features
 
 * Basic account functionality: log in, vote, comment, and submit
 * Material 3 Expressive design with some nice animations

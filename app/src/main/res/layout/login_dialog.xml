@@ -17,7 +17,7 @@
         android:orientation="vertical">
 
         <TextView
-            android:textSize="29sp"
+            android:textSize="27sp"
             android:textStyle="bold"
             android:textColor="?attr/storyColorNormal"
             android:text="Log in to Hacker News"
