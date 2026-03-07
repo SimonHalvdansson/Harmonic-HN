@@ -194,6 +194,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     @Nullable
     private String lastRequestedWebViewUrl;
     private boolean retryingFailedWebViewUrl = false;
+    private int scrollToCommentId = -1;
 
     // Clean fallback management
     private AlgoliaFallbackManager fallbackManager;
@@ -263,6 +264,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                                     story.by = "";
                                     story.url = "";
                                     story.score = 0;
+
+                                    String fragment = intent.getData().getFragment();
+                                    if (fragment != null && !fragment.isEmpty() && TextUtils.isDigitsOnly(fragment)) {
+                                        scrollToCommentId = Integer.parseInt(fragment);
+                                    }
                                 }
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -1197,6 +1203,20 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
+    private void scrollToTargetComment() {
+        if (scrollToCommentId == -1) return;
+        for (int i = 0; i < comments.size(); i++) {
+            if (comments.get(i).id == scrollToCommentId) {
+                // +1 to account for header at adapter position 0
+                layoutManager.scrollToPositionWithOffset(i + 1, 0);
+                scrollToCommentId = -1;
+                return;
+            }
+        }
+        Toast.makeText(getContext(), "Comment not found", Toast.LENGTH_SHORT).show();
+        scrollToCommentId = -1;
+    }
+
     public void destroyWebView() {
         // Nuclear
         if (webView != null) {
@@ -1327,6 +1347,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 updateNavigationVisibility();
                 adapter.notifyItemChanged(0);
                 swipeRefreshLayout.setRefreshing(false);
+                recyclerView.post(() -> scrollToTargetComment());
             }
         });
 
@@ -1515,6 +1536,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         adapter.commentsLoaded = true;
         updateNavigationVisibility();
+        recyclerView.post(() -> scrollToTargetComment());
     }
 
     public void clickBrowser() {

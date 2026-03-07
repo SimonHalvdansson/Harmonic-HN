@@ -815,7 +815,12 @@ public class Utils {
                 // Check if id parameter is valid
                 if (sId != null && !sId.isEmpty() && TextUtils.isDigitsOnly(sId)) {
                     int id = Integer.parseInt(sId);
-                    openCommentsActivity(id, context);
+                    int scrollToCommentId = -1;
+                    String fragment = uri.getFragment();
+                    if (fragment != null && !fragment.isEmpty() && TextUtils.isDigitsOnly(fragment)) {
+                        scrollToCommentId = Integer.parseInt(fragment);
+                    }
+                    openCommentsActivity(id, scrollToCommentId, context);
                     return;
                 }
             }
@@ -825,9 +830,16 @@ public class Utils {
     }
 
     public static void openCommentsActivity(int id, Context context) {
-        Uri uri = Uri.parse("https://news.ycombinator.com/item").buildUpon()
-                .appendQueryParameter("id", String.valueOf(id))
-                .build();
+        openCommentsActivity(id, -1, context);
+    }
+
+    public static void openCommentsActivity(int id, int scrollToCommentId, Context context) {
+        Uri.Builder builder = Uri.parse("https://news.ycombinator.com/item").buildUpon()
+                .appendQueryParameter("id", String.valueOf(id));
+        if (scrollToCommentId > 0) {
+            builder.fragment(String.valueOf(scrollToCommentId));
+        }
+        Uri uri = builder.build();
 
         Intent intent = new Intent(Intent.ACTION_VIEW, uri);
         intent.setClass(context, CommentsActivity.class);
