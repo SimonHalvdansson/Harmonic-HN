@@ -22,6 +22,10 @@ fun Context.defaultBrowserPackageName(): String? {
         ?.takeUnless { it in InvalidDefaultBrowsers }
 }
 
+fun Context.isInvalidViewHandlerPackage(packageName: String?): Boolean {
+    return packageName != null && packageName in InvalidDefaultBrowsers
+}
+
 /**
  * A list of package names that may be incorrectly resolved as usable browsers by
  * the system.
