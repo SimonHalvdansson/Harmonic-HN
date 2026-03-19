@@ -153,6 +153,7 @@ public class StoriesFragment extends Fragment {
                 headerContainer.setAlpha(1f - (Math.abs(verticalOffset) / totalScrollRange));
             }
         });
+        configureAppBarDragBehavior();
 
         // Bind header views
         headerContainer = view.findViewById(R.id.stories_header_container);
@@ -280,6 +281,26 @@ public class StoriesFragment extends Fragment {
         String[] sortingOptions = getResources().getStringArray(R.array.sorting_options);
         ArrayList<CharSequence> typeAdapterList = new ArrayList<>(Arrays.asList(sortingOptions));
         return typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(getContext()));
+    }
+
+    private void configureAppBarDragBehavior() {
+        CoordinatorLayout.LayoutParams layoutParams = (CoordinatorLayout.LayoutParams) appBarLayout.getLayoutParams();
+        AppBarLayout.Behavior behavior;
+
+        if (layoutParams.getBehavior() instanceof AppBarLayout.Behavior) {
+            behavior = (AppBarLayout.Behavior) layoutParams.getBehavior();
+        } else {
+            behavior = new AppBarLayout.Behavior();
+            layoutParams.setBehavior(behavior);
+            appBarLayout.setLayoutParams(layoutParams);
+        }
+
+        behavior.setDragCallback(new AppBarLayout.Behavior.DragCallback() {
+            @Override
+            public boolean canDrag(@NonNull AppBarLayout appBarLayout) {
+                return !shouldLockRecyclerScroll();
+            }
+        });
     }
 
     private void setupHeader() {
