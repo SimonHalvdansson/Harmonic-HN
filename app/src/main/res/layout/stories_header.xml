@@ -55,14 +55,28 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content">
 
-            <ImageButton
-                android:id="@+id/stories_header_search_button"
-                android:layout_marginEnd="-4dp"
-                android:src="@drawable/ic_action_search"
-                android:background="?attr/selectableItemBackgroundBorderless"
+            <FrameLayout
                 android:layout_marginTop="4dp"
+                android:layout_marginEnd="-4dp"
                 android:layout_width="48dp"
-                android:layout_height="48dp"    />
+                android:layout_height="48dp">
+
+                <ImageButton
+                    android:id="@+id/stories_header_search_button"
+                    android:src="@drawable/ic_action_search"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <ImageButton
+                    android:id="@+id/stories_header_close_search_button"
+                    android:visibility="gone"
+                    android:src="@drawable/ic_action_cancel"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+            </FrameLayout>
 
             <ImageButton
                 android:id="@+id/stories_header_more"

@@ -88,6 +88,7 @@ public class StoriesFragment extends Fragment {
     private LinearLayout spinnerContainer;
     private EditText searchEditText;
     private ImageButton searchButton;
+    private ImageButton closeSearchButton;
     private ImageButton moreButton;
     private RelativeLayout loadingIndicator;
     private LinearLayout loadingFailedLayout;
@@ -159,6 +160,7 @@ public class StoriesFragment extends Fragment {
         spinnerContainer = view.findViewById(R.id.stories_header_spinner_container);
         searchEditText = view.findViewById(R.id.stories_header_search_edittext);
         searchButton = view.findViewById(R.id.stories_header_search_button);
+        closeSearchButton = view.findViewById(R.id.stories_header_close_search_button);
         moreButton = view.findViewById(R.id.stories_header_more);
         loadingIndicator = view.findViewById(R.id.stories_header_loading_indicator);
         loadingFailedLayout = view.findViewById(R.id.stories_header_loading_failed);
@@ -318,21 +320,8 @@ public class StoriesFragment extends Fragment {
             }
         });
 
-        searchButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                searching = !searching;
-                updateSearchStatus();
-
-                InputMethodManager imm = (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (searching) {
-                    imm.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0);
-                } else {
-                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-                    lastSearch = "";
-                }
-            }
-        });
+        searchButton.setOnClickListener(view -> openSearch());
+        closeSearchButton.setOnClickListener(view -> closeSearch(view));
 
         // Set up spinner
         String[] sortingOptions = ctx.getResources().getStringArray(R.array.sorting_options);
@@ -371,8 +360,8 @@ public class StoriesFragment extends Fragment {
 
         moreButton.setVisibility(searching ? View.GONE : View.VISIBLE);
         spinnerContainer.setVisibility(searching ? View.GONE : View.VISIBLE);
-
-        searchButton.setImageResource(searching ? R.drawable.ic_action_cancel : R.drawable.ic_action_search);
+        searchButton.setVisibility(searching ? View.GONE : View.VISIBLE);
+        closeSearchButton.setVisibility(searching ? View.VISIBLE : View.GONE);
 
         searchEditText.setVisibility(searching ? View.VISIBLE : View.GONE);
 
@@ -395,7 +384,8 @@ public class StoriesFragment extends Fragment {
 
         typeSpinner.setSelection(adapter.type);
 
-        TooltipCompat.setTooltipText(searchButton, searching ? "Close" : "Search");
+        TooltipCompat.setTooltipText(searchButton, "Search");
+        TooltipCompat.setTooltipText(closeSearchButton, "Close");
         TooltipCompat.setTooltipText(moreButton, "More");
 
         loadingFailedLayout.setVisibility(loadingFailed ? View.VISIBLE : View.GONE);
@@ -411,6 +401,24 @@ public class StoriesFragment extends Fragment {
 
         loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
         updateRecyclerScrollState();
+    }
+
+    private void openSearch() {
+        searching = true;
+        updateSearchStatus();
+
+        InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0);
+    }
+
+    private void closeSearch(@Nullable View view) {
+        searching = false;
+        lastSearch = "";
+        updateSearchStatus();
+
+        View tokenView = view != null ? view : searchEditText;
+        InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(tokenView.getWindowToken(), 0);
     }
 
     private void resetPaginationState() {
@@ -1136,9 +1144,7 @@ public class StoriesFragment extends Fragment {
 
     public boolean exitSearch() {
         if (searching) {
-            searching = false;
-            lastSearch = "";
-            updateSearchStatus();
+            closeSearch(null);
             return true;
         }
         return false;
