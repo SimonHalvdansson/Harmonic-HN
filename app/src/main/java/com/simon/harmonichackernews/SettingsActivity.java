@@ -221,6 +221,11 @@ public class SettingsActivity extends AppCompatActivity implements
                     Fragment detail = fm.getFragmentFactory()
                             .instantiate(getClassLoader(), currentDetailClassName);
                     fm.beginTransaction()
+                            .setCustomAnimations(
+                                    R.anim.fragment_enter,
+                                    R.anim.fragment_exit,
+                                    R.anim.fragment_pop_enter,
+                                    R.anim.fragment_pop_exit)
                             .remove(detailFragment)
                             .replace(R.id.settings, detail)
                             .addToBackStack(null)
@@ -257,6 +262,11 @@ public class SettingsActivity extends AppCompatActivity implements
         } else {
             getSupportFragmentManager()
                     .beginTransaction()
+                    .setCustomAnimations(
+                            R.anim.fragment_enter,
+                            R.anim.fragment_exit,
+                            R.anim.fragment_pop_enter,
+                            R.anim.fragment_pop_exit)
                     .replace(R.id.settings, fragment)
                     .addToBackStack(null)
                     .commit();
