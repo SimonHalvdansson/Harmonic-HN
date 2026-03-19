@@ -1,0 +1,46 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        app:title="Filters"
+        android:layout="@layout/preference_category">
+
+        <EditTextPreference
+            app:singleLineTitle="false"
+            app:title="Filter stories"
+            app:key="pref_filter"
+            app:icon="@drawable/ic_action_filter"
+            app:summary="Hide stories based on words in title"
+            app:dialogMessage="Separate phrases by commas, capitalization is ignored" />
+
+        <EditTextPreference
+            app:singleLineTitle="false"
+            app:title="Filter stories by domain"
+            app:key="pref_filter_domains"
+            app:icon="@drawable/ic_action_block"
+            app:summary="Hide stories based on domain name"
+            app:dialogMessage="Separate phrases by commas, capitalization is ignored" />
+
+        <EditTextPreference
+            app:singleLineTitle="false"
+            app:title="Filter user comments"
+            app:key="pref_filter_users"
+            app:icon="@drawable/ic_action_block"
+            app:summary="Hide comments by the specified users"
+            app:dialogMessage="Separate usernames by commas, capitalization is ignored" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="Tags"
+        android:layout="@layout/preference_category">
+
+        <Preference
+            app:singleLineTitle="false"
+            app:title="Manage user tags"
+            app:key="pref_manage_user_tags"
+            app:icon="@drawable/ic_action_tag" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
