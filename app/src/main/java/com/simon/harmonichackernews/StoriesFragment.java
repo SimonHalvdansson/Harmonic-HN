@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,13 +16,23 @@ import android.view.ViewGroup;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.animation.PathInterpolator;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.appcompat.widget.TooltipCompat;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.OnApplyWindowInsetsListener;
@@ -35,6 +46,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
+import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Bookmark;
@@ -68,6 +80,24 @@ public class StoriesFragment extends Fragment {
     private SwipeRefreshLayout swipeRefreshLayout;
     private ExtendedFloatingActionButton updateFab;
     private RecyclerView recyclerView;
+    private AppBarLayout appBarLayout;
+
+    // Header views
+    private LinearLayout headerContainer;
+    private Spinner typeSpinner;
+    private LinearLayout spinnerContainer;
+    private EditText searchEditText;
+    private ImageButton searchButton;
+    private ImageButton moreButton;
+    private RelativeLayout loadingIndicator;
+    private LinearLayout loadingFailedLayout;
+    private TextView loadingFailedText;
+    private TextView loadingFailedAlgoliaLayout;
+    private LinearLayout noBookmarksLayout;
+    private TextView showingCachedText;
+    private LinearLayout searchEmptyContainer;
+    private Button retryButton;
+    private Button showCachedButton;
 
     private StoryRecyclerViewAdapter adapter;
     private List<Story> stories;
@@ -77,11 +107,14 @@ public class StoriesFragment extends Fragment {
     private ArrayList<String> filterWords;
     private ArrayList<String> filterDomains;
     private boolean hideJobs, alwaysOpenComments, hideClicked;
-    private String lastSearch;
+    private boolean searching = false;
+    private boolean loadingFailed = false;
+    private boolean loadingFailedServerError = false;
+    private String lastSearch = "";
 
     public static boolean showingCached = false;
 
-    private int loadedTo = 0;
+    private int loadedTo = -1;
     private boolean paginationMode = false;
     private static final int PAGINATION_PAGE_SIZE = 30;
 
@@ -112,16 +145,48 @@ public class StoriesFragment extends Fragment {
         recyclerView = view.findViewById(R.id.stories_recyclerview);
         swipeRefreshLayout = view.findViewById(R.id.stories_swipe_refresh);
         updateFab = view.findViewById(R.id.stories_update_fab);
+        appBarLayout = view.findViewById(R.id.stories_appbar);
+        appBarLayout.addOnOffsetChangedListener((appBar, verticalOffset) -> {
+            float totalScrollRange = appBar.getTotalScrollRange();
+            if (totalScrollRange > 0) {
+                headerContainer.setAlpha(1f - (Math.abs(verticalOffset) / totalScrollRange));
+            }
+        });
+
+        // Bind header views
+        headerContainer = view.findViewById(R.id.stories_header_container);
+        typeSpinner = view.findViewById(R.id.stories_header_spinner);
+        spinnerContainer = view.findViewById(R.id.stories_header_spinner_container);
+        searchEditText = view.findViewById(R.id.stories_header_search_edittext);
+        searchButton = view.findViewById(R.id.stories_header_search_button);
+        moreButton = view.findViewById(R.id.stories_header_more);
+        loadingIndicator = view.findViewById(R.id.stories_header_loading_indicator);
+        loadingFailedLayout = view.findViewById(R.id.stories_header_loading_failed);
+        loadingFailedText = view.findViewById(R.id.stories_header_loading_failed_text);
+        loadingFailedAlgoliaLayout = view.findViewById(R.id.stories_header_loading_failed_algolia);
+        noBookmarksLayout = view.findViewById(R.id.stories_header_no_bookmarks);
+        showingCachedText = view.findViewById(R.id.stories_header_cached_stories_header);
+        searchEmptyContainer = view.findViewById(R.id.stories_header_search_empty_container);
+        retryButton = view.findViewById(R.id.stories_header_retry_button);
+        showCachedButton = view.findViewById(R.id.stories_header_show_cached);
 
         swipeRefreshLayout.setOnRefreshListener(this::attemptRefresh);
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
-        linearLayoutManager = new LinearLayoutManager(getContext());
+        linearLayoutManager = new LinearLayoutManager(getContext()) {
+            @Override
+            public boolean canScrollVertically() {
+                return !shouldLockRecyclerScroll() && super.canScrollVertically();
+            }
+        };
         recyclerView.setLayoutManager(linearLayoutManager);
 
         stories = new ArrayList<>();
         setupAdapter();
         recyclerView.setAdapter(adapter);
+
+        // Setup header after adapter so spinner callback can safely access adapter.type
+        setupHeader();
 
         ViewCompat.setOnApplyWindowInsetsListener(view, new OnApplyWindowInsetsListener() {
             @NonNull
@@ -133,7 +198,23 @@ public class StoriesFragment extends Fragment {
                 params.bottomMargin = insets.bottom + Utils.pxFromDpInt(getResources(), 8);
                 updateFab.setLayoutParams(params);
 
+
                 topInset = insets.top;
+
+                // Apply top inset to header container
+                boolean compactHeader = SettingsUtils.shouldUseCompactHeader(getContext());
+                int topPad = insets.top + Utils.pxFromDpInt(getResources(), compactHeader ? 20 : 40);
+                int bottomPad = Utils.pxFromDpInt(getResources(), compactHeader ? 10 : 26);
+                int sidePad = Utils.pxFromDpInt(getResources(), 16);
+                headerContainer.setPadding(sidePad, topPad, sidePad, bottomPad);
+
+                // Apply bottom inset to RecyclerView so last item isn't behind nav bar
+                recyclerView.setPadding(
+                        recyclerView.getPaddingLeft(),
+                        recyclerView.getPaddingTop(),
+                        recyclerView.getPaddingRight(),
+                        insets.bottom
+                );
 
                 return windowInsets;
             }
@@ -154,7 +235,7 @@ public class StoriesFragment extends Fragment {
                 super.onScrolled(recyclerView, dx, dy);
 
                 // Only enable infinite scroll if pagination mode is OFF
-                if (!adapter.searching && !paginationMode) {
+                if (!searching && !paginationMode) {
                     lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
 
                     int visibleThreshold = 17;
@@ -168,13 +249,12 @@ public class StoriesFragment extends Fragment {
         });
 
         queue = NetworkComponent.getRequestQueueInstance(requireContext());
-        stories.add(new Story());
         attemptRefresh();
 
         StoryUpdate.setStoryUpdatedListener(new StoryUpdate.StoryUpdateListener() {
             @Override
             public void callback(Story story) {
-                for (int i = 1; i < stories.size(); i++) {
+                for (int i = 0; i < stories.size(); i++) {
                     if (story.id == stories.get(i).id) {
                         Story oldStory = stories.get(i);
 
@@ -200,6 +280,138 @@ public class StoriesFragment extends Fragment {
         return typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(getContext()));
     }
 
+    private void setupHeader() {
+        final Context ctx = requireContext();
+
+        // Tap empty header area to scroll to top
+        headerContainer.setOnClickListener(v -> {
+            recyclerView.smoothScrollToPosition(0);
+            appBarLayout.setExpanded(true, true);
+        });
+
+        // Set up retry button
+        retryButton.setOnClickListener(v -> attemptRefresh());
+        showCachedButton.setOnClickListener(v -> showCachedStories());
+
+        // Set up more button
+        moreButton.setOnClickListener(this::moreClick);
+
+        // Set up search
+        searchEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView textView, int actionId, KeyEvent keyEvent) {
+                boolean isKeyboardSearchAction = actionId == EditorInfo.IME_ACTION_SEARCH;
+                boolean isHardwareEnterKey = keyEvent != null
+                        && keyEvent.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                        && keyEvent.getAction() == KeyEvent.ACTION_DOWN;
+
+                if (!isKeyboardSearchAction && !isHardwareEnterKey) {
+                    return false;
+                }
+
+                search(searchEditText.getText().toString());
+                if (textView != null) {
+                    InputMethodManager imm = (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(textView.getWindowToken(), 0);
+                }
+                return true;
+            }
+        });
+
+        searchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                searching = !searching;
+                updateSearchStatus();
+
+                InputMethodManager imm = (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (searching) {
+                    imm.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0);
+                } else {
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                    lastSearch = "";
+                }
+            }
+        });
+
+        // Set up spinner
+        String[] sortingOptions = ctx.getResources().getStringArray(R.array.sorting_options);
+        ArrayList<CharSequence> typeAdapterList = new ArrayList<>(Arrays.asList(sortingOptions));
+        ArrayAdapter<CharSequence> spinnerAdapter = new ArrayAdapter<>(ctx, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, typeAdapterList);
+        spinnerAdapter.setDropDownViewResource(R.layout.spinner_item_layout);
+
+        typeSpinner.setAdapter(spinnerAdapter);
+        typeSpinner.setSelection(getPreferredTypeIndex());
+        typeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                if (i != adapter.type) {
+                    adapter.type = i;
+                    attemptRefresh();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+            }
+        });
+    }
+
+    private void updateHeader() {
+        if (headerContainer == null) return;
+
+        Context ctx = getContext();
+        if (ctx == null) return;
+
+        boolean compactHeader = SettingsUtils.shouldUseCompactHeader(ctx);
+        int topPad = topInset + Utils.pxFromDpInt(getResources(), compactHeader ? 20 : 40);
+        int bottomPad = Utils.pxFromDpInt(getResources(), compactHeader ? 10 : 26);
+        int sidePad = Utils.pxFromDpInt(getResources(), 16);
+        headerContainer.setPadding(sidePad, topPad, sidePad, bottomPad);
+
+        moreButton.setVisibility(searching ? View.GONE : View.VISIBLE);
+        spinnerContainer.setVisibility(searching ? View.GONE : View.VISIBLE);
+
+        searchButton.setImageResource(searching ? R.drawable.ic_action_cancel : R.drawable.ic_action_search);
+
+        searchEditText.setVisibility(searching ? View.VISIBLE : View.GONE);
+
+        if (searching) {
+            loadingIndicator.setVisibility(View.GONE);
+            searchEditText.requestFocus();
+            searchEditText.setText(lastSearch);
+            searchEditText.setSelection(lastSearch.length());
+
+            searchEmptyContainer.setVisibility(stories.isEmpty() ? View.VISIBLE : View.GONE);
+            noBookmarksLayout.setVisibility(View.GONE);
+        } else {
+            noBookmarksLayout.setVisibility((stories.isEmpty() && adapter.type == SettingsUtils.getBookmarksIndex(ctx.getResources())) ? View.VISIBLE : View.GONE);
+            searchEmptyContainer.setVisibility(View.GONE);
+
+            loadingIndicator.setVisibility(stories.isEmpty() && !loadingFailed && !loadingFailedServerError && (adapter.type != SettingsUtils.getBookmarksIndex(ctx.getResources())) ? View.VISIBLE : View.GONE);
+        }
+
+        showingCachedText.setVisibility(showingCached && !searching ? View.VISIBLE : View.GONE);
+
+        typeSpinner.setSelection(adapter.type);
+
+        TooltipCompat.setTooltipText(searchButton, searching ? "Close" : "Search");
+        TooltipCompat.setTooltipText(moreButton, "More");
+
+        loadingFailedLayout.setVisibility(loadingFailed ? View.VISIBLE : View.GONE);
+        if (loadingFailed) {
+            if (!Utils.isNetworkAvailable(ctx)) {
+                loadingFailedText.setText("No internet connection");
+            } else {
+                loadingFailedText.setText("Loading failed");
+            }
+        }
+
+        showCachedButton.setVisibility(loadingFailed && Utils.hasCachedStories(ctx) ? View.VISIBLE : View.GONE);
+
+        loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
+        updateRecyclerScrollState();
+    }
 
     private void setupAdapter() {
         paginationMode = SettingsUtils.shouldUsePaginationMode(getContext());
@@ -262,9 +474,6 @@ public class StoriesFragment extends Fragment {
         });
 
         adapter.setOnCommentClickListener(this::clickedComments);
-        adapter.setOnRefreshListener(this::attemptRefresh);
-        adapter.setOnMoreClickListener(this::moreClick);
-        adapter.setOnShowCachedListener(this::showCachedStories);
 
         // Set up pagination "Load More" button click listener
         adapter.setOnLoadMoreClickListener(v -> {
@@ -284,26 +493,6 @@ public class StoriesFragment extends Fragment {
 
                 // Update adapter to show more items
                 adapter.loadNextPage();
-            }
-        });
-
-        adapter.setOnTypeClickListener(index -> {
-            if (index != adapter.type) {
-                adapter.type = index;
-                attemptRefresh();
-            }
-        });
-
-        adapter.setSearchListener(new StoryRecyclerViewAdapter.SearchListener() {
-            @Override
-            public void onQueryTextSubmit(String query) {
-                search(query);
-
-            }
-
-            @Override
-            public void onSearchStatusChanged() {
-                updateSearchStatus();
             }
         });
 
@@ -410,33 +599,33 @@ public class StoriesFragment extends Fragment {
         long timeDiff = System.currentTimeMillis() - lastLoaded;
 
         // if more than 1 hr
-        if (timeDiff > 1000 * 60 * 60 && !adapter.searching && adapter.type != SettingsUtils.getBookmarksIndex(getResources()) && !currentTypeIsAlgolia()) {
+        if (timeDiff > 1000 * 60 * 60 && !searching && adapter.type != SettingsUtils.getBookmarksIndex(getResources()) && !currentTypeIsAlgolia()) {
             showUpdateButton();
         }
 
         if (adapter.showPoints != SettingsUtils.shouldShowPoints(getContext())) {
             adapter.showPoints = !adapter.showPoints;
-            adapter.notifyItemRangeChanged(1, stories.size());
+            adapter.notifyItemRangeChanged(0, stories.size());
         }
 
         if (adapter.showCommentsCount != SettingsUtils.shouldShowCommentsCount(getContext())) {
             adapter.showCommentsCount = !adapter.showCommentsCount;
-            adapter.notifyItemRangeChanged(1, stories.size());
+            adapter.notifyItemRangeChanged(0, stories.size());
         }
 
         if (adapter.compactView != SettingsUtils.shouldUseCompactView(getContext())) {
             adapter.compactView = !adapter.compactView;
-            adapter.notifyItemRangeChanged(1, stories.size());
+            adapter.notifyItemRangeChanged(0, stories.size());
         }
 
         if (adapter.thumbnails != SettingsUtils.shouldShowThumbnails(getContext())) {
             adapter.thumbnails = !adapter.thumbnails;
-            adapter.notifyItemRangeChanged(1, stories.size());
+            adapter.notifyItemRangeChanged(0, stories.size());
         }
 
         if (adapter.showIndex != SettingsUtils.shouldShowIndex(getContext())) {
             adapter.showIndex = !adapter.showIndex;
-            adapter.notifyItemRangeChanged(1, stories.size());
+            adapter.notifyItemRangeChanged(0, stories.size());
         }
 
         if (adapter.leftAlign != SettingsUtils.shouldUseLeftAlign(getContext())) {
@@ -460,12 +649,12 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.compactHeader != SettingsUtils.shouldUseCompactHeader(getContext())) {
             adapter.compactHeader = SettingsUtils.shouldUseCompactHeader(getContext());
-            adapter.notifyItemChanged(0);
+            updateHeader();
         }
 
         if (adapter.hotness != SettingsUtils.getPreferredHotness(getContext())) {
             adapter.hotness = SettingsUtils.getPreferredHotness(getContext());
-            adapter.notifyItemRangeChanged(1, stories.size());
+            adapter.notifyItemRangeChanged(0, stories.size());
         }
 
         if (hideJobs != SettingsUtils.shouldHideJobs(getContext())) {
@@ -475,7 +664,7 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.faviconProvider != SettingsUtils.getPreferredFaviconProvider(getContext())) {
             adapter.faviconProvider = SettingsUtils.getPreferredFaviconProvider(getContext());
-            adapter.notifyItemRangeChanged(1, stories.size());
+            adapter.notifyItemRangeChanged(0, stories.size());
         }
 
     }
@@ -527,7 +716,7 @@ public class StoriesFragment extends Fragment {
                         if (!JSONParser.updateStoryWithHNJson(response, story, adapter.type == SettingsUtils.getHistoryIndex(getResources()))) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
-                            loadedTo = Math.max(0, loadedTo - 1);
+                            loadedTo = Math.max(-1, loadedTo - 1);
                             return;
                         }
 
@@ -536,7 +725,7 @@ public class StoriesFragment extends Fragment {
                             if (story.title.toLowerCase().contains(phrase.toLowerCase())) {
                                 stories.remove(story);
                                 adapter.notifyItemRemoved(index);
-                                loadedTo = Math.max(0, loadedTo - 1);
+                                loadedTo = Math.max(-1, loadedTo - 1);
                                 return;
                             }
                         }
@@ -549,7 +738,7 @@ public class StoriesFragment extends Fragment {
 
                                     stories.remove(story);
                                     adapter.notifyItemRemoved(index);
-                                    loadedTo = Math.max(0, loadedTo - 1);
+                                    loadedTo = Math.max(-1, loadedTo - 1);
                                     return;
                                 }
                             } catch (Exception e) {
@@ -561,7 +750,7 @@ public class StoriesFragment extends Fragment {
                         if (hideJobs && adapter.type != SettingsUtils.getJobsIndex(getResources()) && (story.isJob || story.by.equals("whoishiring"))) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
-                            loadedTo = Math.max(0, loadedTo - 1);
+                            loadedTo = Math.max(-1, loadedTo - 1);
                             return;
                         }
 
@@ -631,7 +820,7 @@ public class StoriesFragment extends Fragment {
 
     public void attemptRefresh() {
         hideUpdateButton();
-        if (adapter.searching) {
+        if (searching) {
             search(lastSearch);
             return;
         }
@@ -662,11 +851,11 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.type == SettingsUtils.getBookmarksIndex(getResources())) {
             // lets load bookmarks instead - or rather add empty stories with correct id:s and start loading them
-            adapter.notifyItemRangeRemoved(1, stories.size() + 1);
-            loadedTo = 0;
+            int oldSize = stories.size();
+            adapter.notifyItemRangeRemoved(0, oldSize);
+            loadedTo = -1;
 
             stories.clear();
-            stories.add(new Story());
             showingCached = false;
 
             ArrayList<Bookmark> bookmarks = Utils.loadBookmarks(getContext(), true);
@@ -675,24 +864,24 @@ public class StoriesFragment extends Fragment {
                 Story s = new Story("Loading...", bookmarks.get(i).id, false, false);
 
                 stories.add(s);
-                adapter.notifyItemInserted(i + 1);
+                adapter.notifyItemInserted(i);
                 int initialLoadCount = paginationMode ? PAGINATION_PAGE_SIZE : 20;
                 if (i < initialLoadCount) {
-                    loadStory(stories.get(i + 1), 0);
-                    loadedTo = i + 1;
+                    loadStory(stories.get(i), 0);
+                    loadedTo = i;
                 }
             }
 
-            adapter.notifyItemChanged(0);
+            updateHeader();
             swipeRefreshLayout.setRefreshing(false);
 
             return;
         } else if (adapter.type == SettingsUtils.getHistoryIndex(getResources())) {
-            adapter.notifyItemRangeRemoved(1, stories.size() + 1);
-            loadedTo = 0;
+            int oldSize = stories.size();
+            adapter.notifyItemRangeRemoved(0, oldSize);
+            loadedTo = -1;
 
             stories.clear();
-            stories.add(new Story());
             showingCached = false;
             List<History> histories = UtilsKt.INSTANCE.loadHistories(requireContext(), true);
 
@@ -700,15 +889,15 @@ public class StoriesFragment extends Fragment {
                 Story s = new Story("Loading...", histories.get(i).getId(), false, false, histories.get(i).getCreated());
 
                 stories.add(s);
-                adapter.notifyItemInserted(i + 1);
+                adapter.notifyItemInserted(i);
                 int initialLoadCount = paginationMode ? PAGINATION_PAGE_SIZE : 20;
                 if (i < initialLoadCount) {
-                    loadStory(stories.get(i + 1), 0);
-                    loadedTo = i + 1;
+                    loadStory(stories.get(i), 0);
+                    loadedTo = i;
                 }
             }
 
-            adapter.notifyItemChanged(0);
+            updateHeader();
             swipeRefreshLayout.setRefreshing(false);
 
             return;
@@ -721,12 +910,12 @@ public class StoriesFragment extends Fragment {
                     try {
                         JSONArray jsonArray = new JSONArray(response);
 
-                        loadedTo = 0;
+                        loadedTo = -1;
 
-                        adapter.notifyItemRangeRemoved(1, stories.size());
+                        int oldSize = stories.size();
+                        adapter.notifyItemRangeRemoved(0, oldSize);
 
                         stories.clear();
-                        stories.add(new Story());
                         showingCached = false;
 
                         for (int i = 0; i < jsonArray.length(); i++) {
@@ -744,20 +933,20 @@ public class StoriesFragment extends Fragment {
                             }
 
                             stories.add(s);
-                            adapter.notifyItemInserted(1 + i);
+                            adapter.notifyItemInserted(stories.size() - 1);
                         }
 
-                        if (adapter.loadingFailed) {
-                            adapter.loadingFailed = false;
-                            adapter.loadingFailedServerError = false;
+                        if (loadingFailed) {
+                            loadingFailed = false;
+                            loadingFailedServerError = false;
                         }
 
-                        adapter.notifyItemChanged(0);
+                        updateHeader();
 
                         // Load initial batch of stories
                         int initialLoadCount = paginationMode ? PAGINATION_PAGE_SIZE : 20;
-                        int storiesToLoad = Math.min(initialLoadCount, stories.size() - 1);
-                        for (int i = 1; i <= storiesToLoad; i++) {
+                        int storiesToLoad = Math.min(initialLoadCount, stories.size());
+                        for (int i = 0; i < storiesToLoad; i++) {
                             loadedTo = i;
                             loadStory(stories.get(i), 0);
                         }
@@ -767,40 +956,42 @@ public class StoriesFragment extends Fragment {
                     }
                 }, error -> {
             swipeRefreshLayout.setRefreshing(false);
-            adapter.loadingFailed = true;
-            adapter.notifyItemChanged(0);
+            loadingFailed = true;
+            updateHeader();
         });
 
-        adapter.notifyItemChanged(0);
+        updateHeader();
         stringRequest.setTag(requestTag);
         queue.add(stringRequest);
     }
 
     private void updateSearchStatus() {
         hideUpdateButton();
-        adapter.notifyItemChanged(0);
 
         if (getActivity() != null && getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).backPressedCallback.setEnabled(adapter.searching);
+            ((MainActivity) getActivity()).backPressedCallback.setEnabled(searching);
         }
 
-        swipeRefreshLayout.setEnabled(!adapter.searching);
+        swipeRefreshLayout.setEnabled(!searching);
 
-        if (adapter.searching) {
+        if (searching) {
             // cancel all ongoing
             queue.cancelAll(requestTag);
             swipeRefreshLayout.setRefreshing(false);
 
-            adapter.notifyItemRangeRemoved(1, stories.size() + 1);
+            int oldSize = stories.size();
+            adapter.notifyItemRangeRemoved(0, oldSize);
             stories.clear();
-            stories.add(new Story());
+            appBarLayout.setExpanded(true, false);
         } else {
             int size = stories.size();
-            if (size > 1) {
-                stories.subList(1, size).clear();
-            }
-            adapter.notifyItemRangeRemoved(1, size + 1);
+            stories.clear();
+            adapter.notifyItemRangeRemoved(0, size);
+        }
 
+        updateHeader();
+
+        if (!searching) {
             attemptRefresh();
         }
     }
@@ -811,13 +1002,12 @@ public class StoriesFragment extends Fragment {
 
     private void search(String query) {
         lastSearch = query;
-        adapter.lastSearch = query;
 
         loadAlgolia("https://hn.algolia.com/api/v1/search_by_date?query=" + query + "&tags=story&hitsPerPage=200&typoTolerance=min");
     }
 
     private void loadAlgolia(String url) {
-        swipeRefreshLayout.setEnabled(true);
+        swipeRefreshLayout.setEnabled(!searching);
         swipeRefreshLayout.setRefreshing(true);
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
@@ -830,10 +1020,9 @@ public class StoriesFragment extends Fragment {
                             int oldSize = stories.size();
 
                             stories.clear();
-                            stories.add(new Story());
                             showingCached = false;
 
-                            adapter.notifyItemRangeRemoved(1, oldSize + 1);
+                            adapter.notifyItemRangeRemoved(0, oldSize);
 
                             stories.addAll(parsedStories);
 
@@ -868,12 +1057,12 @@ public class StoriesFragment extends Fragment {
                                 }
                             }
 
-                            adapter.loadingFailed = false;
-                            adapter.loadingFailedServerError = false;
+                            loadingFailed = false;
+                            loadingFailedServerError = false;
                             showingCached = false;
 
-                            adapter.notifyItemRangeInserted(1, stories.size());
-                            adapter.notifyItemChanged(0);
+                            adapter.notifyItemRangeInserted(0, stories.size());
+                            updateHeader();
 
                             // Set loadedTo for Algolia stories (they're already fully loaded)
                             loadedTo = stories.size() - 1;
@@ -888,19 +1077,39 @@ public class StoriesFragment extends Fragment {
 
                 }, error -> {
             if (error.networkResponse != null && error.networkResponse.statusCode == 404) {
-                adapter.loadingFailedServerError = true;
+                loadingFailedServerError = true;
             }
 
             error.printStackTrace();
             swipeRefreshLayout.setRefreshing(false);
-            adapter.loadingFailed = true;
-            adapter.notifyItemChanged(0);
+            loadingFailed = true;
+            updateHeader();
         });
 
-        adapter.notifyItemChanged(0);
+        updateHeader();
 
         stringRequest.setTag(requestTag);
         queue.add(stringRequest);
+    }
+
+    private boolean shouldLockRecyclerScroll() {
+        return searching && stories != null && stories.isEmpty();
+    }
+
+    private void updateRecyclerScrollState() {
+        if (recyclerView == null) {
+            return;
+        }
+
+        boolean lockRecyclerScroll = shouldLockRecyclerScroll();
+        recyclerView.setNestedScrollingEnabled(!lockRecyclerScroll);
+        recyclerView.setOverScrollMode(lockRecyclerScroll ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+
+        if (lockRecyclerScroll) {
+            recyclerView.stopScroll();
+            recyclerView.scrollToPosition(0);
+            appBarLayout.setExpanded(true, false);
+        }
     }
 
     public boolean currentTypeIsAlgolia() {
@@ -908,9 +1117,9 @@ public class StoriesFragment extends Fragment {
     }
 
     public boolean exitSearch() {
-        if (adapter.searching) {
-            adapter.searching = false;
-            adapter.lastSearch = "";
+        if (searching) {
+            searching = false;
+            lastSearch = "";
             updateSearchStatus();
             return true;
         }
@@ -944,14 +1153,15 @@ public class StoriesFragment extends Fragment {
         showingCached = true;
         swipeRefreshLayout.setRefreshing(false);
 
-        adapter.notifyItemRangeRemoved(1, stories.size());
+        int oldSize = stories.size();
         stories.clear();
-        stories.add(new Story());
         stories.addAll(Utils.loadCachedStories(getContext()));
         loadedTo = stories.size() - 1;
-        adapter.loadingFailed = false;
-        adapter.loadingFailedServerError = false;
-        adapter.notifyItemRangeChanged(0, stories.size());
+        loadingFailed = false;
+        loadingFailedServerError = false;
+        adapter.notifyItemRangeRemoved(0, oldSize);
+        adapter.notifyItemRangeInserted(0, stories.size());
+        updateHeader();
     }
 
     private void hideUpdateButton() {
