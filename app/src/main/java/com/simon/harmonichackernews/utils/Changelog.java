@@ -4,6 +4,7 @@ package com.simon.harmonichackernews.utils;
 public class Changelog {
     static public String getHTML() {
         return  "<b>Version 2.3:</b><br>" +
+                "- Redesign settings screen into multiple levels (thanks SquirrelWave!)<br>" +
                 "- Added a new homescreen widget for stories (thanks SquirrelWave!)<br>" +
                 "<br>" +
                 "<b>Version 2.2.6:</b><br>" +
