@@ -173,7 +173,7 @@ public class StoriesFragment extends Fragment {
         retryButton = view.findViewById(R.id.stories_header_retry_button);
         showCachedButton = view.findViewById(R.id.stories_header_show_cached);
 
-        swipeRefreshLayout.setOnRefreshListener(this::attemptRefresh);
+        swipeRefreshLayout.setOnRefreshListener(() -> attemptRefresh(true));
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
         linearLayoutManager = new LinearLayoutManager(getContext()) {
@@ -896,13 +896,17 @@ public class StoriesFragment extends Fragment {
     }
 
     public void attemptRefresh() {
+        attemptRefresh(false);
+    }
+
+    private void attemptRefresh(boolean showSwipeRefreshIndicator) {
         hideUpdateButton();
         if (searching) {
             search(lastSearch);
             return;
         }
 
-        swipeRefreshLayout.setRefreshing(true);
+        swipeRefreshLayout.setRefreshing(showSwipeRefreshIndicator);
 
         // cancel all ongoing
         queue.cancelAll(requestTag);
