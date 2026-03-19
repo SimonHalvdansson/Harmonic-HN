@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.window.layout.WindowMetrics;
@@ -87,6 +88,7 @@ public class SettingsActivity extends AppCompatActivity implements
         if (savedInstanceState == null) {
             getSupportFragmentManager()
                     .beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                     .replace(R.id.settings, new SettingsHeaderFragment())
                     .commit();
 
@@ -95,6 +97,7 @@ public class SettingsActivity extends AppCompatActivity implements
                         .instantiate(getClassLoader(), currentDetailClassName);
                 getSupportFragmentManager()
                         .beginTransaction()
+                        .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                         .replace(R.id.settings_detail, detail)
                         .commit();
             }
@@ -221,11 +224,7 @@ public class SettingsActivity extends AppCompatActivity implements
                     Fragment detail = fm.getFragmentFactory()
                             .instantiate(getClassLoader(), currentDetailClassName);
                     fm.beginTransaction()
-                            .setCustomAnimations(
-                                    R.anim.fragment_enter,
-                                    R.anim.fragment_exit,
-                                    R.anim.fragment_pop_enter,
-                                    R.anim.fragment_pop_exit)
+                            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                             .remove(detailFragment)
                             .replace(R.id.settings, detail)
                             .addToBackStack(null)
@@ -252,6 +251,7 @@ public class SettingsActivity extends AppCompatActivity implements
         if (isTwoPane) {
             getSupportFragmentManager()
                     .beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                     .replace(R.id.settings_detail, fragment)
                     .commit();
 
@@ -262,11 +262,7 @@ public class SettingsActivity extends AppCompatActivity implements
         } else {
             getSupportFragmentManager()
                     .beginTransaction()
-                    .setCustomAnimations(
-                            R.anim.fragment_enter,
-                            R.anim.fragment_exit,
-                            R.anim.fragment_pop_enter,
-                            R.anim.fragment_pop_exit)
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                     .replace(R.id.settings, fragment)
                     .addToBackStack(null)
                     .commit();
