@@ -1208,7 +1208,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         for (int i = 0; i < comments.size(); i++) {
             if (comments.get(i).id == scrollToCommentId) {
                 // +1 to account for header at adapter position 0
-                layoutManager.scrollToPositionWithOffset(i + 1, 0);
+                layoutManager.scrollToPositionWithOffset(i + 1, topInset);
                 scrollToCommentId = -1;
                 return;
             }
