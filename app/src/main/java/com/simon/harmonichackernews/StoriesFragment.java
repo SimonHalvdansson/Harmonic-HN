@@ -429,7 +429,10 @@ public class StoriesFragment extends Fragment {
         updateSearchStatus();
 
         InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        imm.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0);
+        searchEditText.post(() -> {
+            searchEditText.requestFocus();
+            imm.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT);
+        });
     }
 
     private void closeSearch(@Nullable View view) {
@@ -440,6 +443,7 @@ public class StoriesFragment extends Fragment {
         View tokenView = view != null ? view : searchEditText;
         InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.hideSoftInputFromWindow(tokenView.getWindowToken(), 0);
+        searchEditText.clearFocus();
     }
 
     private void resetPaginationState() {
