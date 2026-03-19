@@ -626,37 +626,54 @@ public class Utils {
     }
 
     public static void launchInExternalBrowser(Context ctx, String url) {
-        String defaultBrowserPackageName = ContextExtensionsKt.defaultBrowserPackageName(ctx);
-
         try {
-            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            if (defaultBrowserPackageName != null) {
-                browserIntent.setPackage(defaultBrowserPackageName);
-            }
-            ctx.startActivity(browserIntent);
+            openExternalUrl(ctx, url);
         } catch (Exception e) {
             // failed for the first time, let's try to guess a fix to the url
             try {
-                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(URLUtil.guessUrl(url)));
-                if (defaultBrowserPackageName != null) {
-                    browserIntent.setPackage(defaultBrowserPackageName);
-                }
-                ctx.startActivity(browserIntent);
+                openExternalUrl(ctx, URLUtil.guessUrl(url));
             } catch (Exception e1) {
                 // automated fix didn't work, let's try to do it manually
                 try {
                     if (!url.startsWith("http://") && !url.startsWith("https://"))
                         url = "http://" + url;
-                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                    if (defaultBrowserPackageName != null) {
-                        browserIntent.setPackage(defaultBrowserPackageName);
-                    }
-                    ctx.startActivity(browserIntent);
+                    openExternalUrl(ctx, url);
                 } catch (Exception e2) {
                     Toast.makeText(ctx, "Couldn't open link to: " + url, Toast.LENGTH_SHORT).show();
                 }
             }
         }
+    }
+
+    private static void openExternalUrl(Context ctx, String url) {
+        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        String packageName = getPackageForExternalUrl(ctx, browserIntent);
+        if (packageName != null) {
+            browserIntent.setPackage(packageName);
+        }
+        ctx.startActivity(browserIntent);
+    }
+
+    private static String getPackageForExternalUrl(Context ctx, Intent browserIntent) {
+        String defaultBrowserPackageName = ContextExtensionsKt.defaultBrowserPackageName(ctx);
+        if (defaultBrowserPackageName == null) {
+            return null;
+        }
+
+        ResolveInfo resolveInfo = ctx.getPackageManager()
+                .resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY);
+        String resolvedPackageName = null;
+        if (resolveInfo != null && resolveInfo.activityInfo != null) {
+            resolvedPackageName = resolveInfo.activityInfo.packageName;
+        }
+
+        // force browser only when VIEW resolves to Harmonic itself (self-loop) or a known bad resolver.
+        if (ctx.getPackageName().equals(resolvedPackageName)
+                || ContextExtensionsKt.isInvalidViewHandlerPackage(ctx, resolvedPackageName)) {
+            return defaultBrowserPackageName;
+        }
+
+        return null;
     }
 
     public static boolean downloadPDF(Context context, String pdfUrl) {
