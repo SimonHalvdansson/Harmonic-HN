@@ -413,6 +413,35 @@ public class StoriesFragment extends Fragment {
         updateRecyclerScrollState();
     }
 
+    private void resetPaginationState() {
+        loadedTo = -1;
+        adapter.visibleStoryCount = paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
+    }
+
+    private int getInitialLoadCount() {
+        return paginationMode ? PAGINATION_PAGE_SIZE : 20;
+    }
+
+    private void clearStories() {
+        int oldItemCount = adapter.getItemCount();
+        stories.clear();
+        resetPaginationState();
+
+        if (oldItemCount > 0) {
+            adapter.notifyItemRangeRemoved(0, oldItemCount);
+        }
+    }
+
+    private void replaceStories(List<Story> newStories) {
+        clearStories();
+        stories.addAll(newStories);
+
+        int newItemCount = adapter.getItemCount();
+        if (newItemCount > 0) {
+            adapter.notifyItemRangeInserted(0, newItemCount);
+        }
+    }
+
     private void setupAdapter() {
         paginationMode = SettingsUtils.shouldUsePaginationMode(getContext());
 
@@ -605,27 +634,27 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.showPoints != SettingsUtils.shouldShowPoints(getContext())) {
             adapter.showPoints = !adapter.showPoints;
-            adapter.notifyItemRangeChanged(0, stories.size());
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
         if (adapter.showCommentsCount != SettingsUtils.shouldShowCommentsCount(getContext())) {
             adapter.showCommentsCount = !adapter.showCommentsCount;
-            adapter.notifyItemRangeChanged(0, stories.size());
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
         if (adapter.compactView != SettingsUtils.shouldUseCompactView(getContext())) {
             adapter.compactView = !adapter.compactView;
-            adapter.notifyItemRangeChanged(0, stories.size());
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
         if (adapter.thumbnails != SettingsUtils.shouldShowThumbnails(getContext())) {
             adapter.thumbnails = !adapter.thumbnails;
-            adapter.notifyItemRangeChanged(0, stories.size());
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
         if (adapter.showIndex != SettingsUtils.shouldShowIndex(getContext())) {
             adapter.showIndex = !adapter.showIndex;
-            adapter.notifyItemRangeChanged(0, stories.size());
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
         if (adapter.leftAlign != SettingsUtils.shouldUseLeftAlign(getContext())) {
@@ -636,15 +665,28 @@ public class StoriesFragment extends Fragment {
 
         boolean newPaginationMode = SettingsUtils.shouldUsePaginationMode(getContext());
         if (paginationMode != newPaginationMode) {
+            int oldItemCount = adapter.getItemCount();
             paginationMode = newPaginationMode;
             adapter.paginationMode = paginationMode;
-            adapter.visibleStoryCount = paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
-            adapter.notifyDataSetChanged();
+            resetPaginationState();
+
+            int newItemCount = adapter.getItemCount();
+            int sharedItemCount = Math.min(oldItemCount, newItemCount);
+
+            if (sharedItemCount > 0) {
+                adapter.notifyItemRangeChanged(0, sharedItemCount);
+            }
+
+            if (oldItemCount > newItemCount) {
+                adapter.notifyItemRangeRemoved(newItemCount, oldItemCount - newItemCount);
+            } else if (newItemCount > oldItemCount) {
+                adapter.notifyItemRangeInserted(oldItemCount, newItemCount - oldItemCount);
+            }
         }
 
         if (TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(SettingsUtils.getPreferredFont(getContext()))) {
             FontUtils.init(getContext());
-            adapter.notifyItemRangeChanged(0, stories.size());
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
         if (adapter.compactHeader != SettingsUtils.shouldUseCompactHeader(getContext())) {
@@ -654,7 +696,7 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.hotness != SettingsUtils.getPreferredHotness(getContext())) {
             adapter.hotness = SettingsUtils.getPreferredHotness(getContext());
-            adapter.notifyItemRangeChanged(0, stories.size());
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
         if (hideJobs != SettingsUtils.shouldHideJobs(getContext())) {
@@ -664,7 +706,7 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.faviconProvider != SettingsUtils.getPreferredFaviconProvider(getContext())) {
             adapter.faviconProvider = SettingsUtils.getPreferredFaviconProvider(getContext());
-            adapter.notifyItemRangeChanged(0, stories.size());
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
     }
@@ -710,9 +752,8 @@ public class StoriesFragment extends Fragment {
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
+                    int index = stories.indexOf(story);
                     try {
-                        int index = stories.indexOf(story);
-
                         if (!JSONParser.updateStoryWithHNJson(response, story, adapter.type == SettingsUtils.getHistoryIndex(getResources()))) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
@@ -758,7 +799,10 @@ public class StoriesFragment extends Fragment {
                     } catch (JSONException e) {
                         e.printStackTrace();
                         Utils.log("Failed to load story with id: " + story.id);
-                        adapter.notifyDataSetChanged();
+                        story.loadingFailed = true;
+                        if (index >= 0) {
+                            adapter.notifyItemChanged(index);
+                        }
                     }
                 }, error -> {
             error.printStackTrace();
@@ -851,25 +895,22 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.type == SettingsUtils.getBookmarksIndex(getResources())) {
             // lets load bookmarks instead - or rather add empty stories with correct id:s and start loading them
-            int oldSize = stories.size();
-            adapter.notifyItemRangeRemoved(0, oldSize);
-            loadedTo = -1;
-
-            stories.clear();
+            ArrayList<Story> refreshedStories = new ArrayList<>();
             showingCached = false;
 
             ArrayList<Bookmark> bookmarks = Utils.loadBookmarks(getContext(), true);
 
             for (int i = 0; i < bookmarks.size(); i++) {
                 Story s = new Story("Loading...", bookmarks.get(i).id, false, false);
+                refreshedStories.add(s);
+            }
 
-                stories.add(s);
-                adapter.notifyItemInserted(i);
-                int initialLoadCount = paginationMode ? PAGINATION_PAGE_SIZE : 20;
-                if (i < initialLoadCount) {
-                    loadStory(stories.get(i), 0);
-                    loadedTo = i;
-                }
+            replaceStories(refreshedStories);
+
+            int initialLoadCount = Math.min(getInitialLoadCount(), stories.size());
+            for (int i = 0; i < initialLoadCount; i++) {
+                loadStory(stories.get(i), 0);
+                loadedTo = i;
             }
 
             updateHeader();
@@ -877,24 +918,21 @@ public class StoriesFragment extends Fragment {
 
             return;
         } else if (adapter.type == SettingsUtils.getHistoryIndex(getResources())) {
-            int oldSize = stories.size();
-            adapter.notifyItemRangeRemoved(0, oldSize);
-            loadedTo = -1;
-
-            stories.clear();
+            ArrayList<Story> refreshedStories = new ArrayList<>();
             showingCached = false;
             List<History> histories = UtilsKt.INSTANCE.loadHistories(requireContext(), true);
 
             for (int i = 0; i < histories.size(); i++) {
                 Story s = new Story("Loading...", histories.get(i).getId(), false, false, histories.get(i).getCreated());
+                refreshedStories.add(s);
+            }
 
-                stories.add(s);
-                adapter.notifyItemInserted(i);
-                int initialLoadCount = paginationMode ? PAGINATION_PAGE_SIZE : 20;
-                if (i < initialLoadCount) {
-                    loadStory(stories.get(i), 0);
-                    loadedTo = i;
-                }
+            replaceStories(refreshedStories);
+
+            int initialLoadCount = Math.min(getInitialLoadCount(), stories.size());
+            for (int i = 0; i < initialLoadCount; i++) {
+                loadStory(stories.get(i), 0);
+                loadedTo = i;
             }
 
             updateHeader();
@@ -909,13 +947,7 @@ public class StoriesFragment extends Fragment {
                     swipeRefreshLayout.setRefreshing(false);
                     try {
                         JSONArray jsonArray = new JSONArray(response);
-
-                        loadedTo = -1;
-
-                        int oldSize = stories.size();
-                        adapter.notifyItemRangeRemoved(0, oldSize);
-
-                        stories.clear();
+                        ArrayList<Story> refreshedStories = new ArrayList<>();
                         showingCached = false;
 
                         for (int i = 0; i < jsonArray.length(); i++) {
@@ -932,9 +964,10 @@ public class StoriesFragment extends Fragment {
                                 JSONParser.updateStoryWithAlgoliaResponse(s, cachedResponse);
                             }
 
-                            stories.add(s);
-                            adapter.notifyItemInserted(stories.size() - 1);
+                            refreshedStories.add(s);
                         }
+
+                        replaceStories(refreshedStories);
 
                         if (loadingFailed) {
                             loadingFailed = false;
@@ -944,8 +977,7 @@ public class StoriesFragment extends Fragment {
                         updateHeader();
 
                         // Load initial batch of stories
-                        int initialLoadCount = paginationMode ? PAGINATION_PAGE_SIZE : 20;
-                        int storiesToLoad = Math.min(initialLoadCount, stories.size());
+                        int storiesToLoad = Math.min(getInitialLoadCount(), stories.size());
                         for (int i = 0; i < storiesToLoad; i++) {
                             loadedTo = i;
                             loadStory(stories.get(i), 0);
@@ -978,15 +1010,10 @@ public class StoriesFragment extends Fragment {
             // cancel all ongoing
             queue.cancelAll(requestTag);
             swipeRefreshLayout.setRefreshing(false);
-
-            int oldSize = stories.size();
-            adapter.notifyItemRangeRemoved(0, oldSize);
-            stories.clear();
+            clearStories();
             appBarLayout.setExpanded(true, false);
         } else {
-            int size = stories.size();
-            stories.clear();
-            adapter.notifyItemRangeRemoved(0, size);
+            clearStories();
         }
 
         updateHeader();
@@ -1017,16 +1044,7 @@ public class StoriesFragment extends Fragment {
                         public void onParseSuccess(List<Story> parsedStories) {
                             swipeRefreshLayout.setRefreshing(false);
 
-                            int oldSize = stories.size();
-
-                            stories.clear();
-                            showingCached = false;
-
-                            adapter.notifyItemRangeRemoved(0, oldSize);
-
-                            stories.addAll(parsedStories);
-
-                            Iterator<Story> iterator = stories.iterator();
+                            Iterator<Story> iterator = parsedStories.iterator();
                             while (iterator.hasNext()) {
                                 Story story = iterator.next();
                                 story.clicked = HistoriesUtils.INSTANCE.isHistoryExist(story.id);
@@ -1061,7 +1079,7 @@ public class StoriesFragment extends Fragment {
                             loadingFailedServerError = false;
                             showingCached = false;
 
-                            adapter.notifyItemRangeInserted(0, stories.size());
+                            replaceStories(parsedStories);
                             updateHeader();
 
                             // Set loadedTo for Algolia stories (they're already fully loaded)
@@ -1153,14 +1171,10 @@ public class StoriesFragment extends Fragment {
         showingCached = true;
         swipeRefreshLayout.setRefreshing(false);
 
-        int oldSize = stories.size();
-        stories.clear();
-        stories.addAll(Utils.loadCachedStories(getContext()));
+        replaceStories(Utils.loadCachedStories(getContext()));
         loadedTo = stories.size() - 1;
         loadingFailed = false;
         loadingFailedServerError = false;
-        adapter.notifyItemRangeRemoved(0, oldSize);
-        adapter.notifyItemRangeInserted(0, stories.size());
         updateHeader();
     }
 
