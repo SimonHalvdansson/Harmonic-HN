@@ -81,7 +81,6 @@ public class StoriesFragment extends Fragment {
     private ExtendedFloatingActionButton updateFab;
     private RecyclerView recyclerView;
     private AppBarLayout appBarLayout;
-    private View headerSeparator;
 
     // Header views
     private LinearLayout headerContainer;
@@ -153,7 +152,6 @@ public class StoriesFragment extends Fragment {
                 headerContainer.setAlpha(1f - (Math.abs(verticalOffset) / totalScrollRange));
             }
         });
-        headerSeparator = view.findViewById(R.id.stories_header_separator);
 
         // Bind header views
         headerContainer = view.findViewById(R.id.stories_header_container);
@@ -247,11 +245,6 @@ public class StoriesFragment extends Fragment {
                         loadStory(stories.get(i), 0);
                     }
                 }
-
-                // Fade separator based on scroll offset
-                int offset = recyclerView.computeVerticalScrollOffset();
-                float separatorAlpha = Math.min(offset / 150f, 1f);
-                headerSeparator.setAlpha(separatorAlpha);
             }
         });
 

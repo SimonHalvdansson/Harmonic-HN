@@ -225,11 +225,4 @@
 
     </LinearLayout>
 
-    <View
-        android:id="@+id/stories_header_separator"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:alpha="0"
-        android:background="?android:attr/listDivider" />
-
 </LinearLayout>
