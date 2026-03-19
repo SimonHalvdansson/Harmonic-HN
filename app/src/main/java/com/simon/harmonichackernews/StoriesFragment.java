@@ -175,7 +175,12 @@ public class StoriesFragment extends Fragment {
         swipeRefreshLayout.setOnRefreshListener(this::attemptRefresh);
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
-        linearLayoutManager = new LinearLayoutManager(getContext());
+        linearLayoutManager = new LinearLayoutManager(getContext()) {
+            @Override
+            public boolean canScrollVertically() {
+                return !shouldLockRecyclerScroll() && super.canScrollVertically();
+            }
+        };
         recyclerView.setLayoutManager(linearLayoutManager);
 
         stories = new ArrayList<>();
@@ -412,6 +417,7 @@ public class StoriesFragment extends Fragment {
         showCachedButton.setVisibility(loadingFailed && Utils.hasCachedStories(ctx) ? View.VISIBLE : View.GONE);
 
         loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
+        updateRecyclerScrollState();
     }
 
     private void setupAdapter() {
@@ -968,7 +974,6 @@ public class StoriesFragment extends Fragment {
 
     private void updateSearchStatus() {
         hideUpdateButton();
-        updateHeader();
 
         if (getActivity() != null && getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).backPressedCallback.setEnabled(searching);
@@ -984,11 +989,16 @@ public class StoriesFragment extends Fragment {
             int oldSize = stories.size();
             adapter.notifyItemRangeRemoved(0, oldSize);
             stories.clear();
+            appBarLayout.setExpanded(true, false);
         } else {
             int size = stories.size();
             stories.clear();
             adapter.notifyItemRangeRemoved(0, size);
+        }
 
+        updateHeader();
+
+        if (!searching) {
             attemptRefresh();
         }
     }
@@ -1004,7 +1014,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void loadAlgolia(String url) {
-        swipeRefreshLayout.setEnabled(true);
+        swipeRefreshLayout.setEnabled(!searching);
         swipeRefreshLayout.setRefreshing(true);
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
@@ -1087,6 +1097,26 @@ public class StoriesFragment extends Fragment {
 
         stringRequest.setTag(requestTag);
         queue.add(stringRequest);
+    }
+
+    private boolean shouldLockRecyclerScroll() {
+        return searching && stories != null && stories.isEmpty();
+    }
+
+    private void updateRecyclerScrollState() {
+        if (recyclerView == null) {
+            return;
+        }
+
+        boolean lockRecyclerScroll = shouldLockRecyclerScroll();
+        recyclerView.setNestedScrollingEnabled(!lockRecyclerScroll);
+        recyclerView.setOverScrollMode(lockRecyclerScroll ? View.OVER_SCROLL_NEVER : View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+
+        if (lockRecyclerScroll) {
+            recyclerView.stopScroll();
+            recyclerView.scrollToPosition(0);
+            appBarLayout.setExpanded(true, false);
+        }
     }
 
     public boolean currentTypeIsAlgolia() {
