@@ -6,6 +6,7 @@ public class Changelog {
         return  "<b>Version 2.3:</b><br>" +
                 "- Redesign settings screen into multiple levels (thanks SquirrelWave!)<br>" +
                 "- Added a new homescreen widget for stories (thanks SquirrelWave!)<br>" +
+                "- Fixed comment search scrolling when a matched comment is inside collapsed parents<br>" +
                 "<br>" +
                 "<b>Version 2.2.6:</b><br>" +
                 "- Updated behavior when met with HN CAPTCHA<br>" +
