@@ -536,18 +536,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     private void syncOnBackPressedCallbackEnabledState() {
         if (closeWebViewOnBack) {
-            toggleBackPressedCallback(webView != null &&
+            backPressedCallback.setEnabled(webView != null &&
                     BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED);
         } else {
-            toggleBackPressedCallback(webView != null && webView.canGoBack());
-        }
-    }
-
-    private void toggleBackPressedCallback(boolean newStatus) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            backPressedCallback.setEnabled(newStatus);
-        } else {
-            backPressedCallback.setEnabled(true);
+            backPressedCallback.setEnabled(webView != null && webView.canGoBack());
         }
     }
 
