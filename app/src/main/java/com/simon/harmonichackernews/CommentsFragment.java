@@ -1207,14 +1207,47 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (scrollToCommentId == -1) return;
         for (int i = 0; i < comments.size(); i++) {
             if (comments.get(i).id == scrollToCommentId) {
+                int targetIndex = i;
+                expandParentsForComment(comments.get(i));
                 // +1 to account for header at adapter position 0
-                layoutManager.scrollToPositionWithOffset(i + 1, topInset);
+                recyclerView.post(() -> layoutManager.scrollToPositionWithOffset(targetIndex + 1, topInset));
                 scrollToCommentId = -1;
                 return;
             }
         }
         Toast.makeText(getContext(), "Comment not found", Toast.LENGTH_SHORT).show();
         scrollToCommentId = -1;
+    }
+
+    private void expandParentsForComment(Comment comment) {
+        boolean expandedAny = false;
+        int parentId = comment.parent;
+
+        while (parentId > 0) {
+            Comment parent = null;
+            for (int i = 1; i < comments.size(); i++) {
+                Comment c = comments.get(i);
+                if (c.id == parentId) {
+                    parent = c;
+                    break;
+                }
+            }
+
+            if (parent == null) {
+                break;
+            }
+
+            if (!parent.expanded) {
+                parent.expanded = true;
+                expandedAny = true;
+            }
+
+            parentId = parent.parent;
+        }
+
+        if (expandedAny && adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
     }
 
     public void destroyWebView() {
@@ -1624,8 +1657,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         public void onCommentSelected(Comment comment) {
                             for (Comment c : comments) {
                                 if (c.id == comment.id) {
-                                    smoothScroller.setTargetPosition(comments.indexOf(c));
-                                    layoutManager.startSmoothScroll(smoothScroller);
+                                    int targetIndex = comments.indexOf(c);
+                                    expandParentsForComment(c);
+                                    recyclerView.post(() -> {
+                                        smoothScroller.setTargetPosition(targetIndex);
+                                        layoutManager.startSmoothScroll(smoothScroller);
+                                    });
                                     break;
                                 }
                             }
