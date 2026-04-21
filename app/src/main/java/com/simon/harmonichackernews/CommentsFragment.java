@@ -2199,7 +2199,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     Log.e("MY_APP_TAG", "System killed the WebView rendering process " +
                             "to reclaim memory. Recreating...");
 
-                    Utils.toast("System ran out of memory and killed WebView, reinitializing", getContext());
                     restartWebView();
 
                     // By this point, the instance variable "mWebView" is guaranteed to
