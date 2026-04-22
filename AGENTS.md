@@ -4,6 +4,8 @@ This repository contains the Harmonic for Hacker News Android app. There are **n
 
 General tips:
 - Source code lives in the `app/` directory and the project is built with Gradle.
+- The in-app changelog lives in `app/src/main/java/com/simon/harmonichackernews/utils/Changelog.java`.
+- Do not update the changelog unless the user explicitly asks for it.
 - Building the app may require Android SDK components which may not be available in minimal environments.
 - Keep commits small and descriptive.
 - No test framework is configured. You can skip `./gradlew test` or similar commands.

@@ -6,6 +6,7 @@ public class Changelog {
         return  "<b>Version 2.3.1:</b><br>" +
                 "- Fixed fullscreen button in integrated WebView videos (for example YouTube)<br>" +
                 "- Added fallback for parsing empty comment in submissions view<br>" +
+                "- Added loading indicator for the initial submissions screen load<br>" +
                 "<br>" +
                 "<b>Version 2.3:</b><br>" +
                 "- Redesign settings screen into multiple levels (thanks SquirrelWave!)<br>" +
