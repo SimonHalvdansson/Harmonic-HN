@@ -7,16 +7,24 @@ General tips:
 - Building the app may require Android SDK components which may not be available in minimal environments.
 - Keep commits small and descriptive.
 - No test framework is configured. You can skip `./gradlew test` or similar commands.
-- When adding features or bug fixes, ensure code compiles by running the full build (see below).
+- When adding features or bug fixes, ensure the app compiles with the debug build check below.
 
 ## Build Verification
 
-Before pushing, always run the full build:
+Use the Android Studio Java runtime when invoking Gradle from Codex or other CLI environments on this machine. A plain `./gradlew` may fail because no system Java runtime is installed.
+
+For quick verification, run the debug build check:
 
 ```
-./gradlew build --warning-mode all --parallel
+/bin/zsh -lc 'JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" PATH="$JAVA_HOME/bin:$PATH" ./gradlew assembleDebug'
 ```
 
-This runs compilation, lint checks, and tests — matching CI (`push.yml`).
+This is the preferred default Codex verification step for this repository. It is substantially faster than a full `build` while still checking that the app compiles and packages in debug mode.
 
-**Do not rely only on `assembleDebug`** (used by Android Studio's Run button) — it skips lint and other verification tasks. A green run in Android Studio does not guarantee CI will pass.
+If a change touches UI, resources, manifests, or other Android configuration that lint commonly flags, also run:
+
+```
+/bin/zsh -lc 'JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" PATH="$JAVA_HOME/bin:$PATH" ./gradlew lintDebug'
+```
+
+Use `assembleDebug` for the normal edit/verify loop, and add `lintDebug` when the change justifies the extra time.

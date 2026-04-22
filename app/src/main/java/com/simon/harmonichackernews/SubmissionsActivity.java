@@ -3,6 +3,7 @@ package com.simon.harmonichackernews;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -37,6 +38,8 @@ public class SubmissionsActivity extends AppCompatActivity {
     private LinearLayoutManager linearLayoutManager;
     private RequestQueue queue;
     private SwipeRefreshLayout swipeRefreshLayout;
+    private View initialLoadingIndicator;
+    private boolean initialLoadFinished = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +49,7 @@ public class SubmissionsActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_submissions);
         swipeRefreshLayout = findViewById(R.id.submissions_swiperefreshlayout);
+        initialLoadingIndicator = findViewById(R.id.submissions_initial_loading);
 
         swipeRefreshLayout.setOnRefreshListener(this::loadSubmissions);
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
@@ -151,7 +155,9 @@ public class SubmissionsActivity extends AppCompatActivity {
     }
 
     private void loadSubmissions() {
-        swipeRefreshLayout.setRefreshing(true);
+        boolean showInitialLoading = !initialLoadFinished;
+        swipeRefreshLayout.setRefreshing(!showInitialLoading);
+        initialLoadingIndicator.setVisibility(showInitialLoading ? View.VISIBLE : View.GONE);
         String url = "https://hn.algolia.com/api/v1/search_by_date?tags=author_" + getIntent().getStringExtra(KEY_USER) + "&hitsPerPage=999";
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
@@ -160,7 +166,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                     BackgroundJSONParser.parseAlgoliaJson(response, new BackgroundJSONParser.AlgoliaParseCallback() {
                         @Override
                         public void onParseSuccess(List<Story> parsedStories) {
-                            swipeRefreshLayout.setRefreshing(false);
+                            finishLoading();
 
                             int oldSize = submissions.size();
 
@@ -176,16 +182,22 @@ public class SubmissionsActivity extends AppCompatActivity {
 
                         @Override
                         public void onParseError(JSONException error) {
-                            swipeRefreshLayout.setRefreshing(false);
+                            finishLoading();
                             error.printStackTrace();
                         }
                     });
 
                 }, error -> {
             error.printStackTrace();
-            swipeRefreshLayout.setRefreshing(false);
+            finishLoading();
         });
 
         queue.add(stringRequest);
+    }
+
+    private void finishLoading() {
+        initialLoadFinished = true;
+        swipeRefreshLayout.setRefreshing(false);
+        initialLoadingIndicator.setVisibility(View.GONE);
     }
 }
