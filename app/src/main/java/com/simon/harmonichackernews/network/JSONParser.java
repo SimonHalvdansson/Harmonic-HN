@@ -61,7 +61,7 @@ public class JSONParser {
 
             if (isComment) {
                 story.isComment = true;
-                story.text = preprocessHtml(hit.getString("comment_text"));
+                story.text = preprocessHtml(hit.optString("comment_text", ""));
                 story.commentMasterTitle = hit.getString("story_title");
                 story.commentMasterId = hit.getInt("story_id");
                 if (hit.has("story_url") && !hit.getString("story_url").equals(JSON_NULL_LITERAL)) {
