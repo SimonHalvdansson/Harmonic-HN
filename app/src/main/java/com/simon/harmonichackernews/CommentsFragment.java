@@ -68,6 +68,7 @@ import androidx.core.util.Pair;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
@@ -168,6 +169,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private LinearLayout bottomSheet;
     private WebView webView;
     private FrameLayout webViewContainer;
+    private FrameLayout fullscreenContainer;
     private View webViewBackdrop;
     private Space headerSpacer;
     private MaterialButton downloadButton;
@@ -193,6 +195,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private String lastFailedWebViewUrl;
     @Nullable
     private String lastRequestedWebViewUrl;
+    @Nullable
+    private View customView;
+    @Nullable
+    private WebChromeClient.CustomViewCallback customViewCallback;
     private boolean retryingFailedWebViewUrl = false;
     private int scrollToCommentId = -1;
 
@@ -317,6 +323,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerViewSwipe = view.findViewById(R.id.comments_recyclerview_swipe);
         bottomSheet = view.findViewById(R.id.comments_bottom_sheet);
         webViewContainer = view.findViewById(R.id.webview_container);
+        fullscreenContainer = view.findViewById(R.id.comments_fullscreen_container);
         webViewBackdrop = view.findViewById(R.id.comments_webview_backdrop);
 
         if (story.title == null) {
@@ -372,6 +379,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackPressed() {
+                if (isShowingCustomView()) {
+                    hideCustomView(true);
+                    return;
+                }
+
                 boolean webViewVisible = BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
                 if (willExpandBottomSheetOnBack()) {
                     // If the webView can't go back but the back handler is enabled,
@@ -404,6 +416,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
             private boolean willExpandBottomSheetOnBack() {
+                if (isShowingCustomView()) {
+                    return false;
+                }
                 boolean webViewVisible = BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
                 return webViewVisible && !webView.canGoBack();
             }
@@ -535,6 +550,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void syncOnBackPressedCallbackEnabledState() {
+        if (isShowingCustomView()) {
+            backPressedCallback.setEnabled(true);
+            return;
+        }
         if (closeWebViewOnBack) {
             backPressedCallback.setEnabled(webView != null &&
                     BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED);
@@ -900,6 +919,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             private ValueAnimator progressAnimator;
 
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                showCustomView(view, callback);
+            }
+
+            @Override
+            public void onHideCustomView() {
+                hideCustomView(false);
+            }
+
+            @Override
             public void onProgressChanged(WebView view, int newProgress) {
                 if (progressAnimator != null && progressAnimator.isRunning()) {
                     progressAnimator.cancel();
@@ -944,6 +974,89 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             }
         }, 2000); // Start the animation after 2 seconds
+    }
+
+    private boolean isShowingCustomView() {
+        return customView != null;
+    }
+
+    private void showCustomView(@NonNull View view, @NonNull WebChromeClient.CustomViewCallback callback) {
+        if (isShowingCustomView()) {
+            hideCustomView(true);
+        }
+
+        customView = view;
+        customViewCallback = callback;
+
+        if (view.getParent() instanceof ViewGroup) {
+            ((ViewGroup) view.getParent()).removeView(view);
+        }
+
+        fullscreenContainer.removeAllViews();
+        fullscreenContainer.addView(view, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+        fullscreenContainer.setVisibility(View.VISIBLE);
+        webViewContainer.setVisibility(View.GONE);
+        bottomSheet.setVisibility(View.GONE);
+
+        setFullscreenSystemBarsHidden(true);
+        syncOnBackPressedCallbackEnabledState();
+
+        if (this.callback != null) {
+            this.callback.onSwitchView(true);
+        }
+    }
+
+    private void hideCustomView(boolean notifyCallback) {
+        if (!isShowingCustomView()) {
+            return;
+        }
+
+        View currentCustomView = customView;
+        WebChromeClient.CustomViewCallback currentCustomViewCallback = customViewCallback;
+        customView = null;
+        customViewCallback = null;
+
+        if (currentCustomView != null && currentCustomView.getParent() instanceof ViewGroup) {
+            ((ViewGroup) currentCustomView.getParent()).removeView(currentCustomView);
+        }
+
+        fullscreenContainer.removeAllViews();
+        fullscreenContainer.setVisibility(View.GONE);
+        webViewContainer.setVisibility(View.VISIBLE);
+        bottomSheet.setVisibility(View.VISIBLE);
+
+        setFullscreenSystemBarsHidden(false);
+        syncOnBackPressedCallbackEnabledState();
+
+        if (callback != null) {
+            callback.onSwitchView(BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED);
+        }
+
+        if (notifyCallback && currentCustomViewCallback != null) {
+            currentCustomViewCallback.onCustomViewHidden();
+        }
+    }
+
+    private void setFullscreenSystemBarsHidden(boolean hidden) {
+        if (getActivity() == null) {
+            return;
+        }
+
+        WindowInsetsControllerCompat windowInsetsController =
+                ViewCompat.getWindowInsetsController(requireActivity().getWindow().getDecorView());
+        if (windowInsetsController == null) {
+            return;
+        }
+
+        if (hidden) {
+            windowInsetsController.hide(WindowInsetsCompat.Type.systemBars());
+            windowInsetsController.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        } else {
+            windowInsetsController.show(WindowInsetsCompat.Type.systemBars());
+        }
     }
 
     private void loadUrl(String url) {
@@ -1267,6 +1380,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onDestroyView() {
+        hideCustomView(false);
+
         if (recyclerView != null) {
             recyclerView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
                 @Override

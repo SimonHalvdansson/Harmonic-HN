@@ -147,4 +147,11 @@
         </FrameLayout>
     </LinearLayout>
 
+    <FrameLayout
+        android:id="@+id/comments_fullscreen_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black"
+        android:visibility="gone" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
