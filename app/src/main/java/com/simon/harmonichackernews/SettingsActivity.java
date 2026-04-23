@@ -3,12 +3,14 @@ package com.simon.harmonichackernews;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -35,6 +37,7 @@ public class SettingsActivity extends AppCompatActivity implements
         PreferenceFragmentCompat.OnPreferenceStartFragmentCallback,
         SettingsCallback {
 
+    private static final String TAG = "SettingsActivity";
     private static final int TWO_PANE_MIN_WIDTH_DP = 600;
     private static final int TWO_PANE_SPACER_DP = 16;
     private static final int TWO_PANE_LIST_WEIGHT = 2;
@@ -236,16 +239,13 @@ public class SettingsActivity extends AppCompatActivity implements
 
     @Override
     public boolean onPreferenceStartFragment(@NonNull PreferenceFragmentCompat caller, @NonNull Preference pref) {
-        String fragmentClassName = pref.getFragment();
-        if (fragmentClassName == null) {
+        Fragment fragment = createSettingsDetailFragment(pref);
+        if (fragment == null) {
             return false;
         }
 
-        currentDetailClassName = fragmentClassName;
+        currentDetailClassName = fragment.getClass().getName();
         currentDetailKey = pref.getKey();
-
-        Fragment fragment = getSupportFragmentManager().getFragmentFactory()
-                .instantiate(getClassLoader(), fragmentClassName);
         fragment.setArguments(pref.getExtras());
 
         if (isTwoPane) {
@@ -269,6 +269,39 @@ public class SettingsActivity extends AppCompatActivity implements
         }
 
         return true;
+    }
+
+    @Nullable
+    private Fragment createSettingsDetailFragment(@NonNull Preference pref) {
+        String fragmentClassName = pref.getFragment();
+        if (fragmentClassName == null) {
+            return null;
+        }
+
+        // These fragment names are stored as strings in preference XML, so instantiate known
+        // screens directly instead of relying on their release-build class names staying stable.
+        switch (fragmentClassName) {
+            case "com.simon.harmonichackernews.settings.AppearancePreferenceFragment":
+                return new AppearancePreferenceFragment();
+            case "com.simon.harmonichackernews.settings.StoriesPreferenceFragment":
+                return new StoriesPreferenceFragment();
+            case "com.simon.harmonichackernews.settings.WebLinksPreferenceFragment":
+                return new WebLinksPreferenceFragment();
+            case "com.simon.harmonichackernews.settings.CommentsPreferenceFragment":
+                return new CommentsPreferenceFragment();
+            case "com.simon.harmonichackernews.settings.FiltersTagsPreferenceFragment":
+                return new FiltersTagsPreferenceFragment();
+            case "com.simon.harmonichackernews.settings.DataStoragePreferenceFragment":
+                return new DataStoragePreferenceFragment();
+            default:
+                try {
+                    return getSupportFragmentManager().getFragmentFactory()
+                            .instantiate(getClassLoader(), fragmentClassName);
+                } catch (Fragment.InstantiationException e) {
+                    Log.e(TAG, "Unable to instantiate settings fragment " + fragmentClassName, e);
+                    return null;
+                }
+        }
     }
 
     @Override

@@ -4,6 +4,7 @@ package com.simon.harmonichackernews.utils;
 public class Changelog {
     static public String getHTML() {
         return  "<b>Version 2.3.1:</b><br>" +
+                "- Fixed crash when viewing setting sub screen (my bad!)<br>" +
                 "- Fixed fullscreen button in integrated WebView videos (for example YouTube)<br>" +
                 "- Added fallback for parsing empty comment in submissions view<br>" +
                 "- Added loading indicator for the initial submissions screen load<br>" +

@@ -31,3 +31,6 @@
 -dontwarn org.openjsse.javax.net.ssl.SSLSocket
 -dontwarn org.openjsse.net.ssl.OpenJSSE
 -dontwarn com.google.re2j.**
+
+# Settings headers reference these fragments by class name from preference XML.
+-keep class com.simon.harmonichackernews.settings.*PreferenceFragment
