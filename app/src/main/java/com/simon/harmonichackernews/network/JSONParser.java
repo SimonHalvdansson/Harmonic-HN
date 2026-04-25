@@ -475,24 +475,7 @@ public class JSONParser {
         input = input.replace("<code>", "<pre><small>").replace("</code>", "</small></pre>");
 
         if (input.contains("<pre>")) {
-            for (int i = 0; i < input.length() - 2; i++) {
-                if (input.charAt(i) == ' ') {
-                    String upUntilNow = input.substring(0, i);
-                    if (upUntilNow.contains("<pre>")) {
-                        if (upUntilNow.lastIndexOf("<pre>") > upUntilNow.lastIndexOf("</pre>")) {
-                            input = upUntilNow + "&nbsp;" + input.substring(i + 1);
-                        }
-                    }
-                } else if (input.charAt(i) == '\n') {
-                    String upUntilNow = input.substring(0, i);
-                    if (upUntilNow.contains("<pre>")) {
-                        if (upUntilNow.lastIndexOf("<pre>") > upUntilNow.lastIndexOf("</pre>")) {
-                            input = upUntilNow + "<br>" + input.substring(i + 1);
-                        }
-                    }
-
-                }
-            }
+            input = escapePreBlockWhitespace(input);
         }
 
         input = input.replace("<pre>", "<div><tt>").replace("</pre>", "</tt></div>");
@@ -500,6 +483,34 @@ public class JSONParser {
         input = Utils.linkify(input);
 
         return input;
+    }
+
+    private static String escapePreBlockWhitespace(String input) {
+        StringBuilder output = new StringBuilder(input.length());
+        boolean insidePreBlock = false;
+
+        for (int i = 0; i < input.length(); i++) {
+            if (input.startsWith("<pre>", i)) {
+                insidePreBlock = true;
+                output.append("<pre>");
+                i += "<pre>".length() - 1;
+            } else if (input.startsWith("</pre>", i)) {
+                insidePreBlock = false;
+                output.append("</pre>");
+                i += "</pre>".length() - 1;
+            } else {
+                char current = input.charAt(i);
+                if (insidePreBlock && current == ' ') {
+                    output.append("&nbsp;");
+                } else if (insidePreBlock && current == '\n') {
+                    output.append("<br>");
+                } else {
+                    output.append(current);
+                }
+            }
+        }
+
+        return output.toString();
     }
 
     // Official HN API parsing methods for fallback
