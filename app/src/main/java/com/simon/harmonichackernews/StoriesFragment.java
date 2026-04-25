@@ -5,6 +5,7 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.KeyEvent;
@@ -1061,13 +1062,26 @@ public class StoriesFragment extends Fragment {
     }
 
     private void loadTopStoriesSince(int start_i) {
-        loadAlgolia("https://hn.algolia.com/api/v1/search?tags=story&numericFilters=created_at_i>" + start_i + "&hitsPerPage=200");
+        Uri uri = Uri.parse("https://hn.algolia.com/api/v1/search")
+                .buildUpon()
+                .appendQueryParameter("tags", "story")
+                .appendQueryParameter("numericFilters", "created_at_i>" + start_i)
+                .appendQueryParameter("hitsPerPage", "200")
+                .build();
+        loadAlgolia(uri.toString());
     }
 
     private void search(String query) {
         lastSearch = query;
 
-        loadAlgolia("https://hn.algolia.com/api/v1/search_by_date?query=" + query + "&tags=story&hitsPerPage=200&typoTolerance=min");
+        Uri uri = Uri.parse("https://hn.algolia.com/api/v1/search_by_date")
+                .buildUpon()
+                .appendQueryParameter("query", query)
+                .appendQueryParameter("tags", "story")
+                .appendQueryParameter("hitsPerPage", "200")
+                .appendQueryParameter("typoTolerance", "min")
+                .build();
+        loadAlgolia(uri.toString());
     }
 
     private void loadAlgolia(String url) {

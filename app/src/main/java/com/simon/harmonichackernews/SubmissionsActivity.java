@@ -2,6 +2,7 @@ package com.simon.harmonichackernews;
 
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 
@@ -158,7 +159,12 @@ public class SubmissionsActivity extends AppCompatActivity {
         boolean showInitialLoading = !initialLoadFinished;
         swipeRefreshLayout.setRefreshing(!showInitialLoading);
         initialLoadingIndicator.setVisibility(showInitialLoading ? View.VISIBLE : View.GONE);
-        String url = "https://hn.algolia.com/api/v1/search_by_date?tags=author_" + getIntent().getStringExtra(KEY_USER) + "&hitsPerPage=999";
+        String url = Uri.parse("https://hn.algolia.com/api/v1/search_by_date")
+                .buildUpon()
+                .appendQueryParameter("tags", "author_" + getIntent().getStringExtra(KEY_USER))
+                .appendQueryParameter("hitsPerPage", "999")
+                .build()
+                .toString();
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
