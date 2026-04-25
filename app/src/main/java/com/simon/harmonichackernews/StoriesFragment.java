@@ -8,6 +8,9 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.transition.AutoTransition;
+import android.transition.TransitionManager;
+import android.transition.TransitionSet;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -85,6 +88,7 @@ public class StoriesFragment extends Fragment {
 
     // Header views
     private LinearLayout headerContainer;
+    private LinearLayout toolbarRow;
     private Spinner typeSpinner;
     private LinearLayout spinnerContainer;
     private EditText searchEditText;
@@ -125,6 +129,7 @@ public class StoriesFragment extends Fragment {
     long lastLoaded = 0;
     long lastClick = 0;
     private final static long CLICK_INTERVAL = 350;
+    private static final long SEARCH_HEADER_ANIMATION_DURATION_MS = 180;
 
     private int topInset = 0;
 
@@ -158,6 +163,7 @@ public class StoriesFragment extends Fragment {
 
         // Bind header views
         headerContainer = view.findViewById(R.id.stories_header_container);
+        toolbarRow = view.findViewById(R.id.stories_header_toolbar_row);
         typeSpinner = view.findViewById(R.id.stories_header_spinner);
         spinnerContainer = view.findViewById(R.id.stories_header_spinner_container);
         searchEditText = view.findViewById(R.id.stories_header_search_edittext);
@@ -369,6 +375,10 @@ public class StoriesFragment extends Fragment {
     }
 
     private void updateHeader() {
+        updateHeader(false);
+    }
+
+    private void updateHeader(boolean animateSearchTransition) {
         if (headerContainer == null) return;
 
         Context ctx = getContext();
@@ -379,6 +389,14 @@ public class StoriesFragment extends Fragment {
         int bottomPad = Utils.pxFromDpInt(getResources(), compactHeader ? 10 : 26);
         int sidePad = Utils.pxFromDpInt(getResources(), 16);
         headerContainer.setPadding(sidePad, topPad, sidePad, bottomPad);
+
+        if (animateSearchTransition && toolbarRow != null && ViewCompat.isLaidOut(toolbarRow)) {
+            AutoTransition transition = new AutoTransition();
+            transition.setOrdering(TransitionSet.ORDERING_TOGETHER);
+            transition.setDuration(SEARCH_HEADER_ANIMATION_DURATION_MS);
+            transition.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+            TransitionManager.beginDelayedTransition(toolbarRow, transition);
+        }
 
         moreButton.setVisibility(searching ? View.GONE : View.VISIBLE);
         spinnerContainer.setVisibility(searching ? View.GONE : View.VISIBLE);
@@ -1054,7 +1072,7 @@ public class StoriesFragment extends Fragment {
             clearStories();
         }
 
-        updateHeader();
+        updateHeader(true);
 
         if (!searching) {
             attemptRefresh();
