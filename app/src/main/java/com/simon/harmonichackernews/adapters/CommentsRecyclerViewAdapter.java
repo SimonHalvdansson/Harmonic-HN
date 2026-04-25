@@ -4,18 +4,12 @@ import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ImageSpan;
-import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,14 +21,12 @@ import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Space;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.TooltipCompat;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.FragmentManager;
-import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
@@ -58,7 +50,9 @@ import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -68,6 +62,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private CommentClickListener commentLongClickListener;
     private HeaderActionClickListener headerActionClickListener;
     private RetryListener retryListener;
+    private final Map<Integer, Comment> commentsById = new HashMap<>();
+    private int commentLookupSize = -1;
 
     public LinearLayout bottomSheet;
     public FragmentManager fragmentManager;
@@ -493,9 +489,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 
-            DisplayMetrics displayMetrics = new DisplayMetrics();
-            ((Activity) ctx).getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-            int width = displayMetrics.widthPixels;
+            int width = ctx.getResources().getDisplayMetrics().widthPixels;
             if (isTablet) {
                 width /= 2;
             }
@@ -1001,27 +995,33 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private boolean shouldShow(Comment comment) {
-        /*
-         * Try to call shouldShow() on the parent if parent is expanded
-         * if parent is not expanded the return false.
-         *
-         * If parent is -1 (top level) always show
-         * */
+        ensureCommentLookup(comment);
 
-        if (comment.parent == -1) {
-            return true;
-        }
-
-        for (Comment c : comments) {
-            if (c.id == comment.parent) {
-                if (c.expanded) {
-                    return shouldShow(c);
-                } else {
-                    return false;
-                }
+        Comment current = comment;
+        for (int i = 0; i < comments.size() && current.parent != -1; i++) {
+            Comment parent = commentsById.get(current.parent);
+            if (parent == null) {
+                return true;
             }
+            if (!parent.expanded) {
+                return false;
+            }
+            current = parent;
         }
         return true;
+    }
+
+    private void ensureCommentLookup(Comment currentComment) {
+        if (commentLookupSize == comments.size()
+                && commentsById.get(currentComment.id) == currentComment) {
+            return;
+        }
+
+        commentsById.clear();
+        for (Comment comment : comments) {
+            commentsById.put(comment.id, comment);
+        }
+        commentLookupSize = comments.size();
     }
 
     public interface RequestSummaryCallback {
