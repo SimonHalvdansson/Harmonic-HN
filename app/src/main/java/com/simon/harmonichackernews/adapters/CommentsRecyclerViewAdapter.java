@@ -439,7 +439,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             });
 
-            headerViewHolder.bookmarkButton.setImageResource(Utils.isBookmarked(ctx, story.id) ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border);
+            boolean isBookmarked = Utils.isBookmarked(ctx, story.id);
+            headerViewHolder.bookmarkButton.setImageResource(isBookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border);
+            headerViewHolder.bookmarkButton.setContentDescription(isBookmarked ? "Remove bookmark" : "Bookmark");
             headerViewHolder.bookmarkButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {

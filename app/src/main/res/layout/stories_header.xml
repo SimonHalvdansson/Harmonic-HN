@@ -64,6 +64,7 @@
                 <ImageButton
                     android:id="@+id/stories_header_search_button"
                     android:src="@drawable/ic_action_search"
+                    android:contentDescription="Search"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
@@ -72,6 +73,7 @@
                     android:id="@+id/stories_header_close_search_button"
                     android:visibility="gone"
                     android:src="@drawable/ic_action_cancel"
+                    android:contentDescription="Close search"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
@@ -82,6 +84,7 @@
                 android:id="@+id/stories_header_more"
                 android:layout_marginEnd="-12dp"
                 android:src="@drawable/ic_action_more"
+                android:contentDescription="More options"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:layout_marginTop="4dp"
                 android:layout_width="48dp"

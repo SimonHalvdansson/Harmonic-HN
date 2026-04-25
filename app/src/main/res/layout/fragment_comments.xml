@@ -123,6 +123,7 @@
                     android:id="@+id/comments_scroll_previous"
                     android:background="?selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_action_caret_up_white"
+                    android:contentDescription="Previous top-level comment"
                     android:paddingLeft="8dp"
                     android:layout_width="56dp"
                     android:layout_height="56dp"/>
@@ -140,6 +141,7 @@
                     android:id="@+id/comments_scroll_next"
                     android:background="?selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_action_caret_down_white"
+                    android:contentDescription="Next top-level comment"
                     android:paddingRight="8dp"
                     android:layout_width="56dp"
                     android:layout_height="56dp"/>

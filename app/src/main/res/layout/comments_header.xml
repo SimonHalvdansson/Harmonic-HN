@@ -481,6 +481,7 @@
                 android:background="?selectableItemBackgroundBorderless"
                 android:layout_centerHorizontal="true"
                 android:id="@+id/comments_header_button_user"
+                android:contentDescription="User"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_action_user" />
@@ -497,6 +498,7 @@
                 android:background="?selectableItemBackgroundBorderless"
                 android:layout_centerHorizontal="true"
                 android:id="@+id/comments_header_button_comment"
+                android:contentDescription="Comment"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_action_comment" />
@@ -512,6 +514,7 @@
                 android:background="?selectableItemBackgroundBorderless"
                 android:layout_centerHorizontal="true"
                 android:id="@+id/comments_header_button_vote"
+                android:contentDescription="Vote"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_action_thumbs_up" />
@@ -528,6 +531,7 @@
                 android:background="?selectableItemBackgroundBorderless"
                 android:layout_centerHorizontal="true"
                 android:id="@+id/comments_header_button_bookmark"
+                android:contentDescription="Bookmark"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_action_bookmark_border" />
@@ -544,6 +548,7 @@
                 android:background="?selectableItemBackgroundBorderless"
                 android:layout_centerHorizontal="true"
                 android:id="@+id/comments_header_button_summarize"
+                android:contentDescription="Summarize"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_action_summarize" />
@@ -559,6 +564,7 @@
                 android:background="?selectableItemBackgroundBorderless"
                 android:layout_centerHorizontal="true"
                 android:id="@+id/comments_header_button_share"
+                android:contentDescription="Share"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_action_share" />
@@ -575,6 +581,7 @@
                 android:background="?selectableItemBackgroundBorderless"
                 android:layout_centerHorizontal="true"
                 android:id="@+id/comments_header_button_more"
+                android:contentDescription="More options"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_action_more" />
