@@ -73,6 +73,7 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.webkit.WebSettingsCompat;
@@ -126,7 +127,9 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import okhttp3.Call;
@@ -1658,22 +1661,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             JSONArray children = jsonObject.getJSONArray("children");
 
-            // We run the default sorting
-            boolean addedNewComment = false;
-            for (int i = 0; i < children.length(); i++) {
-                boolean added = JSONParser.readChildAndParseSubchilds(children.getJSONObject(i), comments, adapter, 0, story.kids, filteredUsers);
-                if (added) {
-                    addedNewComment = true;
-                }
-            }
-
-            // If non default, do full refresh after the sorting below!
-            if (addedNewComment && !SettingsUtils.getPreferredCommentSorting(getContext()).equals("Default")) {
-                adapter.notifyItemRangeChanged(1, comments.size());
-            }
-
-            // And then perhaps apply an updated sorting
-            CommentSorter.sort(getContext(), comments);
+            List<Comment> parsedComments = JSONParser.parseAlgoliaComments(children, story.kids, filteredUsers);
+            applyParsedComments(parsedComments);
 
             boolean storyChanged = JSONParser.updateStoryInformation(story, jsonObject, forceHeaderRefresh, oldCommentCount, comments.size());
             if (storyChanged || forceHeaderRefresh) {
@@ -1686,14 +1675,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 // It's the first time, so we need to re-initialize the recyclerview too
                 initializeWebView();
                 initializeRecyclerView();
-            }
-
-            if (SettingsUtils.shouldCollapseTopLevel(getContext())) {
-                for (Comment c : comments) {
-                    if (c.depth == 0) {
-                        c.expanded = false;
-                    }
-                }
             }
 
             adapter.loadingFailed = false;
@@ -1728,6 +1709,110 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         adapter.commentsLoaded = true;
         updateNavigationVisibility();
         recyclerView.post(() -> scrollToTargetComment());
+    }
+
+    private void applyParsedComments(List<Comment> parsedComments) {
+        List<Comment> oldComments = copyCommentsForDiff(comments);
+        Map<Integer, Comment> existingCommentsById = new HashMap<>();
+        for (int i = 1; i < comments.size(); i++) {
+            Comment comment = comments.get(i);
+            existingCommentsById.put(comment.id, comment);
+        }
+
+        List<Comment> nextComments = new ArrayList<>(parsedComments.size() + 1);
+        nextComments.add(comments.get(0));
+        for (Comment parsedComment : parsedComments) {
+            Comment existingComment = existingCommentsById.get(parsedComment.id);
+            if (existingComment != null) {
+                updateComment(existingComment, parsedComment);
+                nextComments.add(existingComment);
+            } else {
+                nextComments.add(parsedComment);
+            }
+        }
+
+        CommentSorter.sort(getContext(), nextComments);
+
+        if (SettingsUtils.shouldCollapseTopLevel(getContext())) {
+            for (Comment comment : nextComments) {
+                if (comment.depth == 0) {
+                    comment.expanded = false;
+                }
+            }
+        }
+
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return oldComments.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return nextComments.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                if (oldItemPosition == 0 || newItemPosition == 0) {
+                    return oldItemPosition == 0 && newItemPosition == 0;
+                }
+                return oldComments.get(oldItemPosition).id == nextComments.get(newItemPosition).id;
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                if (oldItemPosition == 0 && newItemPosition == 0) {
+                    return true;
+                }
+                return commentsAreSame(oldComments.get(oldItemPosition), nextComments.get(newItemPosition));
+            }
+        }, false);
+
+        comments.clear();
+        comments.addAll(nextComments);
+        adapter.invalidateCommentLookup();
+        diffResult.dispatchUpdatesTo(adapter);
+    }
+
+    private List<Comment> copyCommentsForDiff(List<Comment> source) {
+        List<Comment> copy = new ArrayList<>(source.size());
+        for (Comment comment : source) {
+            Comment commentCopy = new Comment();
+            commentCopy.id = comment.id;
+            commentCopy.parent = comment.parent;
+            commentCopy.time = comment.time;
+            commentCopy.expanded = comment.expanded;
+            commentCopy.depth = comment.depth;
+            commentCopy.children = comment.children;
+            commentCopy.by = comment.by;
+            commentCopy.text = comment.text;
+            copy.add(commentCopy);
+        }
+        return copy;
+    }
+
+    private void updateComment(Comment existingComment, Comment parsedComment) {
+        boolean expanded = existingComment.expanded;
+        existingComment.parent = parsedComment.parent;
+        existingComment.by = parsedComment.by;
+        existingComment.text = parsedComment.text;
+        existingComment.time = parsedComment.time;
+        existingComment.depth = parsedComment.depth;
+        existingComment.children = parsedComment.children;
+        existingComment.childComments = parsedComment.childComments;
+        existingComment.expanded = expanded;
+    }
+
+    private boolean commentsAreSame(Comment oldComment, Comment newComment) {
+        return oldComment.id == newComment.id
+                && oldComment.parent == newComment.parent
+                && oldComment.time == newComment.time
+                && oldComment.expanded == newComment.expanded
+                && oldComment.depth == newComment.depth
+                && oldComment.children == newComment.children
+                && TextUtils.equals(oldComment.by, newComment.by)
+                && TextUtils.equals(oldComment.text, newComment.text);
     }
 
     public void clickBrowser() {

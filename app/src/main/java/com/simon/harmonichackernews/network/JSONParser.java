@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.network;
 
 import android.text.TextUtils;
 
-import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.StoryUpdate;
@@ -13,6 +12,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -272,29 +272,40 @@ public class JSONParser {
         return changed;
     }
 
-    public static boolean readChildAndParseSubchilds(JSONObject child, List<Comment> comments, CommentsRecyclerViewAdapter adapter, int depth, int[] prioTop, Set<String> filteredUsers) throws JSONException {
-        /*
-         * Remark: Right now we're only updating old comments, not deleting those who are not there
-         * anymore but that is probably just nice
-         */
-        // this is to be able to say if we should resort the list if we use non-default sorting
-        boolean placedNew = false;
+    public static List<Comment> parseAlgoliaComments(JSONArray children, int[] prioTop, Set<String> filteredUsers) throws JSONException {
+        List<Comment> topLevelComments = new ArrayList<>();
 
+        for (int i = 0; i < children.length(); i++) {
+            Comment comment = parseAlgoliaComment(children.getJSONObject(i), 0, filteredUsers);
+            if (comment != null) {
+                topLevelComments.add(comment);
+            }
+        }
+
+        if (prioTop != null) {
+            Collections.sort(topLevelComments, (a, b) -> Integer.compare(priorityIndex(a.id, prioTop), priorityIndex(b.id, prioTop)));
+        }
+
+        List<Comment> flatComments = new ArrayList<>();
+        flattenComments(topLevelComments, flatComments);
+        return flatComments;
+    }
+
+    private static Comment parseAlgoliaComment(JSONObject child, int depth, Set<String> filteredUsers) throws JSONException {
         String rawText = child.optString("text", "").trim();
         if (rawText.isEmpty() || JSON_NULL_LITERAL.equalsIgnoreCase(rawText)) {
-            return false;
+            return null;
         }
 
         String author = child.optString("author", "").trim();
-        if (filteredUsers.contains(author.toLowerCase())){
-            return false;
+        if (filteredUsers != null && filteredUsers.contains(author.toLowerCase())) {
+            return null;
         }
 
         JSONArray childrenArr = child.optJSONArray("children");
         int childCount = (childrenArr == null ? 0 : childrenArr.length());
 
         Comment comment = new Comment();
-
         comment.depth = depth;
         comment.parent = child.getInt("parent_id");
         comment.expanded = true;
@@ -303,140 +314,38 @@ public class JSONParser {
         comment.time = child.getInt("created_at_i");
         comment.id = child.getInt("id");
         comment.children = childCount;
-
-        // Let's see if a comment with this ID already is placed, in that case we'll just replace it and call notifyitemchanged
-        boolean newComment = true;
-
-        for (int i = 1; i < comments.size(); i++) {
-            if (comments.get(i).id == comment.id) {
-                newComment = false;
-                Comment oldComment = comments.get(i);
-                if (!oldComment.text.equals(comment.text)) {
-                    oldComment.text = comment.text;
-                    adapter.notifyItemChanged(i);
-                }
-
-                break;
-            }
-        }
-
-        if (newComment) {
-            placedNew = true;
-            // now for placing, if it's a top level comment we should attempt to follow the prioList
-            if (comment.depth == 0) {
-
-                int prioIndex = -1;
-                if (prioTop != null) {
-                    // only attempt to change the index if priotop is nonnull
-                    for (int i = 0; i < prioTop.length; i++) {
-                        if (prioTop[i] == comment.id) {
-                            prioIndex = i;
-                            break;
-                        }
-                    }
-                }
-
-                if (prioIndex == -1) {
-                    // add it last
-                    comments.add(comments.size(), comment);
-                    adapter.notifyItemInserted(comments.size() - 1);
-                } else {
-                    if (prioIndex == 0) {
-                        comments.add(1, comment);
-                        adapter.notifyItemInserted(1);
-                    } else {
-                        // lets find the last top level comment which has priority higher than prioIndex
-                        int prioBeforeIndex = -1;
-
-                        for (int i = 0; i < comments.size(); i++) {
-                            // search all comments...
-                            if (comments.get(i).depth == 0) {
-                                // and only care about top level ones...
-                                int searchId = comments.get(i).id;
-                                // and check if its id
-                                for (int j = 0; j < prioIndex; j++) {
-                                    // is higher priority
-                                    if (prioTop[j] == searchId) {
-                                        // if so, lets save the index
-                                        prioBeforeIndex = i;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        // if we are priority and can't find anything with higher priority, we should be placed at the top
-                        if (prioBeforeIndex == -1) {
-                            comments.add(1, comment);
-                            adapter.notifyItemInserted(1);
-                        } else {
-                            // otherwise, lets search for the next depth = 0 after the comment with higher priority
-                            int newLocation = -1;
-
-                            // we found parent, lets start searching for when it ends
-                            for (int i = prioBeforeIndex + 1; i < comments.size(); i++) {
-                                if (comments.get(i).depth == 0) {
-                                    // next time we find a depth zero comment, need to insert ours there
-                                    newLocation = i;
-                                    break;
-                                }
-                            }
-
-                            // if we didn't find a new location, then just place it at the bottom
-                            if (newLocation == -1) {
-                                comments.add(comments.size(), comment);
-                                adapter.notifyItemInserted(comments.size() - 1);
-                            } else {
-                                comments.add(newLocation, comment);
-                                adapter.notifyItemInserted(newLocation);
-                            }
-                        }
-                    }
-                }
-            } else {
-                // if it's not a top level comment, let's find its parent and place so that top answers have many children
-                boolean foundParent = false;
-
-                for (int i = 1; i < comments.size(); i++) {
-                    if (comments.get(i).id == comment.parent) {
-
-                        foundParent = true;
-                        // having found the parent, lets keep going until we find a comment with fewer children or depth goes up
-                        boolean placed = false;
-                        for (int j = 1; j < comments.size() - i; j++) {
-                            Comment candidate = comments.get(i + j);
-                            if (candidate.parent == comment.parent && candidate.children <= comment.children) {
-                                placed = true;
-                                comments.add(i + j, comment);
-                                adapter.notifyItemInserted(i + j);
-                                break;
-                            }
-                        }
-
-                        if (!placed) {
-                            comments.add(i + 1, comment);
-                            adapter.notifyItemInserted(i + 1);
-                        }
-                        break;
-                    }
-                }
-
-                // and if we can't find the parent, lets put it at the bottom
-                if (!foundParent) {
-                    comments.add(comments.size(), comment);
-                    adapter.notifyItemInserted(comments.size() - 1);
-                }
-            }
-        }
+        comment.childComments = new ArrayList<>();
 
         if (childrenArr != null) {
             for (int i = 0; i < childrenArr.length(); i++) {
-                boolean childPlaced = readChildAndParseSubchilds(childrenArr.getJSONObject(i), comments, adapter, depth + 1, prioTop, filteredUsers);
-                if (childPlaced) {
-                    placedNew = true;
+                Comment childComment = parseAlgoliaComment(childrenArr.getJSONObject(i), depth + 1, filteredUsers);
+                if (childComment != null) {
+                    comment.childComments.add(childComment);
                 }
             }
+
+            Collections.sort(comment.childComments, (a, b) -> Integer.compare(b.children, a.children));
         }
-        return placedNew;
+
+        return comment;
+    }
+
+    private static int priorityIndex(int commentId, int[] prioTop) {
+        for (int i = 0; i < prioTop.length; i++) {
+            if (prioTop[i] == commentId) {
+                return i;
+            }
+        }
+        return prioTop.length;
+    }
+
+    private static void flattenComments(List<Comment> source, List<Comment> destination) {
+        for (Comment comment : source) {
+            destination.add(comment);
+            if (comment.childComments != null && !comment.childComments.isEmpty()) {
+                flattenComments(comment.childComments, destination);
+            }
+        }
     }
 
     public static void updateStoryWithAlgoliaResponse(Story story, String response) {

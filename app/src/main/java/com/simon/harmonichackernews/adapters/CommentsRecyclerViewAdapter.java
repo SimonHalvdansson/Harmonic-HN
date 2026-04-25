@@ -1027,6 +1027,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         commentLookupSize = comments.size();
     }
 
+    public void invalidateCommentLookup() {
+        commentsById.clear();
+        commentLookupSize = -1;
+    }
+
     public void loadUserTags(Context ctx) {
         userTagsJson = SettingsUtils.readStringFromSharedPreferences(ctx, Utils.KEY_SHARED_PREFERENCES_USER_TAGS, "");
         userTagsByUser = Utils.getUserTags(ctx);
