@@ -57,8 +57,10 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"/>
 
-        <WebView
-            android:id="@+id/comments_webview"
+        <ViewStub
+            android:id="@+id/comments_webview_stub"
+            android:inflatedId="@+id/comments_webview_stub_content"
+            android:layout="@layout/comments_webview"
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
 

@@ -32,6 +32,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewStub;
 import android.view.ViewTreeObserver;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
@@ -168,6 +169,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private LinearProgressIndicator progressIndicator;
     private LinearLayout bottomSheet;
     private WebView webView;
+    private ViewStub webViewStub;
     private FrameLayout webViewContainer;
     private FrameLayout fullscreenContainer;
     private View webViewBackdrop;
@@ -316,6 +318,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         blockAds = SettingsUtils.shouldBlockAds(getContext());
         closeWebViewOnBack = SettingsUtils.shouldCloseWebViewOnBack(getContext());
 
+        webViewStub = view.findViewById(R.id.comments_webview_stub);
         webView = view.findViewById(R.id.comments_webview);
         downloadButton = view.findViewById(R.id.webview_download);
         swipeRefreshLayout = view.findViewById(R.id.comments_swipe_refresh);
@@ -467,9 +470,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         progressIndicator = view.findViewById(R.id.webview_progress);
 
-        if (integratedWebview) {
+        boolean shouldInitializeWebViewBeforeFirstDraw = integratedWebview && showWebsite;
+        boolean shouldInitializeWebViewAfterFirstDraw = integratedWebview && !showWebsite;
+
+        if (shouldInitializeWebViewBeforeFirstDraw) {
             initializeWebView();
-        } else {
+        } else if (!integratedWebview) {
             BottomSheetBehavior.from(bottomSheet).setDraggable(false);
         }
 
@@ -544,6 +550,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public boolean onPreDraw() {
                 view.getViewTreeObserver().removeOnPreDrawListener(this);
                 startPostponedEnterTransition();
+                if (shouldInitializeWebViewAfterFirstDraw) {
+                    view.post(CommentsFragment.this::initializeWebView);
+                }
                 return true;
             }
         });
@@ -854,6 +863,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     @SuppressLint({"RequiresFeature", "SetJavaScriptEnabled"})
     @SuppressWarnings("deprecation")
     private void initializeWebView() {
+        if (initializedWebView) {
+            return;
+        }
+        webView = getOrInflateWebView();
+        if (webView == null) {
+            return;
+        }
         initializedWebView = true;
         BottomSheetBehavior.from(bottomSheet).setDraggable(true);
         BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
@@ -973,7 +989,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
 
             }
-        }, 2000); // Start the animation after 2 seconds
+                }, 2000); // Start the animation after 2 seconds
     }
 
     private boolean isShowingCustomView() {
@@ -1064,6 +1080,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void loadUrl(String url, @Nullable String pdfFilePath) {
+        if (webView == null && integratedWebview) {
+            initializeWebView();
+        }
         if (webView == null) {
             return;
         }
@@ -1098,6 +1117,25 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (OFFLINE_PAGE_URL.equals(url)) {
             showingErrorPage = true;
         }
+    }
+
+    @Nullable
+    private WebView getOrInflateWebView() {
+        if (webView != null) {
+            return webView;
+        }
+        if (webViewStub == null) {
+            return null;
+        }
+
+        View inflated = webViewStub.inflate();
+        if (inflated instanceof WebView) {
+            webView = (WebView) inflated;
+        } else {
+            webView = inflated.findViewById(R.id.comments_webview);
+        }
+        webViewStub = null;
+        return webView;
     }
 
     private void downloadPdf(String url, String contentDisposition, String mimetype, Context ctx) {
@@ -1358,7 +1396,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void destroyWebView() {
         // Nuclear
         if (webView != null) {
-            webViewContainer.removeAllViews();
+            if (webView.getParent() instanceof ViewGroup) {
+                ((ViewGroup) webView.getParent()).removeView(webView);
+            }
             webView.clearHistory();
             webView.clearCache(true);
             webView.onPause();
@@ -1367,6 +1407,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             webView.pauseTimers();
             webView.destroy();
             webView = null;
+            initializedWebView = false;
         }
     }
 
@@ -1374,7 +1415,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         destroyWebView();
 
         webView = new WebView(getContext());
-        webViewContainer.addView(webView);
+        webView.setId(R.id.comments_webview);
+        webViewContainer.addView(webView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
         initializeWebView();
     }
 
@@ -1631,7 +1676,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             integratedWebview = prefIntegratedWebview && story.isLink;
 
-            if (integratedWebview && !initializedWebView) {
+            if (integratedWebview && !adapter.integratedWebview) {
                 // It's the first time, so we need to re-initialize the recyclerview too
                 initializeWebView();
                 initializeRecyclerView();
