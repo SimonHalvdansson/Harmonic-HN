@@ -616,6 +616,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 SettingsUtils.getPreferredFaviconProvider(getContext()),
                 SettingsUtils.shouldSwapCommentLongPressTap(getContext()),
                 this);
+        adapter.loadUserTags(requireContext());
 
         adapter.setOnHeaderClickListener(story1 -> Utils.launchCustomTab(getActivity(), story1.url));
 
@@ -1201,6 +1202,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             Context ctx = requireContext();
             boolean updateHeader = false;
             boolean updateComments = false;
+
+            if (adapter.reloadUserTagsIfChanged(ctx)) {
+                updateHeader = true;
+                updateComments = true;
+            }
 
             if (adapter.collapseParent != SettingsUtils.shouldCollapseParent(ctx)) {
                 adapter.collapseParent = !adapter.collapseParent;
@@ -2223,17 +2229,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void updateUserTags(String changedUser) {
+        CommentsRecyclerViewAdapter commentAdapter = CommentsFragment.this.adapter;
+        if (commentAdapter == null) {
+            return;
+        }
+
+        commentAdapter.loadUserTags(requireContext());
+
         if (story.by.equals(changedUser)) {
-            CommentsFragment.this.adapter.notifyItemChanged(0);
+            commentAdapter.notifyItemChanged(0);
         }
         for (int i = 1; i < comments.size(); i++) {
             String by = comments.get(i).by;
             if (by != null) {
                 if (by.equals(changedUser)) {
-                    if (CommentsFragment.this.adapter != null) {
-                        CommentsFragment.this.adapter.notifyItemChanged(i);
-                    }
-                    break;
+                    commentAdapter.notifyItemChanged(i);
                 }
             }
         }

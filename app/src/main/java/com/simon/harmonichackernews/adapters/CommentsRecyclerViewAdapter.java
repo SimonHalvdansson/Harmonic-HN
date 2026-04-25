@@ -41,6 +41,7 @@ import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.FontUtils;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import coil.Coil;
@@ -64,6 +65,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private RetryListener retryListener;
     private final Map<Integer, Comment> commentsById = new HashMap<>();
     private int commentLookupSize = -1;
+    private Map<String, String> userTagsByUser = new HashMap<>();
+    private String userTagsJson;
 
     public LinearLayout bottomSheet;
     public FragmentManager fragmentManager;
@@ -356,7 +359,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.metaVotes.setText(String.valueOf(story.score));
                 headerViewHolder.metaComments.setText(String.valueOf(story.descendants));
                 headerViewHolder.metaTime.setText(story.getTimeFormatted());
-                String tag = Utils.getUserTag(ctx, story.by);
+                String tag = getCachedUserTag(ctx, story.by);
                 headerViewHolder.metaBy.setText(TextUtils.isEmpty(tag) ? story.by : story.by + " (" + tag + ")");
             }
 
@@ -536,7 +539,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 byUser = comment.by.equals(username);
             }
 
-            String cTag = Utils.getUserTag(ctx, comment.by);
+            String cTag = getCachedUserTag(ctx, comment.by);
             String displayName = comment.by;
             if (!TextUtils.isEmpty(cTag)) {
                 displayName += " (" + cTag + ")";
@@ -1022,6 +1025,32 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentsById.put(comment.id, comment);
         }
         commentLookupSize = comments.size();
+    }
+
+    public void loadUserTags(Context ctx) {
+        userTagsJson = SettingsUtils.readStringFromSharedPreferences(ctx, Utils.KEY_SHARED_PREFERENCES_USER_TAGS, "");
+        userTagsByUser = Utils.getUserTags(ctx);
+    }
+
+    public boolean reloadUserTagsIfChanged(Context ctx) {
+        String latestUserTagsJson = SettingsUtils.readStringFromSharedPreferences(ctx, Utils.KEY_SHARED_PREFERENCES_USER_TAGS, "");
+        if (TextUtils.equals(userTagsJson, latestUserTagsJson)) {
+            return false;
+        }
+        userTagsJson = latestUserTagsJson;
+        userTagsByUser = Utils.getUserTags(ctx);
+        return true;
+    }
+
+    private String getCachedUserTag(Context ctx, String username) {
+        if (TextUtils.isEmpty(username)) {
+            return "";
+        }
+        if (userTagsJson == null) {
+            loadUserTags(ctx);
+        }
+        String tag = userTagsByUser.get(username.toLowerCase().trim());
+        return tag == null ? "" : tag;
     }
 
     public interface RequestSummaryCallback {
