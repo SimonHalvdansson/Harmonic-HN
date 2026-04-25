@@ -88,7 +88,6 @@ public class StoriesFragment extends Fragment {
 
     // Header views
     private LinearLayout headerContainer;
-    private LinearLayout toolbarRow;
     private Spinner typeSpinner;
     private LinearLayout spinnerContainer;
     private EditText searchEditText;
@@ -130,6 +129,7 @@ public class StoriesFragment extends Fragment {
     long lastClick = 0;
     private final static long CLICK_INTERVAL = 350;
     private static final long SEARCH_HEADER_ANIMATION_DURATION_MS = 180;
+    private static final long HEADER_LAYOUT_ANIMATION_DURATION_MS = 220;
 
     private int topInset = 0;
 
@@ -163,7 +163,6 @@ public class StoriesFragment extends Fragment {
 
         // Bind header views
         headerContainer = view.findViewById(R.id.stories_header_container);
-        toolbarRow = view.findViewById(R.id.stories_header_toolbar_row);
         typeSpinner = view.findViewById(R.id.stories_header_spinner);
         spinnerContainer = view.findViewById(R.id.stories_header_spinner_container);
         searchEditText = view.findViewById(R.id.stories_header_search_edittext);
@@ -390,13 +389,7 @@ public class StoriesFragment extends Fragment {
         int sidePad = Utils.pxFromDpInt(getResources(), 16);
         headerContainer.setPadding(sidePad, topPad, sidePad, bottomPad);
 
-        if (animateSearchTransition && toolbarRow != null && ViewCompat.isLaidOut(toolbarRow)) {
-            AutoTransition transition = new AutoTransition();
-            transition.setOrdering(TransitionSet.ORDERING_TOGETHER);
-            transition.setDuration(SEARCH_HEADER_ANIMATION_DURATION_MS);
-            transition.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
-            TransitionManager.beginDelayedTransition(toolbarRow, transition);
-        }
+        beginHeaderTransition(animateSearchTransition);
 
         moreButton.setVisibility(searching ? View.GONE : View.VISIBLE);
         spinnerContainer.setVisibility(searching ? View.GONE : View.VISIBLE);
@@ -441,6 +434,25 @@ public class StoriesFragment extends Fragment {
 
         loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
         updateRecyclerScrollState();
+    }
+
+    private void beginHeaderTransition(boolean animateSearchTransition) {
+        if (appBarLayout == null || !(appBarLayout.getParent() instanceof ViewGroup)) {
+            return;
+        }
+
+        ViewGroup transitionRoot = (ViewGroup) appBarLayout.getParent();
+        if (!ViewCompat.isLaidOut(transitionRoot)) {
+            return;
+        }
+
+        AutoTransition transition = new AutoTransition();
+        transition.setOrdering(TransitionSet.ORDERING_TOGETHER);
+        transition.setDuration(animateSearchTransition
+                ? SEARCH_HEADER_ANIMATION_DURATION_MS
+                : HEADER_LAYOUT_ANIMATION_DURATION_MS);
+        transition.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        TransitionManager.beginDelayedTransition(transitionRoot, transition);
     }
 
     private void openSearch() {
