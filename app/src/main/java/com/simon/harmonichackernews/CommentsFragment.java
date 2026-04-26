@@ -27,7 +27,6 @@ import android.os.Looper;
 import android.text.Html;
 import android.text.TextUtils;
 import android.util.Base64;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -794,8 +793,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
             @Override
-            protected float calculateSpeedPerPixel(DisplayMetrics displayMetrics) {
-                return super.calculateSpeedPerPixel(displayMetrics) / smoothScrollSpeedMultiplier;
+            protected int calculateTimeForScrolling(int dx) {
+                return Math.max(1, super.calculateTimeForScrolling(dx) / smoothScrollSpeedMultiplier);
             }
 
             @Override
