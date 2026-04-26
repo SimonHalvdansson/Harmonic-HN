@@ -846,10 +846,6 @@ public class Utils {
         Utils.launchCustomTab(context, href);
     }
 
-    public static void openCommentsActivity(int id, Context context) {
-        openCommentsActivity(id, -1, context);
-    }
-
     public static void openCommentsActivity(int id, int scrollToCommentId, Context context) {
         Uri.Builder builder = Uri.parse("https://news.ycombinator.com/item").buildUpon()
                 .appendQueryParameter("id", String.valueOf(id));

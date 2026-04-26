@@ -875,7 +875,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             textView.setOnClickATagListener(new OnClickATagListener() {
                 @Override
                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                    Utils.launchCustomTab(mView.getContext(), href);
+                    Utils.openLinkMaybeHN(mView.getContext(), href);
                     return true;
                 }
             });
