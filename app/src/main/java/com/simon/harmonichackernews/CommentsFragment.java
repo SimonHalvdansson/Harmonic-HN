@@ -27,6 +27,7 @@ import android.os.Looper;
 import android.text.Html;
 import android.text.TextUtils;
 import android.util.Base64;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -156,6 +157,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static String OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html";
 
     private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
+    private final static int COMMENT_NAVIGATION_SPEED_STEP = 50;
 
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
@@ -168,6 +170,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private RecyclerView recyclerViewRegular;
     private LinearLayoutManager layoutManager;
     private RecyclerView.SmoothScroller smoothScroller;
+    private int smoothScrollSpeedMultiplier = 1;
     private LinearLayout scrollNavigation;
     private LinearProgressIndicator progressIndicator;
     private LinearLayout bottomSheet;
@@ -683,8 +686,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                 // if we clicked the top one and the new top level comment exists
                 if (clickedIndex == firstVisible && comments.size() > lastChildIndex + 1) {
-                    smoothScroller.setTargetPosition(lastChildIndex + 1);
-                    layoutManager.startSmoothScroll(smoothScroller);
+                    startCommentSmoothScrollWithScaledSpeed(lastChildIndex + 1);
 
                 }
             }
@@ -789,6 +791,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             protected int getVerticalSnapPreference() {
                 return LinearSmoothScroller.SNAP_TO_START;
+            }
+
+            @Override
+            protected float calculateSpeedPerPixel(DisplayMetrics displayMetrics) {
+                return super.calculateSpeedPerPixel(displayMetrics) / smoothScrollSpeedMultiplier;
             }
 
             @Override
@@ -1903,8 +1910,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                                     int targetIndex = comments.indexOf(c);
                                     expandParentsForComment(c);
                                     recyclerView.post(() -> {
-                                        smoothScroller.setTargetPosition(targetIndex);
-                                        layoutManager.startSmoothScroll(smoothScroller);
+                                        startCommentSmoothScrollWithScaledSpeed(targetIndex);
                                     });
                                     break;
                                 }
@@ -1969,7 +1975,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void smoothScrollTop() {
-        recyclerView.smoothScrollToPosition(0);
+        if (layoutManager != null) {
+            startCommentSmoothScrollWithScaledSpeed(0);
+        } else {
+            recyclerView.smoothScrollToPosition(0);
+        }
     }
 
     private void scrollTop() {
@@ -2001,12 +2011,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void navigateToNextComment(boolean topLevelOnly) {
+        navigateToNextComment(topLevelOnly, false);
+    }
+
+    public void navigateToNextComment(boolean topLevelOnly, boolean scaleLongScrollSpeed) {
         if (!isAdded()) {
             return;
         }
 
         if (SettingsUtils.shouldUseCommentsAnimationNavigation(requireContext())) {
-            smoothScrollNext(topLevelOnly);
+            smoothScrollNext(topLevelOnly, scaleLongScrollSpeed);
         } else {
             scrollNext(topLevelOnly);
         }
@@ -2017,25 +2031,28 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void navigateToPreviousComment(boolean topLevelOnly) {
+        navigateToPreviousComment(topLevelOnly, false);
+    }
+
+    public void navigateToPreviousComment(boolean topLevelOnly, boolean scaleLongScrollSpeed) {
         if (!isAdded()) {
             return;
         }
 
         if (SettingsUtils.shouldUseCommentsAnimationNavigation(requireContext())) {
-            smoothScrollPrevious(topLevelOnly);
+            smoothScrollPrevious(topLevelOnly, scaleLongScrollSpeed);
         } else {
             scrollPrevious(topLevelOnly);
         }
     }
 
-    private void smoothScrollPrevious(boolean topLevelOnly) {
+    private void smoothScrollPrevious(boolean topLevelOnly, boolean scaleLongScrollSpeed) {
         if (layoutManager != null) {
             int firstVisible = findFirstVisiblePosition();
 
             int toScrollTo = findPreviousCommentPosition(firstVisible, topLevelOnly);
 
-            smoothScroller.setTargetPosition(toScrollTo);
-            layoutManager.startSmoothScroll(smoothScroller);
+            startCommentSmoothScroll(toScrollTo, getCommentNavigationSpeedMultiplier(firstVisible, toScrollTo, scaleLongScrollSpeed));
         }
     }
 
@@ -2060,14 +2077,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    private void smoothScrollNext(boolean topLevelOnly) {
+    private void smoothScrollNext(boolean topLevelOnly, boolean scaleLongScrollSpeed) {
         if (layoutManager != null) {
             int firstVisible = findFirstVisiblePosition();
 
             int toScrollTo = findNextCommentPosition(firstVisible, topLevelOnly);
 
-            smoothScroller.setTargetPosition(toScrollTo);
-            layoutManager.startSmoothScroll(smoothScroller);
+            startCommentSmoothScroll(toScrollTo, getCommentNavigationSpeedMultiplier(firstVisible, toScrollTo, scaleLongScrollSpeed));
         }
     }
 
@@ -2090,6 +2106,26 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 recyclerView.scrollBy(0, toScrollToCommentView.getTop() - topInset);
             }
         }
+    }
+
+    private void startCommentSmoothScroll(int targetPosition, int speedMultiplier) {
+        smoothScrollSpeedMultiplier = Math.max(1, speedMultiplier);
+        smoothScroller.setTargetPosition(targetPosition);
+        layoutManager.startSmoothScroll(smoothScroller);
+    }
+
+    private void startCommentSmoothScrollWithScaledSpeed(int targetPosition) {
+        int firstVisible = findFirstVisiblePosition();
+        startCommentSmoothScroll(targetPosition, getCommentNavigationSpeedMultiplier(firstVisible, targetPosition, true));
+    }
+
+    private int getCommentNavigationSpeedMultiplier(int fromPosition, int toPosition, boolean scaleLongScrollSpeed) {
+        if (!scaleLongScrollSpeed) {
+            return 1;
+        }
+
+        int commentDistance = Math.abs(toPosition - fromPosition);
+        return ((commentDistance - 1) / COMMENT_NAVIGATION_SPEED_STEP) + 1;
     }
 
     private int findPreviousCommentPosition(int firstVisible, boolean topLevelOnly) {
@@ -2147,8 +2183,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             }
 
-            smoothScroller.setTargetPosition(toScrollTo);
-            layoutManager.startSmoothScroll(smoothScroller);
+            startCommentSmoothScroll(toScrollTo, getCommentNavigationSpeedMultiplier(firstVisible, toScrollTo, true));
         }
     }
 

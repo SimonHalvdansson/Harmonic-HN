@@ -114,10 +114,10 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                     .findFragmentById(R.id.main_fragment_comments_container);
             if (fragment != null && fragment.isAdded()) {
                 if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-                    fragment.navigateToNextComment(topLevelOnly);
+                    fragment.navigateToNextComment(topLevelOnly, true);
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-                    fragment.navigateToPreviousComment(topLevelOnly);
+                    fragment.navigateToPreviousComment(topLevelOnly, true);
                     return true;
                 }
             }

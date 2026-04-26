@@ -134,12 +134,12 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
             boolean topLevelOnly = SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL.equals(volumeNavigationMode);
             if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
                 if (commentsFragment != null) {
-                    commentsFragment.navigateToNextComment(topLevelOnly);
+                    commentsFragment.navigateToNextComment(topLevelOnly, true);
                 }
                 return true;
             } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
                 if (commentsFragment != null) {
-                    commentsFragment.navigateToPreviousComment(topLevelOnly);
+                    commentsFragment.navigateToPreviousComment(topLevelOnly, true);
                 }
                 return true;
             }
