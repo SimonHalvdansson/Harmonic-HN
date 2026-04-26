@@ -156,7 +156,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static String OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html";
 
     private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
-    private final static int COMMENT_NAVIGATION_SPEED_STEP = 50;
+    private final static int COMMENT_NAVIGATION_SPEED_STEP = 35;
 
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
