@@ -35,6 +35,7 @@ public class Story {
     public String commentMasterTitle;
     public int commentMasterId;
     public String commentMasterUrl;
+    public int parentId;  // Direct parent ID (for comments)
     public String summary;
 
     public Story() {}
