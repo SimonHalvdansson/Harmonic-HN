@@ -6,6 +6,7 @@ public class Changelog {
         return  "<b>Version 2.3.2:</b><br>" +
                 "- Improved performance of opening and interacting with comments<br>" +
                 "- Improved accessibility<br>" +
+                "- Made comment scroll speed adaptive<br>" +
                 "- Smoother search behavior<br>" +
                 "<br>" +
                 "<b>Version 2.3.1:</b><br>" +
