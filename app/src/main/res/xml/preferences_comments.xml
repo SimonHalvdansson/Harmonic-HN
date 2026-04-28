@@ -42,7 +42,7 @@
             app:key="pref_comments_animation"
             app:defaultValue="true"
             app:icon="@drawable/ic_action_animation"
-            app:title="Animate comments" />
+            app:title="Animate comment expand/collapse" />
 
     </PreferenceCategory>
 
