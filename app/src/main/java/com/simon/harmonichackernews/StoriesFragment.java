@@ -116,6 +116,9 @@ public class StoriesFragment extends Fragment {
     private boolean loadingFailed = false;
     private boolean loadingFailedServerError = false;
     private String lastSearch = "";
+    private int algoliaRequestGeneration = 0;
+    private boolean algoliaLoading = false;
+    private String activeAlgoliaUrl = null;
 
     public static boolean showingCached = false;
 
@@ -329,22 +332,29 @@ public class StoriesFragment extends Fragment {
         searchEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int actionId, KeyEvent keyEvent) {
-                boolean isKeyboardSearchAction = actionId == EditorInfo.IME_ACTION_SEARCH;
-                boolean isHardwareEnterKey = keyEvent != null
-                        && keyEvent.getKeyCode() == KeyEvent.KEYCODE_ENTER
-                        && keyEvent.getAction() == KeyEvent.ACTION_DOWN;
-
-                if (!isKeyboardSearchAction && !isHardwareEnterKey) {
-                    return false;
+                if (isSearchSubmitAction(actionId, keyEvent)) {
+                    return submitSearchFromInput(textView);
                 }
 
-                search(searchEditText.getText().toString());
-                if (textView != null) {
-                    InputMethodManager imm = (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
-                    imm.hideSoftInputFromWindow(textView.getWindowToken(), 0);
+                if (isEnterKeyEvent(keyEvent)) {
+                    return true;
                 }
-                return true;
+
+                return false;
             }
+        });
+        searchEditText.setOnKeyListener((v, keyCode, keyEvent) -> {
+            if (!isEnterKeyCode(keyCode)) {
+                return false;
+            }
+
+            if (keyEvent != null
+                    && keyEvent.getAction() == KeyEvent.ACTION_DOWN
+                    && keyEvent.getRepeatCount() == 0) {
+                return submitSearchFromInput(searchEditText);
+            }
+
+            return true;
         });
 
         searchButton.setOnClickListener(view -> openSearch());
@@ -399,12 +409,12 @@ public class StoriesFragment extends Fragment {
         searchEditText.setVisibility(searching ? View.VISIBLE : View.GONE);
 
         if (searching) {
-            loadingIndicator.setVisibility(View.GONE);
+            loadingIndicator.setVisibility(algoliaLoading ? View.VISIBLE : View.GONE);
             searchEditText.requestFocus();
             searchEditText.setText(lastSearch);
             searchEditText.setSelection(lastSearch.length());
 
-            searchEmptyContainer.setVisibility(stories.isEmpty() ? View.VISIBLE : View.GONE);
+            searchEmptyContainer.setVisibility(stories.isEmpty() && !algoliaLoading ? View.VISIBLE : View.GONE);
             noBookmarksLayout.setVisibility(View.GONE);
         } else {
             noBookmarksLayout.setVisibility((stories.isEmpty() && adapter.type == SettingsUtils.getBookmarksIndex(ctx.getResources())) ? View.VISIBLE : View.GONE);
@@ -434,6 +444,36 @@ public class StoriesFragment extends Fragment {
 
         loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
         updateRecyclerScrollState();
+    }
+
+    private boolean isSearchSubmitAction(int actionId, @Nullable KeyEvent keyEvent) {
+        return actionId == EditorInfo.IME_ACTION_SEARCH
+                || actionId == EditorInfo.IME_ACTION_DONE
+                || actionId == EditorInfo.IME_ACTION_GO
+                || isEnterKeyDown(keyEvent);
+    }
+
+    private boolean isEnterKeyDown(@Nullable KeyEvent keyEvent) {
+        return isEnterKeyEvent(keyEvent)
+                && keyEvent.getAction() == KeyEvent.ACTION_DOWN
+                && keyEvent.getRepeatCount() == 0;
+    }
+
+    private boolean isEnterKeyEvent(@Nullable KeyEvent keyEvent) {
+        return keyEvent != null && isEnterKeyCode(keyEvent.getKeyCode());
+    }
+
+    private boolean isEnterKeyCode(int keyCode) {
+        return keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER;
+    }
+
+    private boolean submitSearchFromInput(@Nullable TextView textView) {
+        search(searchEditText.getText().toString());
+        if (textView != null) {
+            InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(textView.getWindowToken(), 0);
+        }
+        return true;
     }
 
     private void beginHeaderTransition(boolean animateSearchTransition) {
@@ -930,6 +970,12 @@ public class StoriesFragment extends Fragment {
         attemptRefresh(false);
     }
 
+    private void invalidateAlgoliaLoad() {
+        algoliaRequestGeneration++;
+        algoliaLoading = false;
+        activeAlgoliaUrl = null;
+    }
+
     private void attemptRefresh(boolean showSwipeRefreshIndicator) {
         hideUpdateButton();
         if (searching) {
@@ -940,6 +986,7 @@ public class StoriesFragment extends Fragment {
         swipeRefreshLayout.setRefreshing(showSwipeRefreshIndicator);
 
         // cancel all ongoing
+        invalidateAlgoliaLoad();
         queue.cancelAll(requestTag);
 
         if (currentTypeIsAlgolia()) {
@@ -1076,6 +1123,7 @@ public class StoriesFragment extends Fragment {
 
         if (searching) {
             // cancel all ongoing
+            invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
             swipeRefreshLayout.setRefreshing(false);
             clearStories();
@@ -1115,14 +1163,33 @@ public class StoriesFragment extends Fragment {
     }
 
     private void loadAlgolia(String url) {
+        if (algoliaLoading && TextUtils.equals(activeAlgoliaUrl, url)) {
+            return;
+        }
+
+        invalidateAlgoliaLoad();
+        final int requestGeneration = algoliaRequestGeneration;
+        algoliaLoading = true;
+        activeAlgoliaUrl = url;
+        queue.cancelAll(requestTag);
+
         swipeRefreshLayout.setEnabled(!searching);
-        swipeRefreshLayout.setRefreshing(true);
+        swipeRefreshLayout.setRefreshing(!searching);
+        if (searching && !stories.isEmpty()) {
+            clearStories();
+        }
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
                     // Parse JSON on background thread
                     BackgroundJSONParser.parseAlgoliaJson(response, new BackgroundJSONParser.AlgoliaParseCallback() {
                         @Override
                         public void onParseSuccess(List<Story> parsedStories) {
+                            if (requestGeneration != algoliaRequestGeneration) {
+                                return;
+                            }
+
+                            algoliaLoading = false;
+                            activeAlgoliaUrl = null;
                             swipeRefreshLayout.setRefreshing(false);
 
                             Iterator<Story> iterator = parsedStories.iterator();
@@ -1169,12 +1236,25 @@ public class StoriesFragment extends Fragment {
 
                         @Override
                         public void onParseError(JSONException error) {
+                            if (requestGeneration != algoliaRequestGeneration) {
+                                return;
+                            }
+
+                            algoliaLoading = false;
+                            activeAlgoliaUrl = null;
                             swipeRefreshLayout.setRefreshing(false);
                             error.printStackTrace();
                         }
                     });
 
                 }, error -> {
+            if (requestGeneration != algoliaRequestGeneration) {
+                return;
+            }
+
+            algoliaLoading = false;
+            activeAlgoliaUrl = null;
+
             if (error.networkResponse != null && error.networkResponse.statusCode == 404) {
                 loadingFailedServerError = true;
             }
@@ -1187,6 +1267,7 @@ public class StoriesFragment extends Fragment {
 
         updateHeader();
 
+        stringRequest.setShouldCache(false);
         stringRequest.setTag(requestTag);
         queue.add(stringRequest);
     }
