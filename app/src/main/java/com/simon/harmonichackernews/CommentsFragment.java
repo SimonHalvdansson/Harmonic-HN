@@ -1513,9 +1513,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 story.time = loadedStory.time;
                 story.url = loadedStory.url;
                 story.isLink = loadedStory.isLink;
+                story.isComment = loadedStory.isComment;
                 story.text = loadedStory.text;
                 story.kids = loadedStory.kids;
                 story.descendants = loadedStory.descendants;
+                story.parentId = loadedStory.parentId;
 
                 // Reset comments
                 int oldSize = comments.size();
