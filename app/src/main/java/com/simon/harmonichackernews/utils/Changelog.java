@@ -7,6 +7,7 @@ public class Changelog {
                 "- Improved performance of opening and interacting with comments<br>" +
                 "- Improved accessibility<br>" +
                 "- Made comment scroll speed adaptive<br>" +
+                "- Added button to go to parent comment (thanks Tsung-Han Yu!)" +
                 "- Smoother search behavior<br>" +
                 "<br>" +
                 "<b>Version 2.3.1:</b><br>" +
