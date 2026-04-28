@@ -59,6 +59,7 @@ public class AboutActivity extends AppCompatActivity {
         String versionText = "Version " + BuildConfig.VERSION_NAME;
         if (BuildConfig.DEBUG) {
             versionText += String.format(" (%s)", BuildConfig.BUILD_TYPE);
+            binding.aboutDebugLink.setVisibility(View.VISIBLE);
         }
         binding.aboutVersion.setText(versionText);
     }
@@ -81,5 +82,11 @@ public class AboutActivity extends AppCompatActivity {
 
     public void openPrivacy(View v) {
         Utils.launchCustomTab(this, "https://simonhalvdansson.github.io/harmonic_privacy.html");
+    }
+
+    public void openDebugLink(View v) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse("https://news.ycombinator.com/item?id=47938725"));
+        startActivity(intent);
     }
 }

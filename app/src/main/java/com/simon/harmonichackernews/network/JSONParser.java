@@ -64,6 +64,7 @@ public class JSONParser {
                 story.text = preprocessHtml(hit.optString("comment_text", ""));
                 story.commentMasterTitle = hit.getString("story_title");
                 story.commentMasterId = hit.getInt("story_id");
+                story.parentId = hit.optInt("parent_id", 0);
                 if (hit.has("story_url") && !hit.getString("story_url").equals(JSON_NULL_LITERAL)) {
                     story.commentMasterUrl = hit.getString("story_url");
                     story.isLink = true;
@@ -172,6 +173,7 @@ public class JSONParser {
         );
 
         story.isComment = true;
+        story.parentId = jsonObject.optInt("parent", 0);
 
         if (jsonObject.has("kids")) {
             story.descendants = jsonObject.getJSONArray("kids").length();
@@ -242,6 +244,9 @@ public class JSONParser {
             story.isLink = false;
             story.url = "https://news.ycombinator.com/item?id=" + item.getString("story_id");
             story.isComment = true;
+            story.parentId = item.optInt("parent_id", 0);
+            story.commentMasterId = item.optInt("story_id", 0);
+            story.commentMasterTitle = item.optString("story_title", "");
         } else {
             story.title = item.getString("title");
             story.isLink = item.has("url") && !item.getString("url").equals(JSON_NULL_LITERAL) && !item.getString("url").equals("");
@@ -438,6 +443,14 @@ public class JSONParser {
             story.time = jsonObject.optInt("time", story.time);
             story.title = jsonObject.optString("title", story.title);
             story.descendants = jsonObject.optInt("descendants", 0);
+
+            if (jsonObject.has("type") && jsonObject.getString("type").equals("comment")) {
+                story.isComment = true;
+                story.parentId = jsonObject.optInt("parent", 0);
+                if (TextUtils.isEmpty(story.title)) {
+                    story.title = "Comment by " + story.by;
+                }
+            }
 
             //if a story is dead, it might not have a title. Right now we only do the fallback if
             // the story is dead (can it have no title for another reason? The example post was
