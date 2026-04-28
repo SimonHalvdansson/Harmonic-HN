@@ -1513,9 +1513,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 story.time = loadedStory.time;
                 story.url = loadedStory.url;
                 story.isLink = loadedStory.isLink;
+                story.isComment = loadedStory.isComment;
                 story.text = loadedStory.text;
                 story.kids = loadedStory.kids;
                 story.descendants = loadedStory.descendants;
+                story.parentId = loadedStory.parentId;
 
                 // Reset comments
                 int oldSize = comments.size();
@@ -1878,6 +1880,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                 if (id == R.id.menu_refresh) {
                     onRetry();
+                } else if (id == R.id.menu_open_parent) {
+                    if (story.parentId > 0) {
+                        Utils.openCommentsActivity(story.parentId, -1, requireContext());
+                    }
+                } else if (id == R.id.menu_open_top_level) {
+                    if (story.commentMasterId > 0) {
+                        Utils.openCommentsActivity(story.commentMasterId, -1, requireContext());
+                    }
                 } else if (id == R.id.menu_adblock) {
                     blockAds = false;
                     webView.reload();
@@ -1938,6 +1948,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
             if (item.getItemId() == R.id.menu_search_comments && comments.size() < 2) {
+                item.setVisible(false);
+            }
+
+            if (item.getItemId() == R.id.menu_open_parent && (!story.isComment || story.parentId <= 0)) {
+                item.setVisible(false);
+            }
+
+            if (item.getItemId() == R.id.menu_open_top_level && (!story.isComment || story.commentMasterId <= 0)) {
                 item.setVisible(false);
             }
         }

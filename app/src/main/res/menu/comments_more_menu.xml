@@ -6,6 +6,14 @@
         android:title="Refresh" />
 
     <item
+        android:id="@+id/menu_open_parent"
+        android:title="Open parent" />
+
+    <item
+        android:id="@+id/menu_open_top_level"
+        android:title="Open top level" />
+
+    <item
         android:id="@+id/menu_adblock"
         android:title="Disable adblock temporarily" />
 
