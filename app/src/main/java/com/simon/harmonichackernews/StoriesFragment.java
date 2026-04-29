@@ -491,7 +491,13 @@ public class StoriesFragment extends Fragment {
             searchEditText.setText(lastSearch);
             searchEditText.setSelection(lastSearch.length());
 
-            searchEmptyContainer.setVisibility(stories.isEmpty() && !algoliaLoading ? View.VISIBLE : View.GONE);
+            boolean hasSubmittedSearch = !TextUtils.isEmpty(lastSearch.trim());
+            boolean showSearchEmpty = hasSubmittedSearch
+                    && stories.isEmpty()
+                    && !algoliaLoading
+                    && !loadingFailed
+                    && !loadingFailedServerError;
+            searchEmptyContainer.setVisibility(showSearchEmpty ? View.VISIBLE : View.GONE);
             noBookmarksLayout.setVisibility(View.GONE);
         } else {
             noBookmarksLayout.setVisibility((stories.isEmpty() && adapter.type == SettingsUtils.getBookmarksIndex(ctx.getResources())) ? View.VISIBLE : View.GONE);

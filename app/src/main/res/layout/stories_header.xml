@@ -217,7 +217,7 @@
             android:textSize="24sp"
             android:textStyle="bold"
             android:textColor="?attr/textColorHighlighted"
-            android:text="Search for stories"
+            android:text="No results"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"    />
 
