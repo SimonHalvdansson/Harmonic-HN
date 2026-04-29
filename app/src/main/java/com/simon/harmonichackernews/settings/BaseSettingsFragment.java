@@ -6,11 +6,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
+import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
@@ -47,6 +49,7 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
                 androidx.appcompat.R.attr.toolbarStyle);
         toolbar.setTitle(title);
         toolbar.setTitleCentered(false);
+        ViewCompat.setAccessibilityHeading(toolbar, true);
 
         SettingsCallback callback = getSettingsCallback();
         boolean twoPane = callback != null && callback.isTwoPane();
@@ -81,6 +84,18 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
         if (getToolbarTitle() == null) {
             recycler.setFitsSystemWindows(true);
         }
+        recycler.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
+            @Override
+            public void onChildViewAttachedToWindow(@NonNull View view) {
+                if (view instanceof TextView && view.getId() == android.R.id.title) {
+                    ViewCompat.setAccessibilityHeading(view, true);
+                }
+            }
+
+            @Override
+            public void onChildViewDetachedFromWindow(@NonNull View view) {
+            }
+        });
         return recycler;
     }
 

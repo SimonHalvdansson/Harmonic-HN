@@ -231,6 +231,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.arxivBy.setText(story.arxivInfo.concatNames());
                 headerViewHolder.arxivDate.setText(story.arxivInfo.formatDate());
                 headerViewHolder.arxivSubjects.setText(story.arxivInfo.formatSubjects());
+                headerViewHolder.arxivBy.setContentDescription("Authors: " + story.arxivInfo.concatNames());
+                headerViewHolder.arxivDate.setContentDescription("Published: " + story.arxivInfo.formatDate());
+                headerViewHolder.arxivSubjects.setContentDescription("Subjects: " + story.arxivInfo.formatSubjects());
 
                 int byIconResource = R.drawable.ic_action_group;
                 if (story.arxivInfo.authors.length == 1) {
@@ -256,6 +259,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.githubStars.setText(story.repoInfo.formatStars());
                 headerViewHolder.githubWatching.setText(story.repoInfo.formatWatching());
                 headerViewHolder.githubForks.setText(story.repoInfo.formatForks());
+                headerViewHolder.githubLicense.setContentDescription("License: " + story.repoInfo.license);
+                headerViewHolder.githubLanguage.setContentDescription("Primary language: " + story.repoInfo.language);
 
                 headerViewHolder.githubWebsiteContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.website) ? GONE : View.VISIBLE);
                 headerViewHolder.githubLicenseContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.license) ? GONE : View.VISIBLE);
@@ -280,6 +285,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.nitterReplyCount.setText(String.valueOf(story.nitterInfo.replyCount));
                 headerViewHolder.nitterReposts.setText(String.valueOf(story.nitterInfo.reposts));
                 headerViewHolder.nitterLikes.setText(String.valueOf(story.nitterInfo.likes));
+                headerViewHolder.nitterDate.setContentDescription("Posted: " + story.nitterInfo.date);
+                headerViewHolder.nitterReplyCount.setContentDescription("Replies: " + story.nitterInfo.replyCount);
+                headerViewHolder.nitterReposts.setContentDescription("Reposts: " + story.nitterInfo.reposts);
+                headerViewHolder.nitterLikes.setContentDescription("Likes: " + story.nitterInfo.likes);
 
                 headerViewHolder.nitterButton.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -361,6 +370,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.metaTime.setText(story.getTimeFormatted());
                 String tag = getCachedUserTag(ctx, story.by);
                 headerViewHolder.metaBy.setText(TextUtils.isEmpty(tag) ? story.by : story.by + " (" + tag + ")");
+                headerViewHolder.metaVotes.setContentDescription(pointCountDescription(story.score));
+                headerViewHolder.metaComments.setContentDescription(commentCountDescription(story.descendants));
+                headerViewHolder.metaTime.setContentDescription("Posted " + story.getTimeFormatted());
+                headerViewHolder.metaBy.setContentDescription("Submitted by " + story.by);
+                headerViewHolder.userButton.setContentDescription("Open submitter " + story.by);
             }
 
             headerViewHolder.metaContainer.setVisibility(story.loaded ? View.VISIBLE : GONE);
@@ -472,6 +486,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
             headerViewHolder.bookmarkButtonParent.setVisibility(story.isComment ? GONE : VISIBLE);
             headerViewHolder.commentButtonParent.setVisibility(Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time) ? GONE : View.VISIBLE);
+            headerViewHolder.commentButton.setContentDescription(story.isComment ? "Reply to comment" : "Reply to post");
+            headerViewHolder.voteButton.setContentDescription(story.isComment ? "Upvote comment" : "Upvote post");
 
             headerViewHolder.loadingFailed.setVisibility(loadingFailed ? VISIBLE : GONE);
             if (loadingFailed) {
@@ -548,6 +564,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 displayName += " (OP)";
             }
             itemViewHolder.commentBy.setText(displayName);
+            itemViewHolder.commentBy.setContentDescription("Comment by " + comment.by);
+            itemViewHolder.commentByTime.setContentDescription("Posted " + comment.getTimeFormatted());
 
             if (byUser) {
                 itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.selfCommentColor));
@@ -576,8 +594,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 if (subCommentCount > 0) {
                     itemViewHolder.commentHiddenCount.setVisibility(View.VISIBLE);
                     itemViewHolder.commentHiddenCount.setText("+" + subCommentCount);
+                    itemViewHolder.commentHiddenCount.setContentDescription(hiddenReplyCountDescription(subCommentCount));
                 } else {
                     itemViewHolder.commentHiddenCount.setVisibility(GONE);
+                    itemViewHolder.commentHiddenCount.setContentDescription(null);
                 }
             }
         }
@@ -697,6 +717,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout summaryContentContainer;
         public final LinearLayout summaryLoadingContainer;
         public final TextView summary;
+        public final TextView summaryTitle;
         public final ImageButton moreButton;
         public final RelativeLayout userButtonParent;
         public final RelativeLayout moreButtonParent;
@@ -783,6 +804,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             summaryContentContainer = view.findViewById(R.id.comments_header_summary_content_container);
             summaryLoadingContainer = view.findViewById(R.id.comments_header_summary_loading);
             summary = view.findViewById(R.id.comments_header_summary);
+            summaryTitle = view.findViewById(R.id.comments_header_summary_title);
             moreButton = view.findViewById(R.id.comments_header_button_more);
             userButtonParent = view.findViewById(R.id.comments_header_button_user_parent);
             moreButtonParent = view.findViewById(R.id.comments_header_button_more_parent);
@@ -865,6 +887,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             TooltipCompat.setTooltipText(summarizeButton, "Summarize");
             TooltipCompat.setTooltipText(shareButton, "Share");
             TooltipCompat.setTooltipText(moreButton, "More");
+            ViewCompat.setAccessibilityHeading(titleView, true);
+            ViewCompat.setAccessibilityHeading(infoHeader, true);
+            ViewCompat.setAccessibilityHeading(summaryTitle, true);
+            ViewCompat.setAccessibilityHeading(emptyViewText, true);
+            ViewCompat.setAccessibilityHeading(loadingFailedText, true);
+
+            sheetRefreshButton.setContentDescription("Refresh comments");
+            sheetExpandButton.setContentDescription("Open comments");
+            sheetBrowserButton.setContentDescription("Open story in browser");
+            sheetInvertButton.setContentDescription("Invert colors");
 
             if (!showInvert) {
                 view.findViewById(R.id.comments_sheet_container_invert).setVisibility(GONE);
@@ -1056,6 +1088,27 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
         String tag = userTagsByUser.get(username.toLowerCase().trim());
         return tag == null ? "" : tag;
+    }
+
+    private static String commentCountDescription(int count) {
+        if (count == 1) {
+            return "1 comment";
+        }
+        return count + " comments";
+    }
+
+    private static String pointCountDescription(int count) {
+        if (count == 1) {
+            return "1 point";
+        }
+        return count + " points";
+    }
+
+    private static String hiddenReplyCountDescription(int count) {
+        if (count == 1) {
+            return "1 hidden reply";
+        }
+        return count + " hidden replies";
     }
 
     public interface RequestSummaryCallback {

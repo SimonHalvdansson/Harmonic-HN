@@ -23,11 +23,13 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.graphics.Insets;
+import androidx.core.view.AccessibilityDelegateCompat;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsAnimationCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.swiperefreshlayout.widget.CircularProgressDrawable;
 
 import com.google.android.material.button.MaterialButton;
@@ -98,6 +100,8 @@ public class ComposeActivity extends AppCompatActivity {
         replyingHeaderTextView = findViewById(R.id.compose_replying_text_header);
         replyingScrollView = findViewById(R.id.compose_replying_scrollview);
         topCommentTextView = findViewById(R.id.compose_top_comment);
+        ViewCompat.setAccessibilityHeading(topCommentTextView, true);
+        ViewCompat.setAccessibilityHeading(replyingHeaderTextView, true);
         TextView postInfo = findViewById(R.id.compose_submit_info);
         LinearLayout bottomContainer = findViewById(R.id.compose_bottom_container);
         LinearLayout container = findViewById(R.id.compose_container);
@@ -121,11 +125,13 @@ public class ComposeActivity extends AppCompatActivity {
                 replyingScrollView.setVisibility(View.GONE);
                 topCommentTextView.setVisibility(View.VISIBLE);
                 topCommentTextView.setText("Commenting on: " + parentText);
+                setEditTextAccessibilityHint("Comment text");
                 break;
             case TYPE_COMMENT_REPLY:
                 replyingScrollView.setVisibility(View.VISIBLE);
                 topCommentTextView.setVisibility(View.GONE);
                 replyingHeaderTextView.setText("Replying to " + user + "'s comment:");
+                setEditTextAccessibilityHint("Reply text");
                 replyingTextView.setHtml(parentText);
 
                 replyingTextView.setOnClickATagListener(new OnClickATagListener() {
@@ -237,6 +243,16 @@ public class ComposeActivity extends AppCompatActivity {
         };
         getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
         updateEnabledStatuses();
+    }
+
+    private void setEditTextAccessibilityHint(String hint) {
+        ViewCompat.setAccessibilityDelegate(editText, new AccessibilityDelegateCompat() {
+            @Override
+            public void onInitializeAccessibilityNodeInfo(@NonNull View host, @NonNull AccessibilityNodeInfoCompat info) {
+                super.onInitializeAccessibilityNodeInfo(host, info);
+                info.setHintText(hint);
+            }
+        });
     }
 
     @Override

@@ -365,11 +365,7 @@ public class StoriesFragment extends Fragment {
                     return submitSearchFromInput(textView);
                 }
 
-                if (isEnterKeyEvent(keyEvent)) {
-                    return true;
-                }
-
-                return false;
+                return isEnterKeyEvent(keyEvent);
             }
         });
         searchEditText.setOnKeyListener((v, keyCode, keyEvent) -> {

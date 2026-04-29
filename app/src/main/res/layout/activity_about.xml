@@ -29,6 +29,7 @@
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:layout_marginRight="16dp"
+                android:contentDescription="Harmonic app icon"
                 android:src="@mipmap/ic_launcher" />
 
             <LinearLayout
@@ -37,6 +38,7 @@
                 android:orientation="vertical">
 
                 <TextView
+                    android:id="@+id/about_title"
                     android:textColor="?attr/storyColorNormal"
                     android:textStyle="bold"
                     android:fontFamily="@font/product_sans"
@@ -69,6 +71,7 @@
             android:text="Harmonic for Hacker News is developed by me, Simon Halvdansson, although since 2023 the app is open source. The libraries used are listed below together with Materialistic by Hidroh which I've used for some network code and PDF integration.\n\nThe name 'Harmonic' comes from me choosing to study harmonic analysis at around the time of Harmonic's inception. I guess you could say something about 'waves' and 'news' but that's the rationale. Since then, I've finished my PhD in harmonic analysis and don't have the same amount of time to work on Harmonic but it's still my favorite pet project and I use the app daily. Seeing others contribute, open meaningful issues on GitHub or just tell me they like the app is always super nice and I'm very thankful to the community for helping with the maintenance. Together I think we can keep Harmonic the (in my opinion) best Hacker News client for Android!"/>
 
         <TextView
+            android:id="@+id/about_licenses_header"
             android:textColor="?attr/textColorDisabled"
             android:text="licenses:"
             android:paddingBottom="2dp"

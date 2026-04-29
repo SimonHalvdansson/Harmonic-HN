@@ -51,6 +51,8 @@
 
                 <ImageView
                     android:src="@drawable/ic_action_date"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="14dp"
                     android:layout_height="16dp"/>
 
@@ -67,6 +69,8 @@
                 <ImageView
                     android:id="@+id/comments_header_nitter_reply_image"
                     android:src="@drawable/ic_action_reply"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="15dp"
                     android:layout_height="16dp"/>
 
@@ -90,6 +94,8 @@
                 <ImageView
                     android:id="@+id/comments_header_nitter_reposts_image"
                     android:src="@drawable/ic_action_retweet"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="15dp"
                     android:layout_height="16dp"/>
 
@@ -106,6 +112,8 @@
                 <ImageView
                     android:id="@+id/comments_header_nitter_likes_image"
                     android:src="@drawable/ic_action_thumbs_up"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="12dp"
                     android:layout_height="16dp"/>
 

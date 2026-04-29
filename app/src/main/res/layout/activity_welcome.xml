@@ -30,9 +30,11 @@
                     android:layout_width="56dp"
                     android:layout_height="56dp"
                     android:layout_marginRight="16dp"
+                    android:contentDescription="Harmonic app icon"
                     android:src="@mipmap/ic_launcher" />
 
                 <TextView
+                    android:id="@+id/welcome_title"
                     android:textColor="?attr/storyColorNormal"
                     android:textStyle="bold"
                     android:fontFamily="@font/product_sans"
@@ -53,6 +55,7 @@
                 android:text="Before we get started, you can change some options here to customize the app to your liking."/>
 
             <TextView
+                android:id="@+id/welcome_theme_header"
                 android:layout_marginTop="14dp"
                 android:text="Theme:"
                 android:textStyle="bold"

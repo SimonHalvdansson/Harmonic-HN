@@ -19,6 +19,8 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginBottom="6dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:src="@drawable/ic_action_news" />
 
         <TextView
@@ -136,6 +138,8 @@
                     android:layout_marginRight="10dp"
                     android:layout_marginTop="14dp"
                     android:src="@drawable/ic_action_explore_white"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="28dp"
                     android:layout_height="28dp"    />
 

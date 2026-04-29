@@ -8,7 +8,6 @@ import android.view.View;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.WindowCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -30,6 +29,8 @@ public class AboutActivity extends AppCompatActivity {
         ActivityAboutBinding binding = ActivityAboutBinding.inflate(getLayoutInflater());
         final View root = binding.getRoot();
         setContentView(root);
+        ViewCompat.setAccessibilityHeading(binding.aboutTitle, true);
+        ViewCompat.setAccessibilityHeading(binding.aboutLicensesHeader, true);
 
         // Draw behind system bars
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);

@@ -32,6 +32,8 @@
                 <ImageView
                     android:layout_marginRight="4dp"
                     android:src="@drawable/ic_action_star"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="20dp"
                     android:layout_height="20dp"/>
 
@@ -53,6 +55,8 @@
                 <ImageView
                     android:layout_marginRight="4dp"
                     android:src="@drawable/ic_action_eye"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="20dp"
                     android:layout_height="20dp"/>
 
@@ -74,6 +78,8 @@
                 <ImageView
                     android:layout_marginRight="4dp"
                     android:src="@drawable/ic_action_fork"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="20dp"
                     android:layout_height="20dp"/>
 
@@ -104,6 +110,8 @@
                 <ImageView
                     android:layout_marginRight="4dp"
                     android:src="@drawable/ic_action_link"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="20dp"
                     android:layout_height="20dp"/>
 
@@ -126,6 +134,8 @@
                 <ImageView
                     android:layout_marginRight="4dp"
                     android:src="@drawable/ic_action_attribution"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="20dp"
                     android:layout_height="20dp"/>
 
@@ -148,6 +158,8 @@
                 <ImageView
                     android:layout_marginRight="4dp"
                     android:src="@drawable/ic_action_library_books"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="20dp"
                     android:layout_height="20dp"/>
 

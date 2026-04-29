@@ -20,6 +20,7 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.simon.harmonichackernews.R;
@@ -136,6 +137,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 // For non-submissions, position 0 is first story so display index = position + 1
                 int displayIndex = atSubmissions ? position : position + 1;
                 storyViewHolder.indexTextView.setText(displayIndex + ".");
+                storyViewHolder.indexTextView.setContentDescription("Story " + displayIndex);
 
                 if (storyViewHolder.story.clicked) {
                     storyViewHolder.indexTextView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorDisabled));
@@ -175,6 +177,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     commentCountText = "";
                 }
                 storyViewHolder.commentsView.setText(commentCountText);
+                storyViewHolder.commentsView.setContentDescription(commentCountDescription(storyViewHolder.story.descendants));
+                storyViewHolder.commentLayoutView.setContentDescription(commentCountDescription(storyViewHolder.story.descendants));
 
                 String host = "";
                 try {
@@ -188,8 +192,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 if (showPoints && !storyViewHolder.story.isComment) {
                     String ptsString = storyViewHolder.story.score == 1 ? " point" : " points";
                     storyViewHolder.metaView.setText(storyViewHolder.story.score + ptsString + " • " + host + " • " + storyViewHolder.story.getTimeFormatted());
+                    storyViewHolder.metaView.setContentDescription(
+                            pointCountDescription(storyViewHolder.story.score) + ", "
+                                    + host + ", "
+                                    + storyViewHolder.story.getTimeFormatted());
                 } else {
                     storyViewHolder.metaView.setText(host + " • " + storyViewHolder.story.getTimeFormatted());
+                    storyViewHolder.metaView.setContentDescription(host + ", " + storyViewHolder.story.getTimeFormatted());
                 }
 
                 if (thumbnails) {
@@ -227,6 +236,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     storyViewHolder.titleView.setText("Loading failed, click to retry");
                     storyViewHolder.metaContainer.setVisibility(View.GONE);
                     storyViewHolder.commentsView.setVisibility(View.GONE);
+                    storyViewHolder.commentsView.setContentDescription(null);
+                    storyViewHolder.commentLayoutView.setContentDescription(null);
                 }
 
                 storyViewHolder.linkLayoutView.setClickable(true);
@@ -238,6 +249,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.titleView.setVisibility(View.GONE);
                 storyViewHolder.metaContainer.setVisibility(View.GONE);
                 storyViewHolder.commentsView.setText(null);
+                storyViewHolder.commentsView.setContentDescription(null);
+                storyViewHolder.metaView.setContentDescription(null);
+                storyViewHolder.commentLayoutView.setContentDescription(null);
                 storyViewHolder.linkLayoutView.setClickable(false);
                 storyViewHolder.commentLayoutView.setClickable(false);
                 storyViewHolder.commentsIcon.setAlpha(storyViewHolder.story.clicked ? 0.6f : 1.0f);
@@ -246,6 +260,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             final SubmissionsHeaderViewHolder submissionsHeaderViewHolder = (SubmissionsHeaderViewHolder) holder;
 
             submissionsHeaderViewHolder.headerText.setText(submitter + "'s submissions");
+            submissionsHeaderViewHolder.headerText.setContentDescription("Submissions by " + submitter);
 
         } else if (holder instanceof CommentViewHolder) {
             final CommentViewHolder commentViewHolder = (CommentViewHolder) holder;
@@ -331,6 +346,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             metaShimmer = view.findViewById(R.id.story_title_shimmer_meta);
             metaFavicon = view.findViewById(R.id.story_meta_favicon);
             indexTextView = view.findViewById(R.id.story_index);
+            ViewCompat.setAccessibilityHeading(titleView, true);
 
             linkLayoutView.setOnClickListener(v -> linkClickListener.onItemClick(getAbsoluteAdapterPosition()));
             commentLayoutView.setOnClickListener(v -> commentClickListener.onItemClick(getAbsoluteAdapterPosition()));
@@ -357,6 +373,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public SubmissionsHeaderViewHolder(View view) {
             super(view);
             headerText = view.findViewById(R.id.submissions_header_text);
+            ViewCompat.setAccessibilityHeading(headerText, true);
         }
     }
 
@@ -474,6 +491,20 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             // More stories remain, update the button text
             notifyItemChanged(visibleStoryCount);
         }
+    }
+
+    private static String commentCountDescription(int count) {
+        if (count == 1) {
+            return "1 comment";
+        }
+        return count + " comments";
+    }
+
+    private static String pointCountDescription(int count) {
+        if (count == 1) {
+            return "1 point";
+        }
+        return count + " points";
     }
 
 }

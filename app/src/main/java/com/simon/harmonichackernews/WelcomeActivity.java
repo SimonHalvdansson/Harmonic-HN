@@ -11,6 +11,7 @@ import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
 import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.databinding.ActivityWelcomeBinding;
@@ -27,6 +28,8 @@ public class WelcomeActivity extends AppCompatActivity {
         ActivityWelcomeBinding binding = ActivityWelcomeBinding.inflate(getLayoutInflater());
         final View root = binding.getRoot();
         setContentView(root);
+        ViewCompat.setAccessibilityHeading(binding.welcomeTitle, true);
+        ViewCompat.setAccessibilityHeading(binding.welcomeThemeHeader, true);
 
         ImageView favicon = binding.storyListItem.storyMetaFavicon;
         favicon.setImageResource(R.drawable.quanta);

@@ -17,6 +17,8 @@
     <ImageView
         android:id="@+id/comments_sheet_handle"
         android:src="@drawable/bottom_sheet_grapple"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="4dp"
@@ -51,6 +53,8 @@
                 <ImageView
                     android:layout_centerHorizontal="true"
                     android:background="@drawable/ic_action_refresh"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="27dp"
                     android:layout_height="27dp"/>
 
@@ -78,6 +82,8 @@
                 <ImageView
                     android:layout_centerHorizontal="true"
                     android:background="@drawable/ic_action_arrow_up"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="27dp"
                     android:layout_height="27dp"/>
 
@@ -105,6 +111,8 @@
                 <ImageView
                     android:layout_centerHorizontal="true"
                     android:background="@drawable/ic_action_web"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="27dp"
                     android:layout_height="27dp"/>
 
@@ -160,6 +168,8 @@
                 <ImageView
                     android:layout_centerHorizontal="true"
                     android:background="@drawable/ic_action_invert"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="27dp"
                     android:layout_height="27dp"/>
 
@@ -206,6 +216,8 @@
                 android:layout_width="17dp"
                 android:layout_height="17dp"
                 android:layout_marginRight="4dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 android:src="@drawable/ic_action_web" />
 
             <TextView
@@ -302,6 +314,8 @@
                     android:layout_width="14dp"
                     android:layout_height="14dp"
                     android:layout_marginTop="2dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_action_thumbs_up" />
 
                 <TextView
@@ -318,6 +332,8 @@
                     android:layout_width="14dp"
                     android:layout_height="14dp"
                     android:layout_marginTop="2dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_action_comment" />
 
                 <TextView
@@ -334,6 +350,8 @@
                     android:layout_width="14dp"
                     android:layout_height="14dp"
                     android:layout_marginTop="2dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_action_time" />
 
                 <TextView
@@ -350,6 +368,8 @@
                     android:layout_width="14dp"
                     android:layout_height="14dp"
                     android:layout_marginTop="2dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_action_user" />
 
                 <TextView
@@ -372,6 +392,8 @@
                 android:id="@+id/comments_header_link_image"
                 android:layout_width="28dp"
                 android:layout_height="28dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
                 android:src="@drawable/ic_action_link" />
 
         </LinearLayout>
@@ -424,6 +446,7 @@
             android:layout_height="wrap_content">
 
             <TextView
+                android:id="@+id/comments_header_summary_title"
                 android:textStyle="bold"
                 android:layout_marginTop="8dp"
                 android:layout_marginLeft="16dp"
@@ -873,6 +896,8 @@
 
         <ImageView
             android:src="@drawable/ic_action_no_internet"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:layout_width="match_parent"
             android:layout_height="56dp"/>
 
@@ -943,6 +968,8 @@
 
         <ImageView
             android:src="@drawable/ic_action_comment"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:layout_width="match_parent"
             android:layout_height="48dp"    />
 

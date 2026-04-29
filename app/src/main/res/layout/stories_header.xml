@@ -202,6 +202,8 @@
 
         <ImageView
             android:src="@drawable/ic_action_search"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:layout_width="match_parent"
             android:layout_height="48dp"    />
 
@@ -229,6 +231,8 @@
 
         <ImageView
             android:src="@drawable/ic_action_bookmark_border"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:layout_width="match_parent"
             android:layout_height="48dp"    />
 
@@ -256,6 +260,8 @@
 
         <ImageView
             android:src="@drawable/ic_action_no_internet"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:layout_width="match_parent"
             android:layout_height="56dp"/>
 
