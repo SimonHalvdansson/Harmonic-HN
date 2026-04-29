@@ -51,6 +51,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.search.SearchBar;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
@@ -94,6 +95,11 @@ public class StoriesFragment extends Fragment {
     private View searchContainer;
     private SearchBar searchBar;
     private EditText searchEditText;
+    private View searchOptionsScroll;
+    private Chip searchSortChip;
+    private Chip searchDateChip;
+    private Chip searchPointsChip;
+    private Chip searchCommentsChip;
     private ImageButton searchButton;
     private ImageButton closeSearchButton;
     private ImageButton moreButton;
@@ -119,6 +125,10 @@ public class StoriesFragment extends Fragment {
     private boolean loadingFailed = false;
     private boolean loadingFailedServerError = false;
     private String lastSearch = "";
+    private int searchSortIndex = 0;
+    private int searchDateRangeIndex = 0;
+    private int searchMinimumPointsIndex = 0;
+    private int searchMinimumCommentsIndex = 0;
     private int algoliaRequestGeneration = 0;
     private boolean algoliaLoading = false;
     private String activeAlgoliaUrl = null;
@@ -136,6 +146,13 @@ public class StoriesFragment extends Fragment {
     private final static long CLICK_INTERVAL = 350;
     private static final long SEARCH_HEADER_ANIMATION_DURATION_MS = 180;
     private static final long HEADER_LAYOUT_ANIMATION_DURATION_MS = 220;
+    private static final String[] SEARCH_SORT_LABELS = new String[]{"Newest", "Relevance"};
+    private static final String[] SEARCH_DATE_RANGE_LABELS = new String[]{"All time", "Past day", "Past week", "Past month", "Past year"};
+    private static final int[] SEARCH_DATE_RANGE_DAYS = new int[]{0, 1, 7, 30, 365};
+    private static final String[] SEARCH_MINIMUM_POINTS_LABELS = new String[]{"Any points", "5+ points", "25+ points", "100+ points"};
+    private static final int[] SEARCH_MINIMUM_POINTS = new int[]{0, 5, 25, 100};
+    private static final String[] SEARCH_MINIMUM_COMMENTS_LABELS = new String[]{"Any comments", "5+ comments", "25+ comments", "100+ comments"};
+    private static final int[] SEARCH_MINIMUM_COMMENTS = new int[]{0, 5, 25, 100};
 
     private int topInset = 0;
 
@@ -174,6 +191,11 @@ public class StoriesFragment extends Fragment {
         searchContainer = view.findViewById(R.id.stories_header_search_container);
         searchBar = view.findViewById(R.id.stories_header_search_bar);
         searchEditText = view.findViewById(R.id.stories_header_search_edittext);
+        searchOptionsScroll = view.findViewById(R.id.stories_header_search_options_scroll);
+        searchSortChip = view.findViewById(R.id.stories_header_search_sort_chip);
+        searchDateChip = view.findViewById(R.id.stories_header_search_date_chip);
+        searchPointsChip = view.findViewById(R.id.stories_header_search_points_chip);
+        searchCommentsChip = view.findViewById(R.id.stories_header_search_comments_chip);
         searchBar.setElevation(0f);
         searchEditText.bringToFront();
         searchButton = view.findViewById(R.id.stories_header_search_button);
@@ -365,6 +387,28 @@ public class StoriesFragment extends Fragment {
         });
 
         searchBar.setOnClickListener(v -> focusSearchInput());
+        searchSortChip.setOnClickListener(v -> showSearchOptionMenu(v, SEARCH_SORT_LABELS, searchSortIndex, selectedIndex -> {
+            searchSortIndex = selectedIndex;
+            updateSearchOptionChips();
+            retrySearchWithCurrentOptions();
+        }));
+        searchDateChip.setOnClickListener(v -> showSearchOptionMenu(v, SEARCH_DATE_RANGE_LABELS, searchDateRangeIndex, selectedIndex -> {
+            searchDateRangeIndex = selectedIndex;
+            updateSearchOptionChips();
+            retrySearchWithCurrentOptions();
+        }));
+        searchPointsChip.setOnClickListener(v -> showSearchOptionMenu(v, SEARCH_MINIMUM_POINTS_LABELS, searchMinimumPointsIndex, selectedIndex -> {
+            searchMinimumPointsIndex = selectedIndex;
+            updateSearchOptionChips();
+            retrySearchWithCurrentOptions();
+        }));
+        searchCommentsChip.setOnClickListener(v -> showSearchOptionMenu(v, SEARCH_MINIMUM_COMMENTS_LABELS, searchMinimumCommentsIndex, selectedIndex -> {
+            searchMinimumCommentsIndex = selectedIndex;
+            updateSearchOptionChips();
+            retrySearchWithCurrentOptions();
+        }));
+        updateSearchOptionChips();
+
         searchButton.setOnClickListener(view -> openSearch());
         closeSearchButton.setOnClickListener(view -> closeSearch(view));
 
@@ -415,6 +459,7 @@ public class StoriesFragment extends Fragment {
         closeSearchButton.setVisibility(searching ? View.VISIBLE : View.GONE);
 
         searchContainer.setVisibility(searching ? View.VISIBLE : View.GONE);
+        searchOptionsScroll.setVisibility(searching ? View.VISIBLE : View.GONE);
 
         if (searching) {
             loadingIndicator.setVisibility(algoliaLoading ? View.VISIBLE : View.GONE);
@@ -484,6 +529,48 @@ public class StoriesFragment extends Fragment {
         return true;
     }
 
+    private void showSearchOptionMenu(View anchor, String[] labels, int selectedIndex, SearchOptionSelectedListener listener) {
+        PopupMenu popup = new PopupMenu(requireContext(), anchor);
+        for (int i = 0; i < labels.length; i++) {
+            MenuItem item = popup.getMenu().add(Menu.NONE, i, i, labels[i]);
+            item.setCheckable(true);
+            item.setChecked(i == selectedIndex);
+        }
+        popup.getMenu().setGroupCheckable(Menu.NONE, true, true);
+        popup.setOnMenuItemClickListener(item -> {
+            listener.onSearchOptionSelected(item.getItemId());
+            return true;
+        });
+        popup.show();
+    }
+
+    private void updateSearchOptionChips() {
+        searchSortChip.setText(SEARCH_SORT_LABELS[searchSortIndex]);
+        searchDateChip.setText(SEARCH_DATE_RANGE_LABELS[searchDateRangeIndex]);
+        searchPointsChip.setText(SEARCH_MINIMUM_POINTS_LABELS[searchMinimumPointsIndex]);
+        searchCommentsChip.setText(SEARCH_MINIMUM_COMMENTS_LABELS[searchMinimumCommentsIndex]);
+
+        searchSortChip.setContentDescription("Search sort: " + SEARCH_SORT_LABELS[searchSortIndex]);
+        searchDateChip.setContentDescription("Search date range: " + SEARCH_DATE_RANGE_LABELS[searchDateRangeIndex]);
+        searchPointsChip.setContentDescription("Search minimum points: " + SEARCH_MINIMUM_POINTS_LABELS[searchMinimumPointsIndex]);
+        searchCommentsChip.setContentDescription("Search minimum comments: " + SEARCH_MINIMUM_COMMENTS_LABELS[searchMinimumCommentsIndex]);
+    }
+
+    private void retrySearchWithCurrentOptions() {
+        if (!searching) {
+            return;
+        }
+
+        String query = searchEditText.getText().toString();
+        if (TextUtils.isEmpty(query)) {
+            query = lastSearch;
+        }
+
+        if (!TextUtils.isEmpty(query)) {
+            search(query);
+        }
+    }
+
     private void beginHeaderTransition(boolean animateSearchTransition) {
         if (appBarLayout == null || !(appBarLayout.getParent() instanceof ViewGroup)) {
             return;
@@ -506,6 +593,7 @@ public class StoriesFragment extends Fragment {
     private void openSearch() {
         searching = true;
         updateSearchStatus();
+        resetSearchOptionsScroll();
 
         focusSearchInput();
     }
@@ -519,6 +607,7 @@ public class StoriesFragment extends Fragment {
         InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.hideSoftInputFromWindow(tokenView.getWindowToken(), 0);
         searchEditText.clearFocus();
+        resetSearchOptionsScroll();
     }
 
     private void focusSearchInput() {
@@ -527,6 +616,10 @@ public class StoriesFragment extends Fragment {
             searchEditText.requestFocus();
             imm.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT);
         });
+    }
+
+    private void resetSearchOptionsScroll() {
+        searchOptionsScroll.post(() -> searchOptionsScroll.scrollTo(0, 0));
     }
 
     private void resetPaginationState() {
@@ -1164,14 +1257,37 @@ public class StoriesFragment extends Fragment {
     private void search(String query) {
         lastSearch = query;
 
-        Uri uri = Uri.parse("https://hn.algolia.com/api/v1/search_by_date")
-                .buildUpon()
+        String endpoint = searchSortIndex == 0
+                ? "https://hn.algolia.com/api/v1/search_by_date"
+                : "https://hn.algolia.com/api/v1/search";
+        Uri.Builder builder = Uri.parse(endpoint).buildUpon()
                 .appendQueryParameter("query", query)
                 .appendQueryParameter("tags", "story")
                 .appendQueryParameter("hitsPerPage", "200")
-                .appendQueryParameter("typoTolerance", "min")
-                .build();
-        loadAlgolia(uri.toString());
+                .appendQueryParameter("typoTolerance", "min");
+
+        List<String> numericFilters = new ArrayList<>();
+        int days = SEARCH_DATE_RANGE_DAYS[searchDateRangeIndex];
+        if (days > 0) {
+            long startTime = (System.currentTimeMillis() / 1000L) - (days * 24L * 60L * 60L);
+            numericFilters.add("created_at_i>=" + startTime);
+        }
+
+        int minimumPoints = SEARCH_MINIMUM_POINTS[searchMinimumPointsIndex];
+        if (minimumPoints > 0) {
+            numericFilters.add("points>=" + minimumPoints);
+        }
+
+        int minimumComments = SEARCH_MINIMUM_COMMENTS[searchMinimumCommentsIndex];
+        if (minimumComments > 0) {
+            numericFilters.add("num_comments>=" + minimumComments);
+        }
+
+        if (!numericFilters.isEmpty()) {
+            builder.appendQueryParameter("numericFilters", TextUtils.join(",", numericFilters));
+        }
+
+        loadAlgolia(builder.build().toString());
     }
 
     private void loadAlgolia(String url) {
@@ -1394,6 +1510,10 @@ public class StoriesFragment extends Fragment {
 
     private void openComments(Story story, int pos, boolean showWebsite) {
         storyClickListener.openStory(story, pos, showWebsite);
+    }
+
+    private interface SearchOptionSelectedListener {
+        void onSearchOptionSelected(int selectedIndex);
     }
 
     public interface StoryClickListener {

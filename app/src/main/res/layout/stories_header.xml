@@ -114,6 +114,60 @@
 
     </LinearLayout>
 
+    <HorizontalScrollView
+        android:id="@+id/stories_header_search_options_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/stories_header_search_options"
+            style="@style/Widget.Material3.ChipGroup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            app:chipSpacingHorizontal="8dp">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/stories_header_search_sort_chip"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/stories_header_search_date_chip"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/stories_header_search_points_chip"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/stories_header_search_comments_chip"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+    </HorizontalScrollView>
+
     <TextView
         android:id="@+id/stories_header_cached_stories_header"
         android:visibility="gone"
