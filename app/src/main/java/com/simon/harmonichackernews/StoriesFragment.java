@@ -132,6 +132,13 @@ public class StoriesFragment extends Fragment {
     private int algoliaRequestGeneration = 0;
     private boolean algoliaLoading = false;
     private String activeAlgoliaUrl = null;
+    private List<Story> storiesBeforeSearch = null;
+    private int loadedToBeforeSearch = -1;
+    private int visibleStoryCountBeforeSearch = Integer.MAX_VALUE;
+    private boolean showingCachedBeforeSearch = false;
+    private boolean loadingFailedBeforeSearch = false;
+    private boolean loadingFailedServerErrorBeforeSearch = false;
+    private boolean loadPendingBeforeSearch = false;
 
     public static boolean showingCached = false;
 
@@ -681,6 +688,70 @@ public class StoriesFragment extends Fragment {
         int newItemCount = adapter.getItemCount();
         if (newItemCount > 0) {
             adapter.notifyItemRangeInserted(0, newItemCount);
+        }
+    }
+
+    private void saveStoriesBeforeSearch() {
+        if (storiesBeforeSearch != null) {
+            return;
+        }
+
+        storiesBeforeSearch = new ArrayList<>(stories);
+        loadedToBeforeSearch = loadedTo;
+        visibleStoryCountBeforeSearch = adapter.visibleStoryCount;
+        showingCachedBeforeSearch = showingCached;
+        loadingFailedBeforeSearch = loadingFailed;
+        loadingFailedServerErrorBeforeSearch = loadingFailedServerError;
+        loadPendingBeforeSearch = stories.isEmpty()
+                && !loadingFailed
+                && !loadingFailedServerError
+                && adapter.type != SettingsUtils.getBookmarksIndex(getResources());
+    }
+
+    private boolean restoreStoriesBeforeSearch() {
+        if (storiesBeforeSearch == null) {
+            return false;
+        }
+
+        int oldItemCount = adapter.getItemCount();
+        stories.clear();
+        if (oldItemCount > 0) {
+            adapter.notifyItemRangeRemoved(0, oldItemCount);
+        }
+
+        stories.addAll(storiesBeforeSearch);
+        loadedTo = loadedToBeforeSearch;
+        adapter.visibleStoryCount = visibleStoryCountBeforeSearch;
+        showingCached = showingCachedBeforeSearch;
+        loadingFailed = loadingFailedBeforeSearch;
+        loadingFailedServerError = loadingFailedServerErrorBeforeSearch;
+
+        int newItemCount = adapter.getItemCount();
+        if (newItemCount > 0) {
+            adapter.notifyItemRangeInserted(0, newItemCount);
+        }
+
+        storiesBeforeSearch = null;
+        loadedToBeforeSearch = -1;
+        visibleStoryCountBeforeSearch = Integer.MAX_VALUE;
+        showingCachedBeforeSearch = false;
+        loadingFailedBeforeSearch = false;
+        loadingFailedServerErrorBeforeSearch = false;
+
+        return true;
+    }
+
+    private void resumeInterruptedStoryLoads() {
+        if (currentTypeIsAlgolia() || stories.isEmpty() || loadedTo < 0) {
+            return;
+        }
+
+        int lastIndexToLoad = Math.min(loadedTo, stories.size() - 1);
+        for (int i = 0; i <= lastIndexToLoad; i++) {
+            Story story = stories.get(i);
+            if (!story.loaded && !story.loadingFailed) {
+                loadStory(story, 0);
+            }
         }
     }
 
@@ -1252,6 +1323,8 @@ public class StoriesFragment extends Fragment {
 
     private void updateSearchStatus() {
         hideUpdateButton();
+        boolean restoredStories = false;
+        boolean shouldRefreshAfterRestore = false;
 
         if (getActivity() != null && getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).backPressedCallback.setEnabled(searching);
@@ -1260,6 +1333,8 @@ public class StoriesFragment extends Fragment {
         swipeRefreshLayout.setEnabled(!searching);
 
         if (searching) {
+            saveStoriesBeforeSearch();
+
             // cancel all ongoing
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
@@ -1267,13 +1342,33 @@ public class StoriesFragment extends Fragment {
             clearStories();
             appBarLayout.setExpanded(true, false);
         } else {
-            clearStories();
+            shouldRefreshAfterRestore = loadPendingBeforeSearch
+                    && storiesBeforeSearch != null
+                    && storiesBeforeSearch.isEmpty();
+            loadPendingBeforeSearch = false;
+
+            invalidateAlgoliaLoad();
+            queue.cancelAll(requestTag);
+            swipeRefreshLayout.setRefreshing(false);
+            restoredStories = restoreStoriesBeforeSearch();
+
+            if (!restoredStories) {
+                clearStories();
+            }
         }
 
         updateHeader(true);
 
         if (!searching) {
-            attemptRefresh();
+            if (restoredStories) {
+                if (shouldRefreshAfterRestore) {
+                    attemptRefresh();
+                } else {
+                    resumeInterruptedStoryLoads();
+                }
+            } else {
+                attemptRefresh();
+            }
         }
     }
 
