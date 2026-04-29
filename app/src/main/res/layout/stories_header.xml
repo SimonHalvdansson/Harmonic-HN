@@ -35,20 +35,38 @@
 
         </LinearLayout>
 
-        <EditText
+        <FrameLayout
+            android:id="@+id/stories_header_search_container"
             android:visibility="gone"
-            android:focusable="true"
-            android:drawableLeft="@drawable/ic_action_search"
-            android:id="@+id/stories_header_search_edittext"
-            android:drawablePadding="6dp"
-            android:hint="Search posts"
-            android:fontFamily="@font/product_sans"
-            android:singleLine="true"
-            android:imeOptions="actionSearch"
-            android:inputType="textCapSentences"
             android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="56dp"    />
+            android:layout_height="56dp">
+
+            <com.google.android.material.search.SearchBar
+                android:id="@+id/stories_header_search_bar"
+                style="@style/Widget.Material3Expressive.SearchBar.AppBarWithSearch"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="Search posts"
+                android:elevation="0dp" />
+
+            <androidx.appcompat.widget.AppCompatEditText
+                android:id="@+id/stories_header_search_edittext"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginStart="24dp"
+                android:layout_marginEnd="24dp"
+                android:background="@android:color/transparent"
+                android:elevation="1dp"
+                android:fontFamily="@font/product_sans"
+                android:hint="Search posts"
+                android:imeOptions="actionSearch"
+                android:inputType="textCapSentences"
+                android:textColor="?attr/textColorHighlighted"
+                android:textColorHint="?attr/textColorDisabled"
+                android:singleLine="true" />
+
+        </FrameLayout>
 
         <LinearLayout
             android:id="@+id/stories_header_actions_container"

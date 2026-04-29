@@ -52,6 +52,7 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.android.material.search.SearchBar;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.data.History;
@@ -90,6 +91,8 @@ public class StoriesFragment extends Fragment {
     private LinearLayout headerContainer;
     private Spinner typeSpinner;
     private LinearLayout spinnerContainer;
+    private View searchContainer;
+    private SearchBar searchBar;
     private EditText searchEditText;
     private ImageButton searchButton;
     private ImageButton closeSearchButton;
@@ -168,7 +171,11 @@ public class StoriesFragment extends Fragment {
         headerContainer = view.findViewById(R.id.stories_header_container);
         typeSpinner = view.findViewById(R.id.stories_header_spinner);
         spinnerContainer = view.findViewById(R.id.stories_header_spinner_container);
+        searchContainer = view.findViewById(R.id.stories_header_search_container);
+        searchBar = view.findViewById(R.id.stories_header_search_bar);
         searchEditText = view.findViewById(R.id.stories_header_search_edittext);
+        searchBar.setElevation(0f);
+        searchEditText.bringToFront();
         searchButton = view.findViewById(R.id.stories_header_search_button);
         closeSearchButton = view.findViewById(R.id.stories_header_close_search_button);
         moreButton = view.findViewById(R.id.stories_header_more);
@@ -357,6 +364,7 @@ public class StoriesFragment extends Fragment {
             return true;
         });
 
+        searchBar.setOnClickListener(v -> focusSearchInput());
         searchButton.setOnClickListener(view -> openSearch());
         closeSearchButton.setOnClickListener(view -> closeSearch(view));
 
@@ -406,7 +414,7 @@ public class StoriesFragment extends Fragment {
         searchButton.setVisibility(searching ? View.GONE : View.VISIBLE);
         closeSearchButton.setVisibility(searching ? View.VISIBLE : View.GONE);
 
-        searchEditText.setVisibility(searching ? View.VISIBLE : View.GONE);
+        searchContainer.setVisibility(searching ? View.VISIBLE : View.GONE);
 
         if (searching) {
             loadingIndicator.setVisibility(algoliaLoading ? View.VISIBLE : View.GONE);
@@ -499,11 +507,7 @@ public class StoriesFragment extends Fragment {
         searching = true;
         updateSearchStatus();
 
-        InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        searchEditText.post(() -> {
-            searchEditText.requestFocus();
-            imm.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT);
-        });
+        focusSearchInput();
     }
 
     private void closeSearch(@Nullable View view) {
@@ -515,6 +519,14 @@ public class StoriesFragment extends Fragment {
         InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.hideSoftInputFromWindow(tokenView.getWindowToken(), 0);
         searchEditText.clearFocus();
+    }
+
+    private void focusSearchInput() {
+        InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        searchEditText.post(() -> {
+            searchEditText.requestFocus();
+            imm.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT);
+        });
     }
 
     private void resetPaginationState() {

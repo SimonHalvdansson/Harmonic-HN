@@ -12,6 +12,8 @@
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"
         android:stateListAnimator="@null"
+        app:materialThemeOverlay="@style/ThemeOverlay.Material3Expressive.AppBarWithSearch"
+        app:statusBarForeground="?attr/colorSurface"
         app:elevation="0dp">
 
         <include layout="@layout/stories_header" />
