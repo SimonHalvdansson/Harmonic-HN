@@ -541,6 +541,8 @@ public class StoriesFragment extends Fragment {
     }
 
     private void updateSearchOptionChips() {
+        beginSearchOptionsTransition();
+
         searchSortChip.setText(SEARCH_SORT_LABELS[searchSortIndex]);
         searchDateChip.setText(SEARCH_DATE_RANGE_LABELS[searchDateRangeIndex]);
         searchPointsChip.setText(SEARCH_MINIMUM_POINTS_LABELS[searchMinimumPointsIndex]);
@@ -550,6 +552,20 @@ public class StoriesFragment extends Fragment {
         searchDateChip.setContentDescription("Search date range: " + SEARCH_DATE_RANGE_LABELS[searchDateRangeIndex]);
         searchPointsChip.setContentDescription("Search minimum points: " + SEARCH_MINIMUM_POINTS_LABELS[searchMinimumPointsIndex]);
         searchCommentsChip.setContentDescription("Search minimum comments: " + SEARCH_MINIMUM_COMMENTS_LABELS[searchMinimumCommentsIndex]);
+    }
+
+    private void beginSearchOptionsTransition() {
+        if (!(searchOptionsScroll instanceof ViewGroup)
+                || searchOptionsScroll.getVisibility() != View.VISIBLE
+                || !ViewCompat.isLaidOut(searchOptionsScroll)) {
+            return;
+        }
+
+        AutoTransition transition = new AutoTransition();
+        transition.setOrdering(TransitionSet.ORDERING_TOGETHER);
+        transition.setDuration(SEARCH_HEADER_ANIMATION_DURATION_MS);
+        transition.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        TransitionManager.beginDelayedTransition((ViewGroup) searchOptionsScroll, transition);
     }
 
     private void retrySearchWithCurrentOptions() {
