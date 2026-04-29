@@ -242,12 +242,7 @@ public class StoriesFragment extends Fragment {
 
                 topInset = insets.top;
 
-                // Apply top inset to header container
-                boolean compactHeader = SettingsUtils.shouldUseCompactHeader(getContext());
-                int topPad = insets.top + Utils.pxFromDpInt(getResources(), compactHeader ? 20 : 40);
-                int bottomPad = Utils.pxFromDpInt(getResources(), compactHeader ? 10 : 26);
-                int sidePad = Utils.pxFromDpInt(getResources(), 16);
-                headerContainer.setPadding(sidePad, topPad, sidePad, bottomPad);
+                applyHeaderPadding(getContext());
 
                 // Apply bottom inset to RecyclerView so last item isn't behind nav bar
                 recyclerView.setPadding(
@@ -435,17 +430,43 @@ public class StoriesFragment extends Fragment {
         updateHeader(false);
     }
 
+    private void applyHeaderPadding(@Nullable Context ctx) {
+        if (ctx == null || headerContainer == null) return;
+
+        boolean compactHeader = SettingsUtils.shouldUseCompactHeader(ctx);
+        int topPad = topInset + Utils.pxFromDpInt(getResources(), compactHeader ? 20 : 40);
+        int bottomPad = Utils.pxFromDpInt(getResources(), compactHeader
+                ? (searching ? 6 : 10)
+                : (searching ? 18 : 26));
+        int sidePaddingStart = headerContainer.getPaddingStart();
+        int sidePaddingEnd = headerContainer.getPaddingEnd();
+        headerContainer.setPaddingRelative(sidePaddingStart, topPad, sidePaddingEnd, bottomPad);
+
+        if (searchOptionsScroll == null) return;
+
+        searchOptionsScroll.setPaddingRelative(
+                sidePaddingStart,
+                searchOptionsScroll.getPaddingTop(),
+                0,
+                searchOptionsScroll.getPaddingBottom()
+        );
+
+        ViewGroup.LayoutParams layoutParams = searchOptionsScroll.getLayoutParams();
+        if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams marginParams = (ViewGroup.MarginLayoutParams) layoutParams;
+            marginParams.setMarginStart(-sidePaddingStart);
+            marginParams.setMarginEnd(-sidePaddingEnd);
+            searchOptionsScroll.setLayoutParams(marginParams);
+        }
+    }
+
     private void updateHeader(boolean animateSearchTransition) {
         if (headerContainer == null) return;
 
         Context ctx = getContext();
         if (ctx == null) return;
 
-        boolean compactHeader = SettingsUtils.shouldUseCompactHeader(ctx);
-        int topPad = topInset + Utils.pxFromDpInt(getResources(), compactHeader ? 20 : 40);
-        int bottomPad = Utils.pxFromDpInt(getResources(), compactHeader ? 10 : 26);
-        int sidePad = Utils.pxFromDpInt(getResources(), 16);
-        headerContainer.setPadding(sidePad, topPad, sidePad, bottomPad);
+        applyHeaderPadding(ctx);
 
         beginHeaderTransition(animateSearchTransition);
 
