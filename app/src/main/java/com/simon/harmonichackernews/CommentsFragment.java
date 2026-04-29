@@ -266,31 +266,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             Intent intent = requireActivity().getIntent();
             if (intent != null) {
                 if (Intent.ACTION_VIEW.equalsIgnoreCase(intent.getAction())) {
-                    if (intent.getData() != null) {
-                        String sId = intent.getData().getQueryParameter("id");
-                        if (sId != null && !sId.equals("") && TextUtils.isDigitsOnly(sId)) {
-                            try {
-                                int id = Integer.parseInt(sId);
-                                if (id > 0) {
-                                    story.id = id;
-                                    story.title = "Loading...";
-                                    story.by = "";
-                                    story.url = "";
-                                    story.score = 0;
-
-                                    String fragment = intent.getData().getFragment();
-                                    if (fragment != null && !fragment.isEmpty() && TextUtils.isDigitsOnly(fragment)) {
-                                        scrollToCommentId = Integer.parseInt(fragment);
-                                    }
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                                Toast.makeText(getContext(), "Unable to parse story", Toast.LENGTH_SHORT).show();
-                                requireActivity().finish();
-                            }
-                        }
+                    if (!loadStoryFromHackerNewsUri(intent.getData())) {
+                        Toast.makeText(getContext(), "Unable to parse story", Toast.LENGTH_SHORT).show();
+                        requireActivity().finish();
                     }
-                    if (story.id == -1) {
+                } else if (Intent.ACTION_SEND.equalsIgnoreCase(intent.getAction())) {
+                    CharSequence sharedText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
+                    Uri uri = Utils.getHackerNewsItemUriFromText(sharedText != null ? sharedText.toString() : null);
+                    if (!loadStoryFromHackerNewsUri(uri)) {
                         Toast.makeText(getContext(), "Unable to parse story", Toast.LENGTH_SHORT).show();
                         requireActivity().finish();
                     }
@@ -304,6 +287,30 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     }
                 }
             }
+        }
+    }
+
+    private boolean loadStoryFromHackerNewsUri(Uri uri) {
+        if (!Utils.isHackerNewsItemUri(uri)) return false;
+
+        try {
+            int id = Integer.parseInt(uri.getQueryParameter("id"));
+            if (id <= 0) return false;
+
+            story.id = id;
+            story.title = "Loading...";
+            story.by = "";
+            story.url = "";
+            story.score = 0;
+
+            String fragment = uri.getFragment();
+            if (fragment != null && !fragment.isEmpty() && TextUtils.isDigitsOnly(fragment)) {
+                scrollToCommentId = Integer.parseInt(fragment);
+            }
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
     }
 

@@ -73,6 +73,10 @@ import kotlin.Suppress;
 
 public class Utils {
 
+    private static final Pattern HN_ITEM_URL_PATTERN = Pattern.compile(
+            "https?://news\\.ycombinator\\.com/item\\?[^\\s<>\"']+",
+            Pattern.CASE_INSENSITIVE);
+
     private static final long SECOND_MILLIS = 1000;
     private static final long MINUTE_MILLIS = 60 * SECOND_MILLIS;
     private static final long HOUR_MILLIS = 60 * MINUTE_MILLIS;
@@ -844,6 +848,45 @@ public class Utils {
         }
 
         Utils.launchCustomTab(context, href);
+    }
+
+    public static Uri getHackerNewsItemUriFromText(String text) {
+        if (text == null) return null;
+
+        Matcher matcher = HN_ITEM_URL_PATTERN.matcher(text);
+        while (matcher.find()) {
+            String url = trimTrailingUrlPunctuation(matcher.group());
+            Uri uri = Uri.parse(url);
+            if (isHackerNewsItemUri(uri)) {
+                return uri;
+            }
+        }
+
+        return null;
+    }
+
+    public static boolean isHackerNewsItemUri(Uri uri) {
+        if (uri == null) return false;
+
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) return false;
+        if (!"news.ycombinator.com".equalsIgnoreCase(uri.getHost())) return false;
+        if (!"/item".equals(uri.getPath())) return false;
+
+        String sId = uri.getQueryParameter("id");
+        return sId != null && !sId.isEmpty() && TextUtils.isDigitsOnly(sId);
+    }
+
+    private static String trimTrailingUrlPunctuation(String url) {
+        while (!url.isEmpty()) {
+            char last = url.charAt(url.length() - 1);
+            if (last == '.' || last == ',' || last == ';' || last == ':' || last == ')' || last == ']') {
+                url = url.substring(0, url.length() - 1);
+            } else {
+                break;
+            }
+        }
+        return url;
     }
 
     public static void openCommentsActivity(int id, int scrollToCommentId, Context context) {
