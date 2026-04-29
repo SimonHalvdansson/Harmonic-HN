@@ -146,7 +146,7 @@ public class StoriesFragment extends Fragment {
     private final static long CLICK_INTERVAL = 350;
     private static final long SEARCH_HEADER_ANIMATION_DURATION_MS = 180;
     private static final long HEADER_LAYOUT_ANIMATION_DURATION_MS = 220;
-    private static final String[] SEARCH_SORT_LABELS = new String[]{"Newest", "Relevance"};
+    private static final String[] SEARCH_SORT_LABELS = new String[]{"Relevance", "Newest"};
     private static final String[] SEARCH_DATE_RANGE_LABELS = new String[]{"All time", "Past day", "Past week", "Past month", "Past year"};
     private static final int[] SEARCH_DATE_RANGE_DAYS = new int[]{0, 1, 7, 30, 365};
     private static final String[] SEARCH_MINIMUM_POINTS_LABELS = new String[]{"Any points", "5+ points", "25+ points", "100+ points"};
@@ -1254,8 +1254,8 @@ public class StoriesFragment extends Fragment {
         lastSearch = query;
 
         String endpoint = searchSortIndex == 0
-                ? "https://hn.algolia.com/api/v1/search_by_date"
-                : "https://hn.algolia.com/api/v1/search";
+                ? "https://hn.algolia.com/api/v1/search"
+                : "https://hn.algolia.com/api/v1/search_by_date";
         Uri.Builder builder = Uri.parse(endpoint).buildUpon()
                 .appendQueryParameter("query", query)
                 .appendQueryParameter("tags", "story")
