@@ -5,9 +5,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.transition.AutoTransition;
+import android.transition.TransitionManager;
+import android.transition.TransitionSet;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.animation.PathInterpolator;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -18,6 +24,9 @@ import com.simon.harmonichackernews.databinding.ActivityWelcomeBinding;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
 public class WelcomeActivity extends AppCompatActivity {
+
+    private static final long PREVIEW_ANIMATION_DURATION_MS = 180;
+    private static final long PREVIEW_TEXT_FADE_DURATION_MS = 90;
 
     @SuppressLint("SetTextI18n")
     @Override
@@ -35,17 +44,19 @@ public class WelcomeActivity extends AppCompatActivity {
         favicon.setImageResource(R.drawable.quanta);
 
         binding.welcomeSwitchThumbnails.setOnCheckedChangeListener((@NonNull CompoundButton compoundButton, boolean b) -> {
+            beginPreviewTransition(binding);
             favicon.setVisibility(b ? View.VISIBLE : View.GONE);
             setBooleanSetting(compoundButton.getContext(), "pref_thumbnails", b);
         });
 
         binding.welcomeSwitchIndex.setOnCheckedChangeListener((@NonNull CompoundButton compoundButton, boolean b) -> {
+            beginPreviewTransition(binding);
             binding.storyListItem.storyIndex.setVisibility(b ? View.VISIBLE : View.GONE);
             setBooleanSetting(compoundButton.getContext(), "pref_show_index", b);
         });
 
         binding.welcomeSwitchPoints.setOnCheckedChangeListener((@NonNull CompoundButton compoundButton, boolean b) -> {
-            binding.storyListItem.storyMeta.setText((b ? "53 points • " : "") + "quantamagazine.org • 2 hrs");
+            animateStoryMeta(binding, b);
             setBooleanSetting(compoundButton.getContext(), "pref_show_points", b);
         });
 
@@ -62,6 +73,39 @@ public class WelcomeActivity extends AppCompatActivity {
         binding.welcomeButtonBlack.setOnClickListener(buttonClickListener);
         binding.welcomeButtonLight.setOnClickListener(buttonClickListener);
         binding.welcomeButtonWhite.setOnClickListener(buttonClickListener);
+    }
+
+    private void beginPreviewTransition(ActivityWelcomeBinding binding) {
+        ViewGroup previewRoot = (ViewGroup) binding.storyListItem.getRoot();
+        if (!ViewCompat.isLaidOut(previewRoot)) {
+            return;
+        }
+
+        AutoTransition transition = new AutoTransition();
+        transition.setOrdering(TransitionSet.ORDERING_TOGETHER);
+        transition.setDuration(PREVIEW_ANIMATION_DURATION_MS);
+        transition.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        TransitionManager.beginDelayedTransition(previewRoot, transition);
+    }
+
+    @SuppressLint("SetTextI18n")
+    private void animateStoryMeta(ActivityWelcomeBinding binding, boolean showPoints) {
+        TextView storyMeta = binding.storyListItem.storyMeta;
+        storyMeta.animate().cancel();
+        storyMeta.animate()
+                .alpha(0f)
+                .setDuration(PREVIEW_TEXT_FADE_DURATION_MS)
+                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                .withEndAction(() -> {
+                    beginPreviewTransition(binding);
+                    storyMeta.setText((showPoints ? "53 points • " : "") + "quantamagazine.org • 2 hrs");
+                    storyMeta.animate()
+                            .alpha(1f)
+                            .setDuration(PREVIEW_TEXT_FADE_DURATION_MS)
+                            .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                            .start();
+                })
+                .start();
     }
 
     @SuppressLint("ApplySharedPref")
