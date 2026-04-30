@@ -38,6 +38,10 @@
             android:name=".SettingsActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"/>
         <activity
+            android:name=".SettingsDetailActivity"
+            android:parentActivityName=".SettingsActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"/>
+        <activity
             android:name=".WelcomeActivity"
             android:configChanges="orientation|screenSize"/>
         <activity

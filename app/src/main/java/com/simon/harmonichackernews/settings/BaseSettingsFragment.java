@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.SettingsActivity;
+import com.simon.harmonichackernews.SettingsDetailActivity;
 
 public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
 
@@ -107,6 +108,11 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
     }
 
     protected void restartSettingsActivity() {
+        if (getActivity() instanceof SettingsDetailActivity) {
+            ((SettingsDetailActivity) getActivity()).restartSettingsActivity();
+            return;
+        }
+
         SettingsCallback callback = getSettingsCallback();
         if (callback != null) {
             callback.onRequestRestart();

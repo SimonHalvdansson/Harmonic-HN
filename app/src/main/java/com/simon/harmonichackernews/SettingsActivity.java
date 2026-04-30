@@ -3,14 +3,12 @@ package com.simon.harmonichackernews;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -25,6 +23,7 @@ import com.simon.harmonichackernews.settings.CommentsPreferenceFragment;
 import com.simon.harmonichackernews.settings.DataStoragePreferenceFragment;
 import com.simon.harmonichackernews.settings.FiltersTagsPreferenceFragment;
 import com.simon.harmonichackernews.settings.SettingsCallback;
+import com.simon.harmonichackernews.settings.SettingsFragmentFactory;
 import com.simon.harmonichackernews.settings.SettingsHeaderFragment;
 import com.simon.harmonichackernews.settings.StoriesPreferenceFragment;
 import com.simon.harmonichackernews.settings.WebLinksPreferenceFragment;
@@ -37,8 +36,7 @@ public class SettingsActivity extends AppCompatActivity implements
         PreferenceFragmentCompat.OnPreferenceStartFragmentCallback,
         SettingsCallback {
 
-    private static final String TAG = "SettingsActivity";
-    private static final int TWO_PANE_MIN_WIDTH_DP = 600;
+    public static final int TWO_PANE_MIN_WIDTH_DP = 600;
     private static final int TWO_PANE_SPACER_DP = 16;
     private static final int TWO_PANE_LIST_WEIGHT = 2;
     private static final int TWO_PANE_DETAIL_WEIGHT = 3;
@@ -60,6 +58,10 @@ public class SettingsActivity extends AppCompatActivity implements
 
     private static boolean requestFullRestart = false;
     public final static String EXTRA_REQUEST_RESTART = "EXTRA_REQUEST_RESTART";
+    public final static String EXTRA_REQUEST_FULL_RESTART = "EXTRA_REQUEST_FULL_RESTART";
+    public final static String EXTRA_DETAIL_CLASS = "EXTRA_DETAIL_CLASS";
+    public final static String EXTRA_DETAIL_KEY = "EXTRA_DETAIL_KEY";
+    public final static String EXTRA_RELAUNCH_DETAIL = "EXTRA_RELAUNCH_DETAIL";
 
     private boolean needsRestart = false;
     private boolean isTwoPane = false;
@@ -86,6 +88,7 @@ public class SettingsActivity extends AppCompatActivity implements
             isTwoPane = savedInstanceState.getBoolean(STATE_TWO_PANE, false);
         }
 
+        updateStateFromIntent(getIntent());
         setupTwoPane();
 
         if (savedInstanceState == null) {
@@ -96,8 +99,11 @@ public class SettingsActivity extends AppCompatActivity implements
                     .commit();
 
             if (isTwoPane) {
-                Fragment detail = getSupportFragmentManager().getFragmentFactory()
-                        .instantiate(getClassLoader(), currentDetailClassName);
+                Fragment detail = SettingsFragmentFactory.create(
+                        getSupportFragmentManager(), getClassLoader(), currentDetailClassName);
+                if (detail == null) {
+                    detail = new AppearancePreferenceFragment();
+                }
                 getSupportFragmentManager()
                         .beginTransaction()
                         .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
@@ -132,13 +138,11 @@ public class SettingsActivity extends AppCompatActivity implements
         };
         getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
 
-        if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_REQUEST_RESTART, false)) {
-            needsRestart = true;
-        }
-
         if (needsRestart) {
             backPressedCallback.setEnabled(true);
         }
+
+        maybeRelaunchDetail(getIntent());
     }
 
     private void setupTwoPane() {
@@ -208,8 +212,11 @@ public class SettingsActivity extends AppCompatActivity implements
 
                 fm.popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
 
-                Fragment detail = fm.getFragmentFactory()
-                        .instantiate(getClassLoader(), currentDetailClassName);
+                Fragment detail = SettingsFragmentFactory.create(
+                        fm, getClassLoader(), currentDetailClassName);
+                if (detail == null) {
+                    detail = new AppearancePreferenceFragment();
+                }
                 fm.beginTransaction()
                         .replace(R.id.settings_detail, detail)
                         .commit();
@@ -224,8 +231,11 @@ public class SettingsActivity extends AppCompatActivity implements
                 // Two-pane -> single-pane: move detail into main pane
                 Fragment detailFragment = fm.findFragmentById(R.id.settings_detail);
                 if (detailFragment != null) {
-                    Fragment detail = fm.getFragmentFactory()
-                            .instantiate(getClassLoader(), currentDetailClassName);
+                    Fragment detail = SettingsFragmentFactory.create(
+                            fm, getClassLoader(), currentDetailClassName);
+                    if (detail == null) {
+                        detail = new AppearancePreferenceFragment();
+                    }
                     fm.beginTransaction()
                             .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                             .remove(detailFragment)
@@ -239,7 +249,8 @@ public class SettingsActivity extends AppCompatActivity implements
 
     @Override
     public boolean onPreferenceStartFragment(@NonNull PreferenceFragmentCompat caller, @NonNull Preference pref) {
-        Fragment fragment = createSettingsDetailFragment(pref);
+        Fragment fragment = SettingsFragmentFactory.create(
+                getSupportFragmentManager(), getClassLoader(), pref.getFragment());
         if (fragment == null) {
             return false;
         }
@@ -260,48 +271,14 @@ public class SettingsActivity extends AppCompatActivity implements
                 ((SettingsHeaderFragment) headerFragment).setSelectedKey(pref.getKey());
             }
         } else {
-            getSupportFragmentManager()
-                    .beginTransaction()
-                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
-                    .replace(R.id.settings, fragment)
-                    .addToBackStack(null)
-                    .commit();
+            startActivity(SettingsDetailActivity.createIntent(
+                    this,
+                    currentDetailClassName,
+                    currentDetailKey,
+                    pref.getExtras()));
         }
 
         return true;
-    }
-
-    @Nullable
-    private Fragment createSettingsDetailFragment(@NonNull Preference pref) {
-        String fragmentClassName = pref.getFragment();
-        if (fragmentClassName == null) {
-            return null;
-        }
-
-        // These fragment names are stored as strings in preference XML, so instantiate known
-        // screens directly instead of relying on their release-build class names staying stable.
-        switch (fragmentClassName) {
-            case "com.simon.harmonichackernews.settings.AppearancePreferenceFragment":
-                return new AppearancePreferenceFragment();
-            case "com.simon.harmonichackernews.settings.StoriesPreferenceFragment":
-                return new StoriesPreferenceFragment();
-            case "com.simon.harmonichackernews.settings.WebLinksPreferenceFragment":
-                return new WebLinksPreferenceFragment();
-            case "com.simon.harmonichackernews.settings.CommentsPreferenceFragment":
-                return new CommentsPreferenceFragment();
-            case "com.simon.harmonichackernews.settings.FiltersTagsPreferenceFragment":
-                return new FiltersTagsPreferenceFragment();
-            case "com.simon.harmonichackernews.settings.DataStoragePreferenceFragment":
-                return new DataStoragePreferenceFragment();
-            default:
-                try {
-                    return getSupportFragmentManager().getFragmentFactory()
-                            .instantiate(getClassLoader(), fragmentClassName);
-                } catch (Fragment.InstantiationException e) {
-                    Log.e(TAG, "Unable to instantiate settings fragment " + fragmentClassName, e);
-                    return null;
-                }
-        }
     }
 
     @Override
@@ -335,6 +312,76 @@ public class SettingsActivity extends AppCompatActivity implements
         outState.putString(STATE_DETAIL_KEY, currentDetailKey);
         outState.putBoolean(STATE_NEEDS_RESTART, needsRestart);
         outState.putBoolean(STATE_TWO_PANE, isTwoPane);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        updateStateFromIntent(intent);
+        setupTwoPane();
+
+        if (backPressedCallback != null) {
+            backPressedCallback.setEnabled(needsRestart);
+        }
+
+        if (isTwoPane) {
+            Fragment detail = SettingsFragmentFactory.create(
+                    getSupportFragmentManager(), getClassLoader(), currentDetailClassName);
+            if (detail != null) {
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.settings_detail, detail)
+                        .commit();
+            }
+
+            Fragment header = getSupportFragmentManager().findFragmentById(R.id.settings);
+            if (header instanceof SettingsHeaderFragment) {
+                ((SettingsHeaderFragment) header).setSelectedKey(currentDetailKey);
+            }
+        }
+
+        maybeRelaunchDetail(intent);
+    }
+
+    private void updateStateFromIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+
+        String detailClassName = intent.getStringExtra(EXTRA_DETAIL_CLASS);
+        if (detailClassName != null) {
+            currentDetailClassName = detailClassName;
+        }
+
+        String detailKey = intent.getStringExtra(EXTRA_DETAIL_KEY);
+        if (detailKey != null) {
+            currentDetailKey = detailKey;
+        }
+
+        if (intent.getBooleanExtra(EXTRA_REQUEST_RESTART, false)) {
+            needsRestart = true;
+        }
+
+        if (intent.getBooleanExtra(EXTRA_REQUEST_FULL_RESTART, false)) {
+            needsRestart = true;
+            requestFullRestart = true;
+        }
+    }
+
+    private void maybeRelaunchDetail(Intent intent) {
+        if (intent == null
+                || isTwoPane
+                || !intent.getBooleanExtra(EXTRA_RELAUNCH_DETAIL, false)) {
+            return;
+        }
+
+        intent.removeExtra(EXTRA_RELAUNCH_DETAIL);
+        startActivity(SettingsDetailActivity.createIntent(
+                this,
+                currentDetailClassName,
+                currentDetailKey,
+                null));
     }
 
     private void handleExit() {
