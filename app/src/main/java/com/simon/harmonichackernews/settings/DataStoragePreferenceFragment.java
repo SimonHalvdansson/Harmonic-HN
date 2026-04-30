@@ -1,7 +1,5 @@
 package com.simon.harmonichackernews.settings;
 
-import static com.simon.harmonichackernews.utils.UtilsKt.KEY_SHARED_PREFERENCES_HISTORIES;
-
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
@@ -112,12 +110,7 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
         findPreference("pref_clear_clicked_stories").setOnPreferenceClickListener(preference -> {
             int oldCount = HistoriesUtils.INSTANCE.size();
 
-            SettingsUtils.saveStringToSharedPreferences(getContext(), KEY_SHARED_PREFERENCES_HISTORIES, "");
-
-            SettingsCallback callback = getSettingsCallback();
-            if (callback != null) {
-                callback.onRequestRestart();
-            }
+            HistoriesUtils.INSTANCE.clearHistories(requireContext());
 
             Snackbar.make(
                     requireView(),

@@ -122,6 +122,7 @@ public class StoriesFragment extends Fragment {
     private ArrayList<String> filterWords;
     private ArrayList<String> filterDomains;
     private boolean hideJobs, alwaysOpenComments, hideClicked;
+    private long historiesChangeVersion = -1L;
     private boolean searching = false;
     private boolean loadingFailed = false;
     private boolean loadingFailedServerError = false;
@@ -187,6 +188,7 @@ public class StoriesFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         HistoriesUtils.INSTANCE.init(requireContext());
+        historiesChangeVersion = HistoriesUtils.INSTANCE.getChangeVersion();
 
         return super.onCreateView(inflater, container, savedInstanceState);
     }
@@ -1155,6 +1157,39 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
+        syncStoriesWithHistoriesIfNeeded();
+    }
+
+    private void syncStoriesWithHistoriesIfNeeded() {
+        long currentHistoriesChangeVersion = HistoriesUtils.INSTANCE.getChangeVersion();
+        if (historiesChangeVersion == currentHistoriesChangeVersion || adapter == null || stories == null) {
+            return;
+        }
+
+        historiesChangeVersion = currentHistoriesChangeVersion;
+
+        if (adapter.type == SettingsUtils.getHistoryIndex(getResources())) {
+            attemptRefresh();
+            return;
+        }
+
+        if (hideClicked) {
+            attemptRefresh();
+            return;
+        }
+
+        boolean clickedStateChanged = false;
+        for (Story story : stories) {
+            boolean clicked = HistoriesUtils.INSTANCE.isHistoryExist(story.id);
+            if (story.clicked != clicked) {
+                story.clicked = clicked;
+                clickedStateChanged = true;
+            }
+        }
+
+        if (clickedStateChanged) {
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        }
     }
 
     @Override
