@@ -153,6 +153,8 @@ public class StoriesFragment extends Fragment {
     long lastClick = 0;
     private final static long CLICK_INTERVAL = 350;
     private static final long SEARCH_HEADER_ANIMATION_DURATION_MS = 180;
+    private static final long SEARCH_OPTIONS_ENTRANCE_ANIMATION_DELAY_MS = 100;
+    private static final long SEARCH_OPTIONS_ENTRANCE_ANIMATION_DURATION_MS = 140;
     private static final long HEADER_LAYOUT_ANIMATION_DURATION_MS = 220;
     private static final float SEARCH_BACK_HEADER_SWITCH_PROGRESS = 0.5f;
     private static final String[] SEARCH_SORT_LABELS = new String[]{"Relevance", "Newest"};
@@ -597,7 +599,13 @@ public class StoriesFragment extends Fragment {
     }
 
     private void updateSearchOptionChips() {
-        beginSearchOptionsTransition();
+        updateSearchOptionChips(true);
+    }
+
+    private void updateSearchOptionChips(boolean animate) {
+        if (animate) {
+            beginSearchOptionsTransition();
+        }
 
         searchSortChip.setText(SEARCH_SORT_LABELS[searchSortIndex]);
         searchDateChip.setText(SEARCH_DATE_RANGE_LABELS[searchDateRangeIndex]);
@@ -660,13 +668,15 @@ public class StoriesFragment extends Fragment {
 
     private void openSearch() {
         searching = true;
+        resetSearchOptions();
         updateSearchStatus();
-        resetSearchOptionsScroll();
+        animateSearchOptionsIn();
 
         focusSearchInput();
     }
 
     private void closeSearch(@Nullable View view) {
+        cancelSearchOptionsAnimation();
         predictiveSearchBackInProgress = false;
         predictiveSearchBackShowingMainHeader = false;
         predictiveSearchBackShowingMainContent = false;
@@ -676,6 +686,7 @@ public class StoriesFragment extends Fragment {
 
         searching = false;
         lastSearch = "";
+        resetSearchOptions();
         updateSearchStatus();
         resetSearchBackContentAlpha();
 
@@ -683,7 +694,6 @@ public class StoriesFragment extends Fragment {
         InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.hideSoftInputFromWindow(tokenView.getWindowToken(), 0);
         searchEditText.clearFocus();
-        resetSearchOptionsScroll();
     }
 
     private void focusSearchInput() {
@@ -696,6 +706,49 @@ public class StoriesFragment extends Fragment {
 
     private void resetSearchOptionsScroll() {
         searchOptionsScroll.post(() -> searchOptionsScroll.scrollTo(0, 0));
+    }
+
+    private void resetSearchOptions() {
+        searchSortIndex = 0;
+        searchDateRangeIndex = 0;
+        searchMinimumPointsIndex = 0;
+        searchMinimumCommentsIndex = 0;
+        updateSearchOptionChips(false);
+        resetSearchOptionsScroll();
+    }
+
+    private void animateSearchOptionsIn() {
+        if (searchOptionsScroll == null) {
+            return;
+        }
+
+        searchOptionsScroll.animate().cancel();
+        searchOptionsScroll.setAlpha(0f);
+        searchOptionsScroll.setTranslationY(-Utils.pxFromDpInt(getResources(), 6));
+        searchOptionsScroll.post(() -> {
+            if (!searching || searchOptionsScroll == null) {
+                return;
+            }
+
+            searchOptionsScroll.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay(SEARCH_OPTIONS_ENTRANCE_ANIMATION_DELAY_MS)
+                    .setDuration(SEARCH_OPTIONS_ENTRANCE_ANIMATION_DURATION_MS)
+                    .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                    .start();
+        });
+    }
+
+    private void cancelSearchOptionsAnimation() {
+        if (searchOptionsScroll == null) {
+            return;
+        }
+
+        searchOptionsScroll.animate().cancel();
+        searchOptionsScroll.setAlpha(1f);
+        searchOptionsScroll.setTranslationY(0f);
+        searchOptionsScroll.animate().setStartDelay(0);
     }
 
     private void resetPaginationState() {
@@ -1656,6 +1709,7 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
+        cancelSearchOptionsAnimation();
         predictiveSearchBackInProgress = true;
         predictiveSearchBackShowingMainHeader = false;
         predictiveSearchBackShowingMainContent = false;
