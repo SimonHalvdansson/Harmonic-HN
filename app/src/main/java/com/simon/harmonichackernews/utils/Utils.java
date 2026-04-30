@@ -45,6 +45,9 @@ import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -84,6 +87,7 @@ public class Utils {
     private static final long YEAR_MILLIS = 365 * DAY_MILLIS;
 
     public final static String KEY_SHARED_PREFERENCES_CACHED_STORY = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORY";
+    public final static String KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL";
     public final static String KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS";
     public final static String GLOBAL_SHARED_PREFERENCES_KEY = "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY";
 
@@ -197,6 +201,7 @@ public class Utils {
             cachedStories.remove(oldestId + "-" + oldestTime);
 
             ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE).edit().remove(KEY_SHARED_PREFERENCES_CACHED_STORY + oldestId).apply();
+            deleteCachedArticleSnapshot(ctx, oldestId);
         }
 
         SettingsUtils.saveStringSetToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS, cachedStories);
@@ -204,6 +209,91 @@ public class Utils {
 
     public static String loadCachedStory(Context ctx, int id) {
         return SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id);
+    }
+
+    public static void cacheArticleSnapshot(Context ctx, int id, String url, String html) {
+        if (ctx == null || id <= 0 || TextUtils.isEmpty(url) || TextUtils.isEmpty(html)) {
+            return;
+        }
+
+        FileOutputStream outputStream = null;
+        try {
+            File articleCacheDir = getArticleCacheDir(ctx);
+            if (!articleCacheDir.exists() && !articleCacheDir.mkdirs()) {
+                return;
+            }
+
+            outputStream = new FileOutputStream(getArticleCacheFile(ctx, id));
+            outputStream.write(html.getBytes("UTF-8"));
+            SettingsUtils.saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id, url);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (outputStream != null) {
+                try {
+                    outputStream.close();
+                } catch (IOException ignored) {}
+            }
+        }
+    }
+
+    public static String loadCachedArticleSnapshot(Context ctx, int id) {
+        if (ctx == null || id <= 0) {
+            return null;
+        }
+
+        File cacheFile = getArticleCacheFile(ctx, id);
+        if (!cacheFile.exists()) {
+            return null;
+        }
+
+        FileInputStream inputStream = null;
+        try {
+            inputStream = new FileInputStream(cacheFile);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
+            StringBuilder builder = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line).append('\n');
+            }
+            return builder.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException ignored) {}
+            }
+        }
+    }
+
+    public static String loadCachedArticleUrl(Context ctx, int id) {
+        if (ctx == null || id <= 0) {
+            return null;
+        }
+        return SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id);
+    }
+
+    public static void deleteCachedArticleSnapshot(Context ctx, int id) {
+        if (ctx == null || id <= 0) {
+            return;
+        }
+
+        File cacheFile = getArticleCacheFile(ctx, id);
+        if (cacheFile.exists() && !cacheFile.delete()) {
+            cacheFile.deleteOnExit();
+        }
+        ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE).edit().remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id).apply();
+    }
+
+    private static File getArticleCacheDir(Context ctx) {
+        return new File(ctx.getFilesDir(), "article_cache");
+    }
+
+    private static File getArticleCacheFile(Context ctx, int id) {
+        return new File(getArticleCacheDir(ctx), id + ".html");
     }
 
     public static boolean hasCachedStories(Context ctx) {

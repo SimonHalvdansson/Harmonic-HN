@@ -44,6 +44,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
@@ -198,6 +199,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private Set<String> filteredUsers;
     private int SCREEN_HEIGHT_IN_PIXELS = 100;
     private boolean showingErrorPage = false;
+    private boolean showingCachedArticlePage = false;
+    private boolean clearWebViewHistoryOnNextFinish = false;
     @Nullable
     private String lastFailedWebViewUrl;
     @Nullable
@@ -727,7 +730,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_REFRESH:
-                        if (showingErrorPage && !TextUtils.isEmpty(lastFailedWebViewUrl)) {
+                        if ((showingErrorPage || showingCachedArticlePage) && !TextUtils.isEmpty(lastFailedWebViewUrl)) {
                             retryingFailedWebViewUrl = true;
                             loadUrl(lastFailedWebViewUrl);
                         } else {
@@ -933,6 +936,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         webView.getSettings().setDatabaseEnabled(true);
         webView.getSettings().setUseWideViewPort(true);
         webView.getSettings().setLoadWithOverviewMode(true);
+        webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
 
         webView.setDownloadListener(new DownloadListener() {
             @Override
@@ -1105,6 +1109,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         if (!OFFLINE_PAGE_URL.equals(url)) {
             showingErrorPage = false;
+            showingCachedArticlePage = false;
             lastRequestedWebViewUrl = url;
         }
         if (url.equals(PDF_LOADER_URL)) {
@@ -1133,6 +1138,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         webView.loadUrl(url);
         if (OFFLINE_PAGE_URL.equals(url)) {
             showingErrorPage = true;
+            showingCachedArticlePage = false;
         }
     }
 
@@ -2441,6 +2447,36 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
+    private boolean loadCachedArticleSnapshot(WebView view, @Nullable String failingUrl) {
+        if (view == null || story == null || !story.isLink || story.id <= 0) {
+            return false;
+        }
+
+        String html = Utils.loadCachedArticleSnapshot(getContext(), story.id);
+        if (TextUtils.isEmpty(html)) {
+            return false;
+        }
+
+        String baseUrl = Utils.loadCachedArticleUrl(getContext(), story.id);
+        if (TextUtils.isEmpty(baseUrl)) {
+            baseUrl = !TextUtils.isEmpty(failingUrl) ? failingUrl : story.url;
+        }
+
+        lastFailedWebViewUrl = !TextUtils.isEmpty(failingUrl) ? failingUrl : baseUrl;
+        retryingFailedWebViewUrl = false;
+        showingErrorPage = false;
+        showingCachedArticlePage = true;
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setRefreshing(false);
+        }
+
+        view.stopLoading();
+        clearWebViewHistoryOnNextFinish = true;
+        Toast.makeText(getContext(), "Showing cached webview content", Toast.LENGTH_SHORT).show();
+        view.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null);
+        return true;
+    }
+
     public class MyWebViewClient extends WebViewClient {
 
         @Override
@@ -2467,6 +2503,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
                 // If we are at the webview and we just loaded, recheck the canGoBack status
                 syncOnBackPressedCallbackEnabledState();
+            }
+
+            if (clearWebViewHistoryOnNextFinish) {
+                clearWebViewHistoryOnNextFinish = false;
+                view.post(() -> {
+                    view.clearHistory();
+                    syncOnBackPressedCallbackEnabledState();
+                });
             }
 
             if (NitterGetter.isValidNitterUrl(url) && SettingsUtils.shouldUseLinkPreviewX(getContext())) {
@@ -2566,7 +2610,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         private void showOfflineFallback(WebView view, @Nullable String failingUrl) {
-            if (view == null || showingErrorPage) {
+            if (view == null || showingErrorPage || showingCachedArticlePage) {
+                return;
+            }
+            if (loadCachedArticleSnapshot(view, failingUrl)) {
                 return;
             }
             if (!TextUtils.isEmpty(failingUrl)) {
@@ -2581,6 +2628,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 swipeRefreshLayout.setRefreshing(false);
             }
             view.stopLoading();
+            clearWebViewHistoryOnNextFinish = true;
             CommentsFragment.this.loadUrl(OFFLINE_PAGE_URL);
         }
 

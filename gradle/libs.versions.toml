@@ -21,7 +21,7 @@ androidx-window = "androidx.window:window:1.5.1"
 androidx-window-java = "androidx.window:window-java:1.5.1"
 androidx-startup = "androidx.startup:startup-runtime:1.2.0"
 
-materialui = "com.google.android.material:material:1.14.0-beta01"
+materialui = "com.google.android.material:material:1.14.0-rc01"
 
 volley = "com.android.volley:volley:1.2.1"
 

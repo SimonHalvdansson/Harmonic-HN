@@ -74,6 +74,7 @@ import com.simon.harmonichackernews.utils.ViewUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -523,7 +524,7 @@ public class StoriesFragment extends Fragment {
             }
         }
 
-        showCachedButton.setVisibility(loadingFailed && Utils.hasCachedStories(ctx) ? View.VISIBLE : View.GONE);
+        showCachedButton.setVisibility(loadingFailed && !searching && Utils.hasCachedStories(ctx) ? View.VISIBLE : View.GONE);
 
         loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
         updateRecyclerScrollState();
@@ -1345,6 +1346,8 @@ public class StoriesFragment extends Fragment {
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
             swipeRefreshLayout.setRefreshing(false);
+            loadingFailed = false;
+            loadingFailedServerError = false;
             clearStories();
             appBarLayout.setExpanded(true, false);
         } else {
@@ -1433,6 +1436,8 @@ public class StoriesFragment extends Fragment {
         final int requestGeneration = algoliaRequestGeneration;
         algoliaLoading = true;
         activeAlgoliaUrl = url;
+        loadingFailed = false;
+        loadingFailedServerError = false;
         queue.cancelAll(requestTag);
 
         swipeRefreshLayout.setEnabled(!searching);
@@ -1568,18 +1573,33 @@ public class StoriesFragment extends Fragment {
 
     private void cacheStories() {
         Toast.makeText(getContext(), "Caching stories...", Toast.LENGTH_SHORT).show();
+        boolean cacheArticles = SettingsUtils.shouldUseIntegratedWebView(getContext());
         StringRequest request = new StringRequest(Request.Method.GET, Utils.URL_TOP,
                 response -> {
                     try {
                         JSONArray arr = new JSONArray(response);
-                        for (int i = 0; i < Math.min(20, arr.length()); i++) {
+                        int storyCount = Math.min(20, arr.length());
+                        if (storyCount == 0) {
+                            Toast.makeText(getContext(), "No stories to cache", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        final int[] remaining = { storyCount };
+                        final int[] articleFailures = { 0 };
+                        for (int i = 0; i < storyCount; i++) {
                             int id = arr.getInt(i);
                             String url = "https://hn.algolia.com/api/v1/items/" + id;
                             StringRequest r = new StringRequest(Request.Method.GET, url,
-                                    res -> Utils.cacheStory(getContext(), id, res), error -> {});
+                                    res -> {
+                                        Utils.cacheStory(getContext(), id, res);
+                                        if (cacheArticles) {
+                                            cacheStoryArticleSnapshot(id, res, articleFailures, () -> onCacheStoryFinished(remaining, articleFailures));
+                                        } else {
+                                            onCacheStoryFinished(remaining, articleFailures);
+                                        }
+                                    }, error -> onCacheStoryFinished(remaining, articleFailures));
                             queue.add(r);
                         }
-                        Toast.makeText(getContext(), "Stories cached", Toast.LENGTH_SHORT).show();
                     } catch (JSONException e) {
                         e.printStackTrace();
                         Toast.makeText(getContext(), "Caching failed", Toast.LENGTH_SHORT).show();
@@ -1587,6 +1607,50 @@ public class StoriesFragment extends Fragment {
                 }, error -> Toast.makeText(getContext(), "Caching failed", Toast.LENGTH_SHORT).show());
 
         queue.add(request);
+    }
+
+    private void onCacheStoryFinished(int[] remaining, int[] articleFailures) {
+        remaining[0]--;
+        if (remaining[0] > 0) {
+            return;
+        }
+
+        if (articleFailures[0] > 0) {
+            Toast.makeText(getContext(), "Stories cached, some articles could not be cached", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(getContext(), "Stories cached", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void cacheStoryArticleSnapshot(int id, String storyJson, int[] articleFailures, Runnable onComplete) {
+        try {
+            JSONObject storyObject = new JSONObject(storyJson);
+            if (!storyObject.has("url") || storyObject.isNull("url")) {
+                onComplete.run();
+                return;
+            }
+
+            String articleUrl = storyObject.optString("url", "");
+            if (TextUtils.isEmpty(articleUrl) || !(articleUrl.startsWith("http://") || articleUrl.startsWith("https://"))) {
+                onComplete.run();
+                return;
+            }
+
+            StringRequest articleRequest = new StringRequest(Request.Method.GET, articleUrl,
+                    html -> {
+                        Utils.cacheArticleSnapshot(getContext(), id, articleUrl, html);
+                        onComplete.run();
+                    },
+                    error -> {
+                        articleFailures[0]++;
+                        onComplete.run();
+                    });
+            queue.add(articleRequest);
+        } catch (JSONException e) {
+            e.printStackTrace();
+            articleFailures[0]++;
+            onComplete.run();
+        }
     }
 
     private void showCachedStories() {

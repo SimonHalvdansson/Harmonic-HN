@@ -8,6 +8,7 @@ public class Changelog {
                 "- Updated design and behavior of search, including search options<br>" +
                 "- Added button to go to parent comment (thanks Tsung-Han Yu!)" +
                 "- Improved accessibility<br>" +
+                "- <br>" +
                 "- Added ability to share Hacker News links to Harmonic<br>" +
                 "- Made comment scroll speed adaptive<br>" +
                 "<br>" +

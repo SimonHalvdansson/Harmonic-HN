@@ -34,6 +34,13 @@
         <item name="widgetLayout">@layout/view_preference_switch</item>
     </style>
 
+    <style name="Widget.App.StoriesSearchBar" parent="@style/Widget.Material3Expressive.SearchBar.AppBarWithSearch">
+        <item name="backgroundTint">?attr/colorSurfaceContainerHighest</item>
+        <item name="adaptiveMaxWidthEnabled">false</item>
+        <item name="android:layout_marginStart">0dp</item>
+        <item name="android:layout_marginEnd">0dp</item>
+    </style>
+
     <style name="AlertDialogMaterialStyle" parent="@style/ThemeOverlay.Material3Expressive.MaterialAlertDialog">
         <item name="android:colorBackground">?attr/colorSurfaceContainerHigh</item>
     </style>

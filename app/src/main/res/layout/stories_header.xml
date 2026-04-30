@@ -45,7 +45,7 @@
 
             <com.google.android.material.search.SearchBar
                 android:id="@+id/stories_header_search_bar"
-                style="@style/Widget.Material3Expressive.SearchBar.AppBarWithSearch"
+                style="@style/Widget.App.StoriesSearchBar"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:contentDescription="Search posts"
