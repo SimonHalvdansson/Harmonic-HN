@@ -254,11 +254,24 @@ public class StoriesFragment extends Fragment {
         // Setup header after adapter so spinner callback can safely access adapter.type
         setupHeader();
 
+        final int rootPaddingLeft = view.getPaddingLeft();
+        final int rootPaddingTop = view.getPaddingTop();
+        final int rootPaddingRight = view.getPaddingRight();
+        final int rootPaddingBottom = view.getPaddingBottom();
+
         ViewCompat.setOnApplyWindowInsetsListener(view, new OnApplyWindowInsetsListener() {
             @NonNull
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                Insets cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
+
+                v.setPadding(
+                        rootPaddingLeft + Math.max(insets.left, cutoutInsets.left),
+                        rootPaddingTop,
+                        rootPaddingRight + Math.max(insets.right, cutoutInsets.right),
+                        rootPaddingBottom
+                );
 
                 CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) updateFab.getLayoutParams();
                 params.bottomMargin = insets.bottom + Utils.pxFromDpInt(getResources(), 8);
