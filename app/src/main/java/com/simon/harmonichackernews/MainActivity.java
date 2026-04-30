@@ -10,6 +10,7 @@ import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
+import androidx.activity.BackEventCompat;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -56,11 +57,38 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
         backPressedCallback = new OnBackPressedCallback(true) {
             @Override
+            public void handleOnBackCancelled() {
+                final StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
+
+                if (fragment != null) {
+                    fragment.cancelSearchBackProgress();
+                }
+            }
+
+            @Override
+            public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
+                final StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
+
+                if (fragment != null) {
+                    fragment.updateSearchBackProgress(backEvent.getProgress());
+                }
+            }
+
+            @Override
+            public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
+                final StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
+
+                if (fragment != null) {
+                    fragment.startSearchBackProgress(backEvent.getProgress());
+                }
+            }
+
+            @Override
             public void handleOnBackPressed() {
                 final StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
 
                 if (fragment != null) {
-                    fragment.exitSearch();
+                    fragment.finishSearchBackProgress();
                 }
             }
         };

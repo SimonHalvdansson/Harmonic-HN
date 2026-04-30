@@ -154,6 +154,7 @@ public class StoriesFragment extends Fragment {
     private final static long CLICK_INTERVAL = 350;
     private static final long SEARCH_HEADER_ANIMATION_DURATION_MS = 180;
     private static final long HEADER_LAYOUT_ANIMATION_DURATION_MS = 220;
+    private static final float SEARCH_BACK_HEADER_SWITCH_PROGRESS = 0.5f;
     private static final String[] SEARCH_SORT_LABELS = new String[]{"Relevance", "Newest"};
     private static final String[] SEARCH_DATE_RANGE_LABELS = new String[]{"All time", "Past day", "Past week", "Past month", "Past year"};
     private static final int[] SEARCH_DATE_RANGE_DAYS = new int[]{0, 1, 7, 30, 365};
@@ -163,6 +164,18 @@ public class StoriesFragment extends Fragment {
     private static final int[] SEARCH_MINIMUM_COMMENTS = new int[]{0, 5, 25, 100};
 
     private int topInset = 0;
+    private boolean predictiveSearchBackInProgress = false;
+    private boolean predictiveSearchBackShowingMainHeader = false;
+    private boolean predictiveSearchBackShowingMainContent = false;
+    private float predictiveSearchBackProgress = 0f;
+    private List<Story> predictiveSearchBackSearchStories = null;
+    private int predictiveSearchBackLoadedTo = -1;
+    private int predictiveSearchBackVisibleStoryCount = Integer.MAX_VALUE;
+    private boolean predictiveSearchBackShowingCached = false;
+    private boolean predictiveSearchBackLoadingFailed = false;
+    private boolean predictiveSearchBackLoadingFailedServerError = false;
+    private boolean suppressNextSearchRestoreAnimations = false;
+    private boolean skipNextSearchRestoreDataSwap = false;
 
     public StoriesFragment() {
         super(R.layout.fragment_stories);
@@ -439,13 +452,17 @@ public class StoriesFragment extends Fragment {
     }
 
     private void applyHeaderPadding(@Nullable Context ctx) {
+        applyHeaderPadding(ctx, searching);
+    }
+
+    private void applyHeaderPadding(@Nullable Context ctx, boolean searchMode) {
         if (ctx == null || headerContainer == null) return;
 
         boolean compactHeader = SettingsUtils.shouldUseCompactHeader(ctx);
         int topPad = topInset + Utils.pxFromDpInt(getResources(), compactHeader ? 20 : 40);
         int bottomPad = Utils.pxFromDpInt(getResources(), compactHeader
-                ? (searching ? 6 : 10)
-                : (searching ? 18 : 26));
+                ? (searchMode ? 6 : 10)
+                : (searchMode ? 18 : 26));
         int sidePaddingStart = headerContainer.getPaddingStart();
         int sidePaddingEnd = headerContainer.getPaddingEnd();
         headerContainer.setPaddingRelative(sidePaddingStart, topPad, sidePaddingEnd, bottomPad);
@@ -528,6 +545,10 @@ public class StoriesFragment extends Fragment {
 
         loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
         updateRecyclerScrollState();
+
+        if (predictiveSearchBackInProgress) {
+            applySearchBackVisualProgress(predictiveSearchBackProgress);
+        }
     }
 
     private boolean isSearchSubmitAction(int actionId, @Nullable KeyEvent keyEvent) {
@@ -646,9 +667,17 @@ public class StoriesFragment extends Fragment {
     }
 
     private void closeSearch(@Nullable View view) {
+        predictiveSearchBackInProgress = false;
+        predictiveSearchBackShowingMainHeader = false;
+        predictiveSearchBackShowingMainContent = false;
+        predictiveSearchBackProgress = 0f;
+        clearSearchBackSearchSnapshot();
+        resetSearchBackVisualAlphas();
+
         searching = false;
         lastSearch = "";
         updateSearchStatus();
+        resetSearchBackContentAlpha();
 
         View tokenView = view != null ? view : searchEditText;
         InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -698,6 +727,34 @@ public class StoriesFragment extends Fragment {
         }
     }
 
+    private void displayStorySnapshot(List<Story> snapshot,
+                                      int snapshotLoadedTo,
+                                      int snapshotVisibleStoryCount,
+                                      boolean snapshotShowingCached,
+                                      boolean snapshotLoadingFailed,
+                                      boolean snapshotLoadingFailedServerError,
+                                      boolean notifyDataSetChanged) {
+        int oldItemCount = adapter.getItemCount();
+        stories.clear();
+        if (!notifyDataSetChanged && oldItemCount > 0) {
+            adapter.notifyItemRangeRemoved(0, oldItemCount);
+        }
+
+        stories.addAll(snapshot);
+        loadedTo = snapshotLoadedTo;
+        adapter.visibleStoryCount = snapshotVisibleStoryCount;
+        showingCached = snapshotShowingCached;
+        loadingFailed = snapshotLoadingFailed;
+        loadingFailedServerError = snapshotLoadingFailedServerError;
+
+        int newItemCount = adapter.getItemCount();
+        if (notifyDataSetChanged) {
+            adapter.notifyDataSetChanged();
+        } else if (newItemCount > 0) {
+            adapter.notifyItemRangeInserted(0, newItemCount);
+        }
+    }
+
     private void saveStoriesBeforeSearch() {
         if (storiesBeforeSearch != null) {
             return;
@@ -717,12 +774,21 @@ public class StoriesFragment extends Fragment {
 
     private boolean restoreStoriesBeforeSearch() {
         if (storiesBeforeSearch == null) {
+            suppressNextSearchRestoreAnimations = false;
+            skipNextSearchRestoreDataSwap = false;
             return false;
+        }
+
+        if (skipNextSearchRestoreDataSwap) {
+            skipNextSearchRestoreDataSwap = false;
+            suppressNextSearchRestoreAnimations = false;
+            clearStoriesBeforeSearchSnapshot();
+            return true;
         }
 
         int oldItemCount = adapter.getItemCount();
         stories.clear();
-        if (oldItemCount > 0) {
+        if (!suppressNextSearchRestoreAnimations && oldItemCount > 0) {
             adapter.notifyItemRangeRemoved(0, oldItemCount);
         }
 
@@ -734,18 +800,25 @@ public class StoriesFragment extends Fragment {
         loadingFailedServerError = loadingFailedServerErrorBeforeSearch;
 
         int newItemCount = adapter.getItemCount();
-        if (newItemCount > 0) {
+        if (suppressNextSearchRestoreAnimations) {
+            adapter.notifyDataSetChanged();
+            suppressNextSearchRestoreAnimations = false;
+        } else if (newItemCount > 0) {
             adapter.notifyItemRangeInserted(0, newItemCount);
         }
 
+        clearStoriesBeforeSearchSnapshot();
+
+        return true;
+    }
+
+    private void clearStoriesBeforeSearchSnapshot() {
         storiesBeforeSearch = null;
         loadedToBeforeSearch = -1;
         visibleStoryCountBeforeSearch = Integer.MAX_VALUE;
         showingCachedBeforeSearch = false;
         loadingFailedBeforeSearch = false;
         loadingFailedServerErrorBeforeSearch = false;
-
-        return true;
     }
 
     private void resumeInterruptedStoryLoads() {
@@ -1494,11 +1567,18 @@ public class StoriesFragment extends Fragment {
                             loadingFailedServerError = false;
                             showingCached = false;
 
-                            replaceStories(parsedStories);
+                            if (predictiveSearchBackInProgress && predictiveSearchBackShowingMainContent) {
+                                predictiveSearchBackSearchStories = new ArrayList<>(parsedStories);
+                                predictiveSearchBackLoadedTo = parsedStories.size() - 1;
+                                predictiveSearchBackVisibleStoryCount = adapter.visibleStoryCount;
+                                predictiveSearchBackShowingCached = false;
+                                predictiveSearchBackLoadingFailed = false;
+                                predictiveSearchBackLoadingFailedServerError = false;
+                            } else {
+                                replaceStories(parsedStories);
+                                loadedTo = stories.size() - 1;
+                            }
                             updateHeader();
-
-                            // Set loadedTo for Algolia stories (they're already fully loaded)
-                            loadedTo = stories.size() - 1;
                         }
 
                         @Override
@@ -1569,6 +1649,191 @@ public class StoriesFragment extends Fragment {
             return true;
         }
         return false;
+    }
+
+    public void startSearchBackProgress(float progress) {
+        if (!searching) {
+            return;
+        }
+
+        predictiveSearchBackInProgress = true;
+        predictiveSearchBackShowingMainHeader = false;
+        predictiveSearchBackShowingMainContent = false;
+        appBarLayout.setExpanded(true, false);
+        applySearchBackVisualProgress(progress);
+    }
+
+    public void updateSearchBackProgress(float progress) {
+        if (!searching) {
+            return;
+        }
+
+        if (!predictiveSearchBackInProgress) {
+            startSearchBackProgress(progress);
+            return;
+        }
+
+        applySearchBackVisualProgress(progress);
+    }
+
+    public void cancelSearchBackProgress() {
+        if (!predictiveSearchBackInProgress) {
+            return;
+        }
+
+        predictiveSearchBackInProgress = false;
+        predictiveSearchBackShowingMainHeader = false;
+        restoreSearchBackSearchContentIfNeeded();
+        predictiveSearchBackShowingMainContent = false;
+        predictiveSearchBackProgress = 0f;
+        updateHeader(false);
+        resetSearchBackVisualAlphas();
+        resetSearchBackContentAlpha();
+        appBarLayout.setExpanded(true, false);
+        clearSearchBackSearchSnapshot();
+    }
+
+    public boolean finishSearchBackProgress() {
+        setSearchBackContentAlpha(0f);
+        if (!predictiveSearchBackShowingMainContent) {
+            showSearchBackMainContent();
+        }
+        suppressNextSearchRestoreAnimations = true;
+        skipNextSearchRestoreDataSwap = predictiveSearchBackShowingMainContent;
+        predictiveSearchBackInProgress = false;
+        predictiveSearchBackShowingMainHeader = false;
+        predictiveSearchBackShowingMainContent = false;
+        predictiveSearchBackProgress = 0f;
+        clearSearchBackSearchSnapshot();
+        resetSearchBackVisualAlphas();
+        return exitSearch();
+    }
+
+    private void applySearchBackVisualProgress(float progress) {
+        predictiveSearchBackProgress = Math.max(0f, Math.min(1f, progress));
+
+        boolean showMainHeader = predictiveSearchBackProgress >= SEARCH_BACK_HEADER_SWITCH_PROGRESS;
+        if (showMainHeader != predictiveSearchBackShowingMainHeader) {
+            predictiveSearchBackShowingMainHeader = showMainHeader;
+            applySearchBackHeaderMode(showMainHeader);
+        }
+
+        if (showMainHeader) {
+            showSearchBackMainContent();
+        } else {
+            restoreSearchBackSearchContentIfNeeded();
+        }
+
+        if (showMainHeader) {
+            float mainAlpha = (predictiveSearchBackProgress - SEARCH_BACK_HEADER_SWITCH_PROGRESS)
+                    / (1f - SEARCH_BACK_HEADER_SWITCH_PROGRESS);
+            setSearchBackMainHeaderAlpha(mainAlpha);
+            setSearchBackSearchHeaderAlpha(0f);
+            setSearchBackContentAlpha(mainAlpha);
+        } else {
+            float searchAlpha = 1f - (predictiveSearchBackProgress / SEARCH_BACK_HEADER_SWITCH_PROGRESS);
+            setSearchBackSearchHeaderAlpha(searchAlpha);
+            setSearchBackMainHeaderAlpha(0f);
+            setSearchBackContentAlpha(searchAlpha);
+        }
+    }
+
+    private void applySearchBackHeaderMode(boolean showMainHeader) {
+        Context ctx = getContext();
+        if (ctx != null) {
+            applyHeaderPadding(ctx, !showMainHeader);
+        }
+
+        moreButton.setVisibility(showMainHeader ? View.VISIBLE : View.GONE);
+        spinnerContainer.setVisibility(showMainHeader ? View.VISIBLE : View.GONE);
+        searchButton.setVisibility(showMainHeader ? View.VISIBLE : View.GONE);
+        closeSearchButton.setVisibility(showMainHeader ? View.GONE : View.VISIBLE);
+        searchContainer.setVisibility(showMainHeader ? View.GONE : View.VISIBLE);
+        searchOptionsScroll.setVisibility(showMainHeader ? View.GONE : View.VISIBLE);
+    }
+
+    private void showSearchBackMainContent() {
+        if (predictiveSearchBackShowingMainContent || storiesBeforeSearch == null) {
+            return;
+        }
+
+        saveSearchBackSearchSnapshot();
+        setSearchBackContentAlpha(0f);
+        predictiveSearchBackShowingMainContent = true;
+        displayStorySnapshot(
+                storiesBeforeSearch,
+                loadedToBeforeSearch,
+                visibleStoryCountBeforeSearch,
+                showingCachedBeforeSearch,
+                loadingFailedBeforeSearch,
+                loadingFailedServerErrorBeforeSearch,
+                true
+        );
+    }
+
+    private void saveSearchBackSearchSnapshot() {
+        if (predictiveSearchBackSearchStories != null) {
+            return;
+        }
+
+        predictiveSearchBackSearchStories = new ArrayList<>(stories);
+        predictiveSearchBackLoadedTo = loadedTo;
+        predictiveSearchBackVisibleStoryCount = adapter.visibleStoryCount;
+        predictiveSearchBackShowingCached = showingCached;
+        predictiveSearchBackLoadingFailed = loadingFailed;
+        predictiveSearchBackLoadingFailedServerError = loadingFailedServerError;
+    }
+
+    private void restoreSearchBackSearchContentIfNeeded() {
+        if (!predictiveSearchBackShowingMainContent || predictiveSearchBackSearchStories == null) {
+            return;
+        }
+
+        predictiveSearchBackShowingMainContent = false;
+        setSearchBackContentAlpha(0f);
+        displayStorySnapshot(
+                predictiveSearchBackSearchStories,
+                predictiveSearchBackLoadedTo,
+                predictiveSearchBackVisibleStoryCount,
+                predictiveSearchBackShowingCached,
+                predictiveSearchBackLoadingFailed,
+                predictiveSearchBackLoadingFailedServerError,
+                true
+        );
+    }
+
+    private void clearSearchBackSearchSnapshot() {
+        predictiveSearchBackSearchStories = null;
+        predictiveSearchBackLoadedTo = -1;
+        predictiveSearchBackVisibleStoryCount = Integer.MAX_VALUE;
+        predictiveSearchBackShowingCached = false;
+        predictiveSearchBackLoadingFailed = false;
+        predictiveSearchBackLoadingFailedServerError = false;
+    }
+
+    private void setSearchBackSearchHeaderAlpha(float alpha) {
+        searchContainer.setAlpha(alpha);
+        searchOptionsScroll.setAlpha(alpha);
+        closeSearchButton.setAlpha(alpha);
+    }
+
+    private void setSearchBackMainHeaderAlpha(float alpha) {
+        spinnerContainer.setAlpha(alpha);
+        searchButton.setAlpha(alpha);
+        moreButton.setAlpha(alpha);
+    }
+
+    private void resetSearchBackVisualAlphas() {
+        setSearchBackSearchHeaderAlpha(1f);
+        setSearchBackMainHeaderAlpha(1f);
+    }
+
+    private void setSearchBackContentAlpha(float alpha) {
+        recyclerView.setAlpha(alpha);
+    }
+
+    private void resetSearchBackContentAlpha() {
+        recyclerView.setAlpha(1f);
     }
 
     private void cacheStories() {
