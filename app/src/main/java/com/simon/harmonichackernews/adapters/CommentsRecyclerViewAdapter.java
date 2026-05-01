@@ -64,6 +64,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private HeaderActionClickListener headerActionClickListener;
     private RetryListener retryListener;
     private final Map<Integer, Comment> commentsById = new HashMap<>();
+    private final Map<Integer, Boolean> commentVisibilityById = new HashMap<>();
     private int commentLookupSize = -1;
     private Map<String, String> userTagsByUser = new HashMap<>();
     private String userTagsJson;
@@ -177,6 +178,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         faviconProvider = favProvider;
         swapLongPressTap = shouldSwapLongPressTap;
         summaryCallback = requestSummaryCallback;
+        setHasStableIds(true);
     }
 
     @NotNull
@@ -617,6 +619,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
     }
 
+    @Override
+    public long getItemId(int position) {
+        if (position == 0) {
+            return Long.MIN_VALUE;
+        }
+        return comments.get(position).id;
+    }
+
     public class ItemViewHolder extends RecyclerView.ViewHolder {
         public final HtmlTextView commentBody;
         public final TextView commentBy;
@@ -1030,19 +1040,27 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private boolean shouldShow(Comment comment) {
+        Boolean cachedVisibility = commentVisibilityById.get(comment.id);
+        if (cachedVisibility != null) {
+            return cachedVisibility;
+        }
+
         ensureCommentLookup(comment);
 
         Comment current = comment;
         for (int i = 0; i < comments.size() && current.parent != -1; i++) {
             Comment parent = commentsById.get(current.parent);
             if (parent == null) {
+                commentVisibilityById.put(comment.id, true);
                 return true;
             }
             if (!parent.expanded) {
+                commentVisibilityById.put(comment.id, false);
                 return false;
             }
             current = parent;
         }
+        commentVisibilityById.put(comment.id, true);
         return true;
     }
 
@@ -1053,6 +1071,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         commentsById.clear();
+        commentVisibilityById.clear();
         for (Comment comment : comments) {
             commentsById.put(comment.id, comment);
         }
@@ -1061,7 +1080,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     public void invalidateCommentLookup() {
         commentsById.clear();
+        commentVisibilityById.clear();
         commentLookupSize = -1;
+    }
+
+    public void invalidateCommentVisibility() {
+        commentVisibilityById.clear();
     }
 
     public void loadUserTags(Context ctx) {

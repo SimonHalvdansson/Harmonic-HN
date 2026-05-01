@@ -96,6 +96,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         atSubmissions = !TextUtils.isEmpty(submissionsUserName);
         submitter = submissionsUserName;
+        setHasStableIds(true);
     }
 
     @NotNull
@@ -311,6 +312,19 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return visibleStoryCount + 1;
         }
         return stories.size();
+    }
+
+    @Override
+    public long getItemId(int position) {
+        if (atSubmissions && position == 0) {
+            return Long.MIN_VALUE;
+        }
+
+        if (!atSubmissions && paginationMode && position == visibleStoryCount && visibleStoryCount < stories.size()) {
+            return Long.MAX_VALUE;
+        }
+
+        return stories.get(position).id;
     }
 
     public class StoryViewHolder extends RecyclerView.ViewHolder {

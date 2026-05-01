@@ -245,6 +245,7 @@ public class StoriesFragment extends Fragment {
                 return !shouldLockRecyclerScroll() && super.canScrollVertically();
             }
         };
+        recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(linearLayoutManager);
 
         stories = new ArrayList<>();

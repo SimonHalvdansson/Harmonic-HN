@@ -637,6 +637,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         adapter.setOnCommentClickListener((comment, index, commentView) -> {
             comment.expanded = !comment.expanded;
+            adapter.invalidateCommentVisibility();
 
             int offset = 0;
             int lastChildIndex = adapter.getIndexOfLastChild(comment.depth, index);
@@ -775,6 +776,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         layoutManager = new LinearLayoutManager(getContext());
 
+        recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -1417,6 +1419,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         if (expandedAny && adapter != null) {
+            adapter.invalidateCommentVisibility();
             adapter.notifyDataSetChanged();
         }
     }
@@ -1536,6 +1539,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 int oldSize = comments.size();
                 if (oldSize > 1) {
                     comments.subList(1, oldSize).clear();
+                    adapter.invalidateCommentLookup();
                     adapter.notifyItemRangeRemoved(1, oldSize - 1);
                 }
 
@@ -1557,6 +1561,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void onAllCommentsLoaded(List<Comment> loadedComments) {
                 // Add all comments at once in proper tree order
                 comments.addAll(loadedComments);
+                adapter.invalidateCommentLookup();
                 adapter.notifyItemRangeInserted(1, loadedComments.size());
                 adapter.commentsLoaded = true;
                 updateNavigationVisibility();
