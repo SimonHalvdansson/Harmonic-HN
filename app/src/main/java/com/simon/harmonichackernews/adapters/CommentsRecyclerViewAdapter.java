@@ -198,7 +198,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
     }
 
-    @SuppressLint("SetTextI18n")
+    @SuppressLint({"RecyclerView", "SetTextI18n"})
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         Context ctx = holder.itemView.getContext();
@@ -267,6 +267,43 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.githubLicenseContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.license) ? GONE : View.VISIBLE);
                 headerViewHolder.githubLanguageContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.language) ? GONE : View.VISIBLE);
                 headerViewHolder.githubAbout.setVisibility(TextUtils.isEmpty(story.repoInfo.about) ? GONE : VISIBLE);
+            }
+
+            if (story.gitLabInfo != null) {
+                headerViewHolder.gitLabContainer.setVisibility(View.VISIBLE);
+                headerViewHolder.infoHeader.setVisibility(VISIBLE);
+
+                headerViewHolder.infoHeader.setText(story.gitLabInfo.namespace + " / " + story.gitLabInfo.name);
+
+                headerViewHolder.gitLabDescription.setText(story.gitLabInfo.description);
+                headerViewHolder.gitLabWebsite.setHtml("<a href=\"" + story.gitLabInfo.website + "\">" + story.gitLabInfo.getShortenedUrl() + "</a>");
+                headerViewHolder.gitLabVisibility.setText(story.gitLabInfo.formatVisibility());
+                headerViewHolder.gitLabLanguage.setText(story.gitLabInfo.language);
+                headerViewHolder.gitLabStars.setText(story.gitLabInfo.formatStars());
+                headerViewHolder.gitLabForks.setText(story.gitLabInfo.formatForks());
+                headerViewHolder.gitLabVisibility.setContentDescription("Visibility: " + story.gitLabInfo.formatVisibility());
+                headerViewHolder.gitLabLanguage.setContentDescription("Primary language: " + story.gitLabInfo.language);
+
+                headerViewHolder.gitLabWebsiteContainer.setVisibility(TextUtils.isEmpty(story.gitLabInfo.website) ? GONE : View.VISIBLE);
+                headerViewHolder.gitLabVisibilityContainer.setVisibility(TextUtils.isEmpty(story.gitLabInfo.visibility) ? GONE : View.VISIBLE);
+                headerViewHolder.gitLabLanguageContainer.setVisibility(TextUtils.isEmpty(story.gitLabInfo.language) ? GONE : View.VISIBLE);
+                headerViewHolder.gitLabDescription.setVisibility(TextUtils.isEmpty(story.gitLabInfo.description) ? GONE : VISIBLE);
+            }
+
+            if (story.stackExchangeInfo != null) {
+                headerViewHolder.stackExchangeContainer.setVisibility(View.VISIBLE);
+                headerViewHolder.infoHeader.setVisibility(VISIBLE);
+
+                headerViewHolder.infoHeader.setText("STACK EXCHANGE:");
+                headerViewHolder.stackExchangeTitle.setText(story.stackExchangeInfo.title);
+                headerViewHolder.stackExchangeBy.setText(story.stackExchangeInfo.formatBy());
+                headerViewHolder.stackExchangeScore.setText(story.stackExchangeInfo.formatScore());
+                headerViewHolder.stackExchangeAnswers.setText(story.stackExchangeInfo.formatAnswerCount());
+                headerViewHolder.stackExchangeViews.setText(story.stackExchangeInfo.formatViewCount());
+                headerViewHolder.stackExchangeAnswerState.setText(story.stackExchangeInfo.formatAnswerState());
+                headerViewHolder.stackExchangeAuthor.setText(story.stackExchangeInfo.formatAuthor());
+                headerViewHolder.stackExchangeTags.setText(story.stackExchangeInfo.formatTags());
+                headerViewHolder.stackExchangeTagsContainer.setVisibility(TextUtils.isEmpty(story.stackExchangeInfo.formatTags()) ? GONE : View.VISIBLE);
             }
 
             if (story.wikiInfo != null) {
@@ -695,7 +732,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout infoContainer;
         public final HtmlTextView arxivAbstract;
         public final LinearLayout githubContainer;
+        public final LinearLayout gitLabContainer;
         public final LinearLayout arxivContainer;
+        public final LinearLayout stackExchangeContainer;
         public final LinearLayout wikiContainer;
         public final LinearLayout nitterContainer;
 
@@ -735,6 +774,26 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout githubWebsiteContainer;
         public final LinearLayout githubLicenseContainer;
         public final LinearLayout githubLanguageContainer;
+
+        public final TextView gitLabDescription;
+        public final HtmlTextView gitLabWebsite;
+        public final TextView gitLabVisibility;
+        public final TextView gitLabLanguage;
+        public final TextView gitLabStars;
+        public final TextView gitLabForks;
+        public final LinearLayout gitLabWebsiteContainer;
+        public final LinearLayout gitLabVisibilityContainer;
+        public final LinearLayout gitLabLanguageContainer;
+
+        public final TextView stackExchangeTitle;
+        public final TextView stackExchangeBy;
+        public final TextView stackExchangeScore;
+        public final TextView stackExchangeAnswers;
+        public final TextView stackExchangeViews;
+        public final TextView stackExchangeAnswerState;
+        public final TextView stackExchangeAuthor;
+        public final TextView stackExchangeTags;
+        public final LinearLayout stackExchangeTagsContainer;
 
         public final TextView arxivBy;
         public final TextView arxivDate;
@@ -821,7 +880,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             actionsContainer = view.findViewById(R.id.comments_header_actions_container);
             spacer = view.findViewById(R.id.comments_header_spacer);
             githubContainer = view.findViewById(R.id.comments_header_github_container);
+            gitLabContainer = view.findViewById(R.id.comments_header_gitlab_container);
             arxivContainer = view.findViewById(R.id.comments_header_arxiv_container);
+            stackExchangeContainer = view.findViewById(R.id.comments_header_stack_exchange_container);
             wikiContainer = view.findViewById(R.id.comments_header_wikipedia_container);
             wikiSummary = view.findViewById(R.id.comments_header_wikipedia_summary);
             githubAbout = view.findViewById(R.id.comments_header_github_about);
@@ -834,6 +895,24 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             githubWebsiteContainer = view.findViewById(R.id.comments_header_github_website_container);
             githubLicenseContainer = view.findViewById(R.id.comments_header_github_license_container);
             githubLanguageContainer = view.findViewById(R.id.comments_header_github_language_container);
+            gitLabDescription = view.findViewById(R.id.comments_header_gitlab_description);
+            gitLabWebsite = view.findViewById(R.id.comments_header_gitlab_website);
+            gitLabVisibility = view.findViewById(R.id.comments_header_gitlab_visibility);
+            gitLabLanguage = view.findViewById(R.id.comments_header_gitlab_language);
+            gitLabStars = view.findViewById(R.id.comments_header_gitlab_stars);
+            gitLabForks = view.findViewById(R.id.comments_header_gitlab_forks);
+            gitLabWebsiteContainer = view.findViewById(R.id.comments_header_gitlab_website_container);
+            gitLabVisibilityContainer = view.findViewById(R.id.comments_header_gitlab_visibility_container);
+            gitLabLanguageContainer = view.findViewById(R.id.comments_header_gitlab_language_container);
+            stackExchangeTitle = view.findViewById(R.id.comments_header_stack_exchange_title);
+            stackExchangeBy = view.findViewById(R.id.comments_header_stack_exchange_by);
+            stackExchangeScore = view.findViewById(R.id.comments_header_stack_exchange_score);
+            stackExchangeAnswers = view.findViewById(R.id.comments_header_stack_exchange_answers);
+            stackExchangeViews = view.findViewById(R.id.comments_header_stack_exchange_views);
+            stackExchangeAnswerState = view.findViewById(R.id.comments_header_stack_exchange_answer_state);
+            stackExchangeAuthor = view.findViewById(R.id.comments_header_stack_exchange_author);
+            stackExchangeTags = view.findViewById(R.id.comments_header_stack_exchange_tags);
+            stackExchangeTagsContainer = view.findViewById(R.id.comments_header_stack_exchange_tags_container);
             arxivBy = view.findViewById(R.id.comments_header_arxiv_by);
             arxivDate = view.findViewById(R.id.comments_header_arxiv_date);
             arxivSubjects = view.findViewById(R.id.comments_header_arxiv_subjects);
@@ -917,6 +996,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 @Override
                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
                     Utils.launchCustomTab(view.getContext(), story.repoInfo.website);
+                    return false;
+                }
+            });
+
+            gitLabWebsite.setOnClickATagListener(new OnClickATagListener() {
+                @Override
+                public boolean onClick(View widget, String spannedText, @Nullable String href) {
+                    Utils.launchCustomTab(view.getContext(), story.gitLabInfo.website);
                     return false;
                 }
             });

@@ -8,6 +8,7 @@ public class Changelog {
                 "- Improved performance of opening and interacting with comments<br>" +
                 "- Added button to go to parent comment (thanks Tsung-Han Yu!)<br>" +
                 "- Improved accessibility<br>" +
+                "- Added Stack Exchange and GitLab link previews<br>" +
                 "- Improved navigation animation between settings screens<br>" +
                 "- Added ability to share Hacker News links to Harmonic<br>" +
                 "- Made comment scroll speed adaptive<br>" +

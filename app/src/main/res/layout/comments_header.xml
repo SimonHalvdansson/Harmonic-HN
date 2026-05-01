@@ -279,6 +279,10 @@
 
             <include layout="@layout/link_preview_github" />
 
+            <include layout="@layout/link_preview_gitlab" />
+
+            <include layout="@layout/link_preview_stack_exchange" />
+
             <include layout="@layout/link_preview_nitter" />
 
         </LinearLayout>

@@ -201,15 +201,23 @@ public class SettingsUtils {
     }
 
     public static boolean shouldUseLinkPreviewArxiv(Context ctx) {
-        return getBooleanPref("pref_link_preview_arxiv", false, ctx);
+        return getBooleanPref("pref_link_preview_arxiv", true, ctx);
     }
 
     public static boolean shouldUseLinkPreviewGithub(Context ctx) {
-        return getBooleanPref("pref_link_preview_github", false, ctx);
+        return getBooleanPref("pref_link_preview_github", true, ctx);
+    }
+
+    public static boolean shouldUseLinkPreviewGitLab(Context ctx) {
+        return getBooleanPref("pref_link_preview_gitlab", true, ctx);
+    }
+
+    public static boolean shouldUseLinkPreviewStackExchange(Context ctx) {
+        return getBooleanPref("pref_link_preview_stack_exchange", true, ctx);
     }
 
     public static boolean shouldUseLinkPreviewWikipedia(Context ctx) {
-        return getBooleanPref("pref_link_preview_wikipedia", false, ctx);
+        return getBooleanPref("pref_link_preview_wikipedia", true, ctx);
     }
 
     public static boolean shouldRedirectNitter(Context ctx) {

@@ -94,14 +94,18 @@ import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.ArxivInfo;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
+import com.simon.harmonichackernews.data.GitLabInfo;
 import com.simon.harmonichackernews.data.NitterInfo;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.RepoInfo;
+import com.simon.harmonichackernews.data.StackExchangeInfo;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.data.WikipediaInfo;
 import com.simon.harmonichackernews.linkpreview.ArxivAbstractGetter;
 import com.simon.harmonichackernews.linkpreview.GitHubInfoGetter;
+import com.simon.harmonichackernews.linkpreview.GitLabInfoGetter;
 import com.simon.harmonichackernews.linkpreview.NitterGetter;
+import com.simon.harmonichackernews.linkpreview.StackExchangeGetter;
 import com.simon.harmonichackernews.linkpreview.WikipediaGetter;
 import com.simon.harmonichackernews.network.AlgoliaFallbackManager;
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
@@ -1601,6 +1605,36 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 @Override
                 public void onSuccess(RepoInfo repoInfo) {
                     story.repoInfo = repoInfo;
+                    if (adapter != null) {
+                        adapter.notifyItemChanged(0);
+                    }
+                }
+
+                @Override
+                public void onFailure(String reason) {
+                    // no op
+                }
+            });
+        } else if (GitLabInfoGetter.isValidGitLabUrl(story.url) && SettingsUtils.shouldUseLinkPreviewGitLab(getContext())) {
+            GitLabInfoGetter.getInfo(story.url, getContext(), new GitLabInfoGetter.GetterCallback() {
+                @Override
+                public void onSuccess(GitLabInfo gitLabInfo) {
+                    story.gitLabInfo = gitLabInfo;
+                    if (adapter != null) {
+                        adapter.notifyItemChanged(0);
+                    }
+                }
+
+                @Override
+                public void onFailure(String reason) {
+                    // no op
+                }
+            });
+        } else if (StackExchangeGetter.isValidStackExchangeUrl(story.url) && SettingsUtils.shouldUseLinkPreviewStackExchange(getContext())) {
+            StackExchangeGetter.getInfo(story.url, getContext(), new StackExchangeGetter.GetterCallback() {
+                @Override
+                public void onSuccess(StackExchangeInfo stackExchangeInfo) {
+                    story.stackExchangeInfo = stackExchangeInfo;
                     if (adapter != null) {
                         adapter.notifyItemChanged(0);
                     }

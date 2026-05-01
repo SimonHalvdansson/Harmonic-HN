@@ -87,6 +87,18 @@
             app:key="pref_link_preview_github" />
 
         <SwitchPreferenceCompat
+            app:icon="@drawable/ic_link_preview_gitlab"
+            app:title="GitLab"
+            app:defaultValue="true"
+            app:key="pref_link_preview_gitlab" />
+
+        <SwitchPreferenceCompat
+            app:icon="@drawable/ic_link_preview_stack_exchange"
+            app:title="Stack Exchange"
+            app:defaultValue="true"
+            app:key="pref_link_preview_stack_exchange" />
+
+        <SwitchPreferenceCompat
             app:icon="@drawable/ic_link_preview_wikipedia"
             app:title="Wikipedia"
             app:defaultValue="true"

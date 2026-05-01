@@ -23,7 +23,9 @@ public class Story {
     public boolean loaded;
     public boolean clicked;
     public String text;
+    public GitLabInfo gitLabInfo;
     public RepoInfo repoInfo;
+    public StackExchangeInfo stackExchangeInfo;
     public ArxivInfo arxivInfo;
     public WikipediaInfo wikiInfo;
     public NitterInfo nitterInfo;
@@ -92,7 +94,7 @@ public class Story {
     }
 
     public boolean hasExtraInfo() {
-        return arxivInfo != null || repoInfo != null || wikiInfo != null || nitterInfo != null;
+        return arxivInfo != null || gitLabInfo != null || repoInfo != null || stackExchangeInfo != null || wikiInfo != null || nitterInfo != null;
     }
 
 }

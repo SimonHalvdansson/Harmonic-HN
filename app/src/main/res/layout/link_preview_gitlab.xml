@@ -1,0 +1,156 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:id="@+id/comments_header_gitlab_container"
+    android:visibility="gone"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:fontFamily="@font/product_sans"
+        android:id="@+id/comments_header_gitlab_description"
+        android:paddingTop="6dp"
+        android:paddingBottom="4dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_weight="2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:paddingTop="2dp"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <ImageView
+                    android:layout_marginRight="4dp"
+                    android:src="@drawable/ic_action_star"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp" />
+
+                <TextView
+                    android:id="@+id/comments_header_gitlab_stars"
+                    android:fontFamily="@font/product_sans"
+                    android:text="2.5k stars"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:paddingTop="2dp"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <ImageView
+                    android:layout_marginRight="4dp"
+                    android:src="@drawable/ic_action_fork"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp" />
+
+                <TextView
+                    android:id="@+id/comments_header_gitlab_forks"
+                    android:fontFamily="@font/product_sans"
+                    android:text="282 forks"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_weight="3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:id="@+id/comments_header_gitlab_website_container"
+                android:paddingTop="2dp"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <ImageView
+                    android:layout_marginRight="4dp"
+                    android:src="@drawable/ic_action_link"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp" />
+
+                <org.sufficientlysecure.htmltextview.HtmlTextView
+                    android:id="@+id/comments_header_gitlab_website"
+                    android:fontFamily="@font/product_sans"
+                    android:text="gitlab.com/group/project"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/comments_header_gitlab_visibility_container"
+                android:paddingTop="2dp"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <ImageView
+                    android:layout_marginRight="4dp"
+                    android:src="@drawable/ic_action_eye"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp" />
+
+                <TextView
+                    android:id="@+id/comments_header_gitlab_visibility"
+                    android:fontFamily="@font/product_sans"
+                    android:text="Public"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/comments_header_gitlab_language_container"
+                android:paddingTop="2dp"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <ImageView
+                    android:layout_marginRight="4dp"
+                    android:src="@drawable/ic_action_library_books"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp" />
+
+                <TextView
+                    android:id="@+id/comments_header_gitlab_language"
+                    android:fontFamily="@font/product_sans"
+                    android:text="Java"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>
