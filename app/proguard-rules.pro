@@ -34,3 +34,11 @@
 
 # Settings headers reference these fragments by class name from preference XML.
 -keep class com.simon.harmonichackernews.settings.*PreferenceFragment
+
+# Markwon
+-keep class io.noties.markwon.** { *; }
+-dontwarn io.noties.markwon.**
+
+# JLatexMath
+-keep class org.scilab.forge.jlatexmath.** { *; }
+-dontwarn org.scilab.forge.jlatexmath.**

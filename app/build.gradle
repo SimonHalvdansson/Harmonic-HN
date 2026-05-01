@@ -74,4 +74,8 @@ dependencies {
     implementation(libs.shimmer)
     implementation(libs.coil)
     implementation(libs.jsoup)
+
+    implementation(libs.markwon.core)
+    implementation(libs.markwon.ext.latex)
+    implementation(libs.markwon.inline.parser)
 }

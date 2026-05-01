@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 public class ArxivAbstractGetter {
 
     public static boolean isValidArxivUrl(String url) {
-        String arxivUrlPattern = "^https?:\\/\\/arxiv\\.org\\/abs\\/((\\d{4}\\.\\d{4,5}(v\\d+)?)|([a-z\\-]+\\/\\d{2}\\d{4}))(\\.pdf)?$";
+        String arxivUrlPattern = "^https?:\\/\\/arxiv\\.org\\/(abs|pdf)\\/((\\d{4}\\.\\d{4,5}(v\\d+)?)|([a-z\\-]+\\/\\d{2}\\d{4}))(\\.pdf)?$";
 
         Pattern pattern = Pattern.compile(arxivUrlPattern);
         Matcher matcher = pattern.matcher(url);

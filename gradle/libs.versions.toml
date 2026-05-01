@@ -32,6 +32,10 @@ shimmer = "com.facebook.shimmer:shimmer:0.5.0"
 jsoup = "org.jsoup:jsoup:1.22.2"
 coil = "io.coil-kt:coil:2.7.0"
 
+markwon-core = "io.noties.markwon:core:4.6.2"
+markwon-ext-latex = "io.noties.markwon:ext-latex:4.6.2"
+markwon-inline-parser = "io.noties.markwon:inline-parser:4.6.2"
+
 [bundles]
 androidx-lifecycle = ["androidx-lifecycle-viewmodel", "androidx-lifecycle-viewmodel-ktx"]
 androidx-window = ["androidx-window", "androidx-window-java"]

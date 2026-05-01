@@ -47,6 +47,10 @@ import com.simon.harmonichackernews.utils.Utils;
 import coil.Coil;
 import coil.request.ImageRequest;
 
+import io.noties.markwon.Markwon;
+import io.noties.markwon.ext.latex.JLatexMathPlugin;
+import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin;
+
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
@@ -54,6 +58,7 @@ import org.sufficientlysecure.htmltextview.OnClickATagListener;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
 
 public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -228,7 +233,25 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
                 headerViewHolder.infoHeader.setText("ABSTRACT:");
 
-                headerViewHolder.arxivAbstract.setHtml(story.arxivInfo.arxivAbstract);
+                FontUtils.setTypeface(headerViewHolder.arxivAbstract, false, 14);
+
+                Markwon markwon = Markwon.builder(ctx)
+                        .usePlugin(MarkwonInlineParserPlugin.create())
+                        .usePlugin(JLatexMathPlugin.create(headerViewHolder.arxivAbstract.getTextSize(), builder -> builder.inlinesEnabled(true)))
+                        .build();
+
+                String abstractText = story.arxivInfo.arxivAbstract
+                        .replace("\\(", "$$")
+                        .replace("\\)", "$$")
+                        .replace("\\[", "$$")
+                        .replace("\\]", "$$")
+                        .replaceAll("(?<!\\$)\\$(?!\\$)", Matcher.quoteReplacement("$$"))
+                        .replaceAll("\\\\textbf\\{(.*?)\\}", "**$1**")
+                        .replaceAll("\\\\textit\\{(.*?)\\}", "*$1*")
+                        .replaceAll("\\\\emph\\{(.*?)\\}", "*$1*");
+
+                markwon.setMarkdown(headerViewHolder.arxivAbstract, abstractText);
+
                 headerViewHolder.arxivBy.setText(story.arxivInfo.concatNames());
                 headerViewHolder.arxivDate.setText(story.arxivInfo.formatDate());
                 headerViewHolder.arxivSubjects.setText(story.arxivInfo.formatSubjects());
@@ -243,8 +266,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     byIconResource = R.drawable.ic_action_pair;
                 }
                 headerViewHolder.arxivByIcon.setImageResource(byIconResource);
-
-                FontUtils.setTypeface(headerViewHolder.arxivAbstract, false, 14);
             }
 
             if (story.repoInfo != null) {
@@ -730,7 +751,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView urlView;
         public final HtmlTextView textView;
         public final LinearLayout infoContainer;
-        public final HtmlTextView arxivAbstract;
+        public final TextView arxivAbstract;
         public final LinearLayout githubContainer;
         public final LinearLayout gitLabContainer;
         public final LinearLayout arxivContainer;
