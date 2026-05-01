@@ -61,6 +61,7 @@ public class AboutActivity extends AppCompatActivity {
         if (BuildConfig.DEBUG) {
             versionText += String.format(" (%s)", BuildConfig.BUILD_TYPE);
             binding.aboutDebugLink.setVisibility(View.VISIBLE);
+            binding.aboutDebugWelcome.setVisibility(View.VISIBLE);
         }
         binding.aboutVersion.setText(versionText);
     }
@@ -89,5 +90,9 @@ public class AboutActivity extends AppCompatActivity {
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setData(Uri.parse("https://news.ycombinator.com/item?id=47938725"));
         startActivity(intent);
+    }
+
+    public void openDebugWelcome(View v) {
+        startActivity(new Intent(this, WelcomeActivity.class));
     }
 }

@@ -212,6 +212,21 @@
             android:visibility="gone"
             tools:visibility="visible" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/about_debug_welcome"
+            android:textSize="14sp"
+            android:fontFamily="@font/product_sans_bold"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            app:icon="@drawable/ic_action_explore"
+            android:textColor="?attr/storyColorNormal"
+            app:iconTint="?attr/storyColorNormal"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:onClick="openDebugWelcome"
+            android:text="Debug Welcome activity"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
     </LinearLayout>
 
 </ScrollView>

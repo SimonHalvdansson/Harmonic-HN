@@ -3,12 +3,12 @@ package com.simon.harmonichackernews.utils;
 
 public class Changelog {
     static public String getHTML() {
-        return  "<b>Version 2.3.2:</b><br>" +
+        return  "<b>Version 2.4:</b><br>" +
+                "- Redesigned search, including adding search options<br>" +
                 "- Improved performance of opening and interacting with comments<br>" +
-                "- Updated design and behavior of search, including search options<br>" +
-                "- Added button to go to parent comment (thanks Tsung-Han Yu!)" +
+                "- Added button to go to parent comment (thanks Tsung-Han Yu!)<br>" +
                 "- Improved accessibility<br>" +
-                "- <br>" +
+                "- Improved navigation animation between settings screens<br>" +
                 "- Added ability to share Hacker News links to Harmonic<br>" +
                 "- Made comment scroll speed adaptive<br>" +
                 "<br>" +

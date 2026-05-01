@@ -17,7 +17,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.databinding.ActivityWelcomeBinding;
@@ -37,6 +39,25 @@ public class WelcomeActivity extends AppCompatActivity {
         ActivityWelcomeBinding binding = ActivityWelcomeBinding.inflate(getLayoutInflater());
         final View root = binding.getRoot();
         setContentView(root);
+        final int padLeft = root.getPaddingLeft();
+        final int padTop = root.getPaddingTop();
+        final int padRight = root.getPaddingRight();
+        final int padBottom = root.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+
+            view.setPadding(
+                    padLeft + Math.max(bars.left, cutout.left),
+                    padTop + bars.top,
+                    padRight + Math.max(bars.right, cutout.right),
+                    padBottom + Math.max(bars.bottom, ime.bottom)
+            );
+            return insets;
+        });
+        ViewCompat.requestApplyInsets(root);
+
         ViewCompat.setAccessibilityHeading(binding.welcomeTitle, true);
         ViewCompat.setAccessibilityHeading(binding.welcomeThemeHeader, true);
 

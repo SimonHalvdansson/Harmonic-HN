@@ -178,7 +178,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         faviconProvider = favProvider;
         swapLongPressTap = shouldSwapLongPressTap;
         summaryCallback = requestSummaryCallback;
-        setHasStableIds(true);
     }
 
     @NotNull
@@ -505,8 +504,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         } else if (holder instanceof ItemViewHolder) {
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
-            Comment comment = comments.get(holder.getBindingAdapterPosition());
-            itemViewHolder.comment = comments.get(holder.getBindingAdapterPosition());
+            Comment comment = comments.get(position);
+            itemViewHolder.comment = comment;
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 
@@ -591,7 +590,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentHiddenCount.setVisibility(GONE);
             } else {
                 // if not expanded, only show (and set text) if subCommentCount > 0
-                int subCommentCount = getIndexOfLastChild(comment.depth, holder.getBindingAdapterPosition()) - holder.getBindingAdapterPosition();
+                int subCommentCount = getIndexOfLastChild(comment.depth, position) - position;
 
                 if (subCommentCount > 0) {
                     itemViewHolder.commentHiddenCount.setVisibility(View.VISIBLE);
@@ -617,14 +616,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         } else {
             return shouldShow(comments.get(position)) ? TYPE_COMMENT : TYPE_COLLAPSED;
         }
-    }
-
-    @Override
-    public long getItemId(int position) {
-        if (position == 0) {
-            return Long.MIN_VALUE;
-        }
-        return comments.get(position).id;
     }
 
     public class ItemViewHolder extends RecyclerView.ViewHolder {
