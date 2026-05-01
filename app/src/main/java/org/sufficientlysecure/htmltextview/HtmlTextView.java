@@ -75,6 +75,19 @@ public class HtmlTextView extends JellyBeanSpanFixTextView {
     }
 
     /**
+     * Displays a pre-formatted Spanned object.
+     *
+     * @param spanned Spanned object to display.
+     */
+    public void setHtml(@NonNull Spanned spanned) {
+        replaceQuoteSpans(spanned);
+        setText(spanned);
+
+        // make links work
+        setMovementMethod(LocalLinkMovementMethod.getInstance());
+    }
+
+    /**
      * Loads HTML from a raw resource, i.e., a HTML file in res/raw/.
      * This allows translatable resource (e.g., res/raw-de/ for german).
      * The containing HTML is parsed to Android's Spannable format and then displayed.

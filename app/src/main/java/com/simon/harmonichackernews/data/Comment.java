@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.data;
 
+import android.text.Spanned;
 import com.simon.harmonichackernews.utils.Utils;
 
 import java.io.Serializable;
@@ -11,6 +12,7 @@ public class Comment implements Serializable {
     public int id;
     public int parent;
     public String text;
+    public transient Spanned spannedText;
     public int time;
     public boolean expanded;
     public int depth;

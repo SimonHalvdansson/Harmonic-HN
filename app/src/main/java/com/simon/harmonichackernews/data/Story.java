@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.data;
 
 import android.os.Bundle;
+import android.text.Spanned;
 import android.text.TextUtils;
 
 import com.simon.harmonichackernews.CommentsFragment;
@@ -23,6 +24,7 @@ public class Story {
     public boolean loaded;
     public boolean clicked;
     public String text;
+    public transient Spanned spannedText;
     public GitLabInfo gitLabInfo;
     public RepoInfo repoInfo;
     public StackExchangeInfo stackExchangeInfo;

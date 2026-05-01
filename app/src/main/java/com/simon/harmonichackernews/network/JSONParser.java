@@ -386,15 +386,24 @@ public class JSONParser {
     }
 
     public static String preprocessHtml(String input) {
-        input = input.replace("<code>", "<pre><small>").replace("</code>", "</small></pre>");
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+
+        // Linkify first, so we don't have to deal with &nbsp; from escapePreBlockWhitespace
+        input = Utils.linkify(input);
+
+        // Standardize code blocks: handle <pre><code> first, then standalone <code>
+        input = input.replace("<pre><code>", "<pre><small>")
+                .replace("</code></pre>", "</small></pre>")
+                .replace("<code>", "<pre><small>")
+                .replace("</code>", "</small></pre>");
 
         if (input.contains("<pre>")) {
             input = escapePreBlockWhitespace(input);
         }
 
         input = input.replace("<pre>", "<div><tt>").replace("</pre>", "</tt></div>");
-
-        input = Utils.linkify(input);
 
         return input;
     }

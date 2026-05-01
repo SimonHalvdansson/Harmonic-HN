@@ -269,7 +269,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             Story story = stories.get(position);
 
             commentViewHolder.headerText.setText("On \"" + story.commentMasterTitle + "\" " + Utils.getTimeAgo(story.time));
-            commentViewHolder.bodyText.setHtml(story.text);
+            if (story.spannedText != null) {
+                commentViewHolder.bodyText.setHtml(story.spannedText);
+            } else {
+                commentViewHolder.bodyText.setHtml(story.text);
+                story.spannedText = (Spanned) commentViewHolder.bodyText.getText();
+            }
 
             commentViewHolder.bodyText.post(new Runnable() {
                 @Override

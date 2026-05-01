@@ -224,7 +224,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.infoContainer.setVisibility(story.hasExtraInfo() ? View.VISIBLE : GONE);
 
             if (!TextUtils.isEmpty(story.text)) {
-                headerViewHolder.textView.setHtml(story.text);
+                if (story.spannedText != null) {
+                    headerViewHolder.textView.setHtml(story.spannedText);
+                } else {
+                    headerViewHolder.textView.setHtml(story.text);
+                    story.spannedText = (Spanned) headerViewHolder.textView.getText();
+                }
             }
 
             if (story.arxivInfo != null) {
@@ -598,7 +603,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
 
             if (!comment.text.isEmpty()) {
-                itemViewHolder.commentBody.setHtml(comment.text);
+                if (comment.spannedText != null) {
+                    itemViewHolder.commentBody.setHtml(comment.spannedText);
+                } else {
+                    itemViewHolder.commentBody.setHtml(comment.text);
+                    comment.spannedText = (Spanned) itemViewHolder.commentBody.getText();
+                }
+
                 if (collapseParent) {
                     itemViewHolder.commentHiddenText.setText(" • " + Html.fromHtml(comment.text.substring(0, Math.min(120, comment.text.length()))));
                 }
