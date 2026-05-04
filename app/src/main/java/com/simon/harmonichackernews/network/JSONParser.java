@@ -473,6 +473,16 @@ public class JSONParser {
                 story.isJob = true;
             }
 
+            if (jsonObject.has("type") && jsonObject.getString("type").equals("poll") && jsonObject.has("parts")) {
+                JSONArray pollOptionsJson = jsonObject.getJSONArray("parts");
+                int[] pollOptions = new int[pollOptionsJson.length()];
+                for (int i = 0; i < pollOptionsJson.length(); i++) {
+                    pollOptions[i] = pollOptionsJson.getInt(i);
+                }
+
+                story.pollOptions = pollOptions;
+            }
+
             if (jsonObject.has("kids")) {
                 JSONArray kidsArray = jsonObject.getJSONArray("kids");
                 story.kids = new int[kidsArray.length()];

@@ -17,7 +17,6 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Space;
 import android.widget.TextView;
@@ -397,7 +396,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 for (int i = 0; i < story.pollOptionArrayList.size(); i++) {
                     PollOption pollOption = story.pollOptionArrayList.get(i);
                     if (pollOption.loaded) {
-                        MaterialButton materialButton = new MaterialButton(ctx, null);
+                        MaterialButton materialButton = new MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
                         materialButton.setText(pollOption.text + " (" + pollOption.points + (pollOption.points == 1 ? " point" : " points") + ")");
 
                         materialButton.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorNormal));
@@ -410,8 +409,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                         });
                         headerViewHolder.pollLayout.addView(materialButton);
                     } else {
-                        ProgressBar progressBar = new ProgressBar(ctx);
-                        headerViewHolder.pollLayout.addView(progressBar);
+                        LoadingIndicator loadingIndicator = new LoadingIndicator(ctx);
+                        int indicatorSize = Utils.pxFromDpInt(ctx.getResources(), 42);
+                        loadingIndicator.setIndicatorSize(indicatorSize);
+                        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, indicatorSize);
+                        headerViewHolder.pollLayout.addView(loadingIndicator, params);
                     }
                 }
             } else {

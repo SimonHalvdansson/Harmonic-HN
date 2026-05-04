@@ -136,6 +136,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import okhttp3.Call;
 
@@ -159,6 +160,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static String PDF_MIME_TYPE = "application/pdf";
     private final static String PDF_LOADER_URL = "file:///android_asset/pdf/index.html";
     private final static String OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html";
+    private final static Pattern POLL_TITLE_PATTERN = Pattern.compile("\\bpoll\\b", Pattern.CASE_INSENSITIVE);
 
     private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
     private final static int COMMENT_NAVIGATION_SPEED_STEP = 35;
@@ -193,6 +195,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean matchWebviewTheme = true;
     private boolean blockAds = true;
     private boolean startedLoading = false;
+    private boolean pollOptionsLoadStarted = false;
+    private boolean pollOptionsLookupStarted = false;
     private boolean initializedWebView = false;
     private boolean closeWebViewOnBack = false;
     private int topInset = 0;
@@ -1536,6 +1540,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 story.isComment = loadedStory.isComment;
                 story.text = loadedStory.text;
                 story.kids = loadedStory.kids;
+                story.pollOptions = loadedStory.pollOptions;
                 story.descendants = loadedStory.descendants;
                 story.parentId = loadedStory.parentId;
 
@@ -1550,6 +1555,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 adapter.loadingFailed = false;
                 adapter.loadingFailedServerError = false;
                 adapter.notifyItemChanged(0);
+                maybeLoadPollOptions();
             }
 
             @Override
@@ -1577,9 +1583,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         fallbackManager.loadComments(id, oldCachedResponse);
 
-        if (story.pollOptions != null) {
-            loadPollOptions();
-        }
+        maybeLoadPollOptions();
 
         loadLinkPreviews();
     }
@@ -1663,7 +1667,43 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
+    private void maybeLoadPollOptions() {
+        if (pollOptionsLoadStarted || story == null || story.isComment) {
+            return;
+        }
+
+        if (story.pollOptions != null) {
+            loadPollOptions();
+            return;
+        }
+
+        if (pollOptionsLookupStarted || story.id <= 0 || TextUtils.isEmpty(story.title) || !POLL_TITLE_PATTERN.matcher(story.title).find()) {
+            return;
+        }
+
+        pollOptionsLookupStarted = true;
+        String url = "https://hacker-news.firebaseio.com/v0/item/" + story.id + ".json";
+
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                response -> {
+                    Story hnStory = new Story();
+                    hnStory.id = story.id;
+                    if (JSONParser.updateStoryWithOfficialHNResponse(hnStory, response) && hnStory.pollOptions != null) {
+                        story.pollOptions = hnStory.pollOptions;
+                        maybeLoadPollOptions();
+                    }
+                }, error -> pollOptionsLookupStarted = false);
+
+        stringRequest.setTag(requestTag);
+        queue.add(stringRequest);
+    }
+
     private void loadPollOptions() {
+        if (story.pollOptions == null) {
+            return;
+        }
+
+        pollOptionsLoadStarted = true;
         story.pollOptionArrayList = new ArrayList<>();
         for (int optionId : story.pollOptions) {
             PollOption pollOption = new PollOption();
@@ -1728,6 +1768,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (storyChanged || forceHeaderRefresh) {
                 adapter.notifyItemChanged(0);
             }
+            maybeLoadPollOptions();
 
             integratedWebview = prefIntegratedWebview && story.isLink;
 
