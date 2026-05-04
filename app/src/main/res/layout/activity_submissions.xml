@@ -1,36 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/submissions_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".SubmissionsActivity">
 
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/submissions_appbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:paddingLeft="@dimen/single_view_side_margin"
+        android:paddingRight="@dimen/single_view_side_margin"
+        android:stateListAnimator="@null"
+        app:elevation="0dp"
+        app:statusBarForeground="?attr/colorSurface">
+
+        <include layout="@layout/submissions_header" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
     <androidx.swiperefreshlayout.widget.MaterialExpressiveSwipeRefreshLayout
         android:id="@+id/submissions_swiperefreshlayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:clipToPadding="false"
         android:paddingLeft="@dimen/single_view_side_margin"
         android:paddingRight="@dimen/single_view_side_margin"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/submissions_recyclerview"
-            tools:listitem="@layout/story_list_item"
-            android:fitsSystemWindows="true"
-            android:clipToPadding="false"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            tools:listitem="@layout/story_list_item" />
 
     </androidx.swiperefreshlayout.widget.MaterialExpressiveSwipeRefreshLayout>
 
     <com.google.android.material.loadingindicator.LoadingIndicator
         android:id="@+id/submissions_initial_loading"
-        android:visibility="gone"
-        android:layout_gravity="center"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:indicatorSize="42dp"
-        android:indeterminate="true" />
+        android:layout_gravity="center"
+        android:indeterminate="true"
+        android:visibility="gone"
+        app:indicatorSize="42dp" />
 
-</FrameLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

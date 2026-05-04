@@ -5,9 +5,14 @@ import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -15,10 +20,10 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
+import com.google.android.material.appbar.AppBarLayout;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.BackgroundJSONParser;
-import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
@@ -40,7 +45,10 @@ public class SubmissionsActivity extends AppCompatActivity {
     private RequestQueue queue;
     private SwipeRefreshLayout swipeRefreshLayout;
     private View initialLoadingIndicator;
+    private AppBarLayout appBarLayout;
+    private TextView headerText;
     private boolean initialLoadFinished = false;
+    private int topInset = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +59,21 @@ public class SubmissionsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_submissions);
         swipeRefreshLayout = findViewById(R.id.submissions_swiperefreshlayout);
         initialLoadingIndicator = findViewById(R.id.submissions_initial_loading);
+        appBarLayout = findViewById(R.id.submissions_appbar);
+        headerText = findViewById(R.id.submissions_header_text);
+
+        String userName = getIntent().getStringExtra(KEY_USER);
+        headerText.setText(userName + "'s submissions");
+        headerText.setContentDescription("Submissions by " + userName);
+        ViewCompat.setAccessibilityHeading(headerText, true);
+
+        appBarLayout.addOnOffsetChangedListener((appBar, verticalOffset) -> {
+            float totalScrollRange = appBar.getTotalScrollRange();
+            if (totalScrollRange > 0) {
+                headerText.setAlpha(1f - (Math.abs(verticalOffset) / totalScrollRange));
+            }
+        });
+        configureAppBarDragBehavior();
 
         swipeRefreshLayout.setOnRefreshListener(this::loadSubmissions);
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
@@ -58,8 +81,6 @@ public class SubmissionsActivity extends AppCompatActivity {
         RecyclerView recyclerView = findViewById(R.id.submissions_recyclerview);
 
         submissions = new ArrayList<>();
-        // header
-        submissions.add(new Story());
 
         queue = NetworkComponent.getRequestQueueInstance(this);
 
@@ -76,7 +97,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                 SettingsUtils.shouldUseLeftAlign(this),
                 SettingsUtils.getPreferredHotness(this),
                 SettingsUtils.getPreferredFaviconProvider(this),
-                getIntent().getStringExtra(KEY_USER),
+                userName,
                 -1);
 
         adapter.setOnCommentClickListener(new StoryRecyclerViewAdapter.ClickListener() {
@@ -129,6 +150,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         });
 
         recyclerView.setAdapter(adapter);
+        setUpWindowInsets(recyclerView);
 
         loadSubmissions();
     }
@@ -139,7 +161,73 @@ public class SubmissionsActivity extends AppCompatActivity {
         if (Utils.isTablet(getResources())) {
             int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
             swipeRefreshLayout.setPadding(sideMargin, 0, sideMargin, 0);
+            appBarLayout.setPadding(sideMargin, 0, sideMargin, 0);
         }
+    }
+
+    private void configureAppBarDragBehavior() {
+        CoordinatorLayout.LayoutParams layoutParams = (CoordinatorLayout.LayoutParams) appBarLayout.getLayoutParams();
+        AppBarLayout.Behavior behavior;
+
+        if (layoutParams.getBehavior() instanceof AppBarLayout.Behavior) {
+            behavior = (AppBarLayout.Behavior) layoutParams.getBehavior();
+        } else {
+            behavior = new AppBarLayout.Behavior();
+            layoutParams.setBehavior(behavior);
+            appBarLayout.setLayoutParams(layoutParams);
+        }
+
+        behavior.setDragCallback(new AppBarLayout.Behavior.DragCallback() {
+            @Override
+            public boolean canDrag(@NonNull AppBarLayout appBarLayout) {
+                return true;
+            }
+        });
+    }
+
+    private void setUpWindowInsets(RecyclerView recyclerView) {
+        View root = findViewById(R.id.submissions_root);
+        final int rootPaddingLeft = root.getPaddingLeft();
+        final int rootPaddingTop = root.getPaddingTop();
+        final int rootPaddingRight = root.getPaddingRight();
+        final int rootPaddingBottom = root.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
+
+            v.setPadding(
+                    rootPaddingLeft + Math.max(insets.left, cutoutInsets.left),
+                    rootPaddingTop,
+                    rootPaddingRight + Math.max(insets.right, cutoutInsets.right),
+                    rootPaddingBottom
+            );
+
+            topInset = insets.top;
+            applyHeaderPadding();
+
+            recyclerView.setPadding(
+                    recyclerView.getPaddingLeft(),
+                    recyclerView.getPaddingTop(),
+                    recyclerView.getPaddingRight(),
+                    insets.bottom
+            );
+
+            return windowInsets;
+        });
+        ViewUtils.requestApplyInsetsWhenAttached(root);
+    }
+
+    private void applyHeaderPadding() {
+        boolean compactHeader = SettingsUtils.shouldUseCompactHeader(this);
+        int topPadding = topInset + Utils.pxFromDpInt(getResources(), compactHeader ? 20 : 40);
+        int bottomPadding = Utils.pxFromDpInt(getResources(), compactHeader ? 10 : 26);
+        headerText.setPaddingRelative(
+                headerText.getPaddingStart(),
+                topPadding,
+                headerText.getPaddingEnd(),
+                bottomPadding
+        );
     }
 
     private void openComments(Story story, boolean showWebsite) {
@@ -177,13 +265,14 @@ public class SubmissionsActivity extends AppCompatActivity {
                             int oldSize = submissions.size();
 
                             submissions.clear();
-                            submissions.add(new Story());
 
-                            adapter.notifyItemRangeRemoved(1, oldSize + 1);
+                            if (oldSize > 0) {
+                                adapter.notifyItemRangeRemoved(0, oldSize);
+                            }
 
                             submissions.addAll(parsedStories);
 
-                            adapter.notifyItemRangeInserted(1, submissions.size());
+                            adapter.notifyItemRangeInserted(0, submissions.size());
                         }
 
                         @Override

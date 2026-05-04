@@ -50,7 +50,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private final boolean atSubmissions;
     private final String submitter;
 
-    private static final int TYPE_HEADER_SUBMISSIONS = 1;
     private static final int TYPE_STORY = 2;
     private static final int TYPE_COMMENT = 3;
     private static final int TYPE_LOAD_MORE_BUTTON = 4;
@@ -104,8 +103,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public RecyclerView.ViewHolder onCreateViewHolder(@NotNull ViewGroup parent, int viewType) {
         if (viewType == TYPE_STORY) {
             return new StoryViewHolder(LayoutInflater.from(parent.getContext()).inflate(leftAlign ? R.layout.story_list_item_left : R.layout.story_list_item, parent, false));
-        } else if (viewType == TYPE_HEADER_SUBMISSIONS) {
-            return new SubmissionsHeaderViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.submissions_header, parent, false));
         } else if (viewType == TYPE_LOAD_MORE_BUTTON) {
             return new LoadMoreViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.load_more_button, parent, false));
         } else {
@@ -134,9 +131,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyViewHolder.story = stories.get(position);
 
             if (showIndex) {
-                // For submissions, position 0 is header so story index = position
-                // For non-submissions, position 0 is first story so display index = position + 1
-                int displayIndex = atSubmissions ? position : position + 1;
+                int displayIndex = position + 1;
                 storyViewHolder.indexTextView.setText(displayIndex + ".");
                 storyViewHolder.indexTextView.setContentDescription("Story " + displayIndex);
 
@@ -257,12 +252,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentLayoutView.setClickable(false);
                 storyViewHolder.commentsIcon.setAlpha(storyViewHolder.story.clicked ? 0.6f : 1.0f);
             }
-        } else if (holder instanceof SubmissionsHeaderViewHolder) {
-            final SubmissionsHeaderViewHolder submissionsHeaderViewHolder = (SubmissionsHeaderViewHolder) holder;
-
-            submissionsHeaderViewHolder.headerText.setText(submitter + "'s submissions");
-            submissionsHeaderViewHolder.headerText.setContentDescription("Submissions by " + submitter);
-
         } else if (holder instanceof CommentViewHolder) {
             final CommentViewHolder commentViewHolder = (CommentViewHolder) holder;
 
@@ -289,10 +278,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     @Override
     public int getItemViewType(int position) {
         if (atSubmissions) {
-            // Submissions path: position 0 is header, rest are stories/comments
-            if (position == 0) {
-                return TYPE_HEADER_SUBMISSIONS;
-            }
             return stories.get(position).isComment ? TYPE_COMMENT : TYPE_STORY;
         }
 
@@ -307,7 +292,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     @Override
     public int getItemCount() {
         if (atSubmissions) {
-            // Submissions still has header at stories[0]
             return stories.size();
         }
 
@@ -321,10 +305,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     @Override
     public long getItemId(int position) {
-        if (atSubmissions && position == 0) {
-            return Long.MIN_VALUE;
-        }
-
         if (!atSubmissions && paginationMode && position == visibleStoryCount && visibleStoryCount < stories.size()) {
             return Long.MAX_VALUE;
         }
@@ -382,17 +362,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
                 linkLayoutView.setOnLongClickListener(v -> longClickListener.onLongClick(v, getAbsoluteAdapterPosition(), touchX, touchY));
             }
-        }
-    }
-
-    public static class SubmissionsHeaderViewHolder extends RecyclerView.ViewHolder {
-
-        public final TextView headerText;
-
-        public SubmissionsHeaderViewHolder(View view) {
-            super(view);
-            headerText = view.findViewById(R.id.submissions_header_text);
-            ViewCompat.setAccessibilityHeading(headerText, true);
         }
     }
 
