@@ -249,6 +249,11 @@ public class StoriesFragment extends Fragment {
         recyclerView.setLayoutManager(linearLayoutManager);
 
         stories = new ArrayList<>();
+        filterWords = Utils.getFilterWords(requireContext());
+        filterDomains = Utils.getFilterDomains(requireContext());
+        hideJobs = SettingsUtils.shouldHideJobs(requireContext());
+        hideClicked = SettingsUtils.shouldHideClicked(requireContext());
+        alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(requireContext());
         setupAdapter();
         recyclerView.setAdapter(adapter);
 
@@ -1083,7 +1088,7 @@ public class StoriesFragment extends Fragment {
 
         filterWords = Utils.getFilterWords(getContext());
         filterDomains = Utils.getFilterDomains(getContext());
-        hideJobs = SettingsUtils.shouldHideJobs(getContext());
+        boolean newHideJobs = SettingsUtils.shouldHideJobs(getContext());
         hideClicked = SettingsUtils.shouldHideClicked(getContext());
         alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(getContext());
 
@@ -1161,8 +1166,8 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
-        if (hideJobs != SettingsUtils.shouldHideJobs(getContext())) {
-            hideJobs = !hideJobs;
+        if (hideJobs != newHideJobs) {
+            hideJobs = newHideJobs;
             attemptRefresh();
         }
 
@@ -1283,7 +1288,7 @@ public class StoriesFragment extends Fragment {
                         }
 
                         // or because it's a job
-                        if (hideJobs && adapter.type != SettingsUtils.getJobsIndex(getResources()) && (story.isJob || story.by.equals("whoishiring"))) {
+                        if (shouldHideStoryAsJob(story)) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
                             loadedTo = Math.max(-1, loadedTo - 1);
@@ -1638,29 +1643,40 @@ public class StoriesFragment extends Fragment {
                             while (iterator.hasNext()) {
                                 Story story = iterator.next();
                                 story.clicked = HistoriesUtils.INSTANCE.isHistoryExist(story.id);
+                                boolean shouldRemove = false;
 
                                 if (story.title != null) {
                                     for (String phrase : filterWords) {
                                         if (story.title.toLowerCase().contains(phrase.toLowerCase())) {
-                                            iterator.remove();
+                                            shouldRemove = true;
                                             break;
                                         }
                                     }
                                     // or domain name
-                                    for (String phrase : filterDomains) {
-                                        try {
-                                            String domain = Utils.getDomainName(story.url);
-                                            if (domain.toLowerCase().contains(phrase.toLowerCase())) {
-                                                iterator.remove();
-                                                break;
+                                    if (!shouldRemove) {
+                                        for (String phrase : filterDomains) {
+                                            try {
+                                                String domain = Utils.getDomainName(story.url);
+                                                if (domain.toLowerCase().contains(phrase.toLowerCase())) {
+                                                    shouldRemove = true;
+                                                    break;
+                                                }
+                                            } catch (Exception e) {
+                                                //nothing
                                             }
-                                        } catch (Exception e) {
-                                            //nothing
                                         }
                                     }
                                 }
 
-                                if (hideClicked && story.clicked) {
+                                if (!shouldRemove && hideClicked && story.clicked) {
+                                    shouldRemove = true;
+                                }
+
+                                if (!shouldRemove && shouldHideStoryAsJob(story)) {
+                                    shouldRemove = true;
+                                }
+
+                                if (shouldRemove) {
                                     iterator.remove();
                                 }
                             }
@@ -1743,6 +1759,13 @@ public class StoriesFragment extends Fragment {
 
     public boolean currentTypeIsAlgolia() {
         return 0 < adapter.type && 4 > adapter.type;
+    }
+
+    private boolean shouldHideStoryAsJob(Story story) {
+        return hideJobs
+                && adapter.type != SettingsUtils.getJobsIndex(getResources())
+                && (story.isJob
+                || "whoishiring".equals(story.by));
     }
 
     public boolean exitSearch() {
