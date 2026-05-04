@@ -15,9 +15,9 @@ import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.animation.PathInterpolator;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -53,6 +53,9 @@ public class UserDialogFragment extends AppCompatDialogFragment {
 
     public static String TAG = "tag_user_dialog";
     public final static String EXTRA_USER_NAME = "com.simon.harmonichackernews.EXTRA_USER_NAME";
+    private static final long USER_CONTENT_ENTER_DURATION_MS = 280L;
+    private static final long USER_LOADING_EXIT_DURATION_MS = 150L;
+    private static final PathInterpolator EMPHASIZED_DECELERATE = new PathInterpolator(0.2f, 0f, 0f, 1f);
 
     private TextView nameTextview;
     private TextView metaTextview;
@@ -215,21 +218,15 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                                 }
                             });
 
-                            container.setVisibility(View.VISIBLE);
+                            showLoadedContent();
                         } catch (Exception e) {
-                            loadingProgress.setVisibility(GONE);
-                            errorLayout.setVisibility(View.VISIBLE);
-                            container.setVisibility(GONE);
+                            showErrorState();
 
                             e.printStackTrace();
                         }
-
-                        loadingProgress.setVisibility(GONE);
                     }, error -> {
                 error.printStackTrace();
-                loadingProgress.setVisibility(GONE);
-                errorLayout.setVisibility(View.VISIBLE);
-                container.setVisibility(GONE);
+                showErrorState();
             });
 
             stringRequest.setRetryPolicy(new DefaultRetryPolicy(
@@ -246,6 +243,78 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         });
 
         return dialog;
+    }
+
+    private void showLoadedContent() {
+        if (loadingProgress != null) {
+            loadingProgress.animate().cancel();
+            loadingProgress.animate()
+                    .alpha(0f)
+                    .scaleX(0.92f)
+                    .scaleY(0.92f)
+                    .setDuration(USER_LOADING_EXIT_DURATION_MS)
+                    .setInterpolator(EMPHASIZED_DECELERATE)
+                    .withEndAction(() -> {
+                        if (loadingProgress != null) {
+                            loadingProgress.setVisibility(GONE);
+                            loadingProgress.setAlpha(1f);
+                            loadingProgress.setScaleX(1f);
+                            loadingProgress.setScaleY(1f);
+                        }
+                        animateLoadedContentIn();
+                    })
+                    .start();
+        } else {
+            animateLoadedContentIn();
+        }
+    }
+
+    private void animateLoadedContentIn() {
+        if (errorLayout != null) {
+            errorLayout.setVisibility(GONE);
+        }
+
+        if (container == null) {
+            return;
+        }
+
+        container.animate().cancel();
+        container.setVisibility(View.VISIBLE);
+        container.setAlpha(0f);
+        container.setTranslationY(Utils.pxFromDpInt(getResources(), 8));
+        container.setScaleX(0.98f);
+        container.setScaleY(0.98f);
+        container.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(USER_CONTENT_ENTER_DURATION_MS)
+                .setInterpolator(EMPHASIZED_DECELERATE)
+                .start();
+    }
+
+    private void showErrorState() {
+        if (loadingProgress != null) {
+            loadingProgress.animate().cancel();
+            loadingProgress.setVisibility(GONE);
+            loadingProgress.setAlpha(1f);
+            loadingProgress.setScaleX(1f);
+            loadingProgress.setScaleY(1f);
+        }
+
+        if (container != null) {
+            container.animate().cancel();
+            container.setVisibility(GONE);
+            container.setAlpha(1f);
+            container.setTranslationY(0f);
+            container.setScaleX(1f);
+            container.setScaleY(1f);
+        }
+
+        if (errorLayout != null) {
+            errorLayout.setVisibility(View.VISIBLE);
+        }
     }
 
     public interface UserDialogCallback {
