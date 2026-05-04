@@ -12,6 +12,8 @@ public class Changelog {
                 "- Added support for latex in ArXiV link preview<br>" +
                 "- Improved navigation animation between settings screens<br>" +
                 "- Added ability to share Hacker News links to Harmonic<br>" +
+                "- Added support for polls vis Algolia API<br>" +
+                "- Update loading indicator style for pull to refresh to Material 3 Expressive<br>" +
                 "- Made comment scroll speed adaptive<br>" +
                 "<br>" +
                 "<b>Version 2.3.1:</b><br>" +
