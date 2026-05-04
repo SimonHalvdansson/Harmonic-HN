@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     tools:context=".SubmissionsActivity">
 
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+    <androidx.swiperefreshlayout.widget.MaterialExpressiveSwipeRefreshLayout
         android:id="@+id/submissions_swiperefreshlayout"
         android:clipToPadding="false"
         android:paddingLeft="@dimen/single_view_side_margin"
@@ -22,7 +22,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+    </androidx.swiperefreshlayout.widget.MaterialExpressiveSwipeRefreshLayout>
 
     <com.google.android.material.loadingindicator.LoadingIndicator
         android:id="@+id/submissions_initial_loading"

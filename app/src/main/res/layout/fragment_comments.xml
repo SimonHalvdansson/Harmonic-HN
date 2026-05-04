@@ -90,7 +90,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            <androidx.swiperefreshlayout.widget.MaterialExpressiveSwipeRefreshLayout
                 android:id="@+id/comments_swipe_refresh"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
@@ -103,7 +103,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"       />
 
-            </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+            </androidx.swiperefreshlayout.widget.MaterialExpressiveSwipeRefreshLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/comments_recyclerview"
