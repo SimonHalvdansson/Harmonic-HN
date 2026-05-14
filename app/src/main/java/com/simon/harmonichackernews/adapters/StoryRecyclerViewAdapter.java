@@ -304,11 +304,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private void bindPreviewImage(final StoryViewHolder storyViewHolder, final Story story) {
-        if (SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
-                || story.loadingFailed
-                || story.isComment
-                || TextUtils.isEmpty(story.url)
-                || story.previewImageLoadFailed) {
+        if (!shouldLoadPreviewImage(story)) {
             return;
         }
 
@@ -317,11 +313,38 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return;
         }
 
+        loadPreviewImageUrl(storyViewHolder.itemView.getContext(), story);
+    }
+
+    public void prefetchPreviewImage(Context context, Story story) {
+        if (!shouldLoadPreviewImage(story)) {
+            return;
+        }
+
+        if (!TextUtils.isEmpty(story.previewImageUrl)) {
+            prefetchPreviewImageDrawable(context, story);
+            return;
+        }
+
+        loadPreviewImageUrl(context, story);
+    }
+
+    private boolean shouldLoadPreviewImage(Story story) {
+        return !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                && story.loaded
+                && !story.loadingFailed
+                && !story.isComment
+                && !TextUtils.isEmpty(story.url)
+                && !story.previewImageLoadFailed;
+    }
+
+    private void loadPreviewImageUrl(@Nullable Context context, Story story) {
         if (story.previewImageUrlLoaded || story.previewImageUrlLoading) {
             return;
         }
 
         story.previewImageUrlLoading = true;
+        Context appContext = context == null ? null : context.getApplicationContext();
         StoryPreviewImageLoader.loadPreviewImageUrl(story.url, imageUrl -> {
             story.previewImageUrlLoading = false;
             story.previewImageUrlLoaded = true;
@@ -331,11 +354,52 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             story.previewImageUrl = imageUrl;
             story.previewImageLoadFailed = false;
+            prefetchPreviewImageDrawable(appContext, story);
             int index = stories.indexOf(story);
             if (index >= 0 && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)) {
                 notifyItemChanged(index);
             }
         });
+    }
+
+    private void prefetchPreviewImageDrawable(@Nullable Context context, Story story) {
+        if (context == null
+                || TextUtils.isEmpty(story.previewImageUrl)
+                || story.previewImageLoaded
+                || story.previewImageLoading) {
+            return;
+        }
+
+        story.previewImageLoading = true;
+        int previewWidth = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
+                ? context.getResources().getDisplayMetrics().widthPixels
+                : Utils.pxFromDpInt(context.getResources(), 72);
+        int previewHeight = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
+                ? Utils.pxFromDpInt(context.getResources(), 176)
+                : Utils.pxFromDpInt(context.getResources(), 54);
+        ImageRequest request = new ImageRequest.Builder(context)
+                .data(story.previewImageUrl)
+                .size(previewWidth, previewHeight)
+                .target(new Target() {
+                    @Override
+                    public void onStart(Drawable placeholder) {
+                        story.previewImageLoading = true;
+                    }
+
+                    @Override
+                    public void onError(Drawable error) {
+                        story.previewImageLoading = false;
+                    }
+
+                    @Override
+                    public void onSuccess(Drawable result) {
+                        story.previewImageLoading = false;
+                        story.previewImageLoaded = true;
+                    }
+                })
+                .build();
+
+        Coil.imageLoader(context).enqueue(request);
     }
 
     private void loadPreviewImage(final StoryViewHolder storyViewHolder, final Story story) {
@@ -361,6 +425,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 .target(new Target() {
                     @Override
                     public void onStart(Drawable placeholder) {
+                        story.previewImageLoading = true;
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
                             previewImage.setImageDrawable(null);
                             previewImage.setVisibility(View.GONE);
@@ -369,6 +434,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
                     @Override
                     public void onError(Drawable error) {
+                        story.previewImageLoading = false;
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
                             story.previewImageLoadFailed = true;
                             previewImage.setImageDrawable(null);
@@ -378,6 +444,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
                     @Override
                     public void onSuccess(Drawable result) {
+                        story.previewImageLoading = false;
+                        story.previewImageLoaded = true;
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
                             previewImage.setImageDrawable(result);
                             previewImage.setVisibility(View.VISIBLE);

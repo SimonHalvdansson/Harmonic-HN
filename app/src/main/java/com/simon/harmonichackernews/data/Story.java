@@ -21,6 +21,8 @@ public class Story {
     public transient String previewImageUrl;
     public transient boolean previewImageUrlLoaded;
     public transient boolean previewImageUrlLoading;
+    public transient boolean previewImageLoaded;
+    public transient boolean previewImageLoading;
     public transient boolean previewImageLoadFailed;
     public int[] kids;
     public int[] pollOptions;

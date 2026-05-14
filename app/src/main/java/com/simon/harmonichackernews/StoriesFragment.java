@@ -161,6 +161,7 @@ public class StoriesFragment extends Fragment {
     private int loadedTo = -1;
     private boolean paginationMode = false;
     private static final int PAGINATION_PAGE_SIZE = 30;
+    private static final int STORY_VISIBLE_PREFETCH_THRESHOLD = 17;
 
     public final static String[] hnUrls = new String[]{Utils.URL_TOP, Utils.URL_NEW, Utils.URL_BEST, Utils.URL_ASK, Utils.URL_SHOW, Utils.URL_JOBS};
 
@@ -334,18 +335,17 @@ public class StoriesFragment extends Fragment {
 
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 
-            int lastVisibleItem;
-
             @Override
             public void onScrolled(@NotNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
 
-                // Only enable infinite scroll if pagination mode is OFF
-                if (!searching && !paginationMode) {
-                    lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
+                int firstVisibleItem = linearLayoutManager.findFirstVisibleItemPosition();
+                int lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
+                prefetchLoadedPreviewImagesNearViewport(firstVisibleItem, lastVisibleItem);
 
-                    int visibleThreshold = 17;
-                    for (int i = loadedTo + 1; i < Math.min(lastVisibleItem + visibleThreshold, stories.size()); i++) {
+                // Only enable infinite scroll if pagination mode is OFF
+                if (!searching && !paginationMode && !currentTypeIsAlgolia()) {
+                    for (int i = loadedTo + 1; i < Math.min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories.size()); i++) {
                         loadedTo = i;
 
                         loadStory(stories.get(i), 0);
@@ -1389,6 +1389,7 @@ public class StoriesFragment extends Fragment {
         if (!adapter.previewImageMode.equals(previewImageMode)) {
             adapter.previewImageMode = previewImageMode;
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+            scheduleLoadedPreviewImagePrefetchNearViewport();
         }
 
         if (adapter.showIndex != SettingsUtils.shouldShowIndex(getContext())) {
@@ -1638,6 +1639,11 @@ public class StoriesFragment extends Fragment {
                             adapter.notifyItemRemoved(index);
                             loadedTo = Math.max(-1, loadedTo - 1);
                             return;
+                        }
+
+                        Context context = getContext();
+                        if (context != null) {
+                            adapter.prefetchPreviewImage(context, story);
                         }
 
                         adapter.notifyItemChanged(index);
@@ -2232,6 +2238,52 @@ public class StoriesFragment extends Fragment {
         }
     }
 
+    private void scheduleLoadedPreviewImagePrefetchNearViewport() {
+        if (recyclerView == null) {
+            return;
+        }
+
+        recyclerView.post(this::prefetchLoadedPreviewImagesNearViewport);
+    }
+
+    private void prefetchLoadedPreviewImagesNearViewport() {
+        if (linearLayoutManager == null) {
+            return;
+        }
+
+        prefetchLoadedPreviewImagesNearViewport(
+                linearLayoutManager.findFirstVisibleItemPosition(),
+                linearLayoutManager.findLastVisibleItemPosition()
+        );
+    }
+
+    private void prefetchLoadedPreviewImagesNearViewport(int firstVisibleItem, int lastVisibleItem) {
+        Context context = getContext();
+        if (context == null
+                || adapter == null
+                || stories == null
+                || stories.isEmpty()
+                || SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(adapter.previewImageMode)) {
+            return;
+        }
+
+        int firstIndex = firstVisibleItem == RecyclerView.NO_POSITION ? 0 : Math.max(0, firstVisibleItem);
+        int lastIndex = lastVisibleItem == RecyclerView.NO_POSITION
+                ? Math.min(getInitialLoadCount() - 1, stories.size() - 1)
+                : Math.min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories.size() - 1);
+        if (paginationMode) {
+            lastIndex = Math.min(lastIndex, adapter.visibleStoryCount - 1);
+        }
+
+        if (lastIndex < firstIndex) {
+            return;
+        }
+
+        for (int i = firstIndex; i <= lastIndex; i++) {
+            adapter.prefetchPreviewImage(context, stories.get(i));
+        }
+    }
+
     private void updateSearchStatus() {
         hideUpdateButton();
         boolean restoredStories = false;
@@ -2502,6 +2554,7 @@ public class StoriesFragment extends Fragment {
         loadingFailedServerError = false;
         replaceStories(finishedStories);
         loadedTo = stories.size() - 1;
+        scheduleLoadedPreviewImagePrefetchNearViewport();
         updateHeader();
     }
 
@@ -2597,6 +2650,7 @@ public class StoriesFragment extends Fragment {
                             } else {
                                 replaceStories(parsedStories);
                                 loadedTo = stories.size() - 1;
+                                scheduleLoadedPreviewImagePrefetchNearViewport();
                             }
                             updateHeader();
                         }
