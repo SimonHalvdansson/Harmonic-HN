@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.utils;
 
 public class Changelog {
     static public String getHTML() {
-        return  "<b>Version 2.5:</b><br>" +
+        return  "<b>Version 3.0:</b><br>" +
                 "- Added support for HN Favorites. You can convert all your bookmarks to favorites in Settings -> Data -> Bookmarks and also disable bookmarks from there.<br>" +
                 "- Added optional story preview images" +
                 "- Added ability to bookmark comments<br>" +
