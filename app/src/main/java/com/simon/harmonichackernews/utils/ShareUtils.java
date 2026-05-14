@@ -39,4 +39,11 @@ public class ShareUtils {
         return getShareIntent(title + " | " + SHARE_BASE_URL + id);
     }
 
+    public static Intent getShareIntentWithTitle(String title, int id, String url) {
+
+        String content = String.format("%1$s | %2$s\n\n---\n\nHacker News Comments | %3$s", title, url, SHARE_BASE_URL + id);
+
+        return getShareIntent(content);
+    }
+
 }

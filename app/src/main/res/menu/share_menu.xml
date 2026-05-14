@@ -17,4 +17,8 @@
         android:id="@+id/menu_hacker_news_link_title"
         android:title="HN link and title" />
 
+    <item
+        android:id="@+id/menu_link_title_and_hacker_news_link_title"
+        android:title="Article + HN link and title" />
+
 </menu>

@@ -2373,7 +2373,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     startActivity(ShareUtils.getShareIntent(adapter.story.id));
                 } else if (itemId == R.id.menu_hacker_news_link_title) {
                     startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.id));
+                } else if (itemId == R.id.menu_link_title_and_hacker_news_link_title) {
+                    startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.id, adapter.story.url));
                 }
+
 
                 return true;
             }

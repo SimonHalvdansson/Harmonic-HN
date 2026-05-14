@@ -13,6 +13,7 @@ public class Changelog {
                 "- Always enable foldable support<br>" +
                 "- Added button to only show comment threads where the OP has commented<br>" +
                 "- Added new setting for graying out clicked posts<br>" +
+                "- Added new sharing option for link + HN comments (thanks daniel-egan!)" +
                 "<br>" +
                 "<b>Version 2.4:</b><br>" +
                 "- Redesigned search, including adding search options<br>" +
