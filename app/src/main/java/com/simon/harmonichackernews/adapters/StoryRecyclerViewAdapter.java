@@ -345,7 +345,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         story.previewImageUrlLoading = true;
         Context appContext = context == null ? null : context.getApplicationContext();
-        StoryPreviewImageLoader.loadPreviewImageUrl(story.url, imageUrl -> {
+        StoryPreviewImageLoader.loadPreviewImageUrl(appContext, story.id, story.url, imageUrl -> {
             story.previewImageUrlLoading = false;
             story.previewImageUrlLoaded = true;
             if (TextUtils.isEmpty(imageUrl)) {

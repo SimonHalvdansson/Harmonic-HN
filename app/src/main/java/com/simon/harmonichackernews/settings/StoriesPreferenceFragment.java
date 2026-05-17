@@ -4,13 +4,14 @@ import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.os.Bundle;
 
-import androidx.annotation.NonNull;
+import androidx.preference.Preference;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.widget.StoriesRemoteViewsFactory;
 import com.simon.harmonichackernews.widget.StoriesWidgetProvider;
 
 public class StoriesPreferenceFragment extends BaseSettingsFragment {
+    private Preference grayOutClickedPreference;
 
     @Override
     protected String getToolbarTitle() {
@@ -23,10 +24,12 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
 
         boolean compact = SettingsUtils.shouldUseCompactView(getContext());
         StoryContentPreviewPreference previewPreference = findPreference("pref_story_content_preview");
+        grayOutClickedPreference = findPreference(SettingsUtils.PREF_GRAY_OUT_CLICKED);
 
         changePrefStatus(findPreference("pref_show_points"), !compact);
         changePrefStatus(findPreference("pref_show_comments_count"), !compact);
         changePrefStatus(findPreference("pref_thumbnails"), !compact);
+        updateGrayOutClickedPreference();
 
         if (SettingsUtils.shouldShowThumbnails(getContext())) {
             changePrefStatus(findPreference("pref_favicon_provider"), !compact);
@@ -112,11 +115,20 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
         });
 
         findPreference(SettingsUtils.PREF_HIDE_CLICKED).setOnPreferenceChangeListener((preference, newValue) -> {
+            updateGrayOutClickedPreference(!(boolean) newValue);
             SettingsCallback callback = getSettingsCallback();
             if (callback != null) {
                 callback.onRequestRestart();
             }
             return true;
         });
+    }
+
+    private void updateGrayOutClickedPreference() {
+        updateGrayOutClickedPreference(!SettingsUtils.shouldHideClicked(getContext()));
+    }
+
+    private void updateGrayOutClickedPreference(boolean enabled) {
+        changePrefStatus(grayOutClickedPreference, enabled);
     }
 }

@@ -38,6 +38,7 @@ import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
+import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import androidx.core.util.Pair;
 
 import org.json.JSONArray;
@@ -257,6 +258,8 @@ public class Utils {
                 deleteFileOrDirectory(cachedArticleFile);
             }
         }
+
+        StoryPreviewImageLoader.clearDiskCache(ctx);
 
         return cachedPostIds.size();
     }

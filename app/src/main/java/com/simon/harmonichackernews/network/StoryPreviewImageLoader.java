@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.network;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
@@ -29,10 +31,17 @@ public class StoryPreviewImageLoader {
     }
 
     private static final int MAX_CACHE_SIZE = 300;
+    private static final int MAX_DISK_CACHE_SIZE = 1000;
+    private static final String PREVIEW_IMAGE_CACHE_PREFERENCES =
+            "com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES";
+    private static final String KEY_PREVIEW_IMAGE_CACHE_ORDER =
+            "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_CACHE_ORDER";
+    private static final String KEY_PREVIEW_IMAGE_URL =
+            "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_URL";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
     private static final Map<String, String> IMAGE_CACHE = new HashMap<>();
     private static final Set<String> MISS_CACHE = new HashSet<>();
-    private static final Map<String, List<PreviewImageCallback>> PENDING_CALLBACKS = new HashMap<>();
+    private static final Map<String, List<PendingPreviewImageRequest>> PENDING_CALLBACKS = new HashMap<>();
 
     private static final String[] IMAGE_SELECTORS = new String[]{
             "meta[property=og:image:secure_url]",
@@ -44,7 +53,30 @@ public class StoryPreviewImageLoader {
             "link[rel=image_src]"
     };
 
+    private static class PendingPreviewImageRequest {
+        final Context context;
+        final int storyId;
+        final PreviewImageCallback callback;
+
+        PendingPreviewImageRequest(Context context, int storyId, PreviewImageCallback callback) {
+            this.context = context;
+            this.storyId = storyId;
+            this.callback = callback;
+        }
+    }
+
     public static void loadPreviewImageUrl(String pageUrl, PreviewImageCallback callback) {
+        loadPreviewImageUrl(null, 0, pageUrl, callback);
+    }
+
+    public static void loadPreviewImageUrl(Context context, int storyId, String pageUrl, PreviewImageCallback callback) {
+        Context appContext = context == null ? null : context.getApplicationContext();
+        String cachedDiskImageUrl = loadCachedPreviewImageUrl(appContext, storyId);
+        if (!TextUtils.isEmpty(cachedDiskImageUrl)) {
+            postResult(callback, cachedDiskImageUrl);
+            return;
+        }
+
         String normalizedPageUrl = normalizeHttpUrl(pageUrl);
         if (TextUtils.isEmpty(normalizedPageUrl)) {
             postResult(callback, null);
@@ -52,6 +84,7 @@ public class StoryPreviewImageLoader {
         }
 
         if (isLikelyImageUrl(normalizedPageUrl)) {
+            saveCachedPreviewImageUrl(appContext, storyId, normalizedPageUrl);
             postResult(callback, normalizedPageUrl);
             return;
         }
@@ -59,6 +92,7 @@ public class StoryPreviewImageLoader {
         synchronized (StoryPreviewImageLoader.class) {
             String cachedImageUrl = IMAGE_CACHE.get(normalizedPageUrl);
             if (!TextUtils.isEmpty(cachedImageUrl)) {
+                saveCachedPreviewImageUrl(appContext, storyId, cachedImageUrl);
                 postResult(callback, cachedImageUrl);
                 return;
             }
@@ -68,14 +102,14 @@ public class StoryPreviewImageLoader {
                 return;
             }
 
-            List<PreviewImageCallback> pendingCallbacks = PENDING_CALLBACKS.get(normalizedPageUrl);
+            List<PendingPreviewImageRequest> pendingCallbacks = PENDING_CALLBACKS.get(normalizedPageUrl);
             if (pendingCallbacks != null) {
-                pendingCallbacks.add(callback);
+                pendingCallbacks.add(new PendingPreviewImageRequest(appContext, storyId, callback));
                 return;
             }
 
             pendingCallbacks = new ArrayList<>();
-            pendingCallbacks.add(callback);
+            pendingCallbacks.add(new PendingPreviewImageRequest(appContext, storyId, callback));
             PENDING_CALLBACKS.put(normalizedPageUrl, pendingCallbacks);
         }
 
@@ -187,9 +221,9 @@ public class StoryPreviewImageLoader {
     }
 
     private static void finish(String pageUrl, String imageUrl) {
-        List<PreviewImageCallback> callbacks;
+        List<PendingPreviewImageRequest> pendingRequests;
         synchronized (StoryPreviewImageLoader.class) {
-            callbacks = PENDING_CALLBACKS.remove(pageUrl);
+            pendingRequests = PENDING_CALLBACKS.remove(pageUrl);
             if (TextUtils.isEmpty(imageUrl)) {
                 MISS_CACHE.add(pageUrl);
             } else {
@@ -201,18 +235,119 @@ public class StoryPreviewImageLoader {
             }
         }
 
-        if (callbacks == null) {
+        if (pendingRequests == null) {
             return;
         }
 
+        if (!TextUtils.isEmpty(imageUrl)) {
+            for (PendingPreviewImageRequest pendingRequest : pendingRequests) {
+                saveCachedPreviewImageUrl(pendingRequest.context, pendingRequest.storyId, imageUrl);
+            }
+        }
+
         MAIN_HANDLER.post(() -> {
-            for (PreviewImageCallback callback : callbacks) {
-                callback.onPreviewImageUrlLoaded(imageUrl);
+            for (PendingPreviewImageRequest pendingRequest : pendingRequests) {
+                pendingRequest.callback.onPreviewImageUrlLoaded(imageUrl);
             }
         });
     }
 
     private static void postResult(PreviewImageCallback callback, String imageUrl) {
         MAIN_HANDLER.post(() -> callback.onPreviewImageUrlLoaded(imageUrl));
+    }
+
+    public static void clearDiskCache(Context context) {
+        if (context == null) {
+            return;
+        }
+
+        synchronized (StoryPreviewImageLoader.class) {
+            SharedPreferences preferences = getPreviewImageCachePreferences(context);
+            SharedPreferences.Editor editor = preferences.edit();
+            for (String key : preferences.getAll().keySet()) {
+                if (KEY_PREVIEW_IMAGE_CACHE_ORDER.equals(key)
+                        || key.startsWith(KEY_PREVIEW_IMAGE_URL)) {
+                    editor.remove(key);
+                }
+            }
+            editor.apply();
+        }
+    }
+
+    private static String loadCachedPreviewImageUrl(Context context, int storyId) {
+        if (context == null || storyId <= 0) {
+            return null;
+        }
+
+        synchronized (StoryPreviewImageLoader.class) {
+            SharedPreferences preferences = getPreviewImageCachePreferences(context);
+            String imageUrl = preferences.getString(getPreviewImageUrlKey(storyId), null);
+            if (!TextUtils.isEmpty(imageUrl)) {
+                movePreviewImageCacheIdToEnd(preferences, storyId);
+            }
+            return imageUrl;
+        }
+    }
+
+    private static void saveCachedPreviewImageUrl(Context context, int storyId, String imageUrl) {
+        if (context == null || storyId <= 0 || TextUtils.isEmpty(imageUrl)) {
+            return;
+        }
+
+        synchronized (StoryPreviewImageLoader.class) {
+            SharedPreferences preferences = getPreviewImageCachePreferences(context);
+            List<String> orderedIds = readPreviewImageCacheOrder(preferences);
+            String storyIdString = String.valueOf(storyId);
+            orderedIds.remove(storyIdString);
+            orderedIds.add(storyIdString);
+
+            SharedPreferences.Editor editor = preferences.edit()
+                    .putString(getPreviewImageUrlKey(storyId), imageUrl);
+
+            while (orderedIds.size() > MAX_DISK_CACHE_SIZE) {
+                String oldestId = orderedIds.remove(0);
+                editor.remove(getPreviewImageUrlKey(oldestId));
+            }
+
+            editor.putString(KEY_PREVIEW_IMAGE_CACHE_ORDER, TextUtils.join(",", orderedIds)).apply();
+        }
+    }
+
+    private static void movePreviewImageCacheIdToEnd(SharedPreferences preferences, int storyId) {
+        List<String> orderedIds = readPreviewImageCacheOrder(preferences);
+        String storyIdString = String.valueOf(storyId);
+        orderedIds.remove(storyIdString);
+        orderedIds.add(storyIdString);
+        preferences.edit()
+                .putString(KEY_PREVIEW_IMAGE_CACHE_ORDER, TextUtils.join(",", orderedIds))
+                .apply();
+    }
+
+    private static List<String> readPreviewImageCacheOrder(SharedPreferences preferences) {
+        List<String> orderedIds = new ArrayList<>();
+        String order = preferences.getString(KEY_PREVIEW_IMAGE_CACHE_ORDER, "");
+        if (TextUtils.isEmpty(order)) {
+            return orderedIds;
+        }
+
+        String[] storyIds = order.split(",");
+        for (String storyId : storyIds) {
+            if (!TextUtils.isEmpty(storyId) && !orderedIds.contains(storyId)) {
+                orderedIds.add(storyId);
+            }
+        }
+        return orderedIds;
+    }
+
+    private static SharedPreferences getPreviewImageCachePreferences(Context context) {
+        return context.getSharedPreferences(PREVIEW_IMAGE_CACHE_PREFERENCES, Context.MODE_PRIVATE);
+    }
+
+    private static String getPreviewImageUrlKey(int storyId) {
+        return getPreviewImageUrlKey(String.valueOf(storyId));
+    }
+
+    private static String getPreviewImageUrlKey(String storyId) {
+        return KEY_PREVIEW_IMAGE_URL + storyId;
     }
 }

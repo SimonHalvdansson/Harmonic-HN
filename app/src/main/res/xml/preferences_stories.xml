@@ -116,17 +116,17 @@
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
-            app:key="pref_gray_out_clicked"
-            app:defaultValue="true"
-            app:icon="@drawable/ic_action_eye"
-            app:title="Gray out clicked posts" />
-
-        <SwitchPreferenceCompat
-            app:singleLineTitle="false"
             app:key="pref_hide_clicked"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_hide"
             app:title="Hide clicked posts" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_gray_out_clicked"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_eye"
+            app:title="Gray out clicked posts" />
 
         <ListPreference
             app:singleLineTitle="false"
