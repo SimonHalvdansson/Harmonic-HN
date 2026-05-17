@@ -63,6 +63,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final int TYPE_STORY_CARD = 6;
     private static final int TYPE_STORY_CARD_LEFT = 7;
     private static final int TYPE_COMMENT_CARD = 8;
+    private static final float CLICKED_PREVIEW_IMAGE_ALPHA = 0.6f;
 
     public boolean showPoints;
     public boolean showCommentsCount;
@@ -153,6 +154,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyViewHolder.story = stories.get(position);
             boolean useClickedEffects = storyViewHolder.story.clicked && grayOutClicked && !disableClickedEffects;
             resetPreviewImages(storyViewHolder);
+            setPreviewImageAlpha(storyViewHolder, useClickedEffects);
 
             if (showIndex) {
                 int displayIndex = position + 1;
@@ -468,8 +470,21 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         previewImage.setTag(null);
+        previewImage.setAlpha(1.0f);
         previewImage.setImageDrawable(null);
         previewImage.setVisibility(View.GONE);
+    }
+
+    private static void setPreviewImageAlpha(StoryViewHolder storyViewHolder, boolean useClickedEffects) {
+        float alpha = useClickedEffects ? CLICKED_PREVIEW_IMAGE_ALPHA : 1.0f;
+        setPreviewImageAlpha(storyViewHolder.smallPreviewImage, alpha);
+        setPreviewImageAlpha(storyViewHolder.largePreviewImage, alpha);
+    }
+
+    private static void setPreviewImageAlpha(ImageView previewImage, float alpha) {
+        if (previewImage != null) {
+            previewImage.setAlpha(alpha);
+        }
     }
 
     private static boolean isCurrentPreviewTarget(ImageView previewImage, String imageUrl) {
