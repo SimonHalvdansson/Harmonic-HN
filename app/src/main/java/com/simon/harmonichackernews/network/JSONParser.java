@@ -54,12 +54,12 @@ public class JSONParser {
             }
 
             if (hit.has("story_text") && !hit.getString("story_text").equals(JSON_NULL_LITERAL)) {
-                story.text = preprocessHtml(hit.getString("story_text"));
+                updateStoryText(story, hit.getString("story_text"));
             }
 
             if (isComment) {
                 story.isComment = true;
-                story.text = preprocessHtml(hit.optString("comment_text", ""));
+                updateStoryText(story, hit.optString("comment_text", ""));
                 story.commentMasterTitle = hit.getString("story_title");
                 story.commentMasterId = hit.getInt("story_id");
                 story.parentId = hit.optInt("parent_id", 0);
@@ -145,7 +145,7 @@ public class JSONParser {
         }
 
         if (jsonObject.has("text")) {
-            story.text = preprocessHtml(jsonObject.getString("text"));
+            updateStoryText(story, jsonObject.getString("text"));
         }
 
         updatePdfProperties(story);
@@ -193,7 +193,7 @@ public class JSONParser {
         story.url = "https://news.ycombinator.com/item?id=" + story.id;
         story.isLink = false;
         if (jsonObject.has("text")) {
-            story.text = preprocessHtml(jsonObject.getString("text"));
+            updateStoryText(story, jsonObject.getString("text"));
         }
 
         story.loaded = true;
@@ -259,7 +259,7 @@ public class JSONParser {
         }
 
         if (item.has("text") && !item.getString("text").equals(JSON_NULL_LITERAL)) {
-            story.text = preprocessHtml(item.getString("text"));
+            updateStoryText(story, item.getString("text"));
         }
 
         story.descendants = newCommentCount - 1; // -1 for header
@@ -383,6 +383,14 @@ public class JSONParser {
         }
     }
 
+    private static void updateStoryText(Story story, String rawText) {
+        String text = preprocessHtml(rawText);
+        if (!TextUtils.equals(story.text, text)) {
+            story.spannedText = null;
+        }
+        story.text = text;
+    }
+
     public static String preprocessHtml(String input) {
         if (input == null || input.isEmpty()) {
             return input;
@@ -498,7 +506,7 @@ public class JSONParser {
             }
 
             if (jsonObject.has("text")) {
-                story.text = preprocessHtml(jsonObject.getString("text"));
+                updateStoryText(story, jsonObject.getString("text"));
             }
 
             updatePdfProperties(story);
