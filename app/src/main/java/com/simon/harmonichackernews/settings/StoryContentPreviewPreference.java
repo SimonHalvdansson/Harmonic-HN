@@ -340,7 +340,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
         updateStoryIndex(showIndex);
         updatePreviewImage(previewImageMode);
-        updatePoints(showPoints, animate);
+        updatePointsText(showPoints);
         updateCommentCount(showCommentsCount, compact, animate);
         updateHotnessIcon(hotness, animate);
         if (syncHeight) {
@@ -602,7 +602,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         return null;
     }
 
-    private void updatePoints(boolean showPoints, boolean animateIgnored) {
+    private void updatePointsText(boolean showPoints) {
         if (storyMeta == null) {
             return;
         }

@@ -57,8 +57,6 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.math.BigDecimal;
 import java.net.URI;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1017,27 +1015,11 @@ public class Utils {
         return packagesSupportingCustomTabs;
     }
 
-    public static int[] JSONArrayToIntArray(JSONArray jsonArray){
-        int[] intArray = new int[jsonArray.length()];
-        for (int i = 0; i < intArray.length; ++i) {
-            intArray[i] = jsonArray.optInt(i);
-        }
-        return intArray;
-    }
-
     public static int getColorViaAttr(Context ctx, int attr) {
         TypedValue typedValue = new TypedValue();
         Resources.Theme theme = ctx.getTheme();
         theme.resolveAttribute(attr, typedValue, true);
         return typedValue.data;
-    }
-
-    public static String thousandSeparated(int n) {
-        DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance();
-        symbols.setGroupingSeparator(' ');
-
-        DecimalFormat formatter = new DecimalFormat("###,###.##", symbols);
-        return formatter.format(new BigDecimal(n).longValue());
     }
 
     public static void writeInFile(Context ctx, Uri uri, String text) throws IOException {

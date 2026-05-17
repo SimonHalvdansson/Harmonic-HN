@@ -6,7 +6,6 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.net.Uri;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -145,13 +144,6 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_empty_text, "Couldn\u2019t load stories");
         // Keep previous timestamp if any
         views.setTextViewText(R.id.widget_updated_text, formatUpdatedTime(context, appWidgetId));
-        appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views);
-    }
-
-    private static void applyThemeColors(Context context, AppWidgetManager appWidgetManager,
-                                         int appWidgetId) {
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_stories);
-        bindWidgetCommonViews(context, views, appWidgetId);
         appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views);
     }
 
