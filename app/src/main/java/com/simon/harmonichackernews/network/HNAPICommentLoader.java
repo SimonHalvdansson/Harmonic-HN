@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.network;
 
-import android.content.Context;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;

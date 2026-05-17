@@ -43,7 +43,6 @@ import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
-import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import coil.Coil;
 import coil.request.ImageRequest;

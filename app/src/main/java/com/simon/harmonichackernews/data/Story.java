@@ -2,8 +2,6 @@ package com.simon.harmonichackernews.data;
 
 import android.os.Bundle;
 import android.text.Spanned;
-import android.text.TextUtils;
-
 import com.simon.harmonichackernews.CommentsFragment;
 import com.simon.harmonichackernews.utils.Utils;
 

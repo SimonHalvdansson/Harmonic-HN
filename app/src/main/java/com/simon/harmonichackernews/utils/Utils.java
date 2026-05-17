@@ -2,8 +2,6 @@ package com.simon.harmonichackernews.utils;
 
 import static androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION;
 
-import static com.simon.harmonichackernews.utils.UtilsKt.KEY_SHARED_PREFERENCES_HISTORIES;
-
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -13,10 +11,8 @@ import android.content.res.Resources;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
-import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.TypedValue;
@@ -27,10 +23,7 @@ import androidx.annotation.NonNull;
 import androidx.browser.customtabs.CustomTabColorSchemeParams;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.content.ContextCompat;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.preference.PreferenceManager;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.simon.harmonichackernews.BuildConfig;
 import com.simon.harmonichackernews.CommentsActivity;
@@ -60,7 +53,6 @@ import java.net.URI;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -71,8 +63,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import kotlin.Suppress;
 
 public class Utils {
 

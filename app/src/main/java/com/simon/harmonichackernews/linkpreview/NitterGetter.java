@@ -4,25 +4,10 @@ import android.content.Context;
 import android.text.TextUtils;
 import android.webkit.ValueCallback;
 import android.webkit.WebView;
-import android.widget.Toast;
-
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.StringRequest;
 import com.simon.harmonichackernews.data.NitterInfo;
-import com.simon.harmonichackernews.data.WikipediaInfo;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class NitterGetter {
 

@@ -16,7 +16,6 @@ import androidx.fragment.app.FragmentManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.utils.AccountUtils;
-import com.simon.harmonichackernews.utils.EncryptedSharedPreferencesHelper;
 import com.simon.harmonichackernews.utils.Utils;
 
 import org.jetbrains.annotations.NotNull;

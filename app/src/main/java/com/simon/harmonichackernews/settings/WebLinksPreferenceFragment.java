@@ -2,8 +2,6 @@ package com.simon.harmonichackernews.settings;
 
 import android.os.Bundle;
 
-import androidx.preference.Preference;
-
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
