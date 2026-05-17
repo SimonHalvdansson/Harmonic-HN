@@ -126,6 +126,7 @@ public class StoriesFragment extends Fragment {
     private StoryRecyclerViewAdapter adapter;
     private ArrayAdapter<CharSequence> typeSpinnerAdapter;
     private List<Story> stories;
+    private final ArrayList<Story> bookmarkStories = new ArrayList<>();
     private final ArrayList<Story> userItemListStories = new ArrayList<>();
     private Set<Integer> userItemListCommentIds = new HashSet<>();
     private RequestQueue queue;
@@ -481,8 +482,8 @@ public class StoriesFragment extends Fragment {
             }
 
             userItemListFilter = newFilter;
-            if (isUserItemListType(adapter.type)) {
-                applyUserItemListFilter(true);
+            if (currentTypeUsesSavedItemFilter()) {
+                applySavedItemFilter(true);
             }
         });
 
@@ -626,10 +627,11 @@ public class StoriesFragment extends Fragment {
         boolean favoritesType = isFavoritesType(adapter.type);
         boolean upvotedType = isUpvotedType(adapter.type);
         boolean userItemListType = favoritesType || upvotedType;
-        userItemFilterGroup.setVisibility(!searching && userItemListType ? View.VISIBLE : View.GONE);
+        boolean savedItemSourceHasItems = currentSavedItemSourceHasItems();
+        userItemFilterGroup.setVisibility(!searching && currentTypeUsesSavedItemFilter() && savedItemSourceHasItems ? View.VISIBLE : View.GONE);
         if (noBookmarksImage != null && noBookmarksText != null) {
             noBookmarksImage.setImageResource(getEmptySavedListIcon(favoritesType, upvotedType));
-            noBookmarksText.setText(getEmptySavedListText(favoritesType, upvotedType));
+            noBookmarksText.setText(getEmptySavedListText(favoritesType, upvotedType, savedItemSourceHasItems));
         }
 
         if (searching) {
@@ -699,8 +701,11 @@ public class StoriesFragment extends Fragment {
         return R.drawable.ic_action_bookmark_border;
     }
 
-    private String getEmptySavedListText(boolean favoritesType, boolean upvotedType) {
+    private String getEmptySavedListText(boolean favoritesType, boolean upvotedType, boolean savedItemSourceHasItems) {
         if (favoritesType) {
+            if (!savedItemSourceHasItems) {
+                return "No favorites";
+            }
             if (userItemListFilter == USER_ITEM_LIST_FILTER_STORIES) {
                 return "No favorite stories";
             }
@@ -710,6 +715,9 @@ public class StoriesFragment extends Fragment {
             return "No favorites";
         }
         if (upvotedType) {
+            if (!savedItemSourceHasItems) {
+                return "No upvoted items";
+            }
             if (userItemListFilter == USER_ITEM_LIST_FILTER_STORIES) {
                 return "No upvoted stories";
             }
@@ -717,6 +725,15 @@ public class StoriesFragment extends Fragment {
                 return "No upvoted comments";
             }
             return "No upvoted items";
+        }
+        if (!savedItemSourceHasItems) {
+            return "No bookmarks";
+        }
+        if (userItemListFilter == USER_ITEM_LIST_FILTER_STORIES) {
+            return "No bookmarked stories";
+        }
+        if (userItemListFilter == USER_ITEM_LIST_FILTER_COMMENTS) {
+            return "No bookmarked comments";
         }
         return "No bookmarks";
     }
@@ -1252,8 +1269,10 @@ public class StoriesFragment extends Fragment {
                             if (oldBookmarked) {
                                 Utils.removeBookmark(ctx, story.id);
                                 if (isBookmarksType(adapter.type)) {
+                                    bookmarkStories.remove(story);
                                     stories.remove(story);
                                     adapter.notifyItemRemoved(position);
+                                    updateHeader();
                                     return true;
                                 }
                             } else {
@@ -1600,10 +1619,12 @@ public class StoriesFragment extends Fragment {
                             loadCommentMaster(story, story.parentId, 0, loadGeneration);
                         }
 
-                        if (isUserItemListType(adapter.type) && !shouldShowStoryForUserItemListFilter(story)) {
+                        if (currentTypeUsesSavedItemFilter() && !shouldShowStoryForSavedItemFilter(story)) {
                             stories.remove(story);
                             adapter.notifyItemRemoved(index);
                             loadedTo = Math.max(-1, loadedTo - 1);
+                            loadInitialVisibleStories();
+                            updateHeader();
                             return;
                         }
 
@@ -1804,13 +1825,10 @@ public class StoriesFragment extends Fragment {
                 refreshedStories.add(s);
             }
 
-            replaceStories(refreshedStories, true);
-
-            int initialLoadCount = Math.min(getInitialLoadCount(), stories.size());
-            for (int i = 0; i < initialLoadCount; i++) {
-                loadStory(stories.get(i), 0, refreshGeneration);
-                loadedTo = i;
-            }
+            bookmarkStories.clear();
+            bookmarkStories.addAll(refreshedStories);
+            replaceStories(getFilteredSavedItemStories(), true);
+            loadInitialVisibleStories(refreshGeneration);
 
             updateHeader();
             swipeRefreshLayout.setRefreshing(false);
@@ -2166,7 +2184,7 @@ public class StoriesFragment extends Fragment {
         userItemListStories.clear();
         userItemListStories.addAll(refreshedStories);
         userItemListCommentIds = new HashSet<>(commentIds);
-        replaceStories(getFilteredUserItemListStories(), true);
+        replaceStories(getFilteredSavedItemStories(), true);
         loadInitialVisibleStories();
         updateHeader();
     }
@@ -2194,17 +2212,21 @@ public class StoriesFragment extends Fragment {
         return normalizedCommentIds;
     }
 
-    private ArrayList<Story> getFilteredUserItemListStories() {
+    private ArrayList<Story> getFilteredSavedItemStories() {
         ArrayList<Story> filteredStories = new ArrayList<>();
-        for (Story story : userItemListStories) {
-            if (shouldShowStoryForUserItemListFilter(story)) {
+        ArrayList<Story> sourceStories = isBookmarksType(adapter.type) ? bookmarkStories : userItemListStories;
+        for (Story story : sourceStories) {
+            if (shouldShowStoryForSavedItemFilter(story)) {
                 filteredStories.add(story);
             }
         }
         return filteredStories;
     }
 
-    private boolean shouldShowStoryForUserItemListFilter(Story story) {
+    private boolean shouldShowStoryForSavedItemFilter(Story story) {
+        if (isBookmarksType(adapter.type) && !story.loaded) {
+            return true;
+        }
         if (userItemListFilter == USER_ITEM_LIST_FILTER_STORIES) {
             return !story.isComment;
         }
@@ -2214,8 +2236,8 @@ public class StoriesFragment extends Fragment {
         return true;
     }
 
-    private void applyUserItemListFilter(boolean notifyDataSetChanged) {
-        replaceStories(getFilteredUserItemListStories(), notifyDataSetChanged);
+    private void applySavedItemFilter(boolean notifyDataSetChanged) {
+        replaceStories(getFilteredSavedItemStories(), notifyDataSetChanged);
         loadInitialVisibleStories();
         updateHeader();
     }
@@ -2231,9 +2253,13 @@ public class StoriesFragment extends Fragment {
     }
 
     private void loadInitialVisibleStories() {
+        loadInitialVisibleStories(storyListGeneration);
+    }
+
+    private void loadInitialVisibleStories(int loadGeneration) {
         int initialLoadCount = Math.min(getInitialLoadCount(), stories.size());
         for (int i = 0; i < initialLoadCount; i++) {
-            loadStory(stories.get(i), 0);
+            loadStory(stories.get(i), 0, loadGeneration);
             loadedTo = i;
         }
     }
@@ -2735,6 +2761,20 @@ public class StoriesFragment extends Fragment {
 
     private boolean isUserItemListType(int type) {
         return isFavoritesType(type) || isUpvotedType(type);
+    }
+
+    private boolean currentTypeUsesSavedItemFilter() {
+        return isBookmarksType(adapter.type) || isUserItemListType(adapter.type);
+    }
+
+    private boolean currentSavedItemSourceHasItems() {
+        if (isBookmarksType(adapter.type)) {
+            return !bookmarkStories.isEmpty();
+        }
+        if (isUserItemListType(adapter.type)) {
+            return !userItemListStories.isEmpty();
+        }
+        return false;
     }
 
     private boolean isSameUserItemListType(int type, boolean upvotedType) {
