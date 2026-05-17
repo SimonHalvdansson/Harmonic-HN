@@ -90,7 +90,7 @@ public class ArxivAbstractGetter {
                         // API 23 does not support Java 8 so we do this by hand
                         List<String> secondaryCategoriesFiltered = new ArrayList<>();
                         for (String category : secondaryCategoryList) {
-                            if (ArxivResolver.isArxivSubjet(category)) {
+                            if (ArxivResolver.isArxivSubject(category)) {
                                 secondaryCategoriesFiltered.add(category);
                             }
                         }
