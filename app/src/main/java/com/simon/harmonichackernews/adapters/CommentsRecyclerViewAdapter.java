@@ -587,13 +587,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     ctx.getResources(),
                     cardStyle ? (comment.depth > 0 && !collapseParent ? 6 : 4) : (comment.depth > 0 && !collapseParent ? 10 : 6));
             int bottomMargin = Utils.pxFromDpInt(ctx.getResources(), cardStyle ? 4 : 6);
+            int cardShadowPadding = cardStyle ? ctx.getResources().getDimensionPixelSize(R.dimen.comment_card_shadow_padding) : 0;
 
             // 16 is base padding, then add depth-based indentation for child comments.
             params.setMargins(
-                    horizontalStartMargin,
-                    topMargin,
-                    Utils.pxFromDpInt(ctx.getResources(), 16),
-                    bottomMargin);
+                    Math.max(0, horizontalStartMargin - cardShadowPadding),
+                    Math.max(0, topMargin - cardShadowPadding),
+                    Math.max(0, Utils.pxFromDpInt(ctx.getResources(), 16) - cardShadowPadding),
+                    Math.max(0, bottomMargin - cardShadowPadding));
             itemViewHolder.itemView.setLayoutParams(params);
 
             if (comment.depth == 0 && !showTopLevelDepthIndicator) {

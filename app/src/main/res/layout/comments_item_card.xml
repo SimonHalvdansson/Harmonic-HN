@@ -3,7 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:paddingStart="@dimen/comment_card_shadow_padding"
+    android:paddingTop="@dimen/comment_card_shadow_padding"
+    android:paddingEnd="@dimen/comment_card_shadow_padding"
+    android:paddingBottom="@dimen/comment_card_shadow_padding">
 
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
@@ -21,7 +27,7 @@
 
             <View
                 android:id="@+id/comment_indent_indicator"
-                android:layout_width="2.5dp"
+                android:layout_width="3dp"
                 android:layout_height="match_parent"
                 android:layout_marginRight="4dp" />
 
