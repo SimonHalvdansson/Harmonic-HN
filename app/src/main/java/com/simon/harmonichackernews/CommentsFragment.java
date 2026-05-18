@@ -991,6 +991,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (initializedWebView) {
             return;
         }
+
+        Context context = getContext();
+        if (context == null || getView() == null) {
+            return;
+        }
+
         webView = getOrInflateWebView();
         if (webView == null) {
             return;
@@ -1024,11 +1030,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         if (blockAds && Utils.adservers.isEmpty()) {
-            Utils.loadAdservers(getResources());
+            Utils.loadAdservers(context.getResources());
         }
 
         webView.setWebViewClient(new MyWebViewClient());
-        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(requireContext())) || showWebsite || (NitterGetter.isConvertibleToNitter(story.url) && SettingsUtils.shouldUseLinkPreviewX(getContext()))) {
+        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(context)) || showWebsite || (NitterGetter.isConvertibleToNitter(story.url) && SettingsUtils.shouldUseLinkPreviewX(context))) {
             loadUrl(story.url);
             startedLoading = true;
         }
@@ -1094,7 +1100,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
 
-        if (matchWebviewTheme && ThemeUtils.isDarkMode(getContext())) {
+        if (matchWebviewTheme && ThemeUtils.isDarkMode(context)) {
             if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), true);
             } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
