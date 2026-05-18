@@ -283,6 +283,33 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         return dialog;
     }
 
+    @Override
+    public void onDestroyView() {
+        if (loadingProgress != null) {
+            loadingProgress.animate().cancel();
+        }
+
+        if (container != null) {
+            container.animate().cancel();
+        }
+
+        nameTextview = null;
+        metaTextview = null;
+        aboutTextview = null;
+        submissionsButton = null;
+        tagButton = null;
+        reportButton = null;
+        blockButton = null;
+        notificationsButton = null;
+        notificationsLoading = null;
+        notificationsStatus = null;
+        loadingProgress = null;
+        errorLayout = null;
+        container = null;
+
+        super.onDestroyView();
+    }
+
     private boolean isOwnProfile(String userName) {
         return !TextUtils.isEmpty(userName)
                 && !TextUtils.isEmpty(AccountUtils.getAccountUsername(getContext()))
@@ -364,6 +391,10 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     }
 
     private void showLoadedContent() {
+        if (!isAdded()) {
+            return;
+        }
+
         if (loadingProgress != null) {
             loadingProgress.animate().cancel();
             loadingProgress.animate()
@@ -373,6 +404,10 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                     .setDuration(USER_LOADING_EXIT_DURATION_MS)
                     .setInterpolator(EMPHASIZED_DECELERATE)
                     .withEndAction(() -> {
+                        if (!isAdded()) {
+                            return;
+                        }
+
                         if (loadingProgress != null) {
                             loadingProgress.setVisibility(GONE);
                             loadingProgress.setAlpha(1f);
@@ -388,6 +423,10 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     }
 
     private void animateLoadedContentIn() {
+        if (!isAdded()) {
+            return;
+        }
+
         if (errorLayout != null) {
             errorLayout.setVisibility(GONE);
         }
@@ -399,7 +438,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         container.animate().cancel();
         container.setVisibility(View.VISIBLE);
         container.setAlpha(0f);
-        container.setTranslationY(Utils.pxFromDpInt(getResources(), 8));
+        container.setTranslationY(Utils.pxFromDpInt(container.getResources(), 8));
         container.setScaleX(0.98f);
         container.setScaleY(0.98f);
         container.animate()
