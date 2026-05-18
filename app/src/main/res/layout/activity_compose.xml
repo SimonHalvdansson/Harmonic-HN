@@ -124,7 +124,8 @@
         android:layout_marginTop="16dp"
         android:layout_marginLeft="16dp"
         android:layout_marginRight="16dp"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:gravity="top"
         android:layout_width="match_parent">
 
@@ -132,9 +133,11 @@
             android:hint="Text"
             android:id="@+id/compose_edittext_text"
             android:imeOptions="normal"
+            android:gravity="top"
             android:inputType="textCapSentences|textMultiLine"
+            android:scrollbars="vertical"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"    />
+            android:layout_height="match_parent"    />
 
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -143,8 +146,7 @@
         android:visibility="gone"
         android:padding="16dp"
         android:layout_width="match_parent"
-        android:layout_weight="1"
-        android:layout_height="0dp"
+        android:layout_height="wrap_content"
         android:fontFamily="@font/product_sans_bold"
         android:text="Leave url blank to submit a question for discussion. If there is no url, text will appear at the top of the thread. If there is a url, text is optional."
         />

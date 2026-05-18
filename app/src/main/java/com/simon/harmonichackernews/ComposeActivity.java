@@ -309,7 +309,7 @@ public class ComposeActivity extends AppCompatActivity {
 
         if (type == TYPE_POST) {
             final String postTitle = editTextTitle.getText().toString();
-            final String postText = editText.getText().toString();
+            final String postText = editTextText.getText().toString();
             final String postUrl = editTextUrl.getText().toString();
 
             UserActions.submit(postTitle, postText, postUrl, view.getContext(), new UserActions.ActionCallback() {
