@@ -1068,6 +1068,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onShowCustomView(View view, CustomViewCallback callback) {
+                if (getContext() == null || getView() == null || fullscreenContainer == null || webViewContainer == null || bottomSheet == null) {
+                    callback.onCustomViewHidden();
+                    return;
+                }
                 showCustomView(view, callback);
             }
 
@@ -1078,6 +1082,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
+                if (view != webView || getContext() == null || getView() == null || progressIndicator == null) {
+                    return;
+                }
                 if (progressAnimator != null && progressAnimator.isRunning()) {
                     progressAnimator.cancel();
                 }
@@ -1211,10 +1218,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void loadUrl(String url, @Nullable String pdfFilePath) {
+        Context context = getContext();
         if (webView == null && integratedWebview) {
             initializeWebView();
+            context = getContext();
         }
-        if (webView == null) {
+        if (webView == null || context == null || getView() == null) {
             return;
         }
         cancelPendingNitterLinkPreviewRead();
@@ -1242,7 +1251,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             webView.getSettings().setUseWideViewPort(true);
         }
 
-        if (NitterGetter.isConvertibleToNitter(url) && SettingsUtils.shouldRedirectNitter(getContext())) {
+        if (NitterGetter.isConvertibleToNitter(url) && SettingsUtils.shouldRedirectNitter(context)) {
             url = NitterGetter.convertToNitterUrl(url);
         }
 
@@ -1562,34 +1571,60 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void destroyWebView() {
+        destroyWebView(false);
+    }
+
+    private void destroyWebView(boolean rendererProcessGone) {
         cancelPendingNitterLinkPreviewRead();
         // Nuclear
         if (webView != null) {
-            if (webView.getParent() instanceof ViewGroup) {
-                ((ViewGroup) webView.getParent()).removeView(webView);
-            }
-            webView.clearHistory();
-            webView.clearCache(true);
-            webView.onPause();
-            webView.removeAllViews();
-            webView.destroyDrawingCache();
-            webView.pauseTimers();
-            webView.destroy();
+            WebView webViewToDestroy = webView;
             webView = null;
             initializedWebView = false;
+
+            if (webViewToDestroy.getParent() instanceof ViewGroup) {
+                ((ViewGroup) webViewToDestroy.getParent()).removeView(webViewToDestroy);
+            }
+
+            try {
+                if (!rendererProcessGone) {
+                    webViewToDestroy.stopLoading();
+                    webViewToDestroy.clearHistory();
+                    webViewToDestroy.clearCache(true);
+                    webViewToDestroy.onPause();
+                    webViewToDestroy.removeAllViews();
+                    webViewToDestroy.destroyDrawingCache();
+                    webViewToDestroy.pauseTimers();
+                }
+                webViewToDestroy.destroy();
+            } catch (RuntimeException e) {
+                Log.e("MY_APP_TAG", "Failed to destroy WebView cleanly", e);
+            }
         }
     }
 
     public void restartWebView() {
+        Context context = getContext();
+        if (context == null || getView() == null || webViewContainer == null) {
+            destroyWebView(true);
+            return;
+        }
+
         destroyWebView();
 
-        webView = new WebView(getContext());
-        webView.setId(R.id.comments_webview);
-        webViewContainer.addView(webView, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-        ));
-        initializeWebView();
+        try {
+            webView = new WebView(context);
+            webView.setId(R.id.comments_webview);
+            webViewContainer.addView(webView, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+            ));
+            initializeWebView();
+        } catch (RuntimeException e) {
+            webView = null;
+            initializedWebView = false;
+            Log.e("MY_APP_TAG", "Failed to recreate WebView", e);
+        }
     }
 
     @Override
@@ -3135,16 +3170,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private boolean loadCachedArticleSnapshot(WebView view, @Nullable String failingUrl) {
-        if (view == null || story == null || !story.isLink || story.id <= 0) {
+        Context context = getContext();
+        if (view == null || context == null || getView() == null || story == null || !story.isLink || story.id <= 0) {
             return false;
         }
 
-        String html = Utils.loadCachedArticleSnapshot(getContext(), story.id);
+        String html = Utils.loadCachedArticleSnapshot(context, story.id);
         if (TextUtils.isEmpty(html)) {
             return false;
         }
 
-        String baseUrl = Utils.loadCachedArticleUrl(getContext(), story.id);
+        String baseUrl = Utils.loadCachedArticleUrl(context, story.id);
         if (TextUtils.isEmpty(baseUrl)) {
             baseUrl = !TextUtils.isEmpty(failingUrl) ? failingUrl : story.url;
         }
@@ -3159,16 +3195,28 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         view.stopLoading();
         clearWebViewHistoryOnNextFinish = true;
-        Toast.makeText(getContext(), "Showing cached webview content", Toast.LENGTH_SHORT).show();
+        Toast.makeText(context, "Showing cached webview content", Toast.LENGTH_SHORT).show();
         view.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null);
         return true;
     }
 
     public class MyWebViewClient extends WebViewClient {
 
+        private boolean isCurrentWebViewCallback(WebView view) {
+            return view != null
+                    && view == webView
+                    && getContext() != null
+                    && getView() != null
+                    && bottomSheet != null
+                    && webViewBackdrop != null;
+        }
+
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
             super.onPageStarted(view, url, favicon);
+            if (!isCurrentWebViewCallback(view)) {
+                return;
+            }
             if (!OFFLINE_PAGE_URL.equals(url)) {
                 lastRequestedWebViewUrl = url;
             }
@@ -3177,7 +3225,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
-            webView.setBackgroundColor(Color.WHITE);
+            if (!isCurrentWebViewCallback(view)) {
+                return;
+            }
+            view.setBackgroundColor(Color.WHITE);
             webViewBackdrop.setVisibility(View.GONE);
 
             if (retryingFailedWebViewUrl) {
@@ -3195,8 +3246,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (clearWebViewHistoryOnNextFinish) {
                 clearWebViewHistoryOnNextFinish = false;
                 view.post(() -> {
-                    view.clearHistory();
-                    syncOnBackPressedCallbackEnabledState();
+                    if (isCurrentWebViewCallback(view)) {
+                        view.clearHistory();
+                        syncOnBackPressedCallbackEnabledState();
+                    }
                 });
             }
 
@@ -3215,7 +3268,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     // First, try to use the fallback URL (browser version of Play Store)
                     String fallbackUrl = intent.getStringExtra("browser_fallback_url");
                     if (fallbackUrl != null) {
-                        webView.loadUrl(fallbackUrl);
+                        view.loadUrl(fallbackUrl);
                         return true; // Indicate that we're handling this URL
                     } else {
                         // If no valid fallback URL, then check if the intent can be resolved (Play Store app is installed)
@@ -3252,6 +3305,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         @Override
         public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+            boolean wasCurrentWebView = view == webView;
+            if (wasCurrentWebView) {
+                destroyWebView(true);
+            }
+
+            if (getContext() == null || getView() == null || webViewContainer == null) {
+                return true;
+            }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 if (!detail.didCrash()) {
                     // Renderer is killed because the system ran out of memory. The app
@@ -3260,7 +3322,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     Log.e("MY_APP_TAG", "System killed the WebView rendering process " +
                             "to reclaim memory. Recreating...");
 
-                    restartWebView();
+                    if (wasCurrentWebView) {
+                        restartWebView();
+                    }
 
                     // By this point, the instance variable "mWebView" is guaranteed to
                     // be null, so it's safe to reinitialize it.
@@ -3268,8 +3332,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     return true; // The app continues executing.
                 }
             }
-            Utils.toast("WebView crashed, reinitializing", getContext());
-            restartWebView();
+            Context context = getContext();
+            if (context != null && wasCurrentWebView) {
+                Utils.toast("WebView crashed, reinitializing", context);
+                restartWebView();
+            }
 
             // Renderer crashes because of an internal error, such as a memory
             // access violation.
@@ -3284,7 +3351,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         private void showOfflineFallback(WebView view, @Nullable String failingUrl) {
-            if (view == null || showingErrorPage || showingCachedArticlePage) {
+            if (!isCurrentWebViewCallback(view) || showingErrorPage || showingCachedArticlePage) {
                 return;
             }
             if (story != null && story.linkPreviewLoading && shouldLoadNitterLinkPreview(story.url)) {
