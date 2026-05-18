@@ -123,7 +123,6 @@ import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -2064,14 +2063,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         try {
-            JSONObject jsonObject = new JSONObject(response);
+            JSONParser.AlgoliaCommentsResponse parsedResponse = JSONParser.parseAlgoliaCommentsResponse(response, story.kids, filteredUsers);
+            applyParsedComments(parsedResponse.comments);
 
-            JSONArray children = jsonObject.getJSONArray("children");
-
-            List<Comment> parsedComments = JSONParser.parseAlgoliaComments(children, story.kids, filteredUsers);
-            applyParsedComments(parsedComments);
-
-            boolean storyChanged = JSONParser.updateStoryInformation(story, jsonObject, forceHeaderRefresh, oldCommentCount, getAllCommentsSource().size());
+            boolean storyChanged = parsedResponse.updateStoryInformation(story, forceHeaderRefresh, oldCommentCount);
             if (storyChanged || forceHeaderRefresh) {
                 adapter.notifyItemChanged(0);
             }
@@ -2105,7 +2100,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             }
 
-        } catch (JSONException e) {
+        } catch (IOException e) {
             e.printStackTrace();
             // Show some error, remove things?
             adapter.loadingFailed = true;

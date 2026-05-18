@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.network;
 
 import android.text.TextUtils;
+import android.util.JsonReader;
+import android.util.JsonToken;
 
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.Story;
@@ -11,6 +13,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -331,6 +335,247 @@ public class JSONParser {
         }
 
         return comment;
+    }
+
+    public static AlgoliaCommentsResponse parseAlgoliaCommentsResponse(String response, int[] prioTop, Set<String> filteredUsers) throws IOException {
+        JsonReader reader = new JsonReader(new StringReader(response));
+        AlgoliaCommentsResponse result = new AlgoliaCommentsResponse();
+        List<Comment> topLevelComments = new ArrayList<>();
+
+        reader.beginObject();
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+            switch (name) {
+                case "title":
+                    result.title = nextStringOrDefault(reader, result.title);
+                    break;
+                case "points":
+                    result.points = nextIntOrDefault(reader, result.points);
+                    break;
+                case "created_at_i":
+                    result.createdAt = nextIntOrDefault(reader, result.createdAt);
+                    break;
+                case "type":
+                    result.type = nextStringOrDefault(reader, result.type);
+                    break;
+                case "author":
+                    result.author = nextStringOrDefault(reader, result.author);
+                    break;
+                case "story_id":
+                    result.storyId = nextIntOrDefault(reader, result.storyId);
+                    break;
+                case "parent_id":
+                    result.parentId = nextIntOrDefault(reader, result.parentId);
+                    break;
+                case "story_title":
+                    result.storyTitle = nextStringOrDefault(reader, result.storyTitle);
+                    break;
+                case "url":
+                    result.url = nextStringOrDefault(reader, result.url);
+                    break;
+                case "text":
+                    result.text = nextStringOrDefault(reader, result.text);
+                    break;
+                case "id":
+                    result.id = nextIntOrDefault(reader, result.id);
+                    break;
+                case "children":
+                    reader.beginArray();
+                    while (reader.hasNext()) {
+                        Comment comment = parseAlgoliaComment(reader, 0, filteredUsers);
+                        if (comment != null) {
+                            topLevelComments.add(comment);
+                        }
+                    }
+                    reader.endArray();
+                    break;
+                default:
+                    reader.skipValue();
+                    break;
+            }
+        }
+        reader.endObject();
+        reader.close();
+
+        if (prioTop != null) {
+            Collections.sort(topLevelComments, (a, b) -> Integer.compare(priorityIndex(a.id, prioTop), priorityIndex(b.id, prioTop)));
+        }
+
+        flattenComments(topLevelComments, result.comments);
+        return result;
+    }
+
+    private static Comment parseAlgoliaComment(JsonReader reader, int depth, Set<String> filteredUsers) throws IOException {
+        String rawText = "";
+        String author = "";
+        int parentId = 0;
+        int createdAt = 0;
+        int id = 0;
+        int childCount = 0;
+        List<Comment> childComments = new ArrayList<>();
+
+        reader.beginObject();
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+            switch (name) {
+                case "text":
+                    rawText = nextStringOrDefault(reader, "").trim();
+                    break;
+                case "author":
+                    author = nextStringOrDefault(reader, "").trim();
+                    break;
+                case "parent_id":
+                    parentId = nextIntOrDefault(reader, parentId);
+                    break;
+                case "created_at_i":
+                    createdAt = nextIntOrDefault(reader, createdAt);
+                    break;
+                case "id":
+                    id = nextIntOrDefault(reader, id);
+                    break;
+                case "children":
+                    reader.beginArray();
+                    while (reader.hasNext()) {
+                        childCount++;
+                        Comment childComment = parseAlgoliaComment(reader, depth + 1, filteredUsers);
+                        if (childComment != null) {
+                            childComments.add(childComment);
+                        }
+                    }
+                    reader.endArray();
+                    break;
+                default:
+                    reader.skipValue();
+                    break;
+            }
+        }
+        reader.endObject();
+
+        if (rawText.isEmpty() || JSON_NULL_LITERAL.equalsIgnoreCase(rawText)) {
+            return null;
+        }
+        if (filteredUsers != null && filteredUsers.contains(author.toLowerCase())) {
+            return null;
+        }
+
+        Comment comment = new Comment();
+        comment.depth = depth;
+        comment.parent = parentId;
+        comment.expanded = true;
+        comment.by = author;
+        comment.text = preprocessHtml(rawText);
+        comment.time = createdAt;
+        comment.id = id;
+        comment.children = childCount;
+        comment.childComments = childComments;
+
+        if (!comment.childComments.isEmpty()) {
+            Collections.sort(comment.childComments, (a, b) -> Integer.compare(b.children, a.children));
+        }
+
+        return comment;
+    }
+
+    private static String nextStringOrDefault(JsonReader reader, String defaultValue) throws IOException {
+        JsonToken token = reader.peek();
+        if (token == JsonToken.NULL) {
+            reader.nextNull();
+            return defaultValue;
+        }
+        if (token == JsonToken.STRING || token == JsonToken.NUMBER) {
+            return reader.nextString();
+        }
+        reader.skipValue();
+        return defaultValue;
+    }
+
+    private static int nextIntOrDefault(JsonReader reader, int defaultValue) throws IOException {
+        JsonToken token = reader.peek();
+        if (token == JsonToken.NULL) {
+            reader.nextNull();
+            return defaultValue;
+        }
+        if (token == JsonToken.NUMBER) {
+            return reader.nextInt();
+        }
+        if (token == JsonToken.STRING) {
+            try {
+                return Integer.parseInt(reader.nextString());
+            } catch (NumberFormatException ignored) {
+                return defaultValue;
+            }
+        }
+        reader.skipValue();
+        return defaultValue;
+    }
+
+    public static class AlgoliaCommentsResponse {
+        public final List<Comment> comments = new ArrayList<>();
+        private String title = "";
+        private int points = 0;
+        private int createdAt = 0;
+        private String type = "";
+        private String author = "";
+        private int storyId = 0;
+        private int parentId = 0;
+        private String storyTitle = "";
+        private String url = "";
+        private String text = "";
+        private int id = 0;
+
+        public boolean updateStoryInformation(Story story, boolean forceRefresh, int oldCommentCount) {
+            String oldFormattedTime = story.getTimeFormatted();
+            int newCommentCount = comments.size() + 1;
+            boolean changed;
+
+            if (TextUtils.isEmpty(story.title)) {
+                changed = true;
+            } else {
+                changed = (!title.equals(story.title) ||
+                        points != story.score ||
+                        !oldFormattedTime.equals(story.getTimeFormatted()) ||
+                        oldCommentCount != newCommentCount);
+            }
+
+            story.time = createdAt;
+
+            if ("comment".equals(type)) {
+                story.title = "Comment by " + author;
+                story.isLink = false;
+                story.url = "https://news.ycombinator.com/item?id=" + storyId;
+                story.isComment = true;
+                story.parentId = parentId;
+                story.commentMasterId = storyId;
+                story.commentMasterTitle = storyTitle;
+            } else {
+                story.title = title;
+                story.isLink = !TextUtils.isEmpty(url) && !JSON_NULL_LITERAL.equals(url);
+
+                if (story.isLink) {
+                    story.url = url;
+                } else {
+                    story.url = "https://news.ycombinator.com/item?id=" + story.id;
+                }
+
+                updatePdfProperties(story);
+            }
+
+            if (!TextUtils.isEmpty(text) && !JSON_NULL_LITERAL.equals(text)) {
+                updateStoryText(story, text);
+            }
+
+            story.descendants = comments.size();
+            story.id = id;
+            story.score = points;
+            story.by = author;
+            story.loaded = true;
+
+            if (forceRefresh) {
+                StoryUpdate.updateStory(story);
+            }
+
+            return changed;
+        }
     }
 
     private static int priorityIndex(int commentId, int[] prioTop) {
