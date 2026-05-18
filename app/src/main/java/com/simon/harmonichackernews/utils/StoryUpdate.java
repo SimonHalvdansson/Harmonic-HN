@@ -16,6 +16,12 @@ public class StoryUpdate {
         StoryUpdate.storyUpdateListener = storyUpdateListener;
     }
 
+    public static void clearStoryUpdatedListener(StoryUpdateListener storyUpdateListener) {
+        if (StoryUpdate.storyUpdateListener == storyUpdateListener) {
+            StoryUpdate.storyUpdateListener = null;
+        }
+    }
+
     public interface StoryUpdateListener {
         void callback(Story story);
     }

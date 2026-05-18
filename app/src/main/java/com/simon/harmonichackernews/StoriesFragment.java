@@ -93,6 +93,10 @@ public class StoriesFragment extends Fragment {
     private ExtendedFloatingActionButton updateFab;
     private RecyclerView recyclerView;
     private AppBarLayout appBarLayout;
+    private AppBarLayout.OnOffsetChangedListener appBarOffsetChangedListener;
+    private RecyclerView.OnScrollListener recyclerViewScrollListener;
+    private MaterialButtonToggleGroup.OnButtonCheckedListener userItemFilterCheckedListener;
+    private StoryUpdate.StoryUpdateListener storyUpdateListener;
 
     // Header views
     private LinearLayout headerContainer;
@@ -224,12 +228,13 @@ public class StoriesFragment extends Fragment {
         swipeRefreshLayout = view.findViewById(R.id.stories_swipe_refresh);
         updateFab = view.findViewById(R.id.stories_update_fab);
         appBarLayout = view.findViewById(R.id.stories_appbar);
-        appBarLayout.addOnOffsetChangedListener((appBar, verticalOffset) -> {
+        appBarOffsetChangedListener = (appBar, verticalOffset) -> {
             float totalScrollRange = appBar.getTotalScrollRange();
             if (totalScrollRange > 0) {
                 headerContainer.setAlpha(1f - (Math.abs(verticalOffset) / totalScrollRange));
             }
-        });
+        };
+        appBarLayout.addOnOffsetChangedListener(appBarOffsetChangedListener);
         configureAppBarDragBehavior();
 
         // Bind header views
@@ -334,7 +339,7 @@ public class StoriesFragment extends Fragment {
             recyclerView.smoothScrollToPosition(0);
         });
 
-        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+        recyclerViewScrollListener = new RecyclerView.OnScrollListener() {
 
             @Override
             public void onScrolled(@NotNull RecyclerView recyclerView, int dx, int dy) {
@@ -353,12 +358,13 @@ public class StoriesFragment extends Fragment {
                     }
                 }
             }
-        });
+        };
+        recyclerView.addOnScrollListener(recyclerViewScrollListener);
 
         queue = NetworkComponent.getRequestQueueInstance(requireContext());
         attemptRefresh();
 
-        StoryUpdate.setStoryUpdatedListener(new StoryUpdate.StoryUpdateListener() {
+        storyUpdateListener = new StoryUpdate.StoryUpdateListener() {
             @Override
             public void callback(Story story) {
                 for (int i = 0; i < stories.size(); i++) {
@@ -378,7 +384,8 @@ public class StoriesFragment extends Fragment {
                     }
                 }
             }
-        });
+        };
+        StoryUpdate.setStoryUpdatedListener(storyUpdateListener);
     }
 
     private int getPreferredTypeIndex() {
@@ -471,7 +478,7 @@ public class StoriesFragment extends Fragment {
 
         // Set up more button
         moreButton.setOnClickListener(this::moreClick);
-        userItemFilterGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+        userItemFilterCheckedListener = (group, checkedId, isChecked) -> {
             if (!isChecked) {
                 return;
             }
@@ -485,7 +492,8 @@ public class StoriesFragment extends Fragment {
             if (currentTypeUsesSavedItemFilter()) {
                 applySavedItemFilter(true);
             }
-        });
+        };
+        userItemFilterGroup.addOnButtonCheckedListener(userItemFilterCheckedListener);
 
         // Set up search
         searchEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -1366,6 +1374,12 @@ public class StoriesFragment extends Fragment {
     }
 
     @Override
+    public void onDetach() {
+        storyClickListener = null;
+        super.onDetach();
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
 
@@ -1536,11 +1550,101 @@ public class StoriesFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
-        super.onDestroyView();
+        View rootView = getView();
+
+        if (rootView != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(rootView, null);
+        }
+        if (appBarLayout != null) {
+            if (appBarOffsetChangedListener != null) {
+                appBarLayout.removeOnOffsetChangedListener(appBarOffsetChangedListener);
+            }
+            clearAppBarDragCallback();
+        }
+        if (recyclerView != null) {
+            if (recyclerViewScrollListener != null) {
+                recyclerView.removeOnScrollListener(recyclerViewScrollListener);
+            }
+            recyclerView.setAdapter(null);
+            recyclerView.setLayoutManager(null);
+        }
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setOnRefreshListener(null);
+        }
+        if (typeSpinner != null) {
+            typeSpinner.setOnItemSelectedListener(null);
+            typeSpinner.setAdapter(null);
+        }
+        if (searchEditText != null) {
+            searchEditText.setOnEditorActionListener(null);
+            searchEditText.setOnKeyListener(null);
+        }
+        if (userItemFilterGroup != null && userItemFilterCheckedListener != null) {
+            userItemFilterGroup.removeOnButtonCheckedListener(userItemFilterCheckedListener);
+        }
+        if (storyUpdateListener != null) {
+            StoryUpdate.clearStoryUpdatedListener(storyUpdateListener);
+        }
+
         if (queue != null) {
             storyListGeneration++;
+            invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
         }
+
+        clearViewReferences();
+
+        super.onDestroyView();
+    }
+
+    private void clearAppBarDragCallback() {
+        CoordinatorLayout.LayoutParams layoutParams = (CoordinatorLayout.LayoutParams) appBarLayout.getLayoutParams();
+        if (layoutParams.getBehavior() instanceof AppBarLayout.Behavior) {
+            ((AppBarLayout.Behavior) layoutParams.getBehavior()).setDragCallback(null);
+        }
+    }
+
+    private void clearViewReferences() {
+        swipeRefreshLayout = null;
+        updateFab = null;
+        recyclerView = null;
+        appBarLayout = null;
+        appBarOffsetChangedListener = null;
+        recyclerViewScrollListener = null;
+        userItemFilterCheckedListener = null;
+        storyUpdateListener = null;
+
+        headerContainer = null;
+        typeSpinner = null;
+        spinnerContainer = null;
+        searchContainer = null;
+        searchBar = null;
+        searchEditText = null;
+        searchOptionsScroll = null;
+        searchSortChip = null;
+        searchDateChip = null;
+        searchPointsChip = null;
+        searchCommentsChip = null;
+        searchOnlyClickedChip = null;
+        searchButton = null;
+        closeSearchButton = null;
+        moreButton = null;
+        userItemFilterGroup = null;
+        loadingIndicator = null;
+        loadingFailedLayout = null;
+        loadingFailedText = null;
+        loadingFailedAlgoliaLayout = null;
+        noBookmarksLayout = null;
+        noBookmarksImage = null;
+        noBookmarksText = null;
+        showingCachedText = null;
+        searchEmptyContainer = null;
+        retryButton = null;
+        showCachedButton = null;
+
+        typeSpinnerAdapter = null;
+        linearLayoutManager = null;
+        defaultStoryItemAnimator = null;
     }
 
     private void clickedComments(int position) {
