@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.utils.ThemeUtils;
+import com.simon.harmonichackernews.utils.Utils;
 
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 
@@ -163,7 +164,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         final CommentViewHolder commentViewHolder = (CommentViewHolder) holder;
 
         Comment comment = visibleComments.get(position);
-        String text = comment.text == null ? "" : comment.text;
+        String text = Utils.expandShortenedAnchorText(comment.text == null ? "" : comment.text);
 
         StringBuffer sb = new StringBuffer(); // To hold the modified string
 

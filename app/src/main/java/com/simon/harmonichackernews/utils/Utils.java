@@ -34,6 +34,11 @@ import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import androidx.core.util.Pair;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.parser.Parser;
+import org.jsoup.select.Elements;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -1262,6 +1267,32 @@ public class Utils {
 
         String rep = "<a href=\"" + normalized + "\">" + normalized + "</a>" + rest;
         return rep;
+    }
+
+    public static String expandShortenedAnchorText(String inputHtml) {
+        if (inputHtml == null || inputHtml.isEmpty() || !inputHtml.contains("<a")) {
+            return inputHtml;
+        }
+
+        Document document = Jsoup.parse(inputHtml, "", Parser.htmlParser());
+        Elements links = document.select("a[href]");
+
+        for (Element link : links) {
+            String href = link.attr("href");
+            String linkText = link.text();
+
+            String decodedHref = Jsoup.parse(href).text();
+            String decodedLinkText = Jsoup.parse(linkText).text();
+
+            if (decodedLinkText.endsWith("...")) {
+                String linkTextPrefix = decodedLinkText.substring(0, decodedLinkText.length() - 3);
+                if (decodedHref.startsWith(linkTextPrefix)) {
+                    link.text(decodedHref);
+                }
+            }
+        }
+
+        return document.body().html();
     }
 
 }

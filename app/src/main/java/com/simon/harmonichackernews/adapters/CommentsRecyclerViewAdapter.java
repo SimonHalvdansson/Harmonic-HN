@@ -610,7 +610,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 if (comment.spannedText != null) {
                     itemViewHolder.commentBody.setHtml(comment.spannedText);
                 } else {
-                    itemViewHolder.commentBody.setHtml(comment.text);
+                    itemViewHolder.commentBody.setHtml(Utils.expandShortenedAnchorText(comment.text));
                     comment.spannedText = (Spanned) itemViewHolder.commentBody.getText();
                 }
 
