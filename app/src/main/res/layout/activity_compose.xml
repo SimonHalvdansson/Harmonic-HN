@@ -145,6 +145,7 @@
         android:id="@+id/compose_submit_info"
         android:visibility="gone"
         android:padding="16dp"
+        android:textSize="13sp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fontFamily="@font/product_sans_bold"
@@ -196,7 +197,7 @@
                 android:layout_height="56dp"
                 android:textColor="?attr/storyColorNormal"
                 android:layout_toLeftOf="@id/compose_submit"
-                android:layout_marginRight="16dp"
+                android:layout_marginRight="14dp"
                 style="?attr/materialButtonOutlinedStyle"
                 android:text="Formatting"/>
 

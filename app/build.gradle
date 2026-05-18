@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "com.simon.harmonichackernews"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.simon.harmonichackernews"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 74
-        versionName = "2.4"
+        versionName = "3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
