@@ -15,23 +15,20 @@ public class CommentSorter {
         String sortType = SettingsUtils.getPreferredCommentSorting(ctx);
         switch (sortType) {
             case "Reply count":
-                for (int i = 1; i < comments.size(); i++) {
-                    comments.get(i).totalReplies = numChildren(comments, i);
-                }
                 sortComments(comments, new Comparator<Comment>() {
                     @Override
                     public int compare(Comment c1, Comment c2) {
-                        return Integer.compare(-c1.totalReplies, -c2.totalReplies);
+                        return Integer.compare(c2.totalReplies, c1.totalReplies);
                     }
-                });
+                }, true);
                 break;
             case "Newest first":
                 sortComments(comments, new Comparator<Comment>() {
                     @Override
                     public int compare(Comment c1, Comment c2) {
-                        return Integer.compare(-c1.time, -c2.time);
+                        return Integer.compare(c2.time, c1.time);
                     }
-                });
+                }, false);
                 break;
             case "Oldest first":
                 sortComments(comments, new Comparator<Comment>() {
@@ -39,110 +36,85 @@ public class CommentSorter {
                     public int compare(Comment c1, Comment c2) {
                         return Integer.compare(c1.time, c2.time);
                     }
-                });
+                }, false);
                 break;
         }
     }
 
-    private static void sortComments(List<Comment> comments, Comparator<Comment> comparator) {
-        // Create comment hierarchy tree in commentsWithChildren field
-        List<Comment> commentsWithChildren = populateChildComments(comments);
+    private static void sortComments(List<Comment> comments, Comparator<Comment> comparator, boolean updateReplyCounts) {
+        if (comments.size() <= 1) {
+            return;
+        }
 
-        // Sort for each depth (recursively on commentsWithChildren)
+        Comment header = comments.get(0);
+        List<Comment> commentsWithChildren = buildCommentTree(comments);
+
+        if (updateReplyCounts) {
+            updateTotalReplies(commentsWithChildren);
+        }
+
         sortCommentsRecursive(commentsWithChildren, comparator);
 
-        // Flatten the tree to one array, and extract the sort order - set in sortOrder field
-        setSortOrder(commentsWithChildren);
-
-        // Handle special case of first header comment
-        comments.get(0).sortOrder = -1;
-
-        // Sort according to sortOrder from flattenCommentsWithChildren step - from sortOrder field
-        Collections.sort(comments, new Comparator<Comment>() {
-            @Override
-            public int compare(Comment e1, Comment e2) {
-                return Integer.compare(e1.sortOrder, e2.sortOrder);
-            }
-        });
+        comments.clear();
+        comments.add(header);
+        flattenComments(commentsWithChildren, comments);
     }
 
     private static void sortCommentsRecursive(List<Comment> commentsWithChildren, Comparator<Comment> comparator) {
-        // Sort top level (in place)
         Collections.sort(commentsWithChildren, comparator);
 
         for (Comment c : commentsWithChildren) {
-            // Sort children level (in place)
             sortCommentsRecursive(c.childComments, comparator);
         }
     }
 
 
-    private static List<Comment> populateChildComments(List<Comment> comments) {
-        // Define top level (depth 0)  array
+    private static List<Comment> buildCommentTree(List<Comment> comments) {
         List<Comment> commentsWithChildren = new ArrayList<>();
+        List<Comment> parentsByDepth = new ArrayList<>();
 
-        // Top level, start at index 1 (special case of header comment)
         for (int i = 1; i < comments.size(); i++) {
             Comment comment = comments.get(i);
-            if (comment.depth == 0) {
-                // Add to top level array
+            comment.childComments = new ArrayList<>();
+            int depth = Math.max(0, comment.depth);
+
+            while (parentsByDepth.size() > depth) {
+                parentsByDepth.remove(parentsByDepth.size() - 1);
+            }
+
+            if (depth == 0 || parentsByDepth.isEmpty()) {
                 commentsWithChildren.add(comment);
-                // Add childComment field recursively (all comments after this one)
-                populateChildComments(comments, comment, i);
+            } else {
+                parentsByDepth.get(parentsByDepth.size() - 1).childComments.add(comment);
             }
+
+            parentsByDepth.add(comment);
         }
+
         return commentsWithChildren;
-    }
-
-    private static void populateChildComments(List<Comment> comments, Comment comment, int startIndex) {
-        int targetDepth = comment.depth + 1;
-        comment.childComments = new ArrayList<>();
-        // Starting off after the comment, we don't go outside the array of course and stop if we reach a comment with depth smaller than the targetDepth
-        for (int i = startIndex + 1; i < comments.size() && comments.get(i).depth >= targetDepth; i++) {
-            // If we find something which has the target depth
-            if (comments.get(i).depth == targetDepth) {
-                // It should go in the childComments list
-                comment.childComments.add(comments.get(i));
-                // And we are responsible for doing the recursive action here
-                populateChildComments(comments, comments.get(i), i);
-            }
-        }
-    }
-
-
-    private static void setSortOrder(List<Comment> commentsWithChildren) {
-        // Define flat array
-        List<Comment> flatComments = new ArrayList<>();
-        // Flatten recursively
-        flattenComments(commentsWithChildren, flatComments);
-
-        // Set sort order in flat array
-        for (int i = 0; i < flatComments.size(); i++) {
-            flatComments.get(i).sortOrder = i;
-        }
     }
 
     private static void flattenComments(List<Comment> comments, List<Comment> flatComments) {
         for (Comment comment : comments) {
-            // Add this comment
             flatComments.add(comment);
-            // Add children after
-            if (comment.childComments != null) {
+            if (!comment.childComments.isEmpty()) {
                 flattenComments(comment.childComments, flatComments);
             }
         }
     }
 
-    private static int numChildren(List<Comment> comments, int startIndex) {
-        int count = 0;
-        int targetDepth = comments.get(startIndex).depth;
-        for (int i = startIndex + 1; i < comments.size(); i++) {
-            if (comments.get(i).depth == targetDepth) {
-                break;
-            } else {
-                count++;
-            }
+    private static void updateTotalReplies(List<Comment> comments) {
+        for (Comment comment : comments) {
+            updateTotalReplies(comment);
         }
+    }
+
+    private static int updateTotalReplies(Comment comment) {
+        int count = 0;
+        for (Comment child : comment.childComments) {
+            count += 1 + updateTotalReplies(child);
+        }
+        comment.totalReplies = count;
         return count;
     }
 
