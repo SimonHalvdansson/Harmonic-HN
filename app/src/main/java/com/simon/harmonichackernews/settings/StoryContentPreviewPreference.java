@@ -131,7 +131,30 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         if (preferences != null) {
             preferences.unregisterOnSharedPreferenceChangeListener(this);
         }
+        clearPreviewViews();
         super.onDetached();
+    }
+
+    private void clearPreviewViews() {
+        if (previewHeightAnimator != null) {
+            previewHeightAnimator.cancel();
+            previewHeightAnimator = null;
+        }
+        previewRoot = null;
+        previewItemContainer = null;
+        metaContainer = null;
+        storyLinkLayout = null;
+        commentLayout = null;
+        favicon = null;
+        commentsIcon = null;
+        smallPreviewImage = null;
+        largePreviewImage = null;
+        previewDetailsRow = null;
+        storyTitle = null;
+        storyIndex = null;
+        storyMeta = null;
+        comments = null;
+        boundItemView = null;
     }
 
     @Override

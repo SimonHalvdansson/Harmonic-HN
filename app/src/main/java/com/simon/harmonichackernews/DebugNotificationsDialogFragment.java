@@ -45,6 +45,7 @@ public class DebugNotificationsDialogFragment extends AppCompatDialogFragment {
     private MaterialButton enableButton;
     private MaterialButton disableButton;
     private LinearProgressIndicator loadingIndicator;
+    private ViewUtils.SimpleTextWatcher usernameWatcher;
     private boolean loading;
 
     @Override
@@ -91,13 +92,14 @@ public class DebugNotificationsDialogFragment extends AppCompatDialogFragment {
         MaterialButton cancelButton = rootView.findViewById(R.id.debug_notifications_cancel);
 
         usernameInput.setText(RepliesChecker.getConfiguredUsername(requireContext()));
-        usernameInput.addTextChangedListener(new ViewUtils.SimpleTextWatcher() {
+        usernameWatcher = new ViewUtils.SimpleTextWatcher() {
             @Override
             public void afterTextChanged(Editable editable) {
                 usernameLayout.setError(null);
                 updateButtonStates();
             }
-        });
+        };
+        usernameInput.addTextChangedListener(usernameWatcher);
 
         testButton.setOnClickListener(view -> {
             String username = getUsernameOrShowError();
@@ -127,6 +129,33 @@ public class DebugNotificationsDialogFragment extends AppCompatDialogFragment {
         AlertDialog dialog = builder.create();
         dialog.setOnShowListener(dialogInterface -> updateButtonStates());
         return dialog;
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (usernameInput != null && usernameWatcher != null) {
+            usernameInput.removeTextChangedListener(usernameWatcher);
+        }
+        if (testButton != null) {
+            testButton.setOnClickListener(null);
+        }
+        if (enableButton != null) {
+            enableButton.setOnClickListener(null);
+        }
+        if (disableButton != null) {
+            disableButton.setOnClickListener(null);
+        }
+
+        usernameWatcher = null;
+        usernameLayout = null;
+        usernameInput = null;
+        statusText = null;
+        testButton = null;
+        enableButton = null;
+        disableButton = null;
+        loadingIndicator = null;
+
+        super.onDestroyView();
     }
 
     public static void show(FragmentManager fm) {
@@ -214,7 +243,7 @@ public class DebugNotificationsDialogFragment extends AppCompatDialogFragment {
     }
 
     private void updateButtonStates() {
-        if (usernameInput == null) {
+        if (usernameInput == null || testButton == null || enableButton == null || disableButton == null) {
             return;
         }
 
@@ -227,6 +256,9 @@ public class DebugNotificationsDialogFragment extends AppCompatDialogFragment {
 
     private void setLoading(boolean loading) {
         this.loading = loading;
+        if (loadingIndicator == null) {
+            return;
+        }
         loadingIndicator.setVisibility(loading ? View.VISIBLE : View.GONE);
         updateButtonStates();
     }

@@ -37,6 +37,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
     private CommentSearchAdapter adapter;
     private List<Comment> comments;
     private final CommentSelectedListener listener;
+    private TextWatcher searchWatcher;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -75,7 +76,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        searchBar.addTextChangedListener(new TextWatcher() {
+        searchWatcher = new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
             }
@@ -93,7 +94,8 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
 
                 updateMatches(searchTerm);
             }
-        });
+        };
+        searchBar.addTextChangedListener(searchWatcher);
 
         builder.setView(rootView);
         final AlertDialog dialog = builder.create();
@@ -109,6 +111,26 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         });
 
         return dialog;
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (searchBar != null && searchWatcher != null) {
+            searchBar.removeTextChangedListener(searchWatcher);
+        }
+        if (recyclerView != null) {
+            recyclerView.setAdapter(null);
+            recyclerView.setLayoutManager(null);
+        }
+        if (adapter != null) {
+            adapter.setItemClickListener(null);
+        }
+        searchWatcher = null;
+        searchBar = null;
+        recyclerView = null;
+        matchesText = null;
+        adapter = null;
+        super.onDestroyView();
     }
 
     private void updateMatches(String searchTerm) {

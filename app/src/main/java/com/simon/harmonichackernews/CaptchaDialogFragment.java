@@ -167,6 +167,13 @@ public class CaptchaDialogFragment extends AppCompatDialogFragment {
     @Override
     public void onDestroyView() {
         if (webView != null) {
+            webView.setWebViewClient(null);
+            webView.stopLoading();
+            if (webView.getParent() instanceof android.view.ViewGroup) {
+                ((android.view.ViewGroup) webView.getParent()).removeView(webView);
+            }
+            webView.removeAllViews();
+            webView.destroyDrawingCache();
             webView.destroy();
             webView = null;
         }

@@ -151,6 +151,15 @@ public class AddBookmarksToFavoritesDialogFragment extends DialogFragment {
     }
 
     @Override
+    public void onDestroyView() {
+        cancelled = true;
+        handler.removeCallbacksAndMessages(null);
+        progressIndicator = null;
+        statusView = null;
+        super.onDestroyView();
+    }
+
+    @Override
     public void onDismiss(@NonNull DialogInterface dialog) {
         cancelled = true;
         handler.removeCallbacksAndMessages(null);

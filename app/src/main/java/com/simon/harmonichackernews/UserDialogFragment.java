@@ -79,6 +79,8 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     private LoadingIndicator loadingProgress;
     private LinearLayout errorLayout;
     private LinearLayout container;
+    private RequestQueue queue;
+    private final Object requestTag = new Object();
     private UserDialogCallback setTagCallback;
     private ActivityResultLauncher<String> notificationPermissionLauncher;
     private String pendingNotificationUsername;
@@ -115,7 +117,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         builder.setView(rootView);
         AlertDialog dialog = builder.create();
 
-        RequestQueue queue = NetworkComponent.getRequestQueueInstance(requireContext());
+        queue = NetworkComponent.getRequestQueueInstance(requireContext());
 
         nameTextview = rootView.findViewById(R.id.user_name);
         metaTextview = rootView.findViewById(R.id.user_meta);
@@ -272,6 +274,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                     DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
                     DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
 
+            stringRequest.setTag(requestTag);
             queue.add(stringRequest);
         }
 
@@ -291,6 +294,25 @@ public class UserDialogFragment extends AppCompatDialogFragment {
 
         if (container != null) {
             container.animate().cancel();
+        }
+        if (queue != null) {
+            queue.cancelAll(requestTag);
+            queue = null;
+        }
+        if (submissionsButton != null) {
+            submissionsButton.setOnClickListener(null);
+        }
+        if (tagButton != null) {
+            tagButton.setOnClickListener(null);
+        }
+        if (reportButton != null) {
+            reportButton.setOnClickListener(null);
+        }
+        if (blockButton != null) {
+            blockButton.setOnClickListener(null);
+        }
+        if (notificationsButton != null) {
+            notificationsButton.setOnClickListener(null);
         }
 
         nameTextview = null;

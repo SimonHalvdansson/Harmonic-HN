@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.settings;
 
 import android.animation.ArgbEvaluator;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.app.Dialog;
 import android.content.Context;
@@ -42,6 +44,7 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
 
     private final List<View> previewIndicators = new ArrayList<>();
     private final List<Integer> previewIndicatorColors = new ArrayList<>();
+    private final List<ValueAnimator> previewAnimators = new ArrayList<>();
     private final Map<String, MaterialButton> modeButtons = new HashMap<>();
 
     @NonNull
@@ -85,6 +88,18 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
 
     public static void show(FragmentManager fm) {
         new ThreadDepthIndicatorsDialogFragment().show(fm, TAG);
+    }
+
+    @Override
+    public void onDestroyView() {
+        for (ValueAnimator animator : new ArrayList<>(previewAnimators)) {
+            animator.cancel();
+        }
+        previewAnimators.clear();
+        previewIndicators.clear();
+        previewIndicatorColors.clear();
+        modeButtons.clear();
+        super.onDestroyView();
     }
 
     private void buildPreviewRows(View rootView, LinearLayout previewContainer) {
@@ -160,6 +175,13 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
             animator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
             animator.setInterpolator(new DecelerateInterpolator());
             animator.addUpdateListener(animation -> indicator.setBackgroundColor((int) animation.getAnimatedValue()));
+            animator.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    previewAnimators.remove(animation);
+                }
+            });
+            previewAnimators.add(animator);
             animator.start();
         }
     }

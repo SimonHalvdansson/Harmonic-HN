@@ -113,6 +113,23 @@ public class FilterListDialogFragment extends AppCompatDialogFragment {
         outState.putStringArrayList(STATE_ITEMS, new ArrayList<>(items));
     }
 
+    @Override
+    public void onDestroyView() {
+        if (listContainer != null) {
+            listContainer.removeAllViews();
+        }
+        if (inputEditText != null) {
+            inputEditText.setOnEditorActionListener(null);
+        }
+
+        listContainer = null;
+        emptyView = null;
+        inputLayout = null;
+        inputEditText = null;
+
+        super.onDestroyView();
+    }
+
     private boolean addCurrentInput() {
         inputLayout.setError(null);
         List<String> newItems = parseItems(String.valueOf(inputEditText.getText()));
