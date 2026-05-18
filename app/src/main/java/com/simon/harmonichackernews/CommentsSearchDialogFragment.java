@@ -90,9 +90,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
                 String searchTerm = editable.toString();
 
                 adapter.setSearchTerm(searchTerm);
-                adapter.notifyDataSetChanged();
-
-                updateMatches(searchTerm);
+                updateMatches(adapter.getVisibleCommentCount());
             }
         };
         searchBar.addTextChangedListener(searchWatcher);
@@ -134,17 +132,18 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
     }
 
     private void updateMatches(String searchTerm) {
-        int matchingComments = 0;
-        if (TextUtils.isEmpty(searchTerm)) {
-            matchingComments = comments.size();
-        } else {
+        int matchingComments = TextUtils.isEmpty(searchTerm) ? comments.size() : 0;
+        if (!TextUtils.isEmpty(searchTerm)) {
             for (Comment c : comments) {
-                if (c.text.toUpperCase().contains(searchTerm.toUpperCase())) {
+                if (c.text != null && c.text.toUpperCase().contains(searchTerm.toUpperCase())) {
                     matchingComments++;
                 }
             }
         }
+        updateMatches(matchingComments);
+    }
 
+    private void updateMatches(int matchingComments) {
         matchesText.setText("(" + matchingComments + (matchingComments == 1 ? " match" : " matches") + ")");
     }
 

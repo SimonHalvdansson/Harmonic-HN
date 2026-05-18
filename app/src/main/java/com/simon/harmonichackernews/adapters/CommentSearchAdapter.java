@@ -10,6 +10,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.simon.harmonichackernews.R;
@@ -18,27 +19,72 @@ import com.simon.harmonichackernews.utils.ThemeUtils;
 
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     public static final int TYPE_COMMENT = 1;
-    public static final int TYPE_COLLAPSED = 2;
+    private static final Object SEARCH_TERM_CHANGED_PAYLOAD = new Object();
     private final List<Comment> comments;
+    private final List<Comment> visibleComments = new ArrayList<>();
 
-    private String searchTerm;
+    private String searchTerm = "";
     public ItemClickListener itemClickListener;
 
     private String markedColor;
 
     public CommentSearchAdapter(List<Comment> comments) {
         this.comments = comments;
+        visibleComments.addAll(comments);
+        setHasStableIds(true);
     }
 
     public void setSearchTerm(String searchTerm) {
-        this.searchTerm = searchTerm;
+        String previousSearchTerm = this.searchTerm;
+        String nextSearchTerm = searchTerm == null ? "" : searchTerm;
+        List<Comment> previousVisibleComments = new ArrayList<>(visibleComments);
+        List<Comment> nextVisibleComments = filterComments(nextSearchTerm);
+
+        this.searchTerm = nextSearchTerm;
+        visibleComments.clear();
+        visibleComments.addAll(nextVisibleComments);
+
+        DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return previousVisibleComments.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return nextVisibleComments.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                return previousVisibleComments.get(oldItemPosition).id == nextVisibleComments.get(newItemPosition).id;
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                Comment oldComment = previousVisibleComments.get(oldItemPosition);
+                Comment newComment = nextVisibleComments.get(newItemPosition);
+                return oldComment == newComment && previousSearchTerm.equals(nextSearchTerm);
+            }
+
+            @Override
+            public Object getChangePayload(int oldItemPosition, int newItemPosition) {
+                return SEARCH_TERM_CHANGED_PAYLOAD;
+            }
+        }).dispatchUpdatesTo(this);
+    }
+
+    public int getVisibleCommentCount() {
+        return visibleComments.size();
     }
 
     public void setItemClickListener(ItemClickListener clickListener) {
@@ -57,7 +103,10 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
             container = view.findViewById(R.id.comment_search_item_container);
 
             container.setOnClickListener((v) -> {
-                itemClickListener.onItemClick(comments.get(getAbsoluteAdapterPosition()));
+                int position = getAbsoluteAdapterPosition();
+                if (position != RecyclerView.NO_POSITION && itemClickListener != null) {
+                    itemClickListener.onItemClick(visibleComments.get(position));
+                }
             });
 
             markedColor = ThemeUtils.isDarkMode(view.getContext()) ? "#fce205" : "#cc7722";
@@ -93,23 +142,28 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        if (viewType == TYPE_COMMENT) {
-            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.comments_search_item, parent, false);
-            return new CommentViewHolder(v);
-        } else {
-            return new RecyclerView.ViewHolder(new View(parent.getContext())) {};
-        }
+        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.comments_search_item, parent, false);
+        return new CommentViewHolder(v);
     }
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        bindCommentViewHolder(holder, position);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position, @NonNull List<Object> payloads) {
+        bindCommentViewHolder(holder, position);
+    }
+
+    private void bindCommentViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if (!(holder instanceof CommentSearchAdapter.CommentViewHolder)) {
             return;
         }
         final CommentViewHolder commentViewHolder = (CommentViewHolder) holder;
 
-        Comment comment = comments.get(position);
-        String text = comment.text;
+        Comment comment = visibleComments.get(position);
+        String text = comment.text == null ? "" : comment.text;
 
         StringBuffer sb = new StringBuffer(); // To hold the modified string
 
@@ -133,13 +187,33 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     }
 
     @Override
-    public int getItemViewType(int position) {
-        return TextUtils.isEmpty(searchTerm) || comments.get(position).text.toUpperCase().contains(searchTerm.toUpperCase()) ? TYPE_COMMENT : TYPE_COLLAPSED;
+    public int getItemCount() {
+        return visibleComments.size();
     }
 
     @Override
-    public int getItemCount() {
-        return comments.size();
+    public long getItemId(int position) {
+        return visibleComments.get(position).id;
+    }
+
+    private List<Comment> filterComments(String searchTerm) {
+        List<Comment> filteredComments = new ArrayList<>();
+        for (Comment comment : comments) {
+            if (matchesSearchTerm(comment, searchTerm)) {
+                filteredComments.add(comment);
+            }
+        }
+        return filteredComments;
+    }
+
+    private boolean matchesSearchTerm(Comment comment, String searchTerm) {
+        if (TextUtils.isEmpty(searchTerm)) {
+            return true;
+        }
+        if (comment == null || comment.text == null) {
+            return false;
+        }
+        return comment.text.toLowerCase(Locale.ROOT).contains(searchTerm.toLowerCase(Locale.ROOT));
     }
 
     public interface ItemClickListener {
