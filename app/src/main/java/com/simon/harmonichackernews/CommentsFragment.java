@@ -196,6 +196,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private RecyclerView recyclerViewSwipe;
     private RecyclerView recyclerViewRegular;
     private LinearLayoutManager layoutManager;
+    private RecyclerView.OnScrollListener recyclerViewScrollListener;
+    private BottomSheetBehavior.BottomSheetCallback recyclerBottomSheetCallback;
+    private BottomSheetBehavior.BottomSheetCallback webViewBottomSheetCallback;
+    private ViewTreeObserver.OnPreDrawListener preDrawListener;
     private RecyclerView.SmoothScroller smoothScroller;
     private int smoothScrollSpeedMultiplier = 1;
     private LinearLayout scrollNavigation;
@@ -245,6 +249,18 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean searchedCommentScrollTopPending = false;
     private boolean commentsByOpFilterActive = false;
     private final Handler nitterLinkPreviewHandler = new Handler(Looper.getMainLooper());
+    private final Runnable initializeWebViewRunnable = this::initializeWebView;
+    private final Runnable webViewBackdropFadeInRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (webViewBackdrop != null) {
+                webViewBackdrop.animate()
+                        .alpha(1f)
+                        .setDuration(300)
+                        .start();
+            }
+        }
+    };
     private int nitterLinkPreviewGeneration = 0;
 
     // Clean fallback management
@@ -642,17 +658,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             handleJsonResponse(story.id, cachedResponse, false, false, !showWebsite);
         }
 
-        view.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+        preDrawListener = new ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
                 view.getViewTreeObserver().removeOnPreDrawListener(this);
+                preDrawListener = null;
                 startPostponedEnterTransition();
                 if (shouldInitializeWebViewAfterFirstDraw) {
-                    view.post(CommentsFragment.this::initializeWebView);
+                    view.post(initializeWebViewRunnable);
                 }
                 return true;
             }
-        });
+        };
+        view.getViewTreeObserver().addOnPreDrawListener(preDrawListener);
     }
 
     private void syncOnBackPressedCallbackEnabledState() {
@@ -870,7 +888,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(layoutManager);
-        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+        recyclerViewScrollListener = new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
@@ -894,7 +912,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     updateSearchedCommentScrollTopVisibility(true);
                 }
             }
-        });
+        };
+        recyclerView.addOnScrollListener(recyclerViewScrollListener);
         smoothScroller = new LinearSmoothScroller(requireContext()) {
             public PointF computeScrollVectorForPosition(int targetPosition) {
                 return layoutManager.computeScrollVectorForPosition(targetPosition);
@@ -928,7 +947,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             recyclerView.setVerticalScrollBarEnabled(false);
         }
 
-        BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+        recyclerBottomSheetCallback = new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View view, int newState) {
                 syncOnBackPressedCallbackEnabledState();
@@ -951,7 +970,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     adapter.spacerHeight = Math.round(topInset * slideOffset);
                 }
             }
-        });
+        };
+        BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(recyclerBottomSheetCallback);
 
         ViewCompat.setOnApplyWindowInsetsListener(recyclerView, new OnApplyWindowInsetsListener() {
             @NonNull
@@ -1002,7 +1022,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         initializedWebView = true;
         BottomSheetBehavior.from(bottomSheet).setDraggable(true);
-        BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+        webViewBottomSheetCallback = new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
                 if (callback != null) {
@@ -1019,7 +1039,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     loadUrl(story.url);
                 }
             }
-        });
+        };
+        BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(webViewBottomSheetCallback);
 
         // This is because we are now for sure not using swipeRefresh
         try {
@@ -1116,18 +1137,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         webView.setBackgroundColor(Color.TRANSPARENT);
 
-        webViewBackdrop.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                if (webViewBackdrop != null) {
-                    webViewBackdrop.animate()
-                            .alpha(1f)
-                            .setDuration(300)
-                            .start();
-                }
-
-            }
-                }, 2000); // Start the animation after 2 seconds
+        webViewBackdrop.postDelayed(webViewBackdropFadeInRunnable, 2000); // Start the animation after 2 seconds
     }
 
     private boolean isShowingCustomView() {
@@ -1582,6 +1592,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             webView = null;
             initializedWebView = false;
 
+            if (!rendererProcessGone) {
+                webViewToDestroy.setWebViewClient(null);
+                webViewToDestroy.setWebChromeClient(null);
+                webViewToDestroy.setDownloadListener(null);
+                webViewToDestroy.removeJavascriptInterface("PdfAndroidJavascriptBridge");
+            }
+
             if (webViewToDestroy.getParent() instanceof ViewGroup) {
                 ((ViewGroup) webViewToDestroy.getParent()).removeView(webViewToDestroy);
             }
@@ -1631,26 +1648,107 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onDestroyView() {
         hideCustomView(false);
 
-        if (recyclerView != null) {
-            recyclerView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
-                @Override
-                public void onViewAttachedToWindow(@NonNull View v) {
-                    // no-op
-                }
+        View rootView = getView();
+        if (rootView != null) {
+            rootView.removeCallbacks(initializeWebViewRunnable);
+            if (preDrawListener != null && rootView.getViewTreeObserver().isAlive()) {
+                rootView.getViewTreeObserver().removeOnPreDrawListener(preDrawListener);
+            }
+            ViewCompat.setOnApplyWindowInsetsListener(rootView, null);
+        }
+        preDrawListener = null;
 
-                @Override
-                public void onViewDetachedFromWindow(@NonNull View v) {
-                    recyclerView.setAdapter(null);
-                }
-            });
+        if (backPressedCallback != null) {
+            backPressedCallback.remove();
+            backPressedCallback = null;
         }
 
-        super.onDestroyView();
+        if (bottomSheet != null) {
+            BottomSheetBehavior<View> bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+            if (recyclerBottomSheetCallback != null) {
+                bottomSheetBehavior.removeBottomSheetCallback(recyclerBottomSheetCallback);
+            }
+            if (webViewBottomSheetCallback != null) {
+                bottomSheetBehavior.removeBottomSheetCallback(webViewBottomSheetCallback);
+            }
+        }
+
+        if (recyclerView != null) {
+            if (recyclerViewScrollListener != null) {
+                recyclerView.removeOnScrollListener(recyclerViewScrollListener);
+            }
+            ViewCompat.setOnApplyWindowInsetsListener(recyclerView, null);
+            recyclerView.stopScroll();
+            recyclerView.setAdapter(null);
+            recyclerView.setLayoutManager(null);
+        }
+        if (recyclerViewRegular != null && recyclerViewRegular != recyclerView) {
+            recyclerViewRegular.setAdapter(null);
+            recyclerViewRegular.setLayoutManager(null);
+        }
+        if (recyclerViewSwipe != null && recyclerViewSwipe != recyclerView) {
+            recyclerViewSwipe.setAdapter(null);
+            recyclerViewSwipe.setLayoutManager(null);
+        }
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setOnRefreshListener(null);
+        }
+        if (scrollNavigation != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(scrollNavigation, null);
+        }
+        if (searchScrollTopFab != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(searchScrollTopFab, null);
+            searchScrollTopFab.setOnClickListener(null);
+        }
+        if (downloadButton != null) {
+            downloadButton.setOnClickListener(null);
+        }
+        if (webViewBackdrop != null) {
+            webViewBackdrop.removeCallbacks(webViewBackdropFadeInRunnable);
+            webViewBackdrop.animate().cancel();
+        }
 
         if (queue != null) {
             queue.cancelAll(requestTag);
         }
+        fallbackManager = null;
         destroyWebView();
+
+        clearViewReferences();
+
+        super.onDestroyView();
+    }
+
+    @Override
+    public void onDetach() {
+        callback = null;
+        super.onDetach();
+    }
+
+    private void clearViewReferences() {
+        adapter = null;
+        swipeRefreshLayout = null;
+        recyclerView = null;
+        recyclerViewSwipe = null;
+        recyclerViewRegular = null;
+        layoutManager = null;
+        recyclerViewScrollListener = null;
+        recyclerBottomSheetCallback = null;
+        webViewBottomSheetCallback = null;
+        smoothScroller = null;
+        scrollNavigation = null;
+        searchScrollTopFab = null;
+        progressIndicator = null;
+        bottomSheet = null;
+        webView = null;
+        webViewStub = null;
+        webViewContainer = null;
+        fullscreenContainer = null;
+        webViewBackdrop = null;
+        headerSpacer = null;
+        downloadButton = null;
+        customView = null;
+        customViewCallback = null;
     }
 
     @Override

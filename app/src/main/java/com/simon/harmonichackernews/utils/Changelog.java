@@ -14,7 +14,7 @@ public class Changelog {
                 "- Added button to only show comment threads where the OP has commented<br>" +
                 "- Added new setting for graying out clicked posts<br>" +
                 "- Added new sharing option for link + HN comments (thanks daniel-egan!)<br>" +
-                "- Fixed some crashes and reduced memory usage when opening large threads<br>" +
+                "- Fixed some crashes and reduced memory usage when opening large threads. Also added additional guarding against memory leaks.<br>" +
                 "<br>" +
                 "<b>Version 2.4:</b><br>" +
                 "- Redesigned search, including adding search options<br>" +
