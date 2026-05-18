@@ -646,17 +646,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         initializeRecyclerView();
 
-        queue = NetworkComponent.getRequestQueueInstance(requireContext());
-        String cachedResponse = Utils.loadCachedStory(getContext(), story.id);
-
-        loadStoryAndComments(story.id, cachedResponse);
-
-        // if this isn't here, the addition of the text appears to scroll the recyclerview down a little
-        recyclerView.scrollToPosition(0);
-
-        if (cachedResponse != null) {
-            handleJsonResponse(story.id, cachedResponse, false, false, !showWebsite);
-        }
+        boolean restoreScrollFromCache = !showWebsite;
 
         preDrawListener = new ViewTreeObserver.OnPreDrawListener() {
             @Override
@@ -664,6 +654,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 view.getViewTreeObserver().removeOnPreDrawListener(this);
                 preDrawListener = null;
                 startPostponedEnterTransition();
+                view.post(() -> loadInitialStoryAndComments(restoreScrollFromCache));
                 if (shouldInitializeWebViewAfterFirstDraw) {
                     view.post(initializeWebViewRunnable);
                 }
@@ -1763,6 +1754,25 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     @Override
     public void onOpenInBrowser() {
         Utils.launchInExternalBrowser(getActivity(), "https://news.ycombinator.com/item?id=" + story.id);
+    }
+
+    private void loadInitialStoryAndComments(boolean restoreScrollFromCache) {
+        Context context = getContext();
+        if (context == null || recyclerView == null || story == null) {
+            return;
+        }
+
+        queue = NetworkComponent.getRequestQueueInstance(context);
+        String cachedResponse = Utils.loadCachedStory(context, story.id);
+
+        loadStoryAndComments(story.id, cachedResponse);
+
+        // if this isn't here, the addition of the text appears to scroll the recyclerview down a little
+        recyclerView.scrollToPosition(0);
+
+        if (cachedResponse != null) {
+            handleJsonResponse(story.id, cachedResponse, false, false, restoreScrollFromCache);
+        }
     }
 
     private void loadStoryAndComments(final int id, final String oldCachedResponse) {
