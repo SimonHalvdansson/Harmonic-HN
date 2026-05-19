@@ -309,12 +309,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerViewSwipe = view.findViewById(R.id.comments_recyclerview_swipe);
         bottomSheet = view.findViewById(R.id.comments_bottom_sheet);
         progressIndicator = view.findViewById(R.id.webview_progress);
-        linkPreviewController = new LinkPreviewController(story, new LinkPreviewController.Callbacks() {
-            @Override
-            public void onPreviewChanged() {
-                CommentsFragment.this.onLinkPreviewChanged();
-            }
-        });
+        linkPreviewController = new LinkPreviewController(story, CommentsFragment.this::onLinkPreviewChanged);
         webViewController = new CommentsWebViewController(this, story, linkPreviewController, new CommentsWebViewController.Callbacks() {
             @Override
             public void onSwitchView(boolean isAtWebView) {
@@ -611,7 +606,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         // this is to make sure that action buttons in header get updated padding on rotations...
-        // yes its ugly, I know
+        // yes it's ugly, I know
         if (getContext() != null && Utils.isTablet(getResources()) && adapter != null) {
             adapter.notifyItemChanged(0);
         }
@@ -1495,7 +1490,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         adapter.commentsLoaded = true;
         updateNavigationVisibility();
-        recyclerView.post(() -> scrollToTargetComment());
+        recyclerView.post(this::scrollToTargetComment);
     }
 
     private void applyParsedComments(List<Comment> parsedComments) {
@@ -1705,7 +1700,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void updateComment(Comment existingComment, Comment parsedComment) {
-        boolean expanded = existingComment.expanded;
         existingComment.parent = parsedComment.parent;
         existingComment.by = parsedComment.by;
         existingComment.text = parsedComment.text;
@@ -1713,7 +1707,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         existingComment.depth = parsedComment.depth;
         existingComment.children = parsedComment.children;
         existingComment.childComments = parsedComment.childComments;
-        existingComment.expanded = expanded;
     }
 
     private boolean commentsAreSame(Comment oldComment, Comment newComment) {
@@ -2098,7 +2091,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void scrollPrevious(boolean topLevelOnly) {
-        View toScrollToCommentView = null;
+        View toScrollToCommentView;
         if (layoutManager != null) {
             int firstVisible = findFirstVisiblePosition();
 
@@ -2129,7 +2122,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void scrollNext(boolean topLevelOnly) {
-        View toScrollToCommentView = null;
+        View toScrollToCommentView;
         if (layoutManager != null) {
             int firstVisible = findFirstVisiblePosition();
 
@@ -2229,7 +2222,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void scrollLast() {
-        View toScrollToCommentView = null;
+        View toScrollToCommentView;
         if (layoutManager != null) {
             int firstVisible = layoutManager.findFirstVisibleItemPosition();
             int toScrollTo = firstVisible;
@@ -2312,6 +2305,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 R.layout.comment_dialog_item,
                 R.id.comment_dialog_text,
                 items) {
+            @NonNull
             public View getView(int position, View convertView, ViewGroup parent) {
                 TextView view = (TextView) super.getView(position, convertView, parent);
 
