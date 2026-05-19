@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
+import android.net.http.SslError;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
@@ -23,6 +24,7 @@ import android.view.ViewStub;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
+import android.webkit.SslErrorHandler;
 import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -66,6 +68,12 @@ class CommentsWebViewController {
     private static final String PDF_MIME_TYPE = "application/pdf";
     private static final String PDF_LOADER_URL = "file:///android_asset/pdf/index.html";
     private static final String OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html";
+
+    private enum ErrorPageType {
+        OFFLINE,
+        SSL,
+        GENERIC
+    }
 
     interface Callbacks {
         void onSwitchView(boolean isAtWebView);
@@ -215,9 +223,13 @@ class CommentsWebViewController {
         if (downloadButton != null && downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
             webView.setVisibility(View.VISIBLE);
             downloadButton.setVisibility(View.GONE);
-        } else if (showingErrorPage && webView.canGoBackOrForward(-2)) {
+        } else if (showingErrorPage) {
             showingErrorPage = false;
-            webView.goBackOrForward(-2);
+            if (webView.canGoBackOrForward(-2)) {
+                webView.goBackOrForward(-2);
+            } else {
+                webView.goBack();
+            }
         } else {
             webView.goBack();
         }
@@ -497,6 +509,22 @@ class CommentsWebViewController {
         loadUrl(url, null);
     }
 
+    private boolean isErrorPageUrl(@Nullable String url) {
+        return url != null && url.startsWith(OFFLINE_PAGE_URL);
+    }
+
+    private String getErrorPageUrl(@NonNull ErrorPageType type) {
+        switch (type) {
+            case SSL:
+                return OFFLINE_PAGE_URL + "#ssl";
+            case GENERIC:
+                return OFFLINE_PAGE_URL + "#generic";
+            case OFFLINE:
+            default:
+                return OFFLINE_PAGE_URL + "#offline";
+        }
+    }
+
     private void loadUrl(String url, @Nullable String pdfFilePath) {
         Context context = fragment.getContext();
         if (webView == null && integratedWebview) {
@@ -506,7 +534,7 @@ class CommentsWebViewController {
         if (webView == null || context == null || fragment.getView() == null) {
             return;
         }
-        if (!OFFLINE_PAGE_URL.equals(url)) {
+        if (!isErrorPageUrl(url)) {
             showingErrorPage = false;
             showingCachedArticlePage = false;
             lastRequestedWebViewUrl = url;
@@ -532,7 +560,7 @@ class CommentsWebViewController {
 
         url = linkPreviewController.prepareWebViewLoad(context, webView, url);
         webView.loadUrl(url);
-        if (OFFLINE_PAGE_URL.equals(url)) {
+        if (isErrorPageUrl(url)) {
             showingErrorPage = true;
             showingCachedArticlePage = false;
         }
@@ -636,15 +664,29 @@ class CommentsWebViewController {
         });
     }
 
-    private boolean shouldShowOfflineFallback(int errorCode) {
+    @Nullable
+    private ErrorPageType getCustomErrorPageType(int errorCode) {
         switch (errorCode) {
             case WebViewClient.ERROR_HOST_LOOKUP:
             case WebViewClient.ERROR_CONNECT:
             case WebViewClient.ERROR_TIMEOUT:
+                return ErrorPageType.OFFLINE;
+            case WebViewClient.ERROR_FAILED_SSL_HANDSHAKE:
+                return ErrorPageType.SSL;
+            case WebViewClient.ERROR_AUTHENTICATION:
+            case WebViewClient.ERROR_BAD_URL:
+            case WebViewClient.ERROR_FILE:
+            case WebViewClient.ERROR_FILE_NOT_FOUND:
+            case WebViewClient.ERROR_IO:
+            case WebViewClient.ERROR_PROXY_AUTHENTICATION:
+            case WebViewClient.ERROR_REDIRECT_LOOP:
             case WebViewClient.ERROR_UNKNOWN:
-                return true;
+            case WebViewClient.ERROR_TOO_MANY_REQUESTS:
+            case WebViewClient.ERROR_UNSUPPORTED_AUTH_SCHEME:
+            case WebViewClient.ERROR_UNSUPPORTED_SCHEME:
+                return ErrorPageType.GENERIC;
             default:
-                return false;
+                return null;
         }
     }
 
@@ -790,7 +832,7 @@ class CommentsWebViewController {
             if (!isCurrentWebViewCallback(view)) {
                 return;
             }
-            if (!OFFLINE_PAGE_URL.equals(url)) {
+            if (!isErrorPageUrl(url)) {
                 lastRequestedWebViewUrl = url;
             }
         }
@@ -903,19 +945,19 @@ class CommentsWebViewController {
             return true;
         }
 
-        private void showOfflineFallback(WebView view, @Nullable String failingUrl) {
+        private void showCustomErrorPage(WebView view, @Nullable String failingUrl, @NonNull ErrorPageType errorPageType) {
             if (!isCurrentWebViewCallback(view) || showingErrorPage || showingCachedArticlePage) {
                 return;
             }
             linkPreviewController.onWebViewOfflineFallback(fragment.getContext());
-            if (loadCachedArticleSnapshot(view, failingUrl)) {
+            if (errorPageType == ErrorPageType.OFFLINE && loadCachedArticleSnapshot(view, failingUrl)) {
                 return;
             }
             if (!TextUtils.isEmpty(failingUrl)) {
                 lastFailedWebViewUrl = failingUrl;
             } else if (lastRequestedWebViewUrl != null) {
                 lastFailedWebViewUrl = lastRequestedWebViewUrl;
-            } else if (view.getUrl() != null && !TextUtils.isEmpty(view.getUrl()) && !OFFLINE_PAGE_URL.equals(view.getUrl())) {
+            } else if (view.getUrl() != null && !TextUtils.isEmpty(view.getUrl()) && !isErrorPageUrl(view.getUrl())) {
                 lastFailedWebViewUrl = view.getUrl();
             }
             retryingFailedWebViewUrl = false;
@@ -923,15 +965,18 @@ class CommentsWebViewController {
                 swipeRefreshLayout.setRefreshing(false);
             }
             view.stopLoading();
-            clearWebViewHistoryOnNextFinish = true;
-            loadUrl(OFFLINE_PAGE_URL);
+            clearWebViewHistoryOnNextFinish = !view.canGoBack();
+            showingErrorPage = true;
+            showingCachedArticlePage = false;
+            loadUrl(getErrorPageUrl(errorPageType));
         }
 
         @Override
         @SuppressWarnings("deprecation")
         public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-            if (shouldShowOfflineFallback(errorCode)) {
-                showOfflineFallback(view, failingUrl);
+            ErrorPageType errorPageType = getCustomErrorPageType(errorCode);
+            if (errorPageType != null) {
+                showCustomErrorPage(view, failingUrl, errorPageType);
             } else {
                 super.onReceivedError(view, errorCode, description, failingUrl);
             }
@@ -939,11 +984,24 @@ class CommentsWebViewController {
 
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && request.isForMainFrame() && shouldShowOfflineFallback(error.getErrorCode())) {
-                showOfflineFallback(view, request.getUrl() != null ? request.getUrl().toString() : null);
+            ErrorPageType errorPageType = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? getCustomErrorPageType(error.getErrorCode()) : null;
+            if (request.isForMainFrame() && errorPageType != null) {
+                showCustomErrorPage(view, request.getUrl() != null ? request.getUrl().toString() : null, errorPageType);
             } else {
                 super.onReceivedError(view, request, error);
             }
+        }
+
+        @Override
+        public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+            handler.cancel();
+            String failingUrl = error != null ? error.getUrl() : null;
+            if (!TextUtils.isEmpty(failingUrl)
+                    && !TextUtils.equals(failingUrl, lastRequestedWebViewUrl)
+                    && !TextUtils.equals(failingUrl, view.getUrl())) {
+                return;
+            }
+            showCustomErrorPage(view, failingUrl, ErrorPageType.SSL);
         }
     }
 

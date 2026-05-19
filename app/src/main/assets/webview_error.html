@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="offline">
 <head>
     <meta charset="utf-8" />
     <title>Offline</title>
@@ -24,6 +24,14 @@
         .icon {
           display: inline-block;
         }
+        .error-page {
+          display: none;
+        }
+        html.offline #offline,
+        html.ssl #ssl,
+        html.generic #generic {
+          display: block;
+        }
         h1 {
           font-size: 1.5rem;
           margin-top: 0.5rem;
@@ -33,12 +41,41 @@
           line-height: 1.4;
         }
     </style>
+    <script>
+        (function() {
+          var type = window.location.hash.replace("#", "");
+          if (type !== "ssl" && type !== "generic") {
+            type = "offline";
+          }
+          document.documentElement.className = type;
+          document.addEventListener("DOMContentLoaded", function() {
+            var titles = {
+              offline: "Offline",
+              ssl: "Security error",
+              generic: "Page unavailable"
+            };
+            document.title = titles[type];
+          });
+        })();
+    </script>
 </head>
 <body>
 <div class="container">
-    <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#333"><path d="M792-56 686-160H260q-92 0-156-64T40-380q0-77 47.5-137T210-594q3-8 6-15.5t6-16.5L56-792l56-56 736 736-56 56ZM260-240h346L284-562q-2 11-3 21t-1 21h-20q-58 0-99 41t-41 99q0 58 41 99t99 41Zm185-161Zm419 191-58-56q17-14 25.5-32.5T840-340q0-42-29-71t-71-29h-60v-80q0-83-58.5-141.5T480-720q-27 0-52 6.5T380-693l-58-58q35-24 74.5-36.5T480-800q117 0 198.5 81.5T760-520q69 8 114.5 59.5T920-340q0 39-15 72.5T864-210ZM593-479Z"/></svg>
-    <h1>You're offline</h1>
-    <p>Harmonic couldn't load the page, check your internet connection.</p>
+    <section id="offline" class="error-page">
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#333"><path d="M792-56 686-160H260q-92 0-156-64T40-380q0-77 47.5-137T210-594q3-8 6-15.5t6-16.5L56-792l56-56 736 736-56 56ZM260-240h346L284-562q-2 11-3 21t-1 21h-20q-58 0-99 41t-41 99q0 58 41 99t99 41Zm185-161Zm419 191-58-56q17-14 25.5-32.5T840-340q0-42-29-71t-71-29h-60v-80q0-83-58.5-141.5T480-720q-27 0-52 6.5T380-693l-58-58q35-24 74.5-36.5T480-800q117 0 198.5 81.5T760-520q69 8 114.5 59.5T920-340q0 39-15 72.5T864-210ZM593-479Z"/></svg>
+        <h1>You're offline</h1>
+        <p>Harmonic couldn't load the page. Check your internet connection.</p>
+    </section>
+    <section id="ssl" class="error-page">
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#333"><path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 153-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Z"/></svg>
+        <h1>Security error</h1>
+        <p>Harmonic couldn't establish a secure connection to this site.</p>
+    </section>
+    <section id="generic" class="error-page">
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#333"><path d="M792-56 686-160H260q-92 0-156-64T40-380q0-77 47.5-137T210-594q3-8 6-15.5t6-16.5L56-792l56-56 736 736-56 56ZM260-240h346L284-562q-2 11-3 21t-1 21h-20q-58 0-99 41t-41 99q0 58 41 99t99 41Zm185-161Zm419 191-58-56q17-14 25.5-32.5T840-340q0-42-29-71t-71-29h-60v-80q0-83-58.5-141.5T480-720q-27 0-52 6.5T380-693l-58-58q35-24 74.5-36.5T480-800q117 0 198.5 81.5T760-520q69 8 114.5 59.5T920-340q0 39-15 72.5T864-210ZM593-479Z"/></svg>
+        <h1>Page unavailable</h1>
+        <p>Harmonic couldn't load this page. Try again later.</p>
+    </section>
 </div>
 </body>
 </html>
