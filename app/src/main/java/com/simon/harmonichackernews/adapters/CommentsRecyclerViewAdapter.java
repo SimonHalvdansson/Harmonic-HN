@@ -44,12 +44,6 @@ import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
-import coil.Coil;
-import coil.request.ImageRequest;
-
-import io.noties.markwon.Markwon;
-import io.noties.markwon.ext.latex.JLatexMathPlugin;
-import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin;
 
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
@@ -58,7 +52,6 @@ import org.sufficientlysecure.htmltextview.OnClickATagListener;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
 
 public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -197,20 +190,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.headerView.setClickable(story.isLink);
             headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : GONE);
             headerViewHolder.textView.setVisibility(TextUtils.isEmpty(story.text) ? GONE : View.VISIBLE);
-            headerViewHolder.infoContainer.setVisibility(story.hasExtraInfo() ? View.VISIBLE : GONE);
-            boolean hasLoadedLinkPreview = story.hasLoadedLinkPreview();
-            boolean showLinkPreviewLoading = story.linkPreviewLoading && !hasLoadedLinkPreview;
-            headerViewHolder.infoHeader.setVisibility(hasLoadedLinkPreview ? VISIBLE : GONE);
-            headerViewHolder.linkPreviewLoadingContainer.setVisibility(showLinkPreviewLoading ? VISIBLE : GONE);
-            headerViewHolder.arxivContainer.setVisibility(GONE);
-            headerViewHolder.githubContainer.setVisibility(GONE);
-            headerViewHolder.gitLabContainer.setVisibility(GONE);
-            headerViewHolder.stackExchangeContainer.setVisibility(GONE);
-            headerViewHolder.wikiContainer.setVisibility(GONE);
-            headerViewHolder.nitterContainer.setVisibility(GONE);
-            headerViewHolder.nitterMediaContainer.setVisibility(GONE);
-            headerViewHolder.nitterImage.setVisibility(GONE);
-            headerViewHolder.nitterVideoLabel.setVisibility(GONE);
 
             if (!TextUtils.isEmpty(story.text)) {
                 if (story.spannedText != null) {
@@ -221,176 +200,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             }
 
-            if (story.arxivInfo != null) {
-                headerViewHolder.arxivContainer.setVisibility(View.VISIBLE);
-                headerViewHolder.infoHeader.setVisibility(VISIBLE);
-
-                headerViewHolder.infoHeader.setText("ABSTRACT:");
-
-                FontUtils.setTypeface(headerViewHolder.arxivAbstract, false, 14);
-
-                Markwon markwon = Markwon.builder(ctx)
-                        .usePlugin(MarkwonInlineParserPlugin.create())
-                        .usePlugin(JLatexMathPlugin.create(headerViewHolder.arxivAbstract.getTextSize(), builder -> builder.inlinesEnabled(true)))
-                        .build();
-
-                String abstractText = story.arxivInfo.arxivAbstract
-                        .replace("\\(", "$$")
-                        .replace("\\)", "$$")
-                        .replace("\\[", "$$")
-                        .replace("\\]", "$$")
-                        .replaceAll("(?<!\\$)\\$(?!\\$)", Matcher.quoteReplacement("$$"))
-                        .replaceAll("\\\\textbf\\{(.*?)\\}", "**$1**")
-                        .replaceAll("\\\\textit\\{(.*?)\\}", "*$1*")
-                        .replaceAll("\\\\emph\\{(.*?)\\}", "*$1*");
-
-                markwon.setMarkdown(headerViewHolder.arxivAbstract, abstractText);
-
-                headerViewHolder.arxivBy.setText(story.arxivInfo.concatNames());
-                headerViewHolder.arxivDate.setText(story.arxivInfo.formatDate());
-                headerViewHolder.arxivSubjects.setText(story.arxivInfo.formatSubjects());
-                headerViewHolder.arxivBy.setContentDescription("Authors: " + story.arxivInfo.concatNames());
-                headerViewHolder.arxivDate.setContentDescription("Published: " + story.arxivInfo.formatDate());
-                headerViewHolder.arxivSubjects.setContentDescription("Subjects: " + story.arxivInfo.formatSubjects());
-
-                int byIconResource = R.drawable.ic_action_group;
-                if (story.arxivInfo.authors.length == 1) {
-                    byIconResource = R.drawable.ic_action_person;
-                } else if (story.arxivInfo.authors.length == 2) {
-                    byIconResource = R.drawable.ic_action_pair;
-                }
-                headerViewHolder.arxivByIcon.setImageResource(byIconResource);
-            }
-
-            if (story.repoInfo != null) {
-                headerViewHolder.githubContainer.setVisibility(View.VISIBLE);
-                headerViewHolder.infoHeader.setVisibility(VISIBLE);
-
-                headerViewHolder.infoHeader.setText(story.repoInfo.owner + " / " + story.repoInfo.name);
-
-                headerViewHolder.githubAbout.setText(story.repoInfo.about);
-                headerViewHolder.githubWebsite.setHtml("<a href=\"" + story.repoInfo.website + "\">" + story.repoInfo.getShortenedUrl() + "</a>");
-                headerViewHolder.githubLicense.setText(story.repoInfo.license);
-                headerViewHolder.githubLanguage.setText(story.repoInfo.language);
-                headerViewHolder.githubStars.setText(story.repoInfo.formatStars());
-                headerViewHolder.githubWatching.setText(story.repoInfo.formatWatching());
-                headerViewHolder.githubForks.setText(story.repoInfo.formatForks());
-                headerViewHolder.githubLicense.setContentDescription("License: " + story.repoInfo.license);
-                headerViewHolder.githubLanguage.setContentDescription("Primary language: " + story.repoInfo.language);
-
-                headerViewHolder.githubWebsiteContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.website) ? GONE : View.VISIBLE);
-                headerViewHolder.githubLicenseContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.license) ? GONE : View.VISIBLE);
-                headerViewHolder.githubLanguageContainer.setVisibility(TextUtils.isEmpty(story.repoInfo.language) ? GONE : View.VISIBLE);
-                headerViewHolder.githubAbout.setVisibility(TextUtils.isEmpty(story.repoInfo.about) ? GONE : VISIBLE);
-            }
-
-            if (story.gitLabInfo != null) {
-                headerViewHolder.gitLabContainer.setVisibility(View.VISIBLE);
-                headerViewHolder.infoHeader.setVisibility(VISIBLE);
-
-                headerViewHolder.infoHeader.setText(story.gitLabInfo.namespace + " / " + story.gitLabInfo.name);
-
-                headerViewHolder.gitLabDescription.setText(story.gitLabInfo.description);
-                headerViewHolder.gitLabWebsite.setHtml("<a href=\"" + story.gitLabInfo.website + "\">" + story.gitLabInfo.getShortenedUrl() + "</a>");
-                headerViewHolder.gitLabVisibility.setText(story.gitLabInfo.formatVisibility());
-                headerViewHolder.gitLabLanguage.setText(story.gitLabInfo.language);
-                headerViewHolder.gitLabStars.setText(story.gitLabInfo.formatStars());
-                headerViewHolder.gitLabForks.setText(story.gitLabInfo.formatForks());
-                headerViewHolder.gitLabVisibility.setContentDescription("Visibility: " + story.gitLabInfo.formatVisibility());
-                headerViewHolder.gitLabLanguage.setContentDescription("Primary language: " + story.gitLabInfo.language);
-
-                headerViewHolder.gitLabWebsiteContainer.setVisibility(TextUtils.isEmpty(story.gitLabInfo.website) ? GONE : View.VISIBLE);
-                headerViewHolder.gitLabVisibilityContainer.setVisibility(TextUtils.isEmpty(story.gitLabInfo.visibility) ? GONE : View.VISIBLE);
-                headerViewHolder.gitLabLanguageContainer.setVisibility(TextUtils.isEmpty(story.gitLabInfo.language) ? GONE : View.VISIBLE);
-                headerViewHolder.gitLabDescription.setVisibility(TextUtils.isEmpty(story.gitLabInfo.description) ? GONE : VISIBLE);
-            }
-
-            if (story.stackExchangeInfo != null) {
-                headerViewHolder.stackExchangeContainer.setVisibility(View.VISIBLE);
-                headerViewHolder.infoHeader.setVisibility(VISIBLE);
-
-                headerViewHolder.infoHeader.setText("STACK EXCHANGE:");
-                headerViewHolder.stackExchangeTitle.setText(story.stackExchangeInfo.title);
-                headerViewHolder.stackExchangeBy.setText(story.stackExchangeInfo.formatBy());
-                headerViewHolder.stackExchangeScore.setText(story.stackExchangeInfo.formatScore());
-                headerViewHolder.stackExchangeAnswers.setText(story.stackExchangeInfo.formatAnswerCount());
-                headerViewHolder.stackExchangeViews.setText(story.stackExchangeInfo.formatViewCount());
-                headerViewHolder.stackExchangeAnswerState.setText(story.stackExchangeInfo.formatAnswerState());
-                headerViewHolder.stackExchangeAuthor.setText(story.stackExchangeInfo.formatAuthor());
-                headerViewHolder.stackExchangeTags.setText(story.stackExchangeInfo.formatTags());
-                headerViewHolder.stackExchangeTagsContainer.setVisibility(TextUtils.isEmpty(story.stackExchangeInfo.formatTags()) ? GONE : View.VISIBLE);
-            }
-
-            if (story.wikiInfo != null) {
-                headerViewHolder.wikiContainer.setVisibility(View.VISIBLE);
-                headerViewHolder.infoHeader.setVisibility(VISIBLE);
-
-                headerViewHolder.infoHeader.setText("WIKIPEDIA SUMMARY:");
-                headerViewHolder.wikiSummary.setHtml(story.wikiInfo.summary);
-            }
-
-            if (story.nitterInfo != null) {
-                headerViewHolder.nitterContainer.setVisibility(View.VISIBLE);
-                headerViewHolder.infoHeader.setText(story.nitterInfo.userName + " " + story.nitterInfo.userTag);
-
-                headerViewHolder.nitterText.setHtml(story.nitterInfo.text);
-                headerViewHolder.nitterDate.setText(story.nitterInfo.date);
-                headerViewHolder.nitterReplyCount.setText(String.valueOf(story.nitterInfo.replyCount));
-                headerViewHolder.nitterReposts.setText(String.valueOf(story.nitterInfo.reposts));
-                headerViewHolder.nitterLikes.setText(String.valueOf(story.nitterInfo.likes));
-                headerViewHolder.nitterDate.setContentDescription("Posted: " + story.nitterInfo.date);
-                headerViewHolder.nitterReplyCount.setContentDescription("Replies: " + story.nitterInfo.replyCount);
-                headerViewHolder.nitterReposts.setContentDescription("Reposts: " + story.nitterInfo.reposts);
-                headerViewHolder.nitterLikes.setContentDescription("Likes: " + story.nitterInfo.likes);
-
-                headerViewHolder.nitterButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        Utils.launchCustomTab(v.getContext(), story.url);
-                    }
-                });
-
-                boolean hasReplyCount = !TextUtils.isEmpty(story.nitterInfo.replyCount);
-                headerViewHolder.nitterReplyCount.setVisibility(hasReplyCount ? VISIBLE : GONE);
-                headerViewHolder.nitterReplyImageView.setVisibility(hasReplyCount ? VISIBLE : GONE);
-
-                boolean hasReposts = !TextUtils.isEmpty(story.nitterInfo.reposts);
-                headerViewHolder.nitterReposts.setVisibility(hasReposts ? VISIBLE : GONE);
-                headerViewHolder.nitterRetweetImageView.setVisibility(hasReposts ? VISIBLE : GONE);
-
-                boolean hasLikes = !TextUtils.isEmpty(story.nitterInfo.likes);
-                headerViewHolder.nitterLikes.setVisibility(hasLikes ? VISIBLE : GONE);
-                headerViewHolder.nitterLikesImageView.setVisibility(hasLikes ? VISIBLE : GONE);
-
-                boolean hasNitterImage = story.nitterInfo.imgSrc != null;
-                headerViewHolder.nitterMediaContainer.setVisibility(hasNitterImage ? VISIBLE : GONE);
-                headerViewHolder.nitterImage.setVisibility(hasNitterImage ? VISIBLE : GONE);
-                headerViewHolder.nitterVideoLabel.setVisibility(story.nitterInfo.hasVideo && hasNitterImage ? VISIBLE : GONE);
-
-                if (hasNitterImage) {
-                    headerViewHolder.nitterImage.setContentDescription(story.nitterInfo.hasVideo ? "Tweet video" : "Tweet image");
-                    headerViewHolder.nitterImage.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            if (integratedWebview && bottomSheet != null) {
-                                BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_COLLAPSED);
-                            } else {
-                                Utils.launchCustomTab(v.getContext(), story.url);
-                            }
-                        }
-                    });
-                    try {
-                        ImageRequest request = new ImageRequest.Builder(ctx)
-                                .data(story.nitterInfo.imgSrc)
-                                .target(headerViewHolder.nitterImage)
-                                .build();
-                        Coil.imageLoader(ctx).enqueue(request);
-                    } catch (Exception e){
-                        e.printStackTrace();
-                    };
-                }
-
-            }
+            LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story, integratedWebview, bottomSheet);
 
             if (story.pollOptionArrayList != null) {
                 headerViewHolder.pollLayout.setVisibility(View.VISIBLE);

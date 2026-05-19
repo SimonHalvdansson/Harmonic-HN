@@ -1,13 +1,9 @@
 package com.simon.harmonichackernews;
 
-import static android.content.Context.DOWNLOAD_SERVICE;
 import static androidx.webkit.WebViewFeature.isFeatureSupported;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
-import android.animation.ValueAnimator;
-import android.annotation.SuppressLint;
-import android.app.DownloadManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -15,38 +11,19 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.graphics.PointF;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
 import android.text.Html;
 import android.text.TextUtils;
-import android.util.Base64;
-import android.util.Log;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewStub;
 import android.view.ViewTreeObserver;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
-import android.webkit.DownloadListener;
-import android.webkit.JavascriptInterface;
-import android.webkit.RenderProcessGoneDetail;
-import android.webkit.URLUtil;
-import android.webkit.WebChromeClient;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceResponse;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -70,44 +47,29 @@ import androidx.core.util.Pair;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
-import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.transition.MaterialFadeThrough;
 import com.google.android.material.transition.MaterialSharedAxis;
 import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
-import com.simon.harmonichackernews.data.ArxivInfo;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
-import com.simon.harmonichackernews.data.GitLabInfo;
-import com.simon.harmonichackernews.data.NitterInfo;
 import com.simon.harmonichackernews.data.PollOption;
-import com.simon.harmonichackernews.data.RepoInfo;
-import com.simon.harmonichackernews.data.StackExchangeInfo;
 import com.simon.harmonichackernews.data.Story;
-import com.simon.harmonichackernews.data.WikipediaInfo;
-import com.simon.harmonichackernews.linkpreview.ArxivAbstractGetter;
-import com.simon.harmonichackernews.linkpreview.GitHubInfoGetter;
-import com.simon.harmonichackernews.linkpreview.GitLabInfoGetter;
-import com.simon.harmonichackernews.linkpreview.NitterGetter;
-import com.simon.harmonichackernews.linkpreview.StackExchangeGetter;
-import com.simon.harmonichackernews.linkpreview.WikipediaGetter;
+import com.simon.harmonichackernews.linkpreview.LinkPreviewController;
 import com.simon.harmonichackernews.network.AlgoliaFallbackManager;
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.network.JSONParser;
@@ -116,7 +78,6 @@ import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.CommentSorter;
 import com.simon.harmonichackernews.utils.DialogUtils;
-import com.simon.harmonichackernews.utils.FileDownloader;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ShareUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
@@ -126,10 +87,7 @@ import com.simon.harmonichackernews.utils.ViewUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.HashMap;
@@ -138,7 +96,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import okhttp3.Call;
 import okhttp3.Response;
 
 public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener, CommentsRecyclerViewAdapter.RequestSummaryCallback, CommentsRecyclerViewAdapter.RetryListener {
@@ -162,9 +119,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_COMMENT_MASTER_URL = "com.simon.harmonichackernews.EXTRA_COMMENT_MASTER_URL";
     public final static String EXTRA_FORWARD = "com.simon.harmonichackernews.EXTRA_FORWARD";
     public final static String EXTRA_SHOW_WEBSITE = "com.simon.harmonichackernews.EXTRA_SHOW_WEBSITE";
-    private final static String PDF_MIME_TYPE = "application/pdf";
-    private final static String PDF_LOADER_URL = "file:///android_asset/pdf/index.html";
-    private final static String OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html";
     private final static Pattern POLL_TITLE_PATTERN = Pattern.compile("\\bpoll\\b", Pattern.CASE_INSENSITIVE);
 
     private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
@@ -180,10 +134,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static int COMMENT_ACTION_UNVOTE = 7;
     private final static int COMMENT_ACTION_DOWNVOTE = 8;
     private final static int COMMENT_ACTION_REPLY = 9;
-    private static final int NITTER_LINK_PREVIEW_MAX_ATTEMPTS = 4;
-    private static final long NITTER_LINK_PREVIEW_PAGE_LOAD_TIMEOUT_MS = 6000;
-    private static final long NITTER_LINK_PREVIEW_HTML_READ_TIMEOUT_MS = 2500;
-    private static final long[] NITTER_LINK_PREVIEW_RETRY_DELAYS_MS = {500, 1500, 3000};
 
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
@@ -198,7 +148,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private LinearLayoutManager layoutManager;
     private RecyclerView.OnScrollListener recyclerViewScrollListener;
     private BottomSheetBehavior.BottomSheetCallback recyclerBottomSheetCallback;
-    private BottomSheetBehavior.BottomSheetCallback webViewBottomSheetCallback;
     private ViewTreeObserver.OnPreDrawListener preDrawListener;
     private RecyclerView.SmoothScroller smoothScroller;
     private int smoothScrollSpeedMultiplier = 1;
@@ -206,24 +155,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private ExtendedFloatingActionButton searchScrollTopFab;
     private LinearProgressIndicator progressIndicator;
     private LinearLayout bottomSheet;
-    private WebView webView;
-    private ViewStub webViewStub;
-    private FrameLayout webViewContainer;
-    private FrameLayout fullscreenContainer;
-    private View webViewBackdrop;
     private Space headerSpacer;
-    private MaterialButton downloadButton;
+    private LinkPreviewController linkPreviewController;
+    private CommentsWebViewController webViewController;
     private boolean showNavButtons = false;
     private boolean showWebsite = false;
     private boolean integratedWebview = true;
     private boolean prefIntegratedWebview = true;
     private String preloadWebview = "never";
     private boolean matchWebviewTheme = true;
-    private boolean blockAds = true;
-    private boolean startedLoading = false;
     private boolean pollOptionsLoadStarted = false;
     private boolean pollOptionsLookupStarted = false;
-    private boolean initializedWebView = false;
     private boolean closeWebViewOnBack = false;
     private int topInset = 0;
     private long lastLoaded = 0;
@@ -232,36 +174,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private Story story;
     private Set<String> filteredUsers;
     private int SCREEN_HEIGHT_IN_PIXELS = 100;
-    private boolean showingErrorPage = false;
-    private boolean showingCachedArticlePage = false;
-    private boolean clearWebViewHistoryOnNextFinish = false;
-    @Nullable
-    private String lastFailedWebViewUrl;
-    @Nullable
-    private String lastRequestedWebViewUrl;
-    @Nullable
-    private View customView;
-    @Nullable
-    private WebChromeClient.CustomViewCallback customViewCallback;
-    private boolean retryingFailedWebViewUrl = false;
     private int scrollToCommentId = -1;
     private int searchedCommentScrollTopTargetId = -1;
     private boolean searchedCommentScrollTopPending = false;
     private boolean commentsByOpFilterActive = false;
-    private final Handler nitterLinkPreviewHandler = new Handler(Looper.getMainLooper());
-    private final Runnable initializeWebViewRunnable = this::initializeWebView;
-    private final Runnable webViewBackdropFadeInRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (webViewBackdrop != null) {
-                webViewBackdrop.animate()
-                        .alpha(1f)
-                        .setDuration(300)
-                        .start();
-            }
-        }
-    };
-    private int nitterLinkPreviewGeneration = 0;
 
     // Clean fallback management
     private AlgoliaFallbackManager fallbackManager;
@@ -385,25 +301,41 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         integratedWebview = prefIntegratedWebview && story.isLink;
         preloadWebview = SettingsUtils.shouldPreloadWebView(getContext());
         matchWebviewTheme = SettingsUtils.shouldMatchWebViewTheme(getContext());
-        blockAds = SettingsUtils.shouldBlockAds(getContext());
+        boolean blockAds = SettingsUtils.shouldBlockAds(getContext());
         closeWebViewOnBack = SettingsUtils.shouldCloseWebViewOnBack(getContext());
 
-        webViewStub = view.findViewById(R.id.comments_webview_stub);
-        webView = view.findViewById(R.id.comments_webview);
-        downloadButton = view.findViewById(R.id.webview_download);
         swipeRefreshLayout = view.findViewById(R.id.comments_swipe_refresh);
         recyclerViewRegular = view.findViewById(R.id.comments_recyclerview);
         recyclerViewSwipe = view.findViewById(R.id.comments_recyclerview_swipe);
         bottomSheet = view.findViewById(R.id.comments_bottom_sheet);
-        webViewContainer = view.findViewById(R.id.webview_container);
-        fullscreenContainer = view.findViewById(R.id.comments_fullscreen_container);
-        webViewBackdrop = view.findViewById(R.id.comments_webview_backdrop);
+        progressIndicator = view.findViewById(R.id.webview_progress);
+        linkPreviewController = new LinkPreviewController(story, new LinkPreviewController.Callbacks() {
+            @Override
+            public void onPreviewChanged() {
+                CommentsFragment.this.onLinkPreviewChanged();
+            }
+        });
+        webViewController = new CommentsWebViewController(this, story, linkPreviewController, new CommentsWebViewController.Callbacks() {
+            @Override
+            public void onSwitchView(boolean isAtWebView) {
+                if (callback != null) {
+                    callback.onSwitchView(isAtWebView);
+                }
+            }
+
+            @Override
+            public void syncOnBackPressedCallbackEnabledState() {
+                CommentsFragment.this.syncOnBackPressedCallbackEnabledState();
+            }
+        });
+        webViewController.bindViews(view, bottomSheet, swipeRefreshLayout, progressIndicator);
+        webViewController.configure(showWebsite, integratedWebview, preloadWebview, matchWebviewTheme, blockAds);
 
         if (story.title == null) {
             // Empty view for tablets
             view.findViewById(R.id.comments_empty).setVisibility(View.VISIBLE);
             bottomSheet.setVisibility(View.GONE);
-            webViewContainer.setVisibility(View.GONE);
+            webViewController.setContainerVisibility(View.GONE);
 
             swipeRefreshLayout.setEnabled(false);
             return;
@@ -452,8 +384,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackPressed() {
-                if (isShowingCustomView()) {
-                    hideCustomView(true);
+                if (webViewController.isShowingCustomView()) {
+                    webViewController.hideCustomView(true);
                     return;
                 }
 
@@ -465,20 +397,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     bottomSheet.setTranslationY(0f);
                     return;
                 } else if (webViewVisible) {
-                    if (webView.canGoBack()) {
-                        if (downloadButton.getVisibility() == View.VISIBLE && webView.getVisibility() == View.GONE) {
-                            webView.setVisibility(View.VISIBLE);
-                            downloadButton.setVisibility(View.GONE);
-                        } else {
-                            if (showingErrorPage && webView.canGoBackOrForward(-2)) {
-                                showingErrorPage = false;
-                                webView.goBackOrForward(-2);
-                            } else {
-                                webView.goBack();
-                            }
-                        }
-                    }
-
+                    webViewController.goBackFromVisibleWebView();
                     return;
                 }
 
@@ -489,11 +408,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
             private boolean willExpandBottomSheetOnBack() {
-                if (isShowingCustomView()) {
-                    return false;
-                }
                 boolean webViewVisible = BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
-                return webViewVisible && !webView.canGoBack();
+                return webViewVisible && webViewController.willExpandBottomSheetOnBack();
             }
         };
 
@@ -532,7 +448,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 View emptyView = view.findViewById(R.id.comments_empty);
                 emptyView.setPadding(leftPadding, emptyView.getPaddingTop(), rightPadding, emptyView.getPaddingBottom());
 
-                webViewContainer.setPadding(0, systemInsets.top, 0, 0);
+                webViewController.setContainerPadding(0, systemInsets.top, 0, 0);
 
                 return windowInsets;
             }
@@ -559,13 +475,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         boolean shouldInitializeWebViewAfterFirstDraw = integratedWebview && !showWebsite;
 
         if (shouldInitializeWebViewBeforeFirstDraw) {
-            initializeWebView();
+            webViewController.initialize();
         } else if (!integratedWebview) {
             BottomSheetBehavior.from(bottomSheet).setDraggable(false);
         }
 
         bottomSheet.setBackgroundColor(ContextCompat.getColor(requireContext(), ThemeUtils.getBackgroundColorResource(requireContext())));
-        webViewContainer.setBackgroundColor(ContextCompat.getColor(requireContext(), ThemeUtils.getBackgroundColorResource(requireContext())));
+        webViewController.setContainerBackgroundColor(ContextCompat.getColor(requireContext(), ThemeUtils.getBackgroundColorResource(requireContext())));
 
         comments = new ArrayList<>();
         Comment headerComment = new Comment();
@@ -656,7 +572,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 startPostponedEnterTransition();
                 view.post(() -> loadInitialStoryAndComments(restoreScrollFromCache));
                 if (shouldInitializeWebViewAfterFirstDraw) {
-                    view.post(initializeWebViewRunnable);
+                    view.post(webViewController.getInitializeRunnable());
                 }
                 return true;
             }
@@ -665,15 +581,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void syncOnBackPressedCallbackEnabledState() {
-        if (isShowingCustomView()) {
+        if (webViewController != null && webViewController.isShowingCustomView()) {
             backPressedCallback.setEnabled(true);
             return;
         }
         if (closeWebViewOnBack) {
-            backPressedCallback.setEnabled(webView != null &&
+            backPressedCallback.setEnabled(webViewController != null && webViewController.hasWebView() &&
                     BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED);
         } else {
-            backPressedCallback.setEnabled(webView != null && webView.canGoBack());
+            backPressedCallback.setEnabled(webViewController != null && webViewController.canGoBack());
         }
     }
 
@@ -684,7 +600,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         params.setMargins(0, 0, 0, standardMargin + navbarHeight);
 
-        webViewContainer.setLayoutParams(params);
+        webViewController.setContainerLayoutParams(params);
 
         if (adapter != null) {
             adapter.setNavbarHeight(navbarHeight);
@@ -828,11 +744,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_REFRESH:
-                        if ((showingErrorPage || showingCachedArticlePage) && !TextUtils.isEmpty(lastFailedWebViewUrl)) {
-                            retryingFailedWebViewUrl = true;
-                            loadUrl(lastFailedWebViewUrl);
+                        if (webViewController.isShowingOfflineOrCachedPage() && webViewController.hasLastFailedUrl()) {
+                            webViewController.retryLastFailedUrl();
                         } else {
-                            webView.reload();
+                            webViewController.reload();
                         }
                         break;
 
@@ -848,17 +763,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         // We first check the "new" version of dark mode, algorithmic darkening
                         // this requires the isDarkMode thing to be true for the theme which we
                         // have set
-                        if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), !WebSettingsCompat.isAlgorithmicDarkeningAllowed(webView.getSettings()));
-                        } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
-                            // I don't know why but this seems to always be true whenever we
-                            // are at or above android 10
-                            if (WebSettingsCompat.getForceDark(webView.getSettings()) == WebSettingsCompat.FORCE_DARK_ON) {
-                                WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_OFF);
-                            } else {
-                                WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_ON);
-                            }
-                        }
+                        webViewController.toggleDarkMode();
 
                         break;
 
@@ -995,358 +900,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_HEADER, 1);
     }
 
-    @SuppressLint({"RequiresFeature", "SetJavaScriptEnabled"})
-    @SuppressWarnings("deprecation")
-    private void initializeWebView() {
-        if (initializedWebView) {
-            return;
-        }
-
-        Context context = getContext();
-        if (context == null || getView() == null) {
-            return;
-        }
-
-        webView = getOrInflateWebView();
-        if (webView == null) {
-            return;
-        }
-        initializedWebView = true;
-        BottomSheetBehavior.from(bottomSheet).setDraggable(true);
-        webViewBottomSheetCallback = new BottomSheetBehavior.BottomSheetCallback() {
-            @Override
-            public void onStateChanged(@NonNull View bottomSheet, int newState) {
-                if (callback != null) {
-                    callback.onSwitchView(newState == BottomSheetBehavior.STATE_COLLAPSED);
-                }
-            }
-
-            @Override
-            public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-                // onSlide gets called when if we're just scrolling the scrollview in the sheet,
-                // we only want to start loading if we're actually sliding up the thing!
-                if (!startedLoading && slideOffset < 0.9999) {
-                    startedLoading = true;
-                    loadUrl(story.url);
-                }
-            }
-        };
-        BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(webViewBottomSheetCallback);
-
-        // This is because we are now for sure not using swipeRefresh
-        try {
-            ((FrameLayout) swipeRefreshLayout.getParent()).removeView(swipeRefreshLayout);
-        } catch (Exception e) {
-            // This will crash if we have already done this, which is fine
-        }
-
-        if (blockAds && Utils.adservers.isEmpty()) {
-            Utils.loadAdservers(context.getResources());
-        }
-
-        webView.setWebViewClient(new MyWebViewClient());
-        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(context)) || showWebsite || (NitterGetter.isConvertibleToNitter(story.url) && SettingsUtils.shouldUseLinkPreviewX(context))) {
-            loadUrl(story.url);
-            startedLoading = true;
-        }
-
-        webView.getSettings().setBuiltInZoomControls(true);
-        webView.getSettings().setDisplayZoomControls(false);
-        webView.getSettings().setJavaScriptEnabled(true);
-        webView.getSettings().setDomStorageEnabled(true);
-        webView.getSettings().setGeolocationEnabled(true);
-        webView.getSettings().setDatabaseEnabled(true);
-        webView.getSettings().setUseWideViewPort(true);
-        webView.getSettings().setLoadWithOverviewMode(true);
-        webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
-
-        webView.setDownloadListener(new DownloadListener() {
-            @Override
-            public void onDownloadStart(String url, String userAgent,
-                                        String contentDisposition, String mimetype,
-                                        long contentLength) {
-
-                if (!TextUtils.isEmpty(mimetype) && mimetype.equals(PDF_MIME_TYPE) && (url.startsWith("http://") || url.startsWith("https://"))) {
-                    downloadPdf(url, contentDisposition, mimetype, webView.getContext());
-                } else {
-                    showDownloadButton(url, contentDisposition, mimetype);
-                }
-            }
-        });
-
-        webView.setWebChromeClient(new WebChromeClient() {
-
-            private ValueAnimator progressAnimator;
-
-            @Override
-            public void onShowCustomView(View view, CustomViewCallback callback) {
-                if (getContext() == null || getView() == null || fullscreenContainer == null || webViewContainer == null || bottomSheet == null) {
-                    callback.onCustomViewHidden();
-                    return;
-                }
-                showCustomView(view, callback);
-            }
-
-            @Override
-            public void onHideCustomView() {
-                hideCustomView(false);
-            }
-
-            @Override
-            public void onProgressChanged(WebView view, int newProgress) {
-                if (view != webView || getContext() == null || getView() == null || progressIndicator == null) {
-                    return;
-                }
-                if (progressAnimator != null && progressAnimator.isRunning()) {
-                    progressAnimator.cancel();
-                }
-
-                int current = progressIndicator.getProgress();
-                if (newProgress > current) {
-                    progressAnimator = ValueAnimator.ofInt(current, newProgress);
-                    progressAnimator.setDuration(400);
-                    progressAnimator.addUpdateListener(anim -> {
-                        int animatedValue = (int) anim.getAnimatedValue();
-                        progressIndicator.setProgress(animatedValue);
-                    });
-                    progressAnimator.start();
-                } else {
-                    progressIndicator.setProgress(newProgress);
-                }
-
-                progressIndicator.setVisibility(newProgress < 100 ? View.VISIBLE : View.GONE);
-            }
-        });
-
-        if (matchWebviewTheme && ThemeUtils.isDarkMode(context)) {
-            if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), true);
-            } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
-                WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_ON);
-            }
-        }
-
-        webView.setBackgroundColor(Color.TRANSPARENT);
-
-        webViewBackdrop.postDelayed(webViewBackdropFadeInRunnable, 2000); // Start the animation after 2 seconds
-    }
-
-    private boolean isShowingCustomView() {
-        return customView != null;
-    }
-
-    private void showCustomView(@NonNull View view, @NonNull WebChromeClient.CustomViewCallback callback) {
-        if (isShowingCustomView()) {
-            hideCustomView(true);
-        }
-
-        customView = view;
-        customViewCallback = callback;
-
-        if (view.getParent() instanceof ViewGroup) {
-            ((ViewGroup) view.getParent()).removeView(view);
-        }
-
-        fullscreenContainer.removeAllViews();
-        fullscreenContainer.addView(view, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-        ));
-        fullscreenContainer.setVisibility(View.VISIBLE);
-        webViewContainer.setVisibility(View.GONE);
-        bottomSheet.setVisibility(View.GONE);
-
-        setFullscreenSystemBarsHidden(true);
-        syncOnBackPressedCallbackEnabledState();
-
-        if (this.callback != null) {
-            this.callback.onSwitchView(true);
-        }
-    }
-
-    private void hideCustomView(boolean notifyCallback) {
-        if (!isShowingCustomView()) {
-            return;
-        }
-
-        View currentCustomView = customView;
-        WebChromeClient.CustomViewCallback currentCustomViewCallback = customViewCallback;
-        customView = null;
-        customViewCallback = null;
-
-        if (currentCustomView != null && currentCustomView.getParent() instanceof ViewGroup) {
-            ((ViewGroup) currentCustomView.getParent()).removeView(currentCustomView);
-        }
-
-        fullscreenContainer.removeAllViews();
-        fullscreenContainer.setVisibility(View.GONE);
-        webViewContainer.setVisibility(View.VISIBLE);
-        bottomSheet.setVisibility(View.VISIBLE);
-
-        setFullscreenSystemBarsHidden(false);
-        syncOnBackPressedCallbackEnabledState();
-
-        if (callback != null) {
-            callback.onSwitchView(BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED);
-        }
-
-        if (notifyCallback && currentCustomViewCallback != null) {
-            currentCustomViewCallback.onCustomViewHidden();
-        }
-    }
-
-    private void setFullscreenSystemBarsHidden(boolean hidden) {
-        if (getActivity() == null) {
-            return;
-        }
-
-        WindowInsetsControllerCompat windowInsetsController =
-                ViewCompat.getWindowInsetsController(requireActivity().getWindow().getDecorView());
-        if (windowInsetsController == null) {
-            return;
-        }
-
-        if (hidden) {
-            windowInsetsController.hide(WindowInsetsCompat.Type.systemBars());
-            windowInsetsController.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-        } else {
-            windowInsetsController.show(WindowInsetsCompat.Type.systemBars());
-        }
-    }
-
-    private void loadUrl(String url) {
-        loadUrl(url, null);
-    }
-
-    private void loadUrl(String url, @Nullable String pdfFilePath) {
-        Context context = getContext();
-        if (webView == null && integratedWebview) {
-            initializeWebView();
-            context = getContext();
-        }
-        if (webView == null || context == null || getView() == null) {
-            return;
-        }
-        cancelPendingNitterLinkPreviewRead();
-        if (!OFFLINE_PAGE_URL.equals(url)) {
-            showingErrorPage = false;
-            showingCachedArticlePage = false;
-            lastRequestedWebViewUrl = url;
-        }
-        if (url.equals(PDF_LOADER_URL)) {
-            PdfAndroidJavascriptBridge pdfAndroidJavascriptBridge = new PdfAndroidJavascriptBridge(pdfFilePath, new PdfAndroidJavascriptBridge.Callbacks() {
-                @Override
-                public void onFailure() {
-
-                }
-
-                @Override
-                public void onLoad() {
-
-                }
-            });
-
-            webView.addJavascriptInterface(pdfAndroidJavascriptBridge, "PdfAndroidJavascriptBridge");
-            webView.setInitialScale(100);
-            webView.getSettings().setLoadWithOverviewMode(true);
-            webView.getSettings().setUseWideViewPort(true);
-        }
-
-        if (NitterGetter.isConvertibleToNitter(url) && SettingsUtils.shouldRedirectNitter(context)) {
-            url = NitterGetter.convertToNitterUrl(url);
-        }
-
-        String nitterPreviewUrl = null;
-        boolean loadingNitterPreview = story != null
-                && story.nitterInfo == null
-                && shouldLoadNitterLinkPreview(url);
-        if (loadingNitterPreview) {
-            nitterPreviewUrl = url;
-            setLinkPreviewLoading(true);
-        } else if (story != null
-                && story.linkPreviewLoading
-                && story.nitterInfo == null
-                && !shouldLoadNitterLinkPreview(url)
-                && shouldLoadNitterLinkPreview(story.url)) {
-            setLinkPreviewLoading(false);
-        }
-
-        int nitterPreviewGeneration = nitterLinkPreviewGeneration;
-        webView.loadUrl(url);
-        if (nitterPreviewUrl != null) {
-            scheduleNitterLinkPreviewPageLoadTimeout(webView, nitterPreviewUrl, nitterPreviewGeneration);
-        }
-        if (OFFLINE_PAGE_URL.equals(url)) {
-            showingErrorPage = true;
-            showingCachedArticlePage = false;
-        }
-    }
-
-    @Nullable
-    private WebView getOrInflateWebView() {
-        if (webView != null) {
-            return webView;
-        }
-        if (webViewStub == null) {
-            return null;
-        }
-
-        View inflated = webViewStub.inflate();
-        if (inflated instanceof WebView) {
-            webView = (WebView) inflated;
-        } else {
-            webView = inflated.findViewById(R.id.comments_webview);
-        }
-        webViewStub = null;
-        return webView;
-    }
-
-    private void downloadPdf(String url, String contentDisposition, String mimetype, Context ctx) {
-        if (ctx == null) {
-            return;
-        }
-        FileDownloader fileDownloader = new FileDownloader(ctx);
-        Toast.makeText(ctx, "Loading PDF...", Toast.LENGTH_LONG).show();
-        fileDownloader.downloadFile(url, PDF_MIME_TYPE, new FileDownloader.FileDownloaderCallback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                showDownloadButton(url, contentDisposition, mimetype);
-            }
-
-            @Override
-            public void onSuccess(String filePath) {
-                loadUrl(PDF_LOADER_URL, filePath);
-            }
-        });
-
-    }
-
-    private void showDownloadButton(String url, String contentDisposition, String mimetype) {
-        if (webView != null && downloadButton != null) {
-            webView.setVisibility(View.GONE);
-            downloadButton.setVisibility(View.VISIBLE);
-            downloadButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    // Just download via notification as usual
-                    try {
-                        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-
-                        request.allowScanningByMediaScanner();
-                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, URLUtil.guessFileName(url, contentDisposition, mimetype));
-                        DownloadManager dm = (DownloadManager) view.getContext().getSystemService(DOWNLOAD_SERVICE);
-                        dm.enqueue(request);
-                        Toast.makeText(getContext(), "Downloading...", Toast.LENGTH_LONG).show();
-                    } catch (Exception e) {
-                        Toast.makeText(getContext(), "Failed to download, opening in browser", Toast.LENGTH_LONG).show();
-                        Utils.launchInExternalBrowser(getActivity(), url);
-                    }
-
-                }
-            });
-        }
-    }
 
     @Override
     public void onStart() {
@@ -1422,8 +975,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (bottomSheet != null) {
                     bottomSheet.setBackgroundColor(ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx)));
                 }
-                if (webViewContainer != null) {
-                    webViewContainer.setBackgroundColor(ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx)));
+                if (webViewController != null) {
+                    webViewController.setContainerBackgroundColor(ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx)));
                 }
             }
             if (updateHeader) {
@@ -1571,77 +1124,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    public void destroyWebView() {
-        destroyWebView(false);
-    }
-
-    private void destroyWebView(boolean rendererProcessGone) {
-        cancelPendingNitterLinkPreviewRead();
-        // Nuclear
-        if (webView != null) {
-            WebView webViewToDestroy = webView;
-            webView = null;
-            initializedWebView = false;
-
-            if (!rendererProcessGone) {
-                webViewToDestroy.setWebViewClient(null);
-                webViewToDestroy.setWebChromeClient(null);
-                webViewToDestroy.setDownloadListener(null);
-                webViewToDestroy.removeJavascriptInterface("PdfAndroidJavascriptBridge");
-            }
-
-            if (webViewToDestroy.getParent() instanceof ViewGroup) {
-                ((ViewGroup) webViewToDestroy.getParent()).removeView(webViewToDestroy);
-            }
-
-            try {
-                if (!rendererProcessGone) {
-                    webViewToDestroy.stopLoading();
-                    webViewToDestroy.clearHistory();
-                    webViewToDestroy.clearCache(true);
-                    webViewToDestroy.onPause();
-                    webViewToDestroy.removeAllViews();
-                    webViewToDestroy.destroyDrawingCache();
-                    webViewToDestroy.pauseTimers();
-                }
-                webViewToDestroy.destroy();
-            } catch (RuntimeException e) {
-                Log.e("MY_APP_TAG", "Failed to destroy WebView cleanly", e);
-            }
-        }
-    }
-
-    public void restartWebView() {
-        Context context = getContext();
-        if (context == null || getView() == null || webViewContainer == null) {
-            destroyWebView(true);
-            return;
-        }
-
-        destroyWebView();
-
-        try {
-            webView = new WebView(context);
-            webView.setId(R.id.comments_webview);
-            webViewContainer.addView(webView, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-            ));
-            initializeWebView();
-        } catch (RuntimeException e) {
-            webView = null;
-            initializedWebView = false;
-            Log.e("MY_APP_TAG", "Failed to recreate WebView", e);
-        }
-    }
-
     @Override
     public void onDestroyView() {
-        hideCustomView(false);
-
         View rootView = getView();
         if (rootView != null) {
-            rootView.removeCallbacks(initializeWebViewRunnable);
             if (preDrawListener != null && rootView.getViewTreeObserver().isAlive()) {
                 rootView.getViewTreeObserver().removeOnPreDrawListener(preDrawListener);
             }
@@ -1659,8 +1145,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (recyclerBottomSheetCallback != null) {
                 bottomSheetBehavior.removeBottomSheetCallback(recyclerBottomSheetCallback);
             }
-            if (webViewBottomSheetCallback != null) {
-                bottomSheetBehavior.removeBottomSheetCallback(webViewBottomSheetCallback);
+            if (webViewController != null && webViewController.getBottomSheetCallback() != null) {
+                bottomSheetBehavior.removeBottomSheetCallback(webViewController.getBottomSheetCallback());
             }
         }
 
@@ -1691,19 +1177,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             ViewCompat.setOnApplyWindowInsetsListener(searchScrollTopFab, null);
             searchScrollTopFab.setOnClickListener(null);
         }
-        if (downloadButton != null) {
-            downloadButton.setOnClickListener(null);
-        }
-        if (webViewBackdrop != null) {
-            webViewBackdrop.removeCallbacks(webViewBackdropFadeInRunnable);
-            webViewBackdrop.animate().cancel();
-        }
-
         if (queue != null) {
             queue.cancelAll(requestTag);
         }
         fallbackManager = null;
-        destroyWebView();
+        if (webViewController != null) {
+            webViewController.onDestroyView(rootView);
+        }
 
         clearViewReferences();
 
@@ -1725,21 +1205,20 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         layoutManager = null;
         recyclerViewScrollListener = null;
         recyclerBottomSheetCallback = null;
-        webViewBottomSheetCallback = null;
         smoothScroller = null;
         scrollNavigation = null;
         searchScrollTopFab = null;
         progressIndicator = null;
         bottomSheet = null;
-        webView = null;
-        webViewStub = null;
-        webViewContainer = null;
-        fullscreenContainer = null;
-        webViewBackdrop = null;
         headerSpacer = null;
-        downloadButton = null;
-        customView = null;
-        customViewCallback = null;
+        if (webViewController != null) {
+            webViewController.clearViewReferences();
+            webViewController = null;
+        }
+        if (linkPreviewController != null) {
+            linkPreviewController.cancelPendingNitterLinkPreviewRead();
+            linkPreviewController = null;
+        }
     }
 
     @Override
@@ -1868,252 +1347,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         maybeLoadPollOptions();
 
-        loadLinkPreviews();
+        linkPreviewController.loadNetworkPreviews(getContext());
     }
 
-    private void loadLinkPreviews() {
-        if (story == null || TextUtils.isEmpty(story.url) || story.linkPreviewLoading || story.hasLoadedLinkPreview()) {
-            return;
-        }
-
-        if (ArxivAbstractGetter.isValidArxivUrl(story.url) && SettingsUtils.shouldUseLinkPreviewArxiv(getContext())) {
-            setLinkPreviewLoading(true);
-            ArxivAbstractGetter.getAbstract(story.url, getContext(), new ArxivAbstractGetter.GetterCallback() {
-                @Override
-                public void onSuccess(ArxivInfo arxivInfo) {
-                    story.arxivInfo = arxivInfo;
-                    setLinkPreviewLoading(false);
-                }
-
-                @Override
-                public void onFailure(String reason) {
-                    setLinkPreviewLoading(false);
-                }
-            });
-        } else if (GitHubInfoGetter.isValidGitHubUrl(story.url) && SettingsUtils.shouldUseLinkPreviewGithub(getContext())) {
-            setLinkPreviewLoading(true);
-            GitHubInfoGetter.getInfo(story.url, getContext(), new GitHubInfoGetter.GetterCallback() {
-                @Override
-                public void onSuccess(RepoInfo repoInfo) {
-                    story.repoInfo = repoInfo;
-                    setLinkPreviewLoading(false);
-                }
-
-                @Override
-                public void onFailure(String reason) {
-                    setLinkPreviewLoading(false);
-                }
-            });
-        } else if (GitLabInfoGetter.isValidGitLabUrl(story.url) && SettingsUtils.shouldUseLinkPreviewGitLab(getContext())) {
-            setLinkPreviewLoading(true);
-            GitLabInfoGetter.getInfo(story.url, getContext(), new GitLabInfoGetter.GetterCallback() {
-                @Override
-                public void onSuccess(GitLabInfo gitLabInfo) {
-                    story.gitLabInfo = gitLabInfo;
-                    setLinkPreviewLoading(false);
-                }
-
-                @Override
-                public void onFailure(String reason) {
-                    setLinkPreviewLoading(false);
-                }
-            });
-        } else if (StackExchangeGetter.isValidStackExchangeUrl(story.url) && SettingsUtils.shouldUseLinkPreviewStackExchange(getContext())) {
-            setLinkPreviewLoading(true);
-            StackExchangeGetter.getInfo(story.url, getContext(), new StackExchangeGetter.GetterCallback() {
-                @Override
-                public void onSuccess(StackExchangeInfo stackExchangeInfo) {
-                    story.stackExchangeInfo = stackExchangeInfo;
-                    setLinkPreviewLoading(false);
-                }
-
-                @Override
-                public void onFailure(String reason) {
-                    setLinkPreviewLoading(false);
-                }
-            });
-        } else if (WikipediaGetter.isValidWikipediaUrl(story.url) && SettingsUtils.shouldUseLinkPreviewWikipedia(getContext())) {
-            setLinkPreviewLoading(true);
-            WikipediaGetter.getInfo(story.url, getContext(), new WikipediaGetter.GetterCallback() {
-                @Override
-                public void onSuccess(WikipediaInfo wikipediaInfo) {
-                    story.wikiInfo = wikipediaInfo;
-                    setLinkPreviewLoading(false);
-                }
-
-                @Override
-                public void onFailure(String reason) {
-                    setLinkPreviewLoading(false);
-                }
-            });
-        }
-    }
-
-    private void setLinkPreviewLoading(boolean loading) {
-        if (story == null) {
-            return;
-        }
-        story.linkPreviewLoading = loading;
+    private void onLinkPreviewChanged() {
         if (adapter != null) {
             adapter.notifyItemChanged(0);
         }
-    }
-
-    private boolean shouldLoadNitterLinkPreview(String url) {
-        return shouldReadNitterLinkPreview(url)
-                || (NitterGetter.isConvertibleToNitter(url)
-                && SettingsUtils.shouldRedirectNitter(getContext())
-                && SettingsUtils.shouldUseLinkPreviewX(getContext()));
-    }
-
-    private boolean shouldReadNitterLinkPreview(String url) {
-        return NitterGetter.isValidNitterUrl(url)
-                && SettingsUtils.shouldUseLinkPreviewX(getContext());
-    }
-
-    private void cancelPendingNitterLinkPreviewRead() {
-        nitterLinkPreviewGeneration++;
-        nitterLinkPreviewHandler.removeCallbacksAndMessages(null);
-    }
-
-    private void scheduleNitterLinkPreviewPageLoadTimeout(WebView view, String url, int generation) {
-        nitterLinkPreviewHandler.postDelayed(() -> {
-            if (isCurrentNitterLinkPreviewRead(view, url, generation)) {
-                readNitterLinkPreviewAttempt(view, url, generation, 0);
-            }
-        }, NITTER_LINK_PREVIEW_PAGE_LOAD_TIMEOUT_MS);
-    }
-
-    private void readNitterLinkPreviewWithRetry(WebView view, String url) {
-        if (story == null || story.nitterInfo != null) {
-            return;
-        }
-        cancelPendingNitterLinkPreviewRead();
-        setLinkPreviewLoading(true);
-        readNitterLinkPreviewAttempt(view, url, nitterLinkPreviewGeneration, 0);
-    }
-
-    private void readNitterLinkPreviewAttempt(WebView view, String url, int generation, int attempt) {
-        Context context = getContext();
-        if (context == null || !isCurrentNitterLinkPreviewRead(view, url, generation)) {
-            return;
-        }
-        if (!isWebViewAtNitterLinkPreviewUrl(view, url)) {
-            onNitterLinkPreviewReadFailed(view, url, generation, attempt);
-            return;
-        }
-
-        final boolean[] finished = {false};
-        nitterLinkPreviewHandler.postDelayed(() -> {
-            if (finished[0] || !isCurrentNitterLinkPreviewRead(view, url, generation)) {
-                return;
-            }
-            finished[0] = true;
-            onNitterLinkPreviewReadFailed(view, url, generation, attempt);
-        }, NITTER_LINK_PREVIEW_HTML_READ_TIMEOUT_MS);
-
-        NitterGetter.getInfo(view, context, new NitterGetter.GetterCallback() {
-            @Override
-            public void onSuccess(NitterInfo nitterInfo) {
-                if (finished[0] || !isCurrentNitterLinkPreviewRead(view, url, generation)) {
-                    return;
-                }
-                finished[0] = true;
-                story.nitterInfo = nitterInfo;
-                setLinkPreviewLoading(false);
-            }
-
-            @Override
-            public void onFailure(String reason) {
-                if (finished[0] || !isCurrentNitterLinkPreviewRead(view, url, generation)) {
-                    return;
-                }
-                finished[0] = true;
-                onNitterLinkPreviewReadFailed(view, url, generation, attempt);
-            }
-        });
-    }
-
-    private void onNitterLinkPreviewReadFailed(WebView view, String url, int generation, int attempt) {
-        int nextAttempt = attempt + 1;
-        if (nextAttempt < NITTER_LINK_PREVIEW_MAX_ATTEMPTS) {
-            long delay = NITTER_LINK_PREVIEW_RETRY_DELAYS_MS[Math.min(attempt, NITTER_LINK_PREVIEW_RETRY_DELAYS_MS.length - 1)];
-            nitterLinkPreviewHandler.postDelayed(() ->
-                            readNitterLinkPreviewAttempt(view, url, generation, nextAttempt),
-                    delay);
-            return;
-        }
-
-        if (isCurrentNitterLinkPreviewRead(view, url, generation)) {
-            setLinkPreviewLoading(false);
-        }
-    }
-
-    private boolean isCurrentNitterLinkPreviewRead(WebView view, String url, int generation) {
-        return generation == nitterLinkPreviewGeneration
-                && view != null
-                && view == webView
-                && story != null
-                && story.nitterInfo == null
-                && NitterGetter.isValidNitterUrl(url);
-    }
-
-    private boolean isWebViewAtNitterLinkPreviewUrl(WebView view, String expectedUrl) {
-        String currentUrl = view.getUrl();
-        if (TextUtils.isEmpty(currentUrl) || !NitterGetter.isValidNitterUrl(currentUrl)) {
-            return false;
-        }
-
-        String expectedStatusId = getNitterStatusId(expectedUrl);
-        String currentStatusId = getNitterStatusId(currentUrl);
-        if (!TextUtils.isEmpty(expectedStatusId) && !TextUtils.isEmpty(currentStatusId)) {
-            return expectedStatusId.equals(currentStatusId);
-        }
-
-        return areSameNitterPage(currentUrl, expectedUrl);
-    }
-
-    @Nullable
-    private String getNitterStatusId(String url) {
-        try {
-            List<String> segments = Uri.parse(url).getPathSegments();
-            for (int i = 0; i < segments.size() - 1; i++) {
-                if ("status".equals(segments.get(i))) {
-                    return segments.get(i + 1);
-                }
-            }
-        } catch (Exception ignored) {
-        }
-        return null;
-    }
-
-    private boolean areSameNitterPage(String firstUrl, String secondUrl) {
-        try {
-            Uri first = Uri.parse(firstUrl);
-            Uri second = Uri.parse(secondUrl);
-            return TextUtils.equals(normalizeHost(first.getHost()), normalizeHost(second.getHost()))
-                    && TextUtils.equals(trimTrailingSlash(first.getPath()), trimTrailingSlash(second.getPath()));
-        } catch (Exception ignored) {
-            return TextUtils.equals(firstUrl, secondUrl);
-        }
-    }
-
-    private String normalizeHost(@Nullable String host) {
-        if (host == null) {
-            return "";
-        }
-        host = host.toLowerCase(java.util.Locale.ROOT);
-        return host.startsWith("www.") ? host.substring(4) : host;
-    }
-
-    private String trimTrailingSlash(@Nullable String path) {
-        if (TextUtils.isEmpty(path) || "/".equals(path)) {
-            return "";
-        }
-        while (path.endsWith("/")) {
-            path = path.substring(0, path.length() - 1);
-        }
-        return path;
     }
 
     private void maybeLoadPollOptions() {
@@ -2219,7 +1459,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             if (integratedWebview && !adapter.integratedWebview) {
                 // It's the first time, so we need to re-initialize the recyclerview too
-                initializeWebView();
+                webViewController.setIntegratedWebview(true);
+                webViewController.initialize();
                 initializeRecyclerView();
             }
 
@@ -2487,19 +1728,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void clickBrowser() {
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        try {
-            intent.setData(Uri.parse(webView.getUrl()));
-            startActivity(intent);
-        } catch (Exception e) {
-            // If we're at a PDF or something like that, just do the original URL
-            try {
-                intent.setData(Uri.parse(story.url));
-                startActivity(intent);
-            } catch (Exception e2) {
-                Utils.toast("Couldn't open URL", getContext());
-            }
-        }
+        webViewController.openCurrentOrStoryUrlInBrowser();
     }
 
     public void clickShare(View view) {
@@ -2555,12 +1784,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         Utils.openCommentsActivity(story.commentMasterId, -1, requireContext());
                     }
                 } else if (id == R.id.menu_adblock) {
-                    blockAds = false;
-                    webView.reload();
-
-                    Snackbar snackbar = Snackbar.make(webView, "Disabled AdBlock, refreshing WebView", Snackbar.LENGTH_SHORT);
-                    ViewCompat.setElevation(snackbar.getView(), Utils.pxFromDp(getResources(), 24));
-                    snackbar.show();
+                    webViewController.disableAdBlockAndReload();
                 } else if (id == R.id.menu_archive) {
                     Toast.makeText(getContext(), "Contacting archive.org API...", Toast.LENGTH_SHORT).show();
                     ArchiveOrgUrlGetter.getArchiveUrl(story.url, getContext(), new ArchiveOrgUrlGetter.GetterCallback() {
@@ -3231,356 +2455,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onRequest(Runnable onDone) {
-        // Ensure we're on the main thread
-        Handler handler = new Handler(Looper.getMainLooper());
-
-        // If the WebView hasn't been initialized or hasn't started loading yet, start it now
-        if (webView == null || !startedLoading) {
-            startedLoading = true;
-            loadUrl(story.url);
-        }
-
-        // Inject a one-time listener to wait for the page to finish loading
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-
-                // Run a simple JS snippet to grab the page's body text
-                view.evaluateJavascript(
-                        "(function() { return document.body.innerText || ''; })();",
-                        result -> {
-                            // result is a JSON-encoded string
-                            if (result != null) {
-                                // Strip the surrounding quotes
-                                story.summary = result.replaceAll("^\"|\"$", "");
-                            } else {
-                                story.summary = "";
-                            }
-                            // Notify caller that we're done
-                            handler.post(onDone);
-                        }
-                );
-            }
-        });
+        webViewController.requestSummary(onDone);
     }
 
-    private boolean shouldShowOfflineFallback(int errorCode) {
-        switch (errorCode) {
-            case WebViewClient.ERROR_HOST_LOOKUP:
-            case WebViewClient.ERROR_CONNECT:
-            case WebViewClient.ERROR_TIMEOUT:
-            case WebViewClient.ERROR_UNKNOWN:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private boolean loadCachedArticleSnapshot(WebView view, @Nullable String failingUrl) {
-        Context context = getContext();
-        if (view == null || context == null || getView() == null || story == null || !story.isLink || story.id <= 0) {
-            return false;
-        }
-
-        String html = Utils.loadCachedArticleSnapshot(context, story.id);
-        if (TextUtils.isEmpty(html)) {
-            return false;
-        }
-
-        String baseUrl = Utils.loadCachedArticleUrl(context, story.id);
-        if (TextUtils.isEmpty(baseUrl)) {
-            baseUrl = !TextUtils.isEmpty(failingUrl) ? failingUrl : story.url;
-        }
-
-        lastFailedWebViewUrl = !TextUtils.isEmpty(failingUrl) ? failingUrl : baseUrl;
-        retryingFailedWebViewUrl = false;
-        showingErrorPage = false;
-        showingCachedArticlePage = true;
-        if (swipeRefreshLayout != null) {
-            swipeRefreshLayout.setRefreshing(false);
-        }
-
-        view.stopLoading();
-        clearWebViewHistoryOnNextFinish = true;
-        Toast.makeText(context, "Showing cached webview content", Toast.LENGTH_SHORT).show();
-        view.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null);
-        return true;
-    }
-
-    public class MyWebViewClient extends WebViewClient {
-
-        private boolean isCurrentWebViewCallback(WebView view) {
-            return view != null
-                    && view == webView
-                    && getContext() != null
-                    && getView() != null
-                    && bottomSheet != null
-                    && webViewBackdrop != null;
-        }
-
-        @Override
-        public void onPageStarted(WebView view, String url, Bitmap favicon) {
-            super.onPageStarted(view, url, favicon);
-            if (!isCurrentWebViewCallback(view)) {
-                return;
-            }
-            if (!OFFLINE_PAGE_URL.equals(url)) {
-                lastRequestedWebViewUrl = url;
-            }
-        }
-
-        @Override
-        public void onPageFinished(WebView view, String url) {
-            super.onPageFinished(view, url);
-            if (!isCurrentWebViewCallback(view)) {
-                return;
-            }
-            view.setBackgroundColor(Color.WHITE);
-            webViewBackdrop.setVisibility(View.GONE);
-
-            if (retryingFailedWebViewUrl) {
-                if (swipeRefreshLayout != null) {
-                    swipeRefreshLayout.setRefreshing(false);
-                }
-                retryingFailedWebViewUrl = false;
-            }
-
-            if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
-                // If we are at the webview and we just loaded, recheck the canGoBack status
-                syncOnBackPressedCallbackEnabledState();
-            }
-
-            if (clearWebViewHistoryOnNextFinish) {
-                clearWebViewHistoryOnNextFinish = false;
-                view.post(() -> {
-                    if (isCurrentWebViewCallback(view)) {
-                        view.clearHistory();
-                        syncOnBackPressedCallbackEnabledState();
-                    }
-                });
-            }
-
-            if (shouldReadNitterLinkPreview(url)) {
-                readNitterLinkPreviewWithRetry(view, url);
-            }
-        }
-
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            if (url.startsWith("intent://")) {
-                try {
-                    Context context = view.getContext();
-                    Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
-
-                    // First, try to use the fallback URL (browser version of Play Store)
-                    String fallbackUrl = intent.getStringExtra("browser_fallback_url");
-                    if (fallbackUrl != null) {
-                        view.loadUrl(fallbackUrl);
-                        return true; // Indicate that we're handling this URL
-                    } else {
-                        // If no valid fallback URL, then check if the intent can be resolved (Play Store app is installed)
-                        if (intent.resolveActivity(context.getPackageManager()) != null) {
-                            context.startActivity(intent);
-                            return true; // Indicate that we're handling this URL
-                        }
-                    }
-                } catch (Exception e) {
-                    // Handle the error
-                    return false; // Indicate that we're not handling this URL
-                }
-            }
-
-            return false;
-        }
-
-        @Override
-        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-            if (!blockAds) {
-                return super.shouldInterceptRequest(view, request);
-            }
-            ByteArrayInputStream EMPTY = new ByteArrayInputStream("".getBytes());
-            if (!Utils.adservers.isEmpty()) {
-                String host = request.getUrl().getHost();
-                if (host != null && Utils.adservers.contains(host)) {
-                    Utils.log("Blocked: " + request.getUrl());
-                    return new WebResourceResponse("text/plain", "utf-8", EMPTY);
-                }
-            }
-
-            return super.shouldInterceptRequest(view, request);
-        }
-
-        @Override
-        public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
-            boolean wasCurrentWebView = view == webView;
-            if (wasCurrentWebView) {
-                destroyWebView(true);
-            }
-
-            if (getContext() == null || getView() == null || webViewContainer == null) {
-                return true;
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (!detail.didCrash()) {
-                    // Renderer is killed because the system ran out of memory. The app
-                    // can recover gracefully by creating a new WebView instance in the
-                    // foreground.
-                    Log.e("MY_APP_TAG", "System killed the WebView rendering process " +
-                            "to reclaim memory. Recreating...");
-
-                    if (wasCurrentWebView) {
-                        restartWebView();
-                    }
-
-                    // By this point, the instance variable "mWebView" is guaranteed to
-                    // be null, so it's safe to reinitialize it.
-
-                    return true; // The app continues executing.
-                }
-            }
-            Context context = getContext();
-            if (context != null && wasCurrentWebView) {
-                Utils.toast("WebView crashed, reinitializing", context);
-                restartWebView();
-            }
-
-            // Renderer crashes because of an internal error, such as a memory
-            // access violation.
-            Log.e("MY_APP_TAG", "The WebView rendering process crashed!");
-
-            // In this example, the app itself crashes after detecting that the
-            // renderer crashed. If you handle the crash more gracefully and let
-            // your app continue executing, you must destroy the current WebView
-            // instance, specify logic for how the app continues executing, and
-            // return "true" instead.
-            return true;
-        }
-
-        private void showOfflineFallback(WebView view, @Nullable String failingUrl) {
-            if (!isCurrentWebViewCallback(view) || showingErrorPage || showingCachedArticlePage) {
-                return;
-            }
-            if (story != null && story.linkPreviewLoading && shouldLoadNitterLinkPreview(story.url)) {
-                setLinkPreviewLoading(false);
-            }
-            if (loadCachedArticleSnapshot(view, failingUrl)) {
-                return;
-            }
-            if (!TextUtils.isEmpty(failingUrl)) {
-                lastFailedWebViewUrl = failingUrl;
-            } else if (lastRequestedWebViewUrl != null) {
-                lastFailedWebViewUrl = lastRequestedWebViewUrl;
-            } else if (view.getUrl() != null && !TextUtils.isEmpty(view.getUrl()) && !OFFLINE_PAGE_URL.equals(view.getUrl())) {
-                lastFailedWebViewUrl = view.getUrl();
-            }
-            retryingFailedWebViewUrl = false;
-            if (swipeRefreshLayout != null) {
-                swipeRefreshLayout.setRefreshing(false);
-            }
-            view.stopLoading();
-            clearWebViewHistoryOnNextFinish = true;
-            CommentsFragment.this.loadUrl(OFFLINE_PAGE_URL);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-            if (shouldShowOfflineFallback(errorCode)) {
-                showOfflineFallback(view, failingUrl);
-            } else {
-                super.onReceivedError(view, errorCode, description, failingUrl);
-            }
-        }
-
-        @Override
-        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && request.isForMainFrame() && shouldShowOfflineFallback(error.getErrorCode())) {
-                showOfflineFallback(view, request.getUrl() != null ? request.getUrl().toString() : null);
-            } else {
-                super.onReceivedError(view, request, error);
-            }
-        }
-    }
 
     public interface BottomSheetFragmentCallback {
         void onSwitchView(boolean isAtWebView);
-    }
-
-    public static class PdfAndroidJavascriptBridge {
-        private final File mFile;
-        private @Nullable
-        RandomAccessFile mRandomAccessFile;
-        private final @Nullable Callbacks mCallback;
-        private final Handler mHandler;
-
-        PdfAndroidJavascriptBridge(String filePath, @Nullable Callbacks callback) {
-            mFile = new File(filePath);
-            mCallback = callback;
-            mHandler = new Handler(Looper.getMainLooper());
-        }
-
-        @JavascriptInterface
-        public String getChunk(long begin, long end) {
-            try {
-                if (mRandomAccessFile == null) {
-                    mRandomAccessFile = new RandomAccessFile(mFile, "r");
-                }
-                final int bufferSize = (int) (end - begin);
-                byte[] data = new byte[bufferSize];
-                mRandomAccessFile.seek(begin);
-                mRandomAccessFile.read(data);
-                return Base64.encodeToString(data, Base64.DEFAULT);
-            } catch (IOException e) {
-                Log.e("Exception", e.toString());
-                return "";
-            }
-        }
-
-        @JavascriptInterface
-        public long getSize() {
-            return mFile.length();
-        }
-
-        @JavascriptInterface
-        public void onLoad() {
-            if (mCallback != null) {
-                mHandler.post(mCallback::onLoad);
-            }
-        }
-
-        @JavascriptInterface
-        public void onFailure() {
-            if (mCallback != null) {
-                mHandler.post(mCallback::onFailure);
-            }
-        }
-
-        public void cleanUp() {
-            try {
-                if (mRandomAccessFile != null) {
-                    mRandomAccessFile.close();
-                }
-            } catch (IOException e) {
-                Log.e("Exception", e.toString());
-            }
-        }
-
-        @Override
-        protected void finalize() throws Throwable {
-            try {
-                cleanUp();
-            } finally {
-                super.finalize();
-            }
-        }
-
-        interface Callbacks {
-            void onFailure();
-
-            void onLoad();
-        }
     }
 
 }
