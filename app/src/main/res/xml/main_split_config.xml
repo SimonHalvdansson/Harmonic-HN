@@ -41,4 +41,9 @@
     <ActivityFilter
       window:activityName=".AboutActivity"/>
   </ActivityRule>
+  <ActivityRule
+    window:alwaysExpand="true">
+    <ActivityFilter
+      window:activityName=".DebugActivity"/>
+  </ActivityRule>
 </resources>

@@ -1,0 +1,96 @@
+package com.simon.harmonichackernews;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.fragment.app.Fragment;
+
+import com.simon.harmonichackernews.databinding.ActivityDebugBinding;
+import com.simon.harmonichackernews.settings.SettingsCallback;
+import com.simon.harmonichackernews.utils.Utils;
+
+public class DebugFragment extends Fragment {
+
+    public DebugFragment() {
+        super(R.layout.activity_debug);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        ActivityDebugBinding binding = ActivityDebugBinding.bind(view);
+        ViewCompat.setAccessibilityHeading(binding.debugTitle, true);
+
+        boolean isSettingsTwoPane = getActivity() instanceof SettingsCallback
+                && ((SettingsCallback) getActivity()).isTwoPane();
+        applyInsets(binding, isSettingsTwoPane);
+
+        binding.debugBuild.setText(String.format(
+                "Version %s (%s)",
+                BuildConfig.VERSION_NAME,
+                BuildConfig.BUILD_TYPE));
+
+        binding.debugLink.setOnClickListener(v -> openDebugLink());
+        binding.debugPoll.setOnClickListener(v -> openDebugPoll());
+        binding.debugInternalHnLink.setOnClickListener(v -> openDebugInternalHnLink());
+        binding.debugNitterVideoTest.setOnClickListener(v -> openDebugNitterVideoTest());
+        binding.debugWelcome.setOnClickListener(v -> openDebugWelcome());
+        binding.debugNotifications.setOnClickListener(v -> openDebugNotifications());
+    }
+
+    private void applyInsets(ActivityDebugBinding binding, boolean isSettingsTwoPane) {
+        final View root = binding.getRoot();
+        final View container = binding.debugContainer;
+        final int sidePadding = isSettingsTwoPane
+                ? 0
+                : getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
+        final int padTop = container.getPaddingTop();
+        final int padBot = container.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+
+            container.setPadding(
+                    sidePadding + Math.max(bars.left, cutout.left),
+                    padTop + bars.top,
+                    sidePadding + Math.max(bars.right, cutout.right),
+                    padBot + Math.max(bars.bottom, ime.bottom)
+            );
+            return insets;
+        });
+        ViewCompat.requestApplyInsets(root);
+    }
+
+    private void openDebugLink() {
+        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=47938725");
+    }
+
+    private void openDebugPoll() {
+        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=39572682");
+    }
+
+    private void openDebugInternalHnLink() {
+        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=30676384");
+    }
+
+    private void openDebugNitterVideoTest() {
+        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=48012735");
+    }
+
+    private void openDebugWelcome() {
+        startActivity(new Intent(requireContext(), WelcomeActivity.class));
+    }
+
+    private void openDebugNotifications() {
+        DebugNotificationsDialogFragment.show(getParentFragmentManager());
+    }
+}

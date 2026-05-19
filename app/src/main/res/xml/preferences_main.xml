@@ -44,6 +44,12 @@
         app:fragment="com.simon.harmonichackernews.settings.DataStoragePreferenceFragment" />
 
     <Preference
+        app:key="pref_debug"
+        app:title="Debug"
+        app:summary="Test links, internal tools"
+        app:icon="@drawable/ic_action_api" />
+
+    <Preference
         app:key="pref_about"
         app:title="About"
         app:icon="@drawable/ic_action_info" />

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:id="@+id/debug_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:orientation="vertical"
+        android:paddingLeft="@dimen/single_view_side_margin"
+        android:paddingTop="36dp"
+        android:paddingRight="@dimen/single_view_side_margin"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/debug_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/product_sans"
+            android:text="Testing tools"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="32dp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/debug_build"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="0dp"
+            android:fontFamily="@font/product_sans"
+            android:textColor="?attr/storyColorDisabled"
+            android:textStyle="bold"
+            tools:text="Version 1.3.3.7 (debug)" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingTop="12dp"
+            android:paddingBottom="16dp"
+            android:fontFamily="@font/product_sans"
+            android:text="Shortcuts to some common test scenarios."
+            android:textSize="16sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/debug_link"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="Debug HN link"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="14sp"
+            app:icon="@drawable/ic_action_ballot"
+            app:iconTint="?attr/storyColorNormal" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/debug_poll"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="Debug HN poll"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="14sp"
+            app:icon="@drawable/ic_action_comment"
+            app:iconTint="?attr/storyColorNormal" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/debug_internal_hn_link"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="Internal HN link"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="14sp"
+            app:icon="@drawable/ic_action_link"
+            app:iconTint="?attr/storyColorNormal" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/debug_nitter_video_test"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="Nitter video test"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="14sp"
+            app:icon="@drawable/ic_link_preview_x"
+            app:iconTint="?attr/storyColorNormal" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/debug_welcome"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="Debug Welcome activity"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="14sp"
+            app:icon="@drawable/ic_action_explore"
+            app:iconTint="?attr/storyColorNormal" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/debug_notifications"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="Debug notifications"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="14sp"
+            app:icon="@drawable/ic_action_notifications"
+            app:iconTint="?attr/storyColorNormal" />
+
+    </LinearLayout>
+
+</ScrollView>

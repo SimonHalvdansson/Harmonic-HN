@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.simon.harmonichackernews.AboutActivity;
 import com.simon.harmonichackernews.BuildConfig;
+import com.simon.harmonichackernews.DebugActivity;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.SettingsActivity;
 
@@ -19,6 +20,7 @@ public class SettingsHeaderFragment extends BaseSettingsFragment {
 
     public static final String DEFAULT_KEY = "pref_header_appearance";
     public static final String ABOUT_KEY = "pref_about";
+    public static final String DEBUG_KEY = "pref_debug";
 
     private String selectedKey = DEFAULT_KEY;
     private RecyclerView.OnChildAttachStateChangeListener attachListener;
@@ -31,6 +33,19 @@ public class SettingsHeaderFragment extends BaseSettingsFragment {
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.preferences_main, rootKey);
+
+        Preference debugPref = findPreference(DEBUG_KEY);
+        if (debugPref != null) {
+            debugPref.setVisible(BuildConfig.DEBUG);
+            debugPref.setOnPreferenceClickListener(preference -> {
+                if (getActivity() instanceof SettingsActivity) {
+                    ((SettingsActivity) getActivity()).showDebug();
+                    return true;
+                }
+                startActivity(new Intent(getContext(), DebugActivity.class));
+                return true;
+            });
+        }
 
         Preference aboutPref = findPreference(ABOUT_KEY);
         if (aboutPref != null) {
@@ -94,9 +109,16 @@ public class SettingsHeaderFragment extends BaseSettingsFragment {
         PreferenceScreen screen = getPreferenceScreen();
 
         int selectedIndex = -1;
+        int visibleIndex = -1;
         for (int i = 0; i < screen.getPreferenceCount(); i++) {
-            if (selectedKey.equals(screen.getPreference(i).getKey())) {
-                selectedIndex = i;
+            Preference preference = screen.getPreference(i);
+            if (!preference.isVisible()) {
+                continue;
+            }
+
+            visibleIndex++;
+            if (selectedKey.equals(preference.getKey())) {
+                selectedIndex = visibleIndex;
                 break;
             }
         }

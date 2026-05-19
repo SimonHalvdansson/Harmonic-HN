@@ -54,6 +54,7 @@ public class SettingsActivity extends AppCompatActivity implements
         FRAGMENT_TO_KEY.put(CommentsPreferenceFragment.class.getName(), "pref_header_comments");
         FRAGMENT_TO_KEY.put(FiltersTagsPreferenceFragment.class.getName(), "pref_header_filters_tags");
         FRAGMENT_TO_KEY.put(DataStoragePreferenceFragment.class.getName(), "pref_header_data_storage");
+        FRAGMENT_TO_KEY.put(DebugFragment.class.getName(), SettingsHeaderFragment.DEBUG_KEY);
         FRAGMENT_TO_KEY.put(AboutFragment.class.getName(), SettingsHeaderFragment.ABOUT_KEY);
     }
 
@@ -299,6 +300,26 @@ public class SettingsActivity extends AppCompatActivity implements
         }
     }
 
+    public void showDebug() {
+        currentDetailClassName = DebugFragment.class.getName();
+        currentDetailKey = SettingsHeaderFragment.DEBUG_KEY;
+
+        if (isTwoPane) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+                    .replace(R.id.settings_detail, new DebugFragment())
+                    .commit();
+
+            Fragment headerFragment = getSupportFragmentManager().findFragmentById(R.id.settings);
+            if (headerFragment instanceof SettingsHeaderFragment) {
+                ((SettingsHeaderFragment) headerFragment).setSelectedKey(currentDetailKey);
+            }
+        } else {
+            startActivity(new Intent(this, DebugActivity.class));
+        }
+    }
+
     @Override
     public void onRequestRestart() {
         needsRestart = true;
@@ -362,6 +383,9 @@ public class SettingsActivity extends AppCompatActivity implements
     }
 
     private Fragment createCurrentDetailFragment() {
+        if (DebugFragment.class.getName().equals(currentDetailClassName)) {
+            return new DebugFragment();
+        }
         if (AboutFragment.class.getName().equals(currentDetailClassName)) {
             return new AboutFragment();
         }

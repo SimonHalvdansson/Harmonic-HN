@@ -39,27 +39,11 @@ public class AboutFragment extends Fragment {
         applyInsets(binding, isSettingsTwoPane);
 
         String versionText = "Version " + BuildConfig.VERSION_NAME;
-        if (BuildConfig.DEBUG) {
-            versionText += String.format(" (%s)", BuildConfig.BUILD_TYPE);
-            binding.aboutDebugDivider.setVisibility(View.VISIBLE);
-            binding.aboutDebugLink.setVisibility(View.VISIBLE);
-            binding.aboutDebugPoll.setVisibility(View.VISIBLE);
-            binding.aboutDebugInternalHnLink.setVisibility(View.VISIBLE);
-            binding.aboutDebugNitterVideoTest.setVisibility(View.VISIBLE);
-            binding.aboutDebugWelcome.setVisibility(View.VISIBLE);
-            binding.aboutDebugNotifications.setVisibility(View.VISIBLE);
-        }
         binding.aboutVersion.setText(versionText);
 
         binding.aboutGithub.setOnClickListener(v -> openGithub());
         binding.aboutChangelog.setOnClickListener(v -> openChangelog());
         binding.aboutPrivacy.setOnClickListener(v -> openPrivacy());
-        binding.aboutDebugLink.setOnClickListener(v -> openDebugLink());
-        binding.aboutDebugPoll.setOnClickListener(v -> openDebugPoll());
-        binding.aboutDebugInternalHnLink.setOnClickListener(v -> openDebugInternalHnLink());
-        binding.aboutDebugNitterVideoTest.setOnClickListener(v -> openDebugNitterVideoTest());
-        binding.aboutDebugWelcome.setOnClickListener(v -> openDebugWelcome());
-        binding.aboutDebugNotifications.setOnClickListener(v -> openDebugNotifications());
     }
 
     private void applyInsets(ActivityAboutBinding binding, boolean isSettingsTwoPane) {
@@ -105,29 +89,5 @@ public class AboutFragment extends Fragment {
 
     private void openPrivacy() {
         Utils.launchCustomTab(requireActivity(), "https://simonhalvdansson.github.io/harmonic_privacy.html");
-    }
-
-    private void openDebugLink() {
-        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=47938725");
-    }
-
-    private void openDebugPoll() {
-        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=39572682");
-    }
-
-    private void openDebugInternalHnLink() {
-        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=30676384");
-    }
-
-    private void openDebugNitterVideoTest() {
-        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=48012735");
-    }
-
-    private void openDebugWelcome() {
-        startActivity(new Intent(requireContext(), WelcomeActivity.class));
-    }
-
-    private void openDebugNotifications() {
-        DebugNotificationsDialogFragment.show(getParentFragmentManager());
     }
 }
