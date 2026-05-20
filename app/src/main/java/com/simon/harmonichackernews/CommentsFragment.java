@@ -148,7 +148,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static int NO_COMMENT_ACTION_COMMENT_ID = -1;
     private final static int COMMENT_ACTION_TEXT_MAX_HEIGHT_DP = 300;
     private final static int COMMENT_ACTION_TRANSFORM_DURATION_MS = 280;
-    private final static int COMMENT_ACTION_SOURCE_CORNER_RADIUS_DP = 8;
+    private final static float COMMENT_ACTION_TRANSFORM_START_PROGRESS = 0f;
+    private final static float COMMENT_ACTION_TRANSFORM_END_PROGRESS = 1f;
+    private final static int COMMENT_ACTION_STANDARD_SOURCE_CORNER_RADIUS_DP = 0;
+    private final static int COMMENT_ACTION_CARD_SOURCE_CORNER_RADIUS_DP = 8;
     private final static int COMMENT_ACTION_CARD_CORNER_RADIUS_DP = 28;
     private final static int COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_X_DP = 56;
     private final static int COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_Y_DP = 18;
@@ -2498,8 +2501,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     oldFavorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star));
         }
 
-        iconActions.add(new CommentActionItem(COMMENT_ACTION_COPY, "Copy", R.drawable.ic_action_copy));
-        iconActions.add(new CommentActionItem(COMMENT_ACTION_SHARE, "Share", R.drawable.ic_action_share));
+        iconActions.add(new CommentActionItem(COMMENT_ACTION_COPY, "Copy text", R.drawable.ic_action_copy));
+        iconActions.add(new CommentActionItem(COMMENT_ACTION_SHARE, "Share link", R.drawable.ic_action_share));
         addCommentActionIconRow(actionsContainer, iconActions, comment, oldBookmarked, oldFavorited);
 
         if (hasAccount && !Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)) {
@@ -2771,6 +2774,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         transform.setFitMode(MaterialContainerTransform.FIT_MODE_AUTO);
         transform.setStartShapeAppearanceModel(createCommentActionShape(startView));
         transform.setEndShapeAppearanceModel(createCommentActionShape(endView));
+        transform.setScaleMaskProgressThresholds(createCommentActionProgressThresholds());
+        transform.setShapeMaskProgressThresholds(createCommentActionProgressThresholds());
         transform.setElevationShadowEnabled(true);
         transform.setAllContainerColors(getCommentActionContainerColor(endView));
         transform.setStartElevation(getCommentActionContainerElevation(startView));
@@ -2779,10 +2784,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         return transform;
     }
 
+    private MaterialContainerTransform.ProgressThresholds createCommentActionProgressThresholds() {
+        return new MaterialContainerTransform.ProgressThresholds(
+                COMMENT_ACTION_TRANSFORM_START_PROGRESS,
+                COMMENT_ACTION_TRANSFORM_END_PROGRESS);
+    }
+
     private ShapeAppearanceModel createCommentActionShape(View view) {
-        int cornerRadiusDp = view == commentActionCard
-                ? COMMENT_ACTION_CARD_CORNER_RADIUS_DP
-                : COMMENT_ACTION_SOURCE_CORNER_RADIUS_DP;
+        int cornerRadiusDp;
+        if (view == commentActionCard) {
+            cornerRadiusDp = COMMENT_ACTION_CARD_CORNER_RADIUS_DP;
+        } else if (view instanceof MaterialCardView) {
+            cornerRadiusDp = COMMENT_ACTION_CARD_SOURCE_CORNER_RADIUS_DP;
+        } else {
+            cornerRadiusDp = COMMENT_ACTION_STANDARD_SOURCE_CORNER_RADIUS_DP;
+        }
         return ShapeAppearanceModel.builder()
                 .setAllCornerSizes(Utils.pxFromDpInt(getResources(), cornerRadiusDp))
                 .build();
