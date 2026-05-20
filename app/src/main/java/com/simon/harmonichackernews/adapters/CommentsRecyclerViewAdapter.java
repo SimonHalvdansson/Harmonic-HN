@@ -516,6 +516,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView commentHiddenCount;
         public final TextView commentHiddenText;
         public final View commentIndentIndicator;
+        public final View commentCard;
         public Comment comment;
 
         public ItemViewHolder(View view) {
@@ -526,22 +527,23 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentHiddenCount = view.findViewById(R.id.comment_hidden_count);
             commentHiddenText = view.findViewById(R.id.comment_hidden_short);
             commentIndentIndicator = view.findViewById(R.id.comment_indent_indicator);
+            commentCard = view.findViewById(R.id.comment_card);
 
             itemView.setOnLongClickListener(v -> {
-                longPressed(comment, getAbsoluteAdapterPosition(), v);
+                longPressed(comment, getAbsoluteAdapterPosition(), getCommentActionSourceView());
                 return true;
             });
 
             commentBody.setOnLongClickListener(v -> {
-                longPressed(comment, getAbsoluteAdapterPosition(), v);
+                longPressed(comment, getAbsoluteAdapterPosition(), getCommentActionSourceView());
                 return true;
             });
 
             itemView.setOnClickListener(v ->
-                    tapped(comment, getAbsoluteAdapterPosition(), v));
+                    tapped(comment, getAbsoluteAdapterPosition(), getCommentActionSourceView()));
 
             commentBody.setOnClickListener(v ->
-                    tapped(comment, getAbsoluteAdapterPosition(), v));
+                    tapped(comment, getAbsoluteAdapterPosition(), getCommentActionSourceView()));
 
             commentBody.setOnClickATagListener(new OnClickATagListener() {
                 @Override
@@ -552,6 +554,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     return true;
                 }
             });
+        }
+
+        private View getCommentActionSourceView() {
+            return commentCard != null ? commentCard : itemView;
         }
 
         private void tapped(Comment comment, int pos, View v) {

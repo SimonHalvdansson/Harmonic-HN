@@ -2,21 +2,26 @@ package com.simon.harmonichackernews;
 
 import static androidx.webkit.WebViewFeature.isFeatureSupported;
 
+import android.annotation.SuppressLint;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.graphics.PointF;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.TextUtils;
+import android.util.TypedValue;
+import android.view.ContextThemeWrapper;
+import android.view.LayoutInflater;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -24,12 +29,11 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
-import android.widget.ArrayAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ListAdapter;
+import android.widget.ScrollView;
 import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -38,12 +42,11 @@ import androidx.activity.BackEventCompat;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.TooltipCompat;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
-import androidx.core.util.Pair;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -53,15 +56,22 @@ import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.transition.Transition;
+import androidx.transition.TransitionListenerAdapter;
+import androidx.transition.TransitionManager;
 import androidx.webkit.WebViewFeature;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
+import com.google.android.material.shape.ShapeAppearanceModel;
+import com.google.android.material.transition.MaterialContainerTransform;
 import com.google.android.material.transition.MaterialFadeThrough;
 import com.google.android.material.transition.MaterialSharedAxis;
 import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
@@ -77,13 +87,14 @@ import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.CommentSorter;
-import com.simon.harmonichackernews.utils.DialogUtils;
+import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ShareUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
 
+import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -119,6 +130,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_COMMENT_MASTER_URL = "com.simon.harmonichackernews.EXTRA_COMMENT_MASTER_URL";
     public final static String EXTRA_FORWARD = "com.simon.harmonichackernews.EXTRA_FORWARD";
     public final static String EXTRA_SHOW_WEBSITE = "com.simon.harmonichackernews.EXTRA_SHOW_WEBSITE";
+    private final static String STATE_COMMENT_ACTION_COMMENT_ID = "com.simon.harmonichackernews.STATE_COMMENT_ACTION_COMMENT_ID";
     private final static Pattern POLL_TITLE_PATTERN = Pattern.compile("\\bpoll\\b", Pattern.CASE_INSENSITIVE);
 
     private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
@@ -127,13 +139,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static int COMMENT_ACTION_VIEW_USER = 0;
     private final static int COMMENT_ACTION_SHARE = 1;
     private final static int COMMENT_ACTION_COPY = 2;
-    private final static int COMMENT_ACTION_SELECT = 3;
     private final static int COMMENT_ACTION_BOOKMARK = 4;
     private final static int COMMENT_ACTION_FAVORITE = 5;
     private final static int COMMENT_ACTION_UPVOTE = 6;
     private final static int COMMENT_ACTION_UNVOTE = 7;
     private final static int COMMENT_ACTION_DOWNVOTE = 8;
     private final static int COMMENT_ACTION_REPLY = 9;
+    private final static int NO_COMMENT_ACTION_COMMENT_ID = -1;
+    private final static int COMMENT_ACTION_TEXT_MAX_HEIGHT_DP = 300;
+    private final static int COMMENT_ACTION_TRANSFORM_DURATION_MS = 280;
+    private final static int COMMENT_ACTION_SOURCE_CORNER_RADIUS_DP = 8;
+    private final static int COMMENT_ACTION_CARD_CORNER_RADIUS_DP = 28;
+    private final static int COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_X_DP = 56;
+    private final static int COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_Y_DP = 18;
+    private final static float COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCALE = 0.9f;
+    private final static float COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCRIM_ALPHA = 0.45f;
 
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
@@ -178,6 +198,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int searchedCommentScrollTopTargetId = -1;
     private boolean searchedCommentScrollTopPending = false;
     private boolean commentsByOpFilterActive = false;
+    private FrameLayout commentActionOverlay;
+    private MaterialCardView commentActionCard;
+    private View commentActionSourceView;
+    private int commentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
+    private int pendingCommentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
+    private boolean commentActionOverlayDismissing = false;
+    private boolean commentActionPredictiveBackActive = false;
 
     // Clean fallback management
     private AlgoliaFallbackManager fallbackManager;
@@ -292,6 +319,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        if (savedInstanceState != null) {
+            pendingCommentActionCommentId = savedInstanceState.getInt(STATE_COMMENT_ACTION_COMMENT_ID, NO_COMMENT_ACTION_COMMENT_ID);
+        }
+
         if (getActivity() instanceof BottomSheetFragmentCallback) {
             callback = (BottomSheetFragmentCallback) getActivity();
         }
@@ -340,6 +371,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackCancelled() {
+                if (commentActionOverlay != null) {
+                    cancelCommentActionPredictiveBack();
+                    return;
+                }
+
                 if (willExpandBottomSheetOnBack()) {
                     bottomSheet.setTranslationY(0f);
                     try {
@@ -353,6 +389,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
+                if (commentActionOverlay != null) {
+                    updateCommentActionPredictiveBack(backEvent);
+                    return;
+                }
+
                 if (willExpandBottomSheetOnBack()) {
                     bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
                     try {
@@ -366,6 +407,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
+                if (commentActionOverlay != null) {
+                    startCommentActionPredictiveBack(backEvent);
+                    return;
+                }
+
                 if (willExpandBottomSheetOnBack()) {
                     bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
                     try {
@@ -379,6 +425,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackPressed() {
+                if (commentActionOverlay != null) {
+                    if (commentActionPredictiveBackActive) {
+                        commitCommentActionPredictiveBack();
+                        return;
+                    }
+                    dismissCommentActionOverlay(true);
+                    return;
+                }
+
                 if (webViewController.isShowingCustomView()) {
                     webViewController.hideCustomView(true);
                     return;
@@ -576,6 +631,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void syncOnBackPressedCallbackEnabledState() {
+        if (backPressedCallback == null) {
+            return;
+        }
+        if (commentActionOverlay != null) {
+            backPressedCallback.setEnabled(true);
+            return;
+        }
         if (webViewController != null && webViewController.isShowingCustomView()) {
             backPressedCallback.setEnabled(true);
             return;
@@ -610,6 +672,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (getContext() != null && Utils.isTablet(getResources()) && adapter != null) {
             adapter.notifyItemChanged(0);
         }
+        refreshCommentActionOverlayForConfiguration();
     }
 
     private void initializeRecyclerView() {
@@ -1000,6 +1063,28 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         saveScreenHeight();
     }
 
+    private void refreshCommentActionOverlayForConfiguration() {
+        if (commentActionOverlay == null || commentActionCard == null) {
+            return;
+        }
+
+        commentActionOverlay.post(() -> {
+            if (commentActionOverlay == null || commentActionCard == null) {
+                return;
+            }
+
+            configureCommentActionCardWidth(commentActionCard);
+            ScrollView textScroll = commentActionOverlay.findViewById(R.id.comment_action_text_scroll);
+            HtmlTextView commentText = commentActionOverlay.findViewById(R.id.comment_action_text);
+            if (textScroll != null && commentText != null) {
+                ViewGroup.LayoutParams params = textScroll.getLayoutParams();
+                params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                textScroll.setLayoutParams(params);
+                resizeCommentActionTextBox(textScroll, commentText);
+            }
+        });
+    }
+
     @Override
     public void onStop() {
         super.onStop();
@@ -1023,6 +1108,18 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 // If we didn't find anything, let's add it ourselves
                 MainActivity.commentsScrollProgresses.add(recordScrollProgress());
             }
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        int visibleCommentActionId = commentActionOverlay != null
+                ? commentActionCommentId
+                : pendingCommentActionCommentId;
+        if (visibleCommentActionId != NO_COMMENT_ACTION_COMMENT_ID) {
+            outState.putInt(STATE_COMMENT_ACTION_COMMENT_ID, visibleCommentActionId);
         }
     }
 
@@ -1121,6 +1218,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onDestroyView() {
+        removeCommentActionOverlayNow();
+
         View rootView = getView();
         if (rootView != null) {
             if (preDrawListener != null && rootView.getViewTreeObserver().isAlive()) {
@@ -1334,7 +1433,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 updateNavigationVisibility();
                 adapter.notifyItemChanged(0);
                 swipeRefreshLayout.setRefreshing(false);
-                recyclerView.post(() -> scrollToTargetComment());
+                recyclerView.post(() -> {
+                    scrollToTargetComment();
+                    restorePendingCommentActionOverlay();
+                });
             }
         });
 
@@ -1490,7 +1592,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         adapter.commentsLoaded = true;
         updateNavigationVisibility();
-        recyclerView.post(this::scrollToTargetComment);
+        recyclerView.post(() -> {
+            scrollToTargetComment();
+            restorePendingCommentActionOverlay();
+        });
     }
 
     private void applyParsedComments(List<Comment> parsedComments) {
@@ -2264,166 +2369,719 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onItemClick(Comment comment, int pos, View view) {
-        final Context ctx = getContext();
+        showCommentActionOverlay(comment, view, true);
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void showCommentActionOverlay(Comment comment, @Nullable View sourceView, boolean animate) {
+        Context ctx = getContext();
+        ViewGroup overlayHost = getCommentActionOverlayHost();
+        if (ctx == null || overlayHost == null || comment == null) {
+            return;
+        }
+
+        removeCommentActionOverlayNow();
+
+        commentActionCommentId = comment.id;
+        commentActionSourceView = sourceView;
+        commentActionOverlayDismissing = false;
+
+        if (adapter != null) {
+            adapter.disableCommentATagClick = true;
+        }
+
+        commentActionOverlay = (FrameLayout) LayoutInflater.from(ctx)
+                .inflate(R.layout.comment_action_overlay, overlayHost, false);
+        overlayHost.addView(commentActionOverlay, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+
+        View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
+        View content = commentActionOverlay.findViewById(R.id.comment_action_content);
+        commentActionCard = commentActionOverlay.findViewById(R.id.comment_action_card);
+
+        configureCommentActionOverlayInsets(content);
+        configureCommentActionCardWidth(commentActionCard);
+        bindCommentActionOverlay(comment);
+
+        scrim.setOnClickListener(v -> dismissCommentActionOverlay(true));
+        commentActionCard.setOnTouchListener((v, event) -> true);
+
+        syncOnBackPressedCallbackEnabledState();
+
+        commentActionOverlay.post(() -> {
+            if (commentActionOverlay == null || commentActionCard == null) {
+                return;
+            }
+
+            if (animate && isUsableTransitionView(sourceView)) {
+                MaterialContainerTransform transform = createCommentActionTransform(
+                        sourceView,
+                        commentActionCard,
+                        MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
+                transform.addTarget(commentActionCard);
+                TransitionManager.beginDelayedTransition(overlayHost, transform);
+                scrim.animate().alpha(1f).setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS).start();
+                setCommentActionSourceVisible(sourceView, false);
+                commentActionCard.setVisibility(View.VISIBLE);
+            } else {
+                scrim.setAlpha(1f);
+                setCommentActionSourceVisible(sourceView, false);
+                commentActionCard.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    private void bindCommentActionOverlay(Comment comment) {
+        Context ctx = requireContext();
 
         boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
         boolean oldBookmarked = bookmarksEnabled && Utils.isBookmarked(ctx, comment.id);
         boolean oldFavorited = Utils.isFavorited(ctx, comment.id);
 
-        ArrayList<Pair<String, Integer>> items = new ArrayList<>();
-        ArrayList<Integer> actions = new ArrayList<>();
+        MaterialButton userButton = commentActionOverlay.findViewById(R.id.comment_action_user);
+        String userLabel = TextUtils.isEmpty(comment.by) ? "Unknown user" : comment.by;
+        if (story != null && TextUtils.equals(story.by, comment.by)) {
+            userLabel += " (OP)";
+        }
+        userButton.setText(userLabel);
+        userButton.setAllCaps(false);
+        userButton.setContentDescription("View user " + (TextUtils.isEmpty(comment.by) ? "profile" : comment.by));
+        TooltipCompat.setTooltipText(userButton, "View user");
+        userButton.setOnClickListener(v ->
+                performCommentAction(COMMENT_ACTION_VIEW_USER, comment, oldBookmarked, oldFavorited));
 
-        items.add(new Pair<>("View user (" + comment.by + ")", R.drawable.ic_action_user));
-        actions.add(COMMENT_ACTION_VIEW_USER);
-        items.add(new Pair<>("Share comment link", R.drawable.ic_action_share));
-        actions.add(COMMENT_ACTION_SHARE);
-        items.add(new Pair<>("Copy text", R.drawable.ic_action_copy));
-        actions.add(COMMENT_ACTION_COPY);
-        items.add(new Pair<>("Select text", R.drawable.ic_action_select));
-        actions.add(COMMENT_ACTION_SELECT);
+        HtmlTextView commentText = commentActionOverlay.findViewById(R.id.comment_action_text);
+        String text = Utils.expandShortenedAnchorText(comment.text == null ? "" : comment.text);
+        commentText.setHtml(text);
+        commentText.setTextIsSelectable(true);
+        commentText.setOnClickATagListener((widget, spannedText, href) -> {
+            Utils.openLinkMaybeHN(widget.getContext(), href);
+            return true;
+        });
+        FontUtils.setTypeface(commentText, false, SettingsUtils.getPreferredCommentTextSize(ctx));
+
+        ScrollView textScroll = commentActionOverlay.findViewById(R.id.comment_action_text_scroll);
+        resizeCommentActionTextBox(textScroll, commentText);
+
+        LinearLayout actionsContainer = commentActionOverlay.findViewById(R.id.comment_action_actions);
+        bindCommentActionButtons(actionsContainer, ctx, comment, bookmarksEnabled, oldBookmarked, oldFavorited);
+    }
+
+    private void bindCommentActionButtons(LinearLayout actionsContainer,
+                                          Context ctx,
+                                          Comment comment,
+                                          boolean bookmarksEnabled,
+                                          boolean oldBookmarked,
+                                          boolean oldFavorited) {
+        actionsContainer.removeAllViews();
+
+        boolean hasAccount = AccountUtils.hasAccountDetails(ctx);
+
+        ArrayList<CommentActionItem> iconActions = new ArrayList<>();
+        if (hasAccount) {
+            iconActions.add(new CommentActionItem(COMMENT_ACTION_UPVOTE, "Vote up", R.drawable.ic_action_thumbs_up));
+            iconActions.add(new CommentActionItem(COMMENT_ACTION_DOWNVOTE, "Vote down", R.drawable.ic_action_thumb_down));
+            iconActions.add(new CommentActionItem(COMMENT_ACTION_UNVOTE, "Unvote", R.drawable.ic_action_thumbs_unvote));
+        }
 
         if (bookmarksEnabled) {
-            items.add(new Pair<>(oldBookmarked ? "Remove bookmark" : "Bookmark", oldBookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border));
-            actions.add(COMMENT_ACTION_BOOKMARK);
+            iconActions.add(new CommentActionItem(
+                    COMMENT_ACTION_BOOKMARK,
+                    oldBookmarked ? "Remove bookmark" : "Bookmark",
+                    oldBookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border));
+        }
+        if (hasAccount) {
+            iconActions.add(new CommentActionItem(
+                    COMMENT_ACTION_FAVORITE,
+                    oldFavorited ? "Remove favorite" : "Favorite",
+                    oldFavorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star));
         }
 
-        items.add(new Pair<>(oldFavorited ? "Remove favorite" : "Favorite", oldFavorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star));
-        actions.add(COMMENT_ACTION_FAVORITE);
-        items.add(new Pair<>("Vote up", R.drawable.ic_action_thumbs_up));
-        actions.add(COMMENT_ACTION_UPVOTE);
-        items.add(new Pair<>("Unvote", R.drawable.ic_action_thumbs));
-        actions.add(COMMENT_ACTION_UNVOTE);
-        items.add(new Pair<>("Vote down", R.drawable.ic_action_thumb_down));
-        actions.add(COMMENT_ACTION_DOWNVOTE);
+        iconActions.add(new CommentActionItem(COMMENT_ACTION_COPY, "Copy", R.drawable.ic_action_copy));
+        iconActions.add(new CommentActionItem(COMMENT_ACTION_SHARE, "Share", R.drawable.ic_action_share));
+        addCommentActionIconRow(actionsContainer, iconActions, comment, oldBookmarked, oldFavorited);
 
-        if (!Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)) {
-            items.add(new Pair<>("Reply", R.drawable.ic_action_reply));
-            actions.add(COMMENT_ACTION_REPLY);
+        if (hasAccount && !Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)) {
+            addCommentActionReplyButton(actionsContainer, comment, oldBookmarked, oldFavorited);
+        }
+    }
+
+    private void addCommentActionIconRow(LinearLayout actionsContainer,
+                                         List<CommentActionItem> actionItems,
+                                         Comment comment,
+                                         boolean oldBookmarked,
+                                         boolean oldFavorited) {
+        if (actionItems.isEmpty()) {
+            return;
         }
 
-        ListAdapter adapter = new ArrayAdapter<Pair<String, Integer>>(ctx,
-                R.layout.comment_dialog_item,
-                R.id.comment_dialog_text,
-                items) {
+        LinearLayout row = new LinearLayout(actionsContainer.getContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER);
+        row.setBaselineAligned(false);
+
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        if (actionsContainer.getChildCount() > 0) {
+            rowParams.topMargin = Utils.pxFromDpInt(getResources(), 4);
+        }
+        actionsContainer.addView(row, rowParams);
+
+        for (CommentActionItem actionItem : actionItems) {
+            ImageButton button = createCommentActionIconButton(row.getContext(), actionItem);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    0,
+                    Utils.pxFromDpInt(getResources(), 48),
+                    1f);
+            params.leftMargin = Utils.pxFromDpInt(getResources(), 1);
+            params.rightMargin = Utils.pxFromDpInt(getResources(), 1);
+            row.addView(button, params);
+            button.setOnClickListener(v -> performCommentAction(actionItem.action, comment, oldBookmarked, oldFavorited));
+        }
+    }
+
+    private ImageButton createCommentActionIconButton(Context ctx, CommentActionItem actionItem) {
+        ImageButton button = new ImageButton(ctx);
+        button.setImageResource(actionItem.iconRes);
+        button.setImageTintList(ColorStateList.valueOf(MaterialColors.getColor(button, R.attr.storyColorNormal)));
+        button.setBackgroundResource(resolveSelectableItemBackgroundBorderless(ctx));
+        button.setContentDescription(actionItem.label);
+        button.setPadding(
+                Utils.pxFromDpInt(getResources(), 8),
+                Utils.pxFromDpInt(getResources(), 10),
+                Utils.pxFromDpInt(getResources(), 8),
+                Utils.pxFromDpInt(getResources(), 10));
+        button.setScaleType(ImageView.ScaleType.CENTER);
+        TooltipCompat.setTooltipText(button, actionItem.label);
+        return button;
+    }
+
+    private void addCommentActionReplyButton(LinearLayout actionsContainer,
+                                             Comment comment,
+                                             boolean oldBookmarked,
+                                             boolean oldFavorited) {
+        Context buttonContext = new ContextThemeWrapper(
+                actionsContainer.getContext(),
+                com.google.android.material.R.style.Widget_Material3Expressive_Button_ElevatedButton);
+        MaterialButton button = new MaterialButton(buttonContext);
+        button.setText("Reply");
+        button.setAllCaps(false);
+        button.setSingleLine(true);
+        button.setIconResource(R.drawable.ic_action_reply);
+        button.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
+        button.setIconPadding(Utils.pxFromDpInt(getResources(), 8));
+        int replyBackgroundColor = MaterialColors.getColor(
+                button,
+                R.attr.overlayButtonColor);
+        button.setTextColor(Color.WHITE);
+        button.setIconTint(ColorStateList.valueOf(Color.WHITE));
+        button.setBackgroundTintList(ColorStateList.valueOf(replyBackgroundColor));
+        button.setContentDescription("Reply");
+        button.setOnClickListener(v -> performCommentAction(COMMENT_ACTION_REPLY, comment, oldBookmarked, oldFavorited));
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                Utils.pxFromDpInt(getResources(), 56));
+        params.topMargin = Utils.pxFromDpInt(getResources(), 10);
+        actionsContainer.addView(button, params);
+    }
+
+    private int resolveSelectableItemBackgroundBorderless(Context ctx) {
+        TypedValue typedValue = new TypedValue();
+        ctx.getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, typedValue, true);
+        return typedValue.resourceId;
+    }
+
+    private void performCommentAction(int action, Comment comment, boolean oldBookmarked, boolean oldFavorited) {
+        if (!isAdded()) {
+            return;
+        }
+
+        Context ctx = requireContext();
+        switch (action) {
+            case COMMENT_ACTION_VIEW_USER:
+                UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), comment.by, new UserDialogFragment.UserDialogCallback() {
+                    @Override
+                    public void onResult(boolean accepted) {
+                        if (accepted) {
+                            updateUserTags(comment.by);
+                        }
+                    }
+                });
+                break;
+
+            case COMMENT_ACTION_SHARE:
+                ctx.startActivity(ShareUtils.getShareIntent(comment.id));
+                break;
+
+            case COMMENT_ACTION_COPY:
+                ClipboardManager clipboard = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("Hacker News comment", Html.fromHtml(comment.text == null ? "" : comment.text));
+                clipboard.setPrimaryClip(clip);
+
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                    Toast.makeText(ctx, "Text copied to clipboard", Toast.LENGTH_SHORT).show();
+                }
+                break;
+
+            case COMMENT_ACTION_BOOKMARK:
+                if (oldBookmarked) {
+                    Utils.removeBookmark(ctx, comment.id);
+                } else {
+                    Utils.addBookmark(ctx, comment.id);
+                }
+                if (commentActionOverlay != null) {
+                    bindCommentActionOverlay(comment);
+                }
+                break;
+
+            case COMMENT_ACTION_FAVORITE:
+                if (!AccountUtils.hasAccountDetails(ctx)) {
+                    AccountUtils.showLoginPrompt(getParentFragmentManager());
+                    break;
+                }
+
+                Utils.setFavorite(ctx, comment.id, !oldFavorited);
+                if (commentActionOverlay != null) {
+                    bindCommentActionOverlay(comment);
+                }
+                UserActions.setFavorite(ctx, comment.id, !oldFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
+                    @Override
+                    public void onSuccess(Response response) {
+                    }
+
+                    @Override
+                    public void onFailure(String summary, String response) {
+                        Utils.setFavorite(ctx, comment.id, oldFavorited);
+                        if (commentActionOverlay != null) {
+                            bindCommentActionOverlay(comment);
+                        }
+                        UserActions.showFailureDetailDialog(ctx, summary, response);
+                        Toast.makeText(ctx, "Couldn't update favorite", Toast.LENGTH_SHORT).show();
+                    }
+                });
+                break;
+
+            case COMMENT_ACTION_UPVOTE:
+                UserActions.upvote(ctx, comment.id, getParentFragmentManager());
+                break;
+
+            case COMMENT_ACTION_UNVOTE:
+                UserActions.unvote(ctx, comment.id, getParentFragmentManager());
+                break;
+
+            case COMMENT_ACTION_DOWNVOTE:
+                UserActions.downvote(ctx, comment.id, getParentFragmentManager());
+                break;
+
+            case COMMENT_ACTION_REPLY:
+                if (!AccountUtils.hasAccountDetails(ctx)) {
+                    AccountUtils.showLoginPrompt(getParentFragmentManager());
+                    return;
+                }
+                if (Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)) {
+                    Toast.makeText(ctx, "This comment is too old to reply to", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                Intent replyIntent = new Intent(ctx, ComposeActivity.class);
+                replyIntent.putExtra(ComposeActivity.EXTRA_ID, comment.id);
+                replyIntent.putExtra(ComposeActivity.EXTRA_PARENT_TEXT, comment.text);
+                replyIntent.putExtra(ComposeActivity.EXTRA_USER, comment.by);
+                replyIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_COMMENT_REPLY);
+                ctx.startActivity(replyIntent);
+                break;
+        }
+    }
+
+    private void configureCommentActionOverlayInsets(View content) {
+        int baseLeft = content.getPaddingLeft();
+        int baseTop = content.getPaddingTop();
+        int baseRight = content.getPaddingRight();
+        int baseBottom = content.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(content, new OnApplyWindowInsetsListener() {
             @NonNull
-            public View getView(int position, View convertView, ViewGroup parent) {
-                TextView view = (TextView) super.getView(position, convertView, parent);
-
-                Pair<String, Integer> item = getItem(position);
-                if (item != null) {
-                    view.setCompoundDrawablesWithIntrinsicBounds(item.second, 0, 0, 0);
-                    view.setText(item.first);
-                }
-
-                return view;
-            }
-        };
-
-        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(ctx);
-        builder.setAdapter(adapter, new DialogInterface.OnClickListener() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
-                switch (actions.get(which)) {
-                    case COMMENT_ACTION_VIEW_USER:
-
-                        UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), comment.by, new UserDialogFragment.UserDialogCallback() {
-                            @Override
-                            public void onResult(boolean accepted) {
-                                if (accepted) {
-                                    updateUserTags(comment.by);
-                                }
-                            }
-                        });
-
-                        break;
-                    case COMMENT_ACTION_SHARE:
-                        ctx.startActivity(ShareUtils.getShareIntent(comment.id));
-
-                        break;
-                    case COMMENT_ACTION_COPY:
-                        ClipboardManager clipboard = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
-                        ClipData clip = ClipData.newPlainText("Hacker News comment", Html.fromHtml(comment.text));
-                        clipboard.setPrimaryClip(clip);
-
-                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                            Toast.makeText(ctx, "Text copied to clipboard", Toast.LENGTH_SHORT).show();
-                        }
-
-                        break;
-                    case COMMENT_ACTION_SELECT:
-                        DialogUtils.showTextSelectionDialog(ctx, comment.text);
-
-                        break;
-
-                    case COMMENT_ACTION_BOOKMARK:
-                        if (oldBookmarked) {
-                            Utils.removeBookmark(ctx, comment.id);
-                        } else {
-                            Utils.addBookmark(ctx, comment.id);
-                        }
-                        break;
-
-                    case COMMENT_ACTION_FAVORITE:
-                        if (!AccountUtils.hasAccountDetails(ctx)) {
-                            AccountUtils.showLoginPrompt(getParentFragmentManager());
-                            break;
-                        }
-
-                        Utils.setFavorite(ctx, comment.id, !oldFavorited);
-                        UserActions.setFavorite(ctx, comment.id, !oldFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
-                            @Override
-                            public void onSuccess(Response response) {
-                            }
-
-                            @Override
-                            public void onFailure(String summary, String response) {
-                                Utils.setFavorite(ctx, comment.id, oldFavorited);
-                                UserActions.showFailureDetailDialog(ctx, summary, response);
-                                Toast.makeText(ctx, "Couldn't update favorite", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                        break;
-
-                    case COMMENT_ACTION_UPVOTE:
-                        UserActions.upvote(ctx, comment.id, getParentFragmentManager());
-                        break;
-
-                    case COMMENT_ACTION_UNVOTE:
-                        UserActions.unvote(ctx, comment.id, getParentFragmentManager());
-                        break;
-
-                    case COMMENT_ACTION_DOWNVOTE:
-                        UserActions.downvote(ctx, comment.id, getParentFragmentManager());
-                        break;
-
-                    case COMMENT_ACTION_REPLY:
-                        if (!AccountUtils.hasAccountDetails(ctx)) {
-                            AccountUtils.showLoginPrompt(getParentFragmentManager());
-                            return;
-                        }
-
-                        Intent replyIntent = new Intent(ctx, ComposeActivity.class);
-                        replyIntent.putExtra(ComposeActivity.EXTRA_ID, comment.id);
-                        replyIntent.putExtra(ComposeActivity.EXTRA_PARENT_TEXT, comment.text);
-                        replyIntent.putExtra(ComposeActivity.EXTRA_USER, comment.by);
-                        replyIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_COMMENT_REPLY);
-                        ctx.startActivity(replyIntent);
-
-                }
+            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+                v.setPadding(
+                        baseLeft + insets.left,
+                        baseTop + insets.top,
+                        baseRight + insets.right,
+                        baseBottom + insets.bottom);
+                return windowInsets;
             }
         });
+        ViewUtils.requestApplyInsetsWhenAttached(content);
+    }
 
-        CommentsRecyclerViewAdapter commentAdapter = this.adapter;
-        builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
-            @Override
-            public void onDismiss(DialogInterface dialog) {
-                commentAdapter.disableCommentATagClick = false;
+    private void configureCommentActionCardWidth(MaterialCardView card) {
+        int maxCardWidth = Utils.pxFromDpInt(getResources(), Utils.isTablet(getResources()) ? 640 : 520);
+        int horizontalPadding = Utils.pxFromDpInt(getResources(), 40);
+        int hostWidth = getResources().getDisplayMetrics().widthPixels;
+        if (card.getParent() instanceof View) {
+            int parentWidth = ((View) card.getParent()).getWidth();
+            if (parentWidth > 0) {
+                hostWidth = parentWidth;
             }
-        });
+        }
+        int availableWidth = Math.max(Utils.pxFromDpInt(getResources(), 280),
+                hostWidth - horizontalPadding);
 
-        AlertDialog dialog = builder.create();
-        commentAdapter.disableCommentATagClick = true;
-        dialog.show();
+        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) card.getLayoutParams();
+        params.width = Math.min(maxCardWidth, availableWidth);
+        card.setLayoutParams(params);
+    }
+
+    private void resizeCommentActionTextBox(ScrollView textScroll, HtmlTextView commentText) {
+        textScroll.post(() -> {
+            if (commentActionOverlay == null) {
+                return;
+            }
+
+            int maxHeight = Utils.pxFromDpInt(getResources(), COMMENT_ACTION_TEXT_MAX_HEIGHT_DP);
+            int contentHeight = commentText.getHeight();
+            if (contentHeight <= 0) {
+                return;
+            }
+
+            int paddedContentHeight = contentHeight + textScroll.getPaddingTop() + textScroll.getPaddingBottom();
+            boolean needsScrolling = paddedContentHeight > maxHeight;
+
+            ViewGroup.LayoutParams params = textScroll.getLayoutParams();
+            params.height = needsScrolling ? maxHeight : paddedContentHeight;
+            textScroll.setLayoutParams(params);
+            textScroll.setVerticalFadingEdgeEnabled(needsScrolling);
+            textScroll.setOverScrollMode(needsScrolling ? View.OVER_SCROLL_IF_CONTENT_SCROLLS : View.OVER_SCROLL_NEVER);
+        });
+    }
+
+    private MaterialContainerTransform createCommentActionTransform(View startView, View endView, int direction) {
+        MaterialContainerTransform transform = new MaterialContainerTransform();
+        transform.setStartView(startView);
+        transform.setEndView(endView);
+        transform.setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS);
+        transform.setScrimColor(Color.TRANSPARENT);
+        transform.setDrawingViewId(android.R.id.content);
+        transform.setTransitionDirection(direction);
+        transform.setFadeMode(MaterialContainerTransform.FADE_MODE_THROUGH);
+        transform.setFitMode(MaterialContainerTransform.FIT_MODE_AUTO);
+        transform.setStartShapeAppearanceModel(createCommentActionShape(startView));
+        transform.setEndShapeAppearanceModel(createCommentActionShape(endView));
+        transform.setElevationShadowEnabled(true);
+        transform.setAllContainerColors(getCommentActionContainerColor(endView));
+        transform.setStartElevation(getCommentActionContainerElevation(startView));
+        transform.setEndElevation(getCommentActionContainerElevation(endView));
+
+        return transform;
+    }
+
+    private ShapeAppearanceModel createCommentActionShape(View view) {
+        int cornerRadiusDp = view == commentActionCard
+                ? COMMENT_ACTION_CARD_CORNER_RADIUS_DP
+                : COMMENT_ACTION_SOURCE_CORNER_RADIUS_DP;
+        return ShapeAppearanceModel.builder()
+                .setAllCornerSizes(Utils.pxFromDpInt(getResources(), cornerRadiusDp))
+                .build();
+    }
+
+    private int getCommentActionContainerColor(View view) {
+        if (view instanceof MaterialCardView) {
+            return ((MaterialCardView) view).getCardBackgroundColor().getDefaultColor();
+        }
+        return MaterialColors.getColor(view, com.google.android.material.R.attr.colorSurfaceContainerHigh);
+    }
+
+    private float getCommentActionContainerElevation(View view) {
+        if (view instanceof MaterialCardView) {
+            return ((MaterialCardView) view).getCardElevation();
+        }
+        return view.getElevation();
+    }
+
+    private void dismissCommentActionOverlay(boolean animate) {
+        dismissCommentActionOverlay(animate, null);
+    }
+
+    private void dismissCommentActionOverlay(boolean animate, @Nullable Runnable afterDismiss) {
+        if (commentActionOverlay == null) {
+            if (afterDismiss != null) {
+                afterDismiss.run();
+            }
+            return;
+        }
+        if (commentActionOverlayDismissing) {
+            return;
+        }
+
+        commentActionOverlayDismissing = true;
+        commentActionPredictiveBackActive = false;
+        ViewGroup overlayHost = getCommentActionOverlayHost();
+        View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
+        View endView = resolveCommentActionSourceView(commentActionCommentId);
+
+        pendingCommentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
+        commentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
+        if (adapter != null) {
+            adapter.disableCommentATagClick = false;
+        }
+        syncOnBackPressedCallbackEnabledState();
+
+        if (animate && overlayHost != null && commentActionCard != null && isUsableTransitionView(endView)) {
+            MaterialContainerTransform transform = createCommentActionTransform(
+                    commentActionCard,
+                    endView,
+                    MaterialContainerTransform.TRANSITION_DIRECTION_RETURN);
+            transform.addTarget(endView);
+            transform.addListener(new TransitionListenerAdapter() {
+                private boolean finished;
+
+                @Override
+                public void onTransitionEnd(@NonNull Transition transition) {
+                    finish();
+                }
+
+                @Override
+                public void onTransitionCancel(@NonNull Transition transition) {
+                    finish();
+                }
+
+                private void finish() {
+                    if (finished) {
+                        return;
+                    }
+                    finished = true;
+                    finishCommentActionOverlayDismiss(afterDismiss);
+                }
+            });
+            TransitionManager.beginDelayedTransition(overlayHost, transform);
+            scrim.animate().alpha(0f).setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS).start();
+            setCommentActionSourceVisible(endView, true);
+            commentActionCard.setVisibility(View.INVISIBLE);
+        } else {
+            commentActionCard.animate()
+                    .alpha(0f)
+                    .scaleX(0.96f)
+                    .scaleY(0.96f)
+                    .setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS)
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            finishCommentActionOverlayDismiss(afterDismiss);
+                        }
+                    });
+            scrim.animate().alpha(0f).setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS).start();
+        }
+    }
+
+    private void finishCommentActionOverlayDismiss(@Nullable Runnable afterDismiss) {
+        removeCommentActionOverlayNow();
+        if (afterDismiss != null) {
+            afterDismiss.run();
+        }
+    }
+
+    private void removeCommentActionOverlayNow() {
+        if (commentActionOverlay == null) {
+            return;
+        }
+
+        View content = commentActionOverlay.findViewById(R.id.comment_action_content);
+        if (content != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(content, null);
+        }
+        setCommentActionSourceVisible(commentActionSourceView, true);
+        if (commentActionOverlay.getParent() instanceof ViewGroup) {
+            ((ViewGroup) commentActionOverlay.getParent()).removeView(commentActionOverlay);
+        }
+
+        commentActionOverlay = null;
+        commentActionCard = null;
+        commentActionSourceView = null;
+        commentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
+        commentActionOverlayDismissing = false;
+        if (adapter != null) {
+            adapter.disableCommentATagClick = false;
+        }
+        syncOnBackPressedCallbackEnabledState();
+    }
+
+    private void startCommentActionPredictiveBack(@NonNull BackEventCompat backEvent) {
+        if (commentActionCard == null || commentActionOverlayDismissing) {
+            return;
+        }
+
+        commentActionPredictiveBackActive = true;
+        commentActionCard.animate().cancel();
+        View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
+        if (scrim != null) {
+            scrim.animate().cancel();
+        }
+        updateCommentActionPredictiveBack(backEvent);
+    }
+
+    private void updateCommentActionPredictiveBack(@NonNull BackEventCompat backEvent) {
+        if (commentActionCard == null || commentActionOverlayDismissing) {
+            return;
+        }
+
+        commentActionPredictiveBackActive = true;
+        float progress = Math.max(0f, Math.min(1f, backEvent.getProgress()));
+        float easedProgress = 1f - ((1f - progress) * (1f - progress));
+        float scale = 1f - ((1f - COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCALE) * easedProgress);
+        float edgeDirection = backEvent.getSwipeEdge() == BackEventCompat.EDGE_RIGHT ? -1f : 1f;
+
+        commentActionCard.setPivotX(edgeDirection > 0f ? 0f : commentActionCard.getWidth());
+        commentActionCard.setPivotY(backEvent.getTouchY() > 0f
+                ? Math.max(0f, Math.min(commentActionCard.getHeight(), backEvent.getTouchY() - commentActionCard.getTop()))
+                : commentActionCard.getHeight() / 2f);
+        commentActionCard.setScaleX(scale);
+        commentActionCard.setScaleY(scale);
+        commentActionCard.setTranslationX(edgeDirection
+                * Utils.pxFromDpInt(getResources(), COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_X_DP)
+                * easedProgress);
+        commentActionCard.setTranslationY(Utils.pxFromDpInt(getResources(), COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_Y_DP)
+                * easedProgress);
+
+        View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
+        if (scrim != null) {
+            scrim.setAlpha(1f - ((1f - COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCRIM_ALPHA) * easedProgress));
+        }
+    }
+
+    private void cancelCommentActionPredictiveBack() {
+        if (commentActionCard == null || !commentActionPredictiveBackActive) {
+            return;
+        }
+
+        commentActionPredictiveBackActive = false;
+        commentActionCard.animate()
+                .translationX(0f)
+                .translationY(0f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS)
+                .setListener(null)
+                .start();
+
+        View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
+        if (scrim != null) {
+            scrim.animate()
+                    .alpha(1f)
+                    .setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS)
+                    .start();
+        }
+    }
+
+    private void commitCommentActionPredictiveBack() {
+        if (commentActionOverlay == null || commentActionCard == null || commentActionOverlayDismissing) {
+            return;
+        }
+
+        commentActionPredictiveBackActive = false;
+        commentActionCard.animate().cancel();
+        dismissCommentActionOverlay(true);
+    }
+
+    private void setCommentActionSourceVisible(@Nullable View sourceView, boolean visible) {
+        if (isUsableTransitionView(sourceView)) {
+            sourceView.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
+        }
+    }
+
+    private void restorePendingCommentActionOverlay() {
+        if (pendingCommentActionCommentId == NO_COMMENT_ACTION_COMMENT_ID || commentActionOverlay != null) {
+            return;
+        }
+
+        Comment comment = findCommentById(pendingCommentActionCommentId);
+        if (comment == null) {
+            return;
+        }
+
+        int restoredCommentId = pendingCommentActionCommentId;
+        pendingCommentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
+        showCommentActionOverlay(comment, findCommentView(restoredCommentId), false);
+    }
+
+    @Nullable
+    private ViewGroup getCommentActionOverlayHost() {
+        if (!isAdded()) {
+            return null;
+        }
+
+        View content = requireActivity().findViewById(android.R.id.content);
+        if (content instanceof ViewGroup) {
+            return (ViewGroup) content;
+        }
+
+        View fragmentView = getView();
+        return fragmentView instanceof ViewGroup ? (ViewGroup) fragmentView : null;
+    }
+
+    @Nullable
+    private View resolveCommentActionSourceView(int commentId) {
+        if (isUsableTransitionView(commentActionSourceView)) {
+            return commentActionSourceView;
+        }
+        return findCommentView(commentId);
+    }
+
+    @Nullable
+    private View findCommentView(int commentId) {
+        if (recyclerView == null || comments == null) {
+            return null;
+        }
+
+        for (int i = 1; i < comments.size(); i++) {
+            if (comments.get(i).id == commentId) {
+                RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(i);
+                if (holder == null) {
+                    return null;
+                }
+                View commentCard = holder.itemView.findViewById(R.id.comment_card);
+                return commentCard != null ? commentCard : holder.itemView;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private Comment findCommentById(int commentId) {
+        if (comments != null) {
+            for (Comment comment : comments) {
+                if (comment.id == commentId) {
+                    return comment;
+                }
+            }
+        }
+        if (allComments != null) {
+            for (Comment comment : allComments) {
+                if (comment.id == commentId) {
+                    return comment;
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isUsableTransitionView(@Nullable View view) {
+        return view != null && ViewCompat.isAttachedToWindow(view) && view.getWidth() > 0 && view.getHeight() > 0;
+    }
+
+    private static class CommentActionItem {
+        final int action;
+        final String label;
+        final int iconRes;
+
+        CommentActionItem(int action, String label, int iconRes) {
+            this.action = action;
+            this.label = label;
+            this.iconRes = iconRes;
+        }
     }
 
     private void updateUserTags(String changedUser) {

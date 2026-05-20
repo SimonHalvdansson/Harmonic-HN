@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/comment_action_overlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="true"
+    android:elevation="32dp"
+    android:focusable="true">
+
+    <View
+        android:id="@+id/comment_action_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0"
+        android:background="#99000000" />
+
+    <FrameLayout
+        android:id="@+id/comment_action_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:paddingLeft="20dp"
+        android:paddingTop="24dp"
+        android:paddingRight="20dp"
+        android:paddingBottom="24dp">
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/comment_action_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="invisible"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="8dp"
+            app:strokeColor="?attr/colorPrimary"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingLeft="18dp"
+                android:paddingTop="18dp"
+                android:paddingRight="18dp"
+                android:paddingBottom="18dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/comment_action_user"
+                    style="@style/Widget.Material3Expressive.Button.ElevatedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:backgroundTint="?attr/overlayButtonColor"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/product_sans_bold"
+                    android:maxLines="1"
+                    android:minWidth="0dp"
+                    android:paddingLeft="14dp"
+                    android:paddingRight="18dp"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/white"
+                    app:icon="@drawable/ic_action_user"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp"
+                    app:iconTint="@android:color/white"
+                    tools:text="dang" />
+
+                <ScrollView
+                    android:id="@+id/comment_action_text_scroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:fadingEdgeLength="20dp"
+                    android:overScrollMode="ifContentScrolls"
+                    android:paddingBottom="14dp">
+
+                    <org.sufficientlysecure.htmltextview.HtmlTextView
+                        android:id="@+id/comment_action_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/product_sans"
+                        android:textColor="?attr/storyColorNormal"
+                        android:textIsSelectable="true"
+                        android:textSize="15sp"
+                        tools:text="Yes, I've come to the same conclusion. When interviewing ML engineers, I prefer to know they are exceptional programmers with passable knowledge of ML than the other way around." />
+                </ScrollView>
+
+                <View
+                    android:id="@+id/comment_action_divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:alpha="0.45"
+                    android:background="?attr/colorPrimary" />
+
+                <LinearLayout
+                    android:id="@+id/comment_action_actions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </FrameLayout>
+</FrameLayout>

@@ -12,6 +12,7 @@
     android:paddingBottom="@dimen/comment_card_shadow_padding">
 
     <com.google.android.material.card.MaterialCardView
+        android:id="@+id/comment_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
