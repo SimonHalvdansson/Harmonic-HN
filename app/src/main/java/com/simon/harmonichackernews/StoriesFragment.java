@@ -95,6 +95,7 @@ public class StoriesFragment extends Fragment {
     private AppBarLayout appBarLayout;
     private AppBarLayout.OnOffsetChangedListener appBarOffsetChangedListener;
     private RecyclerView.OnScrollListener recyclerViewScrollListener;
+    private RecyclerView.AdapterDataObserver storyAdapterDataObserver;
     private MaterialButtonToggleGroup.OnButtonCheckedListener userItemFilterCheckedListener;
     private StoryUpdate.StoryUpdateListener storyUpdateListener;
 
@@ -289,6 +290,7 @@ public class StoriesFragment extends Fragment {
         alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(requireContext());
         setupAdapter();
         recyclerView.setAdapter(adapter);
+        registerStoryAdapterDataObserver();
 
         // Setup header after adapter so spinner callback can safely access adapter.type
         setupHeader();
@@ -692,7 +694,7 @@ public class StoriesFragment extends Fragment {
         showCachedButton.setVisibility(loadingFailed && !searching && Utils.hasCachedStories(ctx) ? View.VISIBLE : View.GONE);
 
         loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
-        updateRecyclerScrollState();
+        requestRecyclerScrollStateUpdate();
 
         if (predictiveSearchBackInProgress) {
             applySearchBackVisualProgress(predictiveSearchBackProgress);
@@ -1565,6 +1567,9 @@ public class StoriesFragment extends Fragment {
             if (recyclerViewScrollListener != null) {
                 recyclerView.removeOnScrollListener(recyclerViewScrollListener);
             }
+            if (adapter != null && storyAdapterDataObserver != null) {
+                adapter.unregisterAdapterDataObserver(storyAdapterDataObserver);
+            }
             recyclerView.setAdapter(null);
             recyclerView.setLayoutManager(null);
         }
@@ -1611,6 +1616,7 @@ public class StoriesFragment extends Fragment {
         appBarLayout = null;
         appBarOffsetChangedListener = null;
         recyclerViewScrollListener = null;
+        storyAdapterDataObserver = null;
         userItemFilterCheckedListener = null;
         storyUpdateListener = null;
 
@@ -2824,7 +2830,56 @@ public class StoriesFragment extends Fragment {
     }
 
     private boolean shouldLockRecyclerScroll() {
-        return searching && stories != null && stories.isEmpty();
+        if (searching && stories != null && stories.isEmpty()) {
+            return true;
+        }
+
+        if (recyclerView == null || adapter == null) {
+            return false;
+        }
+
+        if (adapter.getItemCount() == 0) {
+            return true;
+        }
+
+        if (!ViewCompat.isLaidOut(recyclerView)) {
+            return false;
+        }
+
+        return visibleStoryContentFitsInRecyclerView();
+    }
+
+    private boolean visibleStoryContentFitsInRecyclerView() {
+        if (linearLayoutManager == null || recyclerView.getChildCount() == 0) {
+            return false;
+        }
+
+        int firstVisibleItem = linearLayoutManager.findFirstVisibleItemPosition();
+        int lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
+        if (firstVisibleItem != 0 || lastVisibleItem != adapter.getItemCount() - 1) {
+            return false;
+        }
+
+        View firstChild = linearLayoutManager.findViewByPosition(firstVisibleItem);
+        View lastChild = linearLayoutManager.findViewByPosition(lastVisibleItem);
+        if (firstChild == null || lastChild == null) {
+            return false;
+        }
+
+        int contentTop = linearLayoutManager.getDecoratedTop(firstChild);
+        int contentBottom = linearLayoutManager.getDecoratedBottom(lastChild);
+        int viewportTop = recyclerView.getPaddingTop();
+        int viewportBottom = recyclerView.getHeight() - recyclerView.getPaddingBottom();
+
+        return contentTop >= viewportTop && contentBottom <= viewportBottom;
+    }
+
+    private void requestRecyclerScrollStateUpdate() {
+        updateRecyclerScrollState();
+
+        if (recyclerView != null) {
+            recyclerView.post(this::updateRecyclerScrollState);
+        }
     }
 
     private void updateRecyclerScrollState() {
@@ -2841,6 +2896,45 @@ public class StoriesFragment extends Fragment {
             recyclerView.scrollToPosition(0);
             appBarLayout.setExpanded(true, false);
         }
+    }
+
+    private void registerStoryAdapterDataObserver() {
+        if (adapter == null) {
+            return;
+        }
+
+        storyAdapterDataObserver = new RecyclerView.AdapterDataObserver() {
+            @Override
+            public void onChanged() {
+                requestRecyclerScrollStateUpdate();
+            }
+
+            @Override
+            public void onItemRangeChanged(int positionStart, int itemCount) {
+                requestRecyclerScrollStateUpdate();
+            }
+
+            @Override
+            public void onItemRangeChanged(int positionStart, int itemCount, @Nullable Object payload) {
+                requestRecyclerScrollStateUpdate();
+            }
+
+            @Override
+            public void onItemRangeInserted(int positionStart, int itemCount) {
+                requestRecyclerScrollStateUpdate();
+            }
+
+            @Override
+            public void onItemRangeRemoved(int positionStart, int itemCount) {
+                requestRecyclerScrollStateUpdate();
+            }
+
+            @Override
+            public void onItemRangeMoved(int fromPosition, int toPosition, int itemCount) {
+                requestRecyclerScrollStateUpdate();
+            }
+        };
+        adapter.registerAdapterDataObserver(storyAdapterDataObserver);
     }
 
     public boolean currentTypeIsAlgolia() {
