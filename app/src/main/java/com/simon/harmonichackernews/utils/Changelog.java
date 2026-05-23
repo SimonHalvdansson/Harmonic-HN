@@ -5,7 +5,8 @@ public class Changelog {
     static public String getHTML() {
         return  "<b>Version 3.0:</b><br>" +
                 "- Added support for HN Favorites. You can convert all your bookmarks to favorites in Settings -> Data -> Bookmarks and also disable bookmarks from there.<br>" +
-                "- Added optional story preview images. Activate in Settings -> Stories.<br>" +
+                "- Added optional story preview images. Activate in Settings -> Stories<br>" +
+                "- Redesigned comment details dialog, opened by long pressing a comment<br>" +
                 "- Added ability to bookmark comments<br>" +
                 "- Added new story display style: Card<br>" +
                 "- Updated many parts of settings with previews<br>" +
@@ -14,7 +15,8 @@ public class Changelog {
                 "- Added button to only show comment threads where the OP has commented<br>" +
                 "- Added new setting for graying out clicked posts<br>" +
                 "- Added new sharing option for link + HN comments (thanks daniel-egan!)<br>" +
-                "- Fixed some crashes and reduced memory usage when opening large threads. Also added additional guarding against memory leaks.<br>" +
+                "- Fixed some crashes and reduced memory usage when opening large threads<br>" +
+                "- Added additional guarding against memory leaks<br>" +
                 "<br>" +
                 "<b>Version 2.4:</b><br>" +
                 "- Redesigned search, including adding search options<br>" +
