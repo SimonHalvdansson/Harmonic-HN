@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:paddingLeft="24dp"
     android:paddingRight="24dp"
-    android:paddingBottom="8dp">
+    android:paddingBottom="24dp">
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/debug_notifications_username_layout"
@@ -79,15 +79,5 @@
         android:visibility="gone"
         app:icon="@drawable/ic_action_cancel"
         app:iconTint="?attr/storyColorNormal" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/debug_notifications_cancel"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:fontFamily="@font/product_sans_bold"
-        android:text="Cancel"
-        android:textColor="?attr/storyColorNormal"
-        android:textSize="14sp" />
 
 </LinearLayout>

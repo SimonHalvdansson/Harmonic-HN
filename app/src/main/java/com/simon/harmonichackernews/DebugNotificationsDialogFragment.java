@@ -89,7 +89,6 @@ public class DebugNotificationsDialogFragment extends AppCompatDialogFragment {
         enableButton = rootView.findViewById(R.id.debug_notifications_enable);
         disableButton = rootView.findViewById(R.id.debug_notifications_disable);
         loadingIndicator = rootView.findViewById(R.id.debug_notifications_loading);
-        MaterialButton cancelButton = rootView.findViewById(R.id.debug_notifications_cancel);
 
         usernameInput.setText(RepliesChecker.getConfiguredUsername(requireContext()));
         usernameWatcher = new ViewUtils.SimpleTextWatcher() {
@@ -120,8 +119,6 @@ public class DebugNotificationsDialogFragment extends AppCompatDialogFragment {
             setStatus("Reply notifications turned off.");
             updateButtonStates();
         });
-
-        cancelButton.setOnClickListener(view -> dismiss());
 
         updateButtonStates();
         setInitialStatus();
