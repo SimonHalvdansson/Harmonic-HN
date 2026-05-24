@@ -17,6 +17,7 @@ import android.graphics.PointF;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.text.Html;
 import android.text.TextUtils;
 import android.util.TypedValue;
@@ -24,6 +25,7 @@ import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -2457,6 +2459,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         overlayHost.addView(commentActionOverlay, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
+        cancelCurrentCommentListTouch(overlayHost);
 
         View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
         View content = commentActionOverlay.findViewById(R.id.comment_action_content);
@@ -2495,6 +2498,23 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 commentActionCard.setVisibility(View.VISIBLE);
             }
         });
+    }
+
+    private void cancelCurrentCommentListTouch(ViewGroup overlayHost) {
+        long eventTime = SystemClock.uptimeMillis();
+        MotionEvent cancelEvent = MotionEvent.obtain(
+                eventTime,
+                eventTime,
+                MotionEvent.ACTION_CANCEL,
+                0f,
+                0f,
+                0);
+        overlayHost.dispatchTouchEvent(cancelEvent);
+        cancelEvent.recycle();
+
+        if (recyclerView != null) {
+            recyclerView.stopScroll();
+        }
     }
 
     private void bindCommentActionOverlay(Comment comment) {
