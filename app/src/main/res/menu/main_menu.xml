@@ -2,16 +2,16 @@
     xmlns:tools="http://schemas.android.com/tools" tools:context=".MainActivity">
 
     <item
-        android:id="@+id/menu_log"
-        android:title="Log in" />
+        android:id="@+id/menu_profile"
+        android:title="Profile" />
 
     <item
         android:id="@+id/menu_submit"
         android:title="Submit" />
 
     <item
-        android:id="@+id/menu_profile"
-        android:title="Profile" />
+        android:id="@+id/menu_log"
+        android:title="Log in" />
 
     <item
         android:id="@+id/menu_cache"
