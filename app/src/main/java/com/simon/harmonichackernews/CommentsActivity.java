@@ -22,6 +22,23 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     private SplitChangeHandler splitChangeHandler;
     private boolean swipeBack = false;
     private CommentsFragment commentsFragment;
+    private final Handler translucentHandler = new Handler(Looper.getMainLooper());
+    private final Runnable makeTranslucentRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isFinishing() && !isDestroyed()) {
+                setTranslucent(true);
+            }
+        }
+    };
+    private final Runnable makeOpaqueRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isFinishing() && !isDestroyed()) {
+                setTranslucent(false);
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,12 +113,8 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     protected void onResume() {
         super.onResume();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && swipeBack) {
-            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    setTranslucent(true);
-                }
-            }, 400);
+            translucentHandler.removeCallbacks(makeOpaqueRunnable);
+            translucentHandler.postDelayed(makeTranslucentRunnable, 400);
         }
     }
 
@@ -111,20 +124,19 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     protected void onPause() {
         super.onPause();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && swipeBack) {
-            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    setTranslucent(false);
-                }
-            }, 300);
+            translucentHandler.removeCallbacks(makeTranslucentRunnable);
+            translucentHandler.postDelayed(makeOpaqueRunnable, 300);
 
         }
     }
 
     @Override
     protected void onDestroy() {
+        translucentHandler.removeCallbacksAndMessages(null);
         super.onDestroy();
-        splitChangeHandler.teardown();
+        if (splitChangeHandler != null) {
+            splitChangeHandler.teardown();
+        }
     }
 
     @Override

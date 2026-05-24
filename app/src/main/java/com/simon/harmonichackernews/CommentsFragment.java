@@ -1324,6 +1324,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onRetry() {
+        if (!isCommentsViewActive() || adapter.story == null) {
+            return;
+        }
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(true);
         }
@@ -1337,7 +1340,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     private void loadInitialStoryAndComments(boolean restoreScrollFromCache) {
         Context context = getContext();
-        if (context == null || recyclerView == null || story == null) {
+        if (context == null || !isCommentsViewActive() || story == null) {
             return;
         }
 
@@ -1355,12 +1358,20 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void loadStoryAndComments(final int id, final String oldCachedResponse) {
+        Context context = getContext();
+        if (context == null || queue == null || !isCommentsViewActive()) {
+            return;
+        }
+
         lastLoaded = System.currentTimeMillis();
 
         // Initialize fallback manager
-        fallbackManager = new AlgoliaFallbackManager(getContext(), queue, requestTag, filteredUsers, new AlgoliaFallbackManager.FallbackListener() {
+        fallbackManager = new AlgoliaFallbackManager(context, queue, requestTag, filteredUsers, new AlgoliaFallbackManager.FallbackListener() {
             @Override
             public void onAlgoliaSuccess(String response) {
+                if (!isCommentsViewActive()) {
+                    return;
+                }
                 if (TextUtils.isEmpty(oldCachedResponse) || !oldCachedResponse.equals(response)) {
                     handleJsonResponse(id, response, true, oldCachedResponse == null, false);
                 }
@@ -1369,6 +1380,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onAlgoliaFailed(boolean noInternet) {
+                if (!isCommentsViewActive()) {
+                    return;
+                }
                 adapter.loadingFailed = true;
                 adapter.loadingFailedServerError = !noInternet;
                 adapter.commentsLoaded = true;
@@ -1378,11 +1392,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onUsingFallback() {
-                Toast.makeText(getContext(), "Algolia API failed, using official HN API", Toast.LENGTH_SHORT).show();
+                Context context = getContext();
+                if (context != null && isCommentsViewActive()) {
+                    Toast.makeText(context, "Algolia API failed, using official HN API", Toast.LENGTH_SHORT).show();
+                }
             }
 
             @Override
             public void onHNAPIStoryLoaded(Story loadedStory) {
+                if (!isCommentsViewActive()) {
+                    return;
+                }
                 // Update story data
                 story.title = loadedStory.title;
                 story.by = loadedStory.by;
@@ -1416,6 +1436,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onHNAPIFailed() {
+                if (!isCommentsViewActive()) {
+                    return;
+                }
                 adapter.loadingFailed = true;
                 adapter.loadingFailedServerError = false;
                 adapter.commentsLoaded = true;
@@ -1425,6 +1448,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onAllCommentsLoaded(List<Comment> loadedComments) {
+                if (!isCommentsViewActive()) {
+                    return;
+                }
                 // Add all comments at once in proper tree order
                 allComments.addAll(loadedComments);
                 if (commentsByOpFilterActive) {
@@ -1439,6 +1465,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 adapter.notifyItemChanged(0);
                 swipeRefreshLayout.setRefreshing(false);
                 recyclerView.post(() -> {
+                    if (!isCommentsViewActive()) {
+                        return;
+                    }
                     scrollToTargetComment();
                     restorePendingCommentActionOverlay();
                 });
@@ -1449,7 +1478,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         maybeLoadPollOptions();
 
-        linkPreviewController.loadNetworkPreviews(getContext());
+        if (linkPreviewController != null) {
+            linkPreviewController.loadNetworkPreviews(context);
+        }
     }
 
     private void onLinkPreviewChanged() {
@@ -1459,7 +1490,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void maybeLoadPollOptions() {
-        if (pollOptionsLoadStarted || story == null || story.isComment) {
+        if (!isCommentsViewActive() || pollOptionsLoadStarted || story == null || story.isComment || queue == null) {
             return;
         }
 
@@ -1477,20 +1508,27 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
+                    if (!isCommentsViewActive()) {
+                        return;
+                    }
                     Story hnStory = new Story();
                     hnStory.id = story.id;
                     if (JSONParser.updateStoryWithOfficialHNResponse(hnStory, response) && hnStory.pollOptions != null) {
                         story.pollOptions = hnStory.pollOptions;
                         maybeLoadPollOptions();
                     }
-                }, error -> pollOptionsLookupStarted = false);
+                }, error -> {
+                    if (isCommentsViewActive()) {
+                        pollOptionsLookupStarted = false;
+                    }
+                });
 
         stringRequest.setTag(requestTag);
         queue.add(stringRequest);
     }
 
     private void loadPollOptions() {
-        if (story.pollOptions == null) {
+        if (!isCommentsViewActive() || story.pollOptions == null || queue == null) {
             return;
         }
 
@@ -1508,6 +1546,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                     response -> {
+                        if (!isCommentsViewActive()) {
+                            return;
+                        }
                         try {
                             for (PollOption pollOption : story.pollOptionArrayList) {
                                 if (pollOption.id == optionId) {
@@ -1533,6 +1574,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void handleJsonResponse(final int id, final String response, final boolean cache, final boolean forceHeaderRefresh, boolean restoreScroll) {
+        if (!isCommentsViewActive()) {
+            return;
+        }
+
         int oldCommentCount = getAllCommentsSource().size();
 
         // This is what we get if the Algolia API has not indexed the post,
@@ -1598,9 +1643,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         adapter.commentsLoaded = true;
         updateNavigationVisibility();
         recyclerView.post(() -> {
+            if (!isCommentsViewActive()) {
+                return;
+            }
             scrollToTargetComment();
             restorePendingCommentActionOverlay();
         });
+    }
+
+    private boolean isCommentsViewActive() {
+        return getView() != null
+                && adapter != null
+                && swipeRefreshLayout != null
+                && recyclerView != null
+                && comments != null
+                && allComments != null;
     }
 
     private void applyParsedComments(List<Comment> parsedComments) {
