@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.os.Bundle;
 
+import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -25,6 +26,7 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
         boolean compact = SettingsUtils.shouldUseCompactView(getContext());
         StoryContentPreviewPreference previewPreference = findPreference("pref_story_content_preview");
         grayOutClickedPreference = findPreference(SettingsUtils.PREF_GRAY_OUT_CLICKED);
+        ListPreference defaultStoryTypePreference = findPreference("pref_default_story_type");
 
         changePrefStatus(findPreference("pref_show_points"), !compact);
         changePrefStatus(findPreference("pref_show_comments_count"), !compact);
@@ -106,13 +108,20 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
             return true;
         });
 
-        findPreference("pref_default_story_type").setOnPreferenceChangeListener((preference, newValue) -> {
-            SettingsCallback callback = getSettingsCallback();
-            if (callback != null) {
-                callback.onRequestRestart();
+        if (defaultStoryTypePreference != null) {
+            String defaultStoryType = defaultStoryTypePreference.getValue();
+            if ("Bookmarks".equals(defaultStoryType) || "History".equals(defaultStoryType)) {
+                defaultStoryTypePreference.setValue("Top Stories");
             }
-            return true;
-        });
+
+            defaultStoryTypePreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                SettingsCallback callback = getSettingsCallback();
+                if (callback != null) {
+                    callback.onRequestRestart();
+                }
+                return true;
+            });
+        }
 
         findPreference(SettingsUtils.PREF_HIDE_CLICKED).setOnPreferenceChangeListener((preference, newValue) -> {
             updateGrayOutClickedPreference(!(boolean) newValue);

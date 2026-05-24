@@ -86,9 +86,9 @@
             app:title="Default starting page"
             app:key="pref_default_story_type"
             app:useSimpleSummaryProvider="true"
-            app:entries="@array/sorting_options"
+            app:entries="@array/default_starting_page_options"
             app:defaultValue="Top Stories"
-            app:entryValues="@array/sorting_options" />
+            app:entryValues="@array/default_starting_page_options" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"

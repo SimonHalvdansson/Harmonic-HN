@@ -344,7 +344,11 @@ public class SettingsUtils {
 
     public static String getPreferredStoryType(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getString("pref_default_story_type", "Top Stories");
+        String preferredStoryType = prefs.getString("pref_default_story_type", "Top Stories");
+        if ("Bookmarks".equals(preferredStoryType) || "History".equals(preferredStoryType)) {
+            return "Top Stories";
+        }
+        return preferredStoryType;
     }
 
     public static String getPreferredCommentSorting(Context ctx) {

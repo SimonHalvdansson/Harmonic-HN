@@ -14,6 +14,18 @@
         <item>History</item>
     </string-array>
 
+    <string-array name="default_starting_page_options">
+        <item>Top Stories</item>
+        <item>Last 24 hours</item>
+        <item>Last 48 hours</item>
+        <item>Last week</item>
+        <item>New Stories</item>
+        <item>Best Stories</item>
+        <item>Ask HN</item>
+        <item>Show HN</item>
+        <item>HN Jobs</item>
+    </string-array>
+
     <string-array name="search_sorting_options">
         <item>Popularity</item>
         <item>Recent</item>
