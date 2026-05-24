@@ -35,7 +35,9 @@
             android:visibility="invisible"
             app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
             app:cardCornerRadius="28dp"
-            app:cardElevation="8dp">
+            app:cardElevation="8dp"
+            app:strokeColor="@android:color/transparent"
+            app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"

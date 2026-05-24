@@ -2406,6 +2406,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
         View content = commentActionOverlay.findViewById(R.id.comment_action_content);
         commentActionCard = commentActionOverlay.findViewById(R.id.comment_action_card);
+        commentActionCard.setCardBackgroundColor(getCommentActionCardBackgroundColor(ctx));
+        commentActionCard.setStrokeWidth(0);
+        commentActionCard.setStrokeColor(Color.TRANSPARENT);
 
         configureCommentActionOverlayInsets(content);
         configureCommentActionCardWidth(commentActionCard);
@@ -2781,7 +2784,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         transform.setScaleMaskProgressThresholds(createCommentActionProgressThresholds());
         transform.setShapeMaskProgressThresholds(createCommentActionProgressThresholds());
         transform.setElevationShadowEnabled(true);
-        transform.setAllContainerColors(getCommentActionContainerColor(endView));
+        transform.setStartContainerColor(getCommentActionContainerColor(startView));
+        transform.setEndContainerColor(getCommentActionContainerColor(endView));
         transform.setStartElevation(getCommentActionContainerElevation(startView));
         transform.setEndElevation(getCommentActionContainerElevation(endView));
 
@@ -2812,7 +2816,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (view instanceof MaterialCardView) {
             return ((MaterialCardView) view).getCardBackgroundColor().getDefaultColor();
         }
-        return MaterialColors.getColor(view, com.google.android.material.R.attr.colorSurfaceContainerHigh);
+        return getCommentActionCardBackgroundColor(view.getContext());
+    }
+
+    private int getCommentActionCardBackgroundColor(Context ctx) {
+        boolean useCardStyle = adapter != null
+                ? adapter.cardStyle
+                : SettingsUtils.shouldUseCardCommentDisplayStyle(ctx);
+        if (useCardStyle) {
+            return MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorSurfaceContainerHigh, Color.TRANSPARENT);
+        }
+        return ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx));
     }
 
     private float getCommentActionContainerElevation(View view) {
