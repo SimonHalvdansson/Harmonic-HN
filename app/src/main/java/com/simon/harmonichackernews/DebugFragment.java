@@ -10,9 +10,11 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
+import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.databinding.ActivityDebugBinding;
 import com.simon.harmonichackernews.settings.SettingsCallback;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 public class DebugFragment extends Fragment {
@@ -36,6 +38,13 @@ public class DebugFragment extends Fragment {
                 "Version %s (%s)",
                 BuildConfig.VERSION_NAME,
                 BuildConfig.BUILD_TYPE));
+
+        binding.debugAlwaysShowTapToRefresh.setChecked(SettingsUtils.shouldAlwaysShowTapToRefresh(requireContext()));
+        binding.debugAlwaysShowTapToRefresh.setOnCheckedChangeListener((buttonView, isChecked) ->
+                PreferenceManager.getDefaultSharedPreferences(requireContext())
+                        .edit()
+                        .putBoolean(SettingsUtils.PREF_ALWAYS_SHOW_TAP_TO_REFRESH, isChecked)
+                        .apply());
 
         binding.debugLink.setOnClickListener(v -> openDebugLink());
         binding.debugPoll.setOnClickListener(v -> openDebugPoll());

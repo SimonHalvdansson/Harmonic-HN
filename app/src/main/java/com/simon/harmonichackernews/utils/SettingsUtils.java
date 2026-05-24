@@ -23,6 +23,7 @@ public class SettingsUtils {
     public static final String PREF_BOOKMARKS_ENABLED = "pref_bookmarks_enabled";
     public static final String PREF_GRAY_OUT_CLICKED = "pref_gray_out_clicked";
     public static final String PREF_HIDE_CLICKED = "pref_hide_clicked";
+    public static final String PREF_ALWAYS_SHOW_TAP_TO_REFRESH = "pref_always_show_tap_to_refresh";
     public static final String STORY_DISPLAY_STYLE_STANDARD = "standard";
     public static final String STORY_DISPLAY_STYLE_CARD = "card";
     public static final String STORY_PREVIEW_IMAGE_OFF = "off";
@@ -321,6 +322,10 @@ public class SettingsUtils {
 
     public static boolean shouldUsePaginationMode(Context ctx) {
         return getBooleanPref("pref_pagination_mode", false, ctx);
+    }
+
+    public static boolean shouldAlwaysShowTapToRefresh(Context ctx) {
+        return getBooleanPref(PREF_ALWAYS_SHOW_TAP_TO_REFRESH, false, ctx);
     }
 
     public static boolean shouldUseAlgoliaAPI(Context ctx) {

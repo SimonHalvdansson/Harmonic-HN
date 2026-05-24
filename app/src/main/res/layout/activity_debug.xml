@@ -48,6 +48,18 @@
             android:text="Shortcuts to some common test scenarios."
             android:textSize="16sp" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/debug_always_show_tap_to_refresh"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:drawableStart="@drawable/ic_action_refresh"
+            android:drawablePadding="14dp"
+            android:fontFamily="@font/product_sans"
+            android:text="Always show tap to refresh"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="16sp" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/debug_link"
             style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"

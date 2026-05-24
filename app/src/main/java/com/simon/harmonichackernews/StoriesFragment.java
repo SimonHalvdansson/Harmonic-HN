@@ -1396,8 +1396,12 @@ public class StoriesFragment extends Fragment {
         long timeDiff = System.currentTimeMillis() - lastLoaded;
 
         // if more than 1 hr
-        if (timeDiff > 1000 * 60 * 60 && !searching && !isBookmarksType(adapter.type) && !isUserItemListType(adapter.type) && !currentTypeIsAlgolia()) {
+        boolean shouldShowUpdateButton = SettingsUtils.shouldAlwaysShowTapToRefresh(getContext())
+                || (timeDiff > 1000 * 60 * 60 && !searching && !isBookmarksType(adapter.type) && !isUserItemListType(adapter.type) && !currentTypeIsAlgolia());
+        if (shouldShowUpdateButton) {
             showUpdateButton();
+        } else {
+            hideUpdateButton();
         }
 
         if (adapter.showPoints != SettingsUtils.shouldShowPoints(getContext())) {
