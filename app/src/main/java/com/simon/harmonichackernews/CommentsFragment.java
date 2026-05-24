@@ -1324,7 +1324,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onRetry() {
-        resetCommentsByOpFilter();
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(true);
         }
@@ -1399,7 +1398,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 story.parentId = loadedStory.parentId;
 
                 // Reset comments
-                setCommentsByOpFilterActive(false);
                 if (allComments != null && allComments.size() > 1) {
                     allComments.subList(1, allComments.size()).clear();
                 }
