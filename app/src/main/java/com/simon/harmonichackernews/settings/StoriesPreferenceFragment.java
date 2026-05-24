@@ -26,7 +26,7 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
         boolean compact = SettingsUtils.shouldUseCompactView(getContext());
         StoryContentPreviewPreference previewPreference = findPreference("pref_story_content_preview");
         grayOutClickedPreference = findPreference(SettingsUtils.PREF_GRAY_OUT_CLICKED);
-        ListPreference defaultStoryTypePreference = findPreference("pref_default_story_type");
+        ListPreference startingPagePreference = findPreference("pref_default_story_type");
 
         changePrefStatus(findPreference("pref_show_points"), !compact);
         changePrefStatus(findPreference("pref_show_comments_count"), !compact);
@@ -108,13 +108,13 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
             return true;
         });
 
-        if (defaultStoryTypePreference != null) {
-            String defaultStoryType = defaultStoryTypePreference.getValue();
-            if ("Bookmarks".equals(defaultStoryType) || "History".equals(defaultStoryType)) {
-                defaultStoryTypePreference.setValue("Top Stories");
+        if (startingPagePreference != null) {
+            String startingPage = startingPagePreference.getValue();
+            if ("Bookmarks".equals(startingPage) || "History".equals(startingPage)) {
+                startingPagePreference.setValue("Top Stories");
             }
 
-            defaultStoryTypePreference.setOnPreferenceChangeListener((preference, newValue) -> {
+            startingPagePreference.setOnPreferenceChangeListener((preference, newValue) -> {
                 SettingsCallback callback = getSettingsCallback();
                 if (callback != null) {
                     callback.onRequestRestart();

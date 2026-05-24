@@ -14,7 +14,7 @@
         <item>History</item>
     </string-array>
 
-    <string-array name="default_starting_page_options">
+    <string-array name="starting_page_options">
         <item>Top Stories</item>
         <item>Last 24 hours</item>
         <item>Last 48 hours</item>
