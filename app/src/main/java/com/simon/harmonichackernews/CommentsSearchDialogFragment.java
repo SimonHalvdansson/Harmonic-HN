@@ -1,12 +1,16 @@
 package com.simon.harmonichackernews;
 
 import android.app.Dialog;
+import android.content.Context;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -97,6 +101,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
 
         builder.setView(rootView);
         final AlertDialog dialog = builder.create();
+        dialog.setOnShowListener(dialogInterface -> focusSearchInput());
 
         adapter.setItemClickListener(new CommentSearchAdapter.ItemClickListener() {
             @Override
@@ -109,6 +114,24 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         });
 
         return dialog;
+    }
+
+    private void focusSearchInput() {
+        if (searchBar == null) {
+            return;
+        }
+
+        Dialog dialog = getDialog();
+        Window window = dialog == null ? null : dialog.getWindow();
+        if (window != null) {
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        }
+
+        InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        searchBar.post(() -> {
+            searchBar.requestFocus();
+            imm.showSoftInput(searchBar, InputMethodManager.SHOW_IMPLICIT);
+        });
     }
 
     @Override
