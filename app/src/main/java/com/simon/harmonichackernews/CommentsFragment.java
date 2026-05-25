@@ -578,7 +578,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
         ViewUtils.requestApplyInsetsWhenAttached(searchScrollTopFab);
         searchScrollTopFab.setOnClickListener(v -> {
-            if (SettingsUtils.shouldUseCommentsAnimationNavigation(requireContext())) {
+            if (SettingsUtils.shouldSmoothScrollComments(requireContext())) {
                 smoothScrollTop();
             } else {
                 scrollTop();
@@ -597,7 +597,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         scrollNext.setOnClickListener(v -> navigateToNextComment());
         scrollNext.setOnLongClickListener(v -> {
-            if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
+            if (SettingsUtils.shouldSmoothScrollComments(getContext())) {
                 smoothScrollLast();
             } else {
                 scrollLast();
@@ -607,7 +607,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         scrollPrev.setOnClickListener(v -> navigateToPreviousComment());
         scrollPrev.setOnLongClickListener(v -> {
-            if (SettingsUtils.shouldUseCommentsAnimationNavigation(getContext())) {
+            if (SettingsUtils.shouldSmoothScrollComments(getContext())) {
                 smoothScrollTop();
             } else {
                 scrollTop();
@@ -1973,7 +1973,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                                     expandParentsForComment(c);
                                     setSearchedCommentScrollTopTarget(targetIndex);
                                     recyclerView.post(() -> {
-                                        startCommentSmoothScrollWithScaledSpeed(targetIndex);
+                                        scrollToSearchedComment(targetIndex);
                                         updateSearchedCommentScrollTopVisibility(false);
                                     });
                                     break;
@@ -2095,6 +2095,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     private void scrollTop() {
         recyclerView.scrollToPosition(0);
+    }
+
+    private void scrollToSearchedComment(int targetPosition) {
+        if (layoutManager != null && isAdded() && SettingsUtils.shouldSmoothScrollComments(requireContext())) {
+            startCommentSmoothScrollWithScaledSpeed(targetPosition);
+        } else if (layoutManager != null) {
+            layoutManager.scrollToPositionWithOffset(targetPosition, topInset);
+        } else {
+            recyclerView.scrollToPosition(targetPosition);
+        }
     }
 
     private void setSearchedCommentScrollTopTarget(int targetPosition) {
@@ -2222,7 +2232,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
 
-        if (SettingsUtils.shouldUseCommentsAnimationNavigation(requireContext())) {
+        if (SettingsUtils.shouldSmoothScrollComments(requireContext())) {
             smoothScrollNext(topLevelOnly, scaleLongScrollSpeed);
         } else {
             scrollNext(topLevelOnly);
@@ -2242,7 +2252,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
 
-        if (SettingsUtils.shouldUseCommentsAnimationNavigation(requireContext())) {
+        if (SettingsUtils.shouldSmoothScrollComments(requireContext())) {
             smoothScrollPrevious(topLevelOnly, scaleLongScrollSpeed);
         } else {
             scrollPrevious(topLevelOnly);

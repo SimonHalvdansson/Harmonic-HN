@@ -117,7 +117,7 @@
             app:key="pref_comments_animation_navigation"
             app:defaultValue="true"
             app:icon="@drawable/ic_comments_animation_navigation"
-            app:title="Animate comment navigation" />
+            app:title="Smooth scroll comments" />
 
     </PreferenceCategory>
 

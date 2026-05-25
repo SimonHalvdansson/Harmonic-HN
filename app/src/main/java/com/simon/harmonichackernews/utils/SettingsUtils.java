@@ -255,7 +255,7 @@ public class SettingsUtils {
         return getBooleanPref("pref_comments_animation", true, ctx);
     }
 
-    public static boolean shouldUseCommentsAnimationNavigation(Context ctx) {
+    public static boolean shouldSmoothScrollComments(Context ctx) {
         return getBooleanPref("pref_comments_animation_navigation", true, ctx);
     }
 
