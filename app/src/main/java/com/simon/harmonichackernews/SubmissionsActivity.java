@@ -21,6 +21,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.BackgroundJSONParser;
@@ -38,16 +39,23 @@ import java.util.List;
 public class SubmissionsActivity extends AppCompatActivity {
 
     public final static String KEY_USER = "KEY_USER";
+    private static final int SUBMISSION_FILTER_STORIES = 0;
+    private static final int SUBMISSION_FILTER_BOTH = 1;
+    private static final int SUBMISSION_FILTER_COMMENTS = 2;
 
     private StoryRecyclerViewAdapter adapter;
     private ArrayList<Story> submissions;
+    private final ArrayList<Story> allSubmissions = new ArrayList<>();
     private LinearLayoutManager linearLayoutManager;
     private RequestQueue queue;
     private SwipeRefreshLayout swipeRefreshLayout;
     private View initialLoadingIndicator;
     private AppBarLayout appBarLayout;
     private TextView headerText;
+    private MaterialButtonToggleGroup filterGroup;
+    private MaterialButtonToggleGroup.OnButtonCheckedListener filterCheckedListener;
     private boolean initialLoadFinished = false;
+    private int submissionFilter = SUBMISSION_FILTER_BOTH;
     private int topInset = 0;
 
     @Override
@@ -61,6 +69,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         initialLoadingIndicator = findViewById(R.id.submissions_initial_loading);
         appBarLayout = findViewById(R.id.submissions_appbar);
         headerText = findViewById(R.id.submissions_header_text);
+        filterGroup = findViewById(R.id.submissions_header_filter_group);
 
         String userName = getIntent().getStringExtra(KEY_USER);
         headerText.setText(userName + "'s submissions");
@@ -74,6 +83,21 @@ public class SubmissionsActivity extends AppCompatActivity {
             }
         });
         configureAppBarDragBehavior();
+
+        filterCheckedListener = (group, checkedId, isChecked) -> {
+            if (!isChecked) {
+                return;
+            }
+
+            int newFilter = submissionFilterFromButtonId(checkedId);
+            if (newFilter == submissionFilter) {
+                return;
+            }
+
+            submissionFilter = newFilter;
+            applySubmissionFilter();
+        };
+        filterGroup.addOnButtonCheckedListener(filterCheckedListener);
 
         swipeRefreshLayout.setOnRefreshListener(this::loadSubmissions);
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
@@ -159,6 +183,15 @@ public class SubmissionsActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onDestroy() {
+        if (filterGroup != null && filterCheckedListener != null) {
+            filterGroup.removeOnButtonCheckedListener(filterCheckedListener);
+        }
+
+        super.onDestroy();
+    }
+
+    @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         if (Utils.isTablet(getResources())) {
@@ -224,13 +257,54 @@ public class SubmissionsActivity extends AppCompatActivity {
     private void applyHeaderPadding() {
         boolean compactHeader = SettingsUtils.shouldUseCompactHeader(this);
         int topPadding = topInset + Utils.pxFromDpInt(getResources(), compactHeader ? 20 : 40);
-        int bottomPadding = Utils.pxFromDpInt(getResources(), compactHeader ? 10 : 26);
+        int bottomPadding = Utils.pxFromDpInt(getResources(), compactHeader ? 8 : 16);
         headerText.setPaddingRelative(
                 headerText.getPaddingStart(),
                 topPadding,
                 headerText.getPaddingEnd(),
                 bottomPadding
         );
+    }
+
+    private int submissionFilterFromButtonId(int buttonId) {
+        if (buttonId == R.id.submissions_header_filter_stories) {
+            return SUBMISSION_FILTER_STORIES;
+        }
+        if (buttonId == R.id.submissions_header_filter_comments) {
+            return SUBMISSION_FILTER_COMMENTS;
+        }
+        return SUBMISSION_FILTER_BOTH;
+    }
+
+    private void applySubmissionFilter() {
+        int oldSize = submissions.size();
+        submissions.clear();
+
+        if (oldSize > 0) {
+            adapter.notifyItemRangeRemoved(0, oldSize);
+        }
+
+        for (Story story : allSubmissions) {
+            if (shouldShowStoryForSubmissionFilter(story)) {
+                submissions.add(story);
+            }
+        }
+
+        if (!submissions.isEmpty()) {
+            adapter.notifyItemRangeInserted(0, submissions.size());
+        }
+
+        filterGroup.setVisibility(allSubmissions.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    private boolean shouldShowStoryForSubmissionFilter(Story story) {
+        if (submissionFilter == SUBMISSION_FILTER_STORIES) {
+            return !story.isComment;
+        }
+        if (submissionFilter == SUBMISSION_FILTER_COMMENTS) {
+            return story.isComment;
+        }
+        return true;
     }
 
     private void openComments(Story story, boolean showWebsite) {
@@ -265,17 +339,9 @@ public class SubmissionsActivity extends AppCompatActivity {
                         public void onParseSuccess(List<Story> parsedStories) {
                             finishLoading();
 
-                            int oldSize = submissions.size();
-
-                            submissions.clear();
-
-                            if (oldSize > 0) {
-                                adapter.notifyItemRangeRemoved(0, oldSize);
-                            }
-
-                            submissions.addAll(parsedStories);
-
-                            adapter.notifyItemRangeInserted(0, submissions.size());
+                            allSubmissions.clear();
+                            allSubmissions.addAll(parsedStories);
+                            applySubmissionFilter();
                         }
 
                         @Override

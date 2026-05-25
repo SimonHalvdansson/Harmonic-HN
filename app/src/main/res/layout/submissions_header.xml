@@ -1,17 +1,69 @@
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/submissions_header_text"
-    android:textStyle="bold"
-    android:textColor="?attr/storyColorNormal"
-    android:textSize="26sp"
-    tools:text="pg's submissions:"
-    android:fontFamily="@font/product_sans"
-    android:background="?android:attr/windowBackground"
-    android:paddingTop="38dp"
-    android:paddingLeft="16dp"
-    android:paddingRight="16dp"
-    android:paddingBottom="32dp"
+    android:id="@+id/submissions_header_container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:layout_scrollFlags="scroll|enterAlways|snap" />
+    android:background="?android:attr/windowBackground"
+    android:orientation="vertical"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:paddingBottom="24dp"
+    app:layout_scrollFlags="scroll|enterAlways|snap">
+
+    <TextView
+        android:id="@+id/submissions_header_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/product_sans"
+        android:textColor="?attr/storyColorNormal"
+        android:textSize="26sp"
+        android:textStyle="bold"
+        tools:text="pg's submissions" />
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/submissions_header_filter_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:checkedButton="@id/submissions_header_filter_both"
+        app:selectionRequired="true"
+        app:singleSelection="true">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/submissions_header_filter_stories"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:checkable="true"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="Stories"
+            android:textAllCaps="false" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/submissions_header_filter_both"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:checkable="true"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="Both"
+            android:textAllCaps="false" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/submissions_header_filter_comments"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:checkable="true"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="Comments"
+            android:textAllCaps="false" />
+
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+</LinearLayout>
