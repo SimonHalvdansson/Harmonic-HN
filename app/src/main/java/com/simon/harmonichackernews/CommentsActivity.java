@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews;
 
+import android.annotation.SuppressLint;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -25,7 +26,9 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     private final Handler translucentHandler = new Handler(Looper.getMainLooper());
     private final Runnable makeTranslucentRunnable = new Runnable() {
         @Override
+        @SuppressLint("NewApi")
         public void run() {
+            // This runnable is only posted from API 34+ lifecycle paths below.
             if (!isFinishing() && !isDestroyed()) {
                 setTranslucent(true);
             }
@@ -33,7 +36,9 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     };
     private final Runnable makeOpaqueRunnable = new Runnable() {
         @Override
+        @SuppressLint("NewApi")
         public void run() {
+            // This runnable is only posted from API 34+ lifecycle paths below.
             if (!isFinishing() && !isDestroyed()) {
                 setTranslucent(false);
             }
