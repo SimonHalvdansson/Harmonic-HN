@@ -25,6 +25,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.simon.harmonichackernews.adapters.CommentSearchAdapter;
 import com.simon.harmonichackernews.data.Comment;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 
 import java.io.Serializable;
 import java.util.List;
@@ -76,7 +77,10 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
 
         updateMatches(null);
 
-        adapter = new CommentSearchAdapter(comments);
+        adapter = new CommentSearchAdapter(
+                comments,
+                SettingsUtils.shouldUseCardCommentDisplayStyle(requireContext()),
+                SettingsUtils.getPreferredCommentTextSize(requireContext()));
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
