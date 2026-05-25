@@ -38,7 +38,9 @@ public class AboutFragment extends Fragment {
                 && ((SettingsCallback) getActivity()).isTwoPane();
         applyInsets(binding, isSettingsTwoPane);
 
-        String versionText = "Version " + BuildConfig.VERSION_NAME;
+        String versionText = BuildConfig.DEBUG
+                ? String.format("Version %s (%s)", BuildConfig.VERSION_NAME, BuildConfig.BUILD_TYPE)
+                : "Version " + BuildConfig.VERSION_NAME;
         binding.aboutVersion.setText(versionText);
 
         binding.aboutGithub.setOnClickListener(v -> openGithub());
