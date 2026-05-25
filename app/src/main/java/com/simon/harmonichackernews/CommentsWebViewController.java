@@ -278,6 +278,10 @@ class CommentsWebViewController {
         snackbar.show();
     }
 
+    boolean isBlockingAds() {
+        return blockAds;
+    }
+
     void toggleDarkMode() {
         if (webView == null) {
             return;

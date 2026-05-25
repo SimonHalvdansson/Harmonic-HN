@@ -133,6 +133,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_FORWARD = "com.simon.harmonichackernews.EXTRA_FORWARD";
     public final static String EXTRA_SHOW_WEBSITE = "com.simon.harmonichackernews.EXTRA_SHOW_WEBSITE";
     private final static String STATE_COMMENT_ACTION_COMMENT_ID = "com.simon.harmonichackernews.STATE_COMMENT_ACTION_COMMENT_ID";
+    private final static String STATE_ADBLOCK_DISABLED_FOR_SESSION = "com.simon.harmonichackernews.STATE_ADBLOCK_DISABLED_FOR_SESSION";
     private final static Pattern POLL_TITLE_PATTERN = Pattern.compile("\\bpoll\\b", Pattern.CASE_INSENSITIVE);
 
     private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
@@ -189,6 +190,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean prefIntegratedWebview = true;
     private String preloadWebview = "never";
     private boolean matchWebviewTheme = true;
+    private boolean adBlockDisabledForSession = false;
     private boolean pollOptionsLoadStarted = false;
     private boolean pollOptionsLookupStarted = false;
     private boolean closeWebViewOnBack = false;
@@ -326,6 +328,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         if (savedInstanceState != null) {
             pendingCommentActionCommentId = savedInstanceState.getInt(STATE_COMMENT_ACTION_COMMENT_ID, NO_COMMENT_ACTION_COMMENT_ID);
+            adBlockDisabledForSession = savedInstanceState.getBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, false);
         }
 
         if (getActivity() instanceof BottomSheetFragmentCallback) {
@@ -337,7 +340,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         integratedWebview = prefIntegratedWebview && story.isLink;
         preloadWebview = SettingsUtils.shouldPreloadWebView(getContext());
         matchWebviewTheme = SettingsUtils.shouldMatchWebViewTheme(getContext());
-        boolean blockAds = SettingsUtils.shouldBlockAds(getContext());
+        boolean blockAds = SettingsUtils.shouldBlockAds(getContext()) && !adBlockDisabledForSession;
         closeWebViewOnBack = SettingsUtils.shouldCloseWebViewOnBack(getContext());
 
         swipeRefreshLayout = view.findViewById(R.id.comments_swipe_refresh);
@@ -1129,6 +1132,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 : pendingCommentActionCommentId;
         if (visibleCommentActionId != NO_COMMENT_ACTION_COMMENT_ID) {
             outState.putInt(STATE_COMMENT_ACTION_COMMENT_ID, visibleCommentActionId);
+        }
+        if (adBlockDisabledForSession) {
+            outState.putBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, true);
         }
     }
 
@@ -1946,6 +1952,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         Utils.openCommentsActivity(story.commentMasterId, -1, requireContext());
                     }
                 } else if (id == R.id.menu_adblock) {
+                    adBlockDisabledForSession = true;
                     webViewController.disableAdBlockAndReload();
                 } else if (id == R.id.menu_archive) {
                     Toast.makeText(getContext(), "Contacting archive.org API...", Toast.LENGTH_SHORT).show();
@@ -2000,7 +2007,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 item.setVisible(false);
             }
 
-            if (!SettingsUtils.shouldBlockAds(getContext()) && item.getItemId() == R.id.menu_adblock) {
+            if (!webViewController.isBlockingAds() && item.getItemId() == R.id.menu_adblock) {
                 item.setVisible(false);
             }
 
