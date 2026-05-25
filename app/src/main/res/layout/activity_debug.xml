@@ -114,7 +114,7 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:fontFamily="@font/product_sans_bold"
-            android:text="Welcome activity too"
+            android:text="Welcome activity"
             android:textColor="?attr/storyColorNormal"
             android:textSize="14sp"
             app:icon="@drawable/ic_action_explore"
