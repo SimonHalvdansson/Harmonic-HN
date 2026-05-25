@@ -626,7 +626,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 preDrawListener = null;
                 startPostponedEnterTransition();
                 view.post(() -> loadInitialStoryAndComments(restoreScrollFromCache));
-                if (shouldInitializeWebViewAfterFirstDraw) {
+                if (shouldInitializeWebViewAfterFirstDraw && webViewController != null) {
                     view.post(webViewController.getInitializeRunnable());
                 }
                 return true;

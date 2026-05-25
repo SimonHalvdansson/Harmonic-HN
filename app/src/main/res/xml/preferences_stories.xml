@@ -104,7 +104,7 @@
             app:defaultValue="false"
             app:summary="Puts a 'Load more' button at the bottom of the main screen"
             app:icon="@drawable/ic_action_swipe_vertical"
-            app:title="Use pagination instead of infinite scroll" />
+            app:title="Use pagination" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"

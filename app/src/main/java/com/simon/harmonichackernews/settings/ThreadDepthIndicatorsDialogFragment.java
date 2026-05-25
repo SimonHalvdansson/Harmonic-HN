@@ -55,7 +55,6 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
         View rootView = inflater.inflate(R.layout.thread_depth_indicators_dialog, null);
         builder.setTitle("Thread depth indicators");
         builder.setView(rootView);
-        builder.setPositiveButton("Done", null);
 
         LinearLayout previewContainer = rootView.findViewById(R.id.thread_depth_preview);
         buildPreviewRows(rootView, previewContainer);
