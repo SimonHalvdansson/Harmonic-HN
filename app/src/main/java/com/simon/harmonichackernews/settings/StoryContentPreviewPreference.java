@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.StoryMetaPreviewAnimator;
 
 public class StoryContentPreviewPreference extends Preference implements SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -363,7 +364,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
         updateStoryIndex(showIndex);
         updatePreviewImage(previewImageMode);
-        updatePointsText(showPoints);
+        updatePointsText(showPoints, animate);
         updateCommentCount(showCommentsCount, compact, animate);
         updateHotnessIcon(hotness, animate);
         if (syncHeight) {
@@ -625,14 +626,8 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         return null;
     }
 
-    private void updatePointsText(boolean showPoints) {
-        if (storyMeta == null) {
-            return;
-        }
-
-        storyMeta.animate().cancel();
-        storyMeta.setAlpha(1f);
-        storyMeta.setText(showPoints ? "53 points \u2022 quantamagazine.org \u2022 2h" : "quantamagazine.org \u2022 2h");
+    private void updatePointsText(boolean showPoints, boolean animate) {
+        StoryMetaPreviewAnimator.setPointsVisible(storyMeta, showPoints, animate);
     }
 
     private void updateStoryIndex(boolean showIndex) {

@@ -23,6 +23,7 @@ import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.databinding.ActivityWelcomeBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.StoryMetaPreviewAnimator;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
 public class WelcomeActivity extends AppCompatActivity {
@@ -95,7 +96,8 @@ public class WelcomeActivity extends AppCompatActivity {
         });
 
         binding.welcomeSwitchPoints.setOnCheckedChangeListener((@NonNull CompoundButton compoundButton, boolean b) -> {
-            animateStoryMeta(binding, b);
+            beginPreviewTransition(binding);
+            StoryMetaPreviewAnimator.setPointsVisible(binding.storyListItem.storyMeta, b, true);
             setBooleanSetting(compoundButton.getContext(), "pref_show_points", b);
         });
 
@@ -155,14 +157,6 @@ public class WelcomeActivity extends AppCompatActivity {
             return R.id.welcome_story_preview_image_mode_large;
         }
         return R.id.welcome_story_preview_image_mode_off;
-    }
-
-    @SuppressLint("SetTextI18n")
-    private void animateStoryMeta(ActivityWelcomeBinding binding, boolean showPoints) {
-        TextView storyMeta = binding.storyListItem.storyMeta;
-        storyMeta.animate().cancel();
-        storyMeta.setAlpha(1f);
-        storyMeta.setText(showPoints ? "53 points \u2022 quantamagazine.org \u2022 2h" : "quantamagazine.org \u2022 2h");
     }
 
     @SuppressLint("ApplySharedPref")
