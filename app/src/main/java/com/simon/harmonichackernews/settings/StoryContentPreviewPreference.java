@@ -326,9 +326,9 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         boolean showThumbnails = showThumbnailsOverride != null
                 ? showThumbnailsOverride
                 : SettingsUtils.shouldShowThumbnails(getContext());
-        boolean showPoints = (showPointsOverride != null
+        boolean showPoints = showPointsOverride != null
                 ? showPointsOverride
-                : SettingsUtils.shouldShowPoints(getContext())) && !compact;
+                : SettingsUtils.shouldShowPoints(getContext());
         boolean showCommentsCount = showCommentsCountOverride != null
                 ? showCommentsCountOverride
                 : SettingsUtils.shouldShowCommentsCount(getContext());
@@ -355,8 +355,14 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             inflatePreviewItem(shouldLeftAlign);
         }
 
+        int targetMetaVisibility = compact ? View.GONE : View.VISIBLE;
+        int targetCommentsVisibility = compact ? View.GONE : View.VISIBLE;
+        boolean compactVisibilityChanged =
+                metaContainer != null && metaContainer.getVisibility() != targetMetaVisibility
+                        || comments != null && comments.getVisibility() != targetCommentsVisibility;
+
         if (metaContainer != null) {
-            metaContainer.setVisibility(compact ? View.GONE : View.VISIBLE);
+            metaContainer.setVisibility(targetMetaVisibility);
         }
         if (favicon != null) {
             favicon.setVisibility(showThumbnails ? View.VISIBLE : View.GONE);
@@ -364,8 +370,8 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
         updateStoryIndex(showIndex);
         updatePreviewImage(previewImageMode);
-        updatePointsText(showPoints, animate);
-        updateCommentCount(showCommentsCount, compact, animate);
+        updatePointsText(showPoints, animate && !compactVisibilityChanged);
+        updateCommentCount(showCommentsCount, compact, animate && !compactVisibilityChanged);
         updateHotnessIcon(hotness, animate);
         if (syncHeight) {
             syncPreviewContainerHeight(previewImageMode);
