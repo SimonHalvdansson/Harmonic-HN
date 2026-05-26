@@ -43,7 +43,7 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:fontFamily="@font/product_sans_bold"
-            android:text="Colors"
+            android:text="Standard"
             android:textSize="14sp" />
 
         <com.google.android.material.button.MaterialButton

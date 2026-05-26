@@ -82,7 +82,7 @@ public class CommentDepthIndicatorUtils {
             case MODE_MATERIAL_YOU:
                 return "Material You";
             case MODE_COLORS:
-                return "Colors";
+                return "Standard";
             case MODE_MONOCHROME:
                 return "Monochrome";
             case MODE_THEME_DEFAULT:
