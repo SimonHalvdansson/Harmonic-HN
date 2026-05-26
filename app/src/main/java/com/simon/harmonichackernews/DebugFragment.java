@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews;
 
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 
@@ -16,6 +17,8 @@ import com.simon.harmonichackernews.databinding.ActivityDebugBinding;
 import com.simon.harmonichackernews.settings.SettingsCallback;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
+
+import java.util.Locale;
 
 public class DebugFragment extends Fragment {
 
@@ -34,10 +37,13 @@ public class DebugFragment extends Fragment {
                 && ((SettingsCallback) getActivity()).isTwoPane();
         applyInsets(binding, isSettingsTwoPane);
 
-        binding.debugBuild.setText(String.format(
-                "Version %s (%s)",
+        binding.debugBuild.setText(String.format(Locale.US,
+                "Version %s - Build %d - %s\nAndroid %s (API %d)",
                 BuildConfig.VERSION_NAME,
-                BuildConfig.BUILD_TYPE));
+                BuildConfig.VERSION_CODE,
+                BuildConfig.BUILD_TYPE,
+                Build.VERSION.RELEASE,
+                Build.VERSION.SDK_INT));
 
         binding.debugAlwaysShowTapToRefresh.setChecked(SettingsUtils.shouldAlwaysShowTapToRefresh(requireContext()));
         binding.debugAlwaysShowTapToRefresh.setOnCheckedChangeListener((buttonView, isChecked) ->
