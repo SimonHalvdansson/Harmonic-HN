@@ -5,6 +5,7 @@ import static android.view.View.VISIBLE;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Color;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -31,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.loadingindicator.LoadingIndicator;
@@ -92,6 +94,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean showUpdate = false;
     public int spacerHeight = 0;
     private int navbarHeight = 0;
+    private int highlightedCommentId = -1;
     public boolean disableCommentATagClick = false;
     private RequestSummaryCallback summaryCallback;
 
@@ -381,6 +384,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
             Comment comment = comments.get(position);
             itemViewHolder.comment = comment;
+            applyCommentHighlight(itemViewHolder, comment.id == highlightedCommentId);
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 
@@ -484,6 +488,59 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     itemViewHolder.commentHiddenCount.setContentDescription(null);
                 }
             }
+        }
+    }
+
+    public void setHighlightedCommentId(int commentId) {
+        if (highlightedCommentId == commentId) {
+            return;
+        }
+
+        int previousCommentId = highlightedCommentId;
+        highlightedCommentId = commentId;
+
+        notifyCommentChangedById(previousCommentId);
+        notifyCommentChangedById(highlightedCommentId);
+    }
+
+    public void clearHighlightedCommentId(int commentId) {
+        if (highlightedCommentId != commentId) {
+            return;
+        }
+
+        highlightedCommentId = -1;
+        notifyCommentChangedById(commentId);
+    }
+
+    private void notifyCommentChangedById(int commentId) {
+        if (commentId == -1) {
+            return;
+        }
+
+        for (int i = 1; i < comments.size(); i++) {
+            if (comments.get(i).id == commentId) {
+                if (isCommentViewType(getItemViewType(i))) {
+                    notifyItemChanged(i);
+                }
+                return;
+            }
+        }
+    }
+
+    private void applyCommentHighlight(@NonNull ItemViewHolder itemViewHolder, boolean highlighted) {
+        int highlightColor = MaterialColors.getColor(
+                itemViewHolder.itemView,
+                com.google.android.material.R.attr.colorPrimaryContainer);
+
+        if (itemViewHolder.commentCard instanceof MaterialCardView) {
+            MaterialCardView card = (MaterialCardView) itemViewHolder.commentCard;
+            int cardBackgroundColor = highlighted
+                    ? highlightColor
+                    : MaterialColors.getColor(card, com.google.android.material.R.attr.colorSurfaceContainerHigh, Color.TRANSPARENT);
+            card.setCardBackgroundColor(cardBackgroundColor);
+            itemViewHolder.itemView.setBackgroundColor(Color.TRANSPARENT);
+        } else {
+            itemViewHolder.itemView.setBackgroundColor(highlighted ? highlightColor : Color.TRANSPARENT);
         }
     }
 

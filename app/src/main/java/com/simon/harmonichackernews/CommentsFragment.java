@@ -139,6 +139,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
     private final static int COMMENT_NAVIGATION_SPEED_STEP = 35;
     private final static int SEARCH_SCROLL_TOP_MIN_VISIBLE_COMMENT = 10;
+    private final static int SEARCH_COMMENT_HIGHLIGHT_DURATION_MS = 1200;
     private final static int COMMENT_ACTION_VIEW_USER = 0;
     private final static int COMMENT_ACTION_SHARE = 1;
     private final static int COMMENT_ACTION_COPY = 2;
@@ -204,6 +205,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int scrollToCommentId = -1;
     private int searchedCommentScrollTopTargetId = -1;
     private boolean searchedCommentScrollTopPending = false;
+    private int pendingSearchedCommentHighlightId = -1;
+    private Runnable clearSearchedCommentHighlightRunnable;
     private boolean commentsByOpFilterActive = false;
     private FrameLayout commentActionOverlay;
     private MaterialCardView commentActionCard;
@@ -872,6 +875,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 super.onScrollStateChanged(recyclerView, newState);
                 if (newState == RecyclerView.SCROLL_STATE_IDLE) {
                     updateSearchedCommentScrollTopVisibility(true);
+                    highlightPendingSearchedCommentIfReady();
                 }
             }
         };
@@ -1234,6 +1238,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     @Override
     public void onDestroyView() {
         removeCommentActionOverlayNow();
+        clearSearchedCommentHighlight();
 
         View rootView = getView();
         if (rootView != null) {
@@ -1981,6 +1986,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                                     setSearchedCommentScrollTopTarget(targetIndex);
                                     recyclerView.post(() -> {
                                         scrollToSearchedComment(targetIndex);
+                                        setPendingSearchedCommentHighlight(targetIndex);
                                         updateSearchedCommentScrollTopVisibility(false);
                                     });
                                     break;
@@ -2114,6 +2120,74 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
+    private void setPendingSearchedCommentHighlight(int targetPosition) {
+        if (comments == null || recyclerView == null || adapter == null
+                || targetPosition <= 0 || targetPosition >= comments.size()) {
+            pendingSearchedCommentHighlightId = -1;
+            return;
+        }
+
+        pendingSearchedCommentHighlightId = comments.get(targetPosition).id;
+        cancelSearchedCommentHighlightClear();
+        adapter.setHighlightedCommentId(-1);
+        recyclerView.post(this::highlightPendingSearchedCommentIfReady);
+        recyclerView.postDelayed(this::highlightPendingSearchedCommentIfReady, 50);
+    }
+
+    private void highlightPendingSearchedCommentIfReady() {
+        if (pendingSearchedCommentHighlightId == -1 || recyclerView == null || layoutManager == null || adapter == null) {
+            return;
+        }
+
+        int targetPosition = findCommentPositionById(pendingSearchedCommentHighlightId);
+        if (targetPosition == RecyclerView.NO_POSITION) {
+            pendingSearchedCommentHighlightId = -1;
+            return;
+        }
+
+        boolean targetVisible = isCommentPositionVisible(targetPosition);
+        if (!targetVisible || recyclerView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE) {
+            return;
+        }
+
+        int highlightedCommentId = pendingSearchedCommentHighlightId;
+        pendingSearchedCommentHighlightId = -1;
+        adapter.setHighlightedCommentId(highlightedCommentId);
+
+        clearSearchedCommentHighlightRunnable = () -> {
+            if (adapter != null) {
+                adapter.clearHighlightedCommentId(highlightedCommentId);
+            }
+            clearSearchedCommentHighlightRunnable = null;
+        };
+        recyclerView.postDelayed(clearSearchedCommentHighlightRunnable, SEARCH_COMMENT_HIGHLIGHT_DURATION_MS);
+    }
+
+    private boolean isCommentPositionVisible(int targetPosition) {
+        if (layoutManager == null) {
+            return false;
+        }
+
+        return targetPosition >= layoutManager.findFirstVisibleItemPosition()
+                && targetPosition <= layoutManager.findLastVisibleItemPosition()
+                && layoutManager.findViewByPosition(targetPosition) != null;
+    }
+
+    private void cancelSearchedCommentHighlightClear() {
+        if (recyclerView != null && clearSearchedCommentHighlightRunnable != null) {
+            recyclerView.removeCallbacks(clearSearchedCommentHighlightRunnable);
+        }
+        clearSearchedCommentHighlightRunnable = null;
+    }
+
+    private void clearSearchedCommentHighlight() {
+        pendingSearchedCommentHighlightId = -1;
+        cancelSearchedCommentHighlightClear();
+        if (adapter != null) {
+            adapter.setHighlightedCommentId(-1);
+        }
+    }
+
     private void setSearchedCommentScrollTopTarget(int targetPosition) {
         if (comments == null || adapter == null || adapter.showUpdate || targetPosition <= 0 || targetPosition >= comments.size()) {
             clearSearchedCommentScrollTopTarget();
@@ -2153,9 +2227,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
 
-        boolean targetVisible = targetPosition >= layoutManager.findFirstVisibleItemPosition()
-                && targetPosition <= layoutManager.findLastVisibleItemPosition()
-                && layoutManager.findViewByPosition(targetPosition) != null;
+        boolean targetVisible = isCommentPositionVisible(targetPosition);
 
         if (targetVisible) {
             searchedCommentScrollTopPending = false;
