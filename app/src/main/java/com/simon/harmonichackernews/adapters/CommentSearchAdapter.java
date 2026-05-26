@@ -108,6 +108,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         public TextView commentHiddenText;
         public View commentIndentIndicator;
         public View commentCard;
+        public View commentContentContainer;
 
         public CommentViewHolder(View view) {
             super(view);
@@ -118,6 +119,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
             commentHiddenText = view.findViewById(R.id.comment_hidden_short);
             commentIndentIndicator = view.findViewById(R.id.comment_indent_indicator);
             commentCard = view.findViewById(R.id.comment_card);
+            commentContentContainer = commentText == null ? null : (View) commentText.getParent();
 
             if (commentCard == null) {
                 itemView.setBackgroundResource(resolveSelectableItemBackground(view));
@@ -206,6 +208,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
 
         Comment comment = visibleComments.get(position);
         applyItemMargins(commentViewHolder.itemView);
+        applyCardContentPadding(commentViewHolder);
         commentViewHolder.commentIndentIndicator.setVisibility(View.GONE);
 
         String text = Utils.expandShortenedAnchorText(comment.text == null ? "" : comment.text);
@@ -278,6 +281,20 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
             params.setMargins(0, 0, 0, 0);
         }
         itemView.setLayoutParams(params);
+    }
+
+    private void applyCardContentPadding(CommentViewHolder commentViewHolder) {
+        if (!cardStyle || commentViewHolder.commentContentContainer == null) {
+            return;
+        }
+
+        View contentContainer = commentViewHolder.commentContentContainer;
+        int verticalPadding = contentContainer.getPaddingTop();
+        contentContainer.setPadding(
+                verticalPadding,
+                contentContainer.getPaddingTop(),
+                verticalPadding,
+                contentContainer.getPaddingBottom());
     }
 
     @Override
