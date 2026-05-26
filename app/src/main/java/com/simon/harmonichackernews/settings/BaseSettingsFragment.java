@@ -10,15 +10,18 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.SettingsActivity;
 import com.simon.harmonichackernews.SettingsDetailActivity;
+import com.simon.harmonichackernews.utils.ViewUtils;
 
 public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
 
@@ -41,10 +44,10 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
 
         LinearLayout wrapper = new LinearLayout(requireContext());
         wrapper.setOrientation(LinearLayout.VERTICAL);
-        wrapper.setFitsSystemWindows(true);
         wrapper.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
+        setUpWrapperInsets(wrapper);
 
         MaterialToolbar toolbar = new MaterialToolbar(requireContext(), null,
                 androidx.appcompat.R.attr.toolbarStyle);
@@ -81,10 +84,7 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
     @Override
     public RecyclerView onCreateRecyclerView(@NonNull LayoutInflater inflater, @NonNull ViewGroup parent, @Nullable Bundle savedInstanceState) {
         RecyclerView recycler = super.onCreateRecyclerView(inflater, parent, savedInstanceState);
-        // Only set fitsSystemWindows when there is no toolbar wrapper handling insets
-        if (getToolbarTitle() == null) {
-            recycler.setFitsSystemWindows(true);
-        }
+        setUpRecyclerInsets(recycler, getToolbarTitle() == null);
         recycler.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
             @Override
             public void onChildViewAttachedToWindow(@NonNull View view) {
@@ -98,6 +98,43 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
             }
         });
         return recycler;
+    }
+
+    private void setUpWrapperInsets(@NonNull LinearLayout wrapper) {
+        ViewCompat.setOnApplyWindowInsetsListener(wrapper, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+
+            v.setPadding(
+                    Math.max(systemBars.left, cutout.left),
+                    systemBars.top,
+                    Math.max(systemBars.right, cutout.right),
+                    0);
+
+            return insets;
+        });
+        ViewUtils.requestApplyInsetsWhenAttached(wrapper);
+    }
+
+    private void setUpRecyclerInsets(@NonNull RecyclerView recycler, boolean handleTopAndSideInsets) {
+        recycler.setClipToPadding(false);
+        ViewCompat.setOnApplyWindowInsetsListener(recycler, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+
+            int leftInset = handleTopAndSideInsets ? Math.max(systemBars.left, cutout.left) : 0;
+            int topInset = handleTopAndSideInsets ? systemBars.top : 0;
+            int rightInset = handleTopAndSideInsets ? Math.max(systemBars.right, cutout.right) : 0;
+
+            v.setPadding(
+                    leftInset,
+                    topInset,
+                    rightInset,
+                    systemBars.bottom);
+
+            return insets;
+        });
+        ViewUtils.requestApplyInsetsWhenAttached(recycler);
     }
 
     protected SettingsCallback getSettingsCallback() {
