@@ -259,7 +259,11 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
                 : 0;
 
         if (cardStyle) {
-            itemView.setPadding(0, 0, 0, 0);
+            itemView.setPadding(
+                    0,
+                    cardShadowPadding,
+                    0,
+                    cardShadowPadding);
             params.setMargins(
                     Math.max(0, horizontalMargin - cardShadowPadding),
                     Math.max(0, topMargin - cardShadowPadding),
