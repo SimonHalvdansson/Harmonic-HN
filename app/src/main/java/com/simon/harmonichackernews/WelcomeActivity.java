@@ -39,21 +39,36 @@ public class WelcomeActivity extends AppCompatActivity {
         ActivityWelcomeBinding binding = ActivityWelcomeBinding.inflate(getLayoutInflater());
         final View root = binding.getRoot();
         setContentView(root);
-        final int padLeft = root.getPaddingLeft();
-        final int padTop = root.getPaddingTop();
-        final int padRight = root.getPaddingRight();
-        final int padBottom = root.getPaddingBottom();
+        final int scrollPadLeft = binding.welcomeScroll.getPaddingLeft();
+        final int scrollPadTop = binding.welcomeScroll.getPaddingTop();
+        final int scrollPadRight = binding.welcomeScroll.getPaddingRight();
+        final int scrollPadBottom = binding.welcomeScroll.getPaddingBottom();
+        final ViewGroup.MarginLayoutParams fabParams =
+                (ViewGroup.MarginLayoutParams) binding.welcomeGetStartedFab.getLayoutParams();
+        final int fabBottomMargin = fabParams.bottomMargin;
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
             Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+            int leftInset = Math.max(bars.left, cutout.left);
+            int rightInset = Math.max(bars.right, cutout.right);
+            int bottomInset = Math.max(bars.bottom, ime.bottom);
 
-            view.setPadding(
-                    padLeft + Math.max(bars.left, cutout.left),
-                    padTop + bars.top,
-                    padRight + Math.max(bars.right, cutout.right),
-                    padBottom + Math.max(bars.bottom, ime.bottom)
+            binding.welcomeScroll.setPadding(
+                    scrollPadLeft + leftInset,
+                    scrollPadTop + bars.top,
+                    scrollPadRight + rightInset,
+                    scrollPadBottom + bottomInset
             );
+            ViewGroup.MarginLayoutParams updatedFabParams =
+                    (ViewGroup.MarginLayoutParams) binding.welcomeGetStartedFab.getLayoutParams();
+            updatedFabParams.setMargins(
+                    updatedFabParams.leftMargin,
+                    updatedFabParams.topMargin,
+                    updatedFabParams.rightMargin,
+                    fabBottomMargin + bottomInset
+            );
+            binding.welcomeGetStartedFab.setLayoutParams(updatedFabParams);
             return insets;
         });
         ViewCompat.requestApplyInsets(root);
