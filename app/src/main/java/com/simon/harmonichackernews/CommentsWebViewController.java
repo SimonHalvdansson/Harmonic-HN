@@ -107,6 +107,7 @@ class CommentsWebViewController {
     private View webViewBackdrop;
     private MaterialButton downloadButton;
     private LinearProgressIndicator progressIndicator;
+    private ValueAnimator progressAnimator;
     private BottomSheetBehavior.BottomSheetCallback webViewBottomSheetCallback;
     private boolean showWebsite = false;
     private boolean integratedWebview = true;
@@ -373,8 +374,6 @@ class CommentsWebViewController {
 
         webView.setWebChromeClient(new WebChromeClient() {
 
-            private ValueAnimator progressAnimator;
-
             @Override
             public void onShowCustomView(View view, CustomViewCallback callback) {
                 if (fragment.getContext() == null || fragment.getView() == null || fullscreenContainer == null || webViewContainer == null || bottomSheet == null) {
@@ -391,27 +390,29 @@ class CommentsWebViewController {
 
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                if (view != webView || fragment.getContext() == null || fragment.getView() == null || progressIndicator == null) {
+                LinearProgressIndicator currentProgressIndicator = progressIndicator;
+                if (view != webView || fragment.getContext() == null || fragment.getView() == null || currentProgressIndicator == null) {
                     return;
                 }
-                if (progressAnimator != null && progressAnimator.isRunning()) {
-                    progressAnimator.cancel();
-                }
+                cancelProgressAnimator();
 
-                int current = progressIndicator.getProgress();
+                int current = currentProgressIndicator.getProgress();
                 if (newProgress > current) {
                     progressAnimator = ValueAnimator.ofInt(current, newProgress);
                     progressAnimator.setDuration(400);
                     progressAnimator.addUpdateListener(anim -> {
+                        if (progressAnimator != anim || progressIndicator != currentProgressIndicator) {
+                            return;
+                        }
                         int animatedValue = (int) anim.getAnimatedValue();
-                        progressIndicator.setProgress(animatedValue);
+                        currentProgressIndicator.setProgress(animatedValue);
                     });
                     progressAnimator.start();
                 } else {
-                    progressIndicator.setProgress(newProgress);
+                    currentProgressIndicator.setProgress(newProgress);
                 }
 
-                progressIndicator.setVisibility(newProgress < 100 ? View.VISIBLE : View.GONE);
+                currentProgressIndicator.setVisibility(newProgress < 100 ? View.VISIBLE : View.GONE);
             }
         });
 
@@ -730,6 +731,7 @@ class CommentsWebViewController {
     }
 
     private void destroy(boolean rendererProcessGone) {
+        cancelProgressAnimator();
         linkPreviewController.cancelPendingNitterLinkPreviewRead();
         if (webView != null) {
             WebView webViewToDestroy = webView;
@@ -802,6 +804,13 @@ class CommentsWebViewController {
             webViewBackdrop.animate().cancel();
         }
         destroy();
+    }
+
+    private void cancelProgressAnimator() {
+        if (progressAnimator != null) {
+            progressAnimator.cancel();
+            progressAnimator = null;
+        }
     }
 
     void clearViewReferences() {
