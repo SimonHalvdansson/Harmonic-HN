@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -22,7 +23,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.search.SearchBar;
 import com.simon.harmonichackernews.adapters.CommentSearchAdapter;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -36,7 +37,8 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
     public final static String EXTRA_SEARCHABLE_COMMENTS = "com.simon.harmonichackernews.EXTRA_SEARCHABLE_COMMENTS";
 
 
-    private TextInputEditText searchBar;
+    private SearchBar searchBarBackground;
+    private EditText searchBar;
     private RecyclerView recyclerView;
     private TextView matchesText;
     private CommentSearchAdapter adapter;
@@ -66,7 +68,10 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         LayoutInflater inflater = requireActivity().getLayoutInflater();
         View rootView = inflater.inflate(R.layout.comments_search_dialog, null);
 
+        searchBarBackground = rootView.findViewById(R.id.comments_search_bar);
         searchBar = rootView.findViewById(R.id.comments_search_edittext);
+        searchBarBackground.setElevation(0f);
+        searchBar.bringToFront();
         recyclerView = rootView.findViewById(R.id.comments_search_recyclerview);
         matchesText = rootView.findViewById(R.id.comments_search_matches);
 
@@ -151,6 +156,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
             adapter.setItemClickListener(null);
         }
         searchWatcher = null;
+        searchBarBackground = null;
         searchBar = null;
         recyclerView = null;
         matchesText = null;

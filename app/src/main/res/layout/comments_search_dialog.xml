@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:paddingTop="24dp"
@@ -20,27 +18,38 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/outlinedTextField"
+    <FrameLayout
+        android:id="@+id/comments_search_container"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="56dp"
         android:paddingLeft="24dp"
-        android:paddingRight="24dp"
-        app:boxCornerRadiusBottomEnd="24dp"
-        app:boxCornerRadiusBottomStart="24dp"
-        app:boxCornerRadiusTopEnd="24dp"
-        app:boxCornerRadiusTopStart="24dp"
-        app:startIconDrawable="@drawable/ic_action_search"
-        android:hint="Search comments">
+        android:paddingRight="24dp">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:inputType="textCapSentences"
+        <com.google.android.material.search.SearchBar
+            android:id="@+id/comments_search_bar"
+            style="@style/Widget.App.StoriesSearchBar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="Search comments"
+            android:elevation="0dp" />
+
+        <androidx.appcompat.widget.AppCompatEditText
             android:id="@+id/comments_search_edittext"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            />
+            android:layout_height="match_parent"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:background="@android:color/transparent"
+            android:elevation="1dp"
+            android:fontFamily="@font/product_sans"
+            android:hint="Search comments"
+            android:imeOptions="actionSearch"
+            android:inputType="textCapSentences"
+            android:singleLine="true"
+            android:textColor="?attr/textColorHighlighted"
+            android:textColorHint="?attr/textColorDisabled" />
 
-    </com.google.android.material.textfield.TextInputLayout>
+    </FrameLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/comments_search_recyclerview"
