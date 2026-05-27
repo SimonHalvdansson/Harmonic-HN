@@ -43,7 +43,7 @@
             android:elevation="1dp"
             android:fontFamily="@font/product_sans"
             android:hint="Search comments"
-            android:imeOptions="actionSearch"
+            android:imeOptions="actionSearch|flagNoExtractUi"
             android:inputType="textCapSentences"
             android:singleLine="true"
             android:textColor="?attr/textColorHighlighted"

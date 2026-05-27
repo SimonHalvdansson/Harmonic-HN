@@ -61,7 +61,7 @@
                 android:elevation="1dp"
                 android:fontFamily="@font/product_sans"
                 android:hint="Search posts"
-                android:imeOptions="actionSearch"
+                android:imeOptions="actionSearch|flagNoExtractUi"
                 android:inputType="textCapSentences"
                 android:textColor="?attr/textColorHighlighted"
                 android:textColorHint="?attr/textColorDisabled"
