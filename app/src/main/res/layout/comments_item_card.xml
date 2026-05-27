@@ -28,7 +28,7 @@
 
             <View
                 android:id="@+id/comment_indent_indicator"
-                android:layout_width="3dp"
+                android:layout_width="3.5dp"
                 android:layout_height="match_parent"
                 android:layout_marginRight="4dp" />
 
