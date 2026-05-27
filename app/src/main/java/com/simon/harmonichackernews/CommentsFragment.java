@@ -35,7 +35,6 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -52,6 +51,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
@@ -1090,7 +1090,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
             configureCommentActionCardWidth(commentActionCard);
-            ScrollView textScroll = commentActionOverlay.findViewById(R.id.comment_action_text_scroll);
+            resizeCommentActionDialogScroll();
+            NestedScrollView textScroll = commentActionOverlay.findViewById(R.id.comment_action_text_scroll);
             HtmlTextView commentText = commentActionOverlay.findViewById(R.id.comment_action_text);
             if (textScroll != null && commentText != null) {
                 ViewGroup.LayoutParams params = textScroll.getLayoutParams();
@@ -2562,6 +2563,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         bindCommentActionOverlay(comment);
 
         scrim.setOnClickListener(v -> dismissCommentActionOverlay(true));
+        content.setOnClickListener(v -> dismissCommentActionOverlay(true));
         commentActionCard.setOnTouchListener((v, event) -> true);
 
         syncOnBackPressedCallbackEnabledState();
@@ -2635,7 +2637,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
         FontUtils.setTypeface(commentText, false, SettingsUtils.getPreferredCommentTextSize(ctx));
 
-        ScrollView textScroll = commentActionOverlay.findViewById(R.id.comment_action_text_scroll);
+        NestedScrollView textScroll = commentActionOverlay.findViewById(R.id.comment_action_text_scroll);
         resizeCommentActionTextBox(textScroll, commentText);
 
         LinearLayout actionsContainer = commentActionOverlay.findViewById(R.id.comment_action_actions);
@@ -2910,7 +2912,45 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         card.setLayoutParams(params);
     }
 
-    private void resizeCommentActionTextBox(ScrollView textScroll, HtmlTextView commentText) {
+    private void resizeCommentActionDialogScroll() {
+        if (commentActionOverlay == null) {
+            return;
+        }
+
+        NestedScrollView cardScroll = commentActionOverlay.findViewById(R.id.comment_action_card_scroll);
+        View content = commentActionOverlay.findViewById(R.id.comment_action_content);
+        if (cardScroll == null || content == null) {
+            return;
+        }
+
+        cardScroll.post(() -> {
+            if (commentActionOverlay == null) {
+                return;
+            }
+
+            int availableHeight = content.getHeight() - content.getPaddingTop() - content.getPaddingBottom();
+            if (availableHeight <= 0 || cardScroll.getChildCount() == 0) {
+                return;
+            }
+
+            int minHeight = Utils.pxFromDpInt(getResources(), 160);
+            int maxHeight = Math.max(minHeight, availableHeight);
+            View child = cardScroll.getChildAt(0);
+            int contentHeight = child.getHeight() + cardScroll.getPaddingTop() + cardScroll.getPaddingBottom();
+            if (contentHeight <= 0) {
+                return;
+            }
+
+            boolean needsScrolling = contentHeight > maxHeight;
+            ViewGroup.LayoutParams params = cardScroll.getLayoutParams();
+            params.height = needsScrolling ? maxHeight : ViewGroup.LayoutParams.WRAP_CONTENT;
+            cardScroll.setLayoutParams(params);
+            cardScroll.setVerticalFadingEdgeEnabled(needsScrolling);
+            cardScroll.setOverScrollMode(needsScrolling ? View.OVER_SCROLL_IF_CONTENT_SCROLLS : View.OVER_SCROLL_NEVER);
+        });
+    }
+
+    private void resizeCommentActionTextBox(NestedScrollView textScroll, HtmlTextView commentText) {
         textScroll.post(() -> {
             if (commentActionOverlay == null) {
                 return;
@@ -2930,6 +2970,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             textScroll.setLayoutParams(params);
             textScroll.setVerticalFadingEdgeEnabled(needsScrolling);
             textScroll.setOverScrollMode(needsScrolling ? View.OVER_SCROLL_IF_CONTENT_SCROLLS : View.OVER_SCROLL_NEVER);
+            resizeCommentActionDialogScroll();
         });
     }
 
