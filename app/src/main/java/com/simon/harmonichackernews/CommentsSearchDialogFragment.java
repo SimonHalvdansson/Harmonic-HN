@@ -126,7 +126,8 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
     }
 
     private void focusSearchInput() {
-        if (searchBar == null) {
+        EditText currentSearchBar = searchBar;
+        if (currentSearchBar == null) {
             return;
         }
 
@@ -137,9 +138,12 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         }
 
         InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        searchBar.post(() -> {
-            searchBar.requestFocus();
-            imm.showSoftInput(searchBar, InputMethodManager.SHOW_IMPLICIT);
+        currentSearchBar.post(() -> {
+            if (searchBar != currentSearchBar) {
+                return;
+            }
+            currentSearchBar.requestFocus();
+            imm.showSoftInput(currentSearchBar, InputMethodManager.SHOW_IMPLICIT);
         });
     }
 

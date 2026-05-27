@@ -907,14 +907,29 @@ public class StoriesFragment extends Fragment {
 
     private void focusSearchInput() {
         InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        searchEditText.post(() -> {
-            searchEditText.requestFocus();
-            imm.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT);
+        View currentSearchEditText = searchEditText;
+        if (currentSearchEditText == null) {
+            return;
+        }
+        currentSearchEditText.post(() -> {
+            if (searchEditText != currentSearchEditText) {
+                return;
+            }
+            currentSearchEditText.requestFocus();
+            imm.showSoftInput(currentSearchEditText, InputMethodManager.SHOW_IMPLICIT);
         });
     }
 
     private void resetSearchOptionsScroll() {
-        searchOptionsScroll.post(() -> searchOptionsScroll.scrollTo(0, 0));
+        View currentSearchOptionsScroll = searchOptionsScroll;
+        if (currentSearchOptionsScroll == null) {
+            return;
+        }
+        currentSearchOptionsScroll.post(() -> {
+            if (searchOptionsScroll == currentSearchOptionsScroll) {
+                currentSearchOptionsScroll.scrollTo(0, 0);
+            }
+        });
     }
 
     private void resetSearchOptions() {
@@ -928,19 +943,20 @@ public class StoriesFragment extends Fragment {
     }
 
     private void animateSearchOptionsIn() {
-        if (searchOptionsScroll == null) {
+        View currentSearchOptionsScroll = searchOptionsScroll;
+        if (currentSearchOptionsScroll == null) {
             return;
         }
 
-        searchOptionsScroll.animate().cancel();
-        searchOptionsScroll.setAlpha(0f);
-        searchOptionsScroll.setTranslationY(-Utils.pxFromDpInt(getResources(), 6));
-        searchOptionsScroll.post(() -> {
-            if (!searching || searchOptionsScroll == null) {
+        currentSearchOptionsScroll.animate().cancel();
+        currentSearchOptionsScroll.setAlpha(0f);
+        currentSearchOptionsScroll.setTranslationY(-Utils.pxFromDpInt(getResources(), 6));
+        currentSearchOptionsScroll.post(() -> {
+            if (!searching || searchOptionsScroll != currentSearchOptionsScroll) {
                 return;
             }
 
-            searchOptionsScroll.animate()
+            currentSearchOptionsScroll.animate()
                     .alpha(1f)
                     .translationY(0f)
                     .setStartDelay(SEARCH_OPTIONS_ENTRANCE_ANIMATION_DELAY_MS)

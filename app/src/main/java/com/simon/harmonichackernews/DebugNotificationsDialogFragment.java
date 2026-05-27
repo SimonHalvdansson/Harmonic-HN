@@ -54,6 +54,10 @@ public class DebugNotificationsDialogFragment extends AppCompatDialogFragment {
         notificationPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 granted -> {
+                    if (!isAdded()) {
+                        clearPendingPermissionAction();
+                        return;
+                    }
                     if (!granted) {
                         setStatus("Notification permission denied.");
                         clearPendingPermissionAction();
@@ -179,7 +183,7 @@ public class DebugNotificationsDialogFragment extends AppCompatDialogFragment {
         setLoading(true);
         setStatus("Setting up reply notifications...");
         RepliesChecker.enable(requireContext(), username, success -> {
-            if (getContext() == null) {
+            if (getContext() == null || usernameInput == null) {
                 return;
             }
             setLoading(false);

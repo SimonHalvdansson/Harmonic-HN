@@ -1194,8 +1194,18 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (comments.get(i).id == scrollToCommentId) {
                 int targetIndex = i;
                 expandParentsForComment(comments.get(i));
+                RecyclerView currentRecyclerView = recyclerView;
+                LinearLayoutManager currentLayoutManager = layoutManager;
+                if (currentRecyclerView == null || currentLayoutManager == null) {
+                    scrollToCommentId = -1;
+                    return;
+                }
                 // +1 to account for header at adapter position 0
-                recyclerView.post(() -> layoutManager.scrollToPositionWithOffset(targetIndex + 1, topInset));
+                currentRecyclerView.post(() -> {
+                    if (recyclerView == currentRecyclerView && layoutManager == currentLayoutManager) {
+                        currentLayoutManager.scrollToPositionWithOffset(targetIndex + 1, topInset);
+                    }
+                });
                 scrollToCommentId = -1;
                 return;
             }
@@ -1985,11 +1995,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                                     int targetIndex = comments.indexOf(c);
                                     expandParentsForComment(c);
                                     setSearchedCommentScrollTopTarget(targetIndex);
-                                    recyclerView.post(() -> {
-                                        scrollToSearchedComment(targetIndex);
-                                        setPendingSearchedCommentHighlight(targetIndex);
-                                        updateSearchedCommentScrollTopVisibility(false);
-                                    });
+                                    RecyclerView currentRecyclerView = recyclerView;
+                                    if (currentRecyclerView != null) {
+                                        currentRecyclerView.post(() -> {
+                                            if (!isCommentsViewActive() || recyclerView != currentRecyclerView) {
+                                                return;
+                                            }
+                                            scrollToSearchedComment(targetIndex);
+                                            setPendingSearchedCommentHighlight(targetIndex);
+                                            updateSearchedCommentScrollTopVisibility(false);
+                                        });
+                                    }
                                     break;
                                 }
                             }

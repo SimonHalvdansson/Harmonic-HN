@@ -141,6 +141,12 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             previewHeightAnimator.cancel();
             previewHeightAnimator = null;
         }
+        if (comments != null) {
+            comments.animate().cancel();
+        }
+        if (commentsIcon != null) {
+            commentsIcon.animate().cancel();
+        }
         previewRoot = null;
         previewItemContainer = null;
         metaContainer = null;
@@ -656,44 +662,48 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     }
 
     private void updateCommentCount(boolean showCommentsCount, boolean compact, boolean animate) {
-        if (comments == null) {
+        TextView currentComments = comments;
+        if (currentComments == null) {
             return;
         }
 
         String targetText = showCommentsCount ? "18" : "\u2022";
         int targetVisibility = compact ? View.GONE : View.VISIBLE;
-        comments.animate().cancel();
+        currentComments.animate().cancel();
 
         if (!animate) {
-            comments.setText(targetText);
-            comments.setVisibility(targetVisibility);
-            comments.setAlpha(1f);
+            currentComments.setText(targetText);
+            currentComments.setVisibility(targetVisibility);
+            currentComments.setAlpha(1f);
             return;
         }
 
-        if (comments.getVisibility() != targetVisibility) {
-            comments.setVisibility(targetVisibility);
-            comments.setAlpha(1f);
+        if (currentComments.getVisibility() != targetVisibility) {
+            currentComments.setVisibility(targetVisibility);
+            currentComments.setAlpha(1f);
         }
 
-        CharSequence currentText = comments.getText();
+        CharSequence currentText = currentComments.getText();
         if (currentText != null && targetText.contentEquals(currentText)) {
-            comments.setAlpha(1f);
+            currentComments.setAlpha(1f);
             return;
         }
 
         if (targetVisibility != View.VISIBLE) {
-            comments.setText(targetText);
+            currentComments.setText(targetText);
             return;
         }
 
-        comments.animate()
+        currentComments.animate()
                 .alpha(0f)
                 .setDuration(PREVIEW_TEXT_FADE_DURATION_MS / 2)
                 .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
                 .withEndAction(() -> {
-                    comments.setText(targetText);
-                    comments.animate()
+                    if (comments != currentComments) {
+                        return;
+                    }
+                    currentComments.setText(targetText);
+                    currentComments.animate()
                             .alpha(1f)
                             .setDuration(PREVIEW_TEXT_FADE_DURATION_MS)
                             .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
@@ -703,39 +713,43 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     }
 
     private void updateHotnessIcon(int hotness, boolean animate) {
-        if (commentsIcon == null) {
+        ImageView currentCommentsIcon = commentsIcon;
+        if (currentCommentsIcon == null) {
             return;
         }
 
         int targetIconResId = hotness > 0 ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment;
-        commentsIcon.animate().cancel();
+        currentCommentsIcon.animate().cancel();
 
         if (targetIconResId == commentsIconResId) {
-            commentsIcon.setAlpha(1f);
-            commentsIcon.setScaleX(1f);
-            commentsIcon.setScaleY(1f);
+            currentCommentsIcon.setAlpha(1f);
+            currentCommentsIcon.setScaleX(1f);
+            currentCommentsIcon.setScaleY(1f);
             return;
         }
 
         if (!animate) {
             commentsIconResId = targetIconResId;
-            commentsIcon.setImageResource(commentsIconResId);
-            commentsIcon.setAlpha(1f);
-            commentsIcon.setScaleX(1f);
-            commentsIcon.setScaleY(1f);
+            currentCommentsIcon.setImageResource(commentsIconResId);
+            currentCommentsIcon.setAlpha(1f);
+            currentCommentsIcon.setScaleX(1f);
+            currentCommentsIcon.setScaleY(1f);
             return;
         }
 
-        commentsIcon.animate()
+        currentCommentsIcon.animate()
                 .alpha(0f)
                 .scaleX(0.85f)
                 .scaleY(0.85f)
                 .setDuration(PREVIEW_TEXT_FADE_DURATION_MS / 2)
                 .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
                 .withEndAction(() -> {
+                    if (commentsIcon != currentCommentsIcon) {
+                        return;
+                    }
                     commentsIconResId = targetIconResId;
-                    commentsIcon.setImageResource(commentsIconResId);
-                    commentsIcon.animate()
+                    currentCommentsIcon.setImageResource(commentsIconResId);
+                    currentCommentsIcon.animate()
                             .alpha(1f)
                             .scaleX(1f)
                             .scaleY(1f)

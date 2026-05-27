@@ -96,6 +96,10 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         notificationPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 granted -> {
+                    if (!isAdded()) {
+                        pendingNotificationUsername = null;
+                        return;
+                    }
                     if (granted && !TextUtils.isEmpty(pendingNotificationUsername)) {
                         activateNotifications(pendingNotificationUsername);
                     } else {
@@ -143,6 +147,9 @@ public class UserDialogFragment extends AppCompatDialogFragment {
 
             StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                     response -> {
+                        if (!hasBoundViews()) {
+                            return;
+                        }
                         try {
                             // lets try to parse the response
                             JSONObject jsonObject = new JSONObject(response);
@@ -336,6 +343,23 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         return !TextUtils.isEmpty(userName)
                 && !TextUtils.isEmpty(AccountUtils.getAccountUsername(getContext()))
                 && userName.equalsIgnoreCase(AccountUtils.getAccountUsername(getContext()));
+    }
+
+    private boolean hasBoundViews() {
+        return isAdded()
+                && nameTextview != null
+                && metaTextview != null
+                && aboutTextview != null
+                && submissionsButton != null
+                && tagButton != null
+                && reportButton != null
+                && blockButton != null
+                && notificationsButton != null
+                && notificationsLoading != null
+                && notificationsStatus != null
+                && loadingProgress != null
+                && errorLayout != null
+                && container != null;
     }
 
     private void setupNotificationButton(String userName) {

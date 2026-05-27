@@ -83,10 +83,17 @@ public class CaptchaDialogFragment extends AppCompatDialogFragment {
 
         cancelButton.setOnClickListener(view -> dismiss());
         continueButton.setOnClickListener(view -> {
+            WebView currentWebView = webView;
+            if (currentWebView == null) {
+                return;
+            }
             errorText.setVisibility(View.GONE);
-            webView.evaluateJavascript(GET_CAPTCHA_RESPONSE_JS, new ValueCallback<String>() {
+            currentWebView.evaluateJavascript(GET_CAPTCHA_RESPONSE_JS, new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String value) {
+                    if (webView != currentWebView || !isAdded()) {
+                        return;
+                    }
                     String captchaResponse = decodeJavascriptString(value);
                     if (TextUtils.isEmpty(captchaResponse)) {
                         errorText.setText("Complete the captcha before continuing.");
@@ -120,8 +127,11 @@ public class CaptchaDialogFragment extends AppCompatDialogFragment {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
+                if (view != webView) {
+                    return;
+                }
                 progressBar.setVisibility(View.GONE);
-                webView.setVisibility(View.VISIBLE);
+                view.setVisibility(View.VISIBLE);
             }
         });
     }
