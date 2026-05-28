@@ -264,7 +264,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     storyViewHolder.commentLayoutView.setContentDescription(null);
                 }
 
+                storyViewHolder.linkLayoutView.setEnabled(true);
                 storyViewHolder.linkLayoutView.setClickable(true);
+                storyViewHolder.commentLayoutView.setEnabled(!storyViewHolder.story.loadingFailed);
                 storyViewHolder.commentLayoutView.setClickable(!storyViewHolder.story.loadingFailed);
             } else {
                 storyViewHolder.commentsIcon.setImageResource(R.drawable.ic_action_comment);
@@ -276,7 +278,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentsView.setContentDescription(null);
                 storyViewHolder.metaView.setContentDescription(null);
                 storyViewHolder.commentLayoutView.setContentDescription(null);
+                storyViewHolder.linkLayoutView.setEnabled(false);
                 storyViewHolder.linkLayoutView.setClickable(false);
+                storyViewHolder.commentLayoutView.setEnabled(false);
                 storyViewHolder.commentLayoutView.setClickable(false);
                 storyViewHolder.commentsIcon.setAlpha(useClickedEffects ? 0.6f : 1.0f);
             }
