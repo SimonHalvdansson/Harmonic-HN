@@ -82,6 +82,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public boolean grayOutClicked;
 
     public boolean paginationMode = false;
+    public boolean showLoadMoreButton = false;
     public static final int PAGINATION_PAGE_SIZE = 30;
     public int visibleStoryCount = 30;
 
@@ -518,12 +519,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     @Override
     public int getItemViewType(int position) {
-        if (atSubmissions) {
-            return stories.get(position).isComment ? getCommentViewType() : getStoryViewType();
+        if (isLoadMorePosition(position)) {
+            return TYPE_LOAD_MORE_BUTTON;
         }
 
-        if (paginationMode && position == visibleStoryCount && visibleStoryCount < stories.size()) {
-            return TYPE_LOAD_MORE_BUTTON;
+        if (atSubmissions) {
+            return stories.get(position).isComment ? getCommentViewType() : getStoryViewType();
         }
 
         if (allowCommentRows && stories.get(position).isComment) {
@@ -535,25 +536,33 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     @Override
     public int getItemCount() {
-        if (atSubmissions) {
-            return stories.size();
-        }
-
-        // Non-submissions: stories list contains only actual stories
-        if (paginationMode && visibleStoryCount < stories.size()) {
-            // visible stories + Load More button
-            return visibleStoryCount + 1;
-        }
-        return stories.size();
+        int visibleItemCount = getVisibleItemCount();
+        return visibleItemCount + (hasLoadMoreButton() ? 1 : 0);
     }
 
     @Override
     public long getItemId(int position) {
-        if (!atSubmissions && paginationMode && position == visibleStoryCount && visibleStoryCount < stories.size()) {
+        if (isLoadMorePosition(position)) {
             return Long.MAX_VALUE;
         }
 
         return stories.get(position).id;
+    }
+
+    private int getVisibleItemCount() {
+        if (paginationMode) {
+            return Math.min(visibleStoryCount, stories.size());
+        }
+
+        return stories.size();
+    }
+
+    private boolean hasLoadMoreButton() {
+        return showLoadMoreButton || (paginationMode && visibleStoryCount < stories.size());
+    }
+
+    private boolean isLoadMorePosition(int position) {
+        return hasLoadMoreButton() && position == getVisibleItemCount();
     }
 
     public class StoryViewHolder extends RecyclerView.ViewHolder {
@@ -740,8 +749,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         // Update or remove the button
         if (visibleStoryCount >= stories.size()) {
-            // All stories are visible, remove the button
-            notifyItemRemoved(visibleStoryCount);
+            if (showLoadMoreButton) {
+                notifyItemChanged(visibleStoryCount);
+            } else {
+                // All stories are visible, remove the button
+                notifyItemRemoved(visibleStoryCount);
+            }
         } else {
             // More stories remain, update the button text
             notifyItemChanged(visibleStoryCount);

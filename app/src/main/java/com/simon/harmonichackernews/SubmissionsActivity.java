@@ -42,6 +42,7 @@ public class SubmissionsActivity extends AppCompatActivity {
     private static final int SUBMISSION_FILTER_STORIES = 0;
     private static final int SUBMISSION_FILTER_BOTH = 1;
     private static final int SUBMISSION_FILTER_COMMENTS = 2;
+    private static final int ALGOLIA_HITS_INCREMENT = 200;
 
     private StoryRecyclerViewAdapter adapter;
     private ArrayList<Story> submissions;
@@ -55,6 +56,10 @@ public class SubmissionsActivity extends AppCompatActivity {
     private MaterialButtonToggleGroup filterGroup;
     private MaterialButtonToggleGroup.OnButtonCheckedListener filterCheckedListener;
     private boolean initialLoadFinished = false;
+    private boolean submissionsLoading = false;
+    private int submissionsRequestGeneration = 0;
+    private int submissionsHitsPerPage = ALGOLIA_HITS_INCREMENT;
+    private boolean submissionsCanLoadMore = false;
     private int submissionFilter = SUBMISSION_FILTER_BOTH;
     private int topInset = 0;
 
@@ -99,7 +104,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         };
         filterGroup.addOnButtonCheckedListener(filterCheckedListener);
 
-        swipeRefreshLayout.setOnRefreshListener(this::loadSubmissions);
+        swipeRefreshLayout.setOnRefreshListener(() -> loadSubmissions(true));
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
         RecyclerView recyclerView = findViewById(R.id.submissions_recyclerview);
@@ -176,10 +181,19 @@ public class SubmissionsActivity extends AppCompatActivity {
             }
         });
 
+        adapter.setOnLoadMoreClickListener(v -> {
+            if (submissionsLoading || !submissionsCanLoadMore) {
+                return;
+            }
+
+            submissionsHitsPerPage += ALGOLIA_HITS_INCREMENT;
+            loadSubmissions(false);
+        });
+
         recyclerView.setAdapter(adapter);
         setUpWindowInsets(recyclerView);
 
-        loadSubmissions();
+        loadSubmissions(true);
     }
 
     @Override
@@ -277,12 +291,9 @@ public class SubmissionsActivity extends AppCompatActivity {
     }
 
     private void applySubmissionFilter() {
-        int oldSize = submissions.size();
+        int oldItemCount = adapter.getItemCount();
         submissions.clear();
-
-        if (oldSize > 0) {
-            adapter.notifyItemRangeRemoved(0, oldSize);
-        }
+        adapter.showLoadMoreButton = submissionsCanLoadMore;
 
         for (Story story : allSubmissions) {
             if (shouldShowStoryForSubmissionFilter(story)) {
@@ -290,8 +301,13 @@ public class SubmissionsActivity extends AppCompatActivity {
             }
         }
 
-        if (!submissions.isEmpty()) {
-            adapter.notifyItemRangeInserted(0, submissions.size());
+        int newItemCount = adapter.getItemCount();
+        if (oldItemCount == 0 && newItemCount > 0) {
+            adapter.notifyItemRangeInserted(0, newItemCount);
+        } else if (newItemCount == 0 && oldItemCount > 0) {
+            adapter.notifyItemRangeRemoved(0, oldItemCount);
+        } else {
+            adapter.notifyDataSetChanged();
         }
 
         filterGroup.setVisibility(allSubmissions.isEmpty() ? View.GONE : View.VISIBLE);
@@ -320,14 +336,19 @@ public class SubmissionsActivity extends AppCompatActivity {
         }
     }
 
-    private void loadSubmissions() {
+    private void loadSubmissions(boolean resetResultLimit) {
+        if (resetResultLimit) {
+            submissionsHitsPerPage = ALGOLIA_HITS_INCREMENT;
+        }
+        int requestGeneration = ++submissionsRequestGeneration;
+        submissionsLoading = true;
         boolean showInitialLoading = !initialLoadFinished;
-        swipeRefreshLayout.setRefreshing(!showInitialLoading);
+        swipeRefreshLayout.setRefreshing(!showInitialLoading && resetResultLimit);
         initialLoadingIndicator.setVisibility(showInitialLoading ? View.VISIBLE : View.GONE);
         String url = Uri.parse("https://hn.algolia.com/api/v1/search_by_date")
                 .buildUpon()
                 .appendQueryParameter("tags", "author_" + getIntent().getStringExtra(KEY_USER))
-                .appendQueryParameter("hitsPerPage", "999")
+                .appendQueryParameter("hitsPerPage", String.valueOf(submissionsHitsPerPage))
                 .build()
                 .toString();
 
@@ -337,8 +358,13 @@ public class SubmissionsActivity extends AppCompatActivity {
                     BackgroundJSONParser.parseAlgoliaJson(response, new BackgroundJSONParser.AlgoliaParseCallback() {
                         @Override
                         public void onParseSuccess(List<Story> parsedStories) {
-                            finishLoading();
+                            if (requestGeneration != submissionsRequestGeneration) {
+                                return;
+                            }
 
+                            finishLoading(requestGeneration);
+
+                            submissionsCanLoadMore = parsedStories.size() >= submissionsHitsPerPage;
                             allSubmissions.clear();
                             allSubmissions.addAll(parsedStories);
                             applySubmissionFilter();
@@ -346,20 +372,25 @@ public class SubmissionsActivity extends AppCompatActivity {
 
                         @Override
                         public void onParseError(JSONException error) {
-                            finishLoading();
+                            finishLoading(requestGeneration);
                             error.printStackTrace();
                         }
                     });
 
                 }, error -> {
             error.printStackTrace();
-            finishLoading();
+            finishLoading(requestGeneration);
         });
 
         queue.add(stringRequest);
     }
 
-    private void finishLoading() {
+    private void finishLoading(int requestGeneration) {
+        if (requestGeneration != submissionsRequestGeneration) {
+            return;
+        }
+
+        submissionsLoading = false;
         initialLoadFinished = true;
         swipeRefreshLayout.setRefreshing(false);
         initialLoadingIndicator.setVisibility(View.GONE);

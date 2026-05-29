@@ -155,12 +155,20 @@ public class StoriesFragment extends Fragment {
     private int storyListGeneration = 0;
     private boolean algoliaLoading = false;
     private String activeAlgoliaUrl = null;
+    private boolean algoliaLoadMoreInProgress = false;
+    private int algoliaLoadMoreVisibleStoryCount = -1;
+    private int algoliaLoadMoreFirstVisiblePosition = RecyclerView.NO_POSITION;
+    private int algoliaLoadMoreFirstVisibleTop = 0;
+    private static final int ALGOLIA_HITS_INCREMENT = 200;
     private List<Story> storiesBeforeSearch = null;
     private int loadedToBeforeSearch = -1;
     private int visibleStoryCountBeforeSearch = Integer.MAX_VALUE;
     private boolean showingCachedBeforeSearch = false;
     private boolean loadingFailedBeforeSearch = false;
     private boolean loadingFailedServerErrorBeforeSearch = false;
+    private boolean showLoadMoreBeforeSearch = false;
+    private int algoliaHitsPerPageBeforeSearch = ALGOLIA_HITS_INCREMENT;
+    private int lastAlgoliaTopStoriesStartTimeBeforeSearch = 0;
     private boolean loadPendingBeforeSearch = false;
 
     public static boolean showingCached = false;
@@ -169,6 +177,8 @@ public class StoriesFragment extends Fragment {
     private boolean paginationMode = false;
     private static final int PAGINATION_PAGE_SIZE = 30;
     private static final int STORY_VISIBLE_PREFETCH_THRESHOLD = 17;
+    private int algoliaHitsPerPage = ALGOLIA_HITS_INCREMENT;
+    private int lastAlgoliaTopStoriesStartTime = 0;
 
     public final static String[] hnUrls = new String[]{Utils.URL_TOP, Utils.URL_NEW, Utils.URL_BEST, Utils.URL_ASK, Utils.URL_SHOW, Utils.URL_JOBS};
 
@@ -202,6 +212,7 @@ public class StoriesFragment extends Fragment {
     private boolean predictiveSearchBackShowingCached = false;
     private boolean predictiveSearchBackLoadingFailed = false;
     private boolean predictiveSearchBackLoadingFailedServerError = false;
+    private boolean predictiveSearchBackShowLoadMore = false;
     private boolean suppressNextSearchRestoreAnimations = false;
     private boolean skipNextSearchRestoreDataSwap = false;
     private boolean userItemListsDropdownVisible = false;
@@ -979,6 +990,14 @@ public class StoriesFragment extends Fragment {
         adapter.visibleStoryCount = paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
     }
 
+    private void resetAlgoliaResultLimit() {
+        algoliaHitsPerPage = ALGOLIA_HITS_INCREMENT;
+        algoliaLoadMoreInProgress = false;
+        algoliaLoadMoreVisibleStoryCount = -1;
+        algoliaLoadMoreFirstVisiblePosition = RecyclerView.NO_POSITION;
+        algoliaLoadMoreFirstVisibleTop = 0;
+    }
+
     private int getInitialLoadCount() {
         return paginationMode ? PAGINATION_PAGE_SIZE : 20;
     }
@@ -1020,6 +1039,7 @@ public class StoriesFragment extends Fragment {
         int oldItemCount = adapter.getItemCount();
         stories.clear();
         resetPaginationState();
+        adapter.showLoadMoreButton = false;
 
         if (oldItemCount > 0) {
             adapter.notifyItemRangeRemoved(0, oldItemCount);
@@ -1027,14 +1047,19 @@ public class StoriesFragment extends Fragment {
     }
 
     private void replaceStories(List<Story> newStories) {
-        replaceStories(newStories, false);
+        replaceStories(newStories, false, false);
     }
 
     private void replaceStories(List<Story> newStories, boolean notifyDataSetChanged) {
+        replaceStories(newStories, notifyDataSetChanged, false);
+    }
+
+    private void replaceStories(List<Story> newStories, boolean notifyDataSetChanged, boolean showLoadMoreButton) {
         if (notifyDataSetChanged) {
             boolean detachedAdapter = detachAdapterForHardSwap();
             stories.clear();
             resetPaginationState();
+            adapter.showLoadMoreButton = showLoadMoreButton;
             stories.addAll(newStories);
             if (detachedAdapter) {
                 recyclerView.setAdapter(adapter);
@@ -1045,12 +1070,65 @@ public class StoriesFragment extends Fragment {
         }
 
         clearStories();
+        adapter.showLoadMoreButton = showLoadMoreButton;
         stories.addAll(newStories);
 
         int newItemCount = adapter.getItemCount();
         if (newItemCount > 0) {
             adapter.notifyItemRangeInserted(0, newItemCount);
         }
+    }
+
+    private void replaceAlgoliaLoadMoreStories(List<Story> newStories, boolean showLoadMoreButton) {
+        stories.clear();
+        stories.addAll(newStories);
+        adapter.showLoadMoreButton = showLoadMoreButton;
+
+        if (paginationMode) {
+            int requestedVisibleCount = algoliaLoadMoreVisibleStoryCount > 0
+                    ? algoliaLoadMoreVisibleStoryCount
+                    : adapter.visibleStoryCount;
+            adapter.visibleStoryCount = Math.min(Math.max(requestedVisibleCount, PAGINATION_PAGE_SIZE), stories.size());
+        } else {
+            adapter.visibleStoryCount = Integer.MAX_VALUE;
+        }
+
+        adapter.notifyDataSetChanged();
+        restoreAlgoliaLoadMoreScrollPosition();
+    }
+
+    private void saveAlgoliaLoadMoreScrollPosition() {
+        algoliaLoadMoreFirstVisiblePosition = RecyclerView.NO_POSITION;
+        algoliaLoadMoreFirstVisibleTop = 0;
+
+        if (linearLayoutManager == null || recyclerView == null) {
+            return;
+        }
+
+        int firstVisiblePosition = linearLayoutManager.findFirstVisibleItemPosition();
+        if (firstVisiblePosition == RecyclerView.NO_POSITION) {
+            return;
+        }
+
+        View firstVisibleView = linearLayoutManager.findViewByPosition(firstVisiblePosition);
+        algoliaLoadMoreFirstVisiblePosition = firstVisiblePosition;
+        algoliaLoadMoreFirstVisibleTop = firstVisibleView == null ? recyclerView.getPaddingTop() : firstVisibleView.getTop();
+    }
+
+    private void restoreAlgoliaLoadMoreScrollPosition() {
+        if (linearLayoutManager == null
+                || recyclerView == null
+                || algoliaLoadMoreFirstVisiblePosition == RecyclerView.NO_POSITION) {
+            return;
+        }
+
+        int position = Math.min(algoliaLoadMoreFirstVisiblePosition, Math.max(0, adapter.getItemCount() - 1));
+        int offset = algoliaLoadMoreFirstVisibleTop - recyclerView.getPaddingTop();
+        recyclerView.post(() -> {
+            if (linearLayoutManager != null) {
+                linearLayoutManager.scrollToPositionWithOffset(position, offset);
+            }
+        });
     }
 
     private void endRecyclerViewAnimations() {
@@ -1084,6 +1162,7 @@ public class StoriesFragment extends Fragment {
                                       boolean snapshotShowingCached,
                                       boolean snapshotLoadingFailed,
                                       boolean snapshotLoadingFailedServerError,
+                                      boolean snapshotShowLoadMoreButton,
                                       boolean notifyDataSetChanged) {
         int oldItemCount = adapter.getItemCount();
         stories.clear();
@@ -1097,6 +1176,7 @@ public class StoriesFragment extends Fragment {
         showingCached = snapshotShowingCached;
         loadingFailed = snapshotLoadingFailed;
         loadingFailedServerError = snapshotLoadingFailedServerError;
+        adapter.showLoadMoreButton = snapshotShowLoadMoreButton;
 
         int newItemCount = adapter.getItemCount();
         if (notifyDataSetChanged) {
@@ -1117,6 +1197,9 @@ public class StoriesFragment extends Fragment {
         showingCachedBeforeSearch = showingCached;
         loadingFailedBeforeSearch = loadingFailed;
         loadingFailedServerErrorBeforeSearch = loadingFailedServerError;
+        showLoadMoreBeforeSearch = adapter.showLoadMoreButton;
+        algoliaHitsPerPageBeforeSearch = algoliaHitsPerPage;
+        lastAlgoliaTopStoriesStartTimeBeforeSearch = lastAlgoliaTopStoriesStartTime;
         loadPendingBeforeSearch = stories.isEmpty()
                 && !loadingFailed
                 && !loadingFailedServerError
@@ -1150,6 +1233,9 @@ public class StoriesFragment extends Fragment {
         showingCached = showingCachedBeforeSearch;
         loadingFailed = loadingFailedBeforeSearch;
         loadingFailedServerError = loadingFailedServerErrorBeforeSearch;
+        adapter.showLoadMoreButton = showLoadMoreBeforeSearch;
+        algoliaHitsPerPage = algoliaHitsPerPageBeforeSearch;
+        lastAlgoliaTopStoriesStartTime = lastAlgoliaTopStoriesStartTimeBeforeSearch;
 
         int newItemCount = adapter.getItemCount();
         if (suppressNextSearchRestoreAnimations) {
@@ -1171,6 +1257,9 @@ public class StoriesFragment extends Fragment {
         showingCachedBeforeSearch = false;
         loadingFailedBeforeSearch = false;
         loadingFailedServerErrorBeforeSearch = false;
+        showLoadMoreBeforeSearch = false;
+        algoliaHitsPerPageBeforeSearch = ALGOLIA_HITS_INCREMENT;
+        lastAlgoliaTopStoriesStartTimeBeforeSearch = 0;
     }
 
     private void resumeInterruptedStoryLoads() {
@@ -1256,7 +1345,7 @@ public class StoriesFragment extends Fragment {
 
         // Set up pagination "Load More" button click listener
         adapter.setOnLoadMoreClickListener(v -> {
-            if (paginationMode) {
+            if (paginationMode && adapter.visibleStoryCount < stories.size()) {
                 int newLoadedTo = Math.min(
                         loadedTo + PAGINATION_PAGE_SIZE,
                         stories.size() - 1
@@ -1266,6 +1355,8 @@ public class StoriesFragment extends Fragment {
 
                 // Update adapter to show more items
                 adapter.loadNextPage();
+            } else if (adapter.showLoadMoreButton) {
+                loadMoreAlgoliaResults();
             }
         });
 
@@ -1991,17 +2082,8 @@ public class StoriesFragment extends Fragment {
 
         if (currentTypeIsAlgolia()) {
             // algoliaStuff
-            int currentTime = (int) (System.currentTimeMillis() / 1000);
-            int startTime = currentTime;
-            if (adapter.type == 1) {
-                startTime = currentTime - 60 * 60 * 24;
-            } else if (adapter.type == 2) {
-                startTime = currentTime - 60 * 60 * 48;
-            } else if (adapter.type == 3) {
-                startTime = currentTime - 60 * 60 * 24 * 7;
-            }
-
-            loadTopStoriesSince(startTime, showSwipeRefreshIndicator && !showMainLoadingIndicator);
+            resetAlgoliaResultLimit();
+            loadTopStoriesSince(getCurrentAlgoliaTopStoriesStartTime(), showSwipeRefreshIndicator && !showMainLoadingIndicator);
 
             return;
         }
@@ -2552,18 +2634,39 @@ public class StoriesFragment extends Fragment {
         }
     }
 
+    private int getCurrentAlgoliaTopStoriesStartTime() {
+        int currentTime = (int) (System.currentTimeMillis() / 1000);
+        if (adapter.type == 1) {
+            return currentTime - 60 * 60 * 24;
+        } else if (adapter.type == 2) {
+            return currentTime - 60 * 60 * 48;
+        } else if (adapter.type == 3) {
+            return currentTime - 60 * 60 * 24 * 7;
+        }
+
+        return currentTime;
+    }
+
     private void loadTopStoriesSince(int start_i, boolean showSwipeRefreshIndicator) {
+        lastAlgoliaTopStoriesStartTime = start_i;
         Uri uri = Uri.parse("https://hn.algolia.com/api/v1/search")
                 .buildUpon()
                 .appendQueryParameter("tags", "story")
                 .appendQueryParameter("numericFilters", "created_at_i>" + start_i)
-                .appendQueryParameter("hitsPerPage", "200")
+                .appendQueryParameter("hitsPerPage", String.valueOf(algoliaHitsPerPage))
                 .build();
         loadAlgolia(uri.toString(), showSwipeRefreshIndicator);
     }
 
     private void search(String query) {
+        search(query, true);
+    }
+
+    private void search(String query, boolean resetResultLimit) {
         lastSearch = query;
+        if (resetResultLimit) {
+            resetAlgoliaResultLimit();
+        }
 
         if (searchOnlyClicked) {
             loadOnlyClickedSearch(query);
@@ -2576,7 +2679,7 @@ public class StoriesFragment extends Fragment {
         Uri.Builder builder = Uri.parse(endpoint).buildUpon()
                 .appendQueryParameter("query", query)
                 .appendQueryParameter("tags", "story")
-                .appendQueryParameter("hitsPerPage", "200")
+                .appendQueryParameter("hitsPerPage", String.valueOf(algoliaHitsPerPage))
                 .appendQueryParameter("typoTolerance", "min");
 
         List<String> numericFilters = new ArrayList<>();
@@ -2601,6 +2704,33 @@ public class StoriesFragment extends Fragment {
         }
 
         loadAlgolia(builder.build().toString());
+    }
+
+    private boolean canLoadMoreAlgoliaResults(int rawParsedStoryCount) {
+        return rawParsedStoryCount >= algoliaHitsPerPage;
+    }
+
+    private void loadMoreAlgoliaResults() {
+        if (algoliaLoading) {
+            return;
+        }
+
+        algoliaLoadMoreInProgress = true;
+        saveAlgoliaLoadMoreScrollPosition();
+        if (paginationMode) {
+            algoliaLoadMoreVisibleStoryCount = adapter.visibleStoryCount + PAGINATION_PAGE_SIZE;
+        } else {
+            algoliaLoadMoreVisibleStoryCount = -1;
+        }
+        algoliaHitsPerPage += ALGOLIA_HITS_INCREMENT;
+        if (searching) {
+            search(lastSearch, false);
+        } else if (currentTypeIsAlgolia()) {
+            int startTime = lastAlgoliaTopStoriesStartTime > 0
+                    ? lastAlgoliaTopStoriesStartTime
+                    : getCurrentAlgoliaTopStoriesStartTime();
+            loadTopStoriesSince(startTime, false);
+        }
     }
 
     private void loadOnlyClickedSearch(String query) {
@@ -2787,6 +2917,8 @@ public class StoriesFragment extends Fragment {
                             algoliaLoading = false;
                             activeAlgoliaUrl = null;
                             swipeRefreshLayout.setRefreshing(false);
+                            boolean preservePaginationForLoadMore = algoliaLoadMoreInProgress;
+                            int rawParsedStoryCount = parsedStories.size();
 
                             Iterator<Story> iterator = parsedStories.iterator();
                             while (iterator.hasNext()) {
@@ -2810,15 +2942,26 @@ public class StoriesFragment extends Fragment {
                             if (predictiveSearchBackInProgress && predictiveSearchBackShowingMainContent) {
                                 predictiveSearchBackSearchStories = new ArrayList<>(parsedStories);
                                 predictiveSearchBackLoadedTo = parsedStories.size() - 1;
-                                predictiveSearchBackVisibleStoryCount = adapter.visibleStoryCount;
+                                predictiveSearchBackVisibleStoryCount = preservePaginationForLoadMore && paginationMode
+                                        ? Math.min(Math.max(algoliaLoadMoreVisibleStoryCount, PAGINATION_PAGE_SIZE), parsedStories.size())
+                                        : adapter.visibleStoryCount;
                                 predictiveSearchBackShowingCached = false;
                                 predictiveSearchBackLoadingFailed = false;
                                 predictiveSearchBackLoadingFailedServerError = false;
+                                predictiveSearchBackShowLoadMore = canLoadMoreAlgoliaResults(rawParsedStoryCount);
+                            } else if (preservePaginationForLoadMore) {
+                                replaceAlgoliaLoadMoreStories(parsedStories, canLoadMoreAlgoliaResults(rawParsedStoryCount));
+                                loadedTo = stories.size() - 1;
+                                scheduleLoadedPreviewImagePrefetchNearViewport();
                             } else {
-                                replaceStories(parsedStories);
+                                replaceStories(parsedStories, false, canLoadMoreAlgoliaResults(rawParsedStoryCount));
                                 loadedTo = stories.size() - 1;
                                 scheduleLoadedPreviewImagePrefetchNearViewport();
                             }
+                            algoliaLoadMoreInProgress = false;
+                            algoliaLoadMoreVisibleStoryCount = -1;
+                            algoliaLoadMoreFirstVisiblePosition = RecyclerView.NO_POSITION;
+                            algoliaLoadMoreFirstVisibleTop = 0;
                             updateHeader();
                         }
 
@@ -2830,6 +2973,10 @@ public class StoriesFragment extends Fragment {
 
                             algoliaLoading = false;
                             activeAlgoliaUrl = null;
+                            algoliaLoadMoreInProgress = false;
+                            algoliaLoadMoreVisibleStoryCount = -1;
+                            algoliaLoadMoreFirstVisiblePosition = RecyclerView.NO_POSITION;
+                            algoliaLoadMoreFirstVisibleTop = 0;
                             swipeRefreshLayout.setRefreshing(false);
                             error.printStackTrace();
                         }
@@ -2842,6 +2989,10 @@ public class StoriesFragment extends Fragment {
 
             algoliaLoading = false;
             activeAlgoliaUrl = null;
+            algoliaLoadMoreInProgress = false;
+            algoliaLoadMoreVisibleStoryCount = -1;
+            algoliaLoadMoreFirstVisiblePosition = RecyclerView.NO_POSITION;
+            algoliaLoadMoreFirstVisibleTop = 0;
 
             if (error.networkResponse != null && error.networkResponse.statusCode == 404) {
                 loadingFailedServerError = true;
@@ -3196,6 +3347,7 @@ public class StoriesFragment extends Fragment {
                 showingCachedBeforeSearch,
                 loadingFailedBeforeSearch,
                 loadingFailedServerErrorBeforeSearch,
+                showLoadMoreBeforeSearch,
                 true
         );
     }
@@ -3211,6 +3363,7 @@ public class StoriesFragment extends Fragment {
         predictiveSearchBackShowingCached = showingCached;
         predictiveSearchBackLoadingFailed = loadingFailed;
         predictiveSearchBackLoadingFailedServerError = loadingFailedServerError;
+        predictiveSearchBackShowLoadMore = adapter.showLoadMoreButton;
     }
 
     private void restoreSearchBackSearchContentIfNeeded() {
@@ -3227,6 +3380,7 @@ public class StoriesFragment extends Fragment {
                 predictiveSearchBackShowingCached,
                 predictiveSearchBackLoadingFailed,
                 predictiveSearchBackLoadingFailedServerError,
+                predictiveSearchBackShowLoadMore,
                 true
         );
     }
@@ -3238,6 +3392,7 @@ public class StoriesFragment extends Fragment {
         predictiveSearchBackShowingCached = false;
         predictiveSearchBackLoadingFailed = false;
         predictiveSearchBackLoadingFailedServerError = false;
+        predictiveSearchBackShowLoadMore = false;
     }
 
     private void setSearchBackSearchHeaderAlpha(float alpha) {
