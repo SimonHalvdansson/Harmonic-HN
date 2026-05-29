@@ -180,6 +180,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int smoothScrollSpeedMultiplier = 1;
     private LinearLayout scrollNavigation;
     private ExtendedFloatingActionButton searchScrollTopFab;
+    private int commentsBottomInset = 0;
+    private int scrollNavigationBaseBottomMargin = 0;
+    private int searchScrollTopFabBaseBottomMargin = 0;
     private LinearProgressIndicator progressIndicator;
     private LinearLayout bottomSheet;
     private Space headerSpacer;
@@ -553,6 +556,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         username = AccountUtils.getAccountUsername(getContext());
 
         scrollNavigation = view.findViewById(R.id.comments_scroll_navigation);
+        scrollNavigationBaseBottomMargin = ((FrameLayout.LayoutParams) scrollNavigation.getLayoutParams()).bottomMargin;
         ViewCompat.setOnApplyWindowInsetsListener(scrollNavigation, new OnApplyWindowInsetsListener() {
             @NonNull
             @Override
@@ -560,7 +564,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
 
                 FrameLayout.LayoutParams scrollParams = (FrameLayout.LayoutParams) scrollNavigation.getLayoutParams();
-                scrollParams.setMargins(0, 0, 0, insets.bottom + Utils.pxFromDpInt(getResources(), 16));
+                commentsBottomInset = insets.bottom;
+                scrollParams.setMargins(scrollParams.leftMargin, scrollParams.topMargin, scrollParams.rightMargin,
+                        commentsBottomInset + scrollNavigationBaseBottomMargin);
+                updateSearchScrollTopFabPosition();
 
                 return windowInsets;
             }
@@ -569,15 +576,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         searchScrollTopFab = view.findViewById(R.id.comments_search_scroll_top_fab);
         FrameLayout.LayoutParams searchScrollTopFabParams = (FrameLayout.LayoutParams) searchScrollTopFab.getLayoutParams();
-        int searchScrollTopFabBottomMargin = searchScrollTopFabParams.bottomMargin;
+        searchScrollTopFabBaseBottomMargin = searchScrollTopFabParams.bottomMargin;
         ViewCompat.setOnApplyWindowInsetsListener(searchScrollTopFab, new OnApplyWindowInsetsListener() {
             @NonNull
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
 
-                FrameLayout.LayoutParams fabParams = (FrameLayout.LayoutParams) searchScrollTopFab.getLayoutParams();
-                fabParams.setMargins(fabParams.leftMargin, fabParams.topMargin, fabParams.rightMargin, insets.bottom + searchScrollTopFabBottomMargin);
+                commentsBottomInset = insets.bottom;
+                updateSearchScrollTopFabPosition();
 
                 return windowInsets;
             }
@@ -2284,14 +2291,44 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void showSearchScrollTopFab() {
-        if (searchScrollTopFab != null && searchScrollTopFab.getVisibility() != View.VISIBLE) {
+        if (searchScrollTopFab == null) {
+            return;
+        }
+
+        updateSearchScrollTopFabPosition();
+        if (searchScrollTopFab.getVisibility() != View.VISIBLE) {
             searchScrollTopFab.show();
+            searchScrollTopFab.post(this::updateSearchScrollTopFabPosition);
         }
     }
 
     private void hideSearchScrollTopFab() {
         if (searchScrollTopFab != null && searchScrollTopFab.getVisibility() == View.VISIBLE) {
             searchScrollTopFab.hide();
+        }
+    }
+
+    private void updateSearchScrollTopFabPosition() {
+        if (searchScrollTopFab == null) {
+            return;
+        }
+
+        int targetBottomMargin;
+        if (showNavButtons && scrollNavigation != null && scrollNavigation.getVisibility() == View.VISIBLE) {
+            int navigationHeight = scrollNavigation.getHeight();
+            if (navigationHeight <= 0) {
+                navigationHeight = Utils.pxFromDpInt(getResources(), 56);
+            }
+            targetBottomMargin = commentsBottomInset + scrollNavigationBaseBottomMargin
+                    + navigationHeight + Utils.pxFromDpInt(getResources(), 16);
+        } else {
+            targetBottomMargin = commentsBottomInset + searchScrollTopFabBaseBottomMargin;
+        }
+
+        FrameLayout.LayoutParams fabParams = (FrameLayout.LayoutParams) searchScrollTopFab.getLayoutParams();
+        if (fabParams.bottomMargin != targetBottomMargin) {
+            fabParams.setMargins(fabParams.leftMargin, fabParams.topMargin, fabParams.rightMargin, targetBottomMargin);
+            searchScrollTopFab.setLayoutParams(fabParams);
         }
     }
 
@@ -2535,6 +2572,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         }
 
+        updateSearchScrollTopFabPosition();
     }
 
     @Override
