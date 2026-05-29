@@ -321,6 +321,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return;
         }
 
+        if (story.previewImageUrlLoaded) {
+            return;
+        }
+
+        reservePreviewImageSpace(storyViewHolder);
         loadPreviewImageUrl(storyViewHolder.itemView.getContext(), story);
     }
 
@@ -357,6 +362,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             story.previewImageUrlLoading = false;
             story.previewImageUrlLoaded = true;
             if (TextUtils.isEmpty(imageUrl)) {
+                story.previewImageLoadFailed = true;
+                int index = stories.indexOf(story);
+                if (index >= 0 && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)) {
+                    notifyItemChanged(index);
+                }
                 return;
             }
 
@@ -436,7 +446,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         story.previewImageLoading = true;
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
                             previewImage.setImageDrawable(null);
-                            previewImage.setVisibility(View.GONE);
+                            previewImage.setVisibility(View.INVISIBLE);
                         }
                     }
 
@@ -463,6 +473,15 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 .build();
 
         Coil.imageLoader(previewImage.getContext()).enqueue(request);
+    }
+
+    private void reservePreviewImageSpace(StoryViewHolder storyViewHolder) {
+        ImageView previewImage = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
+                ? storyViewHolder.largePreviewImage
+                : storyViewHolder.smallPreviewImage;
+        if (previewImage != null) {
+            previewImage.setVisibility(View.INVISIBLE);
+        }
     }
 
     private static void resetPreviewImages(StoryViewHolder storyViewHolder) {
