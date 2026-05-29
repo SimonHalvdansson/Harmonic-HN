@@ -472,21 +472,17 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             itemViewHolder.commentBody.setVisibility((!comment.expanded && collapseParent) ? GONE : View.VISIBLE);
             itemViewHolder.commentHiddenText.setVisibility((!comment.expanded && collapseParent) ? View.VISIBLE : GONE);
 
-            if (comment.expanded) {
-                // if expanded, there's no need to show the subcommentcount
-                itemViewHolder.commentHiddenCount.setVisibility(GONE);
+            int subCommentCount = getIndexOfLastChild(comment.depth, position) - position;
+            itemViewHolder.commentHiddenCount.animate().cancel();
+            itemViewHolder.commentHiddenCount.setAlpha(1f);
+            if (subCommentCount > 0) {
+                itemViewHolder.commentHiddenCount.setText("+" + subCommentCount);
+                itemViewHolder.commentHiddenCount.setVisibility(comment.expanded ? View.INVISIBLE : View.VISIBLE);
+                itemViewHolder.commentHiddenCount.setContentDescription(
+                        comment.expanded ? null : hiddenReplyCountDescription(subCommentCount));
             } else {
-                // if not expanded, only show (and set text) if subCommentCount > 0
-                int subCommentCount = getIndexOfLastChild(comment.depth, position) - position;
-
-                if (subCommentCount > 0) {
-                    itemViewHolder.commentHiddenCount.setVisibility(View.VISIBLE);
-                    itemViewHolder.commentHiddenCount.setText("+" + subCommentCount);
-                    itemViewHolder.commentHiddenCount.setContentDescription(hiddenReplyCountDescription(subCommentCount));
-                } else {
-                    itemViewHolder.commentHiddenCount.setVisibility(GONE);
-                    itemViewHolder.commentHiddenCount.setContentDescription(null);
-                }
+                itemViewHolder.commentHiddenCount.setVisibility(GONE);
+                itemViewHolder.commentHiddenCount.setContentDescription(null);
             }
         }
     }
