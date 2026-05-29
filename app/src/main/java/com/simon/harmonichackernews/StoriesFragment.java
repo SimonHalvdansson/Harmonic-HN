@@ -136,6 +136,7 @@ public class StoriesFragment extends Fragment {
     private Set<Integer> userItemListCommentIds = new HashSet<>();
     private RequestQueue queue;
     private final Object requestTag = new Object();
+    private final Set<Integer> loadingStoryIds = new HashSet<>();
     private LinearLayoutManager linearLayoutManager;
     private ArrayList<String> filterWords;
     private ArrayList<String> filterDomains;
@@ -353,11 +354,7 @@ public class StoriesFragment extends Fragment {
 
                 // Only enable infinite scroll if pagination mode is OFF
                 if (!searching && !paginationMode && !currentTypeIsAlgolia()) {
-                    for (int i = loadedTo + 1; i < Math.min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories.size()); i++) {
-                        loadedTo = i;
-
-                        loadStory(stories.get(i), 0);
-                    }
+                    loadStoriesThroughIndex(Math.min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories.size()) - 1, storyListGeneration);
                 }
             }
         };
@@ -986,6 +983,39 @@ public class StoriesFragment extends Fragment {
         return paginationMode ? PAGINATION_PAGE_SIZE : 20;
     }
 
+    private void loadStoriesThroughIndex(int targetIndex, int loadGeneration) {
+        if (!isCurrentStoryListGeneration(loadGeneration)) {
+            return;
+        }
+
+        for (int i = loadedTo + 1; i <= targetIndex && i < stories.size(); i++) {
+            loadedTo = i;
+            loadStory(stories.get(i), 0, loadGeneration);
+        }
+    }
+
+    private int getVisibleLoadTargetIndex() {
+        if (stories.isEmpty()) {
+            return -1;
+        }
+
+        int storiesToLoad = getInitialLoadCount();
+        if (paginationMode) {
+            storiesToLoad = adapter.visibleStoryCount;
+        } else if (linearLayoutManager != null) {
+            int lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
+            if (lastVisibleItem != RecyclerView.NO_POSITION) {
+                storiesToLoad = Math.max(storiesToLoad, lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD);
+            }
+        }
+
+        return Math.min(storiesToLoad, stories.size()) - 1;
+    }
+
+    private void loadVisibleStories(int loadGeneration) {
+        loadStoriesThroughIndex(getVisibleLoadTargetIndex(), loadGeneration);
+    }
+
     private void clearStories() {
         int oldItemCount = adapter.getItemCount();
         stories.clear();
@@ -1227,18 +1257,12 @@ public class StoriesFragment extends Fragment {
         // Set up pagination "Load More" button click listener
         adapter.setOnLoadMoreClickListener(v -> {
             if (paginationMode) {
-                // Load next batch of stories
-                int oldLoadedTo = loadedTo;
                 int newLoadedTo = Math.min(
                         loadedTo + PAGINATION_PAGE_SIZE,
                         stories.size() - 1
                 );
 
-                // Load the next batch of stories
-                for (int i = oldLoadedTo + 1; i <= newLoadedTo; i++) {
-                    loadedTo = i;
-                    loadStory(stories.get(i), 0);
-                }
+                loadStoriesThroughIndex(newLoadedTo, storyListGeneration);
 
                 // Update adapter to show more items
                 adapter.loadNextPage();
@@ -1296,8 +1320,10 @@ public class StoriesFragment extends Fragment {
                                 Utils.removeBookmark(ctx, story.id);
                                 if (isBookmarksType(adapter.type)) {
                                     bookmarkStories.remove(story);
-                                    stories.remove(story);
-                                    adapter.notifyItemRemoved(position);
+                                    int removeIndex = stories.indexOf(story);
+                                    if (removeIndex >= 0) {
+                                        removeStoryAt(removeIndex, storyListGeneration, true);
+                                    }
                                     updateHeader();
                                     return true;
                                 }
@@ -1324,8 +1350,7 @@ public class StoriesFragment extends Fragment {
                         Utils.setFavorite(ctx, story.id, newFavorited);
                         if (optimisticIndex >= 0) {
                             if (oldFavorited && isFavoritesType(adapter.type)) {
-                                stories.remove(story);
-                                adapter.notifyItemRemoved(optimisticIndex);
+                                removeStoryAt(optimisticIndex, storyListGeneration, true);
                                 updateHeader();
                             } else {
                                 adapter.notifyItemChanged(optimisticIndex);
@@ -1613,6 +1638,7 @@ public class StoriesFragment extends Fragment {
 
         if (queue != null) {
             storyListGeneration++;
+            loadingStoryIds.clear();
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
         }
@@ -1717,14 +1743,84 @@ public class StoriesFragment extends Fragment {
         HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
     }
 
+    private void removeStoryAt(int index, int loadGeneration, boolean loadVisibleReplacement) {
+        if (index < 0 || index >= stories.size()) {
+            return;
+        }
+
+        Story removedStory = stories.remove(index);
+        loadingStoryIds.remove(removedStory.id);
+        if (index <= loadedTo) {
+            loadedTo = Math.max(-1, loadedTo - 1);
+        }
+
+        if (paginationMode) {
+            adapter.notifyDataSetChanged();
+        } else {
+            adapter.notifyItemRemoved(index);
+        }
+
+        if (loadVisibleReplacement) {
+            loadVisibleStories(loadGeneration);
+        }
+    }
+
+    private boolean shouldFilterLoadedStory(Story story) {
+        if (story == null) {
+            return false;
+        }
+
+        if (filterWords != null && story.title != null) {
+            String title = story.title.toLowerCase();
+            for (String phrase : filterWords) {
+                if (!TextUtils.isEmpty(phrase) && title.contains(phrase.toLowerCase())) {
+                    return true;
+                }
+            }
+        }
+
+        if (filterDomains != null && story.url != null) {
+            for (String phrase : filterDomains) {
+                if (TextUtils.isEmpty(phrase)) {
+                    continue;
+                }
+
+                try {
+                    String domain = Utils.getDomainName(story.url);
+                    if (domain.toLowerCase().contains(phrase.toLowerCase())) {
+                        return true;
+                    }
+                } catch (Exception e) {
+                    // Nothing
+                }
+            }
+        }
+
+        return shouldHideStoryAsJob(story);
+    }
+
     private void loadStory(Story story, final int attempt) {
         loadStory(story, attempt, storyListGeneration);
     }
 
     private void loadStory(Story story, final int attempt, final int loadGeneration) {
-        if (story.loaded || attempt >= 3 || !isCurrentStoryListGeneration(loadGeneration)) {
+        if (!isCurrentStoryListGeneration(loadGeneration)) {
             return;
         }
+
+        if (story.loaded) {
+            int index = stories.indexOf(story);
+            if (index >= 0 && shouldFilterLoadedStory(story)) {
+                removeStoryAt(index, loadGeneration, true);
+            }
+            return;
+        }
+
+        if (attempt >= 3 || loadingStoryIds.contains(story.id)) {
+            return;
+        }
+
+        loadingStoryIds.add(story.id);
 
         String url = "https://hacker-news.firebaseio.com/v0/item/" + story.id + ".json";
 
@@ -1733,15 +1829,14 @@ public class StoriesFragment extends Fragment {
                     if (!isCurrentStoryListGeneration(loadGeneration)) {
                         return;
                     }
+                    loadingStoryIds.remove(story.id);
                     int index = stories.indexOf(story);
                     if (index < 0) {
                         return;
                     }
                     try {
                         if (!JSONParser.updateStoryWithHNJson(response, story, isHistoryType(adapter.type))) {
-                            stories.remove(story);
-                            adapter.notifyItemRemoved(index);
-                            loadedTo = Math.max(-1, loadedTo - 1);
+                            removeStoryAt(index, loadGeneration, true);
                             return;
                         }
 
@@ -1750,45 +1845,13 @@ public class StoriesFragment extends Fragment {
                         }
 
                         if (currentTypeUsesSavedItemFilter() && !shouldShowStoryForSavedItemFilter(story)) {
-                            stories.remove(story);
-                            adapter.notifyItemRemoved(index);
-                            loadedTo = Math.max(-1, loadedTo - 1);
-                            loadInitialVisibleStories();
+                            removeStoryAt(index, loadGeneration, true);
                             updateHeader();
                             return;
                         }
 
-                        // lets check if we should remove the post because of filter
-                        for (String phrase : filterWords) {
-                            if (story.title.toLowerCase().contains(phrase.toLowerCase())) {
-                                stories.remove(story);
-                                adapter.notifyItemRemoved(index);
-                                loadedTo = Math.max(-1, loadedTo - 1);
-                                return;
-                            }
-                        }
-
-                        // or domain name
-                        for (String phrase : filterDomains) {
-                            try {
-                                String domain = Utils.getDomainName(story.url);
-                                if (domain.toLowerCase().contains(phrase.toLowerCase())) {
-
-                                    stories.remove(story);
-                                    adapter.notifyItemRemoved(index);
-                                    loadedTo = Math.max(-1, loadedTo - 1);
-                                    return;
-                                }
-                            } catch (Exception e) {
-                                //nothing
-                            }
-                        }
-
-                        // or because it's a job
-                        if (shouldHideStoryAsJob(story)) {
-                            stories.remove(story);
-                            adapter.notifyItemRemoved(index);
-                            loadedTo = Math.max(-1, loadedTo - 1);
+                        if (shouldFilterLoadedStory(story)) {
+                            removeStoryAt(index, loadGeneration, true);
                             return;
                         }
 
@@ -1810,6 +1873,7 @@ public class StoriesFragment extends Fragment {
             if (!isCurrentStoryListGeneration(loadGeneration)) {
                 return;
             }
+            loadingStoryIds.remove(story.id);
             error.printStackTrace();
             story.loadingFailed = true;
             int index = stories.indexOf(story);
@@ -1887,6 +1951,7 @@ public class StoriesFragment extends Fragment {
 
     private int beginStoryListRefresh() {
         storyListGeneration++;
+        loadingStoryIds.clear();
         invalidateAlgoliaLoad();
         queue.cancelAll(requestTag);
         return storyListGeneration;
@@ -1985,12 +2050,7 @@ public class StoriesFragment extends Fragment {
             }
 
             replaceStories(refreshedStories, true);
-
-            int initialLoadCount = Math.min(getInitialLoadCount(), stories.size());
-            for (int i = 0; i < initialLoadCount; i++) {
-                loadStory(stories.get(i), 0, refreshGeneration);
-                loadedTo = i;
-            }
+            loadInitialVisibleStories(refreshGeneration);
 
             updateHeader();
             swipeRefreshLayout.setRefreshing(false);
@@ -2022,6 +2082,9 @@ public class StoriesFragment extends Fragment {
                             String cachedResponse = Utils.loadCachedStory(getContext(), id);
                             if (cachedResponse != null && !cachedResponse.equals(JSONParser.ALGOLIA_ERROR_STRING)) {
                                 JSONParser.updateStoryWithAlgoliaResponse(s, cachedResponse);
+                                if (shouldFilterLoadedStory(s)) {
+                                    continue;
+                                }
                             }
 
                             refreshedStories.add(s);
@@ -2036,12 +2099,7 @@ public class StoriesFragment extends Fragment {
 
                         updateHeader();
 
-                        // Load initial batch of stories
-                        int storiesToLoad = Math.min(getInitialLoadCount(), stories.size());
-                        for (int i = 0; i < storiesToLoad; i++) {
-                            loadedTo = i;
-                            loadStory(stories.get(i), 0, refreshGeneration);
-                        }
+                        loadInitialVisibleStories(refreshGeneration);
 
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -2311,6 +2369,7 @@ public class StoriesFragment extends Fragment {
         }
 
         queue.cancelAll(requestTag);
+        loadingStoryIds.clear();
         userItemListStories.clear();
         userItemListStories.addAll(refreshedStories);
         userItemListCommentIds = new HashSet<>(commentIds);
@@ -2387,11 +2446,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void loadInitialVisibleStories(int loadGeneration) {
-        int initialLoadCount = Math.min(getInitialLoadCount(), stories.size());
-        for (int i = 0; i < initialLoadCount; i++) {
-            loadStory(stories.get(i), 0, loadGeneration);
-            loadedTo = i;
-        }
+        loadStoriesThroughIndex(Math.min(getInitialLoadCount(), stories.size()) - 1, loadGeneration);
     }
 
     private void scheduleLoadedPreviewImagePrefetchNearViewport() {
@@ -2456,6 +2511,7 @@ public class StoriesFragment extends Fragment {
 
             // cancel all ongoing
             storyListGeneration++;
+            loadingStoryIds.clear();
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
             swipeRefreshLayout.setRefreshing(false);
@@ -2470,6 +2526,7 @@ public class StoriesFragment extends Fragment {
             loadPendingBeforeSearch = false;
 
             storyListGeneration++;
+            loadingStoryIds.clear();
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
             swipeRefreshLayout.setRefreshing(false);
@@ -2548,6 +2605,7 @@ public class StoriesFragment extends Fragment {
 
     private void loadOnlyClickedSearch(String query) {
         storyListGeneration++;
+        loadingStoryIds.clear();
         invalidateAlgoliaLoad();
         final int requestGeneration = algoliaRequestGeneration;
         algoliaLoading = true;
@@ -2556,6 +2614,7 @@ public class StoriesFragment extends Fragment {
         loadingFailedServerError = false;
         showingCached = false;
         queue.cancelAll(requestTag);
+        loadingStoryIds.clear();
 
         if (!stories.isEmpty()) {
             clearStories();
@@ -2649,28 +2708,7 @@ public class StoriesFragment extends Fragment {
             return false;
         }
 
-        if (filterWords != null) {
-            for (String phrase : filterWords) {
-                if (story.title.toLowerCase().contains(phrase.toLowerCase())) {
-                    return false;
-                }
-            }
-        }
-
-        if (filterDomains != null) {
-            for (String phrase : filterDomains) {
-                try {
-                    String domain = Utils.getDomainName(story.url);
-                    if (domain.toLowerCase().contains(phrase.toLowerCase())) {
-                        return false;
-                    }
-                } catch (Exception e) {
-                    // Nothing
-                }
-            }
-        }
-
-        return !shouldHideStoryAsJob(story);
+        return !shouldFilterLoadedStory(story);
     }
 
     private void finishOnlyClickedSearchRequest(int requestGeneration,
@@ -2754,36 +2792,9 @@ public class StoriesFragment extends Fragment {
                             while (iterator.hasNext()) {
                                 Story story = iterator.next();
                                 story.clicked = HistoriesUtils.INSTANCE.isHistoryExist(story.id);
-                                boolean shouldRemove = false;
-
-                                if (story.title != null) {
-                                    for (String phrase : filterWords) {
-                                        if (story.title.toLowerCase().contains(phrase.toLowerCase())) {
-                                            shouldRemove = true;
-                                            break;
-                                        }
-                                    }
-                                    // or domain name
-                                    if (!shouldRemove) {
-                                        for (String phrase : filterDomains) {
-                                            try {
-                                                String domain = Utils.getDomainName(story.url);
-                                                if (domain.toLowerCase().contains(phrase.toLowerCase())) {
-                                                    shouldRemove = true;
-                                                    break;
-                                                }
-                                            } catch (Exception e) {
-                                                //nothing
-                                            }
-                                        }
-                                    }
-                                }
+                                boolean shouldRemove = shouldFilterLoadedStory(story);
 
                                 if (!shouldRemove && hideClicked && story.clicked) {
-                                    shouldRemove = true;
-                                }
-
-                                if (!shouldRemove && shouldHideStoryAsJob(story)) {
                                     shouldRemove = true;
                                 }
 
