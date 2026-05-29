@@ -30,7 +30,7 @@
                 android:id="@+id/stories_header_spinner"
                 android:dropDownVerticalOffset="49dp"
                 android:spinnerMode="dropdown"
-                android:popupBackground="@drawable/popup_background_material"
+                android:popupBackground="@drawable/stories_dropdown_popup_background"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"    />
 
