@@ -88,14 +88,21 @@ private static final long MAX_RESPONSE_PREVIEW_BYTES = 1024 * 1024;
 private static final int MAX_USER_ITEM_LIST_PAGES = 50;
 
     public static void voteWithDir(Context ctx, int id, FragmentManager fm, String dir) {
+        voteWithDir(ctx, id, fm, dir, null);
+    }
+
+    private static void voteWithDir(Context ctx, int id, FragmentManager fm, String dir, String successMessage) {
         UserActions.vote(String.valueOf(id), dir, ctx, fm, new UserActions.ActionCallback() {
             @Override
             public void onSuccess(Response response) {
-                String message = "Vote successful";
-                switch (dir) {
-                    case VOTE_DIR_UP: message = "Upvote successful"; break;
-                    case VOTE_DIR_DOWN: message = "Downvote successful"; break;
-                    case VOTE_DIR_UN: message= "Removed vote successfully"; break;
+                String message = successMessage;
+                if (TextUtils.isEmpty(message)) {
+                    message = "Vote successful";
+                    switch (dir) {
+                        case VOTE_DIR_UP: message = "Upvote successful"; break;
+                        case VOTE_DIR_DOWN: message = "Downvote successful"; break;
+                        case VOTE_DIR_UN: message= "Removed vote successfully"; break;
+                    }
                 }
                 Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show();
             }
@@ -110,6 +117,10 @@ private static final int MAX_USER_ITEM_LIST_PAGES = 50;
 
     public static void upvote(Context ctx, int id, FragmentManager fm) {
         voteWithDir(ctx, id, fm, VOTE_DIR_UP);
+    }
+
+    public static void votePollOption(Context ctx, int id, FragmentManager fm) {
+        voteWithDir(ctx, id, fm, VOTE_DIR_UP, "Poll vote successful");
     }
 
     public static void downvote(Context ctx, int id, FragmentManager fm) {

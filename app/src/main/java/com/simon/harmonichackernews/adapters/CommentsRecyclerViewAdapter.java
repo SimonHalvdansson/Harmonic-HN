@@ -219,7 +219,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                         materialButton.setOnClickListener(new View.OnClickListener() {
                             @Override
                             public void onClick(View view) {
-                                UserActions.upvote(ctx, pollOption.id, fragmentManager);
+                                UserActions.votePollOption(ctx, pollOption.id, fragmentManager);
                             }
                         });
                         headerViewHolder.pollLayout.addView(materialButton);
