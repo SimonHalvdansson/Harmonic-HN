@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/story_content_preview_root"
+    android:id="@+id/comment_content_preview_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -21,7 +21,7 @@
         android:textStyle="bold" />
 
     <FrameLayout
-        android:id="@+id/story_content_preview_item_container"
+        android:id="@+id/comment_content_preview_item_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 

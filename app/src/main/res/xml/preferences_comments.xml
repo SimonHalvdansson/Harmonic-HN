@@ -5,6 +5,19 @@
         app:title="Display"
         android:layout="@layout/preference_category">
 
+        <com.simon.harmonichackernews.settings.CommentContentPreviewPreference
+            app:key="pref_comment_content_preview" />
+
+        <com.simon.harmonichackernews.settings.CommentDisplayStylePreference
+            app:defaultValue="standard"
+            app:key="pref_comment_display_style"
+            app:title="Display style" />
+
+        <com.simon.harmonichackernews.settings.CommentTextSizePreference
+            app:defaultValue="15"
+            app:key="pref_comment_text_size"
+            app:title="Comments text size" />
+
         <Preference
             app:singleLineTitle="false"
             app:key="pref_comment_depth_indicators"

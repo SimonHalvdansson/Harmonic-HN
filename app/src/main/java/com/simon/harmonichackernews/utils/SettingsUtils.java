@@ -20,6 +20,7 @@ public class SettingsUtils {
     public static final String PREF_STORY_DISPLAY_STYLE = "pref_story_display_style";
     public static final String PREF_STORY_PREVIEW_IMAGE_MODE = "pref_story_preview_image_mode";
     public static final String PREF_COMMENT_DISPLAY_STYLE = "pref_comment_display_style";
+    public static final String PREF_COMMENT_TEXT_SIZE = "pref_comment_text_size";
     public static final String PREF_BOOKMARKS_ENABLED = "pref_bookmarks_enabled";
     public static final String PREF_GRAY_OUT_CLICKED = "pref_gray_out_clicked";
     public static final String PREF_HIDE_CLICKED = "pref_hide_clicked";
@@ -31,6 +32,9 @@ public class SettingsUtils {
     public static final String STORY_PREVIEW_IMAGE_LARGE = "large";
     public static final String COMMENT_DISPLAY_STYLE_STANDARD = STORY_DISPLAY_STYLE_STANDARD;
     public static final String COMMENT_DISPLAY_STYLE_CARD = STORY_DISPLAY_STYLE_CARD;
+    public static final int DEFAULT_COMMENT_TEXT_SIZE = 15;
+    public static final int MIN_COMMENT_TEXT_SIZE = 13;
+    public static final int MAX_COMMENT_TEXT_SIZE = 18;
     public static final String FAVORITES_LABEL = "Favorites";
     public static final String UPVOTED_LABEL = "Upvoted";
 
@@ -339,7 +343,19 @@ public class SettingsUtils {
     }
 
     public static int getPreferredCommentTextSize(Context ctx) {
-        return Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_comment_text_size", "15"));
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        try {
+            return clampCommentTextSize(Integer.parseInt(
+                    prefs.getString(PREF_COMMENT_TEXT_SIZE, String.valueOf(DEFAULT_COMMENT_TEXT_SIZE))));
+        } catch (ClassCastException e) {
+            return clampCommentTextSize(prefs.getInt(PREF_COMMENT_TEXT_SIZE, DEFAULT_COMMENT_TEXT_SIZE));
+        } catch (NumberFormatException e) {
+            return DEFAULT_COMMENT_TEXT_SIZE;
+        }
+    }
+
+    public static int clampCommentTextSize(int textSize) {
+        return Math.max(MIN_COMMENT_TEXT_SIZE, Math.min(MAX_COMMENT_TEXT_SIZE, textSize));
     }
 
     public static String getPreferredStoryType(Context ctx) {

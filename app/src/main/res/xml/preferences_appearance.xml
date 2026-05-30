@@ -44,40 +44,6 @@
         app:title="Visual"
         android:layout="@layout/preference_category">
 
-        <Preference
-            app:singleLineTitle="false"
-            app:key="pref_story_display_style_summary"
-            app:icon="@drawable/ic_action_news"
-            app:selectable="false"
-            app:summary="Standard"
-            app:title="Story display style" />
-
-        <com.simon.harmonichackernews.settings.StoryDisplayStylePreference
-            app:key="pref_story_display_style"
-            app:defaultValue="standard" />
-
-        <Preference
-            app:singleLineTitle="false"
-            app:key="pref_comment_display_style_summary"
-            app:icon="@drawable/ic_action_comment"
-            app:selectable="false"
-            app:summary="Standard"
-            app:title="Comment display style" />
-
-        <com.simon.harmonichackernews.settings.CommentDisplayStylePreference
-            app:key="pref_comment_display_style"
-            app:defaultValue="standard" />
-
-        <ListPreference
-            app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_text"
-            app:title="Comments text size"
-            app:key="pref_comment_text_size"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/font_size_entries"
-            app:defaultValue="15"
-            app:entryValues="@array/font_size_values" />
-
         <ListPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_font"

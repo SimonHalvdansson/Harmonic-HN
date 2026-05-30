@@ -12,6 +12,7 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 public class CommentsPreferenceFragment extends BaseSettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private Preference threadDepthIndicatorsPreference;
+    private CommentContentPreviewPreference previewPreference;
 
     @Override
     protected String getToolbarTitle() {
@@ -22,6 +23,7 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.preferences_comments, rootKey);
 
+        previewPreference = findPreference("pref_comment_content_preview");
         threadDepthIndicatorsPreference = findPreference(SettingsUtils.PREF_COMMENT_DEPTH_INDICATORS);
         if (threadDepthIndicatorsPreference != null) {
             updateThreadDepthIndicatorsSummary();
@@ -30,6 +32,20 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
                 return true;
             });
         }
+
+        findPreference(SettingsUtils.PREF_COMMENT_DISPLAY_STYLE).setOnPreferenceChangeListener((preference, newValue) -> {
+            if (previewPreference != null) {
+                previewPreference.updateDisplayStyle((String) newValue);
+            }
+            return true;
+        });
+
+        findPreference(SettingsUtils.PREF_COMMENT_TEXT_SIZE).setOnPreferenceChangeListener((preference, newValue) -> {
+            if (previewPreference != null) {
+                previewPreference.updateTextSize((String) newValue);
+            }
+            return true;
+        });
     }
 
     @Override

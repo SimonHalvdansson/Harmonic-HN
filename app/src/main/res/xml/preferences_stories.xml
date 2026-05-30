@@ -13,6 +13,11 @@
             app:key="pref_story_preview_image_mode"
             app:title="Preview image" />
 
+        <com.simon.harmonichackernews.settings.StoryDisplayStylePreference
+            app:defaultValue="standard"
+            app:key="pref_story_display_style"
+            app:title="Display style" />
+
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_compact_view"

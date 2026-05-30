@@ -40,17 +40,17 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     private ImageView commentsIcon;
     private ImageView smallPreviewImage;
     private ImageView largePreviewImage;
-    private View previewDetailsRow;
     private TextView storyTitle;
     private TextView storyIndex;
     private TextView storyMeta;
     private TextView comments;
     private View boundItemView;
     private boolean leftAligned;
+    private boolean cardStyle;
     private int commentsIconResId = R.drawable.ic_action_comment;
-    private int previewDetailsRowHeight;
     private ValueAnimator previewHeightAnimator;
     private String previewImageModeOverride;
+    private String displayStyleOverride;
 
     public StoryContentPreviewPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -80,6 +80,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
                 : null;
         previewItemContainer = itemView.findViewById(R.id.story_content_preview_item_container);
         leftAligned = SettingsUtils.shouldUseLeftAlign(getContext());
+        cardStyle = SettingsUtils.shouldUseCardStoryDisplayStyle(getContext());
         inflatePreviewItem(leftAligned);
         updatePreview(false);
         itemView.requestLayout();
@@ -115,6 +116,10 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
     public void updatePreviewImageMode(String previewImageMode) {
         applyPreviewImageMode(previewImageMode, true);
+    }
+
+    public void updateDisplayStyle(String displayStyle) {
+        applyDisplayStyle(displayStyle, true);
     }
 
     @Override
@@ -156,12 +161,12 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         commentsIcon = null;
         smallPreviewImage = null;
         largePreviewImage = null;
-        previewDetailsRow = null;
         storyTitle = null;
         storyIndex = null;
         storyMeta = null;
         comments = null;
         boundItemView = null;
+        displayStyleOverride = null;
     }
 
     @Override
@@ -174,6 +179,17 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
                 return;
             }
             applyPreviewImageMode(previewImageMode, true);
+            return;
+        }
+
+        if (SettingsUtils.PREF_STORY_DISPLAY_STYLE.equals(key)) {
+            String displayStyle = sharedPreferences.getString(
+                    key,
+                    SettingsUtils.STORY_DISPLAY_STYLE_STANDARD);
+            if (displayStyle != null && displayStyle.equals(displayStyleOverride)) {
+                return;
+            }
+            applyDisplayStyle(displayStyle, true);
             return;
         }
 
@@ -196,7 +212,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
         previewItemContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(getContext());
-        int layout = leftAlign ? R.layout.story_list_item_left : R.layout.story_list_item;
+        int layout = getStoryPreviewLayout(leftAlign, cardStyle);
         View itemView = inflater.inflate(layout, previewItemContainer, false);
         previewItemContainer.addView(itemView);
 
@@ -207,9 +223,6 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         commentsIcon = itemView.findViewById(R.id.story_comments_icon);
         smallPreviewImage = itemView.findViewById(R.id.story_preview_image_small);
         largePreviewImage = itemView.findViewById(R.id.story_preview_image_large);
-        previewDetailsRow = itemView instanceof ViewGroup && ((ViewGroup) itemView).getChildCount() > 1
-                ? ((ViewGroup) itemView).getChildAt(1)
-                : null;
         storyTitle = itemView.findViewById(R.id.story_title);
         storyIndex = itemView.findViewById(R.id.story_index);
         storyMeta = itemView.findViewById(R.id.story_meta);
@@ -220,6 +233,13 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         disablePreviewTextScrolling(storyMeta);
         disablePreviewTextScrolling(comments);
         bindStaticPreviewContent();
+    }
+
+    private int getStoryPreviewLayout(boolean leftAlign, boolean useCardStyle) {
+        if (useCardStyle) {
+            return leftAlign ? R.layout.story_list_item_card_left : R.layout.story_list_item_card;
+        }
+        return leftAlign ? R.layout.story_list_item_left : R.layout.story_list_item;
     }
 
     private void disablePreviewTextScrolling(TextView textView) {
@@ -285,6 +305,22 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             return;
         }
         updatePreview(null, null, null, null, null, null, null, previewImageMode, false);
+        requestPreviewRemeasure();
+    }
+
+    private void applyDisplayStyle(String displayStyle, boolean animate) {
+        displayStyleOverride = displayStyle;
+        boolean useCardStyle = SettingsUtils.STORY_DISPLAY_STYLE_CARD.equals(displayStyle);
+        if (useCardStyle == cardStyle) {
+            return;
+        }
+
+        if (animate) {
+            beginPreviewTransition();
+        }
+        cardStyle = useCardStyle;
+        inflatePreviewItem(leftAligned);
+        updatePreview(false);
         requestPreviewRemeasure();
     }
 
@@ -448,9 +484,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             return PreviewHeights.invalid();
         }
 
-        boolean showLargePreview = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode);
-        int targetContentHeight = measurePreviewDetailsRowHeight(containerWidth)
-                + (showLargePreview ? getLayoutOuterHeight(largePreviewImage) : 0);
+        int targetContentHeight = measurePreviewItemHeight(containerWidth);
         int targetContainerHeight = targetContentHeight
                 + previewItemContainer.getPaddingTop()
                 + previewItemContainer.getPaddingBottom();
@@ -462,6 +496,20 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
                 + previewRoot.getPaddingTop()
                 + previewRoot.getPaddingBottom();
         return new PreviewHeights(targetContentHeight, targetContainerHeight, targetRootHeight);
+    }
+
+    private int measurePreviewItemHeight(int containerWidth) {
+        View previewItem = previewItemContainer.getChildAt(0);
+        int previousMinimumHeight = previewItem.getMinimumHeight();
+        previewItem.setMinimumHeight(0);
+
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        previewItem.measure(widthSpec, heightSpec);
+        int measuredHeight = getMeasuredOuterHeight(previewItem);
+
+        previewItem.setMinimumHeight(previousMinimumHeight);
+        return measuredHeight;
     }
 
     private void applyPreviewHeights(PreviewHeights heights) {
@@ -496,29 +544,6 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         return Math.round(start + (end - start) * progress);
     }
 
-    private int measurePreviewDetailsRowHeight(int containerWidth) {
-        if (previewDetailsRow == null) {
-            return 0;
-        }
-
-        int widthSpec = View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY);
-        int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        previewDetailsRow.measure(widthSpec, heightSpec);
-        int measuredHeight = getOuterHeight(previewDetailsRow);
-        if (measuredHeight > 0) {
-            previewDetailsRowHeight = measuredHeight;
-            return measuredHeight;
-        }
-
-        int currentHeight = getOuterHeight(previewDetailsRow);
-        if (currentHeight > 0) {
-            previewDetailsRowHeight = currentHeight;
-            return currentHeight;
-        }
-
-        return Math.max(0, previewDetailsRowHeight);
-    }
-
     private int getOuterHeight(View view) {
         if (view == null || view.getVisibility() == View.GONE) {
             return 0;
@@ -529,6 +554,20 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         if (layoutParams != null && layoutParams.height > 0) {
             height = layoutParams.height;
         }
+        if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) layoutParams;
+            height += margins.topMargin + margins.bottomMargin;
+        }
+        return height;
+    }
+
+    private int getMeasuredOuterHeight(View view) {
+        if (view == null || view.getVisibility() == View.GONE) {
+            return 0;
+        }
+
+        int height = view.getMeasuredHeight();
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
         if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
             ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) layoutParams;
             height += margins.topMargin + margins.bottomMargin;
@@ -554,25 +593,6 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         boolean isValid() {
             return contentHeight > 0 && containerHeight > 0 && rootHeight > 0;
         }
-    }
-
-    private int getLayoutOuterHeight(View view) {
-        if (view == null) {
-            return 0;
-        }
-
-        int height = 0;
-        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
-        if (layoutParams != null && layoutParams.height > 0) {
-            height = layoutParams.height;
-        } else {
-            height = view.getMeasuredHeight();
-        }
-        if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
-            ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) layoutParams;
-            height += margins.topMargin + margins.bottomMargin;
-        }
-        return height;
     }
 
     private void requestPreviewRemeasure() {

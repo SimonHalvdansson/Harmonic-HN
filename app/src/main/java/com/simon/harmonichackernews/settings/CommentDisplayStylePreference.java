@@ -22,12 +22,17 @@ public class CommentDisplayStylePreference extends StoryDisplayStylePreference {
     }
 
     @Override
-    protected int getStandardCardId() {
+    protected int getToggleGroupId() {
+        return R.id.comment_display_style_group;
+    }
+
+    @Override
+    protected int getStandardButtonId() {
         return R.id.comment_display_style_standard;
     }
 
     @Override
-    protected int getCardCardId() {
+    protected int getCardButtonId() {
         return R.id.comment_display_style_card;
     }
 
@@ -46,8 +51,4 @@ public class CommentDisplayStylePreference extends StoryDisplayStylePreference {
         return SettingsUtils.COMMENT_DISPLAY_STYLE_CARD;
     }
 
-    @Override
-    protected String getDisplayStyleName() {
-        return "comment";
-    }
 }
