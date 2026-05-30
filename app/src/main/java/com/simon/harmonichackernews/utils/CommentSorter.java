@@ -12,8 +12,19 @@ import java.util.List;
 public class CommentSorter {
 
     public static void sort(Context ctx, List<Comment> comments) {
-        String sortType = SettingsUtils.getPreferredCommentSorting(ctx);
+        sort(comments, SettingsUtils.getPreferredCommentSorting(ctx));
+    }
+
+    public static void sort(List<Comment> comments, String sortType) {
         switch (sortType) {
+            case "Default":
+                sortComments(comments, new Comparator<Comment>() {
+                    @Override
+                    public int compare(Comment c1, Comment c2) {
+                        return Integer.compare(c1.sortOrder, c2.sortOrder);
+                    }
+                }, false);
+                break;
             case "Reply count":
                 sortComments(comments, new Comparator<Comment>() {
                     @Override
