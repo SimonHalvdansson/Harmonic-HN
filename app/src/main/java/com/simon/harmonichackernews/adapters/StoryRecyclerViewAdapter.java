@@ -70,6 +70,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public boolean compactView;
     public boolean thumbnails;
     public String previewImageMode;
+    public float storyTextSize;
     public boolean showIndex;
     public boolean compactHeader;
     public boolean leftAlign;
@@ -92,6 +93,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     boolean shouldUseCompactView,
                                     boolean shouldShowThumbnails,
                                     String preferredPreviewImageMode,
+                                    float preferredStoryTextSize,
                                     boolean shouldShowIndex,
                                     boolean shouldUseCompactHeader,
                                     boolean shouldLeftAlign,
@@ -107,6 +109,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         compactView = shouldUseCompactView;
         thumbnails = shouldShowThumbnails;
         previewImageMode = preferredPreviewImageMode;
+        storyTextSize = SettingsUtils.clampStoryTextSize(preferredStoryTextSize);
         showIndex = shouldShowIndex;
         compactHeader = shouldUseCompactHeader;
         leftAlign = shouldLeftAlign;
@@ -232,8 +235,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
                 storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment);
 
-                FontUtils.setTypeface(storyViewHolder.titleView, true, 17.5f, 18, 16, 17, 17, 18);
-                FontUtils.setTypeface(storyViewHolder.metaView, false, 13, 13, 12, 12, 13, 13);
+                applyStoryTextSizes(storyViewHolder);
                 FontUtils.setTypeface(storyViewHolder.commentsView, true, 14, 13, 13, 14, 14, 14);
 
                 if (useClickedEffects) {
@@ -511,6 +513,31 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         if (previewImage != null) {
             previewImage.setAlpha(alpha);
         }
+    }
+
+    private void applyStoryTextSizes(StoryViewHolder storyViewHolder) {
+        float clampedStoryTextSize = SettingsUtils.clampStoryTextSize(storyTextSize);
+        float titleDelta = clampedStoryTextSize - SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
+        float metaScale = clampedStoryTextSize / SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
+
+        FontUtils.setTypeface(
+                storyViewHolder.titleView,
+                true,
+                17.5f + titleDelta,
+                18 + titleDelta,
+                16 + titleDelta,
+                17 + titleDelta,
+                17 + titleDelta,
+                18 + titleDelta);
+        FontUtils.setTypeface(
+                storyViewHolder.metaView,
+                false,
+                13 * metaScale,
+                13 * metaScale,
+                12 * metaScale,
+                12 * metaScale,
+                13 * metaScale,
+                13 * metaScale);
     }
 
     private static boolean isCurrentPreviewTarget(ImageView previewImage, String imageUrl) {

@@ -64,6 +64,13 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
             return true;
         });
 
+        findPreference(SettingsUtils.PREF_STORY_TEXT_SIZE).setOnPreferenceChangeListener((preference, newValue) -> {
+            if (previewPreference != null) {
+                previewPreference.updateTextSize((String) newValue);
+            }
+            return true;
+        });
+
         findPreference("pref_thumbnails").setOnPreferenceChangeListener((preference, newValue) -> {
             if (previewPreference != null) {
                 previewPreference.updateThumbnails((boolean) newValue);

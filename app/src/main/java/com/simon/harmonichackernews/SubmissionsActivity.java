@@ -122,6 +122,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                 SettingsUtils.shouldUseCompactView(this),
                 SettingsUtils.shouldShowThumbnails(this),
                 SettingsUtils.getPreferredStoryPreviewImageMode(this),
+                SettingsUtils.getPreferredStoryTextSize(this),
                 false,
                 SettingsUtils.shouldUseCompactHeader(this),
                 SettingsUtils.shouldUseLeftAlign(this),

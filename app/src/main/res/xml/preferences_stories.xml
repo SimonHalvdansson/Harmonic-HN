@@ -13,6 +13,11 @@
             app:key="pref_story_preview_image_mode"
             app:title="Preview image" />
 
+        <com.simon.harmonichackernews.settings.StoryTextSizePreference
+            app:defaultValue="17.5"
+            app:key="pref_story_text_size"
+            app:title="Title text size" />
+
         <com.simon.harmonichackernews.settings.StoryDisplayStylePreference
             app:defaultValue="standard"
             app:key="pref_story_display_style"

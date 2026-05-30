@@ -9,6 +9,7 @@ import android.transition.ChangeBounds;
 import android.transition.TransitionManager;
 import android.transition.TransitionSet;
 import android.util.AttributeSet;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -122,6 +123,10 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         applyDisplayStyle(displayStyle, true);
     }
 
+    public void updateTextSize(String textSize) {
+        applyTextSize(parseTextSize(textSize), true);
+    }
+
     @Override
     public void onAttached() {
         super.onAttached();
@@ -190,6 +195,11 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
                 return;
             }
             applyDisplayStyle(displayStyle, true);
+            return;
+        }
+
+        if (SettingsUtils.PREF_STORY_TEXT_SIZE.equals(key)) {
+            applyTextSize(SettingsUtils.getPreferredStoryTextSize(getContext()), true);
             return;
         }
 
@@ -292,6 +302,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             comments.setText("18");
             comments.setVisibility(View.VISIBLE);
         }
+        applyTextSize(SettingsUtils.getPreferredStoryTextSize(getContext()), false);
     }
 
     private void updatePreview(boolean animate) {
@@ -322,6 +333,28 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         inflatePreviewItem(leftAligned);
         updatePreview(false);
         requestPreviewRemeasure();
+    }
+
+    private void applyTextSize(float textSize, boolean animate) {
+        float clampedTextSize = SettingsUtils.clampStoryTextSize(textSize);
+        if (animate) {
+            beginPreviewTransition();
+        }
+        if (storyTitle != null) {
+            storyTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, clampedTextSize);
+        }
+        if (storyMeta != null) {
+            storyMeta.setTextSize(TypedValue.COMPLEX_UNIT_SP,
+                    SettingsUtils.getStoryMetaTextSize(clampedTextSize));
+        }
+        syncPreviewContainerHeight(getCurrentPreviewImageMode());
+        requestPreviewRemeasure();
+    }
+
+    private String getCurrentPreviewImageMode() {
+        return previewImageModeOverride != null
+                ? previewImageModeOverride
+                : SettingsUtils.getPreferredStoryPreviewImageMode(getContext());
     }
 
     private void updatePreview(
@@ -785,6 +818,14 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             return Integer.parseInt(hotnessValue);
         } catch (NumberFormatException e) {
             return -1;
+        }
+    }
+
+    private float parseTextSize(String textSize) {
+        try {
+            return SettingsUtils.clampStoryTextSize(Float.parseFloat(textSize));
+        } catch (NumberFormatException e) {
+            return SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
         }
     }
 }

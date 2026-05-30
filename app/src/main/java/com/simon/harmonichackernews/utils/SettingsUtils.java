@@ -19,6 +19,7 @@ public class SettingsUtils {
     public static final String PREF_MONOCHROME_COMMENT_DEPTH = "pref_monochrome_comment_depth";
     public static final String PREF_STORY_DISPLAY_STYLE = "pref_story_display_style";
     public static final String PREF_STORY_PREVIEW_IMAGE_MODE = "pref_story_preview_image_mode";
+    public static final String PREF_STORY_TEXT_SIZE = "pref_story_text_size";
     public static final String PREF_COMMENT_DISPLAY_STYLE = "pref_comment_display_style";
     public static final String PREF_COMMENT_TEXT_SIZE = "pref_comment_text_size";
     public static final String PREF_BOOKMARKS_ENABLED = "pref_bookmarks_enabled";
@@ -32,6 +33,10 @@ public class SettingsUtils {
     public static final String STORY_PREVIEW_IMAGE_LARGE = "large";
     public static final String COMMENT_DISPLAY_STYLE_STANDARD = STORY_DISPLAY_STYLE_STANDARD;
     public static final String COMMENT_DISPLAY_STYLE_CARD = STORY_DISPLAY_STYLE_CARD;
+    public static final float DEFAULT_STORY_TEXT_SIZE = 17.5f;
+    public static final float DEFAULT_STORY_META_TEXT_SIZE = 13f;
+    public static final float MIN_STORY_TEXT_SIZE = 15f;
+    public static final float MAX_STORY_TEXT_SIZE = 22f;
     public static final int DEFAULT_COMMENT_TEXT_SIZE = 15;
     public static final int MIN_COMMENT_TEXT_SIZE = 13;
     public static final int MAX_COMMENT_TEXT_SIZE = 18;
@@ -232,6 +237,27 @@ public class SettingsUtils {
 
     public static boolean shouldUseCardStoryDisplayStyle(Context ctx) {
         return STORY_DISPLAY_STYLE_CARD.equals(getPreferredStoryDisplayStyle(ctx));
+    }
+
+    public static float getPreferredStoryTextSize(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        try {
+            return clampStoryTextSize(Float.parseFloat(
+                    prefs.getString(PREF_STORY_TEXT_SIZE, String.valueOf(DEFAULT_STORY_TEXT_SIZE))));
+        } catch (ClassCastException e) {
+            return clampStoryTextSize(prefs.getFloat(PREF_STORY_TEXT_SIZE, DEFAULT_STORY_TEXT_SIZE));
+        } catch (NumberFormatException e) {
+            return DEFAULT_STORY_TEXT_SIZE;
+        }
+    }
+
+    public static float clampStoryTextSize(float textSize) {
+        return Math.max(MIN_STORY_TEXT_SIZE, Math.min(MAX_STORY_TEXT_SIZE, textSize));
+    }
+
+    public static float getStoryMetaTextSize(float storyTextSize) {
+        float scale = clampStoryTextSize(storyTextSize) / DEFAULT_STORY_TEXT_SIZE;
+        return DEFAULT_STORY_META_TEXT_SIZE * scale;
     }
 
     public static String getPreferredCommentDisplayStyle(Context ctx) {

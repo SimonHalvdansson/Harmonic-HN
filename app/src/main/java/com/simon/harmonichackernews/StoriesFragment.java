@@ -1326,6 +1326,7 @@ public class StoriesFragment extends Fragment {
                 SettingsUtils.shouldUseCompactView(getContext()),
                 SettingsUtils.shouldShowThumbnails(getContext()),
                 SettingsUtils.getPreferredStoryPreviewImageMode(getContext()),
+                SettingsUtils.getPreferredStoryTextSize(getContext()),
                 SettingsUtils.shouldShowIndex(getContext()),
                 SettingsUtils.shouldUseCompactHeader(getContext()),
                 SettingsUtils.shouldUseLeftAlign(getContext()),
@@ -1602,6 +1603,12 @@ public class StoriesFragment extends Fragment {
             adapter.previewImageMode = previewImageMode;
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
             scheduleLoadedPreviewImagePrefetchNearViewport();
+        }
+
+        float storyTextSize = SettingsUtils.getPreferredStoryTextSize(getContext());
+        if (Float.compare(adapter.storyTextSize, storyTextSize) != 0) {
+            adapter.storyTextSize = storyTextSize;
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
         if (adapter.showIndex != SettingsUtils.shouldShowIndex(getContext())) {
