@@ -50,6 +50,7 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.search.SearchBar;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Bookmark;
@@ -116,6 +117,7 @@ public class StoriesFragment extends Fragment {
     private ImageButton closeSearchButton;
     private ImageButton moreButton;
     private TextView lastUpdatedHeaderText;
+    private LinearProgressIndicator cacheProgressIndicator;
     private MaterialButtonToggleGroup userItemFilterGroup;
     private RelativeLayout loadingIndicator;
     private LinearLayout loadingFailedLayout;
@@ -191,6 +193,8 @@ public class StoriesFragment extends Fragment {
     private static final long SEARCH_OPTIONS_ENTRANCE_ANIMATION_DELAY_MS = 100;
     private static final long SEARCH_OPTIONS_ENTRANCE_ANIMATION_DURATION_MS = 140;
     private static final long HEADER_LAYOUT_ANIMATION_DURATION_MS = 220;
+    private static final long CACHE_PROGRESS_EXIT_HOLD_MS = 180;
+    private static final long CACHE_PROGRESS_FADE_DURATION_MS = 140;
     private static final float SEARCH_BACK_HEADER_SWITCH_PROGRESS = 0.5f;
     private static final String[] SEARCH_SORT_LABELS = new String[]{"Relevance", "Newest"};
     private static final String[] SEARCH_DATE_RANGE_LABELS = new String[]{"All time", "Past day", "Past week", "Past month", "Past year"};
@@ -221,6 +225,12 @@ public class StoriesFragment extends Fragment {
     private boolean userItemListInitialLoadInProgress = false;
     private int userItemListFilter = USER_ITEM_LIST_FILTER_BOTH;
     private RecyclerView.ItemAnimator defaultStoryItemAnimator;
+    private boolean cachingStories = false;
+    private boolean cacheProgressIndicatorVisible = false;
+    private boolean cacheProgressHidePending = false;
+    private int cacheProgressAnimationGeneration = 0;
+    private int cacheStoriesTotal = 1;
+    private int cacheStoriesCompleted = 0;
 
     public StoriesFragment() {
         super(R.layout.fragment_stories);
@@ -271,6 +281,7 @@ public class StoriesFragment extends Fragment {
         closeSearchButton = view.findViewById(R.id.stories_header_close_search_button);
         moreButton = view.findViewById(R.id.stories_header_more);
         lastUpdatedHeaderText = view.findViewById(R.id.stories_header_last_updated);
+        cacheProgressIndicator = view.findViewById(R.id.stories_header_cache_progress);
         userItemFilterGroup = view.findViewById(R.id.stories_header_user_item_filter_group);
         loadingIndicator = view.findViewById(R.id.stories_header_loading_indicator);
         loadingFailedLayout = view.findViewById(R.id.stories_header_loading_failed);
@@ -707,6 +718,7 @@ public class StoriesFragment extends Fragment {
         }
 
         showCachedButton.setVisibility(loadingFailed && !searching && Utils.hasCachedStories(ctx) ? View.VISIBLE : View.GONE);
+        updateCacheProgressIndicator();
 
         loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
         requestRecyclerScrollStateUpdate();
@@ -1795,6 +1807,7 @@ public class StoriesFragment extends Fragment {
         closeSearchButton = null;
         moreButton = null;
         lastUpdatedHeaderText = null;
+        cacheProgressIndicator = null;
         userItemFilterGroup = null;
         loadingIndicator = null;
         loadingFailedLayout = null;
@@ -1811,6 +1824,12 @@ public class StoriesFragment extends Fragment {
         typeSpinnerAdapter = null;
         linearLayoutManager = null;
         defaultStoryItemAnimator = null;
+        cachingStories = false;
+        cacheProgressIndicatorVisible = false;
+        cacheProgressHidePending = false;
+        cacheProgressAnimationGeneration++;
+        cacheStoriesTotal = 1;
+        cacheStoriesCompleted = 0;
     }
 
     private void clickedComments(int position) {
@@ -2038,7 +2057,7 @@ public class StoriesFragment extends Fragment {
         menu.findItem(R.id.menu_profile).setVisible(loggedIn);
         menu.findItem(R.id.menu_submit).setVisible(loggedIn);
         //first only show cache button if we're not already looking at the cache
-        menu.findItem(R.id.menu_cache).setVisible(!showingCached);
+        menu.findItem(R.id.menu_cache).setVisible(!showingCached && !cachingStories);
         //also if we don't have internet, no need to show at all
         if (getContext() != null) {
             if (!Utils.isNetworkAvailable(getContext())) {
@@ -3443,8 +3462,134 @@ public class StoriesFragment extends Fragment {
         recyclerView.setAlpha(1f);
     }
 
+    private void startCacheProgress() {
+        cachingStories = true;
+        cacheStoriesTotal = 1;
+        cacheStoriesCompleted = 0;
+        updateCacheProgressIndicator();
+    }
+
+    private void setCacheProgressTotal(int total) {
+        cacheStoriesTotal = Math.max(total, 1);
+        cacheStoriesCompleted = 0;
+        updateCacheProgressIndicator();
+    }
+
+    private void incrementCacheProgress() {
+        cacheStoriesCompleted = Math.min(cacheStoriesCompleted + 1, cacheStoriesTotal);
+        updateCacheProgressIndicator();
+    }
+
+    private void finishCacheProgress(@Nullable Runnable onHidden) {
+        cachingStories = false;
+        updateCacheProgressIndicator(onHidden);
+    }
+
+    private void updateCacheProgressIndicator() {
+        updateCacheProgressIndicator(null);
+    }
+
+    private void updateCacheProgressIndicator(@Nullable Runnable onHidden) {
+        if (cacheProgressIndicator == null) {
+            if (onHidden != null) {
+                onHidden.run();
+            }
+            return;
+        }
+
+        LinearProgressIndicator currentProgressIndicator = cacheProgressIndicator;
+        currentProgressIndicator.setMax(Math.max(cacheStoriesTotal, 1));
+        currentProgressIndicator.setProgressCompat(cacheStoriesCompleted, true);
+
+        if (cachingStories) {
+            showCacheProgressIndicator(currentProgressIndicator);
+            return;
+        }
+
+        hideCacheProgressIndicator(currentProgressIndicator, onHidden);
+    }
+
+    private void showCacheProgressIndicator(@NonNull LinearProgressIndicator currentProgressIndicator) {
+        if (cacheProgressIndicatorVisible && currentProgressIndicator.getVisibility() == View.VISIBLE) {
+            return;
+        }
+
+        cacheProgressAnimationGeneration++;
+        cacheProgressHidePending = false;
+        currentProgressIndicator.animate().cancel();
+        cacheProgressIndicatorVisible = true;
+        beginHeaderTransition(false);
+        currentProgressIndicator.setAlpha(0f);
+        currentProgressIndicator.setVisibility(View.VISIBLE);
+        currentProgressIndicator.animate()
+                .alpha(1f)
+                .setDuration(CACHE_PROGRESS_FADE_DURATION_MS)
+                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                .start();
+    }
+
+    private void hideCacheProgressIndicator(@NonNull LinearProgressIndicator currentProgressIndicator,
+                                            @Nullable Runnable onHidden) {
+        if (cacheProgressHidePending) {
+            return;
+        }
+
+        if (!cacheProgressIndicatorVisible && currentProgressIndicator.getVisibility() != View.VISIBLE) {
+            resetCacheProgressState();
+            if (onHidden != null) {
+                onHidden.run();
+            }
+            return;
+        }
+
+        cacheProgressIndicatorVisible = false;
+        cacheProgressHidePending = true;
+        int animationGeneration = ++cacheProgressAnimationGeneration;
+        currentProgressIndicator.animate().cancel();
+        currentProgressIndicator.postDelayed(() -> {
+            if (cacheProgressAnimationGeneration != animationGeneration
+                    || cacheProgressIndicator != currentProgressIndicator) {
+                return;
+            }
+
+            beginHeaderTransition(false);
+            currentProgressIndicator.setVisibility(View.GONE);
+            currentProgressIndicator.postDelayed(() -> {
+                if (cacheProgressAnimationGeneration != animationGeneration
+                        || cacheProgressIndicator != currentProgressIndicator) {
+                    return;
+                }
+
+                currentProgressIndicator.setAlpha(1f);
+                currentProgressIndicator.setProgressCompat(0, false);
+                resetCacheProgressState();
+                cacheProgressHidePending = false;
+                if (onHidden != null) {
+                    onHidden.run();
+                }
+            }, HEADER_LAYOUT_ANIMATION_DURATION_MS);
+        }, CACHE_PROGRESS_EXIT_HOLD_MS);
+    }
+
+    private void resetCacheProgressState() {
+        cacheStoriesTotal = 1;
+        cacheStoriesCompleted = 0;
+    }
+
+    private void showCacheToast(@NonNull String message) {
+        Context ctx = getContext();
+        if (ctx != null) {
+            Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void cacheStories() {
-        Toast.makeText(getContext(), "Caching stories...", Toast.LENGTH_SHORT).show();
+        if (cachingStories) {
+            return;
+        }
+
+        startCacheProgress();
+        showCacheToast("Caching stories...");
         boolean cacheArticles = SettingsUtils.shouldUseIntegratedWebView(getContext());
         StringRequest request = new StringRequest(Request.Method.GET, Utils.URL_TOP,
                 response -> {
@@ -3452,10 +3597,11 @@ public class StoriesFragment extends Fragment {
                         JSONArray arr = new JSONArray(response);
                         int storyCount = Math.min(20, arr.length());
                         if (storyCount == 0) {
-                            Toast.makeText(getContext(), "No stories to cache", Toast.LENGTH_SHORT).show();
+                            finishCacheProgress(() -> showCacheToast("No stories to cache"));
                             return;
                         }
 
+                        setCacheProgressTotal(storyCount);
                         final int[] remaining = { storyCount };
                         final int[] articleFailures = { 0 };
                         for (int i = 0; i < storyCount; i++) {
@@ -3470,27 +3616,32 @@ public class StoriesFragment extends Fragment {
                                             onCacheStoryFinished(remaining, articleFailures);
                                         }
                                     }, error -> onCacheStoryFinished(remaining, articleFailures));
+                            r.setTag(requestTag);
                             queue.add(r);
                         }
                     } catch (JSONException e) {
                         e.printStackTrace();
-                        Toast.makeText(getContext(), "Caching failed", Toast.LENGTH_SHORT).show();
+                        finishCacheProgress(() -> showCacheToast("Caching failed"));
                     }
-                }, error -> Toast.makeText(getContext(), "Caching failed", Toast.LENGTH_SHORT).show());
+                }, error -> {
+            finishCacheProgress(() -> showCacheToast("Caching failed"));
+        });
 
+        request.setTag(requestTag);
         queue.add(request);
     }
 
     private void onCacheStoryFinished(int[] remaining, int[] articleFailures) {
+        incrementCacheProgress();
         remaining[0]--;
         if (remaining[0] > 0) {
             return;
         }
 
         if (articleFailures[0] > 0) {
-            Toast.makeText(getContext(), "Stories cached, some articles could not be cached", Toast.LENGTH_SHORT).show();
+            finishCacheProgress(() -> showCacheToast("Stories cached, some articles could not be cached"));
         } else {
-            Toast.makeText(getContext(), "Stories cached", Toast.LENGTH_SHORT).show();
+            finishCacheProgress(() -> showCacheToast("Stories cached"));
         }
     }
 
@@ -3517,6 +3668,7 @@ public class StoriesFragment extends Fragment {
                         articleFailures[0]++;
                         onComplete.run();
                     });
+            articleRequest.setTag(requestTag);
             queue.add(articleRequest);
         } catch (JSONException e) {
             e.printStackTrace();

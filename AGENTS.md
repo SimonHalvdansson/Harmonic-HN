@@ -10,6 +10,7 @@ General tips:
 - Keep commits small and descriptive.
 - No test framework is configured. You can skip `./gradlew test` or similar commands.
 - When adding features or bug fixes, ensure the app compiles with the debug build check below.
+- For tiny, low-risk changes such as text copy, margins, padding, font weight, or other simple XML/style tweaks, do not run `assembleDebug` or `lintDebug` unless the user asks or there is a concrete reason to suspect a build/resource problem.
 
 ## Build Verification
 
@@ -21,15 +22,15 @@ For quick verification, run the debug build check:
 /bin/zsh -lc 'JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" PATH="$JAVA_HOME/bin:$PATH" ./gradlew assembleDebug'
 ```
 
-This is the preferred default Codex verification step for this repository. It is substantially faster than a full `build` while still checking that the app compiles and packages in debug mode.
+This is the preferred default Codex verification step for substantive code, resource, manifest, or behavior changes. It is substantially faster than a full `build` while still checking that the app compiles and packages in debug mode.
 
-If a change touches UI, resources, manifests, or other Android configuration that lint commonly flags, also run:
+If a substantive change touches UI, resources, manifests, or other Android configuration that lint commonly flags, also run:
 
 ```
 /bin/zsh -lc 'JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" PATH="$JAVA_HOME/bin:$PATH" ./gradlew lintDebug'
 ```
 
-Use `assembleDebug` for the normal edit/verify loop, and add `lintDebug` when the change justifies the extra time.
+Use `assembleDebug` for the normal edit/verify loop when the change warrants compilation, and add `lintDebug` when the change justifies the extra time. Skip both for minor presentation-only edits where inspection of the diff is sufficient.
 
 ## Device Verification
 
