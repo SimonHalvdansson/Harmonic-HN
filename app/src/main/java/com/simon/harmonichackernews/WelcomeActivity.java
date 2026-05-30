@@ -4,12 +4,14 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.transition.ChangeBounds;
 import android.transition.TransitionManager;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.PathInterpolator;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -21,6 +23,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.preference.PreferenceManager;
 
+import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.databinding.ActivityWelcomeBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryMetaPreviewAnimator;
@@ -130,6 +133,34 @@ public class WelcomeActivity extends AppCompatActivity {
         binding.welcomeButtonLight.setOnClickListener(buttonClickListener);
         binding.welcomeButtonHackerNews.setOnClickListener(buttonClickListener);
         binding.welcomeButtonWhite.setOnClickListener(buttonClickListener);
+
+        markSelectedThemeButton(binding);
+    }
+
+    private void markSelectedThemeButton(ActivityWelcomeBinding binding) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String selectedTheme = prefs.getString("pref_theme", "material_daynight");
+        Button[] themeButtons = {
+                binding.welcomeButtonMaterialDaynight,
+                binding.welcomeButtonMaterialDark,
+                binding.welcomeButtonMaterialLight,
+                binding.welcomeButtonDark,
+                binding.welcomeButtonGray,
+                binding.welcomeButtonBlack,
+                binding.welcomeButtonLight,
+                binding.welcomeButtonHackerNews,
+                binding.welcomeButtonWhite
+        };
+
+        for (Button button : themeButtons) {
+            if (selectedTheme.equals(button.getTag())) {
+                button.setSelected(true);
+                button.setBackgroundTintList(ColorStateList.valueOf(
+                        MaterialColors.getColor(button, com.google.android.material.R.attr.colorSecondary)));
+                button.setTextColor(MaterialColors.getColor(button, com.google.android.material.R.attr.colorOnSecondary));
+                return;
+            }
+        }
     }
 
     private void beginPreviewTransition(ActivityWelcomeBinding binding) {
