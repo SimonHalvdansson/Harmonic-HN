@@ -200,6 +200,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean integratedWebview = true;
     private boolean prefIntegratedWebview = true;
     private String preloadWebview = "never";
+    private int preloadWebviewMinimumBattery = SettingsUtils.DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY;
     private boolean matchWebviewTheme = true;
     private boolean adBlockDisabledForSession = false;
     private boolean pollOptionsLoadStarted = false;
@@ -358,6 +359,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         integratedWebview = prefIntegratedWebview && story.isLink;
         preloadWebview = SettingsUtils.shouldPreloadWebView(getContext());
+        preloadWebviewMinimumBattery = SettingsUtils.getPreloadWebViewMinimumBattery(getContext());
         matchWebviewTheme = SettingsUtils.shouldMatchWebViewTheme(getContext());
         boolean blockAds = SettingsUtils.shouldBlockAds(getContext()) && !adBlockDisabledForSession;
         closeWebViewOnBack = SettingsUtils.shouldCloseWebViewOnBack(getContext());
@@ -382,7 +384,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         });
         webViewController.bindViews(view, bottomSheet, swipeRefreshLayout, progressIndicator);
-        webViewController.configure(showWebsite, integratedWebview, preloadWebview, matchWebviewTheme, blockAds);
+        webViewController.configure(showWebsite, integratedWebview, preloadWebview, preloadWebviewMinimumBattery, matchWebviewTheme, blockAds);
 
         if (story.title == null) {
             // Empty view for tablets

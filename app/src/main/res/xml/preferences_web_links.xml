@@ -22,15 +22,12 @@
             app:icon="@drawable/ic_action_back"
             app:title="Go back to comments" />
 
-        <ListPreference
+        <com.simon.harmonichackernews.settings.PreloadWebViewPreference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_cache"
             app:title="Preload websites"
             app:key="pref_preload_webview"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/preload_entries"
-            app:defaultValue="never"
-            app:entryValues="@array/preload_values" />
+            app:defaultValue="never" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"

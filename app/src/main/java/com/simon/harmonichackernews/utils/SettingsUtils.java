@@ -3,8 +3,11 @@ package com.simon.harmonichackernews.utils;
 import static com.simon.harmonichackernews.utils.Utils.GLOBAL_SHARED_PREFERENCES_KEY;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.os.BatteryManager;
 
 import androidx.preference.PreferenceManager;
 
@@ -26,6 +29,12 @@ public class SettingsUtils {
     public static final String PREF_GRAY_OUT_CLICKED = "pref_gray_out_clicked";
     public static final String PREF_HIDE_CLICKED = "pref_hide_clicked";
     public static final String PREF_ALWAYS_SHOW_TAP_TO_REFRESH = "pref_always_show_tap_to_refresh";
+    public static final String PREF_PRELOAD_WEBVIEW = "pref_preload_webview";
+    public static final String PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY = "pref_preload_webview_minimum_battery";
+    public static final String PRELOAD_WEBVIEW_ALWAYS = "always";
+    public static final String PRELOAD_WEBVIEW_ONLY_WIFI = "onlywifi";
+    public static final String PRELOAD_WEBVIEW_NEVER = "never";
+    public static final int DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY = 0;
     public static final String STORY_DISPLAY_STYLE_STANDARD = "standard";
     public static final String STORY_DISPLAY_STYLE_CARD = "card";
     public static final String STORY_PREVIEW_IMAGE_OFF = "off";
@@ -201,7 +210,44 @@ public class SettingsUtils {
 
     public static String shouldPreloadWebView(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getString("pref_preload_webview", "never");
+        return sanitizePreloadWebViewMode(prefs.getString(PREF_PRELOAD_WEBVIEW, PRELOAD_WEBVIEW_NEVER));
+    }
+
+    public static int getPreloadWebViewMinimumBattery(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return clampPercent(prefs.getInt(PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY, DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY));
+    }
+
+    public static boolean hasEnoughBatteryForWebViewPreload(Context ctx, int minimumBattery) {
+        int clampedMinimumBattery = clampPercent(minimumBattery);
+        if (clampedMinimumBattery <= DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY) {
+            return true;
+        }
+
+        Intent batteryStatus = ctx.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        if (batteryStatus == null) {
+            return true;
+        }
+
+        int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+        int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+        if (level < 0 || scale <= 0) {
+            return true;
+        }
+
+        int batteryPercent = Math.round(level * 100f / scale);
+        return batteryPercent >= clampedMinimumBattery;
+    }
+
+    public static String sanitizePreloadWebViewMode(String mode) {
+        if (PRELOAD_WEBVIEW_ALWAYS.equals(mode) || PRELOAD_WEBVIEW_ONLY_WIFI.equals(mode)) {
+            return mode;
+        }
+        return PRELOAD_WEBVIEW_NEVER;
+    }
+
+    private static int clampPercent(int value) {
+        return Math.max(0, Math.min(100, value));
     }
 
     public static boolean shouldMatchWebViewTheme(Context ctx) {

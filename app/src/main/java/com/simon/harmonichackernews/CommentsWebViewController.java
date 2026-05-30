@@ -53,6 +53,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController;
 import com.simon.harmonichackernews.utils.FileDownloader;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -112,6 +113,7 @@ class CommentsWebViewController {
     private boolean showWebsite = false;
     private boolean integratedWebview = true;
     private String preloadWebview = "never";
+    private int preloadWebviewMinimumBattery = SettingsUtils.DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY;
     private boolean matchWebviewTheme = true;
     private boolean blockAds = true;
     private boolean startedLoading = false;
@@ -148,10 +150,11 @@ class CommentsWebViewController {
         webViewBackdrop = rootView.findViewById(R.id.comments_webview_backdrop);
     }
 
-    void configure(boolean showWebsite, boolean integratedWebview, String preloadWebview, boolean matchWebviewTheme, boolean blockAds) {
+    void configure(boolean showWebsite, boolean integratedWebview, String preloadWebview, int preloadWebviewMinimumBattery, boolean matchWebviewTheme, boolean blockAds) {
         this.showWebsite = showWebsite;
         this.integratedWebview = integratedWebview;
         this.preloadWebview = preloadWebview;
+        this.preloadWebviewMinimumBattery = preloadWebviewMinimumBattery;
         this.matchWebviewTheme = matchWebviewTheme;
         this.blockAds = blockAds;
     }
@@ -343,7 +346,7 @@ class CommentsWebViewController {
         }
 
         webView.setWebViewClient(new MyWebViewClient());
-        if (preloadWebview.equals("always") || (preloadWebview.equals("onlywifi") && Utils.isOnWiFi(context)) || showWebsite || linkPreviewController.shouldInitializeWebViewForPreview(context)) {
+        if (shouldPreloadStoryUrl(context) || showWebsite || linkPreviewController.shouldInitializeWebViewForPreview(context)) {
             loadUrl(story.url);
             startedLoading = true;
         }
@@ -429,6 +432,13 @@ class CommentsWebViewController {
         if (webViewBackdrop != null) {
             webViewBackdrop.postDelayed(webViewBackdropFadeInRunnable, 2000);
         }
+    }
+
+    private boolean shouldPreloadStoryUrl(Context context) {
+        boolean enabledForConnection = SettingsUtils.PRELOAD_WEBVIEW_ALWAYS.equals(preloadWebview)
+                || (SettingsUtils.PRELOAD_WEBVIEW_ONLY_WIFI.equals(preloadWebview) && Utils.isOnWiFi(context));
+        return enabledForConnection
+                && SettingsUtils.hasEnoughBatteryForWebViewPreload(context, preloadWebviewMinimumBattery);
     }
 
     void hideCustomView(boolean notifyCallback) {

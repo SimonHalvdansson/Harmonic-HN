@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingLeft="24dp"
+    android:paddingRight="24dp"
+    android:paddingBottom="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/preload_webview_explanation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="4dp"
+            android:paddingBottom="12dp"
+            android:text="When you open comments for a link, Harmonic can load the website WebView in the background while you read. This makes switching to the website faster, but uses network, CPU, and battery."
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="14sp" />
+
+        <RadioGroup
+            android:id="@+id/preload_webview_mode_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/preload_webview_always"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Always" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/preload_webview_only_wifi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Only on WiFi" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/preload_webview_never"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Never" />
+
+        </RadioGroup>
+
+        <LinearLayout
+            android:id="@+id/preload_webview_battery_controls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="12dp">
+
+            <TextView
+                android:id="@+id/preload_webview_battery_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/product_sans"
+                android:textColor="?attr/storyColorNormal"
+                android:textSize="14sp" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/preload_webview_battery_slider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:valueFrom="0"
+                android:valueTo="100"
+                android:stepSize="5"
+                app:labelBehavior="floating"
+                app:tickVisible="false" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
