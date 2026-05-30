@@ -247,11 +247,25 @@
         android:textStyle="bold"
         android:visibility="gone" />
 
+    <TextView
+        android:id="@+id/stories_header_cache_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:accessibilityLiveRegion="polite"
+        android:fontFamily="@font/product_sans"
+        android:gravity="center"
+        android:text="Caching stories"
+        android:textColor="?attr/textColorDisabled"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
     <com.google.android.material.progressindicator.LinearProgressIndicator
         android:id="@+id/stories_header_cache_progress"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="4dp"
         android:contentDescription="Caching stories"
         android:indeterminate="false"
         android:visibility="gone"
