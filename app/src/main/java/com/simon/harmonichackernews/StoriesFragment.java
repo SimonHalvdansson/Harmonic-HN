@@ -115,6 +115,7 @@ public class StoriesFragment extends Fragment {
     private ImageButton searchButton;
     private ImageButton closeSearchButton;
     private ImageButton moreButton;
+    private TextView lastUpdatedHeaderText;
     private MaterialButtonToggleGroup userItemFilterGroup;
     private RelativeLayout loadingIndicator;
     private LinearLayout loadingFailedLayout;
@@ -184,6 +185,7 @@ public class StoriesFragment extends Fragment {
 
     long lastLoaded = 0;
     long lastClick = 0;
+    private boolean updateButtonShowing = false;
     private final static long CLICK_INTERVAL = 350;
     private static final long SEARCH_HEADER_ANIMATION_DURATION_MS = 180;
     private static final long SEARCH_OPTIONS_ENTRANCE_ANIMATION_DELAY_MS = 100;
@@ -268,6 +270,7 @@ public class StoriesFragment extends Fragment {
         searchButton = view.findViewById(R.id.stories_header_search_button);
         closeSearchButton = view.findViewById(R.id.stories_header_close_search_button);
         moreButton = view.findViewById(R.id.stories_header_more);
+        lastUpdatedHeaderText = view.findViewById(R.id.stories_header_last_updated);
         userItemFilterGroup = view.findViewById(R.id.stories_header_user_item_filter_group);
         loadingIndicator = view.findViewById(R.id.stories_header_loading_indicator);
         loadingFailedLayout = view.findViewById(R.id.stories_header_loading_failed);
@@ -601,6 +604,9 @@ public class StoriesFragment extends Fragment {
         int bottomPad = Utils.pxFromDpInt(getResources(), compactHeader
                 ? (searchMode ? 6 : 10)
                 : (searchMode ? 18 : 26));
+        if (!searchMode && shouldShowLastUpdatedHeader()) {
+            bottomPad = Utils.pxFromDpInt(getResources(), compactHeader ? 4 : 8);
+        }
         int sidePaddingStart = headerContainer.getPaddingStart();
         int sidePaddingEnd = headerContainer.getPaddingEnd();
         headerContainer.setPaddingRelative(sidePaddingStart, topPad, sidePaddingEnd, bottomPad);
@@ -629,6 +635,7 @@ public class StoriesFragment extends Fragment {
         Context ctx = getContext();
         if (ctx == null) return;
 
+        updateLastUpdatedHeader(ctx);
         applyHeaderPadding(ctx);
 
         beginHeaderTransition(animateSearchTransition);
@@ -706,6 +713,21 @@ public class StoriesFragment extends Fragment {
 
         if (predictiveSearchBackInProgress) {
             applySearchBackVisualProgress(predictiveSearchBackProgress);
+        }
+    }
+
+    private boolean shouldShowLastUpdatedHeader() {
+        return updateButtonShowing && !searching && lastLoaded > 0;
+    }
+
+    private void updateLastUpdatedHeader(@Nullable Context ctx) {
+        if (lastUpdatedHeaderText == null) return;
+
+        boolean showLastUpdated = ctx != null && shouldShowLastUpdatedHeader();
+        lastUpdatedHeaderText.setVisibility(showLastUpdated ? View.VISIBLE : View.GONE);
+        if (showLastUpdated) {
+            lastUpdatedHeaderText.setText("Last updated: "
+                    + android.text.format.DateFormat.getTimeFormat(ctx).format(new java.util.Date(lastLoaded)));
         }
     }
 
@@ -1772,6 +1794,7 @@ public class StoriesFragment extends Fragment {
         searchButton = null;
         closeSearchButton = null;
         moreButton = null;
+        lastUpdatedHeaderText = null;
         userItemFilterGroup = null;
         loadingIndicator = null;
         loadingFailedLayout = null;
@@ -3514,13 +3537,23 @@ public class StoriesFragment extends Fragment {
     }
 
     private void hideUpdateButton() {
-        if (updateFab.getVisibility() == View.VISIBLE) {
+        updateButtonShowing = false;
+        Context ctx = getContext();
+        updateLastUpdatedHeader(ctx);
+        applyHeaderPadding(ctx);
+
+        if (updateFab != null && updateFab.getVisibility() == View.VISIBLE) {
             updateFab.hide();
         }
     }
 
     private void showUpdateButton() {
-        if (updateFab.getVisibility() != View.VISIBLE) {
+        updateButtonShowing = true;
+        Context ctx = getContext();
+        updateLastUpdatedHeader(ctx);
+        applyHeaderPadding(ctx);
+
+        if (updateFab != null && updateFab.getVisibility() != View.VISIBLE) {
             updateFab.show();
         }
     }

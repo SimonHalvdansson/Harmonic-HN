@@ -235,6 +235,18 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
+    <TextView
+        android:id="@+id/stories_header_last_updated"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/product_sans"
+        android:gravity="center"
+        android:paddingTop="4dp"
+        android:textColor="?attr/textColorDisabled"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
     <RelativeLayout
         android:id="@+id/stories_header_loading_indicator"
         android:layout_width="match_parent"
