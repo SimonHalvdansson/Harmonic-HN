@@ -35,7 +35,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     private final List<Comment> comments;
     private final List<Comment> visibleComments = new ArrayList<>();
     private final boolean cardStyle;
-    private final int preferredTextSize;
+    private final float preferredTextSize;
 
     private String searchTerm = "";
     public ItemClickListener itemClickListener;
@@ -44,7 +44,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
 
     public CommentSearchAdapter(List<Comment> comments,
                                 boolean shouldUseCardStyle,
-                                int prefTextSize) {
+                                float prefTextSize) {
         this.comments = comments;
         cardStyle = shouldUseCardStyle;
         preferredTextSize = prefTextSize;

@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.settings;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.widget.TextView;
 
 import androidx.preference.Preference;
 import androidx.preference.PreferenceViewHolder;
@@ -33,31 +32,29 @@ public class StoryTextSizePreference extends Preference {
         holder.itemView.setFocusable(false);
 
         Slider slider = (Slider) holder.findViewById(R.id.story_text_size_slider);
-        TextView value = (TextView) holder.findViewById(R.id.story_text_size_value);
         if (slider == null) {
             return;
         }
 
         float textSize = getPersistedTextSize();
+        int offset = SettingsUtils.getStoryTextSizeOffset(textSize);
         slider.clearOnChangeListeners();
-        slider.setValue(textSize);
-        updateValueText(value, textSize);
+        slider.setLabelFormatter(sliderValue -> formatOffset(Math.round(sliderValue)));
+        slider.setValue(offset);
         slider.addOnChangeListener((changedSlider, sliderValue, fromUser) -> {
-            float clampedValue = SettingsUtils.clampStoryTextSize(sliderValue);
-            updateValueText(value, clampedValue);
+            int roundedOffset = Math.round(sliderValue);
             if (!fromUser) {
                 return;
             }
 
-            String stringValue = formatTextSize(clampedValue);
-            if (stringValue.equals(getPersistedString(formatTextSize(SettingsUtils.DEFAULT_STORY_TEXT_SIZE)))) {
+            float textSizeValue = SettingsUtils.getStoryTextSizeForOffset(roundedOffset);
+            String stringValue = formatTextSize(textSizeValue);
+            if (stringValue.equals(formatTextSize(getPersistedTextSize()))) {
                 return;
             }
 
             if (!callChangeListener(stringValue)) {
-                float previousValue = getPersistedTextSize();
-                changedSlider.setValue(previousValue);
-                updateValueText(value, previousValue);
+                changedSlider.setValue(SettingsUtils.getStoryTextSizeOffset(getPersistedTextSize()));
                 return;
             }
 
@@ -74,13 +71,11 @@ public class StoryTextSizePreference extends Preference {
         }
     }
 
-    private void updateValueText(TextView value, float textSize) {
-        if (value != null) {
-            String suffix = Math.abs(textSize - SettingsUtils.DEFAULT_STORY_TEXT_SIZE) < 0.01f
-                    ? " sp (default)"
-                    : " sp";
-            value.setText(formatTextSize(textSize) + suffix);
+    private String formatOffset(int offset) {
+        if (offset > 0) {
+            return "+" + offset;
         }
+        return String.valueOf(offset);
     }
 
     private String formatTextSize(float textSize) {

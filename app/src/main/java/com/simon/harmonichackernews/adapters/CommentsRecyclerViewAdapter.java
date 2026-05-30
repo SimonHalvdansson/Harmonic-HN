@@ -87,7 +87,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean cardStyle;
     private boolean commentsByOpFilterActive = false;
     public String username;
-    public int preferredTextSize;
+    public float preferredTextSize;
     private final boolean isTablet;
     public String theme;
     public String font;
@@ -124,7 +124,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        boolean shouldCollapseParent,
                                        boolean shouldShowThumbnail,
                                        String usernameParam,
-                                       int prefTextSize,
+                                       float prefTextSize,
                                        String prefCommentDepthIndicatorMode,
                                        boolean shouldShowNavigationBar,
                                        String prefFont,

@@ -48,7 +48,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
     private boolean cardStyle;
     private String displayStyleOverride;
     private ValueAnimator textSizeAnimator;
-    private int textSizeTargetSp = -1;
+    private float textSizeTargetSp = -1;
 
     public CommentContentPreviewPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -209,14 +209,14 @@ public class CommentContentPreviewPreference extends Preference implements Share
         updateDepthIndicator();
     }
 
-    private void applyTextSize(int textSize, boolean animate) {
-        int clampedTextSize = SettingsUtils.clampCommentTextSize(textSize);
+    private void applyTextSize(float textSize, boolean animate) {
+        float clampedTextSize = SettingsUtils.clampCommentTextSize(textSize);
         if (commentBody == null) {
             textSizeTargetSp = clampedTextSize;
             return;
         }
 
-        if (animate && textSizeTargetSp == clampedTextSize) {
+        if (animate && Math.abs(textSizeTargetSp - clampedTextSize) < 0.01f) {
             return;
         }
         textSizeTargetSp = clampedTextSize;
@@ -271,9 +271,9 @@ public class CommentContentPreviewPreference extends Preference implements Share
         commentIndentIndicator.setBackgroundColor(ContextCompat.getColor(getContext(), colorResource));
     }
 
-    private int parseTextSize(String textSize) {
+    private float parseTextSize(String textSize) {
         try {
-            return SettingsUtils.clampCommentTextSize(Integer.parseInt(textSize));
+            return SettingsUtils.clampCommentTextSize(Float.parseFloat(textSize));
         } catch (NumberFormatException e) {
             return SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE;
         }

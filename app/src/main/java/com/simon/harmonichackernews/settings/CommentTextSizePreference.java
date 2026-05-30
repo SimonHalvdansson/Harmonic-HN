@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.settings;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.widget.TextView;
 
 import androidx.preference.Preference;
 import androidx.preference.PreferenceViewHolder;
@@ -10,6 +9,8 @@ import androidx.preference.PreferenceViewHolder;
 import com.google.android.material.slider.Slider;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+
+import java.util.Locale;
 
 public class CommentTextSizePreference extends Preference {
 
@@ -31,31 +32,29 @@ public class CommentTextSizePreference extends Preference {
         holder.itemView.setFocusable(false);
 
         Slider slider = (Slider) holder.findViewById(R.id.comment_text_size_slider);
-        TextView value = (TextView) holder.findViewById(R.id.comment_text_size_value);
         if (slider == null) {
             return;
         }
 
-        int textSize = getPersistedTextSize();
+        float textSize = getPersistedTextSize();
+        int offset = SettingsUtils.getCommentTextSizeOffset(textSize);
         slider.clearOnChangeListeners();
-        slider.setValue(textSize);
-        updateValueText(value, textSize);
+        slider.setLabelFormatter(sliderValue -> formatOffset(Math.round(sliderValue)));
+        slider.setValue(offset);
         slider.addOnChangeListener((changedSlider, sliderValue, fromUser) -> {
-            int roundedValue = SettingsUtils.clampCommentTextSize(Math.round(sliderValue));
-            updateValueText(value, roundedValue);
+            int roundedOffset = Math.round(sliderValue);
             if (!fromUser) {
                 return;
             }
 
-            String stringValue = String.valueOf(roundedValue);
-            if (stringValue.equals(getPersistedString(String.valueOf(SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE)))) {
+            float textSizeValue = SettingsUtils.getCommentTextSizeForOffset(roundedOffset);
+            String stringValue = formatTextSize(textSizeValue);
+            if (stringValue.equals(formatTextSize(getPersistedTextSize()))) {
                 return;
             }
 
             if (!callChangeListener(stringValue)) {
-                int previousValue = getPersistedTextSize();
-                changedSlider.setValue(previousValue);
-                updateValueText(value, previousValue);
+                changedSlider.setValue(SettingsUtils.getCommentTextSizeOffset(getPersistedTextSize()));
                 return;
             }
 
@@ -63,21 +62,26 @@ public class CommentTextSizePreference extends Preference {
         });
     }
 
-    private int getPersistedTextSize() {
+    private float getPersistedTextSize() {
         try {
-            return SettingsUtils.clampCommentTextSize(Integer.parseInt(
+            return SettingsUtils.clampCommentTextSize(Float.parseFloat(
                     getPersistedString(String.valueOf(SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE))));
         } catch (NumberFormatException e) {
             return SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE;
         }
     }
 
-    private void updateValueText(TextView value, int textSize) {
-        if (value != null) {
-            String suffix = textSize == SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE
-                    ? " sp (default)"
-                    : " sp";
-            value.setText(textSize + suffix);
+    private String formatOffset(int offset) {
+        if (offset > 0) {
+            return "+" + offset;
         }
+        return String.valueOf(offset);
+    }
+
+    private String formatTextSize(float textSize) {
+        if (Math.abs(textSize - Math.round(textSize)) < 0.01f) {
+            return String.valueOf(Math.round(textSize));
+        }
+        return String.format(Locale.US, "%.1f", textSize);
     }
 }

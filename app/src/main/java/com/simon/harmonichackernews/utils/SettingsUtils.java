@@ -35,11 +35,21 @@ public class SettingsUtils {
     public static final String COMMENT_DISPLAY_STYLE_CARD = STORY_DISPLAY_STYLE_CARD;
     public static final float DEFAULT_STORY_TEXT_SIZE = 17.5f;
     public static final float DEFAULT_STORY_META_TEXT_SIZE = 13f;
-    public static final float MIN_STORY_TEXT_SIZE = 15f;
-    public static final float MAX_STORY_TEXT_SIZE = 22f;
-    public static final int DEFAULT_COMMENT_TEXT_SIZE = 15;
-    public static final int MIN_COMMENT_TEXT_SIZE = 13;
-    public static final int MAX_COMMENT_TEXT_SIZE = 18;
+    public static final int MIN_STORY_TEXT_SIZE_OFFSET = -6;
+    public static final int MAX_STORY_TEXT_SIZE_OFFSET = 6;
+    public static final float STORY_TEXT_SIZE_OFFSET_STEP = 0.5f;
+    public static final float MIN_STORY_TEXT_SIZE = DEFAULT_STORY_TEXT_SIZE
+            + MIN_STORY_TEXT_SIZE_OFFSET * STORY_TEXT_SIZE_OFFSET_STEP;
+    public static final float MAX_STORY_TEXT_SIZE = DEFAULT_STORY_TEXT_SIZE
+            + MAX_STORY_TEXT_SIZE_OFFSET * STORY_TEXT_SIZE_OFFSET_STEP;
+    public static final float DEFAULT_COMMENT_TEXT_SIZE = 15f;
+    public static final int MIN_COMMENT_TEXT_SIZE_OFFSET = -6;
+    public static final int MAX_COMMENT_TEXT_SIZE_OFFSET = 6;
+    public static final float COMMENT_TEXT_SIZE_OFFSET_STEP = 0.5f;
+    public static final float MIN_COMMENT_TEXT_SIZE = DEFAULT_COMMENT_TEXT_SIZE
+            + MIN_COMMENT_TEXT_SIZE_OFFSET * COMMENT_TEXT_SIZE_OFFSET_STEP;
+    public static final float MAX_COMMENT_TEXT_SIZE = DEFAULT_COMMENT_TEXT_SIZE
+            + MAX_COMMENT_TEXT_SIZE_OFFSET * COMMENT_TEXT_SIZE_OFFSET_STEP;
     public static final String FAVORITES_LABEL = "Favorites";
     public static final String UPVOTED_LABEL = "Upvoted";
 
@@ -255,6 +265,20 @@ public class SettingsUtils {
         return Math.max(MIN_STORY_TEXT_SIZE, Math.min(MAX_STORY_TEXT_SIZE, textSize));
     }
 
+    public static int getStoryTextSizeOffset(float textSize) {
+        return Math.max(
+                MIN_STORY_TEXT_SIZE_OFFSET,
+                Math.min(
+                        MAX_STORY_TEXT_SIZE_OFFSET,
+                        Math.round((clampStoryTextSize(textSize) - DEFAULT_STORY_TEXT_SIZE)
+                                / STORY_TEXT_SIZE_OFFSET_STEP)));
+    }
+
+    public static float getStoryTextSizeForOffset(int offset) {
+        int clampedOffset = Math.max(MIN_STORY_TEXT_SIZE_OFFSET, Math.min(MAX_STORY_TEXT_SIZE_OFFSET, offset));
+        return clampStoryTextSize(DEFAULT_STORY_TEXT_SIZE + clampedOffset * STORY_TEXT_SIZE_OFFSET_STEP);
+    }
+
     public static float getStoryMetaTextSize(float storyTextSize) {
         float scale = clampStoryTextSize(storyTextSize) / DEFAULT_STORY_TEXT_SIZE;
         return DEFAULT_STORY_META_TEXT_SIZE * scale;
@@ -368,20 +392,38 @@ public class SettingsUtils {
         return prefs.getBoolean(key, backup);
     }
 
-    public static int getPreferredCommentTextSize(Context ctx) {
+    public static float getPreferredCommentTextSize(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         try {
-            return clampCommentTextSize(Integer.parseInt(
+            return clampCommentTextSize(Float.parseFloat(
                     prefs.getString(PREF_COMMENT_TEXT_SIZE, String.valueOf(DEFAULT_COMMENT_TEXT_SIZE))));
         } catch (ClassCastException e) {
-            return clampCommentTextSize(prefs.getInt(PREF_COMMENT_TEXT_SIZE, DEFAULT_COMMENT_TEXT_SIZE));
+            try {
+                return clampCommentTextSize(prefs.getFloat(PREF_COMMENT_TEXT_SIZE, DEFAULT_COMMENT_TEXT_SIZE));
+            } catch (ClassCastException ignored) {
+                return clampCommentTextSize(prefs.getInt(PREF_COMMENT_TEXT_SIZE, Math.round(DEFAULT_COMMENT_TEXT_SIZE)));
+            }
         } catch (NumberFormatException e) {
             return DEFAULT_COMMENT_TEXT_SIZE;
         }
     }
 
-    public static int clampCommentTextSize(int textSize) {
+    public static float clampCommentTextSize(float textSize) {
         return Math.max(MIN_COMMENT_TEXT_SIZE, Math.min(MAX_COMMENT_TEXT_SIZE, textSize));
+    }
+
+    public static int getCommentTextSizeOffset(float textSize) {
+        return Math.max(
+                MIN_COMMENT_TEXT_SIZE_OFFSET,
+                Math.min(
+                        MAX_COMMENT_TEXT_SIZE_OFFSET,
+                        Math.round((clampCommentTextSize(textSize) - DEFAULT_COMMENT_TEXT_SIZE)
+                                / COMMENT_TEXT_SIZE_OFFSET_STEP)));
+    }
+
+    public static float getCommentTextSizeForOffset(int offset) {
+        int clampedOffset = Math.max(MIN_COMMENT_TEXT_SIZE_OFFSET, Math.min(MAX_COMMENT_TEXT_SIZE_OFFSET, offset));
+        return clampCommentTextSize(DEFAULT_COMMENT_TEXT_SIZE + clampedOffset * COMMENT_TEXT_SIZE_OFFSET_STEP);
     }
 
     public static String getPreferredStoryType(Context ctx) {

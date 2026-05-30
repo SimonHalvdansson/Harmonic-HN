@@ -16,7 +16,7 @@
         <com.simon.harmonichackernews.settings.StoryTextSizePreference
             app:defaultValue="17.5"
             app:key="pref_story_text_size"
-            app:title="Title text size" />
+            app:title="Text size" />
 
         <com.simon.harmonichackernews.settings.StoryDisplayStylePreference
             app:defaultValue="standard"

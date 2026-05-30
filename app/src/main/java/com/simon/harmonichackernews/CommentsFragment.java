@@ -1024,8 +1024,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 updateHeader = true;
             }
 
-            if (adapter.preferredTextSize != SettingsUtils.getPreferredCommentTextSize(ctx)) {
-                adapter.preferredTextSize = SettingsUtils.getPreferredCommentTextSize(ctx);
+            float preferredCommentTextSize = SettingsUtils.getPreferredCommentTextSize(ctx);
+            if (Float.compare(adapter.preferredTextSize, preferredCommentTextSize) != 0) {
+                adapter.preferredTextSize = preferredCommentTextSize;
                 updateHeader = true;
                 updateComments = true;
             }
