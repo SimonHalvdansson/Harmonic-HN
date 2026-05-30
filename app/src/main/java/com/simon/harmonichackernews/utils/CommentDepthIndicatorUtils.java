@@ -24,13 +24,13 @@ public class CommentDepthIndicatorUtils {
     };
 
     private static final int[] COMMENT_DEPTH_COLORS_MATERIAL = new int[]{
-            R.color.material_you_primary60,
-            R.color.material_you_secondary60,
-            R.color.material_you_tertiary50,
-            R.color.material_you_neutral_variant50,
-            R.color.commentIndentIndicatorColor5,
-            R.color.commentIndentIndicatorColor6,
-            R.color.commentIndentIndicatorColor7
+            R.color.material_you_thread_depth_1,
+            R.color.material_you_thread_depth_2,
+            R.color.material_you_thread_depth_3,
+            R.color.material_you_thread_depth_4,
+            R.color.material_you_thread_depth_5,
+            R.color.material_you_thread_depth_6,
+            R.color.material_you_thread_depth_7
     };
 
     private static final int[] COMMENT_DEPTH_COLORS_LIGHT = new int[]{

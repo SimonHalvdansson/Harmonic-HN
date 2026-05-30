@@ -105,6 +105,14 @@
     <color name="material_you_tertiary50">#787296</color>
     <color name="material_you_neutral_variant50">#70777C</color>
 
+    <color name="material_you_thread_depth_1">@color/material_you_600</color>
+    <color name="material_you_thread_depth_2">@color/material_you_secondary60</color>
+    <color name="material_you_thread_depth_3">@color/material_you_tertiary50</color>
+    <color name="material_you_thread_depth_4">@color/material_you_primary60</color>
+    <color name="material_you_thread_depth_5">@color/material_you_secondary_70</color>
+    <color name="material_you_thread_depth_6">@color/material_you_tertiary30</color>
+    <color name="material_you_thread_depth_7">@color/material_you_neutral_variant50</color>
+
     <color name="splash_screen_background">@color/material_you_neutral_50</color>
 
     <!-- Widget colors (light mode defaults) -->
