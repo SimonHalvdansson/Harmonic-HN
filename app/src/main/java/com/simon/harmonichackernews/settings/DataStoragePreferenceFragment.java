@@ -20,6 +20,7 @@ import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.utils.UtilsKt;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -37,6 +38,8 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
     private Preference addBookmarksToFavoritesPreference;
     private Preference exportBookmarksPreference;
     private Preference importBookmarksPreference;
+    private Preference clearClickedStoriesPreference;
+    private Preference clearPostCachePreference;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -88,6 +91,8 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
         addBookmarksToFavoritesPreference = findPreference("pref_add_bookmarks_to_favorites");
         exportBookmarksPreference = findPreference("pref_export_bookmarks");
         importBookmarksPreference = findPreference("pref_import_bookmarks");
+        clearClickedStoriesPreference = findPreference("pref_clear_clicked_stories");
+        clearPostCachePreference = findPreference("pref_clear_post_cache");
 
         if (enableBookmarksPreference != null) {
             enableBookmarksPreference.setOnPreferenceChangeListener((preference, newValue) -> {
@@ -136,10 +141,11 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
             return false;
         });
 
-        findPreference("pref_clear_clicked_stories").setOnPreferenceClickListener(preference -> {
-            int oldCount = HistoriesUtils.INSTANCE.size();
+        clearClickedStoriesPreference.setOnPreferenceClickListener(preference -> {
+            int oldCount = getClickedStoryCount();
 
             HistoriesUtils.INSTANCE.clearHistories(requireContext());
+            updateDataSummaries();
 
             Utils.toast(
                     "Cleared " + oldCount + (oldCount == 1 ? " entry" : " entries"),
@@ -148,8 +154,9 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
             return false;
         });
 
-        findPreference("pref_clear_post_cache").setOnPreferenceClickListener(preference -> {
+        clearPostCachePreference.setOnPreferenceClickListener(preference -> {
             int oldCount = Utils.clearPostCache(requireContext());
+            updateDataSummaries();
 
             Utils.toast(
                     "Cleared " + oldCount + " cached " + (oldCount == 1 ? "post" : "posts"),
@@ -172,12 +179,14 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
         });
 
         updateBookmarksPreferences();
+        updateDataSummaries();
     }
 
     @Override
     public void onResume() {
         super.onResume();
         updateBookmarksPreferences();
+        updateDataSummaries();
     }
 
     private void updateBookmarksPreferences() {
@@ -210,5 +219,28 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
 
     private static String formatBookmarkCount(int count) {
         return count == 1 ? "1 bookmark" : count + " bookmarks";
+    }
+
+    private void updateDataSummaries() {
+        if (getContext() == null
+                || clearClickedStoriesPreference == null
+                || clearPostCachePreference == null) {
+            return;
+        }
+
+        clearClickedStoriesPreference.setSummary(formatClickedStoryCount(getClickedStoryCount()));
+        clearPostCachePreference.setSummary(formatCachedStoryCount(Utils.getCachedPostCount(requireContext())));
+    }
+
+    private int getClickedStoryCount() {
+        return UtilsKt.INSTANCE.loadHistories(requireContext(), false).size();
+    }
+
+    private static String formatClickedStoryCount(int count) {
+        return count == 1 ? "1 saved clicked story" : count + " saved clicked stories";
+    }
+
+    private static String formatCachedStoryCount(int count) {
+        return count == 1 ? "1 cached story" : count + " cached stories";
     }
 }
