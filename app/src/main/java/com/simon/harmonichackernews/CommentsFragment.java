@@ -164,6 +164,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static float COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCRIM_ALPHA = 0.45f;
     private final static int MENU_COMMENT_SORT_GROUP_ID = 100;
     private final static int MENU_COMMENT_SORT_ITEM_ID_BASE = 200;
+    private final static int MENU_ARCHIVE_SERVICE_GROUP_ID = 300;
+    private final static int MENU_ARCHIVE_ORG_ITEM_ID = 301;
+    private final static int MENU_ARCHIVE_IS_ITEM_ID = 302;
+    private final static int MENU_ARCHIVE_TODAY_ITEM_ID = 303;
 
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
@@ -2019,20 +2023,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     adBlockDisabledForSession = true;
                     webViewController.disableAdBlockAndReload();
                 } else if (id == R.id.menu_archive) {
-                    Toast.makeText(getContext(), "Contacting archive.org API...", Toast.LENGTH_SHORT).show();
-                    ArchiveOrgUrlGetter.getArchiveUrl(story.url, getContext(), new ArchiveOrgUrlGetter.GetterCallback() {
-                        @Override
-                        public void onSuccess(String url) {
-                            Utils.launchCustomTab(getActivity(), url);
-                        }
-
-                        @Override
-                        public void onFailure(String reason) {
-                            if (getContext() != null) {
-                                Toast.makeText(getContext(), "Error: " + reason, Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    });
+                    view.post(() -> showArchiveServiceMenu(view));
                 } else if (id == R.id.menu_search_comments) {
                     resetCommentsByOpFilter();
                     CommentsSearchDialogFragment.showCommentSearchDialog(getParentFragmentManager(), comments, new CommentsSearchDialogFragment.CommentSelectedListener() {
@@ -2106,6 +2097,56 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         popup.show();
+    }
+
+    private void showArchiveServiceMenu(View anchor) {
+        PopupMenu popup = new PopupMenu(requireActivity(), anchor);
+
+        popup.getMenu().add(MENU_ARCHIVE_SERVICE_GROUP_ID, MENU_ARCHIVE_ORG_ITEM_ID, 0, "archive.org");
+        popup.getMenu().add(MENU_ARCHIVE_SERVICE_GROUP_ID, MENU_ARCHIVE_IS_ITEM_ID, 1, "archive.is");
+        popup.getMenu().add(MENU_ARCHIVE_SERVICE_GROUP_ID, MENU_ARCHIVE_TODAY_ITEM_ID, 2, "archive.today");
+
+        popup.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == MENU_ARCHIVE_ORG_ITEM_ID) {
+                openArchiveOrg();
+                return true;
+            } else if (item.getItemId() == MENU_ARCHIVE_IS_ITEM_ID) {
+                openArchiveIs();
+                return true;
+            } else if (item.getItemId() == MENU_ARCHIVE_TODAY_ITEM_ID) {
+                openArchiveToday();
+                return true;
+            }
+
+            return false;
+        });
+
+        popup.show();
+    }
+
+    private void openArchiveOrg() {
+        Toast.makeText(getContext(), "Contacting archive.org API...", Toast.LENGTH_SHORT).show();
+        ArchiveOrgUrlGetter.getArchiveUrl(story.url, getContext(), new ArchiveOrgUrlGetter.GetterCallback() {
+            @Override
+            public void onSuccess(String url) {
+                Utils.launchCustomTab(getActivity(), url);
+            }
+
+            @Override
+            public void onFailure(String reason) {
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Error: " + reason, Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    private void openArchiveIs() {
+        Utils.launchCustomTab(getActivity(), "https://archive.is/newest/" + Uri.encode(story.url));
+    }
+
+    private void openArchiveToday() {
+        Utils.launchCustomTab(getActivity(), "https://archive.today/newest/" + Uri.encode(story.url));
     }
 
     private void showCommentSortingMenu(View anchor) {
