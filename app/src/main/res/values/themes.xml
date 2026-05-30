@@ -178,20 +178,22 @@
         <item name="selfCommentColor">@color/hackerNewsSelfCommentColor</item>
         <item name="commentCountIndicatorColor">@color/hackerNewsAccentDark</item>
         <item name="secondaryTextColor">@color/hackerNewsTextColorDisabled</item>
-        <item name="overlayButtonColor">@color/hackerNewsAccentContainer</item>
+        <item name="overlayButtonColor">@color/hackerNewsOverlayButton</item>
 
         <item name="colorPrimary">@color/hackerNewsAccent</item>
         <item name="colorPrimaryDark">@color/hackerNewsAccentDark</item>
         <item name="colorAccent">@color/hackerNewsAccent</item>
         <item name="colorSecondary">@color/hackerNewsAccent</item>
-        <item name="colorOnSecondary">@color/hackerNewsStoryColorNormal</item>
+        <item name="colorOnSecondary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/hackerNewsAccentContainer</item>
-        <item name="colorOnPrimary">@color/hackerNewsStoryColorNormal</item>
+        <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorSurfaceContainerHigh">@color/hackerNewsSurfaceContainer</item>
+        <item name="materialSwitchStyle">@style/Widget.Harmonic.MaterialSwitch.HackerNews</item>
 
         <item name="android:windowBackground">@color/hackerNewsBackground</item>
         <item name="android:colorBackground">@color/hackerNewsBackground</item>
         <item name="android:statusBarColor">@color/hackerNewsBackground</item>
+        <item name="android:textColorHighlight">@color/hackerNewsTextSelectionHighlight</item>
     </style>
 
     <style name="AppThemeWhite" parent="@style/AppThemeLight">

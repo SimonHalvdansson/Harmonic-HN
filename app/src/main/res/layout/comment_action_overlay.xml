@@ -102,7 +102,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:alpha="0.45"
-                        android:background="?attr/colorPrimary" />
+                        android:background="?attr/commentDividerColor" />
 
                     <LinearLayout
                         android:id="@+id/comment_action_actions"

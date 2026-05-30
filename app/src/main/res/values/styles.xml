@@ -34,6 +34,10 @@
         <item name="widgetLayout">@layout/view_preference_switch</item>
     </style>
 
+    <style name="Widget.Harmonic.MaterialSwitch.HackerNews" parent="@style/Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="thumbTint">@color/hacker_news_switch_thumb_tint</item>
+    </style>
+
     <style name="Widget.App.StoriesSearchBar" parent="@style/Widget.Material3Expressive.SearchBar.AppBarWithSearch">
         <item name="backgroundTint">?attr/colorSurfaceContainerHighest</item>
         <item name="adaptiveMaxWidthEnabled">false</item>

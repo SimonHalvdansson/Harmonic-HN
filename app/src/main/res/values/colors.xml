@@ -46,6 +46,8 @@
     <color name="hackerNewsAccent">#FF6600</color>
     <color name="hackerNewsAccentDark">#B34700</color>
     <color name="hackerNewsAccentContainer">#FFD5B8</color>
+    <color name="hackerNewsOverlayButton">#BF5724</color>
+    <color name="hackerNewsTextSelectionHighlight">#66FF6600</color>
     <color name="hackerNewsSurfaceContainer">#EEEBD9</color>
     <color name="hackerNewsStoryColorNormal">#222222</color>
     <color name="hackerNewsStoryColorDisabled">#828282</color>

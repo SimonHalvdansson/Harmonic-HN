@@ -970,7 +970,7 @@
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="16dp"
-            android:backgroundTint="?attr/colorSecondary"
+            android:backgroundTint="?attr/overlayButtonColor"
             android:elevation="4dp"
             android:fontFamily="@font/product_sans"
             android:text="Tap to refresh"
