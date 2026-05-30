@@ -16,7 +16,7 @@
         <com.simon.harmonichackernews.settings.CommentTextSizePreference
             app:defaultValue="15"
             app:key="pref_comment_text_size"
-            app:title="Comments text size" />
+            app:title="Text size" />
 
         <Preference
             app:singleLineTitle="false"

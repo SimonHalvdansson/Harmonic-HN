@@ -74,7 +74,10 @@ public class CommentTextSizePreference extends Preference {
 
     private void updateValueText(TextView value, int textSize) {
         if (value != null) {
-            value.setText(textSize + " sp");
+            String suffix = textSize == SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE
+                    ? " sp (default)"
+                    : " sp";
+            value.setText(textSize + suffix);
         }
     }
 }
