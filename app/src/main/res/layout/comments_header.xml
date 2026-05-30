@@ -943,23 +943,44 @@
         android:layout_width="60dp"
         android:layout_height="60dp" />
 
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/comments_header_refresh"
-        android:layout_width="wrap_content"
-        android:layout_height="56dp"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="8dp"
-        android:backgroundTint="?attr/colorSecondary"
-        android:fontFamily="@font/product_sans"
-        android:textColor="?attr/colorOnSecondary"
-        android:text="Tap to refresh"
-        android:textAllCaps="false"
-        android:textStyle="bold"
-        android:visibility="gone"
-        app:icon="@drawable/ic_action_refresh"
-        app:iconTint="?attr/colorOnSecondary"
-        android:elevation="4dp" />
+    <LinearLayout
+        android:id="@+id/comments_header_refresh_prompt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/comments_header_last_refreshed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/product_sans"
+            android:gravity="center"
+            android:paddingTop="4dp"
+            android:textColor="?attr/textColorDisabled"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/comments_header_refresh"
+            android:layout_width="wrap_content"
+            android:layout_height="56dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="8dp"
+            android:backgroundTint="?attr/colorSecondary"
+            android:elevation="4dp"
+            android:fontFamily="@font/product_sans"
+            android:text="Tap to refresh"
+            android:textAllCaps="false"
+            android:textColor="?attr/colorOnSecondary"
+            android:textStyle="bold"
+            app:icon="@drawable/ic_action_refresh"
+            app:iconTint="?attr/colorOnSecondary" />
+
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/comments_header_loading_failed"

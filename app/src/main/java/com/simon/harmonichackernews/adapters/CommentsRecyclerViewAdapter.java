@@ -92,6 +92,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public String theme;
     public String font;
     public boolean showUpdate = false;
+    public long lastRefreshed = 0;
     public int spacerHeight = 0;
     private int navbarHeight = 0;
     private int highlightedCommentId = -1;
@@ -659,6 +660,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout loadingFailed;
         public final TextView loadingFailedText;
         public final TextView serverErrorText;
+        public final LinearLayout refreshPrompt;
+        public final TextView lastRefreshedText;
         public final ExtendedFloatingActionButton refreshButton;
         public final ImageButton userButton;
         public final ImageButton commentButton;
@@ -771,6 +774,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             loadingFailed = view.findViewById(R.id.comments_header_loading_failed);
             loadingFailedText = view.findViewById(R.id.comments_header_loading_failed_text);
             serverErrorText = view.findViewById(R.id.comments_header_server_error);
+            refreshPrompt = view.findViewById(R.id.comments_header_refresh_prompt);
+            lastRefreshedText = view.findViewById(R.id.comments_header_last_refreshed);
             refreshButton = view.findViewById(R.id.comments_header_refresh);
             favicon = view.findViewById(R.id.comments_header_favicon);
             linkInfoContainer = view.findViewById(R.id.comments_header_link_info_container);
@@ -866,7 +871,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             refreshButton.setOnClickListener((v) -> {
                 showUpdate = false;
-                refreshButton.hide();
+                setRefreshButtonVisible(false);
                 retryListener.onRetry();
             });
 
@@ -992,12 +997,38 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         private void setRefreshButtonVisible(boolean visible) {
+            if (visible && lastRefreshed > 0) {
+                lastRefreshedText.setVisibility(VISIBLE);
+                lastRefreshedText.setText("Last refreshed: "
+                        + android.text.format.DateFormat.getTimeFormat(lastRefreshedText.getContext())
+                        .format(new java.util.Date(lastRefreshed)));
+            } else if (visible) {
+                lastRefreshedText.setVisibility(GONE);
+            }
+
             if (visible) {
-                if (refreshButton.getVisibility() != VISIBLE) {
+                refreshPrompt.animate().cancel();
+                refreshPrompt.setAlpha(1f);
+                refreshPrompt.setScaleX(1f);
+                refreshPrompt.setScaleY(1f);
+                if (refreshPrompt.getVisibility() != VISIBLE) {
+                    refreshPrompt.setVisibility(VISIBLE);
                     refreshButton.show();
                 }
-            } else if (refreshButton.getVisibility() == VISIBLE) {
-                refreshButton.hide();
+            } else if (refreshPrompt.getVisibility() == VISIBLE) {
+                refreshPrompt.animate()
+                        .alpha(0f)
+                        .scaleX(0.8f)
+                        .scaleY(0.8f)
+                        .setDuration(200)
+                        .withEndAction(() -> {
+                            refreshPrompt.setVisibility(GONE);
+                            lastRefreshedText.setVisibility(GONE);
+                            refreshPrompt.setAlpha(1f);
+                            refreshPrompt.setScaleX(1f);
+                            refreshPrompt.setScaleY(1f);
+                        })
+                        .start();
             }
         }
 

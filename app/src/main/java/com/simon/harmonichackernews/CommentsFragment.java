@@ -724,6 +724,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 SettingsUtils.shouldSwapCommentLongPressTap(getContext()),
                 SettingsUtils.shouldUseCardCommentDisplayStyle(getContext()),
                 this);
+        adapter.lastRefreshed = lastLoaded;
         adapter.setCommentsByOpFilterActive(commentsByOpFilterActive);
         adapter.loadUserTags(requireContext());
 
@@ -1081,6 +1082,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         boolean shouldShowUpdate = SettingsUtils.shouldAlwaysShowTapToRefresh(getContext())
                 || (lastLoaded != 0 && (System.currentTimeMillis() - lastLoaded) > 1000 * 60 * 60 && !Utils.timeInSecondsMoreThanTwoHoursAgo(story.time));
         if (adapter != null) {
+            adapter.lastRefreshed = lastLoaded;
             if (adapter.showUpdate != shouldShowUpdate) {
                 adapter.showUpdate = shouldShowUpdate;
                 if (shouldShowUpdate) {
@@ -1405,6 +1407,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         lastLoaded = System.currentTimeMillis();
+        if (adapter != null) {
+            adapter.lastRefreshed = lastLoaded;
+            if (adapter.showUpdate) {
+                adapter.showUpdate = false;
+                adapter.notifyItemChanged(0);
+            }
+        }
 
         // Initialize fallback manager
         fallbackManager = new AlgoliaFallbackManager(context, queue, requestTag, filteredUsers, new AlgoliaFallbackManager.FallbackListener() {
