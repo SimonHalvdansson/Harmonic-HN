@@ -134,6 +134,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_SHOW_WEBSITE = "com.simon.harmonichackernews.EXTRA_SHOW_WEBSITE";
     private final static String STATE_COMMENT_ACTION_COMMENT_ID = "com.simon.harmonichackernews.STATE_COMMENT_ACTION_COMMENT_ID";
     private final static String STATE_ADBLOCK_DISABLED_FOR_SESSION = "com.simon.harmonichackernews.STATE_ADBLOCK_DISABLED_FOR_SESSION";
+    private final static String STATE_COMMENT_SORTING = "com.simon.harmonichackernews.STATE_COMMENT_SORTING";
     private final static Pattern POLL_TITLE_PATTERN = Pattern.compile("\\bpoll\\b", Pattern.CASE_INSENSITIVE);
 
     private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
@@ -161,6 +162,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static int COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_Y_DP = 18;
     private final static float COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCALE = 0.9f;
     private final static float COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCRIM_ALPHA = 0.45f;
+    private final static int MENU_COMMENT_SORT_GROUP_ID = 100;
+    private final static int MENU_COMMENT_SORT_ITEM_ID_BASE = 200;
 
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
@@ -218,6 +221,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int pendingCommentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
     private boolean commentActionOverlayDismissing = false;
     private boolean commentActionPredictiveBackActive = false;
+    private String currentCommentSorting;
 
     // Clean fallback management
     private AlgoliaFallbackManager fallbackManager;
@@ -335,6 +339,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (savedInstanceState != null) {
             pendingCommentActionCommentId = savedInstanceState.getInt(STATE_COMMENT_ACTION_COMMENT_ID, NO_COMMENT_ACTION_COMMENT_ID);
             adBlockDisabledForSession = savedInstanceState.getBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, false);
+            currentCommentSorting = savedInstanceState.getString(STATE_COMMENT_SORTING);
+        }
+
+        if (TextUtils.isEmpty(currentCommentSorting)) {
+            currentCommentSorting = SettingsUtils.getPreferredCommentSorting(getContext());
         }
 
         if (getActivity() instanceof BottomSheetFragmentCallback) {
@@ -1148,6 +1157,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (adBlockDisabledForSession) {
             outState.putBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, true);
         }
+        outState.putString(STATE_COMMENT_SORTING, getCurrentCommentSorting());
     }
 
     private void saveScreenHeight() {
@@ -1484,13 +1494,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
                 // Add all comments at once in proper tree order
                 allComments.addAll(loadedComments);
-                if (commentsByOpFilterActive) {
-                    applyDisplayedComments(getDisplayedCommentsForCurrentFilter(allComments));
-                } else {
-                    comments.addAll(loadedComments);
-                    adapter.invalidateCommentLookup();
-                    adapter.notifyItemRangeInserted(1, loadedComments.size());
-                }
+                updateDefaultCommentSortOrder(allComments);
+                CommentSorter.sort(allComments, getCurrentCommentSorting());
+                applyDisplayedComments(getDisplayedCommentsForCurrentFilter(allComments));
                 adapter.commentsLoaded = true;
                 updateNavigationVisibility();
                 adapter.notifyItemChanged(0);
@@ -1712,7 +1718,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         }
 
-        CommentSorter.sort(getContext(), nextComments);
+        updateDefaultCommentSortOrder(nextComments);
+        CommentSorter.sort(nextComments, getCurrentCommentSorting());
 
         if (SettingsUtils.shouldCollapseTopLevel(getContext())) {
             for (Comment comment : nextComments) {
@@ -1732,6 +1739,31 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return comments;
         }
         return allComments;
+    }
+
+    private String getCurrentCommentSorting() {
+        if (TextUtils.isEmpty(currentCommentSorting)) {
+            currentCommentSorting = SettingsUtils.getPreferredCommentSorting(getContext());
+        }
+        return currentCommentSorting;
+    }
+
+    private void updateDefaultCommentSortOrder(List<Comment> commentsWithHeader) {
+        for (int i = 1; i < commentsWithHeader.size(); i++) {
+            commentsWithHeader.get(i).sortOrder = i;
+        }
+    }
+
+    private void changeCommentSorting(String sortType) {
+        if (!isCommentsViewActive()) {
+            return;
+        }
+
+        List<Comment> oldComments = copyCommentsForDiff(comments);
+        currentCommentSorting = sortType;
+        List<Comment> sourceComments = getAllCommentsSource();
+        CommentSorter.sort(sourceComments, sortType);
+        applyDisplayedComments(getDisplayedCommentsForCurrentFilter(sourceComments), oldComments);
     }
 
     private void showCommentsByOp() {
@@ -2018,6 +2050,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                             }
                         }
                     });
+                } else if (id == R.id.menu_change_comment_sorting) {
+                    view.post(() -> showCommentSortingMenu(view));
                 } else if (id == R.id.menu_comments_by_op) {
                     showCommentsByOp();
                 } else if (id == R.id.menu_comments_browser) {
@@ -2045,6 +2079,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 item.setVisible(false);
             }
 
+            if (item.getItemId() == R.id.menu_change_comment_sorting && getAllCommentsSource().size() < 3) {
+                item.setVisible(false);
+            }
+
             if (item.getItemId() == R.id.menu_comments_by_op && !hasCommentsByOp()) {
                 item.setVisible(false);
             }
@@ -2057,6 +2095,38 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 item.setVisible(false);
             }
         }
+
+        popup.show();
+    }
+
+    private void showCommentSortingMenu(View anchor) {
+        if (!isCommentsViewActive()) {
+            return;
+        }
+
+        PopupMenu popup = new PopupMenu(requireActivity(), anchor);
+        String[] sortingOptions = getResources().getStringArray(R.array.comment_sorting);
+        String currentSorting = getCurrentCommentSorting();
+
+        for (int i = 0; i < sortingOptions.length; i++) {
+            MenuItem item = popup.getMenu().add(MENU_COMMENT_SORT_GROUP_ID,
+                    MENU_COMMENT_SORT_ITEM_ID_BASE + i,
+                    i,
+                    sortingOptions[i]);
+            item.setCheckable(true);
+            item.setChecked(TextUtils.equals(sortingOptions[i], currentSorting));
+        }
+        popup.getMenu().setGroupCheckable(MENU_COMMENT_SORT_GROUP_ID, true, true);
+
+        popup.setOnMenuItemClickListener(item -> {
+            int index = item.getItemId() - MENU_COMMENT_SORT_ITEM_ID_BASE;
+            if (index < 0 || index >= sortingOptions.length) {
+                return false;
+            }
+            item.setChecked(true);
+            changeCommentSorting(sortingOptions[index]);
+            return true;
+        });
 
         popup.show();
     }

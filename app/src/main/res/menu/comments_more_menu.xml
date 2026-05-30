@@ -20,6 +20,10 @@
     <item android:id="@+id/menu_search_comments"
         android:title="Search comments"/>
 
+    <item
+        android:id="@+id/menu_change_comment_sorting"
+        android:title="Change sorting" />
+
     <item android:id="@+id/menu_comments_by_op"
         android:title="Comments by OP"/>
 
