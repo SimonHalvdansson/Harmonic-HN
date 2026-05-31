@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.adapters;
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
@@ -106,6 +107,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public static final int TYPE_COMMENT_CARD = 3;
     private static final float COMMENT_HIGHLIGHT_ALPHA_DARK = 0.14f;
     private static final float COMMENT_HIGHLIGHT_ALPHA_LIGHT = 0.08f;
+    private static final int REFRESH_PROMPT_HIDE_DURATION_MS = 200;
 
     public final static int FLAG_ACTION_CLICK_USER = 0;
     public final static int FLAG_ACTION_CLICK_COMMENT = 1;
@@ -763,6 +765,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final MaterialButton opFilterResetButton;
         public final LinearLayout pollLayout;
         public final LinearLayout headerView;
+        private ValueAnimator refreshPromptHeightAnimator;
 
         public HeaderViewHolder(View view) {
             super(view);
@@ -1011,6 +1014,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         private void setRefreshButtonVisible(boolean visible) {
+            if (refreshPromptHeightAnimator != null) {
+                refreshPromptHeightAnimator.cancel();
+                refreshPromptHeightAnimator = null;
+            }
+
             if (visible && lastRefreshed > 0) {
                 lastRefreshedText.setVisibility(VISIBLE);
                 lastRefreshedText.setText("Last refreshed: "
@@ -1022,6 +1030,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             if (visible) {
                 refreshPrompt.animate().cancel();
+                ViewGroup.LayoutParams layoutParams = refreshPrompt.getLayoutParams();
+                if (layoutParams != null && layoutParams.height != ViewGroup.LayoutParams.WRAP_CONTENT) {
+                    layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                    refreshPrompt.setLayoutParams(layoutParams);
+                }
                 refreshPrompt.setAlpha(1f);
                 refreshPrompt.setScaleX(1f);
                 refreshPrompt.setScaleY(1f);
@@ -1030,17 +1043,44 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     refreshButton.show();
                 }
             } else if (refreshPrompt.getVisibility() == VISIBLE) {
+                int startHeight = refreshPrompt.getHeight();
+                ViewGroup.LayoutParams layoutParams = refreshPrompt.getLayoutParams();
+                if (layoutParams != null && startHeight > 0) {
+                    layoutParams.height = startHeight;
+                    refreshPrompt.setLayoutParams(layoutParams);
+
+                    refreshPromptHeightAnimator = ValueAnimator.ofInt(startHeight, 0);
+                    refreshPromptHeightAnimator.setDuration(REFRESH_PROMPT_HIDE_DURATION_MS);
+                    refreshPromptHeightAnimator.addUpdateListener(animation -> {
+                        ViewGroup.LayoutParams animatedParams = refreshPrompt.getLayoutParams();
+                        if (animatedParams != null) {
+                            animatedParams.height = (int) animation.getAnimatedValue();
+                            refreshPrompt.setLayoutParams(animatedParams);
+                        }
+                    });
+                    refreshPromptHeightAnimator.start();
+                }
+
                 refreshPrompt.animate()
                         .alpha(0f)
                         .scaleX(0.8f)
                         .scaleY(0.8f)
-                        .setDuration(200)
+                        .setDuration(REFRESH_PROMPT_HIDE_DURATION_MS)
                         .withEndAction(() -> {
+                            if (refreshPromptHeightAnimator != null) {
+                                refreshPromptHeightAnimator.cancel();
+                                refreshPromptHeightAnimator = null;
+                            }
                             refreshPrompt.setVisibility(GONE);
                             lastRefreshedText.setVisibility(GONE);
                             refreshPrompt.setAlpha(1f);
                             refreshPrompt.setScaleX(1f);
                             refreshPrompt.setScaleY(1f);
+                            ViewGroup.LayoutParams endParams = refreshPrompt.getLayoutParams();
+                            if (endParams != null) {
+                                endParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                                refreshPrompt.setLayoutParams(endParams);
+                            }
                         })
                         .start();
             }
