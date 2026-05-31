@@ -359,9 +359,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
     private void applyTextSize(float textSize, boolean animate) {
         float clampedTextSize = SettingsUtils.clampStoryTextSize(textSize);
-        if (animate) {
-            beginPreviewTransition();
-        }
+        syncPreviewContainerHeight(getCurrentPreviewImageMode());
         if (storyTitle != null) {
             storyTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, clampedTextSize);
         }
@@ -369,7 +367,6 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             storyMeta.setTextSize(TypedValue.COMPLEX_UNIT_SP,
                     SettingsUtils.getStoryMetaTextSize(clampedTextSize));
         }
-        syncPreviewContainerHeight(getCurrentPreviewImageMode());
         requestPreviewRemeasure();
     }
 
