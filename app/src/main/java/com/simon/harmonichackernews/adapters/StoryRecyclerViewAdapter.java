@@ -447,6 +447,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return;
         }
 
+        final boolean fadeInWhenLoaded = !story.previewImageLoaded;
         storyViewHolder.cancelPreviewImageRequest(previewImage);
         previewImage.setTag(imageUrl);
 
@@ -488,7 +489,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         story.previewImageLoaded = true;
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
                             super.onSuccess(result);
-                            fadeInPreviewImage(storyViewHolder, previewImage, getPreviewImageTargetAlpha(story));
+                            if (fadeInWhenLoaded) {
+                                fadeInPreviewImage(storyViewHolder, previewImage, getPreviewImageTargetAlpha(story));
+                            } else {
+                                previewImage.animate().cancel();
+                                previewImage.setAlpha(getPreviewImageTargetAlpha(story));
+                                setPreviewImageVisibility(storyViewHolder, previewImage, View.VISIBLE);
+                            }
                         }
                     }
                 })
