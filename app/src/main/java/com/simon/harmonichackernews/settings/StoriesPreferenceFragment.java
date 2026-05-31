@@ -13,6 +13,7 @@ import com.simon.harmonichackernews.widget.StoriesWidgetProvider;
 
 public class StoriesPreferenceFragment extends BaseSettingsFragment {
     private Preference grayOutClickedPreference;
+    private Preference tintCardUsingPreviewPreference;
 
     @Override
     protected String getToolbarTitle() {
@@ -26,12 +27,14 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
         boolean compact = SettingsUtils.shouldUseCompactView(getContext());
         StoryContentPreviewPreference previewPreference = findPreference("pref_story_content_preview");
         grayOutClickedPreference = findPreference(SettingsUtils.PREF_GRAY_OUT_CLICKED);
+        tintCardUsingPreviewPreference = findPreference(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW);
         ListPreference startingPagePreference = findPreference("pref_default_story_type");
 
         changePrefStatus(findPreference("pref_show_points"), !compact);
         changePrefStatus(findPreference("pref_show_comments_count"), !compact);
         changePrefStatus(findPreference("pref_thumbnails"), !compact);
         updateGrayOutClickedPreference();
+        updateTintCardUsingPreviewPreference();
 
         if (SettingsUtils.shouldShowThumbnails(getContext())) {
             changePrefStatus(findPreference("pref_favicon_provider"), !compact);
@@ -54,6 +57,7 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
             if (previewPreference != null) {
                 previewPreference.updatePreviewImageMode((String) newValue);
             }
+            updateTintCardUsingPreviewPreference(null, (String) newValue);
             return true;
         });
 
@@ -61,6 +65,7 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
             if (previewPreference != null) {
                 previewPreference.updateDisplayStyle((String) newValue);
             }
+            updateTintCardUsingPreviewPreference((String) newValue, null);
             return true;
         });
 
@@ -153,5 +158,21 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
 
     private void updateGrayOutClickedPreference(boolean enabled) {
         changePrefStatus(grayOutClickedPreference, enabled);
+    }
+
+    private void updateTintCardUsingPreviewPreference() {
+        updateTintCardUsingPreviewPreference(null, null);
+    }
+
+    private void updateTintCardUsingPreviewPreference(String displayStyleOverride, String previewImageModeOverride) {
+        String displayStyle = displayStyleOverride != null
+                ? displayStyleOverride
+                : SettingsUtils.getPreferredStoryDisplayStyle(getContext());
+        String previewImageMode = previewImageModeOverride != null
+                ? previewImageModeOverride
+                : SettingsUtils.getPreferredStoryPreviewImageMode(getContext());
+        boolean enabled = SettingsUtils.STORY_DISPLAY_STYLE_CARD.equals(displayStyle)
+                && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode);
+        changePrefStatus(tintCardUsingPreviewPreference, enabled);
     }
 }

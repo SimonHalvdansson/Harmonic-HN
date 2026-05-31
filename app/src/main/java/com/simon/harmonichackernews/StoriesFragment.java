@@ -1346,6 +1346,7 @@ public class StoriesFragment extends Fragment {
                 SettingsUtils.shouldUseCompactHeader(getContext()),
                 SettingsUtils.shouldUseLeftAlign(getContext()),
                 SettingsUtils.shouldUseCardStoryDisplayStyle(getContext()),
+                SettingsUtils.shouldTintCardUsingPreview(getContext()),
                 SettingsUtils.shouldGrayOutClicked(getContext()),
                 SettingsUtils.getPreferredHotness(getContext()),
                 SettingsUtils.getPreferredFaviconProvider(getContext()),
@@ -1641,6 +1642,12 @@ public class StoriesFragment extends Fragment {
             adapter.cardStyle = !adapter.cardStyle;
             setupAdapter();
             recyclerView.setAdapter(adapter);
+        }
+
+        boolean tintCardUsingPreview = SettingsUtils.shouldTintCardUsingPreview(getContext());
+        if (adapter.tintCardUsingPreview != tintCardUsingPreview) {
+            adapter.tintCardUsingPreview = tintCardUsingPreview;
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
         if (adapter.grayOutClicked != SettingsUtils.shouldGrayOutClicked(getContext())) {

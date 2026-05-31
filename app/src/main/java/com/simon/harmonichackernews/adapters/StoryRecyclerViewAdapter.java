@@ -1,8 +1,11 @@
 package com.simon.harmonichackernews.adapters;
 
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.text.SpannableStringBuilder;
@@ -24,11 +27,14 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import com.simon.harmonichackernews.utils.FontUtils;
+import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -68,6 +74,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final int TYPE_COMMENT_CARD = 8;
     private static final float CLICKED_PREVIEW_IMAGE_ALPHA = 0.6f;
     private static final long PREVIEW_IMAGE_FADE_IN_DURATION_MS = 160;
+    private static final long CARD_TINT_ANIMATION_DURATION_MS = 180;
 
     public boolean showPoints;
     public boolean showCommentsCount;
@@ -79,6 +86,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public boolean compactHeader;
     public boolean leftAlign;
     public boolean cardStyle;
+    public boolean tintCardUsingPreview;
     public String faviconProvider;
     public int hotness;
     public int type;
@@ -102,6 +110,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     boolean shouldUseCompactHeader,
                                     boolean shouldLeftAlign,
                                     boolean shouldUseCardStyle,
+                                    boolean shouldTintCardUsingPreview,
                                     boolean shouldGrayOutClicked,
                                     int preferredHotness,
                                     String faviconProv,
@@ -118,6 +127,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         compactHeader = shouldUseCompactHeader;
         leftAlign = shouldLeftAlign;
         cardStyle = shouldUseCardStyle;
+        tintCardUsingPreview = shouldTintCardUsingPreview;
         grayOutClicked = shouldGrayOutClicked;
         hotness = preferredHotness;
         faviconProvider = faviconProv;
@@ -162,6 +172,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyViewHolder.story = stories.get(position);
             boolean useClickedEffects = storyViewHolder.story.clicked && grayOutClicked && !disableClickedEffects;
             resetPreviewImages(storyViewHolder);
+            applyStoryCardBackground(storyViewHolder, storyViewHolder.story, false);
             setPreviewImageAlpha(storyViewHolder, useClickedEffects);
 
             if (showIndex) {
@@ -324,6 +335,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             StoryViewHolder storyViewHolder = (StoryViewHolder) holder;
             storyViewHolder.story = null;
             resetPreviewImages(storyViewHolder);
+            resetStoryCardBackground(storyViewHolder);
         }
         super.onViewRecycled(holder);
     }
@@ -415,6 +427,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         ImageRequest request = new ImageRequest.Builder(context)
                 .data(story.previewImageUrl)
                 .size(previewWidth, previewHeight)
+                .allowHardware(!shouldTintStoryCards())
                 .target(new Target() {
                     @Override
                     public void onStart(Drawable placeholder) {
@@ -430,6 +443,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     public void onSuccess(Drawable result) {
                         story.previewImageLoading = false;
                         story.previewImageLoaded = true;
+                        updatePreviewImageTintColor(context, story, result);
                     }
                 })
                 .build();
@@ -459,6 +473,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         ImageRequest request = new ImageRequest.Builder(previewImage.getContext())
                 .data(imageUrl)
                 .size(previewWidth, previewHeight)
+                .allowHardware(!shouldTintStoryCards())
                 .target(new ImageViewTarget(previewImage) {
                     @Override
                     public void onStart(Drawable placeholder) {
@@ -476,9 +491,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         story.previewImageLoading = false;
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
                             story.previewImageLoadFailed = true;
+                            story.previewImageTintColorLoaded = false;
                             previewImage.animate().cancel();
                             super.onError(null);
                             setPreviewImageVisibility(storyViewHolder, previewImage, View.GONE);
+                            applyStoryCardBackground(storyViewHolder, story, false);
                         }
                     }
 
@@ -486,8 +503,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     public void onSuccess(Drawable result) {
                         story.previewImageLoading = false;
                         story.previewImageLoaded = true;
+                        updatePreviewImageTintColor(previewImage.getContext(), story, result);
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
                             super.onSuccess(result);
+                            applyStoryCardBackground(
+                                    storyViewHolder,
+                                    story,
+                                    fadeInWhenLoaded && isVisibleOnScreen(storyViewHolder.itemView));
                             if (fadeInWhenLoaded) {
                                 fadeInPreviewImage(storyViewHolder, previewImage, getPreviewImageTargetAlpha(story));
                             } else {
@@ -551,6 +573,90 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         previewImage.setImageDrawable(null);
         previewImage.setVisibility(View.GONE);
         return changed;
+    }
+
+    private void applyStoryCardBackground(StoryViewHolder storyViewHolder, Story story, boolean animate) {
+        if (storyViewHolder.storyCard == null) {
+            return;
+        }
+
+        int targetColor = getDefaultStoryCardBackgroundColor(storyViewHolder.storyCard);
+        if (tintCardUsingPreview
+                && cardStyle
+                && story != null
+                && story.previewImageTintColorLoaded) {
+            targetColor = story.previewImageTintColor;
+        }
+
+        setStoryCardBackgroundColor(storyViewHolder, targetColor, animate);
+    }
+
+    private void resetStoryCardBackground(StoryViewHolder storyViewHolder) {
+        if (storyViewHolder.storyCard != null) {
+            setStoryCardBackgroundColor(
+                    storyViewHolder,
+                    getDefaultStoryCardBackgroundColor(storyViewHolder.storyCard),
+                    false);
+        }
+    }
+
+    private void setStoryCardBackgroundColor(StoryViewHolder storyViewHolder, int targetColor, boolean animate) {
+        MaterialCardView card = storyViewHolder.storyCard;
+        if (card == null) {
+            return;
+        }
+
+        storyViewHolder.cancelStoryCardTintAnimator();
+        int currentColor = storyViewHolder.currentStoryCardBackgroundColor != null
+                ? storyViewHolder.currentStoryCardBackgroundColor
+                : card.getCardBackgroundColor().getDefaultColor();
+
+        if (!animate || currentColor == targetColor) {
+            card.setCardBackgroundColor(targetColor);
+            storyViewHolder.currentStoryCardBackgroundColor = targetColor;
+            return;
+        }
+
+        ValueAnimator animator = ValueAnimator.ofObject(new ArgbEvaluator(), currentColor, targetColor);
+        storyViewHolder.storyCardTintAnimator = animator;
+        animator.setDuration(CARD_TINT_ANIMATION_DURATION_MS);
+        animator.addUpdateListener(animation -> {
+            int color = (int) animation.getAnimatedValue();
+            card.setCardBackgroundColor(color);
+            storyViewHolder.currentStoryCardBackgroundColor = color;
+        });
+        animator.start();
+    }
+
+    private static int getDefaultStoryCardBackgroundColor(View view) {
+        return MaterialColors.getColor(
+                view,
+                com.google.android.material.R.attr.colorSurfaceContainerHigh,
+                Color.TRANSPARENT);
+    }
+
+    private void updatePreviewImageTintColor(Context context, Story story, Drawable drawable) {
+        if (!shouldTintStoryCards() || context == null || story == null || drawable == null) {
+            return;
+        }
+
+        try {
+            story.previewImageTintColor = PreviewImageTintUtils.calculateCardTint(context, drawable);
+            story.previewImageTintColorLoaded = true;
+        } catch (RuntimeException e) {
+            story.previewImageTintColorLoaded = false;
+        }
+    }
+
+    private boolean shouldTintStoryCards() {
+        return tintCardUsingPreview && cardStyle;
+    }
+
+    private static boolean isVisibleOnScreen(View view) {
+        return view != null
+                && view.isShown()
+                && ViewCompat.isAttachedToWindow(view)
+                && view.getGlobalVisibleRect(new Rect());
     }
 
     private static void setPreviewImageAlpha(StoryViewHolder storyViewHolder, boolean useClickedEffects) {
@@ -682,12 +788,15 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final ImageView smallPreviewImage;
         public final ImageView largePreviewImage;
         public final TextView indexTextView;
+        public final MaterialCardView storyCard;
 
         private int touchX, touchY;
         private Disposable smallPreviewImageRequest;
         private Story smallPreviewImageRequestStory;
         private Disposable largePreviewImageRequest;
         private Story largePreviewImageRequestStory;
+        private ValueAnimator storyCardTintAnimator;
+        private Integer currentStoryCardBackgroundColor;
 
         public Story story;
 
@@ -708,6 +817,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             smallPreviewImage = view.findViewById(R.id.story_preview_image_small);
             largePreviewImage = view.findViewById(R.id.story_preview_image_large);
             indexTextView = view.findViewById(R.id.story_index);
+            storyCard = view.findViewById(R.id.story_card);
             ViewCompat.setAccessibilityHeading(titleView, true);
 
             linkLayoutView.setOnClickListener(v -> linkClickListener.onItemClick(getAbsoluteAdapterPosition()));
@@ -767,6 +877,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         void cancelPreviewImageRequests() {
             cancelPreviewImageRequest(smallPreviewImage);
             cancelPreviewImageRequest(largePreviewImage);
+        }
+
+        void cancelStoryCardTintAnimator() {
+            if (storyCardTintAnimator != null) {
+                storyCardTintAnimator.cancel();
+                storyCardTintAnimator = null;
+            }
         }
 
         private Disposable disposePreviewImageRequest(Disposable disposable, Story story) {

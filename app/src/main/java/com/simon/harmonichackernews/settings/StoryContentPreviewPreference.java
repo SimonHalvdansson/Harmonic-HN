@@ -1,9 +1,12 @@
 package com.simon.harmonichackernews.settings;
 
+import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.transition.AutoTransition;
 import android.transition.ChangeBounds;
 import android.transition.TransitionManager;
@@ -20,12 +23,16 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceViewHolder;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryMetaPreviewAnimator;
 
@@ -46,6 +53,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     private ImageView commentsIcon;
     private ImageView smallPreviewImage;
     private ImageView largePreviewImage;
+    private MaterialCardView storyCard;
     private TextView storyTitle;
     private TextView storyIndex;
     private TextView storyMeta;
@@ -55,6 +63,8 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     private boolean cardStyle;
     private int commentsIconResId = R.drawable.ic_action_comment;
     private ValueAnimator previewHeightAnimator;
+    private ValueAnimator cardTintAnimator;
+    private Integer currentCardBackgroundColor;
     private String previewImageModeOverride;
     private String displayStyleOverride;
     private final View.OnLayoutChangeListener previewContainerLayoutChangeListener =
@@ -176,6 +186,10 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         if (commentsIcon != null) {
             commentsIcon.animate().cancel();
         }
+        if (cardTintAnimator != null) {
+            cardTintAnimator.cancel();
+            cardTintAnimator = null;
+        }
         previewRoot = null;
         if (previewItemContainer != null) {
             previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
@@ -188,6 +202,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         commentsIcon = null;
         smallPreviewImage = null;
         largePreviewImage = null;
+        storyCard = null;
         storyTitle = null;
         storyIndex = null;
         storyMeta = null;
@@ -225,6 +240,11 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             return;
         }
 
+        if (SettingsUtils.PREF_TINT_CARD_USING_PREVIEW.equals(key)) {
+            updateStoryCardBackground(getCurrentPreviewImageMode(), true);
+            return;
+        }
+
         if ("pref_thumbnails".equals(key)
                 || "pref_show_points".equals(key)
                 || "pref_show_comments_count".equals(key)
@@ -255,6 +275,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         commentsIcon = itemView.findViewById(R.id.story_comments_icon);
         smallPreviewImage = itemView.findViewById(R.id.story_preview_image_small);
         largePreviewImage = itemView.findViewById(R.id.story_preview_image_large);
+        storyCard = itemView.findViewById(R.id.story_card);
         storyTitle = itemView.findViewById(R.id.story_title);
         storyIndex = itemView.findViewById(R.id.story_index);
         storyMeta = itemView.findViewById(R.id.story_meta);
@@ -464,6 +485,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
         updateStoryIndex(showIndex);
         updatePreviewImage(previewImageMode);
+        updateStoryCardBackground(previewImageMode, animate);
         updatePointsText(showPoints, animate && !compactVisibilityChanged);
         updateCommentCount(showCommentsCount, compact, animate && !compactVisibilityChanged);
         updateHotnessIcon(hotness, animate);
@@ -808,6 +830,69 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         if (largePreviewImage != null) {
             largePreviewImage.setVisibility(showLargePreview ? View.VISIBLE : View.GONE);
         }
+    }
+
+    private void updateStoryCardBackground(String previewImageMode, boolean animate) {
+        if (storyCard == null) {
+            return;
+        }
+
+        int targetColor = getDefaultCardBackgroundColor(storyCard);
+        if (shouldTintPreviewCard(previewImageMode)) {
+            Drawable previewDrawable = ContextCompat.getDrawable(getContext(), R.drawable.web_preview);
+            if (previewDrawable != null) {
+                try {
+                    targetColor = PreviewImageTintUtils.calculateCardTint(getContext(), previewDrawable);
+                } catch (RuntimeException ignored) {
+                    targetColor = getDefaultCardBackgroundColor(storyCard);
+                }
+            }
+        }
+
+        setStoryCardBackgroundColor(targetColor, animate);
+    }
+
+    private boolean shouldTintPreviewCard(String previewImageMode) {
+        return cardStyle
+                && SettingsUtils.getBooleanPref(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW, false, getContext())
+                && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode);
+    }
+
+    private void setStoryCardBackgroundColor(int targetColor, boolean animate) {
+        if (storyCard == null) {
+            return;
+        }
+
+        if (cardTintAnimator != null) {
+            cardTintAnimator.cancel();
+            cardTintAnimator = null;
+        }
+
+        int currentColor = currentCardBackgroundColor != null
+                ? currentCardBackgroundColor
+                : storyCard.getCardBackgroundColor().getDefaultColor();
+
+        if (!animate || currentColor == targetColor || !ViewCompat.isLaidOut(storyCard)) {
+            storyCard.setCardBackgroundColor(targetColor);
+            currentCardBackgroundColor = targetColor;
+            return;
+        }
+
+        cardTintAnimator = ValueAnimator.ofObject(new ArgbEvaluator(), currentColor, targetColor);
+        cardTintAnimator.setDuration(PREVIEW_ANIMATION_DURATION_MS);
+        cardTintAnimator.addUpdateListener(animation -> {
+            int color = (int) animation.getAnimatedValue();
+            storyCard.setCardBackgroundColor(color);
+            currentCardBackgroundColor = color;
+        });
+        cardTintAnimator.start();
+    }
+
+    private int getDefaultCardBackgroundColor(View view) {
+        return MaterialColors.getColor(
+                view,
+                com.google.android.material.R.attr.colorSurfaceContainerHigh,
+                Color.TRANSPARENT);
     }
 
     private void updateCommentCount(boolean showCommentsCount, boolean compact, boolean animate) {

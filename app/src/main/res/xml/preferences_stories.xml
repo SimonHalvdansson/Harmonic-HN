@@ -60,6 +60,13 @@
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
+            app:key="pref_tint_card_using_preview"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_colors"
+            app:title="Tint card using preview" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
             app:key="pref_left_align"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_hand"

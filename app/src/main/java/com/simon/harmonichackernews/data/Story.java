@@ -22,6 +22,8 @@ public class Story {
     public transient boolean previewImageLoaded;
     public transient boolean previewImageLoading;
     public transient boolean previewImageLoadFailed;
+    public transient int previewImageTintColor;
+    public transient boolean previewImageTintColorLoaded;
     public int[] kids;
     public int[] pollOptions;
     public ArrayList<PollOption> pollOptionArrayList;

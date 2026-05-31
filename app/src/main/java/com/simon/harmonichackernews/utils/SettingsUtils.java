@@ -27,6 +27,7 @@ public class SettingsUtils {
     public static final String PREF_MONOCHROME_COMMENT_DEPTH = "pref_monochrome_comment_depth";
     public static final String PREF_STORY_DISPLAY_STYLE = "pref_story_display_style";
     public static final String PREF_STORY_PREVIEW_IMAGE_MODE = "pref_story_preview_image_mode";
+    public static final String PREF_TINT_CARD_USING_PREVIEW = "pref_tint_card_using_preview";
     public static final String PREF_STORY_TEXT_SIZE = "pref_story_text_size";
     public static final String PREF_COMMENT_DISPLAY_STYLE = "pref_comment_display_style";
     public static final String PREF_COMMENT_TEXT_SIZE = "pref_comment_text_size";
@@ -162,6 +163,12 @@ public class SettingsUtils {
 
     public static boolean shouldShowIndex(Context ctx) {
         return getBooleanPref("pref_show_index", true, ctx);
+    }
+
+    public static boolean shouldTintCardUsingPreview(Context ctx) {
+        return getBooleanPref(PREF_TINT_CARD_USING_PREVIEW, false, ctx)
+                && shouldUseCardStoryDisplayStyle(ctx)
+                && !STORY_PREVIEW_IMAGE_OFF.equals(getPreferredStoryPreviewImageMode(ctx));
     }
 
     public static boolean shouldShowNavigationButtons(Context ctx) {
