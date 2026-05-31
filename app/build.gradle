@@ -33,10 +33,6 @@ android {
         }
     }
 
-    lint {
-        disable += ["NotificationPermission"]
-    }
-
     buildFeatures {
         buildConfig = true
         resValues = true
