@@ -4,6 +4,7 @@ package com.simon.harmonichackernews.utils;
 public class Changelog {
     static public String getHTML() {
         return  "<b>Version 3.0:</b><br>" +
+                "- This version is the to date most comprehensive quality of life cleanup release, consisting of nearly 200 commits. There are many small changes which are not mentioned in these notes.<br>" +
                 "- Added support for HN Favorites. You can convert all your bookmarks to favorites in Settings -> Data -> Bookmarks and also disable bookmarks from there.<br>" +
                 "- Added optional story preview images. Activate in Settings -> Stories<br>" +
                 "- Redesigned comment details dialog, opened by long pressing a comment<br>" +
@@ -12,6 +13,7 @@ public class Changelog {
                 "- Updated many parts of settings with previews<br>" +
                 "- Added support for HN CAPTCHAs<br>" +
                 "- Always enable foldable support<br>" +
+                "- Added setting to tint cards using preview images<br>" +
                 "- Added button to only show comment threads where the OP has commented<br>" +
                 "- Added new setting for graying out clicked posts<br>" +
                 "- Added new sharing option for link + HN comments (thanks daniel-egan!)<br>" +
