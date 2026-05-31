@@ -26,6 +26,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.TooltipCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -103,6 +104,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public static final int TYPE_COMMENT = 1;
     public static final int TYPE_COLLAPSED = 2;
     public static final int TYPE_COMMENT_CARD = 3;
+    private static final float COMMENT_HIGHLIGHT_ALPHA_DARK = 0.14f;
+    private static final float COMMENT_HIGHLIGHT_ALPHA_LIGHT = 0.08f;
 
     public final static int FLAG_ACTION_CLICK_USER = 0;
     public final static int FLAG_ACTION_CLICK_COMMENT = 1;
@@ -525,20 +528,31 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void applyCommentHighlight(@NonNull ItemViewHolder itemViewHolder, boolean highlighted) {
-        int highlightColor = MaterialColors.getColor(
-                itemViewHolder.itemView,
-                com.google.android.material.R.attr.colorPrimaryContainer);
-
         if (itemViewHolder.commentCard instanceof MaterialCardView) {
             MaterialCardView card = (MaterialCardView) itemViewHolder.commentCard;
-            int cardBackgroundColor = highlighted
-                    ? highlightColor
-                    : MaterialColors.getColor(card, com.google.android.material.R.attr.colorSurfaceContainerHigh, Color.TRANSPARENT);
+            int baseColor = MaterialColors.getColor(card, com.google.android.material.R.attr.colorSurfaceContainerHigh, Color.TRANSPARENT);
+            int cardBackgroundColor = highlighted ? getCommentHighlightColor(card, baseColor) : baseColor;
             card.setCardBackgroundColor(cardBackgroundColor);
             itemViewHolder.itemView.setBackgroundColor(Color.TRANSPARENT);
         } else {
+            int baseColor = MaterialColors.getColor(
+                    itemViewHolder.itemView,
+                    android.R.attr.colorBackground,
+                    Color.TRANSPARENT);
+            int highlightColor = getCommentHighlightColor(itemViewHolder.itemView, baseColor);
             itemViewHolder.itemView.setBackgroundColor(highlighted ? highlightColor : Color.TRANSPARENT);
         }
+    }
+
+    private int getCommentHighlightColor(@NonNull View view, int baseColor) {
+        int overlayColor = MaterialColors.getColor(
+                view,
+                com.google.android.material.R.attr.colorOnSurface,
+                Color.WHITE);
+        float alpha = ColorUtils.calculateLuminance(baseColor) < 0.5
+                ? COMMENT_HIGHLIGHT_ALPHA_DARK
+                : COMMENT_HIGHLIGHT_ALPHA_LIGHT;
+        return ColorUtils.blendARGB(baseColor, overlayColor, alpha);
     }
 
     @Override
