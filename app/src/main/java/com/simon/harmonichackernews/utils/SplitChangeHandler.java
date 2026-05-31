@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.utils;
 import android.app.Activity;
 
 import androidx.annotation.OptIn;
+import androidx.core.util.Consumer;
 import androidx.window.embedding.SplitAttributes.SplitType;
 import androidx.window.embedding.SplitController;
 import androidx.window.embedding.SplitInfo;
@@ -16,6 +17,7 @@ import java.util.List;
 public class SplitChangeHandler {
     private final SplitControllerCallbackAdapter splitCallbackAdapter;
     private final SwipeBackLayout layout;
+    private final Consumer<List<SplitInfo>> splitInfoConsumer = this::onSplitListUpdate;
     private boolean isWithinSplit = false;
 
     public SplitChangeHandler(Activity activity, SwipeBackLayout swipeBackLayout) {
@@ -28,17 +30,17 @@ public class SplitChangeHandler {
         splitCallbackAdapter.addSplitListener(
                 activity,
                 Runnable::run,
-                this::onSplitListUpdate
+                splitInfoConsumer
         );
     }
 
     private void onSplitListUpdate(List<SplitInfo> splitInfoList) {
+        isWithinSplit = false;
         for (SplitInfo split : splitInfoList) {
             if (!split.getSplitAttributes().getSplitType().equals(SplitType.SPLIT_TYPE_EXPAND)) {
                 isWithinSplit = true;
                 break;
             }
-            isWithinSplit = false;
         }
 
         layout.setMaskAlpha(isWithinSplit ? 0 : 125);
@@ -49,6 +51,6 @@ public class SplitChangeHandler {
     }
 
     public void teardown() {
-        splitCallbackAdapter.removeSplitListener(this::onSplitListUpdate);
+        splitCallbackAdapter.removeSplitListener(splitInfoConsumer);
     }
 }
