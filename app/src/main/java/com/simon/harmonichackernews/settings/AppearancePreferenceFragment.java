@@ -1,7 +1,10 @@
 package com.simon.harmonichackernews.settings;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.format.DateFormat;
+
+import androidx.preference.Preference;
 
 import com.google.android.material.timepicker.MaterialTimePicker;
 import com.google.android.material.timepicker.TimeFormat;
@@ -13,7 +16,9 @@ import com.simon.harmonichackernews.utils.Utils;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class AppearancePreferenceFragment extends BaseSettingsFragment {
+public class AppearancePreferenceFragment extends BaseSettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
+
+    private Preference fontPreference;
 
     @Override
     protected String getToolbarTitle() {
@@ -25,6 +30,8 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment {
         setPreferencesFromResource(R.xml.preferences_appearance, rootKey);
 
         updateTimedRangeSummary();
+        fontPreference = findPreference(SettingsUtils.PREF_FONT);
+        updateFontSummary();
 
         boolean specialNighttime = SettingsUtils.shouldUseSpecialNighttimeTheme(getContext());
         changePrefStatus(findPreference("pref_theme_timed_range"), specialNighttime);
@@ -53,6 +60,13 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment {
                     (String) newValue));
             return true;
         });
+
+        if (fontPreference != null) {
+            fontPreference.setOnPreferenceClickListener(preference -> {
+                FontSelectionDialogFragment.show(getParentFragmentManager());
+                return true;
+            });
+        }
 
         findPreference("pref_transparent_status_bar").setOnPreferenceChangeListener((preference, newValue) -> {
             restartSettingsActivity();
@@ -89,6 +103,26 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment {
         });
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        updateFontSummary();
+    }
+
+    @Override
+    public void onPause() {
+        getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        super.onPause();
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (SettingsUtils.PREF_FONT.equals(key)) {
+            updateFontSummary();
+        }
+    }
+
     private void updateTimedRangeSummary() {
         int[] nighttimeHours = Utils.getNighttimeHours(getContext());
 
@@ -119,6 +153,12 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment {
     private void restartSettingsActivityIfThemeChanged(String oldTheme, String newTheme) {
         if (!oldTheme.equals(newTheme)) {
             restartSettingsActivity();
+        }
+    }
+
+    private void updateFontSummary() {
+        if (fontPreference != null && getContext() != null) {
+            fontPreference.setSummary(SettingsUtils.getPreferredFontLabel(requireContext()));
         }
     }
 }

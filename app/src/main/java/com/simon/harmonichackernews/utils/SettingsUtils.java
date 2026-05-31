@@ -30,6 +30,7 @@ public class SettingsUtils {
     public static final String PREF_STORY_TEXT_SIZE = "pref_story_text_size";
     public static final String PREF_COMMENT_DISPLAY_STYLE = "pref_comment_display_style";
     public static final String PREF_COMMENT_TEXT_SIZE = "pref_comment_text_size";
+    public static final String PREF_FONT = "pref_font";
     public static final String PREF_BOOKMARKS_ENABLED = "pref_bookmarks_enabled";
     public static final String PREF_GRAY_OUT_CLICKED = "pref_gray_out_clicked";
     public static final String PREF_HIDE_CLICKED = "pref_hide_clicked";
@@ -182,7 +183,43 @@ public class SettingsUtils {
 
     public static String getPreferredFont(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getString("pref_font", "productsans");
+        return sanitizeFont(prefs.getString(PREF_FONT, "productsans"));
+    }
+
+    public static void setPreferredFont(Context ctx, String font) {
+        PreferenceManager.getDefaultSharedPreferences(ctx)
+                .edit()
+                .putString(PREF_FONT, sanitizeFont(font))
+                .apply();
+    }
+
+    public static String getPreferredFontLabel(Context ctx) {
+        return getFontLabel(ctx, getPreferredFont(ctx));
+    }
+
+    public static String getFontLabel(Context ctx, String font) {
+        String sanitizedFont = sanitizeFont(font);
+        String[] entries = ctx.getResources().getStringArray(R.array.font_entries);
+        String[] values = ctx.getResources().getStringArray(R.array.font_values);
+        for (int i = 0; i < Math.min(entries.length, values.length); i++) {
+            if (sanitizedFont.equals(values[i])) {
+                return entries[i];
+            }
+        }
+        return entries.length > 0 ? entries[0] : sanitizedFont;
+    }
+
+    public static String sanitizeFont(String font) {
+        if ("productsans".equals(font)
+                || "googlesansflexrounded".equals(font)
+                || "devicedefault".equals(font)
+                || "verdana".equals(font)
+                || "jetbrainsmono".equals(font)
+                || "georgia".equals(font)
+                || "robotoslab".equals(font)) {
+            return font;
+        }
+        return "productsans";
     }
 
     public static boolean shouldUseExternalBrowser(Context ctx) {

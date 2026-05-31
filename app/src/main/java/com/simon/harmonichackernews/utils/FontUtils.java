@@ -21,36 +21,55 @@ public class FontUtils {
     public static void init(Context ctx) {
         font = SettingsUtils.getPreferredFont(ctx);
 
-        switch (font) {
+        activeRegular = getRegularTypeface(ctx, font);
+        activeBold = getBoldTypeface(ctx, font);
+    }
+
+    public static Typeface getRegularTypeface(Context ctx, String font) {
+        switch (SettingsUtils.sanitizeFont(font)) {
             case "productsans":
-                activeRegular = ResourcesCompat.getFont(ctx, R.font.product_sans);
-                activeBold = ResourcesCompat.getFont(ctx, R.font.product_sans_bold);
-                break;
+                return ResourcesCompat.getFont(ctx, R.font.product_sans);
             case "googlesansflexrounded":
-                activeRegular = ResourcesCompat.getFont(ctx, R.font.google_sans_flex_rounded);
-                activeBold = ResourcesCompat.getFont(ctx, R.font.google_sans_flex_rounded_bold);
-                break;
+                return ResourcesCompat.getFont(ctx, R.font.google_sans_flex_rounded);
             case "devicedefault":
-                activeRegular = Typeface.create("sans-serif", Typeface.NORMAL);
-                activeBold = Typeface.create("sans-serif", Typeface.BOLD);
-                break;
+                return Typeface.create("sans-serif", Typeface.NORMAL);
             case "verdana":
-                activeRegular = ResourcesCompat.getFont(ctx, R.font.verdana);
-                activeBold = ResourcesCompat.getFont(ctx, R.font.verdana_bold);
-                break;
+                return ResourcesCompat.getFont(ctx, R.font.verdana);
             case "jetbrainsmono":
-                activeRegular = ResourcesCompat.getFont(ctx, R.font.jetbrains_mono);
-                activeBold = ResourcesCompat.getFont(ctx, R.font.jetbrains_mono_bold);
-                break;
+                return ResourcesCompat.getFont(ctx, R.font.jetbrains_mono);
             case "georgia":
-                activeRegular = ResourcesCompat.getFont(ctx, R.font.georgia);
-                activeBold = ResourcesCompat.getFont(ctx, R.font.georgia_bold);
-                break;
+                return ResourcesCompat.getFont(ctx, R.font.georgia);
             case "robotoslab":
-                activeRegular = ResourcesCompat.getFont(ctx, R.font.roboto_slab);
-                activeBold = ResourcesCompat.getFont(ctx, R.font.roboto_slab_bold);
-                break;
+                return ResourcesCompat.getFont(ctx, R.font.roboto_slab);
         }
+        return ResourcesCompat.getFont(ctx, R.font.product_sans);
+    }
+
+    public static Typeface getBoldTypeface(Context ctx, String font) {
+        switch (SettingsUtils.sanitizeFont(font)) {
+            case "productsans":
+                return ResourcesCompat.getFont(ctx, R.font.product_sans_bold);
+            case "googlesansflexrounded":
+                return ResourcesCompat.getFont(ctx, R.font.google_sans_flex_rounded_bold);
+            case "devicedefault":
+                return Typeface.create("sans-serif", Typeface.BOLD);
+            case "verdana":
+                return ResourcesCompat.getFont(ctx, R.font.verdana_bold);
+            case "jetbrainsmono":
+                return ResourcesCompat.getFont(ctx, R.font.jetbrains_mono_bold);
+            case "georgia":
+                return ResourcesCompat.getFont(ctx, R.font.georgia_bold);
+            case "robotoslab":
+                return ResourcesCompat.getFont(ctx, R.font.roboto_slab_bold);
+        }
+        return ResourcesCompat.getFont(ctx, R.font.product_sans_bold);
+    }
+
+    public static void setTypefaceForFont(TextView textView, String font, boolean bold, float size) {
+        textView.setTypeface(bold
+                ? getBoldTypeface(textView.getContext(), font)
+                : getRegularTypeface(textView.getContext(), font));
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, getAdjustedTextSize(font, size));
     }
 
     public static void setTypeface(TextView textView, boolean bold, float size) {
@@ -97,6 +116,13 @@ public class FontUtils {
 
     private static float adjustedGoogleSansFlexRoundedSize(float size) {
         return size + GOOGLE_SANS_FLEX_ROUNDED_SIZE_ADJUSTMENT;
+    }
+
+    public static float getAdjustedTextSize(String font, float size) {
+        if ("googlesansflexrounded".equals(SettingsUtils.sanitizeFont(font))) {
+            return adjustedGoogleSansFlexRoundedSize(size);
+        }
+        return size;
     }
 
 }

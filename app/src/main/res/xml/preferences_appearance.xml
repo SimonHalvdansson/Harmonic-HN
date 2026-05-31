@@ -44,15 +44,12 @@
         app:title="Visual"
         android:layout="@layout/preference_category">
 
-        <ListPreference
+        <Preference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_font"
             app:title="Title and comment font"
             app:key="pref_font"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/font_entries"
-            app:defaultValue="productsans"
-            app:entryValues="@array/font_values" />
+            app:summary="Product sans (default)" />
 
         <SwitchPreferenceCompat
             app:isPreferenceVisible="@bool/before_android_15"
