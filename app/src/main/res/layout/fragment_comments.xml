@@ -116,7 +116,7 @@
                 android:id="@+id/comments_scroll_navigation"
                 android:elevation="8dp"
                 android:layout_marginBottom="16dp"
-                android:background="@drawable/scrolling_helper_background"
+                android:background="@drawable/scrolling_navigation_background"
                 android:layout_gravity="bottom|center_horizontal"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content">

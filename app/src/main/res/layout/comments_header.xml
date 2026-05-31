@@ -978,7 +978,9 @@
             android:textColor="#fff"
             android:textStyle="bold"
             app:icon="@drawable/ic_action_refresh"
-            app:iconTint="#fff" />
+            app:iconTint="#fff"
+            app:strokeColor="?attr/overlayButtonOutlineColor"
+            app:strokeWidth="1dp" />
 
     </LinearLayout>
 

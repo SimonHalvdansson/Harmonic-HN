@@ -48,6 +48,8 @@
         android:textColor="#fff"
         app:icon="@drawable/ic_action_refresh"
         app:iconTint="#fff"
+        app:strokeColor="?attr/overlayButtonOutlineColor"
+        app:strokeWidth="1dp"
         android:backgroundTint="?attr/overlayButtonColor"
         android:layout_width="wrap_content"
         android:layout_height="56dp"    />
