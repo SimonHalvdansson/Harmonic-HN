@@ -167,7 +167,7 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
 
         findPreference("pref_open_hn_links_in_harmonic").setOnPreferenceClickListener(preference -> {
             new MaterialAlertDialogBuilder(requireContext())
-                    .setMessage("Since Harmonic does not own the domain news.ycombinator.com intercepting links needs to be enabled by the user manually.")
+                    .setMessage("Since Harmonic does not own the domain news.ycombinator.com, intercepting links needs to be enabled by the user manually.\n\nGo to \"Open by default\" → \"Add link\" in the linked app settings page.")
                     .setNeutralButton("Go to settings", (dialog, which) -> {
                         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                         intent.setData(Uri.fromParts("package", requireContext().getPackageName(), null));
