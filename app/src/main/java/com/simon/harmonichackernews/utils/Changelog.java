@@ -15,6 +15,10 @@ public class Changelog {
                 "- Added button to only show comment threads where the OP has commented<br>" +
                 "- Added new setting for graying out clicked posts<br>" +
                 "- Added new sharing option for link + HN comments (thanks daniel-egan!)<br>" +
+                "- Added new archive options<br>" +
+                "- Added text size setting for titles<br>" +
+                "- Added a setting for number of stories to cache<br>" +
+                "- Added setting to automatically redirect certain domains to archive version<br>" +
                 "- Fixed some crashes and reduced memory usage when opening large threads<br>" +
                 "- Added additional guarding against memory leaks<br>" +
                 "<br>" +

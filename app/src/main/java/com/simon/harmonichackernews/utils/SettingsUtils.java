@@ -7,13 +7,18 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.net.Uri;
 import android.os.BatteryManager;
+import android.text.TextUtils;
 
 import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.R;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public class SettingsUtils {
@@ -31,6 +36,7 @@ public class SettingsUtils {
     public static final String PREF_ALWAYS_SHOW_TAP_TO_REFRESH = "pref_always_show_tap_to_refresh";
     public static final String PREF_PRELOAD_WEBVIEW = "pref_preload_webview";
     public static final String PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY = "pref_preload_webview_minimum_battery";
+    public static final String PREF_ARCHIVE_REDIRECT_DOMAINS = "pref_archive_redirect_domains";
     public static final String PREF_STORIES_TO_CACHE = "pref_stories_to_cache";
     public static final String PRELOAD_WEBVIEW_ALWAYS = "always";
     public static final String PRELOAD_WEBVIEW_ONLY_WIFI = "onlywifi";
@@ -422,6 +428,117 @@ public class SettingsUtils {
 
     public static boolean shouldRedirectNitter(Context ctx) {
         return getBooleanPref("pref_redirect_nitter", false, ctx);
+    }
+
+    public static ArrayList<String> getArchiveRedirectDomains(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return parseArchiveRedirectDomains(prefs.getString(PREF_ARCHIVE_REDIRECT_DOMAINS, ""));
+    }
+
+    public static ArrayList<String> parseArchiveRedirectDomains(String value) {
+        ArrayList<String> domains = new ArrayList<>();
+        if (TextUtils.isEmpty(value)) {
+            return domains;
+        }
+
+        String[] parts = value.split(",");
+        for (String part : parts) {
+            String domain = normalizeArchiveRedirectDomain(part);
+            if (!TextUtils.isEmpty(domain) && !containsDomain(domains, domain)) {
+                domains.add(domain);
+            }
+        }
+        return domains;
+    }
+
+    public static String normalizeArchiveRedirectDomain(String value) {
+        if (TextUtils.isEmpty(value)) {
+            return "";
+        }
+
+        String normalized = value.trim().toLowerCase(Locale.US);
+        if (normalized.startsWith("//")) {
+            normalized = "https:" + normalized;
+        } else if (!normalized.contains("://") && normalized.contains("/")) {
+            normalized = "https://" + normalized;
+        }
+
+        Uri uri = Uri.parse(normalized);
+        String host = uri.getHost();
+        if (!TextUtils.isEmpty(host)) {
+            normalized = host;
+        } else {
+            int pathStart = normalized.indexOf('/');
+            if (pathStart >= 0) {
+                normalized = normalized.substring(0, pathStart);
+            }
+        }
+
+        int portStart = normalized.indexOf(':');
+        if (portStart >= 0) {
+            normalized = normalized.substring(0, portStart);
+        }
+        while (normalized.startsWith(".")) {
+            normalized = normalized.substring(1);
+        }
+        while (normalized.endsWith(".")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        if (normalized.startsWith("www.")) {
+            normalized = normalized.substring(4);
+        }
+
+        if (!normalized.contains(".") || !normalized.matches("[a-z0-9.-]+")) {
+            return "";
+        }
+        return normalized;
+    }
+
+    public static String getArchiveRedirectUrl(Context ctx, String url) {
+        if (TextUtils.isEmpty(url)) {
+            return null;
+        }
+
+        Uri uri = Uri.parse(url);
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+            return null;
+        }
+
+        String host = uri.getHost();
+        if (TextUtils.isEmpty(host) || isArchiveHost(host)) {
+            return null;
+        }
+
+        String domain = normalizeArchiveRedirectDomain(host);
+        if (TextUtils.isEmpty(domain)) {
+            return null;
+        }
+
+        for (String archiveRedirectDomain : getArchiveRedirectDomains(ctx)) {
+            if (domain.equals(archiveRedirectDomain) || domain.endsWith("." + archiveRedirectDomain)) {
+                return "https://archive.is/newest/" + Uri.encode(url);
+            }
+        }
+        return null;
+    }
+
+    private static boolean isArchiveHost(String host) {
+        String domain = normalizeArchiveRedirectDomain(host);
+        return "archive.is".equals(domain)
+                || "archive.today".equals(domain)
+                || "archive.ph".equals(domain)
+                || "archive.vn".equals(domain)
+                || "archive.md".equals(domain);
+    }
+
+    private static boolean containsDomain(List<String> domains, String domain) {
+        for (String existing : domains) {
+            if (existing.equalsIgnoreCase(domain)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static boolean shouldUseLinkPreviewX(Context ctx) {

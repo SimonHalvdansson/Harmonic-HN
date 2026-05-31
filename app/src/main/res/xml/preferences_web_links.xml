@@ -65,6 +65,12 @@
             app:icon="@drawable/ic_action_redirect"
             app:title="Redirect Twitter/X to Nitter" />
 
+        <Preference
+            app:singleLineTitle="false"
+            app:key="pref_archive_redirect_domains"
+            app:icon="@drawable/ic_action_redirect"
+            app:title="Redirect to archive version" />
+
     </PreferenceCategory>
 
     <PreferenceCategory

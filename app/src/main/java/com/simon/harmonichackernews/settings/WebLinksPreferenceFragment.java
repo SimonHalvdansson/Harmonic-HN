@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.settings;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 
+import androidx.preference.Preference;
 import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.R;
@@ -11,6 +12,7 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 public class WebLinksPreferenceFragment extends BaseSettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private PreloadWebViewPreference preloadWebViewPreference;
+    private Preference archiveRedirectPreference;
 
     @Override
     protected String getToolbarTitle() {
@@ -27,6 +29,13 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
         if (preloadWebViewPreference != null) {
             preloadWebViewPreference.setOnPreferenceClickListener(preference -> {
                 PreloadWebViewDialogFragment.show(getParentFragmentManager());
+                return true;
+            });
+        }
+        archiveRedirectPreference = findPreference(SettingsUtils.PREF_ARCHIVE_REDIRECT_DOMAINS);
+        if (archiveRedirectPreference != null) {
+            archiveRedirectPreference.setOnPreferenceClickListener(preference -> {
+                ArchiveRedirectDomainsDialogFragment.show(getParentFragmentManager());
                 return true;
             });
         }
@@ -62,6 +71,7 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
         PreferenceManager.getDefaultSharedPreferences(requireContext())
                 .registerOnSharedPreferenceChangeListener(this);
         updatePreloadWebViewSummary();
+        updateArchiveRedirectSummary();
     }
 
     @Override
@@ -76,12 +86,29 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
         if (SettingsUtils.PREF_PRELOAD_WEBVIEW.equals(key)
                 || SettingsUtils.PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY.equals(key)) {
             updatePreloadWebViewSummary();
+        } else if (SettingsUtils.PREF_ARCHIVE_REDIRECT_DOMAINS.equals(key)) {
+            updateArchiveRedirectSummary();
         }
     }
 
     private void updatePreloadWebViewSummary() {
         if (preloadWebViewPreference != null) {
             preloadWebViewPreference.updateSummary();
+        }
+    }
+
+    private void updateArchiveRedirectSummary() {
+        if (archiveRedirectPreference == null || getContext() == null) {
+            return;
+        }
+
+        int domainCount = SettingsUtils.getArchiveRedirectDomains(getContext()).size();
+        if (domainCount == 0) {
+            archiveRedirectPreference.setSummary("No domains");
+        } else if (domainCount == 1) {
+            archiveRedirectPreference.setSummary("1 domain");
+        } else {
+            archiveRedirectPreference.setSummary(domainCount + " domains");
         }
     }
 }

@@ -549,6 +549,11 @@ class CommentsWebViewController {
         if (webView == null || context == null || fragment.getView() == null) {
             return;
         }
+        String archiveRedirectUrl = SettingsUtils.getArchiveRedirectUrl(context, url);
+        if (archiveRedirectUrl != null) {
+            url = archiveRedirectUrl;
+        }
+
         if (!isErrorPageUrl(url)) {
             showingErrorPage = false;
             showingCachedArticlePage = false;
@@ -902,7 +907,8 @@ class CommentsWebViewController {
 
                     String fallbackUrl = intent.getStringExtra("browser_fallback_url");
                     if (fallbackUrl != null) {
-                        view.loadUrl(fallbackUrl);
+                        String archiveRedirectUrl = SettingsUtils.getArchiveRedirectUrl(context, fallbackUrl);
+                        view.loadUrl(archiveRedirectUrl != null ? archiveRedirectUrl : fallbackUrl);
                         return true;
                     } else {
                         if (intent.resolveActivity(context.getPackageManager()) != null) {
@@ -915,7 +921,20 @@ class CommentsWebViewController {
                 }
             }
 
+            String archiveRedirectUrl = SettingsUtils.getArchiveRedirectUrl(view.getContext(), url);
+            if (archiveRedirectUrl != null) {
+                view.loadUrl(archiveRedirectUrl);
+                return true;
+            }
+
             return false;
+        }
+
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+            return request != null
+                    && request.getUrl() != null
+                    && shouldOverrideUrlLoading(view, request.getUrl().toString());
         }
 
         @Override

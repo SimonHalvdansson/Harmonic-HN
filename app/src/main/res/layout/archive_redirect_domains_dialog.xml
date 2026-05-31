@@ -13,29 +13,40 @@
         android:paddingRight="24dp"
         android:paddingBottom="8dp">
 
+        <TextView
+            android:id="@+id/archive_redirect_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/product_sans"
+            android:paddingTop="4dp"
+            android:paddingBottom="14dp"
+            android:text="Choose domains where we should automatically redirect the webview to the archive.is version. Useful for domains where paywalls are persistent."
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="16sp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="4dp"
             android:paddingBottom="10dp">
 
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/filter_list_input_layout"
+                android:id="@+id/archive_redirect_input_layout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginRight="10dp"
-                android:layout_weight="1">
+                android:layout_weight="1"
+                android:hint="Domain">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/filter_list_input"
+                    android:id="@+id/archive_redirect_input"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/product_sans"
                     android:imeOptions="actionDone"
-                    android:inputType="text"
+                    android:inputType="textUri"
                     android:singleLine="true"
                     android:textColor="?attr/storyColorNormal"
                     android:textSize="16sp" />
@@ -43,11 +54,11 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/filter_list_add"
+                android:id="@+id/archive_redirect_add"
                 style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
                 android:layout_width="56dp"
                 android:layout_height="56dp"
-                android:contentDescription="Add filter"
+                android:contentDescription="Add domain"
                 app:icon="@drawable/ic_action_add"
                 app:iconGravity="textStart"
                 app:iconPadding="0dp" />
@@ -55,20 +66,48 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/filter_list_empty"
+            android:id="@+id/archive_redirect_empty"
             android:layout_width="match_parent"
             android:layout_height="72dp"
             android:fontFamily="@font/product_sans"
             android:gravity="center"
+            android:text="No archive redirect domains"
             android:textColor="?attr/storyColorDisabled"
             android:textSize="15sp" />
 
         <LinearLayout
-            android:id="@+id/filter_list_items"
+            android:id="@+id/archive_redirect_items"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:animateLayoutChanges="true"
             android:orientation="vertical" />
+
+        <LinearLayout
+            android:id="@+id/archive_redirect_suggestions_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="18dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/product_sans_bold"
+                android:text="Suggested domains"
+                android:textColor="?attr/storyColorNormal"
+                android:textSize="14sp" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/archive_redirect_suggestions"
+                style="@style/Widget.Material3.ChipGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:singleLine="false"
+                app:chipSpacingHorizontal="8dp"
+                app:chipSpacingVertical="2dp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>
