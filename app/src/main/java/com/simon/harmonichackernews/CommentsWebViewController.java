@@ -1026,7 +1026,7 @@ class CommentsWebViewController {
 
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-            ErrorPageType errorPageType = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? getCustomErrorPageType(error.getErrorCode()) : null;
+            ErrorPageType errorPageType = getCustomErrorPageType(error.getErrorCode());
             if (request.isForMainFrame() && errorPageType != null) {
                 showCustomErrorPage(view, request.getUrl() != null ? request.getUrl().toString() : null, errorPageType);
             } else {

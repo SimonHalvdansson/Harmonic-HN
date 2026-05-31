@@ -480,11 +480,7 @@ public class RepliesChecker {
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .setPersisted(true);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            builder.setPeriodic(CHECK_INTERVAL_MILLIS, CHECK_FLEX_MILLIS);
-        } else {
-            builder.setPeriodic(CHECK_INTERVAL_MILLIS);
-        }
+        builder.setPeriodic(CHECK_INTERVAL_MILLIS, CHECK_FLEX_MILLIS);
 
         scheduler.schedule(builder.build());
     }
@@ -554,12 +550,7 @@ public class RepliesChecker {
             return "Tap to view the reply.";
         }
 
-        String text;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            text = Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString();
-        } else {
-            text = Html.fromHtml(html).toString();
-        }
+        String text = Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString();
 
         text = text.replaceAll("\\s+", " ").trim();
         if (TextUtils.isEmpty(text)) {
