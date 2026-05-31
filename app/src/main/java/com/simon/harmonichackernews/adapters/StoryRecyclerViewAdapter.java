@@ -272,6 +272,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentLayoutView.setEnabled(!storyViewHolder.story.loadingFailed);
                 storyViewHolder.commentLayoutView.setClickable(!storyViewHolder.story.loadingFailed);
             } else {
+                reserveLargePreviewImageSpaceForLoadingStory(storyViewHolder, storyViewHolder.story);
                 storyViewHolder.commentsIcon.setImageResource(R.drawable.ic_action_comment);
                 storyViewHolder.titleShimmer.setVisibility(View.VISIBLE);
                 storyViewHolder.metaShimmer.setVisibility(compactView ? View.GONE : View.VISIBLE);
@@ -484,6 +485,16 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 : storyViewHolder.smallPreviewImage;
         if (previewImage != null) {
             previewImage.setVisibility(View.INVISIBLE);
+        }
+    }
+
+    private void reserveLargePreviewImageSpaceForLoadingStory(StoryViewHolder storyViewHolder, Story story) {
+        if (SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
+                && story != null
+                && !story.loadingFailed
+                && !story.previewImageLoadFailed
+                && storyViewHolder.largePreviewImage != null) {
+            storyViewHolder.largePreviewImage.setVisibility(View.INVISIBLE);
         }
     }
 
