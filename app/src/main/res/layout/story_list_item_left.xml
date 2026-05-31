@@ -71,13 +71,13 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:baselineAligned="true"
         android:orientation="horizontal">
 
         <TextView
             android:visibility="gone"
             android:layout_marginLeft="-7dp"
             android:layout_marginRight="-15dp"
-            android:paddingTop="2.2dp"
             android:id="@+id/story_index"
             android:textColor="?attr/storyColorNormal"
             android:layout_width="43dp"
@@ -86,7 +86,7 @@
             android:textSize="16dp"
             android:text="3." />
 
-        <LinearLayout
+        <com.simon.harmonichackernews.utils.StoryTitleBaselineLayout
             android:orientation="vertical"
             android:paddingLeft="4dp"
             android:layout_width="0dp"
@@ -165,7 +165,7 @@
                     android:textSize="13sp" />
 
             </LinearLayout>
-        </LinearLayout>
+        </com.simon.harmonichackernews.utils.StoryTitleBaselineLayout>
 
         <ImageView
             android:id="@+id/story_preview_image_small"
