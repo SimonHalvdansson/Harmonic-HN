@@ -658,10 +658,10 @@ public class StoriesFragment extends Fragment {
         Context ctx = getContext();
         if (ctx == null) return;
 
+        beginHeaderTransition(animateSearchTransition);
+
         updateLastUpdatedHeader(ctx);
         applyHeaderPadding(ctx);
-
-        beginHeaderTransition(animateSearchTransition);
 
         moreButton.setVisibility(searching ? View.GONE : View.VISIBLE);
         spinnerContainer.setVisibility(searching ? View.GONE : View.VISIBLE);
@@ -752,6 +752,16 @@ public class StoriesFragment extends Fragment {
         if (showLastUpdated) {
             lastUpdatedHeaderText.setText("Last updated: "
                     + android.text.format.DateFormat.getTimeFormat(ctx).format(new java.util.Date(lastLoaded)));
+        }
+    }
+
+    private void beginLastUpdatedHeaderTransitionIfNeeded(@Nullable Context ctx) {
+        if (lastUpdatedHeaderText == null) return;
+
+        boolean showLastUpdated = ctx != null && shouldShowLastUpdatedHeader();
+        boolean isLastUpdatedVisible = lastUpdatedHeaderText.getVisibility() == View.VISIBLE;
+        if (isLastUpdatedVisible != showLastUpdated) {
+            beginHeaderTransition(false);
         }
     }
 
@@ -3746,6 +3756,7 @@ public class StoriesFragment extends Fragment {
     private void hideUpdateButton() {
         updateButtonShowing = false;
         Context ctx = getContext();
+        beginLastUpdatedHeaderTransitionIfNeeded(ctx);
         updateLastUpdatedHeader(ctx);
         applyHeaderPadding(ctx);
 
@@ -3757,6 +3768,7 @@ public class StoriesFragment extends Fragment {
     private void showUpdateButton() {
         updateButtonShowing = true;
         Context ctx = getContext();
+        beginLastUpdatedHeaderTransitionIfNeeded(ctx);
         updateLastUpdatedHeader(ctx);
         applyHeaderPadding(ctx);
 
