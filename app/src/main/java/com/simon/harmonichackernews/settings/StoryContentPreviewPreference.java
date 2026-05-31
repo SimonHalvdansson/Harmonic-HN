@@ -10,11 +10,13 @@ import android.transition.TransitionManager;
 import android.transition.TransitionSet;
 import android.util.AttributeSet;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.animation.PathInterpolator;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -31,6 +33,9 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
     private static final long PREVIEW_ANIMATION_DURATION_MS = 180;
     private static final long PREVIEW_TEXT_FADE_DURATION_MS = 90;
+    private static final String PREVIEW_STORY_TITLE = "Algorithm breaks speed limit for solving linear equations";
+    private static final String PREVIEW_STORY_META_WITH_POINTS = "53 points \u2022 quantamagazine.org \u2022 2h";
+    private static final String PREVIEW_STORY_COMMENTS = "18";
 
     private ViewGroup previewRoot;
     private ViewGroup previewItemContainer;
@@ -52,6 +57,12 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     private ValueAnimator previewHeightAnimator;
     private String previewImageModeOverride;
     private String displayStyleOverride;
+    private final View.OnLayoutChangeListener previewContainerLayoutChangeListener =
+            (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                if (right - left != oldRight - oldLeft) {
+                    syncPreviewContainerHeight(getCurrentPreviewImageMode());
+                }
+            };
 
     public StoryContentPreviewPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -80,10 +91,18 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
                 ? (ViewGroup) itemView
                 : null;
         previewItemContainer = itemView.findViewById(R.id.story_content_preview_item_container);
+        if (previewItemContainer != null) {
+            previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
+            previewItemContainer.addOnLayoutChangeListener(previewContainerLayoutChangeListener);
+        }
         leftAligned = SettingsUtils.shouldUseLeftAlign(getContext());
         cardStyle = SettingsUtils.shouldUseCardStoryDisplayStyle(getContext());
         inflatePreviewItem(leftAligned);
         updatePreview(false);
+        syncPreviewContainerHeight(getCurrentPreviewImageMode());
+        if (previewItemContainer != null) {
+            previewItemContainer.post(() -> syncPreviewContainerHeight(getCurrentPreviewImageMode()));
+        }
         itemView.requestLayout();
     }
 
@@ -158,6 +177,9 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             commentsIcon.animate().cancel();
         }
         previewRoot = null;
+        if (previewItemContainer != null) {
+            previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
+        }
         previewItemContainer = null;
         metaContainer = null;
         storyLinkLayout = null;
@@ -224,7 +246,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         LayoutInflater inflater = LayoutInflater.from(getContext());
         int layout = getStoryPreviewLayout(leftAlign, cardStyle);
         View itemView = inflater.inflate(layout, previewItemContainer, false);
-        previewItemContainer.addView(itemView);
+        previewItemContainer.addView(itemView, createPreviewItemLayoutParams());
 
         storyLinkLayout = itemView.findViewById(R.id.story_link_layout);
         commentLayout = itemView.findViewById(R.id.story_comment_layout);
@@ -288,7 +310,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             largePreviewImage.setImageResource(R.drawable.web_preview);
         }
         if (storyTitle != null) {
-            storyTitle.setText("Algorithm breaks speed limit for solving linear equations");
+            storyTitle.setText(PREVIEW_STORY_TITLE);
         }
         if (storyIndex != null) {
             storyIndex.setText("3.");
@@ -296,10 +318,10 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             storyIndex.setVisibility(View.GONE);
         }
         if (storyMeta != null) {
-            storyMeta.setText("53 points \u2022 quantamagazine.org \u2022 2h");
+            storyMeta.setText(PREVIEW_STORY_META_WITH_POINTS);
         }
         if (comments != null) {
-            comments.setText("18");
+            comments.setText(PREVIEW_STORY_COMMENTS);
             comments.setVisibility(View.VISIBLE);
         }
         applyTextSize(SettingsUtils.getPreferredStoryTextSize(getContext()), false);
@@ -517,7 +539,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             return PreviewHeights.invalid();
         }
 
-        int targetContentHeight = measurePreviewItemHeight(containerWidth);
+        int targetContentHeight = measureMaxPreviewItemHeight(previewImageMode, containerWidth);
         int targetContainerHeight = targetContentHeight
                 + previewItemContainer.getPaddingTop()
                 + previewItemContainer.getPaddingBottom();
@@ -531,18 +553,74 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         return new PreviewHeights(targetContentHeight, targetContainerHeight, targetRootHeight);
     }
 
-    private int measurePreviewItemHeight(int containerWidth) {
-        View previewItem = previewItemContainer.getChildAt(0);
-        int previousMinimumHeight = previewItem.getMinimumHeight();
-        previewItem.setMinimumHeight(0);
+    private int measureMaxPreviewItemHeight(String previewImageMode, int containerWidth) {
+        LayoutInflater inflater = LayoutInflater.from(getContext());
+        boolean largePreview = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode);
+        int maxHeight = 0;
+        maxHeight = Math.max(maxHeight, measureMaxPreviewItemHeight(inflater, false, false, largePreview, containerWidth));
+        maxHeight = Math.max(maxHeight, measureMaxPreviewItemHeight(inflater, true, false, largePreview, containerWidth));
+        maxHeight = Math.max(maxHeight, measureMaxPreviewItemHeight(inflater, false, true, largePreview, containerWidth));
+        maxHeight = Math.max(maxHeight, measureMaxPreviewItemHeight(inflater, true, true, largePreview, containerWidth));
+        return maxHeight;
+    }
+
+    private int measureMaxPreviewItemHeight(
+            LayoutInflater inflater,
+            boolean measureLeftAligned,
+            boolean measureCardStyle,
+            boolean largePreview,
+            int containerWidth) {
+        View itemView = inflater.inflate(
+                getStoryPreviewLayout(measureLeftAligned, measureCardStyle),
+                previewItemContainer,
+                false);
+        bindMaxPreviewItem(itemView, largePreview);
 
         int widthSpec = View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        previewItem.measure(widthSpec, heightSpec);
-        int measuredHeight = getMeasuredOuterHeight(previewItem);
+        itemView.measure(widthSpec, heightSpec);
+        return getMeasuredOuterHeight(itemView);
+    }
 
-        previewItem.setMinimumHeight(previousMinimumHeight);
-        return measuredHeight;
+    private void bindMaxPreviewItem(View itemView, boolean largePreview) {
+        TextView measuredStoryTitle = itemView.findViewById(R.id.story_title);
+        TextView measuredStoryIndex = itemView.findViewById(R.id.story_index);
+        TextView measuredStoryMeta = itemView.findViewById(R.id.story_meta);
+        TextView measuredComments = itemView.findViewById(R.id.story_comments);
+        View measuredMetaContainer = itemView.findViewById(R.id.story_meta_container);
+        View measuredFavicon = itemView.findViewById(R.id.story_meta_favicon);
+        View measuredSmallPreviewImage = itemView.findViewById(R.id.story_preview_image_small);
+        View measuredLargePreviewImage = itemView.findViewById(R.id.story_preview_image_large);
+
+        if (measuredStoryTitle != null) {
+            measuredStoryTitle.setText(PREVIEW_STORY_TITLE);
+            measuredStoryTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, SettingsUtils.MAX_STORY_TEXT_SIZE);
+        }
+        if (measuredStoryIndex != null) {
+            measuredStoryIndex.setText("3.");
+            measuredStoryIndex.setVisibility(View.VISIBLE);
+        }
+        if (measuredStoryMeta != null) {
+            measuredStoryMeta.setText(PREVIEW_STORY_META_WITH_POINTS);
+            measuredStoryMeta.setTextSize(TypedValue.COMPLEX_UNIT_SP,
+                    SettingsUtils.getStoryMetaTextSize(SettingsUtils.MAX_STORY_TEXT_SIZE));
+        }
+        if (measuredComments != null) {
+            measuredComments.setText(PREVIEW_STORY_COMMENTS);
+            measuredComments.setVisibility(View.VISIBLE);
+        }
+        if (measuredMetaContainer != null) {
+            measuredMetaContainer.setVisibility(View.VISIBLE);
+        }
+        if (measuredFavicon != null) {
+            measuredFavicon.setVisibility(View.VISIBLE);
+        }
+        if (measuredSmallPreviewImage != null) {
+            measuredSmallPreviewImage.setVisibility(largePreview ? View.GONE : View.VISIBLE);
+        }
+        if (measuredLargePreviewImage != null) {
+            measuredLargePreviewImage.setVisibility(largePreview ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void applyPreviewHeights(PreviewHeights heights) {
@@ -551,7 +629,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         }
 
         View previewItem = previewItemContainer.getChildAt(0);
-        setExactHeight(previewItem, heights.contentHeight);
+        setWrapContentHeight(previewItem);
         setExactHeight(previewItemContainer, heights.containerHeight);
         previewRoot.setMinimumHeight(heights.rootHeight);
         if (boundItemView != null) {
@@ -571,6 +649,27 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             view.setLayoutParams(layoutParams);
         }
         view.setMinimumHeight(height);
+    }
+
+    private void setWrapContentHeight(View view) {
+        if (view == null) {
+            return;
+        }
+
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+        if (layoutParams != null && layoutParams.height != ViewGroup.LayoutParams.WRAP_CONTENT) {
+            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            view.setLayoutParams(layoutParams);
+        }
+        view.setMinimumHeight(0);
+    }
+
+    private FrameLayout.LayoutParams createPreviewItemLayoutParams() {
+        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        layoutParams.gravity = Gravity.CENTER_VERTICAL;
+        return layoutParams;
     }
 
     private int lerp(int start, int end, float progress) {
