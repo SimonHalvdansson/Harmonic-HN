@@ -3479,17 +3479,11 @@ public class StoriesFragment extends Fragment {
         recyclerView.setAlpha(1f);
     }
 
-    private void startCacheProgress() {
+    private void startCacheProgress(int total) {
         cachingStories = true;
-        cacheStoriesTotal = 1;
-        cacheStoriesCompleted = 0;
-        cacheProgressStatus = CACHE_PROGRESS_STATUS_CACHING;
-        updateCacheProgressIndicator();
-    }
-
-    private void setCacheProgressTotal(int total) {
         cacheStoriesTotal = Math.max(total, 1);
         cacheStoriesCompleted = 0;
+        cacheProgressStatus = CACHE_PROGRESS_STATUS_CACHING;
         updateCacheProgressIndicator();
     }
 
@@ -3515,7 +3509,7 @@ public class StoriesFragment extends Fragment {
 
         LinearProgressIndicator currentProgressIndicator = cacheProgressIndicator;
         TextView currentStatusText = cacheProgressStatusText;
-        String status = cachingStories ? CACHE_PROGRESS_STATUS_CACHING : cacheProgressStatus;
+        String status = cachingStories ? getCacheProgressCachingStatus() : cacheProgressStatus;
         currentProgressIndicator.setMax(Math.max(cacheStoriesTotal, 1));
         currentProgressIndicator.setProgressCompat(cacheStoriesCompleted, true);
         updateCacheProgressStatusText(currentStatusText, status);
@@ -3637,24 +3631,34 @@ public class StoriesFragment extends Fragment {
         cacheProgressStatus = CACHE_PROGRESS_STATUS_CACHING;
     }
 
+    @NonNull
+    private String getCacheProgressCachingStatus() {
+        return "Caching " + cacheStoriesTotal + (cacheStoriesTotal == 1 ? " story" : " stories");
+    }
+
     private void cacheStories() {
         if (cachingStories) {
             return;
         }
 
-        startCacheProgress();
-        boolean cacheArticles = SettingsUtils.shouldUseIntegratedWebView(getContext());
+        Context context = getContext();
+        if (context == null) {
+            return;
+        }
+
+        int storiesToCache = SettingsUtils.getStoriesToCache(context);
+        startCacheProgress(storiesToCache);
+        boolean cacheArticles = SettingsUtils.shouldUseIntegratedWebView(context);
         StringRequest request = new StringRequest(Request.Method.GET, Utils.URL_TOP,
                 response -> {
                     try {
                         JSONArray arr = new JSONArray(response);
-                        int storyCount = Math.min(20, arr.length());
+                        int storyCount = storiesToCache;
                         if (storyCount == 0) {
                             finishCacheProgress(CACHE_PROGRESS_STATUS_EMPTY);
                             return;
                         }
 
-                        setCacheProgressTotal(storyCount);
                         final int[] remaining = { storyCount };
                         final int[] articleFailures = { 0 };
                         for (int i = 0; i < storyCount; i++) {
@@ -3662,9 +3666,9 @@ public class StoriesFragment extends Fragment {
                             String url = "https://hn.algolia.com/api/v1/items/" + id;
                             StringRequest r = new StringRequest(Request.Method.GET, url,
                                     res -> {
-                                        Utils.cacheStory(getContext(), id, res);
+                                        Utils.cacheStory(context, id, res);
                                         if (cacheArticles) {
-                                            cacheStoryArticleSnapshot(id, res, articleFailures, () -> onCacheStoryFinished(remaining, articleFailures));
+                                            cacheStoryArticleSnapshot(context, id, res, articleFailures, () -> onCacheStoryFinished(remaining, articleFailures));
                                         } else {
                                             onCacheStoryFinished(remaining, articleFailures);
                                         }
@@ -3692,7 +3696,7 @@ public class StoriesFragment extends Fragment {
         finishCacheProgress();
     }
 
-    private void cacheStoryArticleSnapshot(int id, String storyJson, int[] articleFailures, Runnable onComplete) {
+    private void cacheStoryArticleSnapshot(Context context, int id, String storyJson, int[] articleFailures, Runnable onComplete) {
         try {
             JSONObject storyObject = new JSONObject(storyJson);
             if (!storyObject.has("url") || storyObject.isNull("url")) {
@@ -3708,7 +3712,7 @@ public class StoriesFragment extends Fragment {
 
             StringRequest articleRequest = new StringRequest(Request.Method.GET, articleUrl,
                     html -> {
-                        Utils.cacheArticleSnapshot(getContext(), id, articleUrl, html);
+                        Utils.cacheArticleSnapshot(context, id, articleUrl, html);
                         onComplete.run();
                     },
                     error -> {

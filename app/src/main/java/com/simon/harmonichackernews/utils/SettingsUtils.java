@@ -31,10 +31,14 @@ public class SettingsUtils {
     public static final String PREF_ALWAYS_SHOW_TAP_TO_REFRESH = "pref_always_show_tap_to_refresh";
     public static final String PREF_PRELOAD_WEBVIEW = "pref_preload_webview";
     public static final String PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY = "pref_preload_webview_minimum_battery";
+    public static final String PREF_STORIES_TO_CACHE = "pref_stories_to_cache";
     public static final String PRELOAD_WEBVIEW_ALWAYS = "always";
     public static final String PRELOAD_WEBVIEW_ONLY_WIFI = "onlywifi";
     public static final String PRELOAD_WEBVIEW_NEVER = "never";
     public static final int DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY = 0;
+    public static final int DEFAULT_STORIES_TO_CACHE = 20;
+    public static final int MIN_STORIES_TO_CACHE = 1;
+    public static final int MAX_STORIES_TO_CACHE = 100;
     public static final String STORY_DISPLAY_STYLE_STANDARD = "standard";
     public static final String STORY_DISPLAY_STYLE_CARD = "card";
     public static final String STORY_PREVIEW_IMAGE_OFF = "off";
@@ -218,6 +222,18 @@ public class SettingsUtils {
         return clampPercent(prefs.getInt(PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY, DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY));
     }
 
+    public static int getStoriesToCache(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        try {
+            return clampStoriesToCache(Integer.parseInt(
+                    prefs.getString(PREF_STORIES_TO_CACHE, String.valueOf(DEFAULT_STORIES_TO_CACHE))));
+        } catch (ClassCastException e) {
+            return clampStoriesToCache(prefs.getInt(PREF_STORIES_TO_CACHE, DEFAULT_STORIES_TO_CACHE));
+        } catch (NumberFormatException e) {
+            return DEFAULT_STORIES_TO_CACHE;
+        }
+    }
+
     public static boolean hasEnoughBatteryForWebViewPreload(Context ctx, int minimumBattery) {
         int clampedMinimumBattery = clampPercent(minimumBattery);
         if (clampedMinimumBattery <= DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY) {
@@ -248,6 +264,10 @@ public class SettingsUtils {
 
     private static int clampPercent(int value) {
         return Math.max(0, Math.min(100, value));
+    }
+
+    private static int clampStoriesToCache(int value) {
+        return Math.max(MIN_STORIES_TO_CACHE, Math.min(MAX_STORIES_TO_CACHE, value));
     }
 
     public static boolean shouldMatchWebViewTheme(Context ctx) {

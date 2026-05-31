@@ -62,6 +62,16 @@
             app:icon="@drawable/ic_action_browser"
             app:title="Open Hacker News links in Harmonic" />
 
+        <ListPreference
+            app:singleLineTitle="false"
+            app:key="pref_stories_to_cache"
+            app:defaultValue="20"
+            app:entries="@array/stories_to_cache_entries"
+            app:entryValues="@array/stories_to_cache_values"
+            app:useSimpleSummaryProvider="true"
+            app:icon="@drawable/ic_action_cache"
+            app:title="Stories to cache" />
+
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_show_changelog"

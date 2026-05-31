@@ -178,29 +178,56 @@ public class Utils {
             for (Iterator<String> iterator = cachedStories.iterator(); iterator.hasNext();) {
                 String cached = iterator.next();
                 String[] idAndDate = cached.split("-");
-                if (Integer.parseInt(idAndDate[0]) == id) {
+                if (idAndDate.length != 2) {
+                    iterator.remove();
+                    continue;
+                }
+                try {
+                    if (Integer.parseInt(idAndDate[0]) == id) {
+                        iterator.remove();
+                    }
+                } catch (NumberFormatException e) {
                     iterator.remove();
                 }
             }
         }
         cachedStories.add(id + "-" + System.currentTimeMillis());
 
-        if (cachedStories.size() > 100) {
+        int maxCachedStories = SettingsUtils.getStoriesToCache(ctx);
+        while (cachedStories.size() > maxCachedStories) {
             // If we have a lot of stories, lets delete the oldest one
             long oldestTime = -1;
             int oldestId = -1;
+            String oldestEntry = null;
             for (String cachedStory : cachedStories) {
                 String[] idAndDate = cachedStory.split("-");
-                if (oldestTime == -1 || Long.parseLong(idAndDate[1]) < oldestTime) {
-                    oldestTime = Long.parseLong(idAndDate[1]);
-                    oldestId = Integer.parseInt(idAndDate[0]);
+                if (idAndDate.length != 2) {
+                    oldestEntry = cachedStory;
+                    break;
+                }
+                try {
+                    long cachedTime = Long.parseLong(idAndDate[1]);
+                    if (oldestTime == -1 || cachedTime < oldestTime) {
+                        oldestTime = cachedTime;
+                        oldestId = Integer.parseInt(idAndDate[0]);
+                        oldestEntry = cachedStory;
+                    }
+                } catch (NumberFormatException e) {
+                    oldestEntry = cachedStory;
+                    break;
                 }
             }
-            
-            cachedStories.remove(oldestId + "-" + oldestTime);
 
-            ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE).edit().remove(KEY_SHARED_PREFERENCES_CACHED_STORY + oldestId).apply();
-            deleteCachedArticleSnapshot(ctx, oldestId);
+            if (oldestEntry == null) {
+                break;
+            }
+
+            cachedStories.remove(oldestEntry);
+
+            if (oldestId > 0) {
+                ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE).edit().remove(KEY_SHARED_PREFERENCES_CACHED_STORY + oldestId).apply();
+                deleteCachedArticleSnapshot(ctx, oldestId);
+            }
         }
 
         SettingsUtils.saveStringSetToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS, cachedStories);
