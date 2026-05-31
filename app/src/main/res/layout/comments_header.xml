@@ -975,10 +975,10 @@
             android:fontFamily="@font/product_sans"
             android:text="Tap to refresh"
             android:textAllCaps="false"
-            android:textColor="?attr/colorOnSecondary"
+            android:textColor="#fff"
             android:textStyle="bold"
             app:icon="@drawable/ic_action_refresh"
-            app:iconTint="?attr/colorOnSecondary" />
+            app:iconTint="#fff" />
 
     </LinearLayout>
 
