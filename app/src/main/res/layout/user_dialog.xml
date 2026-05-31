@@ -96,7 +96,7 @@
                 android:fontFamily="@font/product_sans" />
 
             <Button
-                android:textSize="14dp"
+                android:textSize="14sp"
                 android:layout_marginTop="8dp"
                 style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
                 app:icon="@drawable/ic_action_forum"

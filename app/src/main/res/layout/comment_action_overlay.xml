@@ -61,7 +61,7 @@
                         android:id="@+id/comment_action_user"
                         style="@style/Widget.Material3Expressive.Button.ElevatedButton"
                         android:layout_width="wrap_content"
-                        android:layout_height="48dp"
+                        android:layout_height="48sp"
                         android:backgroundTint="?attr/overlayButtonColor"
                         android:ellipsize="end"
                         android:fontFamily="@font/product_sans_bold"
