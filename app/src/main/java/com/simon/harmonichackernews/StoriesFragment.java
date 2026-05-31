@@ -41,6 +41,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.android.volley.Request;
@@ -315,6 +316,9 @@ public class StoriesFragment extends Fragment {
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(linearLayoutManager);
         defaultStoryItemAnimator = recyclerView.getItemAnimator();
+        if (defaultStoryItemAnimator instanceof SimpleItemAnimator) {
+            ((SimpleItemAnimator) defaultStoryItemAnimator).setSupportsChangeAnimations(false);
+        }
 
         stories = new ArrayList<>();
         filterWords = Utils.getFilterWords(requireContext());

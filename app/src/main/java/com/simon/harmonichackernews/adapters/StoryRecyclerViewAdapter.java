@@ -41,8 +41,11 @@ import org.sufficientlysecure.htmltextview.OnClickATagListener;
 import java.util.List;
 
 import coil.Coil;
+import coil.request.Disposable;
 import coil.request.ImageRequest;
+import coil.target.ImageViewTarget;
 import coil.target.Target;
+import coil.util.CoilUtils;
 
 public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -64,6 +67,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final int TYPE_STORY_CARD_LEFT = 7;
     private static final int TYPE_COMMENT_CARD = 8;
     private static final float CLICKED_PREVIEW_IMAGE_ALPHA = 0.6f;
+    private static final long PREVIEW_IMAGE_FADE_IN_DURATION_MS = 160;
 
     public boolean showPoints;
     public boolean showCommentsCount;
@@ -315,6 +319,16 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
     }
 
+    @Override
+    public void onViewRecycled(@NotNull RecyclerView.ViewHolder holder) {
+        if (holder instanceof StoryViewHolder) {
+            StoryViewHolder storyViewHolder = (StoryViewHolder) holder;
+            storyViewHolder.story = null;
+            resetPreviewImages(storyViewHolder);
+        }
+        super.onViewRecycled(holder);
+    }
+
     private void bindPreviewImage(final StoryViewHolder storyViewHolder, final Story story) {
         if (!shouldLoadPreviewImage(story)) {
             return;
@@ -433,6 +447,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return;
         }
 
+        storyViewHolder.cancelPreviewImageRequest(previewImage);
         previewImage.setTag(imageUrl);
 
         int previewWidth = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
@@ -444,13 +459,15 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         ImageRequest request = new ImageRequest.Builder(previewImage.getContext())
                 .data(imageUrl)
                 .size(previewWidth, previewHeight)
-                .target(new Target() {
+                .target(new ImageViewTarget(previewImage) {
                     @Override
                     public void onStart(Drawable placeholder) {
                         story.previewImageLoading = true;
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
-                            previewImage.setImageDrawable(null);
-                            previewImage.setVisibility(View.INVISIBLE);
+                            previewImage.animate().cancel();
+                            super.onStart((Drawable) null);
+                            previewImage.setAlpha(getPreviewImageTargetAlpha(story));
+                            setPreviewImageVisibility(storyViewHolder, previewImage, View.INVISIBLE);
                         }
                     }
 
@@ -459,8 +476,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         story.previewImageLoading = false;
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
                             story.previewImageLoadFailed = true;
-                            previewImage.setImageDrawable(null);
-                            previewImage.setVisibility(View.GONE);
+                            previewImage.animate().cancel();
+                            super.onError(null);
+                            setPreviewImageVisibility(storyViewHolder, previewImage, View.GONE);
                         }
                     }
 
@@ -469,14 +487,17 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         story.previewImageLoading = false;
                         story.previewImageLoaded = true;
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
-                            previewImage.setImageDrawable(result);
-                            previewImage.setVisibility(View.VISIBLE);
+                            super.onSuccess(result);
+                            fadeInPreviewImage(storyViewHolder, previewImage, getPreviewImageTargetAlpha(story));
                         }
                     }
                 })
                 .build();
 
-        Coil.imageLoader(previewImage.getContext()).enqueue(request);
+        storyViewHolder.setPreviewImageRequest(
+                previewImage,
+                story,
+                Coil.imageLoader(previewImage.getContext()).enqueue(request));
     }
 
     private void reservePreviewImageSpace(StoryViewHolder storyViewHolder) {
@@ -484,7 +505,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 ? storyViewHolder.largePreviewImage
                 : storyViewHolder.smallPreviewImage;
         if (previewImage != null) {
-            previewImage.setVisibility(View.INVISIBLE);
+            setPreviewImageVisibility(storyViewHolder, previewImage, View.INVISIBLE);
         }
     }
 
@@ -494,24 +515,36 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 && !story.loadingFailed
                 && !story.previewImageLoadFailed
                 && storyViewHolder.largePreviewImage != null) {
-            storyViewHolder.largePreviewImage.setVisibility(View.INVISIBLE);
+            setPreviewImageVisibility(storyViewHolder, storyViewHolder.largePreviewImage, View.INVISIBLE);
         }
     }
 
     private static void resetPreviewImages(StoryViewHolder storyViewHolder) {
-        resetPreviewImage(storyViewHolder.smallPreviewImage);
-        resetPreviewImage(storyViewHolder.largePreviewImage);
+        storyViewHolder.cancelPreviewImageRequests();
+        boolean changed = resetPreviewImage(storyViewHolder.smallPreviewImage)
+                | resetPreviewImage(storyViewHolder.largePreviewImage);
+        if (changed) {
+            storyViewHolder.itemView.requestLayout();
+        }
     }
 
-    private static void resetPreviewImage(ImageView previewImage) {
+    private static boolean resetPreviewImage(ImageView previewImage) {
         if (previewImage == null) {
-            return;
+            return false;
         }
 
+        boolean changed = previewImage.getVisibility() != View.GONE
+                || previewImage.getDrawable() != null
+                || previewImage.getTag() != null
+                || previewImage.getAlpha() != 1.0f;
+        CoilUtils.dispose(previewImage);
+        previewImage.animate().cancel();
+        previewImage.clearAnimation();
         previewImage.setTag(null);
         previewImage.setAlpha(1.0f);
         previewImage.setImageDrawable(null);
         previewImage.setVisibility(View.GONE);
+        return changed;
     }
 
     private static void setPreviewImageAlpha(StoryViewHolder storyViewHolder, boolean useClickedEffects) {
@@ -524,6 +557,22 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         if (previewImage != null) {
             previewImage.setAlpha(alpha);
         }
+    }
+
+    private float getPreviewImageTargetAlpha(Story story) {
+        return story.clicked && grayOutClicked && !disableClickedEffects
+                ? CLICKED_PREVIEW_IMAGE_ALPHA
+                : 1.0f;
+    }
+
+    private static void fadeInPreviewImage(StoryViewHolder storyViewHolder, ImageView previewImage, float targetAlpha) {
+        previewImage.animate().cancel();
+        previewImage.setAlpha(0f);
+        setPreviewImageVisibility(storyViewHolder, previewImage, View.VISIBLE);
+        previewImage.animate()
+                .alpha(targetAlpha)
+                .setDuration(PREVIEW_IMAGE_FADE_IN_DURATION_MS)
+                .start();
     }
 
     private void applyStoryTextSizes(StoryViewHolder storyViewHolder) {
@@ -553,6 +602,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     private static boolean isCurrentPreviewTarget(ImageView previewImage, String imageUrl) {
         return imageUrl.equals(previewImage.getTag());
+    }
+
+    private static void setPreviewImageVisibility(StoryViewHolder storyViewHolder, ImageView previewImage, int visibility) {
+        if (previewImage.getVisibility() != visibility) {
+            previewImage.setVisibility(visibility);
+            storyViewHolder.itemView.requestLayout();
+        }
     }
 
     @Override
@@ -620,6 +676,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final TextView indexTextView;
 
         private int touchX, touchY;
+        private Disposable smallPreviewImageRequest;
+        private Story smallPreviewImageRequestStory;
+        private Disposable largePreviewImageRequest;
+        private Story largePreviewImageRequestStory;
 
         public Story story;
 
@@ -671,6 +731,44 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     largePreviewImage.setOnLongClickListener(v -> longClickListener.onLongClick(v, getAbsoluteAdapterPosition(), touchX, touchY));
                 }
             }
+        }
+
+        void setPreviewImageRequest(ImageView previewImage, Story story, Disposable disposable) {
+            if (previewImage == smallPreviewImage) {
+                smallPreviewImageRequest = disposable;
+                smallPreviewImageRequestStory = story;
+            } else if (previewImage == largePreviewImage) {
+                largePreviewImageRequest = disposable;
+                largePreviewImageRequestStory = story;
+            }
+        }
+
+        void cancelPreviewImageRequest(ImageView previewImage) {
+            if (previewImage != null) {
+                previewImage.setTag(null);
+            }
+            if (previewImage == smallPreviewImage) {
+                smallPreviewImageRequest = disposePreviewImageRequest(smallPreviewImageRequest, smallPreviewImageRequestStory);
+                smallPreviewImageRequestStory = null;
+            } else if (previewImage == largePreviewImage) {
+                largePreviewImageRequest = disposePreviewImageRequest(largePreviewImageRequest, largePreviewImageRequestStory);
+                largePreviewImageRequestStory = null;
+            }
+        }
+
+        void cancelPreviewImageRequests() {
+            cancelPreviewImageRequest(smallPreviewImage);
+            cancelPreviewImageRequest(largePreviewImage);
+        }
+
+        private Disposable disposePreviewImageRequest(Disposable disposable, Story story) {
+            if (disposable != null && !disposable.isDisposed()) {
+                disposable.dispose();
+                if (story != null) {
+                    story.previewImageLoading = false;
+                }
+            }
+            return null;
         }
     }
 
