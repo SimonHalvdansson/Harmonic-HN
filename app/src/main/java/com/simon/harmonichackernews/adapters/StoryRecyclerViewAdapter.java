@@ -240,7 +240,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment);
 
                 applyStoryTextSizes(storyViewHolder);
-                FontUtils.setTypeface(storyViewHolder.commentsView, true, 14, 13, 13, 14, 14, 14);
+                FontUtils.setTypeface(storyViewHolder.commentsView, true, 14, 13.5f, 13, 13, 14, 14, 14);
 
                 if (useClickedEffects) {
                     storyViewHolder.titleView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorDisabled));
@@ -591,6 +591,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.titleView,
                 true,
                 17.5f + titleDelta,
+                17 + titleDelta,
                 18 + titleDelta,
                 16 + titleDelta,
                 17 + titleDelta,
@@ -600,6 +601,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.metaView,
                 false,
                 13 * metaScale,
+                12.5f * metaScale,
                 13 * metaScale,
                 12 * metaScale,
                 12 * metaScale,

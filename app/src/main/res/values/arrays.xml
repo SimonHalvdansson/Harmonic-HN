@@ -47,6 +47,7 @@
 
     <string-array name="font_entries">
         <item>Product sans (default)</item>
+        <item>Google Sans Flex Rounded</item>
         <item>Device default</item>
         <item>Verdana (sans serif)</item>
         <item>JetBrains Mono (monospace)</item>
@@ -56,6 +57,7 @@
 
     <string-array name="font_values">
         <item>productsans</item>
+        <item>googlesansflexrounded</item>
         <item>devicedefault</item>
         <item>verdana</item>
         <item>jetbrainsmono</item>

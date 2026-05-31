@@ -11,6 +11,8 @@ import com.simon.harmonichackernews.R;
 
 public class FontUtils {
 
+    private static final float GOOGLE_SANS_FLEX_ROUNDED_SIZE_ADJUSTMENT = -0.5f;
+
     public static Typeface activeRegular;
     public static Typeface activeBold;
 
@@ -23,6 +25,10 @@ public class FontUtils {
             case "productsans":
                 activeRegular = ResourcesCompat.getFont(ctx, R.font.product_sans);
                 activeBold = ResourcesCompat.getFont(ctx, R.font.product_sans_bold);
+                break;
+            case "googlesansflexrounded":
+                activeRegular = ResourcesCompat.getFont(ctx, R.font.google_sans_flex_rounded);
+                activeBold = ResourcesCompat.getFont(ctx, R.font.google_sans_flex_rounded_bold);
                 break;
             case "devicedefault":
                 activeRegular = Typeface.create("sans-serif", Typeface.NORMAL);
@@ -48,16 +54,16 @@ public class FontUtils {
     }
 
     public static void setTypeface(TextView textView, boolean bold, float size) {
-        setTypeface(textView, bold, size, size, size, size, size, size);
+        setTypeface(textView, bold, size, adjustedGoogleSansFlexRoundedSize(size), size, size, size, size, size);
     }
 
-    public static void setMultipleTypefaces(boolean bold, float prodSize, float sansSize, float verdanaSize, float jetbrainsmonoSize, float georgiaSize, float robotoSlabSize, TextView... textViews) {
+    public static void setMultipleTypefaces(boolean bold, float prodSize, float googleSansFlexRoundedSize, float sansSize, float verdanaSize, float jetbrainsmonoSize, float georgiaSize, float robotoSlabSize, TextView... textViews) {
         for (TextView textView : textViews) {
-            FontUtils.setTypeface(textView, bold, prodSize, sansSize, verdanaSize, jetbrainsmonoSize, georgiaSize, robotoSlabSize);
+            FontUtils.setTypeface(textView, bold, prodSize, googleSansFlexRoundedSize, sansSize, verdanaSize, jetbrainsmonoSize, georgiaSize, robotoSlabSize);
         }
     }
 
-    public static void setTypeface(TextView textView, boolean bold, float prodSize, float sansSize, float verdanaSize, float jetbrainsmonoSize, float georgiaSize, float robotoSlabSize) {
+    public static void setTypeface(TextView textView, boolean bold, float prodSize, float googleSansFlexRoundedSize, float sansSize, float verdanaSize, float jetbrainsmonoSize, float georgiaSize, float robotoSlabSize) {
         if (activeRegular == null) {
             init(textView.getContext());
         }
@@ -67,6 +73,9 @@ public class FontUtils {
         switch (font) {
             case "productsans":
                 textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, prodSize);
+                break;
+            case "googlesansflexrounded":
+                textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, googleSansFlexRoundedSize);
                 break;
             case "devicedefault":
                 textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, sansSize);
@@ -84,6 +93,10 @@ public class FontUtils {
                 textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, robotoSlabSize);
                 break;
         }
+    }
+
+    private static float adjustedGoogleSansFlexRoundedSize(float size) {
+        return size + GOOGLE_SANS_FLEX_ROUNDED_SIZE_ADJUSTMENT;
     }
 
 }
