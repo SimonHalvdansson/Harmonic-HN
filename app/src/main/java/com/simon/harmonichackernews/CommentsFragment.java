@@ -185,7 +185,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private ViewTreeObserver.OnPreDrawListener preDrawListener;
     private RecyclerView.SmoothScroller smoothScroller;
     private int smoothScrollSpeedMultiplier = 1;
-    private LinearLayout scrollNavigation;
+    private View scrollNavigation;
     private ExtendedFloatingActionButton searchScrollTopFab;
     private int commentsBottomInset = 0;
     private int scrollNavigationBaseBottomMargin = 0;

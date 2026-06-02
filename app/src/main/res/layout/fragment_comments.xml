@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout android:layout_height="match_parent"
     android:layout_width="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     xmlns:app="http://schemas.android.com/apk/res-auto">
@@ -86,7 +88,9 @@
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:clipToPadding="false">
 
             <androidx.swiperefreshlayout.widget.MaterialExpressiveSwipeRefreshLayout
                 android:id="@+id/comments_swipe_refresh"
@@ -111,45 +115,55 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"       />
 
-            <LinearLayout
+            <com.google.android.material.card.MaterialCardView
                 android:visibility="gone"
                 android:id="@+id/comments_scroll_navigation"
-                android:elevation="8dp"
                 android:layout_marginBottom="16dp"
-                android:background="@drawable/scrolling_navigation_background"
                 android:layout_gravity="bottom|center_horizontal"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="?attr/overlayButtonColor"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="8dp"
+                app:cardUseCompatPadding="true"
+                app:strokeColor="?attr/overlayButtonOutlineColor"
+                app:strokeWidth="1dp">
 
-                <ImageButton
-                    android:id="@+id/comments_scroll_previous"
-                    android:background="?selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_action_caret_up_white"
-                    android:contentDescription="Previous top-level comment"
-                    android:paddingLeft="8dp"
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"/>
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
 
-                <ImageView
-                    android:id="@+id/comments_scroll_icon"
-                    android:layout_marginLeft="10dp"
-                    android:layout_marginRight="10dp"
-                    android:layout_marginTop="14dp"
-                    android:src="@drawable/ic_action_explore_white"
-                    android:contentDescription="@null"
-                    android:importantForAccessibility="no"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"    />
+                    <ImageButton
+                        android:id="@+id/comments_scroll_previous"
+                        android:background="?selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_action_caret_up_white"
+                        android:contentDescription="Previous top-level comment"
+                        android:paddingLeft="8dp"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"/>
 
-                <ImageButton
-                    android:id="@+id/comments_scroll_next"
-                    android:background="?selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_action_caret_down_white"
-                    android:contentDescription="Next top-level comment"
-                    android:paddingRight="8dp"
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"/>
-            </LinearLayout>
+                    <ImageView
+                        android:id="@+id/comments_scroll_icon"
+                        android:layout_marginLeft="10dp"
+                        android:layout_marginRight="10dp"
+                        android:layout_marginTop="14dp"
+                        android:src="@drawable/ic_action_explore_white"
+                        android:contentDescription="@null"
+                        android:importantForAccessibility="no"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"    />
+
+                    <ImageButton
+                        android:id="@+id/comments_scroll_next"
+                        android:background="?selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_action_caret_down_white"
+                        android:contentDescription="Next top-level comment"
+                        android:paddingRight="8dp"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
                 android:id="@+id/comments_search_scroll_top_fab"
