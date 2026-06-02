@@ -590,8 +590,7 @@ public class StoriesFragment extends Fragment {
         // Set up spinner
         userItemListsDropdownVisible = shouldShowUserItemLists(ctx);
         ArrayList<CharSequence> typeAdapterList = buildTypeAdapterList(ctx);
-        typeSpinnerAdapter = new ArrayAdapter<>(ctx, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, typeAdapterList);
-        typeSpinnerAdapter.setDropDownViewResource(R.layout.spinner_item_layout);
+        typeSpinnerAdapter = new StoryTypeSpinnerAdapter(ctx, typeAdapterList);
 
         typeSpinner.setAdapter(typeSpinnerAdapter);
         typeSpinner.setSelection(getPreferredTypeIndex());
@@ -1679,6 +1678,9 @@ public class StoriesFragment extends Fragment {
         if (TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(SettingsUtils.getPreferredFont(getContext()))) {
             FontUtils.init(getContext());
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+            if (typeSpinnerAdapter != null) {
+                typeSpinnerAdapter.notifyDataSetChanged();
+            }
         }
 
         if (adapter.compactHeader != SettingsUtils.shouldUseCompactHeader(getContext())) {
@@ -3786,6 +3788,43 @@ public class StoriesFragment extends Fragment {
 
     private void openComments(Story story, int pos, boolean showWebsite) {
         storyClickListener.openStory(story, pos, showWebsite);
+    }
+
+    private static class StoryTypeSpinnerAdapter extends ArrayAdapter<CharSequence> {
+        StoryTypeSpinnerAdapter(Context context, ArrayList<CharSequence> items) {
+            super(context, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, items);
+            setDropDownViewResource(R.layout.spinner_item_layout);
+        }
+
+        @NonNull
+        @Override
+        public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+            View view = super.getView(position, convertView, parent);
+            applySelectedFont(view);
+            return view;
+        }
+
+        @Override
+        public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+            View view = super.getDropDownView(position, convertView, parent);
+            applySelectedFont(view);
+            return view;
+        }
+
+        private void applySelectedFont(View view) {
+            TextView textView = view instanceof TextView
+                    ? (TextView) view
+                    : view.findViewById(R.id.selection_dropdown_item_textview);
+            if (textView == null) {
+                return;
+            }
+
+            String preferredFont = SettingsUtils.getPreferredFont(getContext());
+            if (FontUtils.activeBold == null || TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(preferredFont)) {
+                FontUtils.init(getContext());
+            }
+            textView.setTypeface(FontUtils.activeBold);
+        }
     }
 
     private interface SearchOptionSelectedListener {
