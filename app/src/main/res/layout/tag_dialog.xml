@@ -19,6 +19,7 @@
                 android:id="@+id/tag_dialog_edittext"
                 android:hint="Tag"
                 android:fontFamily="@font/product_sans"
+                android:imeOptions="flagNoExtractUi"
                 android:inputType="textCapSentences"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
