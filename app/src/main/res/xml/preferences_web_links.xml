@@ -47,7 +47,7 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        app:title="Browser &amp; Links"
+        app:title="Browser and links"
         android:layout="@layout/preference_category">
 
         <SwitchPreferenceCompat
@@ -74,7 +74,7 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        app:title="Link Previews"
+        app:title="Link previews"
         android:layout="@layout/preference_category">
 
         <SwitchPreferenceCompat

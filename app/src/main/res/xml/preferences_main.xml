@@ -17,7 +17,7 @@
 
     <Preference
         app:key="pref_header_web_links"
-        app:title="Web &amp; Links"
+        app:title="Web and links"
         app:summary="WebView, browser, link previews"
         app:icon="@drawable/ic_action_browser"
         app:fragment="com.simon.harmonichackernews.settings.WebLinksPreferenceFragment" />
@@ -31,7 +31,7 @@
 
     <Preference
         app:key="pref_header_filters_tags"
-        app:title="Filters &amp; Tags"
+        app:title="Filters and tags"
         app:summary="Filters, tags"
         app:icon="@drawable/ic_action_filter"
         app:fragment="com.simon.harmonichackernews.settings.FiltersTagsPreferenceFragment" />
