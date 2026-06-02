@@ -29,6 +29,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
+import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
@@ -145,6 +146,13 @@ public class CommentContentPreviewPreference extends Preference implements Share
             return;
         }
 
+        if (SettingsUtils.PREF_FONT.equals(key)) {
+            FontUtils.init(getContext());
+            applyTextSize(SettingsUtils.getPreferredCommentTextSize(getContext()), false);
+            syncReservedPreviewHeight();
+            return;
+        }
+
         if (SettingsUtils.PREF_COMMENT_DEPTH_INDICATORS.equals(key)
                 || SettingsUtils.PREF_MONOCHROME_COMMENT_DEPTH.equals(key)) {
             updateDepthIndicator();
@@ -236,15 +244,20 @@ public class CommentContentPreviewPreference extends Preference implements Share
 
     private void applyTextSize(float textSize, boolean animate) {
         float clampedTextSize = SettingsUtils.clampCommentTextSize(textSize);
+        ensureSelectedFontLoaded();
+        applyCommentMetaTypefaces(commentBy, commentByTime, commentHiddenText, commentHiddenCount);
         if (commentBody == null) {
-            textSizeTargetSp = clampedTextSize;
+            textSizeTargetSp = FontUtils.getAdjustedTextSize(FontUtils.font, clampedTextSize);
             return;
         }
 
-        if (animate && Math.abs(textSizeTargetSp - clampedTextSize) < 0.01f) {
+        float adjustedTextSize = FontUtils.getAdjustedTextSize(FontUtils.font, clampedTextSize);
+        commentBody.setTypeface(FontUtils.activeRegular);
+
+        if (animate && Math.abs(textSizeTargetSp - adjustedTextSize) < 0.01f) {
             return;
         }
-        textSizeTargetSp = clampedTextSize;
+        textSizeTargetSp = adjustedTextSize;
 
         if (textSizeAnimator != null) {
             textSizeAnimator.cancel();
@@ -252,7 +265,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
         }
 
         if (!animate || !ViewCompat.isLaidOut(commentBody)) {
-            commentBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, clampedTextSize);
+            commentBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, adjustedTextSize);
             syncReservedPreviewHeight();
             requestPreviewRemeasure();
             return;
@@ -260,15 +273,15 @@ public class CommentContentPreviewPreference extends Preference implements Share
 
         float scaledDensity = getContext().getResources().getDisplayMetrics().scaledDensity;
         float currentTextSizeSp = commentBody.getTextSize() / scaledDensity;
-        if (Math.abs(currentTextSizeSp - clampedTextSize) < 0.01f) {
-            commentBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, clampedTextSize);
+        if (Math.abs(currentTextSizeSp - adjustedTextSize) < 0.01f) {
+            commentBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, adjustedTextSize);
             syncReservedPreviewHeight();
             requestPreviewRemeasure();
             return;
         }
 
         syncReservedPreviewHeight();
-        textSizeAnimator = ValueAnimator.ofFloat(currentTextSizeSp, clampedTextSize);
+        textSizeAnimator = ValueAnimator.ofFloat(currentTextSizeSp, adjustedTextSize);
         textSizeAnimator.setDuration(TEXT_SIZE_ANIMATION_DURATION_MS);
         textSizeAnimator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
         textSizeAnimator.addUpdateListener(animation -> {
@@ -283,6 +296,34 @@ public class CommentContentPreviewPreference extends Preference implements Share
             }
         });
         textSizeAnimator.start();
+    }
+
+    private void applyCommentMetaTypefaces(
+            TextView by,
+            TextView byTime,
+            TextView hiddenText,
+            TextView hiddenCount) {
+        if (by != null) {
+            by.setTypeface(FontUtils.activeBold);
+        }
+        if (byTime != null) {
+            byTime.setTypeface(FontUtils.activeRegular);
+        }
+        if (hiddenText != null) {
+            hiddenText.setTypeface(FontUtils.activeRegular);
+        }
+        if (hiddenCount != null) {
+            hiddenCount.setTypeface(FontUtils.activeRegular);
+        }
+    }
+
+    private void ensureSelectedFontLoaded() {
+        String selectedFont = SettingsUtils.getPreferredFont(getContext());
+        if (FontUtils.activeRegular == null
+                || FontUtils.activeBold == null
+                || !selectedFont.equals(FontUtils.font)) {
+            FontUtils.init(getContext());
+        }
     }
 
     private void updateDepthIndicator() {
@@ -366,7 +407,11 @@ public class CommentContentPreviewPreference extends Preference implements Share
             body.setClickable(false);
             body.setFocusable(false);
             body.setHtml(PREVIEW_COMMENT_BODY);
-            body.setTextSize(TypedValue.COMPLEX_UNIT_SP, SettingsUtils.MAX_COMMENT_TEXT_SIZE);
+            ensureSelectedFontLoaded();
+            body.setTypeface(FontUtils.activeRegular);
+            body.setTextSize(
+                    TypedValue.COMPLEX_UNIT_SP,
+                    FontUtils.getAdjustedTextSize(FontUtils.font, SettingsUtils.MAX_COMMENT_TEXT_SIZE));
         }
         if (by != null) {
             by.setText("pg");
@@ -383,6 +428,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
         if (indentIndicator != null) {
             indentIndicator.setVisibility(View.VISIBLE);
         }
+        applyCommentMetaTypefaces(by, byTime, hiddenText, hiddenCount);
 
         int widthSpec = View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);

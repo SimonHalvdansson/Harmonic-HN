@@ -12,7 +12,6 @@ import android.transition.ChangeBounds;
 import android.transition.TransitionManager;
 import android.transition.TransitionSet;
 import android.util.AttributeSet;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -32,6 +31,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryMetaPreviewAnimator;
@@ -240,6 +240,13 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             return;
         }
 
+        if (SettingsUtils.PREF_FONT.equals(key)) {
+            FontUtils.init(getContext());
+            applyTextSize(SettingsUtils.getPreferredStoryTextSize(getContext()), false);
+            syncPreviewContainerHeight(getCurrentPreviewImageMode());
+            return;
+        }
+
         if (SettingsUtils.PREF_TINT_CARD_USING_PREVIEW.equals(key)) {
             updateStoryCardBackground(getCurrentPreviewImageMode(), true);
             return;
@@ -381,14 +388,60 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     private void applyTextSize(float textSize, boolean animate) {
         float clampedTextSize = SettingsUtils.clampStoryTextSize(textSize);
         syncPreviewContainerHeight(getCurrentPreviewImageMode());
-        if (storyTitle != null) {
-            storyTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, clampedTextSize);
-        }
-        if (storyMeta != null) {
-            storyMeta.setTextSize(TypedValue.COMPLEX_UNIT_SP,
-                    SettingsUtils.getStoryMetaTextSize(clampedTextSize));
-        }
+        applyStoryTypefacesAndTextSizes(storyTitle, storyMeta, storyIndex, comments, clampedTextSize);
         requestPreviewRemeasure();
+    }
+
+    private void applyStoryTypefacesAndTextSizes(
+            TextView title,
+            TextView meta,
+            TextView index,
+            TextView commentCount,
+            float storyTextSize) {
+        ensureSelectedFontLoaded();
+        float clampedStoryTextSize = SettingsUtils.clampStoryTextSize(storyTextSize);
+        float titleDelta = clampedStoryTextSize - SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
+        float metaScale = clampedStoryTextSize / SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
+
+        if (title != null) {
+            FontUtils.setTypeface(
+                    title,
+                    true,
+                    17.5f + titleDelta,
+                    17 + titleDelta,
+                    18 + titleDelta,
+                    16 + titleDelta,
+                    17 + titleDelta,
+                    17 + titleDelta,
+                    18 + titleDelta);
+        }
+        if (meta != null) {
+            FontUtils.setTypeface(
+                    meta,
+                    false,
+                    13 * metaScale,
+                    12.5f * metaScale,
+                    13 * metaScale,
+                    12 * metaScale,
+                    12 * metaScale,
+                    13 * metaScale,
+                    13 * metaScale);
+        }
+        if (index != null) {
+            index.setTypeface(FontUtils.activeRegular);
+        }
+        if (commentCount != null) {
+            FontUtils.setTypeface(commentCount, true, 14, 13.5f, 13, 13, 14, 14, 14);
+        }
+    }
+
+    private void ensureSelectedFontLoaded() {
+        String selectedFont = SettingsUtils.getPreferredFont(getContext());
+        if (FontUtils.activeRegular == null
+                || FontUtils.activeBold == null
+                || !selectedFont.equals(FontUtils.font)) {
+            FontUtils.init(getContext());
+        }
     }
 
     private String getCurrentPreviewImageMode() {
@@ -613,7 +666,6 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
         if (measuredStoryTitle != null) {
             measuredStoryTitle.setText(PREVIEW_STORY_TITLE);
-            measuredStoryTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, SettingsUtils.MAX_STORY_TEXT_SIZE);
         }
         if (measuredStoryIndex != null) {
             measuredStoryIndex.setText("3.");
@@ -621,13 +673,17 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         }
         if (measuredStoryMeta != null) {
             measuredStoryMeta.setText(PREVIEW_STORY_META_WITH_POINTS);
-            measuredStoryMeta.setTextSize(TypedValue.COMPLEX_UNIT_SP,
-                    SettingsUtils.getStoryMetaTextSize(SettingsUtils.MAX_STORY_TEXT_SIZE));
         }
         if (measuredComments != null) {
             measuredComments.setText(PREVIEW_STORY_COMMENTS);
             measuredComments.setVisibility(View.VISIBLE);
         }
+        applyStoryTypefacesAndTextSizes(
+                measuredStoryTitle,
+                measuredStoryMeta,
+                measuredStoryIndex,
+                measuredComments,
+                SettingsUtils.MAX_STORY_TEXT_SIZE);
         if (measuredMetaContainer != null) {
             measuredMetaContainer.setVisibility(View.VISIBLE);
         }
