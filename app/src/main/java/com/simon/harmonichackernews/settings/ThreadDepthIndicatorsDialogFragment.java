@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.settings;
 import android.animation.ArgbEvaluator;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.LayoutTransition;
 import android.animation.ValueAnimator;
 import android.app.Dialog;
 import android.content.Context;
@@ -45,6 +46,7 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
     private final List<View> previewIndicators = new ArrayList<>();
     private final List<Integer> previewIndicatorColors = new ArrayList<>();
     private final List<ValueAnimator> previewAnimators = new ArrayList<>();
+    private final List<LinearLayout> previewRows = new ArrayList<>();
     private final Map<String, MaterialButton> modeButtons = new HashMap<>();
 
     @NonNull
@@ -98,6 +100,7 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
         previewAnimators.clear();
         previewIndicators.clear();
         previewIndicatorColors.clear();
+        previewRows.clear();
         modeButtons.clear();
         super.onDestroyView();
     }
@@ -116,6 +119,7 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setPadding(depthSpacing * i, 0, 0, 0);
+            previewRows.add(row);
             previewContainer.addView(row, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     rowHeight));
@@ -155,6 +159,7 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
         Context context = requireContext();
         String theme = ThemeUtils.getPreferredTheme(context);
         boolean showIndicators = CommentDepthIndicatorUtils.shouldShowIndicators(mode);
+        setPreviewLayoutTransitionsEnabled(animate);
         for (int i = 0; i < previewIndicators.size(); i++) {
             View indicator = previewIndicators.get(i);
             indicator.setVisibility(showIndicators ? View.VISIBLE : View.GONE);
@@ -189,6 +194,22 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
             });
             previewAnimators.add(animator);
             animator.start();
+        }
+    }
+
+    private void setPreviewLayoutTransitionsEnabled(boolean enabled) {
+        for (LinearLayout row : previewRows) {
+            if (!enabled) {
+                row.setLayoutTransition(null);
+                continue;
+            }
+
+            if (row.getLayoutTransition() == null) {
+                LayoutTransition transition = new LayoutTransition();
+                transition.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
+                transition.enableTransitionType(LayoutTransition.CHANGING);
+                row.setLayoutTransition(transition);
+            }
         }
     }
 }

@@ -33,7 +33,7 @@ public class Changelog {
                 "- Updated UI for managing user tags<br>" +
                 "- New UI for selecting thread depth indicator colors<br>" +
                 "- Added Stack Exchange and GitLab link previews<br>" +
-                "- Added support for latex in ArXiV link preview<br>" +
+                "- Added support for LaTeX in ArXiV link preview<br>" +
                 "- Improved navigation animation between settings screens<br>" +
                 "- Added ability to share Hacker News links to Harmonic<br>" +
                 "- Added support for polls via Algolia API<br>" +
