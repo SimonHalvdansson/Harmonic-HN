@@ -63,6 +63,7 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
         modeButtons.put(CommentDepthIndicatorUtils.MODE_MATERIAL_YOU, rootView.findViewById(R.id.thread_depth_material_you));
         modeButtons.put(CommentDepthIndicatorUtils.MODE_COLORS, rootView.findViewById(R.id.thread_depth_colors));
         modeButtons.put(CommentDepthIndicatorUtils.MODE_MONOCHROME, rootView.findViewById(R.id.thread_depth_monochrome));
+        modeButtons.put(CommentDepthIndicatorUtils.MODE_NONE, rootView.findViewById(R.id.thread_depth_none));
 
         String currentMode = SettingsUtils.getPreferredCommentDepthIndicatorMode(requireContext());
         for (Map.Entry<String, MaterialButton> entry : modeButtons.entrySet()) {
@@ -153,8 +154,14 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
     private void updatePreview(String mode, boolean animate) {
         Context context = requireContext();
         String theme = ThemeUtils.getPreferredTheme(context);
+        boolean showIndicators = CommentDepthIndicatorUtils.shouldShowIndicators(mode);
         for (int i = 0; i < previewIndicators.size(); i++) {
             View indicator = previewIndicators.get(i);
+            indicator.setVisibility(showIndicators ? View.VISIBLE : View.GONE);
+            if (!showIndicators) {
+                continue;
+            }
+
             int color = ContextCompat.getColor(context,
                     CommentDepthIndicatorUtils.getColorResource(context, mode, theme, i));
             if (i >= previewIndicatorColors.size()) {

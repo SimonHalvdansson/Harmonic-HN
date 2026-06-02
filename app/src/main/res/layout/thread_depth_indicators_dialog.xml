@@ -55,5 +55,14 @@
             android:text="Monochrome"
             android:textSize="14sp" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/thread_depth_none"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="None"
+            android:textSize="14sp" />
+
     </LinearLayout>
 </ScrollView>

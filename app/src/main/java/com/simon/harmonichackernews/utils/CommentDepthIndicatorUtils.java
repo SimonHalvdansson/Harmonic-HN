@@ -10,6 +10,7 @@ public class CommentDepthIndicatorUtils {
     public static final String MODE_MATERIAL_YOU = "material_you";
     public static final String MODE_COLORS = "colors";
     public static final String MODE_MONOCHROME = "monochrome";
+    public static final String MODE_NONE = "none";
 
     public static final int COMMENT_DEPTH_COLOR_COUNT = 7;
 
@@ -71,10 +72,15 @@ public class CommentDepthIndicatorUtils {
     public static String sanitizeMode(String mode) {
         if (MODE_MATERIAL_YOU.equals(mode)
                 || MODE_COLORS.equals(mode)
-                || MODE_MONOCHROME.equals(mode)) {
+                || MODE_MONOCHROME.equals(mode)
+                || MODE_NONE.equals(mode)) {
             return mode;
         }
         return MODE_THEME_DEFAULT;
+    }
+
+    public static boolean shouldShowIndicators(String mode) {
+        return !MODE_NONE.equals(sanitizeMode(mode));
     }
 
     public static String getModeLabel(String mode) {
@@ -85,6 +91,8 @@ public class CommentDepthIndicatorUtils {
                 return "Standard";
             case MODE_MONOCHROME:
                 return "Monochrome";
+            case MODE_NONE:
+                return "None";
             case MODE_THEME_DEFAULT:
             default:
                 return "Theme default";

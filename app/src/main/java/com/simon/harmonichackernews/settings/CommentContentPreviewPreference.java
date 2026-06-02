@@ -290,10 +290,16 @@ public class CommentContentPreviewPreference extends Preference implements Share
             return;
         }
 
+        String mode = SettingsUtils.getPreferredCommentDepthIndicatorMode(getContext());
+        if (!CommentDepthIndicatorUtils.shouldShowIndicators(mode)) {
+            commentIndentIndicator.setVisibility(View.INVISIBLE);
+            return;
+        }
+
         commentIndentIndicator.setVisibility(View.VISIBLE);
         int colorResource = CommentDepthIndicatorUtils.getColorResource(
                 getContext(),
-                SettingsUtils.getPreferredCommentDepthIndicatorMode(getContext()),
+                mode,
                 ThemeUtils.getPreferredTheme(getContext()),
                 0);
         commentIndentIndicator.setBackgroundColor(ContextCompat.getColor(getContext(), colorResource));

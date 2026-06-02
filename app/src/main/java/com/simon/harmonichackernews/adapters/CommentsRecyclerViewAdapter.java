@@ -416,7 +416,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     Math.max(0, bottomMargin - cardShadowPadding));
             itemViewHolder.itemView.setLayoutParams(params);
 
-            if (comment.depth == 0 && !showTopLevelDepthIndicator) {
+            if (!CommentDepthIndicatorUtils.shouldShowIndicators(commentDepthIndicatorMode)) {
+                itemViewHolder.commentIndentIndicator.setVisibility(cardStyle ? View.INVISIBLE : GONE);
+            } else if (comment.depth == 0 && !showTopLevelDepthIndicator) {
                 itemViewHolder.commentIndentIndicator.setVisibility(cardStyle ? View.INVISIBLE : GONE);
             } else {
                 itemViewHolder.commentIndentIndicator.setVisibility(View.VISIBLE);
