@@ -1678,7 +1678,7 @@ public class StoriesFragment extends Fragment {
 
         if (TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(SettingsUtils.getPreferredFont(getContext()))) {
             FontUtils.init(getContext());
-            notifyVisibleStoryItemsChanged();
+            adapter.notifyItemRangeChanged(1, adapter.getItemCount());
         }
 
         if (adapter.compactHeader != SettingsUtils.shouldUseCompactHeader(getContext())) {
@@ -1702,19 +1702,6 @@ public class StoriesFragment extends Fragment {
         }
 
         syncStoriesWithHistoriesIfNeeded();
-    }
-
-    private void notifyVisibleStoryItemsChanged() {
-        if (adapter == null || stories == null) {
-            return;
-        }
-
-        int visibleStoryItemCount = adapter.paginationMode
-                ? Math.min(adapter.visibleStoryCount, stories.size())
-                : stories.size();
-        if (visibleStoryItemCount > 0) {
-            adapter.notifyItemRangeChanged(0, visibleStoryItemCount);
-        }
     }
 
     public void onAccountStateChanged() {
