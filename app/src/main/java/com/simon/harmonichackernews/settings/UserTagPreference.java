@@ -12,6 +12,7 @@ import androidx.preference.PreferenceViewHolder;
 
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.UserDialogFragment;
+import com.simon.harmonichackernews.UserTagDialogFragment;
 import com.simon.harmonichackernews.utils.Utils;
 
 public class UserTagPreference extends Preference {
@@ -109,7 +110,11 @@ public class UserTagPreference extends Preference {
     }
 
     private void editTag() {
-        UserDialogFragment.showTagDialog(getContext(), username, Utils.getUserTag(getContext(), username), accepted -> {
+        if (fragmentManager == null) {
+            return;
+        }
+
+        UserTagDialogFragment.show(fragmentManager, username, Utils.getUserTag(getContext(), username), tag -> {
             if (onChanged != null) {
                 onChanged.run();
             }

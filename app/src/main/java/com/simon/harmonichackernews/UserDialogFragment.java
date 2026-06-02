@@ -4,7 +4,6 @@ import static android.view.View.GONE;
 import static com.simon.harmonichackernews.SubmissionsActivity.KEY_USER;
 
 import android.app.Dialog;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.Intent;
 import android.net.Uri;
@@ -41,7 +40,6 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
-import com.google.android.material.textfield.TextInputEditText;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.RepliesChecker;
 import com.simon.harmonichackernews.utils.AccountUtils;
@@ -540,33 +538,6 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         showUserDialog(fm, name, null);
     }
 
-    public static void showTagDialog(Context context, String userName, String currentTag, @Nullable UserDialogCallback callback) {
-        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(context);
-        LayoutInflater inflater = LayoutInflater.from(context);
-        View view = inflater.inflate(R.layout.tag_dialog, null);
-        builder.setView(view);
-        AlertDialog dialog = builder.create();
-
-        TextInputEditText editText = view.findViewById(R.id.tag_dialog_edittext);
-        Button cancel = view.findViewById(R.id.tag_dialog_cancel);
-        Button save = view.findViewById(R.id.tag_dialog_save);
-
-        editText.setText(currentTag);
-
-        cancel.setOnClickListener(v -> dialog.dismiss());
-        save.setOnClickListener(v -> {
-            String tag = editText.getText() != null ? editText.getText().toString().trim() : "";
-            Utils.setUserTag(context, userName, tag);
-
-            if (callback != null) {
-                callback.onResult(true);
-            }
-            dialog.dismiss();
-        });
-
-        dialog.show();
-    }
-
     public void setLinkifiedText(String text, TextView textView) {
         SpannableString spannableString = new SpannableString(text);
 
@@ -591,9 +562,8 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     }
 
     private void showTagDialog(String userName, String currentTag) {
-        showTagDialog(requireContext(), userName, currentTag, accepted -> {
+        UserTagDialogFragment.show(getParentFragmentManager(), userName, currentTag, tag -> {
             if (tagButton != null) {
-                String tag = Utils.getUserTag(getContext(), userName);
                 tagButton.setText("Set tag" + (TextUtils.isEmpty(tag) ? "" : " (" + tag + ")"));
             }
 
