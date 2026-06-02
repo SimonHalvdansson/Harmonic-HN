@@ -21,7 +21,7 @@
 
         <Preference
             app:singleLineTitle="false"
-            app:title="Filter user comments"
+            app:title="Blocked users"
             app:key="pref_filter_users"
             app:icon="@drawable/ic_action_block"
             app:summary="Hide comments by the specified users" />

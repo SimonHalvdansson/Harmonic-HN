@@ -37,7 +37,7 @@ public class FiltersTagsPreferenceFragment extends BaseSettingsFragment {
         setupFilterPreference(
                 "pref_filter_users",
                 "Username",
-                "No user filters");
+                "No blocked users");
 
         tagsCategory = findPreference("pref_category_tags");
         updateUserTags();
