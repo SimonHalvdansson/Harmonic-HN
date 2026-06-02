@@ -258,7 +258,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                                         }
                                     } else {
                                         if (Utils.addFilteredUser(getContext(), userName)) {
-                                            Toast.makeText(getContext(), "You will no longer see comments from " + userName, Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(getContext(), "You will no longer see posts or comments from " + userName, Toast.LENGTH_SHORT).show();
                                             dialog.dismiss();
                                         }
                                     }

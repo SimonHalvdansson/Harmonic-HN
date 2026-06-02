@@ -145,6 +145,7 @@ public class StoriesFragment extends Fragment {
     private LinearLayoutManager linearLayoutManager;
     private ArrayList<String> filterWords;
     private ArrayList<String> filterDomains;
+    private Set<String> filteredUsers;
     private boolean hideJobs, alwaysOpenComments, hideClicked;
     private long historiesChangeVersion = -1L;
     private boolean searching = false;
@@ -323,6 +324,7 @@ public class StoriesFragment extends Fragment {
         stories = new ArrayList<>();
         filterWords = Utils.getFilterWords(requireContext());
         filterDomains = Utils.getFilterDomains(requireContext());
+        filteredUsers = Utils.getFilteredUsers(requireContext());
         hideJobs = SettingsUtils.shouldHideJobs(requireContext());
         hideClicked = SettingsUtils.shouldHideClicked(requireContext());
         alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(requireContext());
@@ -1576,6 +1578,7 @@ public class StoriesFragment extends Fragment {
 
         filterWords = Utils.getFilterWords(getContext());
         filterDomains = Utils.getFilterDomains(getContext());
+        filteredUsers = Utils.getFilteredUsers(getContext());
         boolean newHideJobs = SettingsUtils.shouldHideJobs(getContext());
         hideClicked = SettingsUtils.shouldHideClicked(getContext());
         alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(getContext());
@@ -1941,6 +1944,12 @@ public class StoriesFragment extends Fragment {
     private boolean shouldFilterLoadedStory(Story story) {
         if (story == null) {
             return false;
+        }
+
+        if (filteredUsers != null
+                && !TextUtils.isEmpty(story.by)
+                && filteredUsers.contains(story.by.toLowerCase().trim())) {
+            return true;
         }
 
         if (filterWords != null && story.title != null) {
