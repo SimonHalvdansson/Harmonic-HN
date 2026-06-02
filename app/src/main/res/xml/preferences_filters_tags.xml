@@ -30,7 +30,7 @@
 
     <PreferenceCategory
         app:key="pref_category_tags"
-        app:title="Tags"
+        app:title="Tagged users"
         android:layout="@layout/preference_category" />
 
 </PreferenceScreen>
