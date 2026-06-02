@@ -202,10 +202,10 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
         boolean hasBookmarks = bookmarkCount > 0;
         boolean loggedIn = AccountUtils.hasAccountDetails(requireContext());
 
-        exportBookmarksPreference.setEnabled(bookmarksEnabled);
-        importBookmarksPreference.setEnabled(bookmarksEnabled);
+        changePrefStatus(exportBookmarksPreference, bookmarksEnabled);
+        changePrefStatus(importBookmarksPreference, bookmarksEnabled);
 
-        addBookmarksToFavoritesPreference.setEnabled(bookmarksEnabled
+        changePrefStatus(addBookmarksToFavoritesPreference, bookmarksEnabled
                 && hasBookmarks
                 && loggedIn);
         if (!hasBookmarks) {
