@@ -1351,6 +1351,7 @@ public class StoriesFragment extends Fragment {
                 SettingsUtils.shouldGrayOutClicked(getContext()),
                 SettingsUtils.getPreferredHotness(getContext()),
                 SettingsUtils.getPreferredFaviconProvider(getContext()),
+                SettingsUtils.getPreferredFont(getContext()),
                 null,
                 getPreferredTypeIndex()
         );
@@ -1678,9 +1679,17 @@ public class StoriesFragment extends Fragment {
             }
         }
 
-        if (TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(SettingsUtils.getPreferredFont(getContext()))) {
-            FontUtils.init(getContext());
-            adapter.notifyItemRangeChanged(1, adapter.getItemCount());
+        String preferredFont = SettingsUtils.getPreferredFont(getContext());
+        boolean fontChanged = !preferredFont.equals(adapter.font);
+        boolean fontCacheChanged = TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(preferredFont);
+        if (fontChanged || fontCacheChanged) {
+            adapter.font = preferredFont;
+            if (fontCacheChanged) {
+                FontUtils.init(getContext());
+            }
+            if (adapter.getItemCount() > 0) {
+                adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+            }
             if (typeSpinnerAdapter != null) {
                 typeSpinnerAdapter.notifyDataSetChanged();
             }

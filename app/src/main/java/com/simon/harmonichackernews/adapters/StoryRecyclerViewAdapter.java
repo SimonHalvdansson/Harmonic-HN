@@ -90,6 +90,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public String faviconProvider;
     public int hotness;
     public int type;
+    public String font;
     public boolean allowCommentRows;
     public boolean disableClickedEffects;
     public boolean grayOutClicked;
@@ -114,6 +115,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     boolean shouldGrayOutClicked,
                                     int preferredHotness,
                                     String faviconProv,
+                                    String prefFont,
                                     String submissionsUserName,
                                     int wantedType) {
         stories = items;
@@ -131,6 +133,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         grayOutClicked = shouldGrayOutClicked;
         hotness = preferredHotness;
         faviconProvider = faviconProv;
+        font = prefFont;
         type = wantedType;
 
         atSubmissions = !TextUtils.isEmpty(submissionsUserName);

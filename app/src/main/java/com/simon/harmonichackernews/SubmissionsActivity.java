@@ -131,6 +131,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                 SettingsUtils.shouldGrayOutClicked(this),
                 SettingsUtils.getPreferredHotness(this),
                 SettingsUtils.getPreferredFaviconProvider(this),
+                SettingsUtils.getPreferredFont(this),
                 userName,
                 -1);
 
