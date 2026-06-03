@@ -151,6 +151,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static int COMMENT_ACTION_DOWNVOTE = 8;
     private final static int COMMENT_ACTION_REPLY = 9;
     private final static int NO_COMMENT_ACTION_COMMENT_ID = -1;
+    private final static int NO_COMMENT_ACTION_VOTE_LOADING = -1;
     private final static int COMMENT_ACTION_TEXT_MAX_HEIGHT_DP = 300;
     private final static int COMMENT_ACTION_TRANSFORM_DURATION_MS = 280;
     private final static float COMMENT_ACTION_TRANSFORM_START_PROGRESS = 0f;
@@ -234,6 +235,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int originalStatusBarColor = Color.TRANSPARENT;
     private boolean originalStatusBarColorCaptured = false;
     private final Set<Integer> commentActionFavoriteLoadingIds = new HashSet<>();
+    private final Map<Integer, Integer> commentActionVoteLoadingActions = new HashMap<>();
+    private final Set<Integer> commentActionDownvotedIds = new HashSet<>();
     private String currentCommentSorting;
 
     // Clean fallback management
@@ -2954,9 +2957,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         ArrayList<CommentActionItem> iconActions = new ArrayList<>();
         if (hasAccount) {
-            iconActions.add(new CommentActionItem(COMMENT_ACTION_UPVOTE, "Vote up", R.drawable.ic_action_thumbs_up_outline));
-            iconActions.add(new CommentActionItem(COMMENT_ACTION_DOWNVOTE, "Vote down", R.drawable.ic_action_thumb_down));
-            iconActions.add(new CommentActionItem(COMMENT_ACTION_UNVOTE, "Unvote", R.drawable.ic_action_thumbs_unvote));
+            boolean upvoted = Utils.isUpvoted(ctx, comment.id, true);
+            boolean downvoted = !upvoted && commentActionDownvotedIds.contains(comment.id);
+            int voteLoadingAction = getCommentActionVoteLoadingAction(comment.id);
+            iconActions.add(createCommentActionVoteItem(COMMENT_ACTION_UPVOTE, upvoted, downvoted, voteLoadingAction));
+            iconActions.add(createCommentActionVoteItem(COMMENT_ACTION_DOWNVOTE, upvoted, downvoted, voteLoadingAction));
+            iconActions.add(createCommentActionVoteItem(COMMENT_ACTION_UNVOTE, upvoted, downvoted, voteLoadingAction));
         }
 
         if (bookmarksEnabled) {
@@ -2983,6 +2989,65 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
+    private CommentActionItem createCommentActionVoteItem(int action,
+                                                          boolean upvoted,
+                                                          boolean downvoted,
+                                                          int loadingAction) {
+        boolean loading = loadingAction == action;
+        return new CommentActionItem(
+                action,
+                getCommentActionVoteLabel(action, upvoted, downvoted, loading),
+                getCommentActionVoteIconRes(action, upvoted, downvoted),
+                loading,
+                !isCommentActionVote(loadingAction));
+    }
+
+    private String getCommentActionVoteLabel(int action,
+                                             boolean upvoted,
+                                             boolean downvoted,
+                                             boolean loading) {
+        switch (action) {
+            case COMMENT_ACTION_UPVOTE:
+                return loading ? "Upvoting" : (upvoted ? "Upvoted" : "Vote up");
+
+            case COMMENT_ACTION_DOWNVOTE:
+                return loading ? "Downvoting" : (downvoted ? "Downvoted" : "Vote down");
+
+            case COMMENT_ACTION_UNVOTE:
+                return loading ? "Removing vote" : "Unvote";
+
+            default:
+                return "";
+        }
+    }
+
+    private int getCommentActionVoteIconRes(int action, boolean upvoted, boolean downvoted) {
+        switch (action) {
+            case COMMENT_ACTION_UPVOTE:
+                return upvoted ? R.drawable.ic_action_thumbs_up : R.drawable.ic_action_thumbs_up_outline;
+
+            case COMMENT_ACTION_DOWNVOTE:
+                return downvoted ? R.drawable.ic_action_thumb_down : R.drawable.ic_action_thumb_down_outline;
+
+            case COMMENT_ACTION_UNVOTE:
+                return R.drawable.ic_action_thumbs_unvote;
+
+            default:
+                return 0;
+        }
+    }
+
+    private int getCommentActionVoteLoadingAction(int commentId) {
+        Integer loadingAction = commentActionVoteLoadingActions.get(commentId);
+        return loadingAction == null ? NO_COMMENT_ACTION_VOTE_LOADING : loadingAction;
+    }
+
+    private boolean isCommentActionVote(int action) {
+        return action == COMMENT_ACTION_UPVOTE
+                || action == COMMENT_ACTION_DOWNVOTE
+                || action == COMMENT_ACTION_UNVOTE;
+    }
+
     private void addCommentActionIconRow(LinearLayout actionsContainer,
                                          List<CommentActionItem> actionItems,
                                          Comment comment,
@@ -3007,6 +3072,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         for (CommentActionItem actionItem : actionItems) {
             FrameLayout buttonSlot = new FrameLayout(row.getContext());
+            buttonSlot.setTag(actionItem.action);
             buttonSlot.setClipChildren(false);
             buttonSlot.setClipToPadding(false);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -3037,6 +3103,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 ViewGroup.LayoutParams.MATCH_PARENT);
         buttonSlot.addView(button, params);
         button.setOnClickListener(v -> performCommentAction(actionItem.action, comment, oldBookmarked, oldFavorited, button));
+        button.setEnabled(actionItem.enabled);
         if (animate) {
             animateCommentActionViewIn(button, null);
         }
@@ -3045,6 +3112,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private ImageButton createCommentActionIconButton(Context ctx, CommentActionItem actionItem) {
         ImageButton button = new ImageButton(ctx);
         button.setImageResource(actionItem.iconRes);
+        button.setTag(actionItem.iconRes);
         button.setImageTintList(ColorStateList.valueOf(MaterialColors.getColor(button, R.attr.storyColorNormal)));
         button.setBackgroundResource(resolveSelectableItemBackgroundBorderless(ctx));
         button.setContentDescription(actionItem.label);
@@ -3195,15 +3263,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 break;
 
             case COMMENT_ACTION_UPVOTE:
-                UserActions.upvote(ctx, comment.id, getParentFragmentManager());
-                break;
-
-            case COMMENT_ACTION_UNVOTE:
-                UserActions.unvote(ctx, comment.id, getParentFragmentManager());
-                break;
-
             case COMMENT_ACTION_DOWNVOTE:
-                UserActions.downvote(ctx, comment.id, getParentFragmentManager());
+            case COMMENT_ACTION_UNVOTE:
+                performCommentActionVote(action, comment, actionView);
                 break;
 
             case COMMENT_ACTION_REPLY:
@@ -3224,6 +3286,233 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 ctx.startActivity(replyIntent);
                 break;
         }
+    }
+
+    private void performCommentActionVote(int action, Comment comment, @Nullable View actionView) {
+        if (!isAdded()) {
+            return;
+        }
+
+        Context ctx = requireContext();
+        if (!AccountUtils.hasAccountDetails(ctx)) {
+            AccountUtils.showLoginPrompt(getParentFragmentManager());
+            return;
+        }
+        if (isCommentActionVote(getCommentActionVoteLoadingAction(comment.id))) {
+            return;
+        }
+
+        boolean wasUpvoted = Utils.isUpvoted(ctx, comment.id, true);
+        boolean wasDownvoted = !wasUpvoted && commentActionDownvotedIds.contains(comment.id);
+        FrameLayout voteSlot = getCommentActionButtonSlot(actionView);
+        ImageButton button = actionView instanceof ImageButton ? (ImageButton) actionView : null;
+
+        commentActionVoteLoadingActions.put(comment.id, action);
+        if (voteSlot != null && button != null) {
+            showCommentActionVoteLoading(voteSlot, button, action);
+        } else if (commentActionOverlay != null) {
+            bindCommentActionOverlay(comment);
+        }
+
+        UserActions.ActionCallback cb = new UserActions.ActionCallback() {
+            @Override
+            public void onSuccess(Response response) {
+                applyCommentActionVoteState(ctx, comment.id, action == COMMENT_ACTION_UPVOTE, action == COMMENT_ACTION_DOWNVOTE);
+                commentActionVoteLoadingActions.remove(comment.id);
+                showCommentActionVoteButton(voteSlot, comment, action, true);
+            }
+
+            @Override
+            public void onFailure(String summary, String response) {
+                applyCommentActionVoteState(ctx, comment.id, wasUpvoted, wasDownvoted);
+                commentActionVoteLoadingActions.remove(comment.id);
+                showCommentActionVoteButton(voteSlot, comment, action, true);
+            }
+        };
+
+        switch (action) {
+            case COMMENT_ACTION_UPVOTE:
+                UserActions.upvote(ctx, comment.id, getParentFragmentManager(), cb);
+                break;
+
+            case COMMENT_ACTION_DOWNVOTE:
+                UserActions.downvote(ctx, comment.id, getParentFragmentManager(), cb);
+                break;
+
+            case COMMENT_ACTION_UNVOTE:
+                UserActions.unvote(ctx, comment.id, getParentFragmentManager(), cb);
+                break;
+        }
+    }
+
+    private void applyCommentActionVoteState(Context ctx, int commentId, boolean upvoted, boolean downvoted) {
+        Utils.setUpvoted(ctx, commentId, true, upvoted);
+        if (downvoted && !upvoted) {
+            commentActionDownvotedIds.add(commentId);
+        } else {
+            commentActionDownvotedIds.remove(commentId);
+        }
+    }
+
+    private void showCommentActionVoteLoading(FrameLayout voteSlot, ImageButton button, int action) {
+        String label = getCommentActionVoteLabel(action, false, false, true);
+        setCommentActionVoteButtonsEnabled(false);
+        button.setContentDescription(label);
+        TooltipCompat.setTooltipText(button, label);
+        animateCommentActionViewOut(button, () -> showCommentActionLoadingIndicator(voteSlot, label, true));
+    }
+
+    private void showCommentActionVoteButton(@Nullable FrameLayout voteSlot,
+                                             Comment comment,
+                                             int action,
+                                             boolean animate) {
+        if (!isAdded() || commentActionCommentId != comment.id) {
+            return;
+        }
+
+        Context ctx = requireContext();
+        boolean bookmarked = SettingsUtils.shouldUseBookmarks(ctx) && Utils.isBookmarked(ctx, comment.id);
+        boolean favorited = Utils.isFavorited(ctx, comment.id);
+        boolean upvoted = Utils.isUpvoted(ctx, comment.id, true);
+        boolean downvoted = !upvoted && commentActionDownvotedIds.contains(comment.id);
+        if (voteSlot == null || !ViewCompat.isAttachedToWindow(voteSlot)) {
+            if (commentActionOverlay != null) {
+                bindCommentActionOverlay(comment);
+            }
+            return;
+        }
+
+        CommentActionItem actionItem = new CommentActionItem(
+                action,
+                getCommentActionVoteLabel(action, upvoted, downvoted, false),
+                getCommentActionVoteIconRes(action, upvoted, downvoted),
+                false,
+                false);
+        View outgoing = voteSlot.getChildCount() > 0 ? voteSlot.getChildAt(0) : null;
+        Runnable showVoteButton = () -> {
+            setCommentActionIconButton(voteSlot, actionItem, comment, bookmarked, favorited, false);
+            View incoming = voteSlot.getChildCount() > 0 ? voteSlot.getChildAt(0) : null;
+            Runnable afterLoading = () -> {
+                setCommentActionVoteButtonsEnabled(true);
+                updateCommentActionVoteButtons(comment, bookmarked, favorited, action, upvoted, downvoted, animate);
+            };
+            if (animate && incoming != null) {
+                animateCommentActionViewIn(incoming, afterLoading);
+            } else {
+                afterLoading.run();
+            }
+        };
+
+        if (animate && outgoing != null) {
+            animateCommentActionViewOut(outgoing, showVoteButton);
+        } else {
+            showVoteButton.run();
+        }
+    }
+
+    private void updateCommentActionVoteButtons(Comment comment,
+                                                boolean bookmarked,
+                                                boolean favorited,
+                                                int completedAction,
+                                                boolean upvoted,
+                                                boolean downvoted,
+                                                boolean animate) {
+        updateCommentActionVoteButton(comment, bookmarked, favorited, COMMENT_ACTION_UPVOTE, completedAction, upvoted, downvoted, animate);
+        updateCommentActionVoteButton(comment, bookmarked, favorited, COMMENT_ACTION_DOWNVOTE, completedAction, upvoted, downvoted, animate);
+        updateCommentActionVoteButton(comment, bookmarked, favorited, COMMENT_ACTION_UNVOTE, completedAction, upvoted, downvoted, animate);
+    }
+
+    private void updateCommentActionVoteButton(Comment comment,
+                                               boolean bookmarked,
+                                               boolean favorited,
+                                               int action,
+                                               int completedAction,
+                                               boolean upvoted,
+                                               boolean downvoted,
+                                               boolean animate) {
+        FrameLayout voteSlot = findCommentActionButtonSlot(action);
+        if (voteSlot == null || voteSlot.getChildCount() == 0 || !(voteSlot.getChildAt(0) instanceof ImageButton)) {
+            return;
+        }
+
+        ImageButton button = (ImageButton) voteSlot.getChildAt(0);
+        int iconRes = getCommentActionVoteIconRes(action, upvoted, downvoted);
+        String label = getCommentActionVoteLabel(action, upvoted, downvoted, false);
+        Runnable updateListener = () -> button.setOnClickListener(v ->
+                performCommentAction(action, comment, bookmarked, favorited, button));
+
+        button.setEnabled(true);
+        if (action == completedAction || isCommentActionButtonShowingIcon(button, iconRes)) {
+            button.setImageResource(iconRes);
+            button.setTag(iconRes);
+            button.setContentDescription(label);
+            TooltipCompat.setTooltipText(button, label);
+            updateListener.run();
+            return;
+        }
+
+        if (animate) {
+            animateCommentActionIconChange(button, iconRes, label, updateListener);
+        } else {
+            button.setImageResource(iconRes);
+            button.setTag(iconRes);
+            button.setContentDescription(label);
+            TooltipCompat.setTooltipText(button, label);
+            updateListener.run();
+        }
+    }
+
+    private boolean isCommentActionButtonShowingIcon(ImageButton button, int iconRes) {
+        Object tag = button.getTag();
+        return tag instanceof Integer && (Integer) tag == iconRes;
+    }
+
+    private void setCommentActionVoteButtonsEnabled(boolean enabled) {
+        setCommentActionVoteButtonEnabled(COMMENT_ACTION_UPVOTE, enabled);
+        setCommentActionVoteButtonEnabled(COMMENT_ACTION_DOWNVOTE, enabled);
+        setCommentActionVoteButtonEnabled(COMMENT_ACTION_UNVOTE, enabled);
+    }
+
+    private void setCommentActionVoteButtonEnabled(int action, boolean enabled) {
+        FrameLayout voteSlot = findCommentActionButtonSlot(action);
+        if (voteSlot == null || voteSlot.getChildCount() == 0) {
+            return;
+        }
+
+        View child = voteSlot.getChildAt(0);
+        if (child instanceof ImageButton) {
+            child.setEnabled(enabled);
+        }
+    }
+
+    @Nullable
+    private FrameLayout findCommentActionButtonSlot(int action) {
+        if (commentActionOverlay == null) {
+            return null;
+        }
+
+        View actionsContainer = commentActionOverlay.findViewById(R.id.comment_action_actions);
+        if (actionsContainer instanceof ViewGroup) {
+            return findCommentActionButtonSlot((ViewGroup) actionsContainer, action);
+        }
+        return null;
+    }
+
+    @Nullable
+    private FrameLayout findCommentActionButtonSlot(ViewGroup parent, int action) {
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            View child = parent.getChildAt(i);
+            if (child instanceof FrameLayout && child.getTag() instanceof Integer && (Integer) child.getTag() == action) {
+                return (FrameLayout) child;
+            }
+            if (child instanceof ViewGroup) {
+                FrameLayout slot = findCommentActionButtonSlot((ViewGroup) child, action);
+                if (slot != null) {
+                    return slot;
+                }
+            }
+        }
+        return null;
     }
 
     private void updateCommentActionBookmarkButton(ImageButton button,
@@ -3296,6 +3585,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         button.setEnabled(false);
         animateCommentActionViewOut(button, () -> {
             button.setImageResource(iconRes);
+            button.setTag(iconRes);
             button.setContentDescription(label);
             TooltipCompat.setTooltipText(button, label);
             if (afterIconSet != null) {
@@ -3808,16 +4098,22 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         final String label;
         final int iconRes;
         final boolean loading;
+        final boolean enabled;
 
         CommentActionItem(int action, String label, int iconRes) {
             this(action, label, iconRes, false);
         }
 
         CommentActionItem(int action, String label, int iconRes, boolean loading) {
+            this(action, label, iconRes, loading, true);
+        }
+
+        CommentActionItem(int action, String label, int iconRes, boolean loading, boolean enabled) {
             this.action = action;
             this.label = label;
             this.iconRes = iconRes;
             this.loading = loading;
+            this.enabled = enabled;
         }
     }
 
