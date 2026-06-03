@@ -70,6 +70,8 @@
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            app:icon="@drawable/ic_action_info"
+            app:iconPadding="8dp"
             android:text="How does login work?" />
 
         <LinearLayout
@@ -116,6 +118,8 @@
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            app:icon="@drawable/ic_action_external_browser"
+            app:iconPadding="8dp"
             android:text="Create an account" />
 
         <LinearLayout
