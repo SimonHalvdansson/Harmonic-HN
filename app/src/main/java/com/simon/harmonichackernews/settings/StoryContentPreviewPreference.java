@@ -41,7 +41,6 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     private static final long PREVIEW_ANIMATION_DURATION_MS = 180;
     private static final long PREVIEW_TEXT_FADE_DURATION_MS = 90;
     private static final String PREVIEW_STORY_TITLE = "Algorithm breaks speed limit for solving linear equations";
-    private static final String PREVIEW_STORY_META_WITH_POINTS = "53 points \u2022 quantamagazine.org \u2022 2h";
     private static final String PREVIEW_STORY_COMMENTS = "18";
 
     private ViewGroup previewRoot;
@@ -122,6 +121,11 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
     public void updatePoints(boolean showPoints) {
         updatePreview(null, showPoints, null, null, null, null, null, null, true);
+    }
+
+    public void updateCompactPoints(boolean compactPoints) {
+        updatePointsText(SettingsUtils.shouldShowPoints(getContext()), compactPoints, true);
+        syncPreviewContainerHeight(getCurrentPreviewImageMode());
     }
 
     public void updateCommentsCount(boolean showCommentsCount) {
@@ -254,6 +258,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
         if ("pref_thumbnails".equals(key)
                 || "pref_show_points".equals(key)
+                || SettingsUtils.PREF_COMPACT_POINTS.equals(key)
                 || "pref_show_comments_count".equals(key)
                 || "pref_show_index".equals(key)
                 || "pref_left_align".equals(key)
@@ -346,7 +351,11 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             storyIndex.setVisibility(View.GONE);
         }
         if (storyMeta != null) {
-            storyMeta.setText(PREVIEW_STORY_META_WITH_POINTS);
+            StoryMetaPreviewAnimator.setPointsVisible(
+                    storyMeta,
+                    SettingsUtils.shouldShowPoints(getContext()),
+                    SettingsUtils.shouldUseCompactPoints(getContext()),
+                    false);
         }
         if (comments != null) {
             comments.setText(PREVIEW_STORY_COMMENTS);
@@ -476,6 +485,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         boolean showPoints = showPointsOverride != null
                 ? showPointsOverride
                 : SettingsUtils.shouldShowPoints(getContext());
+        boolean compactPoints = SettingsUtils.shouldUseCompactPoints(getContext());
         boolean showCommentsCount = showCommentsCountOverride != null
                 ? showCommentsCountOverride
                 : SettingsUtils.shouldShowCommentsCount(getContext());
@@ -518,7 +528,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         updateStoryIndex(showIndex);
         updatePreviewImage(previewImageMode);
         updateStoryCardBackground(previewImageMode, animate);
-        updatePointsText(showPoints, animate && !compactVisibilityChanged);
+        updatePointsText(showPoints, compactPoints, animate && !compactVisibilityChanged);
         updateCommentCount(showCommentsCount, compact, animate && !compactVisibilityChanged);
         updateHotnessIcon(hotness, animate);
         if (syncHeight) {
@@ -651,7 +661,11 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             measuredStoryIndex.setVisibility(View.VISIBLE);
         }
         if (measuredStoryMeta != null) {
-            measuredStoryMeta.setText(PREVIEW_STORY_META_WITH_POINTS);
+            StoryMetaPreviewAnimator.setPointsVisible(
+                    measuredStoryMeta,
+                    true,
+                    SettingsUtils.shouldUseCompactPoints(getContext()),
+                    false);
         }
         if (measuredComments != null) {
             measuredComments.setText(PREVIEW_STORY_COMMENTS);
@@ -844,8 +858,8 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         return null;
     }
 
-    private void updatePointsText(boolean showPoints, boolean animate) {
-        StoryMetaPreviewAnimator.setPointsVisible(storyMeta, showPoints, animate);
+    private void updatePointsText(boolean showPoints, boolean compactPoints, boolean animate) {
+        StoryMetaPreviewAnimator.setPointsVisible(storyMeta, showPoints, compactPoints, animate);
     }
 
     private void updateStoryIndex(boolean showIndex) {

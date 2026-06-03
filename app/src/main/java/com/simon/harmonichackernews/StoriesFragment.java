@@ -1338,6 +1338,7 @@ public class StoriesFragment extends Fragment {
 
         adapter = new StoryRecyclerViewAdapter(stories,
                 SettingsUtils.shouldShowPoints(getContext()),
+                SettingsUtils.shouldUseCompactPoints(getContext()),
                 SettingsUtils.shouldShowCommentsCount(getContext()),
                 SettingsUtils.shouldUseCompactView(getContext()),
                 SettingsUtils.shouldShowThumbnails(getContext()),
@@ -1599,6 +1600,12 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.showPoints != SettingsUtils.shouldShowPoints(getContext())) {
             adapter.showPoints = !adapter.showPoints;
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        }
+
+        boolean compactPoints = SettingsUtils.shouldUseCompactPoints(getContext());
+        if (adapter.compactPoints != compactPoints) {
+            adapter.compactPoints = compactPoints;
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 

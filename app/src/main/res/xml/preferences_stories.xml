@@ -46,6 +46,14 @@
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
+            app:key="pref_compact_points"
+            app:defaultValue="false"
+            app:dependency="pref_show_points"
+            app:icon="@drawable/ic_action_thumbs_up"
+            app:title="Compact points" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
             app:key="pref_show_comments_count"
             app:defaultValue="true"
             app:icon="@drawable/ic_action_comment"

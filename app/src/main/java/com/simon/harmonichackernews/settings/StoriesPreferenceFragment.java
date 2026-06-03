@@ -14,6 +14,7 @@ import com.simon.harmonichackernews.widget.StoriesWidgetProvider;
 public class StoriesPreferenceFragment extends BaseSettingsFragment {
     private Preference grayOutClickedPreference;
     private Preference tintCardUsingPreviewPreference;
+    private Preference compactPointsPreference;
 
     @Override
     protected String getToolbarTitle() {
@@ -28,9 +29,11 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
         StoryContentPreviewPreference previewPreference = findPreference("pref_story_content_preview");
         grayOutClickedPreference = findPreference(SettingsUtils.PREF_GRAY_OUT_CLICKED);
         tintCardUsingPreviewPreference = findPreference(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW);
+        compactPointsPreference = findPreference(SettingsUtils.PREF_COMPACT_POINTS);
         ListPreference startingPagePreference = findPreference("pref_default_story_type");
 
         changePrefStatus(findPreference("pref_show_points"), !compact);
+        updateCompactPointsPreference(!compact && SettingsUtils.shouldShowPoints(getContext()));
         changePrefStatus(findPreference("pref_show_comments_count"), !compact);
         changePrefStatus(findPreference("pref_thumbnails"), !compact);
         updateGrayOutClickedPreference();
@@ -47,6 +50,7 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
                 previewPreference.updateCompact((boolean) newValue);
             }
             changePrefStatus(findPreference("pref_show_points"), !(boolean) newValue);
+            updateCompactPointsPreference(!(boolean) newValue && SettingsUtils.shouldShowPoints(getContext()));
             changePrefStatus(findPreference("pref_show_comments_count"), !(boolean) newValue);
             changePrefStatus(findPreference("pref_thumbnails"), !(boolean) newValue);
             changePrefStatus(findPreference("pref_favicon_provider"), !(boolean) newValue && SettingsUtils.shouldShowThumbnails(getContext()));
@@ -87,6 +91,14 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
         findPreference("pref_show_points").setOnPreferenceChangeListener((preference, newValue) -> {
             if (previewPreference != null) {
                 previewPreference.updatePoints((boolean) newValue);
+            }
+            updateCompactPointsPreference((boolean) newValue && !SettingsUtils.shouldUseCompactView(getContext()));
+            return true;
+        });
+
+        findPreference(SettingsUtils.PREF_COMPACT_POINTS).setOnPreferenceChangeListener((preference, newValue) -> {
+            if (previewPreference != null) {
+                previewPreference.updateCompactPoints((boolean) newValue);
             }
             return true;
         });
@@ -162,6 +174,10 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
 
     private void updateTintCardUsingPreviewPreference() {
         updateTintCardUsingPreviewPreference(null, null);
+    }
+
+    private void updateCompactPointsPreference(boolean enabled) {
+        changePrefStatus(compactPointsPreference, enabled);
     }
 
     private void updateTintCardUsingPreviewPreference(String displayStyleOverride, String previewImageModeOverride) {

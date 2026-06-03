@@ -29,6 +29,7 @@ public class SettingsUtils {
     public static final String PREF_STORY_PREVIEW_IMAGE_MODE = "pref_story_preview_image_mode";
     public static final String PREF_TINT_CARD_USING_PREVIEW = "pref_tint_card_using_preview";
     public static final String PREF_STORY_TEXT_SIZE = "pref_story_text_size";
+    public static final String PREF_COMPACT_POINTS = "pref_compact_points";
     public static final String PREF_COMMENT_DISPLAY_STYLE = "pref_comment_display_style";
     public static final String PREF_COMMENT_TEXT_SIZE = "pref_comment_text_size";
     public static final String PREF_FONT = "pref_font";
@@ -134,6 +135,10 @@ public class SettingsUtils {
 
     public static boolean shouldShowPoints(Context ctx) {
         return getBooleanPref("pref_show_points", true, ctx);
+    }
+
+    public static boolean shouldUseCompactPoints(Context ctx) {
+        return getBooleanPref(PREF_COMPACT_POINTS, false, ctx);
     }
 
     public static boolean shouldShowCommentsCount(Context ctx) {

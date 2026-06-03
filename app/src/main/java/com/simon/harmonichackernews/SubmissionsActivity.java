@@ -118,6 +118,7 @@ public class SubmissionsActivity extends AppCompatActivity {
 
         adapter = new StoryRecyclerViewAdapter(submissions,
                 SettingsUtils.shouldShowPoints(this),
+                SettingsUtils.shouldUseCompactPoints(this),
                 SettingsUtils.shouldShowCommentsCount(this),
                 SettingsUtils.shouldUseCompactView(this),
                 SettingsUtils.shouldShowThumbnails(this),
@@ -209,12 +210,30 @@ public class SubmissionsActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        syncCompactPointsPreference();
+    }
+
+    @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         if (Utils.isTablet(getResources())) {
             int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
             swipeRefreshLayout.setPadding(sideMargin, 0, sideMargin, 0);
             appBarLayout.setPadding(sideMargin, 0, sideMargin, 0);
+        }
+    }
+
+    private void syncCompactPointsPreference() {
+        if (adapter == null) {
+            return;
+        }
+
+        boolean compactPoints = SettingsUtils.shouldUseCompactPoints(this);
+        if (adapter.compactPoints != compactPoints) {
+            adapter.compactPoints = compactPoints;
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
     }
 

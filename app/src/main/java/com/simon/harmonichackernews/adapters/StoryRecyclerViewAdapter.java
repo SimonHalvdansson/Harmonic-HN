@@ -77,6 +77,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final long CARD_TINT_ANIMATION_DURATION_MS = 180;
 
     public boolean showPoints;
+    public boolean compactPoints;
     public boolean showCommentsCount;
     public boolean compactView;
     public boolean thumbnails;
@@ -102,6 +103,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     public StoryRecyclerViewAdapter(List<Story> items,
                                     boolean shouldShowPoints,
+                                    boolean shouldUseCompactPoints,
                                     boolean shouldShowCommentsCount,
                                     boolean shouldUseCompactView,
                                     boolean shouldShowThumbnails,
@@ -120,6 +122,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     int wantedType) {
         stories = items;
         showPoints = shouldShowPoints;
+        compactPoints = shouldUseCompactPoints;
         showCommentsCount = shouldShowCommentsCount;
         compactView = shouldUseCompactView;
         thumbnails = shouldShowThumbnails;
@@ -233,8 +236,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
 
                 if (showPoints && !storyViewHolder.story.isComment) {
-                    String ptsString = storyViewHolder.story.score == 1 ? " point" : " points";
-                    storyViewHolder.metaView.setText(storyViewHolder.story.score + ptsString + " • " + host + " • " + storyViewHolder.story.getTimeFormatted());
+                    String pointsText = compactPoints
+                            ? "+" + storyViewHolder.story.score
+                            : pointCountDescription(storyViewHolder.story.score);
+                    storyViewHolder.metaView.setText(pointsText + " • " + host + " • " + storyViewHolder.story.getTimeFormatted());
                     storyViewHolder.metaView.setContentDescription(
                             pointCountDescription(storyViewHolder.story.score) + ", "
                                     + host + ", "

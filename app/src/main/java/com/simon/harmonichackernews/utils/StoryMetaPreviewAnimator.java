@@ -17,9 +17,14 @@ import java.util.WeakHashMap;
 
 public final class StoryMetaPreviewAnimator {
     private static final long ANIMATION_DURATION_MS = 180;
+    private static final String POINTS_VALUE = "53";
+    private static final String POINTS_LABEL = " points";
+    private static final String COMPACT_POINTS_SIGN = "+";
     private static final String POINTS_PREFIX = "53 points \u2022 ";
-    private static final String META_WITH_POINTS = POINTS_PREFIX + "quantamagazine.org \u2022 2h";
-    private static final String META_WITHOUT_POINTS = "quantamagazine.org \u2022 2h";
+    private static final String COMPACT_POINTS_PREFIX = "+53 \u2022 ";
+    private static final String FORMAT_TRANSITION_PREFIX = "+53 points \u2022 ";
+    private static final String META_SUFFIX = "quantamagazine.org \u2022 2h";
+    private static final String META_WITHOUT_POINTS = META_SUFFIX;
     private static final WeakHashMap<TextView, ValueAnimator> RUNNING_ANIMATORS = new WeakHashMap<>();
 
     private StoryMetaPreviewAnimator() {
@@ -27,6 +32,11 @@ public final class StoryMetaPreviewAnimator {
 
     @SuppressLint("SetTextI18n")
     public static void setPointsVisible(TextView storyMeta, boolean showPoints, boolean animate) {
+        setPointsVisible(storyMeta, showPoints, false, animate);
+    }
+
+    @SuppressLint("SetTextI18n")
+    public static void setPointsVisible(TextView storyMeta, boolean showPoints, boolean compactPoints, boolean animate) {
         if (storyMeta == null) {
             return;
         }
@@ -35,7 +45,8 @@ public final class StoryMetaPreviewAnimator {
         storyMeta.animate().cancel();
         storyMeta.setAlpha(1f);
 
-        String targetText = showPoints ? META_WITH_POINTS : META_WITHOUT_POINTS;
+        String targetPrefix = compactPoints ? COMPACT_POINTS_PREFIX : POINTS_PREFIX;
+        String targetText = showPoints ? targetPrefix + META_SUFFIX : META_WITHOUT_POINTS;
         if (!animate || !storyMeta.isLaidOut()) {
             storyMeta.setText(targetText);
             return;
@@ -46,7 +57,42 @@ public final class StoryMetaPreviewAnimator {
             return;
         }
 
-        animatePointsPrefix(storyMeta, showPoints);
+        if (showPoints && isPointsFormatChange(currentText, compactPoints)) {
+            animateCompactPointsFormat(storyMeta, compactPoints);
+            return;
+        }
+
+        animatePointsPrefix(storyMeta, showPoints, targetPrefix, getCurrentPointsPrefix(currentText));
+    }
+
+    private static String getCurrentPointsPrefix(CharSequence currentText) {
+        if (currentText != null) {
+            String text = currentText.toString();
+            if (text.startsWith(FORMAT_TRANSITION_PREFIX)) {
+                return FORMAT_TRANSITION_PREFIX;
+            }
+            if (text.startsWith(COMPACT_POINTS_PREFIX)) {
+                return COMPACT_POINTS_PREFIX;
+            }
+            if (text.startsWith(POINTS_PREFIX)) {
+                return POINTS_PREFIX;
+            }
+        }
+        return POINTS_PREFIX;
+    }
+
+    private static boolean isPointsFormatChange(CharSequence currentText, boolean targetCompactPoints) {
+        if (currentText == null) {
+            return false;
+        }
+
+        String text = currentText.toString();
+        if (text.startsWith(FORMAT_TRANSITION_PREFIX)) {
+            return true;
+        }
+        return targetCompactPoints
+                ? text.startsWith(POINTS_PREFIX)
+                : text.startsWith(COMPACT_POINTS_PREFIX);
     }
 
     private static boolean hasAnimatedPrefixSpan(CharSequence text) {
@@ -55,13 +101,56 @@ public final class StoryMetaPreviewAnimator {
         }
 
         Spanned spanned = (Spanned) text;
-        return spanned.getSpans(0, spanned.length(), AnimatedPrefixSpan.class).length > 0;
+        return spanned.getSpans(0, spanned.length(), AnimatedWidthAlphaSpan.class).length > 0;
     }
 
-    private static void animatePointsPrefix(TextView storyMeta, boolean showPoints) {
-        AnimatedPrefixSpan span = new AnimatedPrefixSpan(showPoints ? 0f : 1f);
-        SpannableString text = new SpannableString(META_WITH_POINTS);
-        text.setSpan(span, 0, POINTS_PREFIX.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    private static void animateCompactPointsFormat(TextView storyMeta, boolean compactPoints) {
+        AnimatedWidthAlphaSpan plusSpan = new AnimatedWidthAlphaSpan(compactPoints ? 0f : 1f);
+        AnimatedWidthAlphaSpan labelSpan = new AnimatedWidthAlphaSpan(compactPoints ? 1f : 0f);
+        SpannableString text = new SpannableString(FORMAT_TRANSITION_PREFIX + META_SUFFIX);
+        text.setSpan(plusSpan, 0, COMPACT_POINTS_SIGN.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        int labelStart = COMPACT_POINTS_SIGN.length() + POINTS_VALUE.length();
+        int labelEnd = labelStart + POINTS_LABEL.length();
+        text.setSpan(labelSpan, labelStart, labelEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        storyMeta.setText(text);
+
+        ValueAnimator animator = ValueAnimator.ofFloat(compactPoints ? 0f : 1f, compactPoints ? 1f : 0f);
+        RUNNING_ANIMATORS.put(storyMeta, animator);
+        animator.setDuration(ANIMATION_DURATION_MS);
+        animator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        animator.addUpdateListener(animation -> {
+            float progress = (float) animation.getAnimatedValue();
+            plusSpan.setProgress(progress);
+            labelSpan.setProgress(1f - progress);
+            storyMeta.invalidate();
+            storyMeta.requestLayout();
+        });
+        animator.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                finishAnimation(storyMeta, animator, true, compactPoints ? COMPACT_POINTS_PREFIX : POINTS_PREFIX);
+            }
+
+            @Override
+            public void onAnimationCancel(android.animation.Animator animation) {
+                if (RUNNING_ANIMATORS.get(storyMeta) == animator) {
+                    RUNNING_ANIMATORS.remove(storyMeta);
+                }
+            }
+        });
+        animator.start();
+    }
+
+    private static void animatePointsPrefix(
+            TextView storyMeta,
+            boolean showPoints,
+            String targetPrefix,
+            String currentPrefix) {
+        String animatedPrefix = showPoints ? targetPrefix : currentPrefix;
+        AnimatedWidthAlphaSpan span = new AnimatedWidthAlphaSpan(showPoints ? 0f : 1f);
+        SpannableString text = new SpannableString(animatedPrefix + META_SUFFIX);
+        text.setSpan(span, 0, animatedPrefix.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         storyMeta.setText(text);
 
         ValueAnimator animator = ValueAnimator.ofFloat(showPoints ? 0f : 1f, showPoints ? 1f : 0f);
@@ -76,7 +165,7 @@ public final class StoryMetaPreviewAnimator {
         animator.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(android.animation.Animator animation) {
-                finishAnimation(storyMeta, animator, showPoints);
+                finishAnimation(storyMeta, animator, showPoints, targetPrefix);
             }
 
             @Override
@@ -90,13 +179,17 @@ public final class StoryMetaPreviewAnimator {
     }
 
     @SuppressLint("SetTextI18n")
-    private static void finishAnimation(TextView storyMeta, ValueAnimator animator, boolean showPoints) {
+    private static void finishAnimation(
+            TextView storyMeta,
+            ValueAnimator animator,
+            boolean showPoints,
+            String pointsPrefix) {
         if (RUNNING_ANIMATORS.get(storyMeta) != animator) {
             return;
         }
 
         RUNNING_ANIMATORS.remove(storyMeta);
-        storyMeta.setText(showPoints ? META_WITH_POINTS : META_WITHOUT_POINTS);
+        storyMeta.setText(showPoints ? pointsPrefix + META_SUFFIX : META_WITHOUT_POINTS);
         storyMeta.setAlpha(1f);
     }
 
@@ -107,10 +200,10 @@ public final class StoryMetaPreviewAnimator {
         }
     }
 
-    private static final class AnimatedPrefixSpan extends ReplacementSpan {
+    private static final class AnimatedWidthAlphaSpan extends ReplacementSpan {
         private float progress;
 
-        AnimatedPrefixSpan(float progress) {
+        AnimatedWidthAlphaSpan(float progress) {
             this.progress = progress;
         }
 
