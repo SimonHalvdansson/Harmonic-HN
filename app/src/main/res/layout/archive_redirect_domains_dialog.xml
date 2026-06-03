@@ -22,7 +22,7 @@
             android:paddingBottom="14dp"
             android:text="Choose domains where we should automatically redirect the webview to the archive.is version. Useful for domains where paywalls are persistent."
             android:textColor="?attr/storyColorNormal"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
 
         <LinearLayout
             android:layout_width="match_parent"

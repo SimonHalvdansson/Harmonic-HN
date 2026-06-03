@@ -188,7 +188,7 @@ public class ArchiveRedirectDomainsDialogFragment extends AppCompatDialogFragmen
     }
 
     private void addDomainView(String domain) {
-        View row = LayoutInflater.from(requireContext()).inflate(R.layout.filter_list_item, listContainer, false);
+        View row = LayoutInflater.from(requireContext()).inflate(R.layout.archive_redirect_domain_item, listContainer, false);
         TextView textView = row.findViewById(R.id.filter_list_item_text);
         ImageButton removeButton = row.findViewById(R.id.filter_list_item_remove);
         textView.setText(domain);
