@@ -15,6 +15,7 @@
         android:text="Load more"
         android:textAllCaps="false"
         style="@style/Widget.Material3Expressive.Button.OutlinedButton"
-        />
+        app:icon="@drawable/ic_action_add"
+        app:iconGravity="textStart" />
 
 </LinearLayout>
