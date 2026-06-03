@@ -53,6 +53,7 @@
                 android:id="@+id/login_dialog_password"
                 android:autofillHints="password"
                 android:hint="Password"
+                android:nextFocusForward="@id/login_dialog_save"
                 android:inputType="textPassword" />
 
         </com.google.android.material.textfield.TextInputLayout>
