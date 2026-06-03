@@ -1381,6 +1381,7 @@ public class StoriesFragment extends Fragment {
             Story story = stories.get(position);
             if (story.loaded) {
                 markStoryClicked(story);
+                adapter.updateStoryClickedState(position);
 
                 if (story.isLink) {
                     if (SettingsUtils.shouldUseIntegratedWebView(getContext())) {
@@ -1391,8 +1392,6 @@ public class StoriesFragment extends Fragment {
                 } else {
                     openComments(story, position, false);
                 }
-
-                adapter.notifyItemChanged(position);
             } else if (story.loadingFailed) {
                 story.loadingFailed = false;
                 loadStory(story, 0);
@@ -1459,7 +1458,7 @@ public class StoriesFragment extends Fragment {
                             HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
                         }
 
-                        adapter.notifyItemChanged(position);
+                        adapter.updateStoryClickedState(position);
                         return true;
                     }
                 });
@@ -1913,10 +1912,9 @@ public class StoriesFragment extends Fragment {
         Story story = stories.get(position);
         if (story.loaded) {
             markStoryClicked(story);
+            adapter.updateStoryClickedState(position);
 
             openComments(story, position, false);
-
-            adapter.notifyItemChanged(position);
         }
     }
 
