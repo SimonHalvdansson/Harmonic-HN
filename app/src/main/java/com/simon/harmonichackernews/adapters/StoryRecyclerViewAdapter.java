@@ -311,7 +311,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             Story story = stories.get(position);
 
             String masterTitle = TextUtils.isEmpty(story.commentMasterTitle) ? "Hacker News thread" : story.commentMasterTitle;
-            commentViewHolder.headerText.setText("On \"" + masterTitle + "\" " + Utils.getTimeAgo(story.time));
+            commentViewHolder.headerText.setText("On \"" + masterTitle + "\"");
+            commentViewHolder.headerTime.setText(Utils.getTimeAgo(story.time));
             commentViewHolder.storyButton.setEnabled(story.commentMasterId > 0 || story.parentId > 0);
             if (story.spannedText != null) {
                 commentViewHolder.bodyText.setHtml(story.spannedText);
@@ -881,6 +882,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public class CommentViewHolder extends RecyclerView.ViewHolder {
 
         public final TextView headerText;
+        public final TextView headerTime;
         public final HtmlTextView bodyText;
         public final Button storyButton;
         public final Button repliesButton;
@@ -890,6 +892,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public CommentViewHolder(View view) {
             super(view);
             headerText = view.findViewById(R.id.submissions_comment_header);
+            headerTime = view.findViewById(R.id.submissions_comment_time);
             bodyText = view.findViewById(R.id.submissions_comment_body);
             storyButton = view.findViewById(R.id.submissions_comment_button_story);
             repliesButton = view.findViewById(R.id.submissions_comment_button_replies);

@@ -5,20 +5,51 @@
     android:paddingBottom="10dp"
     android:paddingLeft="16dp"
     android:paddingRight="16dp"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-    <TextView
-        android:id="@+id/submissions_comment_header"
-        android:textSize="13sp"
-        android:paddingBottom="4dp"
-        android:textStyle="bold"
-        android:textColor="?attr/textColorDisabled"
-        android:fontFamily="@font/product_sans"
-        tools:text="On 'We found and fixed' a rare race condition in our sessions handling':"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:baselineAligned="false"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:orientation="horizontal"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:id="@+id/submissions_comment_header"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/product_sans"
+            android:textColor="?attr/textColorDisabled"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="On 'We found and fixed' a rare race condition in our sessions handling'" />
+
+        <TextView
+            android:id="@+id/submissions_comment_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/submissions_comment_time_background"
+            android:fontFamily="@font/product_sans_bold"
+            android:minHeight="22dp"
+            android:paddingStart="7dp"
+            android:paddingTop="2.5dp"
+            android:paddingEnd="7dp"
+            android:paddingBottom="1.5dp"
+            android:textColor="?attr/textColorDisabled"
+            android:textSize="12sp"
+            android:translationY="-1dp"
+            tools:text="21m" />
+
+    </LinearLayout>
 
     <FrameLayout
         android:layout_width="match_parent"

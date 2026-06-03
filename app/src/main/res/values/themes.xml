@@ -28,6 +28,8 @@
         <item name="secondaryTextColor">@color/material_you_secondary_70</item>
         <item name="overlayButtonColor">?attr/colorSecondaryContainer</item>
         <item name="overlayButtonOutlineColor">@android:color/transparent</item>
+        <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
+        <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
 
         <item name="android:windowBackground">@color/material_you_neutral_900</item>
         <item name="android:colorBackground">@color/material_you_neutral_900</item>
@@ -64,6 +66,8 @@
         <item name="secondaryTextColor">@color/material_you_secondary_70</item>
         <item name="overlayButtonColor">?attr/colorSecondaryContainer</item>
         <item name="overlayButtonOutlineColor">@android:color/transparent</item>
+        <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
+        <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
 
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
@@ -100,6 +104,8 @@
         <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
         <item name="overlayButtonColor">@android:color/black</item>
         <item name="overlayButtonOutlineColor">#33FFFFFF</item>
+        <item name="submissionsCommentTimeBackgroundColor">@android:color/black</item>
+        <item name="submissionsCommentTimeOutlineColor">#33FFFFFF</item>
 
         <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
@@ -126,6 +132,8 @@
         <item name="secondaryTextColor">@color/material_you_secondary_40</item>
         <item name="overlayButtonColor">?attr/colorSecondary</item>
         <item name="overlayButtonOutlineColor">@android:color/transparent</item>
+        <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
+        <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
 
         <item name="colorPrimary">@color/colorPrimaryGreen</item>
         <item name="colorPrimaryDark">@color/colorPrimaryGreen</item>
