@@ -26,6 +26,14 @@
             app:icon="@drawable/ic_action_block"
             app:summary="Hide comments by the specified users" />
 
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_hide_jobs"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_work_off"
+            app:summary="Includes &quot;Who is hiring&quot; posts"
+            app:title="Hide job posts" />
+
     </PreferenceCategory>
 
     <PreferenceCategory

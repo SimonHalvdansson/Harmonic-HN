@@ -128,17 +128,9 @@
             app:singleLineTitle="false"
             app:key="pref_pagination_mode"
             app:defaultValue="false"
-            app:summary="Puts a 'Load more' button at the bottom of the main screen"
+            app:summary="Load 30 stories at a time"
             app:icon="@drawable/ic_action_swipe_vertical"
             app:title="Use pagination" />
-
-        <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_hide_jobs"
-            app:defaultValue="false"
-            app:icon="@drawable/ic_action_work_off"
-            app:summary="Includes &quot;Who is hiring&quot; posts"
-            app:title="Hide job posts" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
