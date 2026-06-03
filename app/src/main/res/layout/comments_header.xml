@@ -9,21 +9,28 @@
     android:layout_width="match_parent"
     android:orientation="vertical">
 
-    <Space
+    <View
         android:id="@+id/comments_header_spacer"
         android:layout_height="0dp"
         android:layout_width="match_parent"/>
 
-    <ImageView
-        android:id="@+id/comments_sheet_handle"
-        android:src="@drawable/bottom_sheet_grapple"
-        android:contentDescription="@null"
-        android:importantForAccessibility="no"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp"
-        android:layout_width="80dp"
-        android:layout_height="5dp"/>
+    <FrameLayout
+        android:id="@+id/comments_sheet_handle_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/comments_sheet_handle"
+            android:src="@drawable/bottom_sheet_grapple"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp"
+            android:layout_width="80dp"
+            android:layout_height="5dp"/>
+
+    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/comment_sheet_buttons_container"
@@ -188,6 +195,22 @@
         android:orientation="vertical"
         android:paddingBottom="8dp"
         android:paddingTop="@dimen/comments_header_top_padding">
+
+        <ImageView
+            android:id="@+id/comments_header_story_preview_image"
+            android:layout_width="match_parent"
+            android:layout_height="176dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/comments_header_story_preview_image_background"
+            android:clipToOutline="true"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            tools:src="@drawable/web_preview"
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/comments_header_title"
@@ -904,12 +927,20 @@
     </LinearLayout>
 
     <View
+        android:id="@+id/comments_header_divider"
         android:layout_marginLeft="16dp"
         android:layout_marginRight="16dp"
         android:layout_marginBottom="8dp"
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="?attr/commentDividerColor"/>
+
+    <View
+        android:id="@+id/comments_header_tint_fade"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:layout_marginTop="-6dp"
+        android:visibility="gone" />
 
     <LinearLayout
         android:id="@+id/comments_header_op_filter"

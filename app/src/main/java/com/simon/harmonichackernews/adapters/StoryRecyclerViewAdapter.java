@@ -297,7 +297,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentLayoutView.setEnabled(!storyViewHolder.story.loadingFailed);
                 storyViewHolder.commentLayoutView.setClickable(!storyViewHolder.story.loadingFailed);
             } else {
-                reserveLargePreviewImageSpaceForLoadingStory(storyViewHolder, storyViewHolder.story);
                 storyViewHolder.commentsIcon.setImageResource(R.drawable.ic_action_comment);
                 storyViewHolder.titleShimmer.setVisibility(View.VISIBLE);
                 storyViewHolder.metaShimmer.setVisibility(compactView ? View.GONE : View.VISIBLE);
@@ -366,7 +365,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return;
         }
 
-        reservePreviewImageSpace(storyViewHolder);
         loadPreviewImageUrl(storyViewHolder.itemView.getContext(), story);
     }
 
@@ -543,25 +541,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 previewImage,
                 story,
                 Coil.imageLoader(previewImage.getContext()).enqueue(request));
-    }
-
-    private void reservePreviewImageSpace(StoryViewHolder storyViewHolder) {
-        ImageView previewImage = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
-                ? storyViewHolder.largePreviewImage
-                : storyViewHolder.smallPreviewImage;
-        if (previewImage != null) {
-            setPreviewImageVisibility(storyViewHolder, previewImage, View.INVISIBLE);
-        }
-    }
-
-    private void reserveLargePreviewImageSpaceForLoadingStory(StoryViewHolder storyViewHolder, Story story) {
-        if (SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
-                && story != null
-                && !story.loadingFailed
-                && !story.previewImageLoadFailed
-                && storyViewHolder.largePreviewImage != null) {
-            setPreviewImageVisibility(storyViewHolder, storyViewHolder.largePreviewImage, View.INVISIBLE);
-        }
     }
 
     private static void resetPreviewImages(StoryViewHolder storyViewHolder) {

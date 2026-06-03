@@ -10,6 +10,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
@@ -26,7 +27,6 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
-import android.widget.Space;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -49,11 +49,14 @@ import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
+import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
+import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 import org.jetbrains.annotations.NotNull;
@@ -64,6 +67,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import coil.Coil;
+import coil.request.ImageRequest;
+import coil.target.ImageViewTarget;
+import coil.target.Target;
+import coil.util.CoilUtils;
+
 public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private final List<Comment> comments;
@@ -71,6 +80,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private CommentClickListener commentClickListener;
     private CommentClickListener commentLongClickListener;
     private HeaderActionClickListener headerActionClickListener;
+    private HeaderBackgroundColorListener headerBackgroundColorListener;
     private RetryListener retryListener;
     private final Map<Integer, Comment> commentsById = new HashMap<>();
     private final Map<Integer, Boolean> commentVisibilityById = new HashMap<>();
@@ -86,6 +96,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean commentsLoaded = false;
     public boolean collapseParent;
     public boolean showThumbnail;
+    public String previewImageMode;
+    public boolean tintHeaderUsingPreview;
     public String commentDepthIndicatorMode;
     public boolean showNavigationBar;
     public boolean showInvert;
@@ -112,6 +124,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private boolean storyFavoriteLoadingTarget = false;
     private boolean storyVoteLoading = false;
     private boolean storyVoteLoadingTarget = false;
+    private float headerSlideOffset = 1f;
     @Nullable
     private HeaderViewHolder boundHeaderViewHolder;
 
@@ -129,6 +142,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private static final int REFERENCE_LINK_MIN_HEIGHT_DP = 38;
     private static final int REFERENCE_LINK_CORNER_RADIUS_DP = 6;
     private static final int REFERENCE_LINK_ICON_SIZE_DP = 17;
+    private static final int HEADER_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP = 176;
+    private static final int HEADER_PREVIEW_IMAGE_MIN_HEIGHT_DP = 164;
+    private static final int HEADER_PREVIEW_IMAGE_MAX_HEIGHT_DP = 208;
+    private static final int HEADER_PREVIEW_IMAGE_TOP_PADDING_REDUCTION_DP = 4;
+    private static final int HEADER_FAVICON_TINT_SIZE_DP = 64;
 
     public final static int FLAG_ACTION_CLICK_USER = 0;
     public final static int FLAG_ACTION_CLICK_COMMENT = 1;
@@ -149,6 +167,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        Story masterItem,
                                        boolean shouldCollapseParent,
                                        boolean shouldShowThumbnail,
+                                       String preferredPreviewImageMode,
+                                       boolean shouldTintHeaderUsingPreview,
                                        String usernameParam,
                                        float prefTextSize,
                                        String prefCommentDepthIndicatorMode,
@@ -170,6 +190,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         story = masterItem;
         collapseParent = shouldCollapseParent;
         showThumbnail = shouldShowThumbnail;
+        previewImageMode = preferredPreviewImageMode;
+        tintHeaderUsingPreview = shouldTintHeaderUsingPreview;
         commentDepthIndicatorMode = CommentDepthIndicatorUtils.sanitizeMode(prefCommentDepthIndicatorMode);
         showNavigationBar = shouldShowNavigationBar;
         username = usernameParam;
@@ -211,6 +233,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (holder instanceof HeaderViewHolder) {
             final HeaderViewHolder headerViewHolder = (HeaderViewHolder) holder;
             boundHeaderViewHolder = headerViewHolder;
+            setHeaderSlideOffset(BottomSheetBehavior.from(bottomSheet).calculateSlideOffset());
 
             if (story.isLink && story.url != null) {
                 try {
@@ -222,6 +245,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             headerViewHolder.headerView.setClickable(story.isLink);
             headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : GONE);
+            bindHeaderPreviewImage(headerViewHolder);
+            bindHeaderTint(headerViewHolder);
             bindStoryText(headerViewHolder);
 
             LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story, integratedWebview, bottomSheet);
@@ -490,6 +515,436 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentHiddenCount.setContentDescription(null);
             }
         }
+    }
+
+    public void setHeaderSlideOffset(float slideOffset) {
+        float sanitizedSlideOffset = sanitizeHeaderSlideOffset(slideOffset);
+        if (!integratedWebview) {
+            sanitizedSlideOffset = 1f;
+        }
+        headerSlideOffset = sanitizedSlideOffset;
+        if (boundHeaderViewHolder != null) {
+            applyHeaderBackground(boundHeaderViewHolder);
+        }
+    }
+
+    private float sanitizeHeaderSlideOffset(float slideOffset) {
+        if (Float.isNaN(slideOffset)) {
+            return 1f;
+        }
+        return Math.max(0f, Math.min(1f, slideOffset));
+    }
+
+    private void bindHeaderPreviewImage(final HeaderViewHolder headerViewHolder) {
+        if (!shouldLoadHeaderPreviewImage(story)) {
+            resetHeaderPreviewImage(headerViewHolder);
+            return;
+        }
+
+        if (!TextUtils.isEmpty(story.previewImageUrl)) {
+            loadHeaderPreviewImage(headerViewHolder, story);
+            return;
+        }
+
+        if (story.previewImageUrlLoaded) {
+            resetHeaderPreviewImage(headerViewHolder);
+            return;
+        }
+
+        resetHeaderPreviewImage(headerViewHolder);
+        loadHeaderPreviewImageUrl(headerViewHolder.itemView.getContext(), story);
+    }
+
+    private boolean shouldLoadHeaderPreviewImage(Story story) {
+        return !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                && story != null
+                && story.loaded
+                && !story.loadingFailed
+                && !story.isComment
+                && !TextUtils.isEmpty(story.url)
+                && !story.previewImageLoadFailed;
+    }
+
+    private void loadHeaderPreviewImageUrl(@Nullable Context context, Story story) {
+        if (story.previewImageUrlLoaded || story.previewImageUrlLoading) {
+            return;
+        }
+
+        story.previewImageUrlLoading = true;
+        Context appContext = context == null ? null : context.getApplicationContext();
+        StoryPreviewImageLoader.loadPreviewImageUrl(appContext, story.id, story.url, imageUrl -> {
+            story.previewImageUrlLoading = false;
+            story.previewImageUrlLoaded = true;
+            if (TextUtils.isEmpty(imageUrl)) {
+                story.previewImageLoadFailed = true;
+                story.previewImageTintColorLoaded = false;
+                notifyHeaderChanged();
+                return;
+            }
+
+            story.previewImageUrl = imageUrl;
+            story.previewImageLoadFailed = false;
+            notifyHeaderChanged();
+        });
+    }
+
+    private void loadHeaderPreviewImage(final HeaderViewHolder headerViewHolder, final Story story) {
+        final ImageView previewImage = headerViewHolder.previewImage;
+        final String imageUrl = story.previewImageUrl;
+        if (previewImage == null || TextUtils.isEmpty(imageUrl)) {
+            return;
+        }
+
+        if (imageUrl.equals(previewImage.getTag())
+                && previewImage.getDrawable() != null
+                && (!shouldTintHeader() || story.previewImageTintColorLoaded)) {
+            setHeaderPreviewImageVisibility(headerViewHolder, VISIBLE);
+            return;
+        }
+
+        CoilUtils.dispose(previewImage);
+        previewImage.animate().cancel();
+        previewImage.clearAnimation();
+        previewImage.setTag(imageUrl);
+
+        ImageRequest request = new ImageRequest.Builder(previewImage.getContext())
+                .data(imageUrl)
+                .size(getHeaderPreviewImageWidth(previewImage), getHeaderPreviewImageHeight(previewImage))
+                .allowHardware(!shouldTintHeader())
+                .target(new ImageViewTarget(previewImage) {
+                    @Override
+                    public void onStart(Drawable placeholder) {
+                        story.previewImageLoading = true;
+                        if (isCurrentHeaderPreviewTarget(previewImage, imageUrl)) {
+                            super.onStart((Drawable) null);
+                            setHeaderPreviewImageVisibility(headerViewHolder, View.INVISIBLE);
+                        }
+                    }
+
+                    @Override
+                    public void onError(Drawable error) {
+                        story.previewImageLoading = false;
+                        if (isCurrentHeaderPreviewTarget(previewImage, imageUrl)) {
+                            story.previewImageLoadFailed = true;
+                            story.previewImageTintColorLoaded = false;
+                            super.onError(null);
+                            resetHeaderPreviewImage(headerViewHolder);
+                            bindHeaderTint(headerViewHolder);
+                        }
+                    }
+
+                    @Override
+                    public void onSuccess(Drawable result) {
+                        story.previewImageLoading = false;
+                        story.previewImageLoaded = true;
+                        updatePreviewImageTintColor(previewImage.getContext(), story, result);
+                        if (isCurrentHeaderPreviewTarget(previewImage, imageUrl)) {
+                            updateHeaderPreviewImageLayout(headerViewHolder, result);
+                            super.onSuccess(result);
+                            setHeaderPreviewImageVisibility(headerViewHolder, VISIBLE);
+                            bindHeaderTint(headerViewHolder);
+                        }
+                    }
+                })
+                .build();
+
+        Coil.imageLoader(previewImage.getContext()).enqueue(request);
+    }
+
+    private int getHeaderPreviewImageWidth(ImageView previewImage) {
+        int viewWidth = previewImage.getWidth();
+        return viewWidth > 0 ? viewWidth : previewImage.getResources().getDisplayMetrics().widthPixels;
+    }
+
+    private int getHeaderPreviewImageHeight(ImageView previewImage) {
+        int viewHeight = previewImage.getHeight();
+        int maxHeight = Utils.pxFromDpInt(previewImage.getResources(), HEADER_PREVIEW_IMAGE_MAX_HEIGHT_DP);
+        return viewHeight > 0 ? Math.max(viewHeight, maxHeight) : maxHeight;
+    }
+
+    private void updateHeaderPreviewImageLayout(HeaderViewHolder headerViewHolder, Drawable drawable) {
+        if (headerViewHolder.previewImage == null || drawable == null) {
+            return;
+        }
+
+        int width = headerViewHolder.previewImage.getWidth();
+        if (width <= 0) {
+            width = getHeaderPreviewImageWidth(headerViewHolder.previewImage);
+        }
+
+        int targetHeight = Utils.pxFromDpInt(
+                headerViewHolder.previewImage.getResources(),
+                HEADER_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP);
+        int intrinsicWidth = drawable.getIntrinsicWidth();
+        int intrinsicHeight = drawable.getIntrinsicHeight();
+        if (width > 0 && intrinsicWidth > 0 && intrinsicHeight > 0) {
+            targetHeight = Math.round((float) width * intrinsicHeight / intrinsicWidth);
+        }
+
+        int minHeight = Utils.pxFromDpInt(
+                headerViewHolder.previewImage.getResources(),
+                HEADER_PREVIEW_IMAGE_MIN_HEIGHT_DP);
+        int maxHeight = Utils.pxFromDpInt(
+                headerViewHolder.previewImage.getResources(),
+                HEADER_PREVIEW_IMAGE_MAX_HEIGHT_DP);
+        targetHeight = Math.max(minHeight, Math.min(maxHeight, targetHeight));
+
+        ViewGroup.LayoutParams layoutParams = headerViewHolder.previewImage.getLayoutParams();
+        if (layoutParams != null && layoutParams.height != targetHeight) {
+            layoutParams.height = targetHeight;
+            headerViewHolder.previewImage.setLayoutParams(layoutParams);
+        }
+    }
+
+    private void setHeaderPreviewImageVisibility(HeaderViewHolder headerViewHolder, int visibility) {
+        if (headerViewHolder.previewImage == null) {
+            return;
+        }
+
+        applyHeaderPreviewImagePadding(headerViewHolder, visibility != GONE);
+        if (headerViewHolder.previewImage.getVisibility() != visibility) {
+            headerViewHolder.previewImage.setVisibility(visibility);
+            headerViewHolder.itemView.requestLayout();
+        }
+    }
+
+    private void applyHeaderPreviewImagePadding(HeaderViewHolder headerViewHolder, boolean imageVisible) {
+        int topPadding = headerViewHolder.headerBasePaddingTop;
+        if (imageVisible) {
+            topPadding = Math.max(
+                    0,
+                    topPadding - Utils.pxFromDpInt(
+                            headerViewHolder.headerView.getResources(),
+                            HEADER_PREVIEW_IMAGE_TOP_PADDING_REDUCTION_DP));
+        }
+
+        if (headerViewHolder.headerView.getPaddingTop() != topPadding) {
+            headerViewHolder.headerView.setPadding(
+                    headerViewHolder.headerView.getPaddingLeft(),
+                    topPadding,
+                    headerViewHolder.headerView.getPaddingRight(),
+                    headerViewHolder.headerView.getPaddingBottom());
+        }
+    }
+
+    private void resetHeaderPreviewImage(HeaderViewHolder headerViewHolder) {
+        ImageView previewImage = headerViewHolder.previewImage;
+        if (previewImage == null) {
+            return;
+        }
+
+        applyHeaderPreviewImagePadding(headerViewHolder, false);
+        CoilUtils.dispose(previewImage);
+        previewImage.animate().cancel();
+        previewImage.clearAnimation();
+        previewImage.setTag(null);
+        previewImage.setAlpha(1f);
+        previewImage.setImageDrawable(null);
+        previewImage.setVisibility(GONE);
+    }
+
+    private static boolean isCurrentHeaderPreviewTarget(ImageView previewImage, String imageUrl) {
+        return imageUrl.equals(previewImage.getTag());
+    }
+
+    private void bindHeaderTint(HeaderViewHolder headerViewHolder) {
+        applyHeaderBackground(headerViewHolder);
+        if (shouldUseHeaderFaviconTint(story)) {
+            loadHeaderFaviconTintColor(headerViewHolder.itemView.getContext(), story, headerViewHolder);
+        }
+    }
+
+    private void applyHeaderBackground(HeaderViewHolder headerViewHolder) {
+        if (headerViewHolder == null) {
+            return;
+        }
+
+        int normalColor = getNormalHeaderBackgroundColor(headerViewHolder.itemView);
+        int targetColor = getHeaderTintColor(story, normalColor);
+        int color = ColorUtils.blendARGB(normalColor, targetColor, headerSlideOffset);
+        headerViewHolder.itemView.setBackgroundColor(normalColor);
+        headerViewHolder.spacer.setBackgroundColor(color);
+        headerViewHolder.sheetHandleContainer.setBackgroundColor(color);
+        headerViewHolder.sheetButtonsContainer.setBackgroundColor(color);
+        headerViewHolder.headerView.setBackgroundColor(color);
+        headerViewHolder.summaryContainer.setBackgroundColor(color);
+        headerViewHolder.actionsContainer.setBackgroundColor(color);
+        if (headerBackgroundColorListener != null) {
+            headerBackgroundColorListener.onHeaderBackgroundColorChanged(color);
+        }
+        applyHeaderBottomTransition(headerViewHolder, normalColor, color);
+    }
+
+    private int getHeaderTintColor(Story story, int normalColor) {
+        if (shouldUseHeaderPreviewTint(story)) {
+            return story.previewImageTintColor;
+        }
+        if (shouldUseHeaderFaviconTint(story)
+                && story.faviconTintColorLoaded
+                && isFaviconTintColorCurrent(story)) {
+            return story.faviconTintColor;
+        }
+        return normalColor;
+    }
+
+    private void applyHeaderBottomTransition(HeaderViewHolder headerViewHolder, int normalColor, int headerColor) {
+        boolean showTintFade = hasHeaderTint(story);
+        headerViewHolder.divider.setVisibility(showTintFade ? GONE : VISIBLE);
+        headerViewHolder.tintFade.setVisibility(showTintFade ? VISIBLE : GONE);
+        if (!showTintFade) {
+            headerViewHolder.tintFade.setBackground(null);
+            return;
+        }
+
+        GradientDrawable fade = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{headerColor, normalColor});
+        headerViewHolder.tintFade.setBackground(fade);
+    }
+
+    private int getNormalHeaderBackgroundColor(View view) {
+        return ContextCompat.getColor(view.getContext(), ThemeUtils.getBackgroundColorResource(view.getContext()));
+    }
+
+    private void updatePreviewImageTintColor(Context context, Story story, Drawable drawable) {
+        if (!shouldTintHeader() || context == null || story == null || drawable == null) {
+            return;
+        }
+
+        try {
+            story.previewImageTintColor = PreviewImageTintUtils.calculateCardTint(context, drawable);
+            story.previewImageTintColorLoaded = true;
+        } catch (RuntimeException e) {
+            story.previewImageTintColorLoaded = false;
+        }
+    }
+
+    private void loadHeaderFaviconTintColor(Context context, Story story, @Nullable HeaderViewHolder headerViewHolder) {
+        if (context == null || !shouldUseHeaderFaviconTint(story)) {
+            return;
+        }
+
+        String faviconUrl = getFaviconTintSourceUrl(story);
+        if (TextUtils.isEmpty(faviconUrl)) {
+            return;
+        }
+
+        if (!TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)) {
+            story.faviconTintSourceUrl = faviconUrl;
+            story.faviconTintColorLoaded = false;
+            story.faviconTintColorLoading = false;
+            story.faviconTintColorLoadFailed = false;
+        }
+
+        if (story.faviconTintColorLoaded || story.faviconTintColorLoading || story.faviconTintColorLoadFailed) {
+            return;
+        }
+
+        story.faviconTintColorLoading = true;
+        int faviconSize = Utils.pxFromDpInt(context.getResources(), HEADER_FAVICON_TINT_SIZE_DP);
+        ImageRequest request = new ImageRequest.Builder(context)
+                .data(faviconUrl)
+                .size(faviconSize, faviconSize)
+                .allowHardware(false)
+                .target(new Target() {
+                    @Override
+                    public void onStart(Drawable placeholder) {
+                        if (TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)) {
+                            story.faviconTintColorLoading = true;
+                        }
+                    }
+
+                    @Override
+                    public void onError(Drawable error) {
+                        if (!TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)) {
+                            return;
+                        }
+
+                        story.faviconTintColorLoading = false;
+                        story.faviconTintColorLoadFailed = true;
+                    }
+
+                    @Override
+                    public void onSuccess(Drawable result) {
+                        if (!TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)) {
+                            return;
+                        }
+
+                        story.faviconTintColorLoading = false;
+                        updateFaviconTintColor(context, story, result);
+                        if (headerViewHolder == boundHeaderViewHolder) {
+                            applyHeaderBackground(headerViewHolder);
+                        } else {
+                            notifyHeaderChanged();
+                        }
+                    }
+                })
+                .build();
+
+        Coil.imageLoader(context).enqueue(request);
+    }
+
+    private void updateFaviconTintColor(Context context, Story story, Drawable drawable) {
+        if (context == null || story == null || drawable == null) {
+            return;
+        }
+
+        try {
+            story.faviconTintColor = PreviewImageTintUtils.calculateCardTint(context, drawable);
+            story.faviconTintColorLoaded = true;
+            story.faviconTintColorLoadFailed = false;
+        } catch (RuntimeException e) {
+            story.faviconTintColorLoaded = false;
+            story.faviconTintColorLoadFailed = true;
+        }
+    }
+
+    private boolean shouldUseHeaderPreviewTint(Story story) {
+        return shouldTintHeader()
+                && story != null
+                && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                && !story.previewImageLoadFailed
+                && story.previewImageTintColorLoaded;
+    }
+
+    private boolean hasHeaderTint(Story story) {
+        return shouldUseHeaderPreviewTint(story)
+                || (shouldUseHeaderFaviconTint(story)
+                && story.faviconTintColorLoaded
+                && isFaviconTintColorCurrent(story));
+    }
+
+    private boolean shouldUseHeaderFaviconTint(Story story) {
+        return shouldTintHeader()
+                && story != null
+                && story.loaded
+                && !story.loadingFailed
+                && !story.isComment
+                && !TextUtils.isEmpty(story.url)
+                && (SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                || story.previewImageLoadFailed);
+    }
+
+    private boolean isFaviconTintColorCurrent(Story story) {
+        return story != null
+                && story.faviconTintColorLoaded
+                && TextUtils.equals(story.faviconTintSourceUrl, getFaviconTintSourceUrl(story));
+    }
+
+    private String getFaviconTintSourceUrl(Story story) {
+        try {
+            return story == null ? null : FaviconLoader.getFaviconUrl(story.url, faviconProvider);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private boolean shouldTintHeader() {
+        return tintHeaderUsingPreview;
+    }
+
+    private void notifyHeaderChanged() {
+        notifyItemChanged(0);
     }
 
     private void bindStoryText(HeaderViewHolder headerViewHolder) {
@@ -1200,7 +1655,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout commentButtonParent;
         public final RelativeLayout favoriteButtonParent;
         public final RelativeLayout bookmarkButtonParent;
-        public final Space spacer;
+        public final View divider;
+        public final View tintFade;
+        public final View spacer;
         public final TextView githubAbout;
         public final HtmlTextView githubWebsite;
         public final TextView githubLicense;
@@ -1255,10 +1712,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView nitterVideoLabel;
 
         public final ImageView favicon;
+        public final ImageView previewImage;
         public final RelativeLayout sheetRefreshButton;
         public final RelativeLayout sheetExpandButton;
         public final RelativeLayout sheetBrowserButton;
         public final RelativeLayout sheetInvertButton;
+        public final View sheetHandleContainer;
+        public final LinearLayout sheetButtonsContainer;
         public final LinearLayout actionsContainer;
         public final LinearLayout linkInfoContainer;
         public final Button retryButton;
@@ -1267,6 +1727,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final MaterialButton opFilterResetButton;
         public final LinearLayout pollLayout;
         public final LinearLayout headerView;
+        public final int headerBasePaddingTop;
         private ValueAnimator refreshPromptHeightAnimator;
 
         public HeaderViewHolder(View view) {
@@ -1290,6 +1751,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             emptyView = view.findViewById(R.id.comments_header_empty);
             emptyViewText = view.findViewById(R.id.comments_header_empty_text);
             headerView = view.findViewById(R.id.comments_header);
+            headerBasePaddingTop = headerView.getPaddingTop();
             loadingIndicator = view.findViewById(R.id.comments_header_loading);
             loadingFailed = view.findViewById(R.id.comments_header_loading_failed);
             loadingFailedText = view.findViewById(R.id.comments_header_loading_failed_text);
@@ -1298,6 +1760,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             lastRefreshedText = view.findViewById(R.id.comments_header_last_refreshed);
             refreshButton = view.findViewById(R.id.comments_header_refresh);
             favicon = view.findViewById(R.id.comments_header_favicon);
+            previewImage = view.findViewById(R.id.comments_header_story_preview_image);
             linkInfoContainer = view.findViewById(R.id.comments_header_link_info_container);
             userButton = view.findViewById(R.id.comments_header_button_user);
             commentButton = view.findViewById(R.id.comments_header_button_comment);
@@ -1318,6 +1781,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentButtonParent = view.findViewById(R.id.comments_header_button_comment_parent);
             favoriteButtonParent = view.findViewById(R.id.comments_header_button_favorite_parent);
             bookmarkButtonParent = view.findViewById(R.id.comments_header_button_bookmark_parent);
+            divider = view.findViewById(R.id.comments_header_divider);
+            tintFade = view.findViewById(R.id.comments_header_tint_fade);
             retryButton = view.findViewById(R.id.comments_header_retry);
             openInBrowserButton = view.findViewById(R.id.comments_header_open_in_browser);
             opFilterContainer = view.findViewById(R.id.comments_header_op_filter);
@@ -1327,6 +1792,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
             sheetBrowserButton = view.findViewById(R.id.comments_sheet_layout_browser);
             sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
+            sheetHandleContainer = view.findViewById(R.id.comments_sheet_handle_container);
+            sheetButtonsContainer = view.findViewById(R.id.comment_sheet_buttons_container);
             actionsContainer = view.findViewById(R.id.comments_header_actions_container);
             spacer = view.findViewById(R.id.comments_header_spacer);
             githubContainer = view.findViewById(R.id.comments_header_github_container);
@@ -1481,7 +1948,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             });
 
-            LinearLayout sheetButtonsContainer = view.findViewById(R.id.comment_sheet_buttons_container);
             BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
                 @Override
                 public void onStateChanged(@NonNull View bottomSheet, int newState) {
@@ -1490,29 +1956,38 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 @Override
                 public void onSlide(@NonNull View bottomSheet, float slideOffset) {
                     // 0 when small, 1 when opened
-                    sheetButtonsContainer.setAlpha((1 - slideOffset) * (1 - slideOffset) * (1 - slideOffset));
+                    setSheetButtonsContentAlpha((1 - slideOffset) * (1 - slideOffset) * (1 - slideOffset));
                     sheetButtonsContainer.getLayoutParams().height = Math.round((1 - slideOffset) * (SHEET_ITEM_HEIGHT + navbarHeight));
                     sheetButtonsContainer.requestLayout();
 
                     float headerAlpha = Math.min(1, slideOffset * slideOffset * 20);
                     actionsContainer.setAlpha(headerAlpha);
                     headerView.setAlpha(headerAlpha);
+                    CommentsRecyclerViewAdapter.this.setHeaderSlideOffset(slideOffset);
                 }
             });
 
             if (integratedWebview) {
                 if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_EXPANDED) {
-                    sheetButtonsContainer.setAlpha(0f);
+                    setSheetButtonsContentAlpha(0f);
                     sheetButtonsContainer.getLayoutParams().height = 0;
                     sheetButtonsContainer.requestLayout();
                 } else {
                     // Make sure we set correct height when starting on the WebView
+                    setSheetButtonsContentAlpha(1f);
                     sheetButtonsContainer.getLayoutParams().height = SHEET_ITEM_HEIGHT + navbarHeight;
                     sheetButtonsContainer.requestLayout();
                 }
             } else {
                 sheetButtonsContainer.setVisibility(GONE);
                 view.findViewById(R.id.comments_sheet_handle).setVisibility(GONE);
+            }
+        }
+
+        private void setSheetButtonsContentAlpha(float alpha) {
+            sheetButtonsContainer.setAlpha(1f);
+            for (int i = 0; i < sheetButtonsContainer.getChildCount(); i++) {
+                sheetButtonsContainer.getChildAt(i).setAlpha(alpha);
             }
         }
 
@@ -1607,6 +2082,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         headerActionClickListener = clickListener;
     }
 
+    public void setHeaderBackgroundColorListener(HeaderBackgroundColorListener listener) {
+        headerBackgroundColorListener = listener;
+    }
+
     public void setRetryListener(RetryListener listener) {
         retryListener = listener;
     }
@@ -1632,6 +2111,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     public interface HeaderActionClickListener {
         void onActionClicked(int flag, View view);
+    }
+
+    public interface HeaderBackgroundColorListener {
+        void onHeaderBackgroundColorChanged(int color);
     }
 
     public interface HeaderClickListener {

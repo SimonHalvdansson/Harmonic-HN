@@ -35,7 +35,6 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -197,7 +196,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int searchScrollTopFabBaseBottomMargin = 0;
     private LinearProgressIndicator progressIndicator;
     private LinearLayout bottomSheet;
-    private Space headerSpacer;
+    private View headerSpacer;
     private LinkPreviewController linkPreviewController;
     private CommentsWebViewController webViewController;
     private boolean showNavButtons = false;
@@ -232,6 +231,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int pendingCommentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
     private boolean commentActionOverlayDismissing = false;
     private boolean commentActionPredictiveBackActive = false;
+    private int originalStatusBarColor = Color.TRANSPARENT;
+    private boolean originalStatusBarColorCaptured = false;
     private final Set<Integer> commentActionFavoriteLoadingIds = new HashSet<>();
     private String currentCommentSorting;
 
@@ -361,6 +362,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (getActivity() instanceof BottomSheetFragmentCallback) {
             callback = (BottomSheetFragmentCallback) getActivity();
         }
+        originalStatusBarColor = requireActivity().getWindow().getStatusBarColor();
+        originalStatusBarColorCaptured = true;
 
         prefIntegratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
 
@@ -415,7 +418,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (willExpandBottomSheetOnBack()) {
                     bottomSheet.setTranslationY(0f);
                     try {
-                        adapter.bottomSheet.findViewById(R.id.comment_sheet_buttons_container).setAlpha(1f);
+                        setSheetButtonsContentAlpha(1f);
                         adapter.bottomSheet.findViewById(R.id.comments_header).setAlpha(0f);
                     } catch (Exception ignored) {
 
@@ -433,7 +436,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (willExpandBottomSheetOnBack()) {
                     bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
                     try {
-                        adapter.bottomSheet.findViewById(R.id.comment_sheet_buttons_container).setAlpha(1f-backEvent.getProgress()*0.7f);
+                        setSheetButtonsContentAlpha(1f - backEvent.getProgress() * 0.7f);
                         adapter.bottomSheet.findViewById(R.id.comments_header).setAlpha(backEvent.getProgress()*0.7f);
                     } catch (Exception ignored) {
 
@@ -451,7 +454,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (willExpandBottomSheetOnBack()) {
                     bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
                     try {
-                        adapter.bottomSheet.findViewById(R.id.comment_sheet_buttons_container).setAlpha(1f-backEvent.getProgress()*0.7f);
+                        setSheetButtonsContentAlpha(1f - backEvent.getProgress() * 0.7f);
                         adapter.bottomSheet.findViewById(R.id.comments_header).setAlpha(backEvent.getProgress()*0.7f);
                     } catch (Exception ignored) {
 
@@ -712,6 +715,30 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
+    private void updateHeaderStatusBarColor(int color) {
+        if (getActivity() == null) {
+            return;
+        }
+        requireActivity().getWindow().setStatusBarColor(color);
+    }
+
+    private void setSheetButtonsContentAlpha(float alpha) {
+        if (adapter == null || adapter.bottomSheet == null) {
+            return;
+        }
+
+        View sheetButtons = adapter.bottomSheet.findViewById(R.id.comment_sheet_buttons_container);
+        sheetButtons.setAlpha(1f);
+        if (!(sheetButtons instanceof ViewGroup)) {
+            return;
+        }
+
+        ViewGroup sheetButtonsContainer = (ViewGroup) sheetButtons;
+        for (int i = 0; i < sheetButtonsContainer.getChildCount(); i++) {
+            sheetButtonsContainer.getChildAt(i).setAlpha(alpha);
+        }
+    }
+
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
@@ -732,6 +759,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 story,
                 SettingsUtils.shouldCollapseParent(getContext()),
                 SettingsUtils.shouldShowThumbnails(getContext()),
+                SettingsUtils.getPreferredStoryPreviewImageMode(getContext()),
+                SettingsUtils.shouldTintCardUsingPreview(getContext()),
                 username,
                 SettingsUtils.getPreferredCommentTextSize(getContext()),
                 SettingsUtils.getPreferredCommentDepthIndicatorMode(getContext()),
@@ -748,6 +777,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 this);
         adapter.lastRefreshed = lastLoaded;
         adapter.setCommentsByOpFilterActive(commentsByOpFilterActive);
+        adapter.setHeaderBackgroundColorListener(this::updateHeaderStatusBarColor);
         adapter.loadUserTags(requireContext());
 
         adapter.setOnHeaderClickListener(story1 -> Utils.launchCustomTab(getActivity(), story1.url));
@@ -1043,6 +1073,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 updateHeader = true;
             }
 
+            String previewImageMode = SettingsUtils.getPreferredStoryPreviewImageMode(ctx);
+            if (!previewImageMode.equals(adapter.previewImageMode)) {
+                adapter.previewImageMode = previewImageMode;
+                updateHeader = true;
+            }
+
+            if (adapter.tintHeaderUsingPreview != SettingsUtils.shouldTintCardUsingPreview(ctx)) {
+                adapter.tintHeaderUsingPreview = SettingsUtils.shouldTintCardUsingPreview(ctx);
+                updateHeader = true;
+            }
+
             float preferredCommentTextSize = SettingsUtils.getPreferredCommentTextSize(ctx);
             if (Float.compare(adapter.preferredTextSize, preferredCommentTextSize) != 0) {
                 adapter.preferredTextSize = preferredCommentTextSize;
@@ -1299,6 +1340,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onDestroyView() {
         removeCommentActionOverlayNow();
         clearSearchedCommentHighlight();
+        if (originalStatusBarColorCaptured && getActivity() != null) {
+            requireActivity().getWindow().setStatusBarColor(originalStatusBarColor);
+            originalStatusBarColorCaptured = false;
+        }
 
         View rootView = getView();
         if (rootView != null) {
