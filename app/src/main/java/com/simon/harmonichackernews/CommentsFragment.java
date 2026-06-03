@@ -2881,7 +2881,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             Utils.openLinkMaybeHN(widget.getContext(), href);
             return true;
         });
-        FontUtils.setTypeface(commentText, false, SettingsUtils.getPreferredCommentTextSize(ctx));
+        FontUtils.setCommentTextTypeface(commentText, SettingsUtils.getPreferredCommentTextSize(ctx));
 
         NestedScrollView textScroll = commentActionOverlay.findViewById(R.id.comment_action_text_scroll);
         resizeCommentActionTextBox(textScroll, commentText);

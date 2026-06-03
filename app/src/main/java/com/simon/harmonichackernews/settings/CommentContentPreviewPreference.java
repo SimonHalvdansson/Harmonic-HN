@@ -247,11 +247,11 @@ public class CommentContentPreviewPreference extends Preference implements Share
         ensureSelectedFontLoaded();
         applyCommentMetaTypefaces(commentBy, commentByTime, commentHiddenText, commentHiddenCount);
         if (commentBody == null) {
-            textSizeTargetSp = FontUtils.getAdjustedTextSize(FontUtils.font, clampedTextSize);
+            textSizeTargetSp = FontUtils.getCommentTextSize(clampedTextSize);
             return;
         }
 
-        float adjustedTextSize = FontUtils.getAdjustedTextSize(FontUtils.font, clampedTextSize);
+        float adjustedTextSize = FontUtils.getCommentTextSize(clampedTextSize);
         commentBody.setTypeface(FontUtils.activeRegular);
 
         if (animate && Math.abs(textSizeTargetSp - adjustedTextSize) < 0.01f) {
@@ -408,10 +408,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
             body.setFocusable(false);
             body.setHtml(PREVIEW_COMMENT_BODY);
             ensureSelectedFontLoaded();
-            body.setTypeface(FontUtils.activeRegular);
-            body.setTextSize(
-                    TypedValue.COMPLEX_UNIT_SP,
-                    FontUtils.getAdjustedTextSize(FontUtils.font, SettingsUtils.MAX_COMMENT_TEXT_SIZE));
+            FontUtils.setCommentTextTypeface(body, SettingsUtils.MAX_COMMENT_TEXT_SIZE);
         }
         if (by != null) {
             by.setText("pg");

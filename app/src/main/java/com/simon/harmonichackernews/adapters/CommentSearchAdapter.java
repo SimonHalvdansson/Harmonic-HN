@@ -239,7 +239,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         commentViewHolder.commentHiddenText.setVisibility(View.GONE);
         commentViewHolder.commentText.setVisibility(View.VISIBLE);
 
-        FontUtils.setTypeface(commentViewHolder.commentText, false, preferredTextSize);
+        FontUtils.setCommentTextTypeface(commentViewHolder.commentText, preferredTextSize);
         commentViewHolder.commentBy.setTypeface(FontUtils.activeBold);
         commentViewHolder.commentByTime.setTypeface(FontUtils.activeRegular);
     }

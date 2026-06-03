@@ -18,6 +18,15 @@ public class FontUtils {
     private static final FontSizes STORIES_DROPDOWN_SELECTED_SIZES = new FontSizes(36, 34, 36, 33, 34, 34, 35, 35);
     private static final FontSizes COMMENTS_HEADER_META_SIZES = new FontSizes(14, 13.5f, 13, 13, 13, 13, 13, 13);
     private static final FontSizes COMMENTS_HEADER_TITLE_SIZES = new FontSizes(27, 26, 26, 23, 26, 26, 24, 26);
+    private static final FontSizes COMMENT_TEXT_SIZES = new FontSizes(
+            15,
+            14,
+            15,
+            14,
+            14,
+            14,
+            15,
+            15);
 
     public static Typeface activeRegular;
     public static Typeface activeBold;
@@ -100,6 +109,14 @@ public class FontUtils {
         setTypeface(textView, true, STORY_COMMENT_COUNT_SIZES);
     }
 
+    public static void setCommentTextTypeface(TextView textView, float commentTextSize) {
+        setTypeface(textView, false, getCommentTextSizes(commentTextSize));
+    }
+
+    public static float getCommentTextSize(float commentTextSize) {
+        return getCommentTextSizes(commentTextSize).get(font);
+    }
+
     public static void setStoriesDropdownSelectedTypeface(TextView textView) {
         setTypeface(textView, true, STORIES_DROPDOWN_SELECTED_SIZES, TypedValue.COMPLEX_UNIT_DIP);
     }
@@ -129,36 +146,17 @@ public class FontUtils {
 
         textView.setTypeface(bold ? activeBold : activeRegular);
 
-        switch (SettingsUtils.sanitizeFont(font)) {
-            case "productsans":
-                textView.setTextSize(unit, sizes.productSans);
-                break;
-            case "googlesansflexrounded":
-                textView.setTextSize(unit, sizes.googleSansFlexRounded);
-                break;
-            case "devicedefault":
-                textView.setTextSize(unit, sizes.deviceDefault);
-                break;
-            case "verdana":
-                textView.setTextSize(unit, sizes.verdana);
-                break;
-            case "jetbrainsmono":
-                textView.setTextSize(unit, sizes.jetbrainsMono);
-                break;
-            case "googlesanscode":
-                textView.setTextSize(unit, sizes.googleSansCode);
-                break;
-            case "georgia":
-                textView.setTextSize(unit, sizes.georgia);
-                break;
-            case "robotoslab":
-                textView.setTextSize(unit, sizes.robotoSlab);
-                break;
-        }
+        textView.setTextSize(unit, sizes.get(font));
     }
 
     private static float adjustedGoogleSansFlexRoundedSize(float size) {
         return size + GOOGLE_SANS_FLEX_ROUNDED_SIZE_ADJUSTMENT;
+    }
+
+    private static FontSizes getCommentTextSizes(float commentTextSize) {
+        float textDelta = SettingsUtils.clampCommentTextSize(commentTextSize)
+                - SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE;
+        return COMMENT_TEXT_SIZES.plus(textDelta);
     }
 
     public static float getAdjustedTextSize(String font, float size) {
@@ -235,6 +233,28 @@ public class FontUtils {
                     googleSansCode,
                     georgia,
                     robotoSlab);
+        }
+
+        float get(String font) {
+            switch (SettingsUtils.sanitizeFont(font)) {
+                case "googlesansflexrounded":
+                    return googleSansFlexRounded;
+                case "devicedefault":
+                    return deviceDefault;
+                case "verdana":
+                    return verdana;
+                case "jetbrainsmono":
+                    return jetbrainsMono;
+                case "googlesanscode":
+                    return googleSansCode;
+                case "georgia":
+                    return georgia;
+                case "robotoslab":
+                    return robotoSlab;
+                case "productsans":
+                default:
+                    return productSans;
+            }
         }
     }
 

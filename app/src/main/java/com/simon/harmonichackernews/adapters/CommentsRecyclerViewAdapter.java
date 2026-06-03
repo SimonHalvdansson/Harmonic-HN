@@ -290,7 +290,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     headerViewHolder.metaBy);
 
             FontUtils.setCommentsHeaderTitleTypeface(headerViewHolder.titleView);
-            FontUtils.setTypeface(headerViewHolder.textView, false, preferredTextSize);
+            FontUtils.setCommentTextTypeface(headerViewHolder.textView, preferredTextSize);
 
             if (loadingFailed) {
                 headerViewHolder.loadingIndicator.setVisibility(GONE);
@@ -446,7 +446,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     itemViewHolder.commentHiddenText.setText(" • " + Html.fromHtml(comment.text.substring(0, Math.min(120, comment.text.length()))));
                 }
 
-                FontUtils.setTypeface(itemViewHolder.commentBody, false, preferredTextSize);
+                FontUtils.setCommentTextTypeface(itemViewHolder.commentBody, preferredTextSize);
             }
 
             itemViewHolder.commentByTime.setText(comment.getTimeFormatted());
