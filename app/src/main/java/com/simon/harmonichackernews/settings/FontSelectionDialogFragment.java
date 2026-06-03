@@ -31,8 +31,6 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
 
     public static final String TAG = "tag_font_selection_dialog";
 
-    private static final String STATE_SELECTED_FONT = "state_selected_font";
-
     private final Map<String, MaterialRadioButton> radioButtons = new HashMap<>();
     private String selectedFont;
 
@@ -44,27 +42,14 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
         View rootView = inflater.inflate(R.layout.font_selection_dialog, null);
         LinearLayout container = rootView.findViewById(R.id.font_options_container);
 
-        selectedFont = savedInstanceState != null
-                ? savedInstanceState.getString(STATE_SELECTED_FONT, SettingsUtils.getPreferredFont(requireContext()))
-                : SettingsUtils.getPreferredFont(requireContext());
+        selectedFont = SettingsUtils.getPreferredFont(requireContext());
 
         buildFontOptions(container);
         updateSelection();
 
         builder.setTitle("Title and comment font");
         builder.setView(rootView);
-        builder.setNegativeButton(android.R.string.cancel, null);
-        builder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
-            SettingsUtils.setPreferredFont(requireContext(), selectedFont);
-            FontUtils.init(requireContext());
-        });
         return builder.create();
-    }
-
-    @Override
-    public void onSaveInstanceState(@NonNull Bundle outState) {
-        outState.putString(STATE_SELECTED_FONT, selectedFont);
-        super.onSaveInstanceState(outState);
     }
 
     public static void show(FragmentManager fm) {
@@ -141,7 +126,10 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
 
         row.setOnClickListener(view -> {
             selectedFont = font;
+            SettingsUtils.setPreferredFont(requireContext(), selectedFont);
+            FontUtils.init(requireContext());
             updateSelection();
+            dismiss();
         });
         return row;
     }
