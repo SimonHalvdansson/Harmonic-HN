@@ -62,7 +62,7 @@
             android:layout_marginTop="20dp"
             android:textSize="13sp"
             android:layout_marginBottom="4dp"
-            android:text="Your information is only saved locally and used for API calls. If you have issues with login, try the official HN website to confirm if it as issue with the app or the website."
+            android:text="Your information is only saved locally and used for API calls."
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
 
@@ -101,6 +101,13 @@
             <TextView
                 android:textSize="13sp"
                 android:text="which means your password must be stored on your device. It is done so encrypted using AES-256 GCM with management carried out by Google's AndroidX Security library and are ONLY used in HTTPS requests in the form of the above to news.ycombinator.com."
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <TextView
+                android:layout_marginTop="8dp"
+                android:textSize="13sp"
+                android:text="If you have issues with login, try the official HN website to confirm if it as issue with the app or the website."
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
