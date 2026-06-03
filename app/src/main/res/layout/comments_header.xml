@@ -561,7 +561,7 @@
                 android:contentDescription="Vote"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_action_thumbs_up" />
+                android:src="@drawable/ic_action_thumbs_up_outline" />
 
         </RelativeLayout>
 
@@ -744,7 +744,7 @@
                 <ImageView
                     android:id="@+id/comment_button_vote"
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_thumbs_up"
+                    android:background="@drawable/ic_action_thumbs_up_outline"
                     android:layout_width="27dp"
                     android:layout_height="27dp"/>
 

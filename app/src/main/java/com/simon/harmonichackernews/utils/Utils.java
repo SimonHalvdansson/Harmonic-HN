@@ -631,6 +631,21 @@ public class Utils {
         return false;
     }
 
+    public static boolean isUpvoted(Context ctx, int id, boolean comment) {
+        if (comment) {
+            return loadUpvotedCommentIds(ctx).contains(id);
+        }
+
+        ArrayList<Bookmark> upvoted = loadUpvoted(ctx, false);
+        for (Bookmark item : upvoted) {
+            if (item.id == id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static void saveFavorites(Context ctx, ArrayList<Bookmark> favorites) {
         saveBookmarkList(ctx, KEY_SHARED_PREFERENCES_FAVORITES, favorites);
     }
@@ -702,6 +717,38 @@ public class Utils {
         }
 
         saveFavorites(ctx, favorites);
+    }
+
+    public static void setUpvoted(Context ctx, int id, boolean comment, boolean upvoted) {
+        if (comment) {
+            Set<Integer> upvotedCommentIds = loadUpvotedCommentIds(ctx);
+            if (upvoted) {
+                upvotedCommentIds.add(id);
+            } else {
+                upvotedCommentIds.remove(id);
+            }
+            saveUpvotedCommentIds(ctx, upvotedCommentIds);
+            return;
+        }
+
+        ArrayList<Bookmark> upvotedItems = loadUpvoted(ctx, false);
+        for (Bookmark item : upvotedItems) {
+            if (item.id == id) {
+                if (!upvoted) {
+                    upvotedItems.remove(item);
+                    saveBookmarkList(ctx, KEY_SHARED_PREFERENCES_UPVOTED, upvotedItems);
+                }
+                return;
+            }
+        }
+
+        if (upvoted) {
+            Bookmark item = new Bookmark();
+            item.id = id;
+            item.created = System.currentTimeMillis();
+            upvotedItems.add(item);
+            saveBookmarkList(ctx, KEY_SHARED_PREFERENCES_UPVOTED, upvotedItems);
+        }
     }
 
     public static String getThousandSeparatedString(int n) {

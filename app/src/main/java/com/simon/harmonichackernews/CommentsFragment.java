@@ -835,11 +835,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_VOTE:
-                        clickVote();
+                        clickVote(clickedView);
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_FAVORITE:
-                        clickFavorite();
+                        clickFavorite(clickedView);
                         break;
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_SHARE:
@@ -2225,32 +2225,85 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void clickVote() {
-        UserActions.upvote(getContext(), adapter.story.id, getParentFragmentManager());
+        clickVote(null);
     }
 
-    public void clickFavorite() {
+    public void clickVote(@Nullable View actionView) {
         Context ctx = getContext();
-        if (ctx == null || adapter == null) {
+        if (ctx == null || adapter == null || adapter.story == null) {
             return;
         }
 
-        boolean wasFavorited = Utils.isFavorited(ctx, adapter.story.id);
         if (!AccountUtils.hasAccountDetails(ctx)) {
             AccountUtils.showLoginPrompt(getParentFragmentManager());
             return;
         }
 
-        Utils.setFavorite(ctx, adapter.story.id, !wasFavorited);
-        adapter.notifyItemChanged(0);
-        UserActions.setFavorite(ctx, adapter.story.id, !wasFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
+        int storyId = adapter.story.id;
+        boolean storyIsComment = adapter.story.isComment;
+        boolean wasUpvoted = Utils.isUpvoted(ctx, storyId, storyIsComment);
+        boolean newUpvoted = !wasUpvoted;
+        adapter.showStoryVoteLoading(actionView, newUpvoted);
+
+        UserActions.ActionCallback cb = new UserActions.ActionCallback() {
             @Override
             public void onSuccess(Response response) {
+                Utils.setUpvoted(ctx, storyId, storyIsComment, newUpvoted);
+                if (adapter != null) {
+                    adapter.showStoryVoteResult(actionView, newUpvoted);
+                }
             }
 
             @Override
             public void onFailure(String summary, String response) {
-                Utils.setFavorite(ctx, adapter.story.id, wasFavorited);
-                adapter.notifyItemChanged(0);
+                Utils.setUpvoted(ctx, storyId, storyIsComment, wasUpvoted);
+                if (adapter != null) {
+                    adapter.showStoryVoteResult(actionView, wasUpvoted);
+                }
+            }
+        };
+
+        if (newUpvoted) {
+            UserActions.upvote(ctx, storyId, getParentFragmentManager(), cb);
+        } else {
+            UserActions.unvote(ctx, storyId, getParentFragmentManager(), cb);
+        }
+    }
+
+    public void clickFavorite() {
+        clickFavorite(null);
+    }
+
+    public void clickFavorite(@Nullable View actionView) {
+        Context ctx = getContext();
+        if (ctx == null || adapter == null) {
+            return;
+        }
+
+        int storyId = adapter.story.id;
+        boolean wasFavorited = Utils.isFavorited(ctx, storyId);
+        if (!AccountUtils.hasAccountDetails(ctx)) {
+            AccountUtils.showLoginPrompt(getParentFragmentManager());
+            return;
+        }
+
+        boolean newFavorited = !wasFavorited;
+        adapter.showStoryFavoriteLoading(actionView, newFavorited);
+        UserActions.setFavorite(ctx, storyId, newFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
+            @Override
+            public void onSuccess(Response response) {
+                Utils.setFavorite(ctx, storyId, newFavorited);
+                if (adapter != null) {
+                    adapter.showStoryFavoriteResult(actionView, newFavorited);
+                }
+            }
+
+            @Override
+            public void onFailure(String summary, String response) {
+                Utils.setFavorite(ctx, storyId, wasFavorited);
+                if (adapter != null) {
+                    adapter.showStoryFavoriteResult(actionView, wasFavorited);
+                }
                 if (!wasFavorited) {
                     Toast.makeText(ctx, "Couldn't add favorite", Toast.LENGTH_SHORT).show();
                 } else {
@@ -2849,7 +2902,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         ArrayList<CommentActionItem> iconActions = new ArrayList<>();
         if (hasAccount) {
-            iconActions.add(new CommentActionItem(COMMENT_ACTION_UPVOTE, "Vote up", R.drawable.ic_action_thumbs_up));
+            iconActions.add(new CommentActionItem(COMMENT_ACTION_UPVOTE, "Vote up", R.drawable.ic_action_thumbs_up_outline));
             iconActions.add(new CommentActionItem(COMMENT_ACTION_DOWNVOTE, "Vote down", R.drawable.ic_action_thumb_down));
             iconActions.add(new CommentActionItem(COMMENT_ACTION_UNVOTE, "Unvote", R.drawable.ic_action_thumbs_unvote));
         }

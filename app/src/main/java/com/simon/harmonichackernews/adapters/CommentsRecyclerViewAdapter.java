@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.adapters;
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -100,6 +102,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private int highlightedCommentId = -1;
     public boolean disableCommentATagClick = false;
     private RequestSummaryCallback summaryCallback;
+    private boolean storyFavoriteLoading = false;
+    private boolean storyFavoriteLoadingTarget = false;
+    private boolean storyVoteLoading = false;
+    private boolean storyVoteLoadingTarget = false;
+    @Nullable
+    private HeaderViewHolder boundHeaderViewHolder;
 
     public static final int TYPE_HEADER = 0;
     public static final int TYPE_COMMENT = 1;
@@ -108,6 +116,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private static final float COMMENT_HIGHLIGHT_ALPHA_DARK = 0.14f;
     private static final float COMMENT_HIGHLIGHT_ALPHA_LIGHT = 0.08f;
     private static final int REFRESH_PROMPT_HIDE_DURATION_MS = 200;
+    private static final int HEADER_ACTION_ICON_SWAP_OUT_DURATION_MS = 90;
+    private static final int HEADER_ACTION_ICON_SWAP_IN_DURATION_MS = 150;
+    private static final float HEADER_ACTION_ICON_SWAP_MIN_SCALE = 0.72f;
+    private static final int HEADER_FAVORITE_LOADING_SIZE_DP = 28;
 
     public final static int FLAG_ACTION_CLICK_USER = 0;
     public final static int FLAG_ACTION_CLICK_COMMENT = 1;
@@ -187,6 +199,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         Context ctx = holder.itemView.getContext();
         if (holder instanceof HeaderViewHolder) {
             final HeaderViewHolder headerViewHolder = (HeaderViewHolder) holder;
+            boundHeaderViewHolder = headerViewHolder;
 
             if (story.isLink && story.url != null) {
                 try {
@@ -339,40 +352,33 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             });
 
+            boolean isUpvoted = Utils.isUpvoted(ctx, story.id, story.isComment);
+            if (storyVoteLoading) {
+                showHeaderVoteLoading(headerViewHolder.voteButton, storyVoteLoadingTarget, false);
+            } else {
+                showHeaderVoteButton(headerViewHolder.voteButton, isUpvoted, false);
+            }
+
             boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
             if (bookmarksEnabled) {
                 boolean isBookmarked = Utils.isBookmarked(ctx, story.id);
-                headerViewHolder.bookmarkButton.setImageResource(isBookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border);
-                headerViewHolder.bookmarkButton.setContentDescription(isBookmarked ? "Remove bookmark" : "Bookmark");
-                headerViewHolder.bookmarkButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        boolean wasBookmarked = Utils.isBookmarked(view.getContext(), story.id);
-
-                        if (wasBookmarked) {
-                            Utils.removeBookmark(view.getContext(), story.id);
-                        } else {
-                            Utils.addBookmark(view.getContext(), story.id);
-                        }
-
-                        notifyItemChanged(0);
-                    }
-                });
+                bindStoryBookmarkButton(headerViewHolder.bookmarkButton, isBookmarked);
             } else {
                 headerViewHolder.bookmarkButton.setOnClickListener(null);
             }
 
             boolean isFavorited = Utils.isFavorited(ctx, story.id);
-            headerViewHolder.favoriteButton.setImageResource(isFavorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star);
-            headerViewHolder.favoriteButton.setAlpha(1.0f);
-            headerViewHolder.favoriteButton.setContentDescription(isFavorited ? "Remove favorite" : "Favorite");
+            if (storyFavoriteLoading) {
+                showHeaderFavoriteLoading(headerViewHolder.favoriteButton, storyFavoriteLoadingTarget, false);
+            } else {
+                showHeaderFavoriteButton(headerViewHolder.favoriteButton, isFavorited, false);
+            }
 
             headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
             headerViewHolder.opFilterContainer.setVisibility(commentsByOpFilterActive ? VISIBLE : GONE);
             headerViewHolder.bookmarkButtonParent.setVisibility(bookmarksEnabled ? VISIBLE : GONE);
             headerViewHolder.commentButtonParent.setVisibility(Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time) ? GONE : View.VISIBLE);
             headerViewHolder.commentButton.setContentDescription(story.isComment ? "Reply to comment" : "Reply to post");
-            headerViewHolder.voteButton.setContentDescription(story.isComment ? "Upvote comment" : "Upvote post");
 
             headerViewHolder.loadingFailed.setVisibility(loadingFailed ? VISIBLE : GONE);
             if (loadingFailed) {
@@ -579,6 +585,299 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     public static boolean isCommentViewType(int viewType) {
         return viewType == TYPE_COMMENT || viewType == TYPE_COMMENT_CARD;
+    }
+
+    private void bindStoryBookmarkButton(ImageButton button, boolean bookmarked) {
+        setHeaderActionButtonIcon(
+                button,
+                bookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border,
+                bookmarked ? "Remove bookmark" : "Bookmark");
+        resetHeaderActionButtonVisual(button);
+        button.setEnabled(true);
+        button.setClickable(true);
+        button.setOnClickListener(v -> toggleStoryBookmark(button));
+    }
+
+    private void toggleStoryBookmark(ImageButton button) {
+        if (story == null) {
+            return;
+        }
+
+        Context ctx = button.getContext();
+        boolean bookmarked = !Utils.isBookmarked(ctx, story.id);
+        if (bookmarked) {
+            Utils.addBookmark(ctx, story.id);
+        } else {
+            Utils.removeBookmark(ctx, story.id);
+        }
+
+        animateHeaderActionIconChange(
+                button,
+                bookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border,
+                bookmarked ? "Remove bookmark" : "Bookmark");
+    }
+
+    public void showStoryFavoriteLoading(@Nullable View actionView, boolean favorite) {
+        storyFavoriteLoading = true;
+        storyFavoriteLoadingTarget = favorite;
+        ImageButton button = resolveStoryFavoriteButton(actionView);
+        if (button != null) {
+            showHeaderFavoriteLoading(button, favorite, true);
+        }
+    }
+
+    public void showStoryFavoriteResult(@Nullable View actionView, boolean favorited) {
+        storyFavoriteLoading = false;
+        storyFavoriteLoadingTarget = favorited;
+        ImageButton button = resolveStoryFavoriteButton(actionView);
+        if (button != null) {
+            showHeaderFavoriteButton(button, favorited, true);
+        }
+    }
+
+    public void showStoryVoteLoading(@Nullable View actionView, boolean upvoted) {
+        storyVoteLoading = true;
+        storyVoteLoadingTarget = upvoted;
+        ImageButton button = resolveStoryVoteButton(actionView);
+        if (button != null) {
+            showHeaderVoteLoading(button, upvoted, true);
+        }
+    }
+
+    public void showStoryVoteResult(@Nullable View actionView, boolean upvoted) {
+        storyVoteLoading = false;
+        storyVoteLoadingTarget = upvoted;
+        ImageButton button = resolveStoryVoteButton(actionView);
+        if (button != null) {
+            showHeaderVoteButton(button, upvoted, true);
+        }
+    }
+
+    @Nullable
+    private ImageButton resolveStoryFavoriteButton(@Nullable View actionView) {
+        if (actionView instanceof ImageButton
+                && actionView.getId() == R.id.comments_header_button_favorite
+                && ViewCompat.isAttachedToWindow(actionView)) {
+            return (ImageButton) actionView;
+        }
+        if (boundHeaderViewHolder != null
+                && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.favoriteButton)) {
+            return boundHeaderViewHolder.favoriteButton;
+        }
+        return null;
+    }
+
+    @Nullable
+    private ImageButton resolveStoryVoteButton(@Nullable View actionView) {
+        if (actionView instanceof ImageButton
+                && actionView.getId() == R.id.comments_header_button_vote
+                && ViewCompat.isAttachedToWindow(actionView)) {
+            return (ImageButton) actionView;
+        }
+        if (boundHeaderViewHolder != null
+                && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.voteButton)) {
+            return boundHeaderViewHolder.voteButton;
+        }
+        return null;
+    }
+
+    private void showHeaderVoteLoading(ImageButton button, boolean upvoted, boolean animate) {
+        String label = upvoted ? "Upvoting" : "Removing vote";
+        showHeaderActionLoading(button, label, animate);
+    }
+
+    private void showHeaderVoteButton(ImageButton button, boolean upvoted, boolean animate) {
+        showHeaderActionButton(
+                button,
+                upvoted ? R.drawable.ic_action_thumbs_up : R.drawable.ic_action_thumbs_up_outline,
+                upvoted ? "Remove vote" : "Vote",
+                animate);
+    }
+
+    private void showHeaderFavoriteLoading(ImageButton button, boolean favorite, boolean animate) {
+        String label = favorite ? "Adding favorite" : "Removing favorite";
+        showHeaderActionLoading(button, label, animate);
+    }
+
+    private void showHeaderActionLoading(ImageButton button, String label, boolean animate) {
+        button.setEnabled(false);
+        button.setClickable(false);
+        button.setContentDescription(label);
+        TooltipCompat.setTooltipText(button, label);
+
+        RelativeLayout parent = getHeaderActionParent(button);
+        if (parent == null) {
+            return;
+        }
+
+        Runnable showLoading = () -> {
+            button.setVisibility(View.INVISIBLE);
+            resetHeaderActionButtonVisual(button);
+            addHeaderFavoriteLoadingIndicator(parent, label, animate);
+        };
+        if (animate && button.getVisibility() == VISIBLE) {
+            animateHeaderActionViewOut(button, showLoading);
+        } else {
+            showLoading.run();
+        }
+    }
+
+    private void showHeaderFavoriteButton(ImageButton button, boolean favorited, boolean animate) {
+        showHeaderActionButton(
+                button,
+                favorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star,
+                favorited ? "Remove favorite" : "Favorite",
+                animate);
+    }
+
+    private void showHeaderActionButton(ImageButton button, int iconRes, String label, boolean animate) {
+        RelativeLayout parent = getHeaderActionParent(button);
+        View loadingIndicator = parent == null ? null : getHeaderActionLoadingIndicator(parent);
+
+        Runnable showButton = () -> {
+            if (parent != null) {
+                removeHeaderActionLoadingIndicators(parent);
+            }
+            setHeaderActionButtonIcon(button, iconRes, label);
+            button.setVisibility(VISIBLE);
+            button.setEnabled(true);
+            button.setClickable(true);
+            if (animate) {
+                animateHeaderActionViewIn(button, null);
+            } else {
+                resetHeaderActionButtonVisual(button);
+            }
+        };
+
+        if (animate && loadingIndicator != null) {
+            animateHeaderActionViewOut(loadingIndicator, showButton);
+        } else {
+            showButton.run();
+        }
+    }
+
+    private void addHeaderFavoriteLoadingIndicator(RelativeLayout parent, String label, boolean animate) {
+        removeHeaderActionLoadingIndicators(parent);
+        LoadingIndicator loadingIndicator = new LoadingIndicator(parent.getContext());
+        int indicatorSize = Utils.pxFromDpInt(parent.getResources(), HEADER_FAVORITE_LOADING_SIZE_DP);
+        loadingIndicator.setIndicatorSize(indicatorSize);
+        loadingIndicator.setContentDescription(label);
+        loadingIndicator.setClickable(false);
+        loadingIndicator.setFocusable(false);
+
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(indicatorSize, indicatorSize);
+        params.addRule(RelativeLayout.CENTER_IN_PARENT);
+        parent.addView(loadingIndicator, params);
+
+        if (animate) {
+            animateHeaderActionViewIn(loadingIndicator, null);
+        }
+    }
+
+    @Nullable
+    private RelativeLayout getHeaderActionParent(ImageButton button) {
+        if (button.getParent() instanceof RelativeLayout) {
+            return (RelativeLayout) button.getParent();
+        }
+        return null;
+    }
+
+    @Nullable
+    private View getHeaderActionLoadingIndicator(RelativeLayout parent) {
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            View child = parent.getChildAt(i);
+            if (child instanceof LoadingIndicator) {
+                return child;
+            }
+        }
+        return null;
+    }
+
+    private void removeHeaderActionLoadingIndicators(RelativeLayout parent) {
+        for (int i = parent.getChildCount() - 1; i >= 0; i--) {
+            if (parent.getChildAt(i) instanceof LoadingIndicator) {
+                parent.removeViewAt(i);
+            }
+        }
+    }
+
+    private void animateHeaderActionIconChange(ImageButton button, int iconRes, String label) {
+        button.setEnabled(false);
+        animateHeaderActionViewOut(button, () -> {
+            setHeaderActionButtonIcon(button, iconRes, label);
+            animateHeaderActionViewIn(button, () -> button.setEnabled(true));
+        });
+    }
+
+    private void setHeaderActionButtonIcon(ImageButton button, int iconRes, String label) {
+        button.setImageResource(iconRes);
+        button.setContentDescription(label);
+        TooltipCompat.setTooltipText(button, label);
+    }
+
+    private void resetHeaderActionButtonVisual(View view) {
+        view.animate().setListener(null);
+        view.animate().cancel();
+        view.setAlpha(1f);
+        view.setScaleX(1f);
+        view.setScaleY(1f);
+    }
+
+    private void animateHeaderActionViewOut(View view, Runnable afterOut) {
+        view.animate().setListener(null);
+        view.animate().cancel();
+        if (!ViewCompat.isAttachedToWindow(view) || view.getVisibility() != VISIBLE) {
+            view.setAlpha(0f);
+            view.setScaleX(HEADER_ACTION_ICON_SWAP_MIN_SCALE);
+            view.setScaleY(HEADER_ACTION_ICON_SWAP_MIN_SCALE);
+            afterOut.run();
+            return;
+        }
+
+        view.animate()
+                .alpha(0f)
+                .scaleX(HEADER_ACTION_ICON_SWAP_MIN_SCALE)
+                .scaleY(HEADER_ACTION_ICON_SWAP_MIN_SCALE)
+                .setDuration(HEADER_ACTION_ICON_SWAP_OUT_DURATION_MS)
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        view.animate().setListener(null);
+                        afterOut.run();
+                    }
+                })
+                .start();
+    }
+
+    private void animateHeaderActionViewIn(View view, @Nullable Runnable afterIn) {
+        view.animate().setListener(null);
+        view.animate().cancel();
+        view.setAlpha(0f);
+        view.setScaleX(HEADER_ACTION_ICON_SWAP_MIN_SCALE);
+        view.setScaleY(HEADER_ACTION_ICON_SWAP_MIN_SCALE);
+        if (!ViewCompat.isAttachedToWindow(view)) {
+            resetHeaderActionButtonVisual(view);
+            if (afterIn != null) {
+                afterIn.run();
+            }
+            return;
+        }
+
+        view.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(HEADER_ACTION_ICON_SWAP_IN_DURATION_MS)
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        view.animate().setListener(null);
+                        if (afterIn != null) {
+                            afterIn.run();
+                        }
+                    }
+                })
+                .start();
     }
 
     public class ItemViewHolder extends RecyclerView.ViewHolder {
@@ -900,8 +1199,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             userButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_USER, null));
             commentButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_COMMENT, null));
-            voteButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_VOTE, view));
-            favoriteButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_FAVORITE, view));
+            voteButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_VOTE, v));
+            favoriteButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_FAVORITE, v));
             shareButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_SHARE, v));
             moreButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_MORE, v));
             sheetRefreshButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_REFRESH, view));

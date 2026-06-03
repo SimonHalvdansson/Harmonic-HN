@@ -88,10 +88,14 @@ private static final long MAX_RESPONSE_PREVIEW_BYTES = 1024 * 1024;
 private static final int MAX_USER_ITEM_LIST_PAGES = 50;
 
     public static void voteWithDir(Context ctx, int id, FragmentManager fm, String dir) {
-        voteWithDir(ctx, id, fm, dir, null);
+        voteWithDir(ctx, id, fm, dir, null, null);
     }
 
     private static void voteWithDir(Context ctx, int id, FragmentManager fm, String dir, String successMessage) {
+        voteWithDir(ctx, id, fm, dir, successMessage, null);
+    }
+
+    private static void voteWithDir(Context ctx, int id, FragmentManager fm, String dir, String successMessage, ActionCallback cb) {
         UserActions.vote(String.valueOf(id), dir, ctx, fm, new UserActions.ActionCallback() {
             @Override
             public void onSuccess(Response response) {
@@ -105,18 +109,37 @@ private static final int MAX_USER_ITEM_LIST_PAGES = 50;
                     }
                 }
                 Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show();
+                if (cb != null) {
+                    cb.onSuccess(response);
+                }
             }
 
             @Override
             public void onFailure(String summary, String response) {
                 UserActions.showFailureDetailDialog(ctx, summary, response);
                 Toast.makeText(ctx, "Vote unsuccessful, see dialog for response", Toast.LENGTH_SHORT).show();
+                if (cb != null) {
+                    cb.onFailure(summary, response);
+                }
+            }
+
+            @Override
+            public void onCaptchaRequired(CaptchaChallenge challenge) {
+                if (cb != null) {
+                    cb.onCaptchaRequired(challenge);
+                } else {
+                    onFailure("Captcha required", "HN requires a captcha for this action. Please try again in a browser.");
+                }
             }
         });
     }
 
     public static void upvote(Context ctx, int id, FragmentManager fm) {
         voteWithDir(ctx, id, fm, VOTE_DIR_UP);
+    }
+
+    public static void upvote(Context ctx, int id, FragmentManager fm, ActionCallback cb) {
+        voteWithDir(ctx, id, fm, VOTE_DIR_UP, null, cb);
     }
 
     public static void votePollOption(Context ctx, int id, FragmentManager fm) {
@@ -129,6 +152,10 @@ private static final int MAX_USER_ITEM_LIST_PAGES = 50;
 
     public static void unvote(Context ctx, int id, FragmentManager fm) {
         voteWithDir(ctx, id, fm, VOTE_DIR_UN);
+    }
+
+    public static void unvote(Context ctx, int id, FragmentManager fm, ActionCallback cb) {
+        voteWithDir(ctx, id, fm, VOTE_DIR_UN, null, cb);
     }
 
     public static void setFavorite(Context ctx, int id, boolean favorite, FragmentManager fm) {
