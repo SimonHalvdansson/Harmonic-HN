@@ -84,7 +84,11 @@
                         android:layout_marginTop="14dp"
                         android:fadingEdgeLength="20dp"
                         android:overScrollMode="ifContentScrolls"
-                        android:paddingBottom="14dp">
+                        android:paddingLeft="6dp"
+                        android:paddingRight="6dp"
+                        android:scrollbarStyle="outsideOverlay"
+                        android:paddingBottom="14dp"
+                        android:scrollbars="vertical">
 
                         <org.sufficientlysecure.htmltextview.HtmlTextView
                             android:id="@+id/comment_action_text"

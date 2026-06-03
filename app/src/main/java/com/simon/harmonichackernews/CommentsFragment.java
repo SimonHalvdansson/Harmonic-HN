@@ -3406,6 +3406,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             ViewGroup.LayoutParams params = textScroll.getLayoutParams();
             params.height = needsScrolling ? maxHeight : paddedContentHeight;
             textScroll.setLayoutParams(params);
+            textScroll.setVerticalScrollBarEnabled(needsScrolling);
+            textScroll.setScrollbarFadingEnabled(true);
             textScroll.setVerticalFadingEdgeEnabled(needsScrolling);
             textScroll.setOverScrollMode(needsScrolling ? View.OVER_SCROLL_IF_CONTENT_SCROLLS : View.OVER_SCROLL_NEVER);
             resizeCommentActionDialogScroll();
