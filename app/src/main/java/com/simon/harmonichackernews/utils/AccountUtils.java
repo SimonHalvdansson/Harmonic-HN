@@ -96,7 +96,8 @@ public class AccountUtils {
             return false;
         }
 
-        if (fm != null) {
+        boolean loginPromptShown = fm != null;
+        if (loginPromptShown) {
             AccountUtils.showLoginPrompt(fm);
         }
 
@@ -108,9 +109,15 @@ public class AccountUtils {
                 Utils.toast("Login failed, cause: EncryptedSharedPreferences threw exception", ctx);
                 break;
             case AccountUtils.FAILURE_MODE_NO_USERNAME:
+                if (loginPromptShown) {
+                    break;
+                }
                 Utils.toast("Login failed, cause: No saved username", ctx);
                 break;
             case AccountUtils.FAILURE_MODE_NO_PASSWORD:
+                if (loginPromptShown) {
+                    break;
+                }
                 Utils.toast("Login failed, cause: No saved password", ctx);
                 break;
         }
