@@ -74,9 +74,9 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
 
     private LinearLayout createOptionRow(Context context, String label, String font, int textColor, int secondaryTextColor) {
         int horizontalPadding = Utils.pxFromDpInt(getResources(), 24);
-        int verticalPadding = Utils.pxFromDpInt(getResources(), 6);
-        int minHeight = Utils.pxFromDpInt(getResources(), 68);
-        int radioMarginEnd = Utils.pxFromDpInt(getResources(), 6);
+        int verticalPadding = Utils.pxFromDpInt(getResources(), 4);
+        int minHeight = Utils.pxFromDpInt(getResources(), 64);
+        int radioMarginEnd = Utils.pxFromDpInt(getResources(), 4);
 
         LinearLayout row = new LinearLayout(context);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -116,7 +116,7 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
         TextView preview = new TextView(context);
-        preview.setText("Example story title and comment text");
+        preview.setText("Example text");
         preview.setTextColor(secondaryTextColor);
         preview.setSingleLine(false);
         FontUtils.setTypefaceForFont(preview, font, false, 14);
