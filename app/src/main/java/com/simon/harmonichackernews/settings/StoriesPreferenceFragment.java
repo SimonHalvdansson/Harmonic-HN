@@ -61,7 +61,6 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
             if (previewPreference != null) {
                 previewPreference.updatePreviewImageMode((String) newValue);
             }
-            updateTintCardUsingPreviewPreference(null, (String) newValue);
             return true;
         });
 
@@ -69,7 +68,7 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
             if (previewPreference != null) {
                 previewPreference.updateDisplayStyle((String) newValue);
             }
-            updateTintCardUsingPreviewPreference((String) newValue, null);
+            updateTintCardUsingPreviewPreference((String) newValue);
             return true;
         });
 
@@ -173,22 +172,18 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
     }
 
     private void updateTintCardUsingPreviewPreference() {
-        updateTintCardUsingPreviewPreference(null, null);
+        updateTintCardUsingPreviewPreference(null);
     }
 
     private void updateCompactPointsPreference(boolean enabled) {
         changePrefStatus(compactPointsPreference, enabled);
     }
 
-    private void updateTintCardUsingPreviewPreference(String displayStyleOverride, String previewImageModeOverride) {
+    private void updateTintCardUsingPreviewPreference(String displayStyleOverride) {
         String displayStyle = displayStyleOverride != null
                 ? displayStyleOverride
                 : SettingsUtils.getPreferredStoryDisplayStyle(getContext());
-        String previewImageMode = previewImageModeOverride != null
-                ? previewImageModeOverride
-                : SettingsUtils.getPreferredStoryPreviewImageMode(getContext());
-        boolean enabled = SettingsUtils.STORY_DISPLAY_STYLE_CARD.equals(displayStyle)
-                && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode);
+        boolean enabled = SettingsUtils.STORY_DISPLAY_STYLE_CARD.equals(displayStyle);
         changePrefStatus(tintCardUsingPreviewPreference, enabled);
     }
 }

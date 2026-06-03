@@ -24,6 +24,11 @@ public class Story {
     public transient boolean previewImageLoadFailed;
     public transient int previewImageTintColor;
     public transient boolean previewImageTintColorLoaded;
+    public transient int faviconTintColor;
+    public transient boolean faviconTintColorLoaded;
+    public transient boolean faviconTintColorLoading;
+    public transient boolean faviconTintColorLoadFailed;
+    public transient String faviconTintSourceUrl;
     public int[] kids;
     public int[] pollOptions;
     public ArrayList<PollOption> pollOptionArrayList;

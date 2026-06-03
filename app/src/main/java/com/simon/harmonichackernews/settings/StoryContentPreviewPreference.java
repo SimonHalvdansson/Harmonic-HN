@@ -887,11 +887,13 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         }
 
         int targetColor = getDefaultCardBackgroundColor(storyCard);
-        if (shouldTintPreviewCard(previewImageMode)) {
-            Drawable previewDrawable = ContextCompat.getDrawable(getContext(), R.drawable.web_preview);
-            if (previewDrawable != null) {
+        if (shouldTintPreviewCard()) {
+            Drawable tintDrawable = ContextCompat.getDrawable(
+                    getContext(),
+                    getPreviewCardTintDrawableRes(previewImageMode));
+            if (tintDrawable != null) {
                 try {
-                    targetColor = PreviewImageTintUtils.calculateCardTint(getContext(), previewDrawable);
+                    targetColor = PreviewImageTintUtils.calculateCardTint(getContext(), tintDrawable);
                 } catch (RuntimeException ignored) {
                     targetColor = getDefaultCardBackgroundColor(storyCard);
                 }
@@ -901,10 +903,15 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         setStoryCardBackgroundColor(targetColor, animate);
     }
 
-    private boolean shouldTintPreviewCard(String previewImageMode) {
+    private boolean shouldTintPreviewCard() {
         return cardStyle
-                && SettingsUtils.getBooleanPref(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW, false, getContext())
-                && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode);
+                && SettingsUtils.getBooleanPref(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW, false, getContext());
+    }
+
+    private int getPreviewCardTintDrawableRes(String previewImageMode) {
+        return SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                ? R.drawable.quanta
+                : R.drawable.web_preview;
     }
 
     private void setStoryCardBackgroundColor(int targetColor, boolean animate) {

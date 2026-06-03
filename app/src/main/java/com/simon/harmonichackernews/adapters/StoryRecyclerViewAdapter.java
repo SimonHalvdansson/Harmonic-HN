@@ -75,6 +75,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final float CLICKED_PREVIEW_IMAGE_ALPHA = 0.6f;
     private static final long PREVIEW_IMAGE_FADE_IN_DURATION_MS = 160;
     private static final long CARD_TINT_ANIMATION_DURATION_MS = 180;
+    private static final int FAVICON_TINT_SIZE_DP = 64;
 
     public boolean showPoints;
     public boolean compactPoints;
@@ -254,6 +255,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
 
                 bindPreviewImage(storyViewHolder, storyViewHolder.story);
+                bindStoryCardTintFallback(storyViewHolder, storyViewHolder.story);
 
                 storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment);
 
@@ -505,6 +507,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                             super.onError(null);
                             setPreviewImageVisibility(storyViewHolder, previewImage, View.GONE);
                             applyStoryCardBackground(storyViewHolder, story, false);
+                            loadFaviconTintColor(
+                                    previewImage.getContext(),
+                                    story,
+                                    storyViewHolder,
+                                    isVisibleOnScreen(storyViewHolder.itemView));
                         }
                     }
 
@@ -590,11 +597,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         int targetColor = getDefaultStoryCardBackgroundColor(storyViewHolder.storyCard);
-        if (tintCardUsingPreview
-                && cardStyle
-                && story != null
-                && story.previewImageTintColorLoaded) {
+        if (shouldUsePreviewTint(story)) {
             targetColor = story.previewImageTintColor;
+        } else if (shouldUseFaviconTint(story)
+                && story.faviconTintColorLoaded
+                && isFaviconTintColorCurrent(story)) {
+            targetColor = story.faviconTintColor;
         }
 
         setStoryCardBackgroundColor(storyViewHolder, targetColor, animate);
@@ -654,6 +662,158 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             story.previewImageTintColorLoaded = true;
         } catch (RuntimeException e) {
             story.previewImageTintColorLoaded = false;
+        }
+    }
+
+    private void bindStoryCardTintFallback(StoryViewHolder storyViewHolder, Story story) {
+        if (!shouldUseFaviconTint(story)) {
+            return;
+        }
+
+        loadFaviconTintColor(
+                storyViewHolder.itemView.getContext(),
+                story,
+                storyViewHolder,
+                isVisibleOnScreen(storyViewHolder.itemView));
+    }
+
+    private void loadFaviconTintColor(
+            @Nullable Context context,
+            Story story,
+            @Nullable StoryViewHolder storyViewHolder,
+            boolean animate) {
+        if (context == null || !shouldUseFaviconTint(story)) {
+            return;
+        }
+
+        String faviconUrl = getFaviconTintSourceUrl(story);
+        if (TextUtils.isEmpty(faviconUrl)) {
+            return;
+        }
+
+        if (!TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)) {
+            story.faviconTintSourceUrl = faviconUrl;
+            story.faviconTintColorLoaded = false;
+            story.faviconTintColorLoading = false;
+            story.faviconTintColorLoadFailed = false;
+        }
+
+        if (story.faviconTintColorLoaded) {
+            if (isCurrentStoryHolder(storyViewHolder, story)) {
+                applyStoryCardBackground(storyViewHolder, story, animate);
+            }
+            return;
+        }
+
+        if (story.faviconTintColorLoading || story.faviconTintColorLoadFailed) {
+            return;
+        }
+
+        story.faviconTintColorLoading = true;
+        int faviconSize = Utils.pxFromDpInt(context.getResources(), FAVICON_TINT_SIZE_DP);
+        ImageRequest request = new ImageRequest.Builder(context)
+                .data(faviconUrl)
+                .size(faviconSize, faviconSize)
+                .allowHardware(false)
+                .target(new Target() {
+                    @Override
+                    public void onStart(Drawable placeholder) {
+                        if (TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)) {
+                            story.faviconTintColorLoading = true;
+                        }
+                    }
+
+                    @Override
+                    public void onError(Drawable error) {
+                        if (!TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)) {
+                            return;
+                        }
+
+                        story.faviconTintColorLoading = false;
+                        story.faviconTintColorLoadFailed = true;
+                        if (isCurrentStoryHolder(storyViewHolder, story)) {
+                            applyStoryCardBackground(storyViewHolder, story, animate);
+                        }
+                    }
+
+                    @Override
+                    public void onSuccess(Drawable result) {
+                        if (!TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)) {
+                            return;
+                        }
+
+                        story.faviconTintColorLoading = false;
+                        updateFaviconTintColor(context, story, result);
+                        if (story.faviconTintColorLoaded) {
+                            if (isCurrentStoryHolder(storyViewHolder, story)) {
+                                applyStoryCardBackground(storyViewHolder, story, animate);
+                            } else {
+                                notifyStoryChanged(story);
+                            }
+                        }
+                    }
+                })
+                .build();
+
+        Coil.imageLoader(context).enqueue(request);
+    }
+
+    private void updateFaviconTintColor(Context context, Story story, Drawable drawable) {
+        if (context == null || story == null || drawable == null) {
+            return;
+        }
+
+        try {
+            story.faviconTintColor = PreviewImageTintUtils.calculateCardTint(context, drawable);
+            story.faviconTintColorLoaded = true;
+            story.faviconTintColorLoadFailed = false;
+        } catch (RuntimeException e) {
+            story.faviconTintColorLoaded = false;
+            story.faviconTintColorLoadFailed = true;
+        }
+    }
+
+    private boolean shouldUsePreviewTint(Story story) {
+        return shouldTintStoryCards()
+                && story != null
+                && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                && !story.previewImageLoadFailed
+                && story.previewImageTintColorLoaded;
+    }
+
+    private boolean shouldUseFaviconTint(Story story) {
+        return shouldTintStoryCards()
+                && story != null
+                && story.loaded
+                && !story.loadingFailed
+                && !story.isComment
+                && !TextUtils.isEmpty(story.url)
+                && (SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                || story.previewImageLoadFailed);
+    }
+
+    private boolean isFaviconTintColorCurrent(Story story) {
+        return story != null
+                && story.faviconTintColorLoaded
+                && TextUtils.equals(story.faviconTintSourceUrl, getFaviconTintSourceUrl(story));
+    }
+
+    private String getFaviconTintSourceUrl(Story story) {
+        try {
+            return story == null ? null : FaviconLoader.getFaviconUrl(story.url, faviconProvider);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private boolean isCurrentStoryHolder(@Nullable StoryViewHolder storyViewHolder, Story story) {
+        return storyViewHolder != null && storyViewHolder.story == story;
+    }
+
+    private void notifyStoryChanged(Story story) {
+        int index = stories.indexOf(story);
+        if (index >= 0) {
+            notifyItemChanged(index);
         }
     }
 

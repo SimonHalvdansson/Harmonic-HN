@@ -71,7 +71,8 @@
             app:key="pref_tint_card_using_preview"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_colors"
-            app:title="Tint card using preview" />
+            app:summary="Uses preview or favicon"
+            app:title="Tint" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"

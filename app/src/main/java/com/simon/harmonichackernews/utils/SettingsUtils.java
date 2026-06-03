@@ -172,8 +172,7 @@ public class SettingsUtils {
 
     public static boolean shouldTintCardUsingPreview(Context ctx) {
         return getBooleanPref(PREF_TINT_CARD_USING_PREVIEW, false, ctx)
-                && shouldUseCardStoryDisplayStyle(ctx)
-                && !STORY_PREVIEW_IMAGE_OFF.equals(getPreferredStoryPreviewImageMode(ctx));
+                && shouldUseCardStoryDisplayStyle(ctx);
     }
 
     public static boolean shouldShowNavigationButtons(Context ctx) {

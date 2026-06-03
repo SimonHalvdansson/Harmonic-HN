@@ -23,7 +23,7 @@ public class FaviconLoader {
             Drawable webDrawable = Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_action_web));
 
             ImageRequest request = new ImageRequest.Builder(ctx)
-                    .data(getFaviconUrl(host, faviconProvider))
+                    .data(getFaviconUrlForHost(host, faviconProvider))
                     .size(faviconSize, faviconSize)
                     .placeholder(webDrawable)
                     .error(webDrawable)
@@ -35,7 +35,11 @@ public class FaviconLoader {
         } catch (Exception ignored){};
     }
 
-    private static String getFaviconUrl(String host, String faviconProvider) {
+    public static String getFaviconUrl(String url, String faviconProvider) throws Exception {
+        return getFaviconUrlForHost(Utils.getDomainName(url), faviconProvider);
+    }
+
+    private static String getFaviconUrlForHost(String host, String faviconProvider) {
         switch (faviconProvider) {
             case "Twenty icons":
                 return "https://twenty-icons.com/" + host;
