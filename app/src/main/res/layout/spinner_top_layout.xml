@@ -5,7 +5,6 @@
     android:paddingLeft="0dp"
     android:layout_width="match_parent"
     android:fontFamily="@font/product_sans_bold"
-    android:textSize="36dp"
     android:textColor="?attr/storyColorNormal"
     android:layout_height="wrap_content"
     android:ellipsize="marquee"/>

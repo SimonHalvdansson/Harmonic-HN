@@ -3818,18 +3818,18 @@ public class StoriesFragment extends Fragment {
         @Override
         public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
             View view = super.getView(position, convertView, parent);
-            applySelectedFont(view);
+            applySelectedFont(view, true);
             return view;
         }
 
         @Override
         public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
             View view = super.getDropDownView(position, convertView, parent);
-            applySelectedFont(view);
+            applySelectedFont(view, false);
             return view;
         }
 
-        private void applySelectedFont(View view) {
+        private void applySelectedFont(View view, boolean selectedView) {
             TextView textView = view instanceof TextView
                     ? (TextView) view
                     : view.findViewById(R.id.selection_dropdown_item_textview);
@@ -3841,7 +3841,11 @@ public class StoriesFragment extends Fragment {
             if (FontUtils.activeBold == null || TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(preferredFont)) {
                 FontUtils.init(getContext());
             }
-            textView.setTypeface(FontUtils.activeBold);
+            if (selectedView) {
+                FontUtils.setStoriesDropdownSelectedTypeface(textView);
+            } else {
+                textView.setTypeface(FontUtils.activeBold);
+            }
         }
     }
 
