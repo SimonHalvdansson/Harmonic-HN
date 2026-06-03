@@ -179,6 +179,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyViewHolder.story = stories.get(position);
             boolean useClickedEffects = storyViewHolder.story.clicked && grayOutClicked && !disableClickedEffects;
             resetPreviewImages(storyViewHolder);
+            configureStoryCardAppearance(storyViewHolder);
             applyStoryCardBackground(storyViewHolder, storyViewHolder.story, false);
             setPreviewImageAlpha(storyViewHolder, useClickedEffects);
 
@@ -818,7 +819,30 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private boolean shouldTintStoryCards() {
-        return tintCardUsingPreview && cardStyle;
+        return tintCardUsingPreview;
+    }
+
+    private boolean shouldUseStoryCardShell() {
+        return cardStyle || tintCardUsingPreview;
+    }
+
+    private void configureStoryCardAppearance(StoryViewHolder storyViewHolder) {
+        MaterialCardView card = storyViewHolder.storyCard;
+        if (card == null) {
+            return;
+        }
+
+        if (cardStyle) {
+            int oneDp = Utils.pxFromDpInt(card.getResources(), 1);
+            card.setStrokeWidth(oneDp);
+            card.setStrokeColor(MaterialColors.getColor(card, R.attr.commentDividerColor, Color.TRANSPARENT));
+            card.setCardElevation(oneDp);
+            return;
+        }
+
+        card.setStrokeWidth(0);
+        card.setStrokeColor(Color.TRANSPARENT);
+        card.setCardElevation(0f);
     }
 
     private static boolean isVisibleOnScreen(View view) {
@@ -1186,7 +1210,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private int getStoryViewType() {
-        if (cardStyle) {
+        if (shouldUseStoryCardShell()) {
             return leftAlign ? TYPE_STORY_CARD_LEFT : TYPE_STORY_CARD;
         }
         return leftAlign ? TYPE_STORY_LEFT : TYPE_STORY;

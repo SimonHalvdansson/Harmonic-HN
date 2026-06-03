@@ -1656,8 +1656,14 @@ public class StoriesFragment extends Fragment {
 
         boolean tintCardUsingPreview = SettingsUtils.shouldTintCardUsingPreview(getContext());
         if (adapter.tintCardUsingPreview != tintCardUsingPreview) {
+            boolean storyCardShellChanged = !adapter.cardStyle;
             adapter.tintCardUsingPreview = tintCardUsingPreview;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+            if (storyCardShellChanged) {
+                setupAdapter();
+                recyclerView.setAdapter(adapter);
+            } else {
+                adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+            }
         }
 
         if (adapter.grayOutClicked != SettingsUtils.shouldGrayOutClicked(getContext())) {

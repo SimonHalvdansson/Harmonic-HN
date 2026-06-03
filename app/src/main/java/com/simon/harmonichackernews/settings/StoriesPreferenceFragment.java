@@ -68,7 +68,6 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
             if (previewPreference != null) {
                 previewPreference.updateDisplayStyle((String) newValue);
             }
-            updateTintCardUsingPreviewPreference((String) newValue);
             return true;
         });
 
@@ -172,18 +171,10 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
     }
 
     private void updateTintCardUsingPreviewPreference() {
-        updateTintCardUsingPreviewPreference(null);
+        changePrefStatus(tintCardUsingPreviewPreference, true);
     }
 
     private void updateCompactPointsPreference(boolean enabled) {
         changePrefStatus(compactPointsPreference, enabled);
-    }
-
-    private void updateTintCardUsingPreviewPreference(String displayStyleOverride) {
-        String displayStyle = displayStyleOverride != null
-                ? displayStyleOverride
-                : SettingsUtils.getPreferredStoryDisplayStyle(getContext());
-        boolean enabled = SettingsUtils.STORY_DISPLAY_STYLE_CARD.equals(displayStyle);
-        changePrefStatus(tintCardUsingPreviewPreference, enabled);
     }
 }

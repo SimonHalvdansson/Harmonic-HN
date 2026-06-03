@@ -35,6 +35,7 @@ import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryMetaPreviewAnimator;
+import com.simon.harmonichackernews.utils.Utils;
 
 public class StoryContentPreviewPreference extends Preference implements SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -60,6 +61,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     private View boundItemView;
     private boolean leftAligned;
     private boolean cardStyle;
+    private boolean tintCardUsingPreview;
     private int commentsIconResId = R.drawable.ic_action_comment;
     private ValueAnimator previewHeightAnimator;
     private ValueAnimator cardTintAnimator;
@@ -106,6 +108,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         }
         leftAligned = SettingsUtils.shouldUseLeftAlign(getContext());
         cardStyle = SettingsUtils.shouldUseCardStoryDisplayStyle(getContext());
+        tintCardUsingPreview = SettingsUtils.shouldTintCardUsingPreview(getContext());
         inflatePreviewItem(leftAligned);
         updatePreview(false);
         syncPreviewContainerHeight(getCurrentPreviewImageMode());
@@ -212,6 +215,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         storyMeta = null;
         comments = null;
         boundItemView = null;
+        tintCardUsingPreview = false;
         displayStyleOverride = null;
     }
 
@@ -252,7 +256,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         }
 
         if (SettingsUtils.PREF_TINT_CARD_USING_PREVIEW.equals(key)) {
-            updateStoryCardBackground(getCurrentPreviewImageMode(), true);
+            applyTintCardUsingPreview(SettingsUtils.shouldTintCardUsingPreview(getContext()), true);
             return;
         }
 
@@ -276,7 +280,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
         previewItemContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(getContext());
-        int layout = getStoryPreviewLayout(leftAlign, cardStyle);
+        int layout = getStoryPreviewLayout(leftAlign, shouldUsePreviewCardShell());
         View itemView = inflater.inflate(layout, previewItemContainer, false);
         previewItemContainer.addView(itemView, createPreviewItemLayoutParams());
 
@@ -292,11 +296,15 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         storyIndex = itemView.findViewById(R.id.story_index);
         storyMeta = itemView.findViewById(R.id.story_meta);
         comments = itemView.findViewById(R.id.story_comments);
+        currentCardBackgroundColor = storyCard != null
+                ? storyCard.getCardBackgroundColor().getDefaultColor()
+                : null;
 
         disablePreviewTextScrolling(storyTitle);
         disablePreviewTextScrolling(storyIndex);
         disablePreviewTextScrolling(storyMeta);
         disablePreviewTextScrolling(comments);
+        configureStoryCardAppearance();
         bindStaticPreviewContent();
     }
 
@@ -305,6 +313,28 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             return leftAlign ? R.layout.story_list_item_card_left : R.layout.story_list_item_card;
         }
         return leftAlign ? R.layout.story_list_item_left : R.layout.story_list_item;
+    }
+
+    private boolean shouldUsePreviewCardShell() {
+        return cardStyle || tintCardUsingPreview;
+    }
+
+    private void configureStoryCardAppearance() {
+        if (storyCard == null) {
+            return;
+        }
+
+        if (cardStyle) {
+            int oneDp = Utils.pxFromDpInt(storyCard.getResources(), 1);
+            storyCard.setStrokeWidth(oneDp);
+            storyCard.setStrokeColor(MaterialColors.getColor(storyCard, R.attr.commentDividerColor, Color.TRANSPARENT));
+            storyCard.setCardElevation(oneDp);
+            return;
+        }
+
+        storyCard.setStrokeWidth(0);
+        storyCard.setStrokeColor(Color.TRANSPARENT);
+        storyCard.setCardElevation(0f);
     }
 
     private void disablePreviewTextScrolling(TextView textView) {
@@ -392,6 +422,35 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         inflatePreviewItem(leftAligned);
         updatePreview(false);
         requestPreviewRemeasure();
+    }
+
+    private void applyTintCardUsingPreview(boolean useTintCardUsingPreview, boolean animate) {
+        if (useTintCardUsingPreview == tintCardUsingPreview) {
+            updateStoryCardBackground(getCurrentPreviewImageMode(), animate);
+            return;
+        }
+
+        boolean wasUsingCardShell = shouldUsePreviewCardShell();
+        tintCardUsingPreview = useTintCardUsingPreview;
+        boolean cardShellChanged = wasUsingCardShell != shouldUsePreviewCardShell();
+        if (cardShellChanged) {
+            if (animate) {
+                beginPreviewTransition();
+            }
+            inflatePreviewItem(leftAligned);
+            updatePreview(false);
+            if (animate && tintCardUsingPreview && storyCard != null) {
+                int defaultColor = getDefaultCardBackgroundColor(storyCard);
+                storyCard.setCardBackgroundColor(defaultColor);
+                currentCardBackgroundColor = defaultColor;
+                storyCard.post(() -> updateStoryCardBackground(getCurrentPreviewImageMode(), true));
+            }
+            requestPreviewRemeasure();
+            return;
+        }
+
+        configureStoryCardAppearance();
+        updateStoryCardBackground(getCurrentPreviewImageMode(), animate);
     }
 
     private void applyTextSize(float textSize, boolean animate) {
@@ -904,8 +963,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     }
 
     private boolean shouldTintPreviewCard() {
-        return cardStyle
-                && SettingsUtils.getBooleanPref(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW, false, getContext());
+        return tintCardUsingPreview;
     }
 
     private int getPreviewCardTintDrawableRes(String previewImageMode) {
@@ -928,7 +986,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
                 ? currentCardBackgroundColor
                 : storyCard.getCardBackgroundColor().getDefaultColor();
 
-        if (!animate || currentColor == targetColor || !ViewCompat.isLaidOut(storyCard)) {
+        if (!animate || currentColor == targetColor) {
             storyCard.setCardBackgroundColor(targetColor);
             currentCardBackgroundColor = targetColor;
             return;
