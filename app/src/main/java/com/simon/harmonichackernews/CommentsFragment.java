@@ -71,6 +71,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.shape.ShapeAppearanceModel;
 import com.google.android.material.transition.MaterialContainerTransform;
@@ -162,6 +163,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static int COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_Y_DP = 18;
     private final static float COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCALE = 0.9f;
     private final static float COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCRIM_ALPHA = 0.45f;
+    private final static int COMMENT_ACTION_ICON_SWAP_OUT_DURATION_MS = 90;
+    private final static int COMMENT_ACTION_ICON_SWAP_IN_DURATION_MS = 150;
+    private final static float COMMENT_ACTION_ICON_SWAP_MIN_SCALE = 0.72f;
+    private final static int COMMENT_ACTION_FAVORITE_LOADING_SIZE_DP = 28;
     private final static int MENU_COMMENT_SORT_GROUP_ID = 100;
     private final static int MENU_COMMENT_SORT_ITEM_ID_BASE = 200;
     private final static int MENU_ARCHIVE_SERVICE_GROUP_ID = 300;
@@ -227,6 +232,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int pendingCommentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
     private boolean commentActionOverlayDismissing = false;
     private boolean commentActionPredictiveBackActive = false;
+    private final Set<Integer> commentActionFavoriteLoadingIds = new HashSet<>();
     private String currentCommentSorting;
 
     // Clean fallback management
@@ -2855,10 +2861,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     oldBookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border));
         }
         if (hasAccount) {
+            boolean favoriteLoading = commentActionFavoriteLoadingIds.contains(comment.id);
             iconActions.add(new CommentActionItem(
                     COMMENT_ACTION_FAVORITE,
-                    oldFavorited ? "Remove favorite" : "Favorite",
-                    oldFavorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star));
+                    favoriteLoading ? (oldFavorited ? "Removing favorite" : "Adding favorite") : (oldFavorited ? "Remove favorite" : "Favorite"),
+                    oldFavorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star,
+                    favoriteLoading));
         }
 
         iconActions.add(new CommentActionItem(COMMENT_ACTION_COPY, "Copy text", R.drawable.ic_action_copy));
@@ -2893,15 +2901,39 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         actionsContainer.addView(row, rowParams);
 
         for (CommentActionItem actionItem : actionItems) {
-            ImageButton button = createCommentActionIconButton(row.getContext(), actionItem);
+            FrameLayout buttonSlot = new FrameLayout(row.getContext());
+            buttonSlot.setClipChildren(false);
+            buttonSlot.setClipToPadding(false);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     0,
                     Utils.pxFromDpInt(getResources(), 48),
                     1f);
             params.leftMargin = Utils.pxFromDpInt(getResources(), 1);
             params.rightMargin = Utils.pxFromDpInt(getResources(), 1);
-            row.addView(button, params);
-            button.setOnClickListener(v -> performCommentAction(actionItem.action, comment, oldBookmarked, oldFavorited));
+            row.addView(buttonSlot, params);
+            if (actionItem.loading) {
+                showCommentActionLoadingIndicator(buttonSlot, actionItem.label, false);
+            } else {
+                setCommentActionIconButton(buttonSlot, actionItem, comment, oldBookmarked, oldFavorited, false);
+            }
+        }
+    }
+
+    private void setCommentActionIconButton(FrameLayout buttonSlot,
+                                            CommentActionItem actionItem,
+                                            Comment comment,
+                                            boolean oldBookmarked,
+                                            boolean oldFavorited,
+                                            boolean animate) {
+        buttonSlot.removeAllViews();
+        ImageButton button = createCommentActionIconButton(buttonSlot.getContext(), actionItem);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
+        buttonSlot.addView(button, params);
+        button.setOnClickListener(v -> performCommentAction(actionItem.action, comment, oldBookmarked, oldFavorited, button));
+        if (animate) {
+            animateCommentActionViewIn(button, null);
         }
     }
 
@@ -2919,6 +2951,24 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         button.setScaleType(ImageView.ScaleType.CENTER);
         TooltipCompat.setTooltipText(button, actionItem.label);
         return button;
+    }
+
+    private void showCommentActionLoadingIndicator(FrameLayout buttonSlot, String label, boolean animate) {
+        buttonSlot.removeAllViews();
+        LoadingIndicator loadingIndicator = new LoadingIndicator(buttonSlot.getContext());
+        int indicatorSize = Utils.pxFromDpInt(getResources(), COMMENT_ACTION_FAVORITE_LOADING_SIZE_DP);
+        loadingIndicator.setIndicatorSize(indicatorSize);
+        loadingIndicator.setContentDescription(label);
+        loadingIndicator.setClickable(false);
+        loadingIndicator.setFocusable(false);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                indicatorSize,
+                indicatorSize,
+                android.view.Gravity.CENTER);
+        buttonSlot.addView(loadingIndicator, params);
+        if (animate) {
+            animateCommentActionViewIn(loadingIndicator, null);
+        }
     }
 
     private void addCommentActionReplyButton(LinearLayout actionsContainer,
@@ -2958,6 +3008,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void performCommentAction(int action, Comment comment, boolean oldBookmarked, boolean oldFavorited) {
+        performCommentAction(action, comment, oldBookmarked, oldFavorited, null);
+    }
+
+    private void performCommentAction(int action, Comment comment, boolean oldBookmarked, boolean oldFavorited, @Nullable View actionView) {
         if (!isAdded()) {
             return;
         }
@@ -2990,12 +3044,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 break;
 
             case COMMENT_ACTION_BOOKMARK:
+                boolean newBookmarked = !oldBookmarked;
                 if (oldBookmarked) {
                     Utils.removeBookmark(ctx, comment.id);
                 } else {
                     Utils.addBookmark(ctx, comment.id);
                 }
-                if (commentActionOverlay != null) {
+                if (actionView instanceof ImageButton) {
+                    updateCommentActionBookmarkButton((ImageButton) actionView, comment, newBookmarked, oldFavorited);
+                } else if (commentActionOverlay != null) {
                     bindCommentActionOverlay(comment);
                 }
                 break;
@@ -3006,21 +3063,26 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     break;
                 }
 
-                Utils.setFavorite(ctx, comment.id, !oldFavorited);
-                if (commentActionOverlay != null) {
+                boolean newFavorited = !oldFavorited;
+                FrameLayout favoriteSlot = getCommentActionButtonSlot(actionView);
+                commentActionFavoriteLoadingIds.add(comment.id);
+                if (favoriteSlot != null && actionView instanceof ImageButton) {
+                    showCommentActionFavoriteLoading(favoriteSlot, (ImageButton) actionView, newFavorited);
+                } else if (commentActionOverlay != null) {
                     bindCommentActionOverlay(comment);
                 }
-                UserActions.setFavorite(ctx, comment.id, !oldFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
+                UserActions.setFavorite(ctx, comment.id, newFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
                     @Override
                     public void onSuccess(Response response) {
+                        commentActionFavoriteLoadingIds.remove(comment.id);
+                        showCommentActionFavoriteButton(favoriteSlot, comment, true);
                     }
 
                     @Override
                     public void onFailure(String summary, String response) {
                         Utils.setFavorite(ctx, comment.id, oldFavorited);
-                        if (commentActionOverlay != null) {
-                            bindCommentActionOverlay(comment);
-                        }
+                        commentActionFavoriteLoadingIds.remove(comment.id);
+                        showCommentActionFavoriteButton(favoriteSlot, comment, true);
                         UserActions.showFailureDetailDialog(ctx, summary, response);
                         Toast.makeText(ctx, "Couldn't update favorite", Toast.LENGTH_SHORT).show();
                     }
@@ -3057,6 +3119,142 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 ctx.startActivity(replyIntent);
                 break;
         }
+    }
+
+    private void updateCommentActionBookmarkButton(ImageButton button,
+                                                   Comment comment,
+                                                   boolean bookmarked,
+                                                   boolean oldFavorited) {
+        int iconRes = bookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border;
+        String label = bookmarked ? "Remove bookmark" : "Bookmark";
+        animateCommentActionIconChange(button, iconRes, label, () ->
+                button.setOnClickListener(v -> performCommentAction(
+                        COMMENT_ACTION_BOOKMARK,
+                        comment,
+                        bookmarked,
+                        oldFavorited,
+                        button)));
+    }
+
+    private void showCommentActionFavoriteLoading(FrameLayout favoriteSlot,
+                                                  ImageButton button,
+                                                  boolean favorite) {
+        String label = favorite ? "Adding favorite" : "Removing favorite";
+        button.setEnabled(false);
+        button.setContentDescription(label);
+        TooltipCompat.setTooltipText(button, label);
+        animateCommentActionViewOut(button, () -> showCommentActionLoadingIndicator(favoriteSlot, label, true));
+    }
+
+    private void showCommentActionFavoriteButton(@Nullable FrameLayout favoriteSlot,
+                                                 Comment comment,
+                                                 boolean animate) {
+        if (!isAdded() || commentActionCommentId != comment.id) {
+            return;
+        }
+
+        Context ctx = requireContext();
+        boolean bookmarked = SettingsUtils.shouldUseBookmarks(ctx) && Utils.isBookmarked(ctx, comment.id);
+        boolean favorited = Utils.isFavorited(ctx, comment.id);
+        if (favoriteSlot == null || !ViewCompat.isAttachedToWindow(favoriteSlot)) {
+            if (commentActionOverlay != null) {
+                bindCommentActionOverlay(comment);
+            }
+            return;
+        }
+
+        CommentActionItem actionItem = new CommentActionItem(
+                COMMENT_ACTION_FAVORITE,
+                favorited ? "Remove favorite" : "Favorite",
+                favorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star);
+        View outgoing = favoriteSlot.getChildCount() > 0 ? favoriteSlot.getChildAt(0) : null;
+        if (animate && outgoing != null) {
+            animateCommentActionViewOut(outgoing, () ->
+                    setCommentActionIconButton(favoriteSlot, actionItem, comment, bookmarked, favorited, true));
+        } else {
+            setCommentActionIconButton(favoriteSlot, actionItem, comment, bookmarked, favorited, animate);
+        }
+    }
+
+    @Nullable
+    private FrameLayout getCommentActionButtonSlot(@Nullable View actionView) {
+        if (actionView != null && actionView.getParent() instanceof FrameLayout) {
+            return (FrameLayout) actionView.getParent();
+        }
+        return null;
+    }
+
+    private void animateCommentActionIconChange(ImageButton button,
+                                                int iconRes,
+                                                String label,
+                                                @Nullable Runnable afterIconSet) {
+        button.setEnabled(false);
+        animateCommentActionViewOut(button, () -> {
+            button.setImageResource(iconRes);
+            button.setContentDescription(label);
+            TooltipCompat.setTooltipText(button, label);
+            if (afterIconSet != null) {
+                afterIconSet.run();
+            }
+            animateCommentActionViewIn(button, () -> button.setEnabled(true));
+        });
+    }
+
+    private void animateCommentActionViewOut(View view, Runnable afterOut) {
+        view.animate().cancel();
+        if (!ViewCompat.isAttachedToWindow(view)) {
+            view.setAlpha(0f);
+            view.setScaleX(COMMENT_ACTION_ICON_SWAP_MIN_SCALE);
+            view.setScaleY(COMMENT_ACTION_ICON_SWAP_MIN_SCALE);
+            afterOut.run();
+            return;
+        }
+
+        view.animate()
+                .alpha(0f)
+                .scaleX(COMMENT_ACTION_ICON_SWAP_MIN_SCALE)
+                .scaleY(COMMENT_ACTION_ICON_SWAP_MIN_SCALE)
+                .setDuration(COMMENT_ACTION_ICON_SWAP_OUT_DURATION_MS)
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        view.animate().setListener(null);
+                        afterOut.run();
+                    }
+                })
+                .start();
+    }
+
+    private void animateCommentActionViewIn(View view, @Nullable Runnable afterIn) {
+        view.animate().cancel();
+        view.setAlpha(0f);
+        view.setScaleX(COMMENT_ACTION_ICON_SWAP_MIN_SCALE);
+        view.setScaleY(COMMENT_ACTION_ICON_SWAP_MIN_SCALE);
+        if (!ViewCompat.isAttachedToWindow(view)) {
+            view.setAlpha(1f);
+            view.setScaleX(1f);
+            view.setScaleY(1f);
+            if (afterIn != null) {
+                afterIn.run();
+            }
+            return;
+        }
+
+        view.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(COMMENT_ACTION_ICON_SWAP_IN_DURATION_MS)
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        view.animate().setListener(null);
+                        if (afterIn != null) {
+                            afterIn.run();
+                        }
+                    }
+                })
+                .start();
     }
 
     private void configureCommentActionOverlayInsets(View content) {
@@ -3502,11 +3700,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         final int action;
         final String label;
         final int iconRes;
+        final boolean loading;
 
         CommentActionItem(int action, String label, int iconRes) {
+            this(action, label, iconRes, false);
+        }
+
+        CommentActionItem(int action, String label, int iconRes, boolean loading) {
             this.action = action;
             this.label = label;
             this.iconRes = iconRes;
+            this.loading = loading;
         }
     }
 
