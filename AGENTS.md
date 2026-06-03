@@ -11,6 +11,7 @@ General tips:
 - No test framework is configured. You can skip `./gradlew test` or similar commands.
 - When adding features or bug fixes, ensure the app compiles with the debug build check below.
 - For tiny, low-risk changes such as text copy, margins, padding, font weight, or other simple XML/style tweaks, do not run `assembleDebug` or `lintDebug` unless the user asks or there is a concrete reason to suspect a build/resource problem.
+- If Git reports dubious ownership because Codex is running as a sandbox user, use a per-command safe-directory override such as `git -c safe.directory=C:/Users/Simon/Documents/GitHub/Harmonic-HN status --short` instead of changing global Git config.
 
 ## Build Verification
 
