@@ -93,5 +93,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"    />
 
+        <LinearLayout
+            android:id="@+id/comment_reference_links_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
     </LinearLayout>
 </LinearLayout>

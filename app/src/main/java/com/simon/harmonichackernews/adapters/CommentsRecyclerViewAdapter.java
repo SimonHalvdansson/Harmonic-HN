@@ -9,11 +9,14 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ImageSpan;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,6 +32,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.TooltipCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.FragmentManager;
@@ -46,6 +50,7 @@ import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.network.UserActions;
+import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -89,6 +94,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean showTopLevelDepthIndicator;
     public boolean swapLongPressTap;
     public boolean cardStyle;
+    public boolean collectReferenceLinks;
     private boolean commentsByOpFilterActive = false;
     public String username;
     public float preferredTextSize;
@@ -120,6 +126,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private static final int HEADER_ACTION_ICON_SWAP_IN_DURATION_MS = 150;
     private static final float HEADER_ACTION_ICON_SWAP_MIN_SCALE = 0.72f;
     private static final int HEADER_FAVORITE_LOADING_SIZE_DP = 28;
+    private static final int REFERENCE_LINK_MIN_HEIGHT_DP = 38;
+    private static final int REFERENCE_LINK_CORNER_RADIUS_DP = 6;
+    private static final int REFERENCE_LINK_ICON_SIZE_DP = 17;
 
     public final static int FLAG_ACTION_CLICK_USER = 0;
     public final static int FLAG_ACTION_CLICK_COMMENT = 1;
@@ -152,6 +161,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                         String favProvider,
                                         boolean shouldSwapLongPressTap,
                                         boolean shouldUseCardStyle,
+                                        boolean shouldCollectReferenceLinks,
                                         CommentsRecyclerViewAdapter.RequestSummaryCallback requestSummaryCallback) {
         integratedWebview = useIntegratedWebview;
         bottomSheet = sheet;
@@ -172,6 +182,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         faviconProvider = favProvider;
         swapLongPressTap = shouldSwapLongPressTap;
         cardStyle = shouldUseCardStyle;
+        collectReferenceLinks = shouldCollectReferenceLinks;
         summaryCallback = requestSummaryCallback;
     }
 
@@ -211,16 +222,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             headerViewHolder.headerView.setClickable(story.isLink);
             headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : GONE);
-            headerViewHolder.textView.setVisibility(TextUtils.isEmpty(story.text) ? GONE : View.VISIBLE);
-
-            if (!TextUtils.isEmpty(story.text)) {
-                if (story.spannedText != null) {
-                    headerViewHolder.textView.setHtml(story.spannedText);
-                } else {
-                    headerViewHolder.textView.setHtml(story.text);
-                    story.spannedText = (Spanned) headerViewHolder.textView.getText();
-                }
-            }
+            bindStoryText(headerViewHolder);
 
             LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story, integratedWebview, bottomSheet);
 
@@ -434,20 +436,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                         CommentDepthIndicatorUtils.getColorResource(ctx, commentDepthIndicatorMode, theme, index));
             }
 
-            if (!comment.text.isEmpty()) {
-                if (comment.spannedText != null) {
-                    itemViewHolder.commentBody.setHtml(comment.spannedText);
-                } else {
-                    itemViewHolder.commentBody.setHtml(Utils.expandShortenedAnchorText(comment.text));
-                    comment.spannedText = (Spanned) itemViewHolder.commentBody.getText();
-                }
-
-                if (collapseParent) {
-                    itemViewHolder.commentHiddenText.setText(" • " + Html.fromHtml(comment.text.substring(0, Math.min(120, comment.text.length()))));
-                }
-
-                FontUtils.setCommentTextTypeface(itemViewHolder.commentBody, preferredTextSize);
-            }
+            bindCommentText(itemViewHolder, comment);
 
             itemViewHolder.commentByTime.setText(comment.getTimeFormatted());
 
@@ -483,7 +472,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentHiddenText.setTypeface(FontUtils.activeRegular);
             }
 
-            itemViewHolder.commentBody.setVisibility((!comment.expanded && collapseParent) ? GONE : View.VISIBLE);
+            boolean commentTextCollapsed = !comment.expanded && collapseParent;
+            itemViewHolder.commentBody.setVisibility((itemViewHolder.commentBodyHasText && !commentTextCollapsed) ? View.VISIBLE : GONE);
+            itemViewHolder.referenceLinksContainer.setVisibility((itemViewHolder.referenceLinksVisible && !commentTextCollapsed) ? View.VISIBLE : GONE);
             itemViewHolder.commentHiddenText.setVisibility((!comment.expanded && collapseParent) ? View.VISIBLE : GONE);
 
             int subCommentCount = getIndexOfLastChild(comment.depth, position) - position;
@@ -499,6 +490,211 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentHiddenCount.setContentDescription(null);
             }
         }
+    }
+
+    private void bindStoryText(HeaderViewHolder headerViewHolder) {
+        if (TextUtils.isEmpty(story.text)) {
+            headerViewHolder.textView.setVisibility(GONE);
+            bindReferenceLinks(headerViewHolder.referenceLinksContainer, null);
+            return;
+        }
+
+        CollectedReferenceLinks.Result referenceLinks = null;
+        if (collectReferenceLinks) {
+            referenceLinks = getStoryReferenceLinks();
+        }
+
+        boolean hasCollectedLinks = referenceLinks != null && referenceLinks.hasLinks();
+        String bodyHtml = hasCollectedLinks ? referenceLinks.getBodyHtml() : story.text;
+        headerViewHolder.textView.setVisibility(TextUtils.isEmpty(bodyHtml) ? GONE : View.VISIBLE);
+
+        if (!TextUtils.isEmpty(bodyHtml)) {
+            if (hasCollectedLinks) {
+                if (story.collectedReferenceLinksSpannedText != null) {
+                    headerViewHolder.textView.setHtml(story.collectedReferenceLinksSpannedText);
+                } else {
+                    headerViewHolder.textView.setHtml(bodyHtml);
+                    story.collectedReferenceLinksSpannedText = (Spanned) headerViewHolder.textView.getText();
+                }
+            } else if (story.spannedText != null) {
+                headerViewHolder.textView.setHtml(story.spannedText);
+            } else {
+                headerViewHolder.textView.setHtml(story.text);
+                story.spannedText = (Spanned) headerViewHolder.textView.getText();
+            }
+        }
+
+        bindReferenceLinks(headerViewHolder.referenceLinksContainer, referenceLinks);
+    }
+
+    private void bindCommentText(ItemViewHolder itemViewHolder, Comment comment) {
+        if (TextUtils.isEmpty(comment.text)) {
+            itemViewHolder.commentBodyHasText = false;
+            itemViewHolder.commentBody.setText("");
+            itemViewHolder.referenceLinksVisible = bindReferenceLinks(itemViewHolder.referenceLinksContainer, null);
+            return;
+        }
+
+        CollectedReferenceLinks.Result referenceLinks = null;
+        if (collectReferenceLinks) {
+            referenceLinks = getCommentReferenceLinks(comment);
+        }
+
+        boolean hasCollectedLinks = referenceLinks != null && referenceLinks.hasLinks();
+        String bodyHtml = hasCollectedLinks ? referenceLinks.getBodyHtml() : Utils.expandShortenedAnchorText(comment.text);
+        itemViewHolder.commentBodyHasText = !TextUtils.isEmpty(bodyHtml);
+
+        if (itemViewHolder.commentBodyHasText) {
+            if (hasCollectedLinks) {
+                if (comment.collectedReferenceLinksSpannedText != null) {
+                    itemViewHolder.commentBody.setHtml(comment.collectedReferenceLinksSpannedText);
+                } else {
+                    itemViewHolder.commentBody.setHtml(bodyHtml);
+                    comment.collectedReferenceLinksSpannedText = (Spanned) itemViewHolder.commentBody.getText();
+                }
+            } else if (comment.spannedText != null) {
+                itemViewHolder.commentBody.setHtml(comment.spannedText);
+            } else {
+                itemViewHolder.commentBody.setHtml(bodyHtml);
+                comment.spannedText = (Spanned) itemViewHolder.commentBody.getText();
+            }
+            FontUtils.setCommentTextTypeface(itemViewHolder.commentBody, preferredTextSize);
+        } else {
+            itemViewHolder.commentBody.setText("");
+        }
+
+        if (collapseParent) {
+            itemViewHolder.commentHiddenText.setText(" • " + Html.fromHtml(comment.text.substring(0, Math.min(120, comment.text.length()))));
+        }
+
+        itemViewHolder.referenceLinksVisible = bindReferenceLinks(itemViewHolder.referenceLinksContainer, referenceLinks);
+    }
+
+    private CollectedReferenceLinks.Result getStoryReferenceLinks() {
+        if (!TextUtils.equals(story.collectedReferenceLinksSource, story.text)
+                || story.collectedReferenceLinks == null) {
+            story.collectedReferenceLinksSource = story.text;
+            story.collectedReferenceLinks = CollectedReferenceLinks.parse(story.text);
+            story.collectedReferenceLinksSpannedText = null;
+        }
+        return story.collectedReferenceLinks;
+    }
+
+    private CollectedReferenceLinks.Result getCommentReferenceLinks(Comment comment) {
+        if (!TextUtils.equals(comment.collectedReferenceLinksSource, comment.text)
+                || comment.collectedReferenceLinks == null) {
+            comment.collectedReferenceLinksSource = comment.text;
+            comment.collectedReferenceLinks = CollectedReferenceLinks.parse(Utils.expandShortenedAnchorText(comment.text));
+            comment.collectedReferenceLinksSpannedText = null;
+        }
+        return comment.collectedReferenceLinks;
+    }
+
+    private boolean bindReferenceLinks(LinearLayout container, @Nullable CollectedReferenceLinks.Result referenceLinks) {
+        if (!collectReferenceLinks || referenceLinks == null || !referenceLinks.hasLinks()) {
+            container.removeAllViews();
+            container.setVisibility(GONE);
+            return false;
+        }
+
+        container.removeAllViews();
+        container.setVisibility(View.VISIBLE);
+        for (CollectedReferenceLinks.ReferenceLink link : referenceLinks.getLinks()) {
+            container.addView(createReferenceLinkRow(container, link));
+        }
+        return true;
+    }
+
+    private View createReferenceLinkRow(LinearLayout container, CollectedReferenceLinks.ReferenceLink link) {
+        Context ctx = container.getContext();
+
+        LinearLayout row = new LinearLayout(ctx);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setMinimumHeight(Utils.pxFromDpInt(ctx.getResources(), REFERENCE_LINK_MIN_HEIGHT_DP));
+        row.setPadding(
+                Utils.pxFromDpInt(ctx.getResources(), 8),
+                Utils.pxFromDpInt(ctx.getResources(), 5),
+                Utils.pxFromDpInt(ctx.getResources(), 8),
+                Utils.pxFromDpInt(ctx.getResources(), 5));
+
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(Color.TRANSPARENT);
+        background.setCornerRadius(Utils.pxFromDpInt(ctx.getResources(), REFERENCE_LINK_CORNER_RADIUS_DP));
+        background.setStroke(
+                Utils.pxFromDpInt(ctx.getResources(), 1),
+                MaterialColors.getColor(container, R.attr.commentDividerColor));
+        row.setBackground(background);
+
+        TypedValue selectableBackground = new TypedValue();
+        if (ctx.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, selectableBackground, true)) {
+            row.setForeground(ContextCompat.getDrawable(ctx, selectableBackground.resourceId));
+        }
+
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        rowParams.topMargin = Utils.pxFromDpInt(ctx.getResources(), 4);
+        row.setLayoutParams(rowParams);
+
+        ImageView favicon = new ImageView(ctx);
+        int iconSize = Utils.pxFromDpInt(ctx.getResources(), REFERENCE_LINK_ICON_SIZE_DP);
+        LinearLayout.LayoutParams faviconParams = new LinearLayout.LayoutParams(iconSize, iconSize);
+        faviconParams.rightMargin = Utils.pxFromDpInt(ctx.getResources(), 8);
+        favicon.setLayoutParams(faviconParams);
+        favicon.setImageResource(R.drawable.ic_action_web);
+        favicon.setContentDescription(null);
+        favicon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        row.addView(favicon);
+
+        if (link.hasNumber()) {
+            TextView number = new TextView(ctx);
+            number.setText("[" + link.getNumber() + "]");
+            number.setTextColor(MaterialColors.getColor(container, R.attr.storyColorDisabled));
+            number.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            FontUtils.setTypefaceForFont(number, font, true, 13);
+            LinearLayout.LayoutParams numberParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            numberParams.rightMargin = Utils.pxFromDpInt(ctx.getResources(), 8);
+            number.setLayoutParams(numberParams);
+            row.addView(number);
+        }
+
+        TextView label = new TextView(ctx);
+        label.setText(getReferenceLinkLabel(link));
+        label.setSingleLine(true);
+        label.setEllipsize(TextUtils.TruncateAt.END);
+        label.setTextColor(MaterialColors.getColor(container, R.attr.storyColorNormal));
+        FontUtils.setTypefaceForFont(label, font, false, Math.max(12f, preferredTextSize - 2f));
+        label.setLayoutParams(new LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f));
+        row.addView(label);
+
+        row.setContentDescription(getReferenceLinkContentDescription(link));
+        row.setOnClickListener(v -> Utils.openLinkMaybeHN(v.getContext(), link.getUrl()));
+        FaviconLoader.loadFavicon(link.getUrl(), favicon, ctx, faviconProvider);
+
+        return row;
+    }
+
+    private String getReferenceLinkContentDescription(CollectedReferenceLinks.ReferenceLink link) {
+        if (link.hasNumber()) {
+            return "Open reference link " + link.getNumber() + ": " + getReferenceLinkLabel(link);
+        }
+        return "Open link: " + getReferenceLinkLabel(link);
+    }
+
+    private String getReferenceLinkLabel(CollectedReferenceLinks.ReferenceLink link) {
+        String label = link.getLabel();
+        if (TextUtils.isEmpty(label)) {
+            return link.getUrl();
+        }
+        return label.replace('\n', ' ').replaceAll("\\s+", " ").trim();
     }
 
     public void setHighlightedCommentId(int commentId) {
@@ -888,6 +1084,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView commentHiddenText;
         public final View commentIndentIndicator;
         public final View commentCard;
+        public final LinearLayout referenceLinksContainer;
+        public boolean commentBodyHasText = true;
+        public boolean referenceLinksVisible = false;
         public Comment comment;
 
         public ItemViewHolder(View view) {
@@ -899,6 +1098,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentHiddenText = view.findViewById(R.id.comment_hidden_short);
             commentIndentIndicator = view.findViewById(R.id.comment_indent_indicator);
             commentCard = view.findViewById(R.id.comment_card);
+            referenceLinksContainer = view.findViewById(R.id.comment_reference_links_container);
 
             itemView.setOnLongClickListener(v -> {
                 longPressed(comment, getAbsoluteAdapterPosition(), getCommentActionSourceView());
@@ -960,6 +1160,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final ImageView metaVotesIcon;
         public final TextView urlView;
         public final HtmlTextView textView;
+        public final LinearLayout referenceLinksContainer;
         public final LinearLayout infoContainer;
         public final TextView arxivAbstract;
         public final LinearLayout githubContainer;
@@ -1081,6 +1282,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             metaVotesIcon = view.findViewById(R.id.comments_header_meta_votes_icon);
             urlView = view.findViewById(R.id.comments_header_url);
             textView = view.findViewById(R.id.comments_header_text);
+            referenceLinksContainer = view.findViewById(R.id.comments_header_reference_links_container);
             arxivAbstract = view.findViewById(R.id.comments_header_arxiv_abstract);
             infoContainer = view.findViewById(R.id.comments_header_info_container);
             infoHeader = view.findViewById(R.id.comments_header_info_header);

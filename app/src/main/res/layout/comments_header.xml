@@ -247,6 +247,17 @@
             tools:visibility="visible" />
 
         <LinearLayout
+            android:id="@+id/comments_header_reference_links_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:orientation="vertical"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <LinearLayout
             android:id="@+id/comments_header_info_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

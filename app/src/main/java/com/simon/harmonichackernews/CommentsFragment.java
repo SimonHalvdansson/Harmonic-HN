@@ -744,6 +744,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 SettingsUtils.getPreferredFaviconProvider(getContext()),
                 SettingsUtils.shouldSwapCommentLongPressTap(getContext()),
                 SettingsUtils.shouldUseCardCommentDisplayStyle(getContext()),
+                SettingsUtils.shouldCollectLinksInComments(getContext()),
                 this);
         adapter.lastRefreshed = lastLoaded;
         adapter.setCommentsByOpFilterActive(commentsByOpFilterActive);
@@ -1071,6 +1072,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             if (adapter.cardStyle != SettingsUtils.shouldUseCardCommentDisplayStyle(ctx)) {
                 adapter.cardStyle = SettingsUtils.shouldUseCardCommentDisplayStyle(ctx);
+                updateComments = true;
+            }
+
+            if (adapter.collectReferenceLinks != SettingsUtils.shouldCollectLinksInComments(ctx)) {
+                adapter.collectReferenceLinks = SettingsUtils.shouldCollectLinksInComments(ctx);
+                updateHeader = true;
                 updateComments = true;
             }
 

@@ -53,6 +53,7 @@ public class DebugFragment extends Fragment {
                         .apply());
 
         binding.debugLink.setOnClickListener(v -> openDebugLink());
+        binding.debugCollectedLinks.setOnClickListener(v -> openDebugCollectedLinks());
         binding.debugPoll.setOnClickListener(v -> openDebugPoll());
         binding.debugInternalHnLink.setOnClickListener(v -> openDebugInternalHnLink());
         binding.debugNitterVideoTest.setOnClickListener(v -> openDebugNitterVideoTest());
@@ -87,6 +88,10 @@ public class DebugFragment extends Fragment {
 
     private void openDebugLink() {
         Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=47938725");
+    }
+
+    private void openDebugCollectedLinks() {
+        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=48352939");
     }
 
     private void openDebugPoll() {

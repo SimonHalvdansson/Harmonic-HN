@@ -113,6 +113,15 @@
                     android:textSize="15sp"
                     tools:text="Yes, I've come to the same conclusion. When interviewing ML engineers, I prefer to know they are exceptional programmers with passable knowledge of ML than the other way around." />
 
+                <LinearLayout
+                    android:id="@+id/comment_reference_links_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
             </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>

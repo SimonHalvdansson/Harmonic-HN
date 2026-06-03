@@ -73,6 +73,18 @@
             app:iconTint="?attr/storyColorNormal" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/debug_collected_links"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="Reference links post"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="14sp"
+            app:icon="@drawable/ic_action_link"
+            app:iconTint="?attr/storyColorNormal" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/debug_poll"
             style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
             android:layout_width="match_parent"

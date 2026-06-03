@@ -2,7 +2,9 @@ package com.simon.harmonichackernews.data;
 
 import android.os.Bundle;
 import android.text.Spanned;
+
 import com.simon.harmonichackernews.CommentsFragment;
+import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.Utils;
 
 import java.util.ArrayList;
@@ -36,6 +38,9 @@ public class Story {
     public boolean clicked;
     public String text;
     public transient Spanned spannedText;
+    public transient String collectedReferenceLinksSource;
+    public transient CollectedReferenceLinks.Result collectedReferenceLinks;
+    public transient Spanned collectedReferenceLinksSpannedText;
     public GitLabInfo gitLabInfo;
     public RepoInfo repoInfo;
     public StackExchangeInfo stackExchangeInfo;

@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.data;
 
 import android.text.Spanned;
+
+import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.Utils;
 
 import java.io.Serializable;
@@ -13,6 +15,9 @@ public class Comment implements Serializable {
     public int parent;
     public String text;
     public transient Spanned spannedText;
+    public transient String collectedReferenceLinksSource;
+    public transient CollectedReferenceLinks.Result collectedReferenceLinks;
+    public transient Spanned collectedReferenceLinksSpannedText;
     public int time;
     public boolean expanded;
     public int depth;

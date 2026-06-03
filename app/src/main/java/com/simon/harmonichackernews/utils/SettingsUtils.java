@@ -32,6 +32,7 @@ public class SettingsUtils {
     public static final String PREF_COMPACT_POINTS = "pref_compact_points";
     public static final String PREF_COMMENT_DISPLAY_STYLE = "pref_comment_display_style";
     public static final String PREF_COMMENT_TEXT_SIZE = "pref_comment_text_size";
+    public static final String PREF_COLLECT_LINKS_IN_COMMENTS = "pref_collect_links_in_comments";
     public static final String PREF_FONT = "pref_font";
     public static final String PREF_BOOKMARKS_ENABLED = "pref_bookmarks_enabled";
     public static final String PREF_GRAY_OUT_CLICKED = "pref_gray_out_clicked";
@@ -441,6 +442,10 @@ public class SettingsUtils {
 
     public static boolean shouldUseCommentsScrollbar(Context ctx) {
         return getBooleanPref("pref_comments_scrollbar", false, ctx);
+    }
+
+    public static boolean shouldCollectLinksInComments(Context ctx) {
+        return getBooleanPref(PREF_COLLECT_LINKS_IN_COMMENTS, true, ctx);
     }
 
     public static boolean shouldHideClicked(Context ctx) {

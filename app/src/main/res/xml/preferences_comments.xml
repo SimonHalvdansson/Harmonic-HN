@@ -18,6 +18,13 @@
             app:key="pref_comment_text_size"
             app:title="Text size" />
 
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_collect_links_in_comments"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_link"
+            app:title="Collect links in comments" />
+
         <Preference
             app:singleLineTitle="false"
             app:key="pref_comment_depth_indicators"
