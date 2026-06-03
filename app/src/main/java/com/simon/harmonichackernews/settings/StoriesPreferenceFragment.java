@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.settings;
 
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import androidx.preference.ListPreference;
@@ -11,10 +12,11 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.widget.StoriesRemoteViewsFactory;
 import com.simon.harmonichackernews.widget.StoriesWidgetProvider;
 
-public class StoriesPreferenceFragment extends BaseSettingsFragment {
+public class StoriesPreferenceFragment extends BaseSettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
     private Preference grayOutClickedPreference;
     private Preference tintCardUsingPreviewPreference;
     private Preference compactPointsPreference;
+    private Preference faviconProviderPreference;
 
     @Override
     protected String getToolbarTitle() {
@@ -30,19 +32,28 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
         grayOutClickedPreference = findPreference(SettingsUtils.PREF_GRAY_OUT_CLICKED);
         tintCardUsingPreviewPreference = findPreference(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW);
         compactPointsPreference = findPreference(SettingsUtils.PREF_COMPACT_POINTS);
+        faviconProviderPreference = findPreference(SettingsUtils.PREF_FAVICON_PROVIDER);
         ListPreference startingPagePreference = findPreference("pref_default_story_type");
 
         changePrefStatus(findPreference("pref_show_points"), !compact);
         updateCompactPointsPreference(!compact && SettingsUtils.shouldShowPoints(getContext()));
         changePrefStatus(findPreference("pref_show_comments_count"), !compact);
         changePrefStatus(findPreference("pref_thumbnails"), !compact);
+        updateFaviconProviderPreference();
         updateGrayOutClickedPreference();
         updateTintCardUsingPreviewPreference();
 
         if (SettingsUtils.shouldShowThumbnails(getContext())) {
-            changePrefStatus(findPreference("pref_favicon_provider"), !compact);
+            changePrefStatus(faviconProviderPreference, !compact);
         } else {
-            changePrefStatus(findPreference("pref_favicon_provider"), false);
+            changePrefStatus(faviconProviderPreference, false);
+        }
+
+        if (faviconProviderPreference != null) {
+            faviconProviderPreference.setOnPreferenceClickListener(preference -> {
+                FaviconProviderDialogFragment.show(getParentFragmentManager());
+                return true;
+            });
         }
 
         findPreference("pref_compact_view").setOnPreferenceChangeListener((preference, newValue) -> {
@@ -53,7 +64,7 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
             updateCompactPointsPreference(!(boolean) newValue && SettingsUtils.shouldShowPoints(getContext()));
             changePrefStatus(findPreference("pref_show_comments_count"), !(boolean) newValue);
             changePrefStatus(findPreference("pref_thumbnails"), !(boolean) newValue);
-            changePrefStatus(findPreference("pref_favicon_provider"), !(boolean) newValue && SettingsUtils.shouldShowThumbnails(getContext()));
+            changePrefStatus(faviconProviderPreference, !(boolean) newValue && SettingsUtils.shouldShowThumbnails(getContext()));
             return true;
         });
 
@@ -82,7 +93,7 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
             if (previewPreference != null) {
                 previewPreference.updateThumbnails((boolean) newValue);
             }
-            changePrefStatus(findPreference("pref_favicon_provider"), (boolean) newValue);
+            changePrefStatus(faviconProviderPreference, (boolean) newValue);
             return true;
         });
 
@@ -162,6 +173,26 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
         });
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        updateFaviconProviderPreference();
+    }
+
+    @Override
+    public void onPause() {
+        getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        super.onPause();
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (SettingsUtils.PREF_FAVICON_PROVIDER.equals(key)) {
+            updateFaviconProviderPreference();
+        }
+    }
+
     private void updateGrayOutClickedPreference() {
         updateGrayOutClickedPreference(!SettingsUtils.shouldHideClicked(getContext()));
     }
@@ -176,5 +207,13 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment {
 
     private void updateCompactPointsPreference(boolean enabled) {
         changePrefStatus(compactPointsPreference, enabled);
+    }
+
+    private void updateFaviconProviderPreference() {
+        if (faviconProviderPreference != null && getContext() != null) {
+            String provider = SettingsUtils.getPreferredFaviconProvider(requireContext());
+            faviconProviderPreference.setSummary(provider);
+            faviconProviderPreference.setIcon(SettingsUtils.getFaviconProviderIconResource(provider));
+        }
     }
 }

@@ -41,9 +41,13 @@ public class SettingsUtils {
     public static final String PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY = "pref_preload_webview_minimum_battery";
     public static final String PREF_ARCHIVE_REDIRECT_DOMAINS = "pref_archive_redirect_domains";
     public static final String PREF_STORIES_TO_CACHE = "pref_stories_to_cache";
+    public static final String PREF_FAVICON_PROVIDER = "pref_favicon_provider";
     public static final String PRELOAD_WEBVIEW_ALWAYS = "always";
     public static final String PRELOAD_WEBVIEW_ONLY_WIFI = "onlywifi";
     public static final String PRELOAD_WEBVIEW_NEVER = "never";
+    public static final String FAVICON_PROVIDER_GOOGLE = "Google";
+    public static final String FAVICON_PROVIDER_DUCKDUCKGO = "DuckDuckGo";
+    public static final String FAVICON_PROVIDER_TWENTY = "Twenty icons";
     public static final int DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY = 0;
     public static final int DEFAULT_STORIES_TO_CACHE = 20;
     public static final int MIN_STORIES_TO_CACHE = 1;
@@ -666,7 +670,26 @@ public class SettingsUtils {
 
     public static String getPreferredFaviconProvider(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getString("pref_favicon_provider", "Google");
+        return sanitizeFaviconProvider(prefs.getString(PREF_FAVICON_PROVIDER, FAVICON_PROVIDER_GOOGLE));
+    }
+
+    public static String sanitizeFaviconProvider(String provider) {
+        if (FAVICON_PROVIDER_DUCKDUCKGO.equals(provider) || FAVICON_PROVIDER_TWENTY.equals(provider)) {
+            return provider;
+        }
+        return FAVICON_PROVIDER_GOOGLE;
+    }
+
+    public static int getFaviconProviderIconResource(String provider) {
+        switch (sanitizeFaviconProvider(provider)) {
+            case FAVICON_PROVIDER_DUCKDUCKGO:
+                return R.drawable.ic_favicon_provider_duckduckgo;
+            case FAVICON_PROVIDER_TWENTY:
+                return R.drawable.ic_favicon_provider_twenty;
+            case FAVICON_PROVIDER_GOOGLE:
+            default:
+                return R.drawable.ic_favicon_provider_google;
+        }
     }
 
     public static int getBookmarksIndex(Resources res) {

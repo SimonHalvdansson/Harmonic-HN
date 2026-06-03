@@ -7,6 +7,7 @@ import android.widget.ImageView;
 import androidx.core.content.ContextCompat;
 
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 import coil.Coil;
@@ -39,13 +40,17 @@ public class FaviconLoader {
         return getFaviconUrlForHost(Utils.getDomainName(url), faviconProvider);
     }
 
+    public static String getFaviconUrlSchema(String faviconProvider) {
+        return getFaviconUrlForHost("{host}", faviconProvider);
+    }
+
     private static String getFaviconUrlForHost(String host, String faviconProvider) {
-        switch (faviconProvider) {
-            case "Twenty icons":
+        switch (SettingsUtils.sanitizeFaviconProvider(faviconProvider)) {
+            case SettingsUtils.FAVICON_PROVIDER_TWENTY:
                 return "https://twenty-icons.com/" + host;
-            case "Google":
+            case SettingsUtils.FAVICON_PROVIDER_GOOGLE:
                 return "https://www.google.com/s2/favicons?domain=" + host + "&sz=128";
-            case "DuckDuckGo":
+            case SettingsUtils.FAVICON_PROVIDER_DUCKDUCKGO:
                 return "https://icons.duckduckgo.com/ip3/" + host + ".ico";
             default:
                 return "https://www.google.com/s2/favicons?domain=" + host + "&sz=128";

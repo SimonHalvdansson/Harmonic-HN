@@ -146,15 +146,11 @@
             app:icon="@drawable/ic_action_eye"
             app:title="Gray out clicked posts" />
 
-        <ListPreference
+        <Preference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_web"
             app:title="Favicon provider"
-            app:key="pref_favicon_provider"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/favicon_providers"
-            app:defaultValue="Google"
-            app:entryValues="@array/favicon_providers" />
+            app:key="pref_favicon_provider" />
 
     </PreferenceCategory>
 
