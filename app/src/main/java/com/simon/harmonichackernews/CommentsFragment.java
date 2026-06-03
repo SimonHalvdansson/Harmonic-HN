@@ -196,6 +196,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private LinkPreviewController linkPreviewController;
     private CommentsWebViewController webViewController;
     private boolean showNavButtons = false;
+    private boolean showCommentsScrollbar = false;
     private boolean showWebsite = false;
     private boolean integratedWebview = true;
     private boolean prefIntegratedWebview = true;
@@ -615,6 +616,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
 
         showNavButtons = SettingsUtils.shouldShowNavigationButtons(getContext());
+        showCommentsScrollbar = SettingsUtils.shouldUseCommentsScrollbar(getContext());
         updateNavigationVisibility();
 
         ImageButton scrollPrev = view.findViewById(R.id.comments_scroll_previous);
@@ -681,6 +683,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         } else {
             backPressedCallback.setEnabled(webViewController != null && webViewController.canGoBack());
         }
+    }
+
+    private void updateCommentsScrollbarVisibility(boolean bottomSheetFullyExpanded) {
+        if (recyclerView == null) {
+            return;
+        }
+        recyclerView.setVerticalScrollBarEnabled(showCommentsScrollbar && bottomSheetFullyExpanded);
     }
 
     private void updateBottomSheetMargin(int navbarHeight) {
@@ -930,20 +939,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             recyclerView.setItemAnimator(null);
         }
 
-        if (!SettingsUtils.shouldUseCommentsScrollbar(getContext())) {
-            // For some reason, I could only get the scrollbars to show up when they are enabled via
-            // xml but disabling them in java worked so this is an okay solution...
-            recyclerView.setVerticalScrollBarEnabled(false);
-        }
+        // For some reason, I could only get the scrollbars to show up when they are enabled via
+        // xml but disabling them in java worked so this is an okay solution...
+        updateCommentsScrollbarVisibility(BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_EXPANDED);
 
         recyclerBottomSheetCallback = new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View view, int newState) {
                 syncOnBackPressedCallbackEnabledState();
+                updateCommentsScrollbarVisibility(newState == BottomSheetBehavior.STATE_EXPANDED);
             }
 
             @Override
             public void onSlide(@NonNull View view, float slideOffset) {
+                updateCommentsScrollbarVisibility(BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_EXPANDED
+                        && slideOffset >= 0.9999f);
                 // Updating padding (of recyclerview) doesn't work because it causes incorrect scroll position for recycler.
                 // Updating scroll together with padding causes severe lags and other problems.
                 // So don't update padding at all on slide and instead just change whole view position (by translationY on recyclerView)
