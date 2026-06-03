@@ -228,19 +228,14 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
             return;
         }
 
-        clearClickedStoriesPreference.setSummary(formatClickedStoryCount(getClickedStoryCount()));
-        clearPostCachePreference.setSummary(formatCachedStoryCount(Utils.getCachedPostCount(requireContext())));
+        clearClickedStoriesPreference.setTitle("Clear clicked stories (" + getClickedStoryCount() + ")");
+        clearClickedStoriesPreference.setSummary(null);
+        clearPostCachePreference.setTitle("Clear post cache (" + Utils.getCachedPostCount(requireContext()) + ")");
+        clearPostCachePreference.setSummary(null);
     }
 
     private int getClickedStoryCount() {
         return UtilsKt.INSTANCE.loadHistories(requireContext(), false).size();
     }
 
-    private static String formatClickedStoryCount(int count) {
-        return count == 1 ? "1 saved clicked story" : count + " saved clicked stories";
-    }
-
-    private static String formatCachedStoryCount(int count) {
-        return count == 1 ? "1 cached story" : count + " cached stories";
-    }
 }
