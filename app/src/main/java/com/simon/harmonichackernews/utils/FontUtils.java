@@ -12,6 +12,12 @@ import com.simon.harmonichackernews.R;
 public class FontUtils {
 
     private static final float GOOGLE_SANS_FLEX_ROUNDED_SIZE_ADJUSTMENT = -0.5f;
+    private static final FontSizes STORY_TITLE_SIZES = new FontSizes(17.5f, 16, 18, 15, 16, 16, 17, 17.5f);
+    private static final FontSizes STORY_META_SIZES = new FontSizes(13, 12.5f, 13, 12, 12, 12, 13, 13);
+    private static final FontSizes STORY_COMMENT_COUNT_SIZES = new FontSizes(14, 13.5f, 13, 13, 14, 14, 14, 14);
+    private static final FontSizes STORIES_DROPDOWN_SELECTED_SIZES = new FontSizes(36, 34, 36, 33, 34, 34, 35, 35);
+    private static final FontSizes COMMENTS_HEADER_META_SIZES = new FontSizes(14, 13.5f, 13, 13, 13, 13, 13, 13);
+    private static final FontSizes COMMENTS_HEADER_TITLE_SIZES = new FontSizes(27, 26, 26, 23, 26, 26, 24, 26);
 
     public static Typeface activeRegular;
     public static Typeface activeBold;
@@ -37,6 +43,8 @@ public class FontUtils {
                 return ResourcesCompat.getFont(ctx, R.font.verdana);
             case "jetbrainsmono":
                 return ResourcesCompat.getFont(ctx, R.font.jetbrains_mono);
+            case "googlesanscode":
+                return ResourcesCompat.getFont(ctx, R.font.google_sans_code);
             case "georgia":
                 return ResourcesCompat.getFont(ctx, R.font.georgia);
             case "robotoslab":
@@ -57,6 +65,8 @@ public class FontUtils {
                 return ResourcesCompat.getFont(ctx, R.font.verdana_bold);
             case "jetbrainsmono":
                 return ResourcesCompat.getFont(ctx, R.font.jetbrains_mono_bold);
+            case "googlesanscode":
+                return ResourcesCompat.getFont(ctx, R.font.google_sans_code_bold);
             case "georgia":
                 return ResourcesCompat.getFont(ctx, R.font.georgia_bold);
             case "robotoslab":
@@ -73,43 +83,76 @@ public class FontUtils {
     }
 
     public static void setTypeface(TextView textView, boolean bold, float size) {
-        setTypeface(textView, bold, size, adjustedGoogleSansFlexRoundedSize(size), size, size, size, size, size);
+        setTypeface(textView, bold, FontSizes.uniform(size).withGoogleSansFlexRoundedSize(adjustedGoogleSansFlexRoundedSize(size)));
     }
 
-    public static void setMultipleTypefaces(boolean bold, float prodSize, float googleSansFlexRoundedSize, float sansSize, float verdanaSize, float jetbrainsmonoSize, float georgiaSize, float robotoSlabSize, TextView... textViews) {
+    public static void setStoryTitleTypeface(TextView textView, float storyTextSize) {
+        float titleDelta = SettingsUtils.clampStoryTextSize(storyTextSize) - SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
+        setTypeface(textView, true, STORY_TITLE_SIZES.plus(titleDelta));
+    }
+
+    public static void setStoryMetaTypeface(TextView textView, float storyTextSize) {
+        float metaScale = SettingsUtils.clampStoryTextSize(storyTextSize) / SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
+        setTypeface(textView, false, STORY_META_SIZES.times(metaScale));
+    }
+
+    public static void setStoryCommentCountTypeface(TextView textView) {
+        setTypeface(textView, true, STORY_COMMENT_COUNT_SIZES);
+    }
+
+    public static void setStoriesDropdownSelectedTypeface(TextView textView) {
+        setTypeface(textView, true, STORIES_DROPDOWN_SELECTED_SIZES, TypedValue.COMPLEX_UNIT_DIP);
+    }
+
+    public static void setCommentsHeaderMetaTypefaces(TextView... textViews) {
+        setMultipleTypefaces(false, COMMENTS_HEADER_META_SIZES, textViews);
+    }
+
+    public static void setCommentsHeaderTitleTypeface(TextView textView) {
+        setTypeface(textView, true, COMMENTS_HEADER_TITLE_SIZES);
+    }
+
+    private static void setMultipleTypefaces(boolean bold, FontSizes sizes, TextView... textViews) {
         for (TextView textView : textViews) {
-            FontUtils.setTypeface(textView, bold, prodSize, googleSansFlexRoundedSize, sansSize, verdanaSize, jetbrainsmonoSize, georgiaSize, robotoSlabSize);
+            FontUtils.setTypeface(textView, bold, sizes);
         }
     }
 
-    public static void setTypeface(TextView textView, boolean bold, float prodSize, float googleSansFlexRoundedSize, float sansSize, float verdanaSize, float jetbrainsmonoSize, float georgiaSize, float robotoSlabSize) {
+    private static void setTypeface(TextView textView, boolean bold, FontSizes sizes) {
+        setTypeface(textView, bold, sizes, TypedValue.COMPLEX_UNIT_SP);
+    }
+
+    private static void setTypeface(TextView textView, boolean bold, FontSizes sizes, int unit) {
         if (activeRegular == null) {
             init(textView.getContext());
         }
 
         textView.setTypeface(bold ? activeBold : activeRegular);
 
-        switch (font) {
+        switch (SettingsUtils.sanitizeFont(font)) {
             case "productsans":
-                textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, prodSize);
+                textView.setTextSize(unit, sizes.productSans);
                 break;
             case "googlesansflexrounded":
-                textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, googleSansFlexRoundedSize);
+                textView.setTextSize(unit, sizes.googleSansFlexRounded);
                 break;
             case "devicedefault":
-                textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, sansSize);
+                textView.setTextSize(unit, sizes.deviceDefault);
                 break;
             case "verdana":
-                textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, verdanaSize);
+                textView.setTextSize(unit, sizes.verdana);
                 break;
             case "jetbrainsmono":
-                textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, jetbrainsmonoSize);
+                textView.setTextSize(unit, sizes.jetbrainsMono);
+                break;
+            case "googlesanscode":
+                textView.setTextSize(unit, sizes.googleSansCode);
                 break;
             case "georgia":
-                textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, georgiaSize);
+                textView.setTextSize(unit, sizes.georgia);
                 break;
             case "robotoslab":
-                textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, robotoSlabSize);
+                textView.setTextSize(unit, sizes.robotoSlab);
                 break;
         }
     }
@@ -123,6 +166,76 @@ public class FontUtils {
             return adjustedGoogleSansFlexRoundedSize(size);
         }
         return size;
+    }
+
+    private static class FontSizes {
+
+        private final float productSans;
+        private final float googleSansFlexRounded;
+        private final float deviceDefault;
+        private final float verdana;
+        private final float jetbrainsMono;
+        private final float googleSansCode;
+        private final float georgia;
+        private final float robotoSlab;
+
+        FontSizes(float productSans,
+                  float googleSansFlexRounded,
+                  float deviceDefault,
+                  float verdana,
+                  float jetbrainsMono,
+                  float googleSansCode,
+                  float georgia,
+                  float robotoSlab) {
+            this.productSans = productSans;
+            this.googleSansFlexRounded = googleSansFlexRounded;
+            this.deviceDefault = deviceDefault;
+            this.verdana = verdana;
+            this.jetbrainsMono = jetbrainsMono;
+            this.googleSansCode = googleSansCode;
+            this.georgia = georgia;
+            this.robotoSlab = robotoSlab;
+        }
+
+        static FontSizes uniform(float size) {
+            return new FontSizes(size, size, size, size, size, size, size, size);
+        }
+
+        FontSizes plus(float delta) {
+            return new FontSizes(
+                    productSans + delta,
+                    googleSansFlexRounded + delta,
+                    deviceDefault + delta,
+                    verdana + delta,
+                    jetbrainsMono + delta,
+                    googleSansCode + delta,
+                    georgia + delta,
+                    robotoSlab + delta);
+        }
+
+        FontSizes times(float scale) {
+            return new FontSizes(
+                    productSans * scale,
+                    googleSansFlexRounded * scale,
+                    deviceDefault * scale,
+                    verdana * scale,
+                    jetbrainsMono * scale,
+                    googleSansCode * scale,
+                    georgia * scale,
+                    robotoSlab * scale);
+        }
+
+        FontSizes withGoogleSansFlexRoundedSize(float size) {
+            return new FontSizes(
+                    productSans,
+                    size,
+                    deviceDefault,
+                    verdana,
+                    jetbrainsMono,
+                    googleSansCode,
+                    georgia,
+                    robotoSlab);
+        }
     }
 
 }

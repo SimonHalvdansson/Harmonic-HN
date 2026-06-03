@@ -222,6 +222,7 @@ public class SettingsUtils {
                 || "devicedefault".equals(font)
                 || "verdana".equals(font)
                 || "jetbrainsmono".equals(font)
+                || "googlesanscode".equals(font)
                 || "georgia".equals(font)
                 || "robotoslab".equals(font)) {
             return font;

@@ -51,6 +51,7 @@
         <item>Device default</item>
         <item>Verdana</item>
         <item>JetBrains Mono</item>
+        <item>Google Sans Code</item>
         <item>Georgia</item>
         <item>Roboto Slab</item>
     </string-array>
@@ -61,6 +62,7 @@
         <item>devicedefault</item>
         <item>verdana</item>
         <item>jetbrainsmono</item>
+        <item>googlesanscode</item>
         <item>georgia</item>
         <item>robotoslab</item>
     </string-array>

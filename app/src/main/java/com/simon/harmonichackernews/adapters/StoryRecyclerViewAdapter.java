@@ -253,7 +253,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment);
 
                 applyStoryTextSizes(storyViewHolder);
-                FontUtils.setTypeface(storyViewHolder.commentsView, true, 14, 13.5f, 13, 13, 14, 14, 14);
+                FontUtils.setStoryCommentCountTypeface(storyViewHolder.commentsView);
 
                 if (useClickedEffects) {
                     storyViewHolder.titleView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorDisabled));
@@ -691,30 +691,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private void applyStoryTextSizes(StoryViewHolder storyViewHolder) {
-        float clampedStoryTextSize = SettingsUtils.clampStoryTextSize(storyTextSize);
-        float titleDelta = clampedStoryTextSize - SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
-        float metaScale = clampedStoryTextSize / SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
-
-        FontUtils.setTypeface(
-                storyViewHolder.titleView,
-                true,
-                17.5f + titleDelta,
-                17 + titleDelta,
-                18 + titleDelta,
-                16 + titleDelta,
-                17 + titleDelta,
-                17 + titleDelta,
-                18 + titleDelta);
-        FontUtils.setTypeface(
-                storyViewHolder.metaView,
-                false,
-                13 * metaScale,
-                12.5f * metaScale,
-                13 * metaScale,
-                12 * metaScale,
-                12 * metaScale,
-                13 * metaScale,
-                13 * metaScale);
+        FontUtils.setStoryTitleTypeface(storyViewHolder.titleView, storyTextSize);
+        FontUtils.setStoryMetaTypeface(storyViewHolder.metaView, storyTextSize);
     }
 
     private static boolean isCurrentPreviewTarget(ImageView previewImage, String imageUrl) {

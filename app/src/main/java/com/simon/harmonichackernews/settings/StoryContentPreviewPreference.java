@@ -399,39 +399,18 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             TextView commentCount,
             float storyTextSize) {
         ensureSelectedFontLoaded();
-        float clampedStoryTextSize = SettingsUtils.clampStoryTextSize(storyTextSize);
-        float titleDelta = clampedStoryTextSize - SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
-        float metaScale = clampedStoryTextSize / SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
 
         if (title != null) {
-            FontUtils.setTypeface(
-                    title,
-                    true,
-                    17.5f + titleDelta,
-                    17 + titleDelta,
-                    18 + titleDelta,
-                    16 + titleDelta,
-                    17 + titleDelta,
-                    17 + titleDelta,
-                    18 + titleDelta);
+            FontUtils.setStoryTitleTypeface(title, storyTextSize);
         }
         if (meta != null) {
-            FontUtils.setTypeface(
-                    meta,
-                    false,
-                    13 * metaScale,
-                    12.5f * metaScale,
-                    13 * metaScale,
-                    12 * metaScale,
-                    12 * metaScale,
-                    13 * metaScale,
-                    13 * metaScale);
+            FontUtils.setStoryMetaTypeface(meta, storyTextSize);
         }
         if (index != null) {
             index.setTypeface(FontUtils.activeRegular);
         }
         if (commentCount != null) {
-            FontUtils.setTypeface(commentCount, true, 14, 13.5f, 13, 13, 14, 14, 14);
+            FontUtils.setStoryCommentCountTypeface(commentCount);
         }
     }
 
