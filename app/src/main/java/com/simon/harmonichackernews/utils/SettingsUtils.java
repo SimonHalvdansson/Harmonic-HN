@@ -279,14 +279,7 @@ public class SettingsUtils {
 
     public static int getStoriesToCache(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        try {
-            return clampStoriesToCache(Integer.parseInt(
-                    prefs.getString(PREF_STORIES_TO_CACHE, String.valueOf(DEFAULT_STORIES_TO_CACHE))));
-        } catch (ClassCastException e) {
-            return clampStoriesToCache(prefs.getInt(PREF_STORIES_TO_CACHE, DEFAULT_STORIES_TO_CACHE));
-        } catch (NumberFormatException e) {
-            return DEFAULT_STORIES_TO_CACHE;
-        }
+        return clampStoriesToCache(prefs.getInt(PREF_STORIES_TO_CACHE, DEFAULT_STORIES_TO_CACHE));
     }
 
     public static boolean hasEnoughBatteryForWebViewPreload(Context ctx, int minimumBattery) {

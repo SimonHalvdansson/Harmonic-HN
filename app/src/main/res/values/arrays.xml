@@ -79,22 +79,6 @@
         <item>never</item>
     </string-array>
 
-    <string-array name="stories_to_cache_entries">
-        <item>5 stories</item>
-        <item>10 stories</item>
-        <item>20 stories</item>
-        <item>50 stories</item>
-        <item>100 stories</item>
-    </string-array>
-
-    <string-array name="stories_to_cache_values">
-        <item>5</item>
-        <item>10</item>
-        <item>20</item>
-        <item>50</item>
-        <item>100</item>
-    </string-array>
-
     <string-array name="hotness_entries">
         <item>Never</item>
         <item>Points + comments > 100</item>
