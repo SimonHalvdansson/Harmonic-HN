@@ -1,6 +1,9 @@
 package com.simon.harmonichackernews.settings;
 
 import android.animation.ArgbEvaluator;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.LayoutTransition;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -599,12 +602,20 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     private void animatePreviewImageMode(String previewImageMode) {
         cancelPreviewHeightAnimator();
 
+        boolean largePreviewTransition = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
+                || (largePreviewImage != null && largePreviewImage.getVisibility() == View.VISIBLE);
+        boolean animatePreviewDetails = !largePreviewTransition;
+        if (animatePreviewDetails) {
+            setPreviewImageLayoutTransitionsEnabled(true);
+        }
+
         PreviewHeights startHeights = getCurrentPreviewHeights();
-        updatePreview(null, null, null, null, null, null, null, previewImageMode, false, false);
+        updatePreview(null, null, null, null, null, null, null, previewImageMode, animatePreviewDetails, false);
         PreviewHeights targetHeights = calculatePreviewHeights(previewImageMode);
         if (!targetHeights.isValid()) {
             syncPreviewContainerHeight(previewImageMode);
             requestPreviewRemeasure();
+            setPreviewImageLayoutTransitionsEnabled(false);
             return;
         }
 
@@ -623,6 +634,20 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
                     lerp(animationStartHeights.contentHeight, targetHeights.contentHeight, progress),
                     lerp(animationStartHeights.containerHeight, targetHeights.containerHeight, progress),
                     lerp(animationStartHeights.rootHeight, targetHeights.rootHeight, progress)));
+        });
+        previewHeightAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (previewHeightAnimator == animation) {
+                    previewHeightAnimator = null;
+                }
+                setPreviewImageLayoutTransitionsEnabled(false);
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                setPreviewImageLayoutTransitionsEnabled(false);
+            }
         });
         previewHeightAnimator.start();
     }
@@ -905,6 +930,36 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         return transition;
     }
 
+    private void setPreviewImageLayoutTransitionsEnabled(boolean enabled) {
+        setParentLayoutTransitionEnabled(smallPreviewImage, enabled);
+        setParentLayoutTransitionEnabled(largePreviewImage, enabled);
+    }
+
+    private void setParentLayoutTransitionEnabled(View view, boolean enabled) {
+        if (view == null || !(view.getParent() instanceof ViewGroup)) {
+            return;
+        }
+
+        setLayoutTransitionEnabled((ViewGroup) view.getParent(), enabled);
+    }
+
+    private void setLayoutTransitionEnabled(ViewGroup viewGroup, boolean enabled) {
+        if (!enabled) {
+            viewGroup.setLayoutTransition(null);
+            return;
+        }
+
+        if (viewGroup.getLayoutTransition() != null) {
+            return;
+        }
+
+        LayoutTransition transition = new LayoutTransition();
+        transition.setDuration(PREVIEW_ANIMATION_DURATION_MS);
+        transition.setAnimateParentHierarchy(false);
+        transition.enableTransitionType(LayoutTransition.CHANGING);
+        viewGroup.setLayoutTransition(transition);
+    }
+
     private <T extends ViewGroup> T findAncestorOfType(View view, Class<T> type) {
         ViewParent parent = view.getParent();
         while (parent != null) {
@@ -1009,8 +1064,10 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         }
 
         previewHeightAnimator.removeAllUpdateListeners();
+        previewHeightAnimator.removeAllListeners();
         previewHeightAnimator.cancel();
         previewHeightAnimator = null;
+        setPreviewImageLayoutTransitionsEnabled(false);
     }
 
     private void cancelCardTintAnimator() {
