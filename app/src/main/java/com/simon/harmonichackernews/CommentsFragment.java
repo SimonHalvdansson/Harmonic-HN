@@ -118,6 +118,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_BY = "com.simon.harmonichackernews.EXTRA_BY";
     public final static String EXTRA_URL = "com.simon.harmonichackernews.EXTRA_URL";
     public final static String EXTRA_PREVIEW_IMAGE_URL = "com.simon.harmonichackernews.EXTRA_PREVIEW_IMAGE_URL";
+    public final static String EXTRA_PREVIEW_IMAGE_TINT_COLOR_LOADED = "com.simon.harmonichackernews.EXTRA_PREVIEW_IMAGE_TINT_COLOR_LOADED";
+    public final static String EXTRA_PREVIEW_IMAGE_TINT_COLOR = "com.simon.harmonichackernews.EXTRA_PREVIEW_IMAGE_TINT_COLOR";
+    public final static String EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL = "com.simon.harmonichackernews.EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL";
+    public final static String EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR = "com.simon.harmonichackernews.EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR";
     public final static String EXTRA_TIME = "com.simon.harmonichackernews.EXTRA_TIME";
     public final static String EXTRA_KIDS = "com.simon.harmonichackernews.EXTRA_KIDS";
     public final static String EXTRA_POLL_OPTIONS = "com.simon.harmonichackernews.EXTRA_POLL_OPTIONS";
@@ -265,6 +269,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             story.url = bundle.getString(EXTRA_URL);
             story.previewImageUrl = bundle.getString(EXTRA_PREVIEW_IMAGE_URL);
             story.previewImageUrlLoaded = !TextUtils.isEmpty(story.previewImageUrl);
+            story.previewImageTintColorLoaded = bundle.getBoolean(EXTRA_PREVIEW_IMAGE_TINT_COLOR_LOADED, false);
+            story.previewImageTintColor = bundle.getInt(EXTRA_PREVIEW_IMAGE_TINT_COLOR, 0);
+            story.previewImageTintSourceUrl = bundle.getString(EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL);
+            story.previewImageTintBaseColor = bundle.getInt(EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR, Color.TRANSPARENT);
             story.time = bundle.getInt(EXTRA_TIME, 0);
             story.kids = bundle.getIntArray(EXTRA_KIDS);
             story.pollOptions = bundle.getIntArray(EXTRA_POLL_OPTIONS);

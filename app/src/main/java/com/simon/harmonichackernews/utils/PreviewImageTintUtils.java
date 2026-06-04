@@ -6,11 +6,13 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.text.TextUtils;
 
 import androidx.core.graphics.ColorUtils;
 import androidx.palette.graphics.Palette;
 
 import com.google.android.material.color.MaterialColors;
+import com.simon.harmonichackernews.data.Story;
 
 public class PreviewImageTintUtils {
     private static final int TINT_SAMPLE_SIZE = 32;
@@ -46,6 +48,102 @@ public class PreviewImageTintUtils {
         float targetLuminance = darkBase ? 0.42f : 0.66f;
         int tintColor = ColorUtils.HSLToColor(new float[]{hsl[0], targetSaturation, targetLuminance});
         return ColorUtils.blendARGB(baseColor, tintColor, tintAlpha);
+    }
+
+    public static boolean updateStoryPreviewImageTintColor(Story story, Drawable drawable, int baseColor) {
+        return updateStoryPreviewImageTintColor(
+                story,
+                story == null ? null : story.previewImageUrl,
+                drawable,
+                baseColor);
+    }
+
+    public static boolean updateStoryPreviewImageTintColor(
+            Story story,
+            String imageUrl,
+            Drawable drawable,
+            int baseColor) {
+        if (story == null || drawable == null || TextUtils.isEmpty(imageUrl)) {
+            return false;
+        }
+
+        Integer cachedTintColor = StoryPreviewImageMemoryCache.getTintColor(
+                story.id,
+                imageUrl,
+                baseColor);
+        if (cachedTintColor != null) {
+            return setCurrentStoryPreviewImageTintColor(story, imageUrl, baseColor, cachedTintColor);
+        }
+
+        try {
+            int tintColor = calculateCardTint(baseColor, drawable);
+            StoryPreviewImageMemoryCache.putTintColor(story.id, imageUrl, baseColor, tintColor);
+            return setCurrentStoryPreviewImageTintColor(story, imageUrl, baseColor, tintColor);
+        } catch (RuntimeException e) {
+            if (TextUtils.equals(story.previewImageUrl, imageUrl)) {
+                clearStoryPreviewImageTintColor(story);
+            }
+            return false;
+        }
+    }
+
+    public static boolean syncStoryPreviewImageTintColorFromCache(Story story, int baseColor) {
+        if (story == null || TextUtils.isEmpty(story.previewImageUrl)) {
+            return false;
+        }
+
+        if (isStoryPreviewImageTintColorCurrent(story, baseColor)) {
+            return true;
+        }
+
+        Integer cachedTintColor = StoryPreviewImageMemoryCache.getTintColor(
+                story.id,
+                story.previewImageUrl,
+                baseColor);
+        if (cachedTintColor == null) {
+            return false;
+        }
+
+        setStoryPreviewImageTintColor(story, story.previewImageUrl, baseColor, cachedTintColor);
+        return true;
+    }
+
+    public static boolean isStoryPreviewImageTintColorCurrent(Story story, int baseColor) {
+        return story != null
+                && story.previewImageTintColorLoaded
+                && baseColor == story.previewImageTintBaseColor
+                && TextUtils.equals(story.previewImageTintSourceUrl, story.previewImageUrl);
+    }
+
+    public static void clearStoryPreviewImageTintColor(Story story) {
+        if (story == null) {
+            return;
+        }
+
+        story.previewImageTintColorLoaded = false;
+        story.previewImageTintSourceUrl = null;
+        story.previewImageTintBaseColor = Color.TRANSPARENT;
+    }
+
+    private static void setStoryPreviewImageTintColor(Story story, String imageUrl, int baseColor, int tintColor) {
+        story.previewImageTintColor = tintColor;
+        story.previewImageTintColorLoaded = true;
+        story.previewImageTintSourceUrl = imageUrl;
+        story.previewImageTintBaseColor = baseColor;
+        story.previewImageLoadFailed = false;
+    }
+
+    private static boolean setCurrentStoryPreviewImageTintColor(
+            Story story,
+            String imageUrl,
+            int baseColor,
+            int tintColor) {
+        if (!TextUtils.equals(story.previewImageUrl, imageUrl)) {
+            return false;
+        }
+
+        setStoryPreviewImageTintColor(story, imageUrl, baseColor, tintColor);
+        return true;
     }
 
     private static Palette.Swatch chooseCardTintSwatch(Palette palette) {
