@@ -137,14 +137,15 @@
                 android:textStyle="bold" />
 
             <LinearLayout
-                android:layout_marginTop="1dp"
+                android:layout_marginTop="2dp"
                 android:id="@+id/story_meta_container"
                 android:orientation="horizontal"
+                android:baselineAligned="false"
+                android:gravity="center_vertical"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
                 <ImageView
-                    android:layout_marginTop="0.5dp"
                     android:id="@+id/story_meta_favicon"
                     android:background="@drawable/favicon_thumbnail_background"
                     android:clipToOutline="true"
@@ -160,7 +161,6 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginTop="2dp"
                     android:textColor="?attr/textColorDefault"
                     android:text="53 points • quantamagazine.org • 2h"
                     android:fontFamily="@font/product_sans"
@@ -172,9 +172,9 @@
         <ImageView
             android:id="@+id/story_preview_image_small"
             android:layout_width="72dp"
-            android:layout_height="54dp"
+            android:layout_height="52dp"
             android:layout_gravity="center_vertical"
-            android:layout_marginStart="10dp"
+            android:layout_marginStart="8dp"
             android:layout_marginEnd="2dp"
             android:background="@drawable/story_preview_image_background"
             android:clipToOutline="true"
