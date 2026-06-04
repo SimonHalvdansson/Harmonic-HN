@@ -22,7 +22,7 @@
 
     <item
         android:id="@+id/menu_change_comment_sorting"
-        android:title="Change sorting" />
+        android:title="Sort comments" />
 
     <item android:id="@+id/menu_comments_by_op"
         android:title="Comments by OP"/>
