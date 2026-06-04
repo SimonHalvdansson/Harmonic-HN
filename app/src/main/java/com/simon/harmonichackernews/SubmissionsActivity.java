@@ -35,6 +35,7 @@ import org.json.JSONException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Future;
 
 public class SubmissionsActivity extends AppCompatActivity {
 
@@ -49,6 +50,8 @@ public class SubmissionsActivity extends AppCompatActivity {
     private final ArrayList<Story> allSubmissions = new ArrayList<>();
     private LinearLayoutManager linearLayoutManager;
     private RequestQueue queue;
+    private final Object requestTag = new Object();
+    private Future<?> submissionsParseTask;
     private SwipeRefreshLayout swipeRefreshLayout;
     private View initialLoadingIndicator;
     private AppBarLayout appBarLayout;
@@ -202,8 +205,16 @@ public class SubmissionsActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        submissionsRequestGeneration++;
+        cancelSubmissionsParseTask();
+        if (queue != null) {
+            queue.cancelAll(requestTag);
+        }
         if (filterGroup != null && filterCheckedListener != null) {
             filterGroup.removeOnButtonCheckedListener(filterCheckedListener);
+        }
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setOnRefreshListener(null);
         }
 
         super.onDestroy();
@@ -359,6 +370,7 @@ public class SubmissionsActivity extends AppCompatActivity {
     }
 
     private void loadSubmissions(boolean resetResultLimit) {
+        cancelSubmissionsParseTask();
         if (resetResultLimit) {
             submissionsHitsPerPage = ALGOLIA_HITS_INCREMENT;
         }
@@ -377,12 +389,13 @@ public class SubmissionsActivity extends AppCompatActivity {
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
                     // Parse JSON on background thread
-                    BackgroundJSONParser.parseAlgoliaJson(response, new BackgroundJSONParser.AlgoliaParseCallback() {
+                    submissionsParseTask = BackgroundJSONParser.parseAlgoliaJson(response, new BackgroundJSONParser.AlgoliaParseCallback() {
                         @Override
                         public void onParseSuccess(List<Story> parsedStories) {
                             if (requestGeneration != submissionsRequestGeneration) {
                                 return;
                             }
+                            submissionsParseTask = null;
 
                             finishLoading(requestGeneration);
 
@@ -394,6 +407,10 @@ public class SubmissionsActivity extends AppCompatActivity {
 
                         @Override
                         public void onParseError(JSONException error) {
+                            if (requestGeneration != submissionsRequestGeneration) {
+                                return;
+                            }
+                            submissionsParseTask = null;
                             finishLoading(requestGeneration);
                             error.printStackTrace();
                         }
@@ -404,7 +421,15 @@ public class SubmissionsActivity extends AppCompatActivity {
             finishLoading(requestGeneration);
         });
 
+        stringRequest.setTag(requestTag);
         queue.add(stringRequest);
+    }
+
+    private void cancelSubmissionsParseTask() {
+        if (submissionsParseTask != null) {
+            submissionsParseTask.cancel(true);
+            submissionsParseTask = null;
+        }
     }
 
     private void finishLoading(int requestGeneration) {

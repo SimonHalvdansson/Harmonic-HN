@@ -187,6 +187,13 @@ public class CaptchaDialogFragment extends AppCompatDialogFragment {
         super.onDestroyView();
     }
 
+    @Override
+    public void onDestroy() {
+        listener = null;
+        challenge = null;
+        super.onDestroy();
+    }
+
     public interface Listener {
         void onCaptchaResponse(UserActions.CaptchaChallenge challenge, String captchaResponse);
 

@@ -43,7 +43,8 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
     private TextView matchesText;
     private CommentSearchAdapter adapter;
     private List<Comment> comments;
-    private final CommentSelectedListener listener;
+    @Nullable
+    private CommentSelectedListener listener;
     private TextWatcher searchWatcher;
 
     @Override
@@ -53,6 +54,9 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         if (getArguments() != null) {
             comments = (List<Comment>) getArguments().getSerializable(EXTRA_SEARCHABLE_COMMENTS);
         }
+    }
+
+    public CommentsSearchDialogFragment() {
     }
 
     public CommentsSearchDialogFragment(CommentSelectedListener commentSelectedListener) {
@@ -166,6 +170,12 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         matchesText = null;
         adapter = null;
         super.onDestroyView();
+    }
+
+    @Override
+    public void onDestroy() {
+        listener = null;
+        super.onDestroy();
     }
 
     private void updateMatches(String searchTerm) {

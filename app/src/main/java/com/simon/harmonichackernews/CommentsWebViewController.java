@@ -129,6 +129,8 @@ class CommentsWebViewController {
     private View customView;
     @Nullable
     private WebChromeClient.CustomViewCallback customViewCallback;
+    @Nullable
+    private PdfAndroidJavascriptBridge pdfAndroidJavascriptBridge;
     private boolean retryingFailedWebViewUrl = false;
 
     CommentsWebViewController(CommentsFragment fragment, Story story, LinkPreviewController linkPreviewController, Callbacks callbacks) {
@@ -560,7 +562,8 @@ class CommentsWebViewController {
             lastRequestedWebViewUrl = url;
         }
         if (url.equals(PDF_LOADER_URL)) {
-            PdfAndroidJavascriptBridge pdfAndroidJavascriptBridge = new PdfAndroidJavascriptBridge(pdfFilePath, new PdfAndroidJavascriptBridge.Callbacks() {
+            clearPdfAndroidJavascriptBridge();
+            pdfAndroidJavascriptBridge = new PdfAndroidJavascriptBridge(pdfFilePath, new PdfAndroidJavascriptBridge.Callbacks() {
                 @Override
                 public void onFailure() {
 
@@ -576,6 +579,9 @@ class CommentsWebViewController {
             webView.setInitialScale(100);
             webView.getSettings().setLoadWithOverviewMode(true);
             webView.getSettings().setUseWideViewPort(true);
+        } else if (pdfAndroidJavascriptBridge != null) {
+            webView.removeJavascriptInterface("PdfAndroidJavascriptBridge");
+            clearPdfAndroidJavascriptBridge();
         }
 
         url = linkPreviewController.prepareWebViewLoad(context, webView, url);
@@ -759,6 +765,7 @@ class CommentsWebViewController {
                 webViewToDestroy.setDownloadListener(null);
                 webViewToDestroy.removeJavascriptInterface("PdfAndroidJavascriptBridge");
             }
+            clearPdfAndroidJavascriptBridge();
 
             if (webViewToDestroy.getParent() instanceof ViewGroup) {
                 ((ViewGroup) webViewToDestroy.getParent()).removeView(webViewToDestroy);
@@ -778,6 +785,13 @@ class CommentsWebViewController {
             } catch (RuntimeException e) {
                 Log.e("MY_APP_TAG", "Failed to destroy WebView cleanly", e);
             }
+        }
+    }
+
+    private void clearPdfAndroidJavascriptBridge() {
+        if (pdfAndroidJavascriptBridge != null) {
+            pdfAndroidJavascriptBridge.cleanUp();
+            pdfAndroidJavascriptBridge = null;
         }
     }
 
@@ -841,6 +855,7 @@ class CommentsWebViewController {
         webViewBottomSheetCallback = null;
         customView = null;
         customViewCallback = null;
+        pdfAndroidJavascriptBridge = null;
     }
 
     private class MyWebViewClient extends WebViewClient {
@@ -1100,6 +1115,7 @@ class CommentsWebViewController {
             try {
                 if (mRandomAccessFile != null) {
                     mRandomAccessFile.close();
+                    mRandomAccessFile = null;
                 }
             } catch (IOException e) {
                 Log.e("Exception", e.toString());

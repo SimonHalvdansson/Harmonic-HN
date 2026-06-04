@@ -45,7 +45,9 @@ import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 import coil.Coil;
 import coil.request.Disposable;
@@ -103,6 +105,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public boolean showLoadMoreButton = false;
     public static final int PAGINATION_PAGE_SIZE = 30;
     public int visibleStoryCount = 30;
+    private final Map<Story, StoryPreviewImageLoader.PreviewImageRequest> previewImageUrlRequests = new IdentityHashMap<>();
     @Nullable
     private RecyclerView recyclerView;
 
@@ -358,6 +361,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     @Override
     public void onDetachedFromRecyclerView(@NotNull RecyclerView recyclerView) {
+        cancelPreviewImageUrlRequests();
         if (this.recyclerView == recyclerView) {
             this.recyclerView = null;
         }
@@ -492,7 +496,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         story.previewImageUrlLoading = true;
         Context appContext = context == null ? null : context.getApplicationContext();
-        StoryPreviewImageLoader.loadPreviewImageUrl(appContext, story.id, story.url, imageUrl -> {
+        StoryPreviewImageLoader.PreviewImageRequest request = StoryPreviewImageLoader.loadPreviewImageUrl(appContext, story.id, story.url, imageUrl -> {
+            previewImageUrlRequests.remove(story);
             story.previewImageUrlLoading = false;
             story.previewImageUrlLoaded = true;
             if (TextUtils.isEmpty(imageUrl)) {
@@ -512,6 +517,15 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 notifyItemChanged(index);
             }
         });
+        previewImageUrlRequests.put(story, request);
+    }
+
+    private void cancelPreviewImageUrlRequests() {
+        for (Map.Entry<Story, StoryPreviewImageLoader.PreviewImageRequest> entry : previewImageUrlRequests.entrySet()) {
+            entry.getValue().cancel();
+            entry.getKey().previewImageUrlLoading = false;
+        }
+        previewImageUrlRequests.clear();
     }
 
     private void prefetchPreviewImageDrawable(@Nullable Context context, Story story) {

@@ -83,6 +83,12 @@ public class UserTagDialogFragment extends AppCompatDialogFragment {
         super.onDestroyView();
     }
 
+    @Override
+    public void onDestroy() {
+        callback = null;
+        super.onDestroy();
+    }
+
     private void focusTagInput() {
         TextInputEditText currentEditText = editText;
         if (currentEditText == null) {

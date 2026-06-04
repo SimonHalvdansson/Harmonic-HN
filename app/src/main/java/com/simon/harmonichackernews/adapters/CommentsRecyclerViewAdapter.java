@@ -128,6 +128,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private float headerSlideOffset = 1f;
     @Nullable
     private HeaderViewHolder boundHeaderViewHolder;
+    @Nullable
+    private StoryPreviewImageLoader.PreviewImageRequest headerPreviewImageUrlRequest;
 
     public static final int TYPE_HEADER = 0;
     public static final int TYPE_COMMENT = 1;
@@ -668,7 +670,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         story.previewImageUrlLoading = true;
         Context appContext = context == null ? null : context.getApplicationContext();
-        StoryPreviewImageLoader.loadPreviewImageUrl(appContext, story.id, story.url, imageUrl -> {
+        headerPreviewImageUrlRequest = StoryPreviewImageLoader.loadPreviewImageUrl(appContext, story.id, story.url, imageUrl -> {
+            headerPreviewImageUrlRequest = null;
             story.previewImageUrlLoading = false;
             story.previewImageUrlLoaded = true;
             if (TextUtils.isEmpty(imageUrl)) {
@@ -682,6 +685,22 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             story.previewImageLoadFailed = false;
             notifyHeaderChanged();
         });
+    }
+
+    @Override
+    public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+        cancelHeaderPreviewImageUrlRequest();
+        super.onDetachedFromRecyclerView(recyclerView);
+    }
+
+    private void cancelHeaderPreviewImageUrlRequest() {
+        if (headerPreviewImageUrlRequest != null) {
+            headerPreviewImageUrlRequest.cancel();
+            headerPreviewImageUrlRequest = null;
+        }
+        if (story != null) {
+            story.previewImageUrlLoading = false;
+        }
     }
 
     private void loadHeaderPreviewImage(final HeaderViewHolder headerViewHolder, final Story story) {

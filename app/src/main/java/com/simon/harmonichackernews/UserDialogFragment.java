@@ -341,6 +341,12 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         super.onDestroyView();
     }
 
+    @Override
+    public void onDestroy() {
+        setTagCallback = null;
+        super.onDestroy();
+    }
+
     private boolean isOwnProfile(String userName) {
         return !TextUtils.isEmpty(userName)
                 && !TextUtils.isEmpty(AccountUtils.getAccountUsername(getContext()))

@@ -10,6 +10,7 @@ import org.json.JSONException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class BackgroundJSONParser {
 
@@ -35,12 +36,15 @@ public class BackgroundJSONParser {
      * @param jsonResponse The JSON string to parse
      * @param callback Callback to receive results on main thread
      */
-    public static void parseAlgoliaJson(final String jsonResponse, final AlgoliaParseCallback callback) {
-        executorService.execute(new Runnable() {
+    public static Future<?> parseAlgoliaJson(final String jsonResponse, final AlgoliaParseCallback callback) {
+        return executorService.submit(new Runnable() {
             @Override
             public void run() {
                 try {
                     final List<Story> stories = JSONParser.algoliaJsonToStories(jsonResponse);
+                    if (Thread.interrupted()) {
+                        return;
+                    }
 
                     // Post result to main thread
                     mainHandler.post(new Runnable() {
@@ -50,6 +54,9 @@ public class BackgroundJSONParser {
                         }
                     });
                 } catch (final JSONException e) {
+                    if (Thread.interrupted()) {
+                        return;
+                    }
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
