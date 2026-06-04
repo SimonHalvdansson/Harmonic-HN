@@ -1197,6 +1197,10 @@ public class Utils {
     }
 
     public static void openLinkMaybeHN(Context context, String href) {
+        if (context == null || TextUtils.isEmpty(href)) {
+            return;
+        }
+
         Uri uri = Uri.parse(href);
 
         // Validate the scheme (http or https)

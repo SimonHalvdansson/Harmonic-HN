@@ -416,11 +416,19 @@ public class StoriesFragment extends Fragment {
         storyUpdateListener = new StoryUpdate.StoryUpdateListener() {
             @Override
             public void callback(Story story) {
-                for (int i = 0; i < stories.size(); i++) {
-                    if (story.id == stories.get(i).id) {
-                        Story oldStory = stories.get(i);
+                if (story == null || stories == null || adapter == null) {
+                    return;
+                }
 
-                        if (!oldStory.title.equals(story.title) || oldStory.descendants != story.descendants || oldStory.score != story.score || oldStory.time != story.time || !oldStory.url.equals(story.url)) {
+                for (int i = 0; i < stories.size(); i++) {
+                    Story oldStory = stories.get(i);
+                    if (oldStory != null && story.id == oldStory.id) {
+
+                        if (!TextUtils.equals(oldStory.title, story.title)
+                                || oldStory.descendants != story.descendants
+                                || oldStory.score != story.score
+                                || oldStory.time != story.time
+                                || !TextUtils.equals(oldStory.url, story.url)) {
                             oldStory.title = story.title;
                             oldStory.descendants = story.descendants;
                             oldStory.score = story.score;

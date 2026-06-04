@@ -551,6 +551,10 @@ class CommentsWebViewController {
         if (webView == null || context == null || fragment.getView() == null) {
             return;
         }
+        if (TextUtils.isEmpty(url)) {
+            return;
+        }
+
         String archiveRedirectUrl = SettingsUtils.getArchiveRedirectUrl(context, url);
         if (archiveRedirectUrl != null) {
             url = archiveRedirectUrl;
@@ -561,7 +565,7 @@ class CommentsWebViewController {
             showingCachedArticlePage = false;
             lastRequestedWebViewUrl = url;
         }
-        if (url.equals(PDF_LOADER_URL)) {
+        if (PDF_LOADER_URL.equals(url)) {
             clearPdfAndroidJavascriptBridge();
             pdfAndroidJavascriptBridge = new PdfAndroidJavascriptBridge(pdfFilePath, new PdfAndroidJavascriptBridge.Callbacks() {
                 @Override
@@ -585,6 +589,9 @@ class CommentsWebViewController {
         }
 
         url = linkPreviewController.prepareWebViewLoad(context, webView, url);
+        if (TextUtils.isEmpty(url)) {
+            return;
+        }
         webView.loadUrl(url);
         if (isErrorPageUrl(url)) {
             showingErrorPage = true;

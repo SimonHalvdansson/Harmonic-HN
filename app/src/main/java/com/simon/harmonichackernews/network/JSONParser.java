@@ -25,6 +25,11 @@ public class JSONParser {
     public final static String ALGOLIA_ERROR_STRING = "{\"status\":404,\"error\":\"Not Found\"}";
     private static final String JSON_NULL_LITERAL = "null";
 
+    private static boolean hasOnlyTwoTopLevelFields(JSONObject jsonObject) {
+        JSONArray names = jsonObject.names();
+        return names != null && names.length() == 2;
+    }
+
     public static List<Story> algoliaJsonToStories(String response) throws JSONException {
         List<Story> stories = new ArrayList<>();
 
@@ -87,13 +92,13 @@ public class JSONParser {
     }
 
     public static boolean updateStoryWithHNJson(String response, Story story, boolean isHistory) throws JSONException {
-        if (response.equals(JSON_NULL_LITERAL)) {
+        if (TextUtils.isEmpty(response) || JSON_NULL_LITERAL.equals(response)) {
             return false;
         }
 
         JSONObject jsonObject = new JSONObject(response);
 
-        if (jsonObject.names().length() == 2 || !jsonObject.has("by")) {
+        if (hasOnlyTwoTopLevelFields(jsonObject) || !jsonObject.has("by")) {
             return false;
         }
 
@@ -693,10 +698,14 @@ public class JSONParser {
     // Official HN API parsing methods for fallback
     public static boolean updateStoryWithOfficialHNResponse(Story story, String response) {
         try {
+            if (TextUtils.isEmpty(response) || JSON_NULL_LITERAL.equals(response)) {
+                return false;
+            }
+
             JSONObject jsonObject = new JSONObject(response);
             
             // Check if this is a valid story response
-            if (!jsonObject.has("by") || jsonObject.names().length() == 2) {
+            if (!jsonObject.has("by") || hasOnlyTwoTopLevelFields(jsonObject)) {
                 return false;
             }
 
