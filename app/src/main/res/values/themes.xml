@@ -149,6 +149,7 @@
         <item name="android:statusBarColor">@color/lightStatusBarColor</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="popupMenuBackground">@drawable/popup_background_material</item>
 
         <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
