@@ -221,13 +221,25 @@
                 android:textSize="13dp"
                 android:textAllCaps="true"
                 android:layout_marginTop="10dp"
-                android:layout_marginBottom="-6dp"
+                android:layout_marginBottom="6dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
-            <include
-                android:id="@+id/story_list_item"
-                layout="@layout/story_list_item"/>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/welcome_story_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@android:color/transparent"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@android:color/transparent"
+                app:strokeWidth="0dp">
+
+                <include
+                    android:id="@+id/story_list_item"
+                    layout="@layout/story_list_item" />
+
+            </com.google.android.material.card.MaterialCardView>
 
             <TextView
                 android:layout_marginTop="12dp"
@@ -302,6 +314,16 @@
                 android:textSize="16sp"
                 android:checked="true"
                 android:text="Thumbnails"   />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/welcome_switch_tint"
+                android:drawableLeft="@drawable/ic_action_colors"
+                android:drawablePadding="14dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/product_sans"
+                android:textSize="16sp"
+                android:text="Tint" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/welcome_switch_points"

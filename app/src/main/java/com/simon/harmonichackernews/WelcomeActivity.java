@@ -1,10 +1,14 @@
 package com.simon.harmonichackernews;
 
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.transition.ChangeBounds;
 import android.transition.TransitionManager;
@@ -18,13 +22,16 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.preference.PreferenceManager;
 
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.databinding.ActivityWelcomeBinding;
+import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryMetaPreviewAnimator;
 import com.simon.harmonichackernews.utils.ThemeUtils;
@@ -32,6 +39,8 @@ import com.simon.harmonichackernews.utils.ThemeUtils;
 public class WelcomeActivity extends AppCompatActivity {
 
     private static final long PREVIEW_ANIMATION_DURATION_MS = 180;
+    private ValueAnimator cardTintAnimator;
+    private Integer currentCardBackgroundColor;
 
     @SuppressLint("SetTextI18n")
     @Override
@@ -88,6 +97,8 @@ public class WelcomeActivity extends AppCompatActivity {
         binding.storyListItem.storyPreviewImageLarge.setImageResource(R.drawable.web_preview);
         String initialPreviewImageMode = SettingsUtils.getPreferredStoryPreviewImageMode(this);
         updatePreviewImageMode(binding, initialPreviewImageMode);
+        binding.welcomeSwitchTint.setChecked(SettingsUtils.shouldTintCardUsingPreview(this));
+        updateTintCardUsingPreview(binding, binding.welcomeSwitchTint.isChecked(), initialPreviewImageMode, false);
 
         binding.welcomeStoryPreviewImageModeGroup.check(getButtonIdForPreviewImageMode(initialPreviewImageMode));
         binding.welcomeStoryPreviewImageModeGroup.addOnButtonCheckedListener((buttonGroup, checkedId, isChecked) -> {
@@ -98,6 +109,7 @@ public class WelcomeActivity extends AppCompatActivity {
             String previewImageMode = getPreviewImageModeForButtonId(checkedId);
             beginPreviewTransition(binding);
             updatePreviewImageMode(binding, previewImageMode);
+            updateTintCardUsingPreview(binding, binding.welcomeSwitchTint.isChecked(), previewImageMode, true);
             setSetting(buttonGroup.getContext(), SettingsUtils.PREF_STORY_PREVIEW_IMAGE_MODE, previewImageMode);
         });
 
@@ -105,6 +117,12 @@ public class WelcomeActivity extends AppCompatActivity {
             beginPreviewTransition(binding);
             favicon.setVisibility(b ? View.VISIBLE : View.GONE);
             setBooleanSetting(compoundButton.getContext(), "pref_thumbnails", b);
+        });
+
+        binding.welcomeSwitchTint.setOnCheckedChangeListener((@NonNull CompoundButton compoundButton, boolean b) -> {
+            String previewImageMode = getPreviewImageModeForButtonId(binding.welcomeStoryPreviewImageModeGroup.getCheckedButtonId());
+            updateTintCardUsingPreview(binding, b, previewImageMode, true);
+            setBooleanSetting(compoundButton.getContext(), SettingsUtils.PREF_TINT_CARD_USING_PREVIEW, b);
         });
 
         binding.welcomeSwitchIndex.setOnCheckedChangeListener((@NonNull CompoundButton compoundButton, boolean b) -> {
@@ -137,6 +155,12 @@ public class WelcomeActivity extends AppCompatActivity {
         markSelectedThemeButton(binding);
     }
 
+    @Override
+    protected void onDestroy() {
+        cancelCardTintAnimator();
+        super.onDestroy();
+    }
+
     private void markSelectedThemeButton(ActivityWelcomeBinding binding) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         String selectedTheme = prefs.getString("pref_theme", "material_daynight");
@@ -164,10 +188,9 @@ public class WelcomeActivity extends AppCompatActivity {
     }
 
     private void beginPreviewTransition(ActivityWelcomeBinding binding) {
-        ViewGroup previewRoot = (ViewGroup) binding.storyListItem.getRoot();
-        ViewGroup transitionRoot = previewRoot.getParent() instanceof ViewGroup
-                ? (ViewGroup) previewRoot.getParent()
-                : previewRoot;
+        ViewGroup transitionRoot = binding.welcomeStoryCard.getParent() instanceof ViewGroup
+                ? (ViewGroup) binding.welcomeStoryCard.getParent()
+                : (ViewGroup) binding.storyListItem.getRoot();
         if (!ViewCompat.isLaidOut(transitionRoot)) {
             return;
         }
@@ -183,6 +206,84 @@ public class WelcomeActivity extends AppCompatActivity {
         boolean showLargePreview = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode);
         binding.storyListItem.storyPreviewImageSmall.setVisibility(showSmallPreview ? View.VISIBLE : View.GONE);
         binding.storyListItem.storyPreviewImageLarge.setVisibility(showLargePreview ? View.VISIBLE : View.GONE);
+    }
+
+    private void updateTintCardUsingPreview(
+            ActivityWelcomeBinding binding,
+            boolean tintCardUsingPreview,
+            String previewImageMode,
+            boolean animate) {
+        int targetColor = tintCardUsingPreview
+                ? getPreviewCardTintColor(binding.welcomeStoryCard, previewImageMode)
+                : getUntintedPreviewCardBackgroundColor(binding.welcomeStoryCard);
+        setStoryCardBackgroundColor(binding.welcomeStoryCard, targetColor, animate);
+    }
+
+    private int getPreviewCardTintColor(View view, String previewImageMode) {
+        Drawable tintDrawable = ContextCompat.getDrawable(
+                this,
+                SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                        ? R.drawable.quanta
+                        : R.drawable.web_preview);
+        if (tintDrawable == null) {
+            return getDefaultCardBackgroundColor(view);
+        }
+
+        try {
+            return PreviewImageTintUtils.calculateCardTint(this, tintDrawable);
+        } catch (RuntimeException ignored) {
+            return getDefaultCardBackgroundColor(view);
+        }
+    }
+
+    private void setStoryCardBackgroundColor(MaterialCardView card, int targetColor, boolean animate) {
+        if (card == null) {
+            return;
+        }
+
+        cancelCardTintAnimator();
+        int currentColor = currentCardBackgroundColor != null
+                ? currentCardBackgroundColor
+                : card.getCardBackgroundColor().getDefaultColor();
+
+        if (!animate || currentColor == targetColor) {
+            card.setCardBackgroundColor(targetColor);
+            currentCardBackgroundColor = targetColor;
+            return;
+        }
+
+        cardTintAnimator = ValueAnimator.ofObject(new ArgbEvaluator(), currentColor, targetColor);
+        cardTintAnimator.setDuration(PREVIEW_ANIMATION_DURATION_MS);
+        cardTintAnimator.addUpdateListener(animation -> {
+            int color = (int) animation.getAnimatedValue();
+            card.setCardBackgroundColor(color);
+            currentCardBackgroundColor = color;
+        });
+        cardTintAnimator.start();
+    }
+
+    private int getDefaultCardBackgroundColor(View view) {
+        return MaterialColors.getColor(
+                view,
+                com.google.android.material.R.attr.colorSurfaceContainerHigh,
+                Color.TRANSPARENT);
+    }
+
+    private int getUntintedPreviewCardBackgroundColor(View view) {
+        return MaterialColors.getColor(
+                view,
+                android.R.attr.colorBackground,
+                Color.TRANSPARENT);
+    }
+
+    private void cancelCardTintAnimator() {
+        if (cardTintAnimator == null) {
+            return;
+        }
+
+        cardTintAnimator.removeAllUpdateListeners();
+        cardTintAnimator.cancel();
+        cardTintAnimator = null;
     }
 
     private String getPreviewImageModeForButtonId(int checkedId) {
