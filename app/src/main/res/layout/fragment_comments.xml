@@ -125,7 +125,7 @@
                 app:cardBackgroundColor="?attr/overlayButtonColor"
                 app:cardCornerRadius="28dp"
                 app:cardElevation="8dp"
-                app:cardUseCompatPadding="true"
+                app:cardUseCompatPadding="false"
                 app:strokeColor="?attr/overlayButtonOutlineColor"
                 app:strokeWidth="1dp">
 
