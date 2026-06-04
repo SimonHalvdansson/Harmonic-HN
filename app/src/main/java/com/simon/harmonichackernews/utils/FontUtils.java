@@ -13,7 +13,7 @@ public class FontUtils {
 
     private static final float GOOGLE_SANS_FLEX_ROUNDED_SIZE_ADJUSTMENT = -0.5f;
     private static final FontSizes STORY_TITLE_SIZES = new FontSizes(17.5f, 16, 18, 15, 16, 16, 17, 17.5f);
-    private static final FontSizes STORY_META_SIZES = new FontSizes(13, 12.5f, 13, 12, 12, 12, 13, 13);
+    private static final FontSizes STORY_META_SIZES = new FontSizes(13, 13f, 13, 12, 12, 12, 13, 13);
     private static final FontSizes STORY_COMMENT_COUNT_SIZES = new FontSizes(14, 13.5f, 13, 13, 14, 14, 14, 14);
     private static final FontSizes STORIES_DROPDOWN_SELECTED_SIZES = new FontSizes(36, 34, 36, 33, 34, 34, 35, 35);
     private static final FontSizes COMMENTS_HEADER_META_SIZES = new FontSizes(14, 13.5f, 13, 13, 13, 13, 13, 13);
