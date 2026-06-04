@@ -26,19 +26,27 @@ import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 public class MainActivity extends BaseActivity implements StoriesFragment.StoryClickListener {
 
     public static ArrayList<CommentsScrollProgress> commentsScrollProgresses = new ArrayList<>();
+    private static final Set<SearchBackStateListener> searchBackStateListeners =
+            Collections.newSetFromMap(new WeakHashMap<>());
+    private static MainActivity currentMainActivity;
 
     int lastPosition = 0;
     public OnBackPressedCallback backPressedCallback;
+    private boolean searchBackEnabled = false;
 
     public int bottom = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        currentMainActivity = this;
 
         if (Utils.isFirstAppStart(this)) {
             startActivity(new Intent(this, WelcomeActivity.class));
@@ -58,43 +66,122 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         backPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackCancelled() {
-                final StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
-
-                if (fragment != null) {
-                    fragment.cancelSearchBackProgress();
-                }
+                cancelSearchBackProgress();
             }
 
             @Override
             public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
-                final StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
-
-                if (fragment != null) {
-                    fragment.updateSearchBackProgress(backEvent.getProgress());
-                }
+                updateSearchBackProgress(backEvent.getProgress());
             }
 
             @Override
             public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
-                final StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
-
-                if (fragment != null) {
-                    fragment.startSearchBackProgress(backEvent.getProgress());
-                }
+                startSearchBackProgress(backEvent.getProgress());
             }
 
             @Override
             public void handleOnBackPressed() {
-                final StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
-
-                if (fragment != null) {
-                    fragment.finishSearchBackProgress();
-                }
+                finishSearchBackProgress();
             }
         };
 
         getOnBackPressedDispatcher().addCallback(this, backPressedCallback);
-        backPressedCallback.setEnabled(false);
+        setSearchBackEnabled(false);
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (currentMainActivity == this) {
+            currentMainActivity = null;
+            searchBackEnabled = false;
+            notifySearchBackStateListeners(false);
+        }
+        super.onDestroy();
+    }
+
+    public void setSearchBackEnabled(boolean enabled) {
+        searchBackEnabled = enabled;
+        backPressedCallback.setEnabled(enabled);
+        notifySearchBackStateListeners(enabled);
+    }
+
+    public static boolean isSearchBackActive() {
+        return currentMainActivity != null && currentMainActivity.searchBackEnabled;
+    }
+
+    public static void addSearchBackStateListener(SearchBackStateListener listener) {
+        searchBackStateListeners.add(listener);
+        listener.onSearchBackStateChanged(isSearchBackActive());
+    }
+
+    public static void removeSearchBackStateListener(SearchBackStateListener listener) {
+        searchBackStateListeners.remove(listener);
+    }
+
+    public static void startActiveSearchBackProgress(float progress) {
+        if (currentMainActivity != null) {
+            currentMainActivity.startSearchBackProgress(progress);
+        }
+    }
+
+    public static void updateActiveSearchBackProgress(float progress) {
+        if (currentMainActivity != null) {
+            currentMainActivity.updateSearchBackProgress(progress);
+        }
+    }
+
+    public static void cancelActiveSearchBackProgress() {
+        if (currentMainActivity != null) {
+            currentMainActivity.cancelSearchBackProgress();
+        }
+    }
+
+    public static boolean finishActiveSearchBackProgress() {
+        return currentMainActivity != null && currentMainActivity.finishSearchBackProgress();
+    }
+
+    private void startSearchBackProgress(float progress) {
+        final StoriesFragment fragment = getStoriesFragment();
+
+        if (fragment != null) {
+            fragment.startSearchBackProgress(progress);
+        }
+    }
+
+    private void updateSearchBackProgress(float progress) {
+        final StoriesFragment fragment = getStoriesFragment();
+
+        if (fragment != null) {
+            fragment.updateSearchBackProgress(progress);
+        }
+    }
+
+    private void cancelSearchBackProgress() {
+        final StoriesFragment fragment = getStoriesFragment();
+
+        if (fragment != null) {
+            fragment.cancelSearchBackProgress();
+        }
+    }
+
+    private boolean finishSearchBackProgress() {
+        final StoriesFragment fragment = getStoriesFragment();
+
+        return fragment != null && fragment.finishSearchBackProgress();
+    }
+
+    private StoriesFragment getStoriesFragment() {
+        return (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
+    }
+
+    private static void notifySearchBackStateListeners(boolean enabled) {
+        for (SearchBackStateListener listener : searchBackStateListeners) {
+            listener.onSearchBackStateChanged(enabled);
+        }
+    }
+
+    public interface SearchBackStateListener {
+        void onSearchBackStateChanged(boolean enabled);
     }
 
     @Override

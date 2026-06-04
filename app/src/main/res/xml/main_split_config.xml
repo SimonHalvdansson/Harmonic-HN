@@ -7,7 +7,7 @@
     window:splitLayoutDirection="locale"
     window:splitMinWidthDp="700"
     window:splitMaxAspectRatioInPortrait="alwaysAllow"
-    window:finishPrimaryWithSecondary="never"
+    window:finishPrimaryWithSecondary="always"
     window:finishSecondaryWithPrimary="always"
     window:clearTop="true">
     <SplitPairFilter

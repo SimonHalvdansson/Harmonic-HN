@@ -3067,7 +3067,7 @@ public class StoriesFragment extends Fragment {
         boolean shouldRefreshAfterRestore = false;
 
         if (getActivity() != null && getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).backPressedCallback.setEnabled(searching);
+            ((MainActivity) getActivity()).setSearchBackEnabled(searching);
         }
 
         swipeRefreshLayout.setEnabled(!searching);

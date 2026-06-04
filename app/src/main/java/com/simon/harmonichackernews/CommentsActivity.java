@@ -8,6 +8,9 @@ import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.View;
 
+import androidx.activity.BackEventCompat;
+import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.gw.swipeback.SwipeBackLayout;
@@ -23,6 +26,9 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     private SplitChangeHandler splitChangeHandler;
     private boolean swipeBack = false;
     private CommentsFragment commentsFragment;
+    private OnBackPressedCallback embeddedSearchBackCallback;
+    private final MainActivity.SearchBackStateListener searchBackStateListener =
+            enabled -> syncEmbeddedSearchBackCallbackEnabled();
     private final Handler translucentHandler = new Handler(Looper.getMainLooper());
     private final Runnable makeTranslucentRunnable = new Runnable() {
         @Override
@@ -76,7 +82,12 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         transaction.commit();
 
         swipeBackLayout = binding.swipeBackLayout;
-        this.splitChangeHandler = new SplitChangeHandler(this, swipeBackLayout);
+        this.splitChangeHandler = new SplitChangeHandler(
+                this,
+                swipeBackLayout,
+                this::syncEmbeddedSearchBackCallbackEnabled);
+        setupEmbeddedSearchBackCallback(root);
+        MainActivity.addSearchBackStateListener(searchBackStateListener);
 
         swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
             @Override
@@ -98,6 +109,8 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
 
     @Override
     public void onSwitchView(boolean isAtWebView) {
+        syncEmbeddedSearchBackCallbackEnabled();
+
         if (splitChangeHandler.isWithinSplit() && getIntent() != null) {
             swipeBackLayout.setActive(!getIntent().getBooleanExtra(PREVENT_BACK, false));
             return;
@@ -138,6 +151,7 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     @Override
     protected void onDestroy() {
         translucentHandler.removeCallbacksAndMessages(null);
+        MainActivity.removeSearchBackStateListener(searchBackStateListener);
         super.onDestroy();
         if (splitChangeHandler != null) {
             splitChangeHandler.teardown();
@@ -162,5 +176,51 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
             }
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    private void setupEmbeddedSearchBackCallback(View root) {
+        embeddedSearchBackCallback = new OnBackPressedCallback(false) {
+            @Override
+            public void handleOnBackCancelled() {
+                MainActivity.cancelActiveSearchBackProgress();
+            }
+
+            @Override
+            public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
+                MainActivity.updateActiveSearchBackProgress(backEvent.getProgress());
+            }
+
+            @Override
+            public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
+                MainActivity.startActiveSearchBackProgress(backEvent.getProgress());
+            }
+
+            @Override
+            public void handleOnBackPressed() {
+                if (MainActivity.finishActiveSearchBackProgress()) {
+                    syncEmbeddedSearchBackCallbackEnabled();
+                    return;
+                }
+
+                setEnabled(false);
+                getOnBackPressedDispatcher().onBackPressed();
+                syncEmbeddedSearchBackCallbackEnabled();
+            }
+        };
+
+        root.post(() -> {
+            if (!isDestroyed()) {
+                getOnBackPressedDispatcher().addCallback(this, embeddedSearchBackCallback);
+                syncEmbeddedSearchBackCallbackEnabled();
+            }
+        });
+    }
+
+    private void syncEmbeddedSearchBackCallbackEnabled() {
+        if (embeddedSearchBackCallback == null || splitChangeHandler == null) {
+            return;
+        }
+
+        embeddedSearchBackCallback.setEnabled(splitChangeHandler.isWithinSplit() && MainActivity.isSearchBackActive());
     }
 }

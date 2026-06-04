@@ -17,12 +17,18 @@ import java.util.List;
 public class SplitChangeHandler {
     private final SplitControllerCallbackAdapter splitCallbackAdapter;
     private final SwipeBackLayout layout;
+    private final Runnable splitChangedListener;
     private final Consumer<List<SplitInfo>> splitInfoConsumer = this::onSplitListUpdate;
     private boolean isWithinSplit = false;
 
     public SplitChangeHandler(Activity activity, SwipeBackLayout swipeBackLayout) {
+        this(activity, swipeBackLayout, null);
+    }
+
+    public SplitChangeHandler(Activity activity, SwipeBackLayout swipeBackLayout, Runnable splitChangedListener) {
         this.splitCallbackAdapter = new SplitControllerCallbackAdapter(SplitController.getInstance(activity));
         this.layout = swipeBackLayout;
+        this.splitChangedListener = splitChangedListener;
         // Note: I (Simon) removed this line as swipeBack needs a transparent background in
         // order to display the activity behind it
         // swipeBackLayout.setBackgroundColor(ContextCompat.getColor(activity, ThemeUtils.getBackgroundColorResource(activity)));
@@ -35,6 +41,7 @@ public class SplitChangeHandler {
     }
 
     private void onSplitListUpdate(List<SplitInfo> splitInfoList) {
+        boolean wasWithinSplit = isWithinSplit;
         isWithinSplit = false;
         for (SplitInfo split : splitInfoList) {
             if (!split.getSplitAttributes().getSplitType().equals(SplitType.SPLIT_TYPE_EXPAND)) {
@@ -44,6 +51,9 @@ public class SplitChangeHandler {
         }
 
         layout.setMaskAlpha(isWithinSplit ? 0 : 125);
+        if (wasWithinSplit != isWithinSplit && splitChangedListener != null) {
+            splitChangedListener.run();
+        }
     }
 
     public boolean isWithinSplit() {
