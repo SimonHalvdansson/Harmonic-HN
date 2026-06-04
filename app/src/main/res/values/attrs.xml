@@ -15,6 +15,7 @@
     <attr name="overlayButtonOutlineColor" format="reference|color"/>
     <attr name="submissionsCommentTimeBackgroundColor" format="reference|color"/>
     <attr name="submissionsCommentTimeOutlineColor" format="reference|color"/>
+    <attr name="settingsHeaderSelectedColor" format="reference|color"/>
 
     <declare-styleable name="SwipeBackLayout">
         <attr name="swipeBackFactor" format="float"/>

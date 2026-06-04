@@ -39,6 +39,7 @@
         <item name="colorPrimaryContainer">@color/material_you_third_700</item>
         <item name="colorOnPrimary">@color/material_you_neutral_100</item>
         <item name="colorSurfaceContainerHigh">@color/material_you_neutral_variant20</item>
+        <item name="settingsHeaderSelectedColor">@color/material_you_neutral_variant20</item>
 
         <item name="popupMenuBackground">@drawable/popup_dark_background_material</item>
         <item name="snackbarTextViewStyle">@style/snackbarTextStyle</item>
@@ -75,6 +76,7 @@
         <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
         <item name="colorOnPrimary">@color/lightBackground</item>
         <item name="colorSurfaceContainerHigh">@color/darkerBackground</item>
+        <item name="settingsHeaderSelectedColor">@color/darkerBackground</item>
 
         <item name="android:windowBackground">@color/background</item>
         <item name="android:colorBackground">@color/background</item>
@@ -102,6 +104,7 @@
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
+        <item name="settingsHeaderSelectedColor">@color/settings_header_selected_black</item>
         <item name="overlayButtonColor">@android:color/black</item>
         <item name="overlayButtonOutlineColor">#33FFFFFF</item>
         <item name="submissionsCommentTimeBackgroundColor">@android:color/black</item>
@@ -116,6 +119,7 @@
         <item name="android:colorBackground">@color/grayBackground</item>
         <item name="android:statusBarColor">@color/grayStatusBarColor</item>
         <item name="colorSurfaceContainerHigh">@color/grayBackground</item>
+        <item name="settingsHeaderSelectedColor">@color/grayBackground</item>
     </style>
 
     <style name="AppThemeLight" parent="AppThemeLightBase">
@@ -140,6 +144,7 @@
         <item name="colorAccent">@color/colorPrimaryGreen</item>
         <item name="colorPrimaryContainer">@color/colorPrimaryGreenLighter</item>
         <item name="colorSurfaceContainerHigh">@color/lightBackground</item>
+        <item name="settingsHeaderSelectedColor">@color/settings_header_selected_light</item>
 
         <item name="android:windowBackground">@color/lightBackground</item>
         <item name="android:colorBackground">@color/lightBackground</item>
@@ -169,6 +174,7 @@
         <item name="colorPrimaryContainer">@color/material_you_third_700</item>
         <item name="colorSurfaceContainerHigh">@color/material_you_neutral_variant95</item>
         <item name="colorPrimaryDark">@color/material_you_third_700</item>
+        <item name="settingsHeaderSelectedColor">@color/settings_header_selected_material_light</item>
 
         <item name="android:windowBackground">@color/material_you_neutral_50</item>
         <item name="android:colorBackground">@color/material_you_neutral_50</item>
@@ -201,6 +207,7 @@
         <item name="colorPrimaryContainer">@color/hackerNewsAccentContainer</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorSurfaceContainerHigh">@color/hackerNewsSurfaceContainer</item>
+        <item name="settingsHeaderSelectedColor">@color/hackerNewsSurfaceContainer</item>
         <item name="materialSwitchStyle">@style/Widget.Harmonic.MaterialSwitch.HackerNews</item>
 
         <item name="android:windowBackground">@color/hackerNewsBackground</item>
@@ -214,6 +221,7 @@
         <item name="android:colorBackground">@color/whiteBackground</item>
         <item name="android:statusBarColor">@color/whiteStatusBarColor</item>
         <item name="colorSurfaceContainerHigh">@color/whiteBackground</item>
+        <item name="settingsHeaderSelectedColor">@color/settings_header_selected_white</item>
 
         <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>

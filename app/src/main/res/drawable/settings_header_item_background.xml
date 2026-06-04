@@ -6,7 +6,7 @@
     <item android:state_activated="true">
         <shape>
             <corners android:radius="28dp" />
-            <solid android:color="?attr/colorSurfaceContainerHigh" />
+            <solid android:color="?attr/settingsHeaderSelectedColor" />
         </shape>
     </item>
 
