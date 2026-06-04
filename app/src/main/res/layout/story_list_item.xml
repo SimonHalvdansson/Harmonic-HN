@@ -115,6 +115,8 @@
                 <ImageView
                     android:layout_marginTop="0.5dp"
                     android:id="@+id/story_meta_favicon"
+                    android:background="@drawable/favicon_thumbnail_background"
+                    android:clipToOutline="true"
                     android:src="@drawable/ic_action_web"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"

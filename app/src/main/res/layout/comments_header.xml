@@ -239,6 +239,8 @@
                 android:layout_width="17dp"
                 android:layout_height="17dp"
                 android:layout_marginRight="4dp"
+                android:background="@drawable/favicon_thumbnail_background"
+                android:clipToOutline="true"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
                 android:src="@drawable/ic_action_web" />

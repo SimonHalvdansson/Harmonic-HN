@@ -22,6 +22,7 @@ public class FaviconLoader {
             String host = Utils.getDomainName(url);
             int faviconSize = Utils.pxFromDpInt(ctx.getResources(), 17);
             Drawable webDrawable = Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_action_web));
+            applyFaviconThumbnailShape(into);
 
             ImageRequest request = new ImageRequest.Builder(ctx)
                     .data(getFaviconUrlForHost(host, faviconProvider))
@@ -34,6 +35,13 @@ public class FaviconLoader {
 
             Coil.imageLoader(ctx).enqueue(request);
         } catch (Exception ignored){};
+    }
+
+    private static void applyFaviconThumbnailShape(ImageView into) {
+        if (into.getBackground() == null) {
+            into.setBackgroundResource(R.drawable.favicon_thumbnail_background);
+        }
+        into.setClipToOutline(true);
     }
 
     public static String getFaviconUrl(String url, String faviconProvider) throws Exception {
