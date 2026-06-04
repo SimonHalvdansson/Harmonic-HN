@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clipToPadding="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/palette_tint_preview_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="24dp"
+            android:paddingTop="4dp"
+            android:paddingRight="24dp"
+            android:paddingBottom="8dp"
+            android:text="Preview"
+            android:textColor="?attr/secondaryTextColor"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <HorizontalScrollView
+            android:id="@+id/palette_tint_preview_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:paddingLeft="24dp"
+            android:paddingRight="24dp"
+            android:paddingBottom="16dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/palette_tint_preview_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+
+        </HorizontalScrollView>
+
+        <TextView
+            android:id="@+id/palette_tint_options_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="24dp"
+            android:paddingRight="24dp"
+            android:paddingBottom="4dp"
+            android:text="Palette source"
+            android:textColor="?attr/secondaryTextColor"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/palette_tint_options_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <TextView
+            android:id="@+id/palette_tint_adjust_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="24dp"
+            android:paddingTop="8dp"
+            android:paddingRight="24dp"
+            android:paddingBottom="4dp"
+            android:text="Adjust"
+            android:textColor="?attr/secondaryTextColor"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/palette_tint_sliders_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingLeft="24dp"
+            android:paddingRight="24dp" />
+
+    </LinearLayout>
+</ScrollView>

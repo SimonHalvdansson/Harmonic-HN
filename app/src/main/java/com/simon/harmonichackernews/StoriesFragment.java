@@ -2104,6 +2104,12 @@ public class StoriesFragment extends Fragment {
             }
         }
 
+        String paletteTintMode = SettingsUtils.getPreferredPaletteTintConfigKey(getContext());
+        if (!paletteTintMode.equals(adapter.paletteTintMode)) {
+            adapter.paletteTintMode = paletteTintMode;
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        }
+
         if (adapter.grayOutClicked != SettingsUtils.shouldGrayOutClicked(getContext())) {
             adapter.grayOutClicked = SettingsUtils.shouldGrayOutClicked(getContext());
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());

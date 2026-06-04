@@ -45,6 +45,13 @@
             app:key="pref_font"
             app:summary="Product sans (default)" />
 
+        <Preference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_colors"
+            app:title="Configure palette tint"
+            app:key="pref_palette_tint_mode"
+            app:summary="Default" />
+
         <SwitchPreferenceCompat
             app:isPreferenceVisible="@bool/before_android_15"
             app:singleLineTitle="false"

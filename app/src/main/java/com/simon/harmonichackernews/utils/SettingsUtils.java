@@ -32,6 +32,10 @@ public class SettingsUtils {
     public static final String PREF_STORY_DISPLAY_STYLE = "pref_story_display_style";
     public static final String PREF_STORY_PREVIEW_IMAGE_MODE = "pref_story_preview_image_mode";
     public static final String PREF_TINT_CARD_USING_PREVIEW = "pref_tint_card_using_preview";
+    public static final String PREF_PALETTE_TINT_MODE = "pref_palette_tint_mode";
+    public static final String PREF_PALETTE_TINT_STRENGTH = "pref_palette_tint_strength";
+    public static final String PREF_PALETTE_TINT_COLORFULNESS = "pref_palette_tint_colorfulness";
+    public static final String PREF_PALETTE_TINT_TONE = "pref_palette_tint_tone";
     public static final String PREF_STORY_TEXT_SIZE = "pref_story_text_size";
     public static final String PREF_COMPACT_POINTS = "pref_compact_points";
     public static final String PREF_COMMENT_DISPLAY_STYLE = "pref_comment_display_style";
@@ -63,6 +67,18 @@ public class SettingsUtils {
     public static final String STORY_PREVIEW_IMAGE_OFF = "off";
     public static final String STORY_PREVIEW_IMAGE_SMALL = "small";
     public static final String STORY_PREVIEW_IMAGE_LARGE = "large";
+    public static final String PALETTE_TINT_DEFAULT = "default";
+    public static final String PALETTE_TINT_VIBRANT = "vibrant";
+    public static final String PALETTE_TINT_DOMINANT = "dominant";
+    public static final int DEFAULT_PALETTE_TINT_STRENGTH = 100;
+    public static final int DEFAULT_PALETTE_TINT_COLORFULNESS = 110;
+    public static final int DEFAULT_PALETTE_TINT_TONE = 0;
+    public static final int MIN_PALETTE_TINT_STRENGTH = 0;
+    public static final int MAX_PALETTE_TINT_STRENGTH = 200;
+    public static final int MIN_PALETTE_TINT_COLORFULNESS = 0;
+    public static final int MAX_PALETTE_TINT_COLORFULNESS = 200;
+    public static final int MIN_PALETTE_TINT_TONE = -20;
+    public static final int MAX_PALETTE_TINT_TONE = 20;
     public static final String COMMENT_DISPLAY_STYLE_STANDARD = STORY_DISPLAY_STYLE_STANDARD;
     public static final String COMMENT_DISPLAY_STYLE_CARD = STORY_DISPLAY_STYLE_CARD;
     public static final float DEFAULT_STORY_TEXT_SIZE = 17.5f;
@@ -202,6 +218,206 @@ public class SettingsUtils {
 
     public static boolean shouldTintCardUsingPreview(Context ctx) {
         return getBooleanPref(PREF_TINT_CARD_USING_PREVIEW, true, ctx);
+    }
+
+    public static String getPreferredPaletteTintMode(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return sanitizePaletteTintMode(prefs.getString(PREF_PALETTE_TINT_MODE, PALETTE_TINT_DEFAULT));
+    }
+
+    public static String getPreferredPaletteTintConfigKey(Context ctx) {
+        return buildPaletteTintConfigKey(
+                getPreferredPaletteTintMode(ctx),
+                getPreferredPaletteTintStrength(ctx),
+                getPreferredPaletteTintColorfulness(ctx),
+                getPreferredPaletteTintTone(ctx));
+    }
+
+    public static void setPreferredPaletteTintMode(Context ctx, String mode) {
+        PreferenceManager.getDefaultSharedPreferences(ctx)
+                .edit()
+                .putString(PREF_PALETTE_TINT_MODE, sanitizePaletteTintMode(mode))
+                .apply();
+    }
+
+    public static void setPreferredPaletteTintSettings(
+            Context ctx,
+            String mode,
+            int strength,
+            int colorfulness,
+            int tone) {
+        PreferenceManager.getDefaultSharedPreferences(ctx)
+                .edit()
+                .putString(PREF_PALETTE_TINT_MODE, sanitizePaletteTintMode(mode))
+                .putInt(PREF_PALETTE_TINT_STRENGTH, clampPaletteTintStrength(strength))
+                .putInt(PREF_PALETTE_TINT_COLORFULNESS, clampPaletteTintColorfulness(colorfulness))
+                .putInt(PREF_PALETTE_TINT_TONE, clampPaletteTintTone(tone))
+                .apply();
+    }
+
+    public static void clearPreferredPaletteTintMode(Context ctx) {
+        PreferenceManager.getDefaultSharedPreferences(ctx)
+                .edit()
+                .remove(PREF_PALETTE_TINT_MODE)
+                .remove(PREF_PALETTE_TINT_STRENGTH)
+                .remove(PREF_PALETTE_TINT_COLORFULNESS)
+                .remove(PREF_PALETTE_TINT_TONE)
+                .apply();
+    }
+
+    public static int getPreferredPaletteTintStrength(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return clampPaletteTintStrength(prefs.getInt(
+                PREF_PALETTE_TINT_STRENGTH,
+                DEFAULT_PALETTE_TINT_STRENGTH));
+    }
+
+    public static int getPreferredPaletteTintColorfulness(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return clampPaletteTintColorfulness(prefs.getInt(
+                PREF_PALETTE_TINT_COLORFULNESS,
+                DEFAULT_PALETTE_TINT_COLORFULNESS));
+    }
+
+    public static int getPreferredPaletteTintTone(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return clampPaletteTintTone(prefs.getInt(
+                PREF_PALETTE_TINT_TONE,
+                DEFAULT_PALETTE_TINT_TONE));
+    }
+
+    public static String sanitizePaletteTintMode(String mode) {
+        String modePart = getPaletteTintModePart(mode);
+        if (PALETTE_TINT_VIBRANT.equals(modePart)
+                || PALETTE_TINT_DOMINANT.equals(modePart)) {
+            return modePart;
+        }
+        return PALETTE_TINT_DEFAULT;
+    }
+
+    public static String buildPaletteTintConfigKey(
+            String mode,
+            int strength,
+            int colorfulness,
+            int tone) {
+        return sanitizePaletteTintMode(mode)
+                + "|"
+                + clampPaletteTintStrength(strength)
+                + "|"
+                + clampPaletteTintColorfulness(colorfulness)
+                + "|"
+                + clampPaletteTintTone(tone);
+    }
+
+    public static String getPaletteTintConfigKey(String modeOrConfigKey) {
+        return buildPaletteTintConfigKey(
+                modeOrConfigKey,
+                getPaletteTintStrength(modeOrConfigKey),
+                getPaletteTintColorfulness(modeOrConfigKey),
+                getPaletteTintTone(modeOrConfigKey));
+    }
+
+    public static int getPaletteTintStrength(String modeOrConfigKey) {
+        return clampPaletteTintStrength(getPaletteTintConfigInt(
+                modeOrConfigKey,
+                1,
+                DEFAULT_PALETTE_TINT_STRENGTH));
+    }
+
+    public static int getPaletteTintColorfulness(String modeOrConfigKey) {
+        return clampPaletteTintColorfulness(getPaletteTintConfigInt(
+                modeOrConfigKey,
+                2,
+                DEFAULT_PALETTE_TINT_COLORFULNESS));
+    }
+
+    public static int getPaletteTintTone(String modeOrConfigKey) {
+        return clampPaletteTintTone(getPaletteTintConfigInt(
+                modeOrConfigKey,
+                3,
+                DEFAULT_PALETTE_TINT_TONE));
+    }
+
+    public static float getPaletteTintStrengthMultiplier(String modeOrConfigKey) {
+        return getPaletteTintStrength(modeOrConfigKey) / 100f;
+    }
+
+    public static float getPaletteTintColorfulnessMultiplier(String modeOrConfigKey) {
+        return getPaletteTintColorfulness(modeOrConfigKey) / 100f;
+    }
+
+    public static float getPaletteTintToneOffset(String modeOrConfigKey) {
+        return getPaletteTintTone(modeOrConfigKey) / 100f;
+    }
+
+    public static boolean isDefaultPaletteTintTuning(Context ctx) {
+        return getPreferredPaletteTintStrength(ctx) == DEFAULT_PALETTE_TINT_STRENGTH
+                && getPreferredPaletteTintColorfulness(ctx) == DEFAULT_PALETTE_TINT_COLORFULNESS
+                && getPreferredPaletteTintTone(ctx) == DEFAULT_PALETTE_TINT_TONE;
+    }
+
+    public static String getPreferredPaletteTintSummary(Context ctx) {
+        String label = getPaletteTintModeLabel(getPreferredPaletteTintMode(ctx));
+        if (isDefaultPaletteTintTuning(ctx)) {
+            return label;
+        }
+        return label + ", adjusted";
+    }
+
+    public static String getPaletteTintModeLabel(String mode) {
+        switch (sanitizePaletteTintMode(mode)) {
+            case PALETTE_TINT_VIBRANT:
+                return "Vibrant";
+            case PALETTE_TINT_DOMINANT:
+                return "Dominant";
+            case PALETTE_TINT_DEFAULT:
+            default:
+                return "Muted";
+        }
+    }
+
+    public static int clampPaletteTintStrength(int strength) {
+        return Math.max(MIN_PALETTE_TINT_STRENGTH, Math.min(MAX_PALETTE_TINT_STRENGTH, strength));
+    }
+
+    public static int clampPaletteTintColorfulness(int colorfulness) {
+        return Math.max(MIN_PALETTE_TINT_COLORFULNESS, Math.min(MAX_PALETTE_TINT_COLORFULNESS, colorfulness));
+    }
+
+    public static int clampPaletteTintTone(int tone) {
+        return Math.max(MIN_PALETTE_TINT_TONE, Math.min(MAX_PALETTE_TINT_TONE, tone));
+    }
+
+    private static String getPaletteTintModePart(String modeOrConfigKey) {
+        if (modeOrConfigKey == null) {
+            return PALETTE_TINT_DEFAULT;
+        }
+
+        int separatorIndex = modeOrConfigKey.indexOf('|');
+        if (separatorIndex < 0) {
+            return modeOrConfigKey;
+        }
+        return modeOrConfigKey.substring(0, separatorIndex);
+    }
+
+    private static int getPaletteTintConfigInt(
+            String modeOrConfigKey,
+            int partIndex,
+            int defaultValue) {
+        if (modeOrConfigKey == null) {
+            return defaultValue;
+        }
+
+        String[] parts = modeOrConfigKey.split("\\|");
+        if (parts.length <= partIndex) {
+            return defaultValue;
+        }
+
+        try {
+            return Integer.parseInt(parts[partIndex]);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 
     public static boolean shouldShowNavigationButtons(Context ctx) {

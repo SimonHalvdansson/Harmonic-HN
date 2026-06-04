@@ -119,6 +119,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_PREVIEW_IMAGE_TINT_COLOR = "com.simon.harmonichackernews.EXTRA_PREVIEW_IMAGE_TINT_COLOR";
     public final static String EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL = "com.simon.harmonichackernews.EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL";
     public final static String EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR = "com.simon.harmonichackernews.EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR";
+    public final static String EXTRA_PREVIEW_IMAGE_TINT_MODE = "com.simon.harmonichackernews.EXTRA_PREVIEW_IMAGE_TINT_MODE";
     public final static String EXTRA_TIME = "com.simon.harmonichackernews.EXTRA_TIME";
     public final static String EXTRA_KIDS = "com.simon.harmonichackernews.EXTRA_KIDS";
     public final static String EXTRA_POLL_OPTIONS = "com.simon.harmonichackernews.EXTRA_POLL_OPTIONS";
@@ -263,6 +264,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             story.previewImageTintColor = bundle.getInt(EXTRA_PREVIEW_IMAGE_TINT_COLOR, 0);
             story.previewImageTintSourceUrl = bundle.getString(EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL);
             story.previewImageTintBaseColor = bundle.getInt(EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR, Color.TRANSPARENT);
+            story.previewImageTintMode = bundle.getString(EXTRA_PREVIEW_IMAGE_TINT_MODE);
             story.time = bundle.getInt(EXTRA_TIME, 0);
             story.kids = bundle.getIntArray(EXTRA_KIDS);
             story.pollOptions = bundle.getIntArray(EXTRA_POLL_OPTIONS);
@@ -775,6 +777,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 SettingsUtils.shouldShowThumbnails(getContext()),
                 SettingsUtils.getPreferredStoryPreviewImageMode(getContext()),
                 SettingsUtils.shouldTintCardUsingPreview(getContext()),
+                SettingsUtils.getPreferredPaletteTintConfigKey(getContext()),
                 username,
                 SettingsUtils.getPreferredCommentTextSize(getContext()),
                 SettingsUtils.getPreferredCommentDepthIndicatorMode(getContext()),
@@ -1103,6 +1106,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             if (adapter.tintHeaderUsingPreview != SettingsUtils.shouldTintCardUsingPreview(ctx)) {
                 adapter.tintHeaderUsingPreview = SettingsUtils.shouldTintCardUsingPreview(ctx);
+                updateHeader = true;
+            }
+
+            String paletteTintMode = SettingsUtils.getPreferredPaletteTintConfigKey(ctx);
+            if (!paletteTintMode.equals(adapter.paletteTintMode)) {
+                adapter.paletteTintMode = paletteTintMode;
                 updateHeader = true;
             }
 

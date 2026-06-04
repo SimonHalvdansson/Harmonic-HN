@@ -43,24 +43,24 @@ public final class StoryPreviewImageMemoryCache {
         return constantState == null ? null : constantState.newDrawable();
     }
 
-    public static void putTintColor(int storyId, String imageUrl, int baseColor, int tintColor) {
+    public static void putTintColor(int storyId, String imageUrl, int baseColor, String paletteTintMode, int tintColor) {
         if (storyId <= 0 || TextUtils.isEmpty(imageUrl)) {
             return;
         }
 
         synchronized (TINT_CACHE) {
-            TINT_CACHE.put(getTintKey(storyId, imageUrl, baseColor), tintColor);
+            TINT_CACHE.put(getTintKey(storyId, imageUrl, baseColor, paletteTintMode), tintColor);
         }
     }
 
     @Nullable
-    public static Integer getTintColor(int storyId, String imageUrl, int baseColor) {
+    public static Integer getTintColor(int storyId, String imageUrl, int baseColor, String paletteTintMode) {
         if (storyId <= 0 || TextUtils.isEmpty(imageUrl)) {
             return null;
         }
 
         synchronized (TINT_CACHE) {
-            return TINT_CACHE.get(getTintKey(storyId, imageUrl, baseColor));
+            return TINT_CACHE.get(getTintKey(storyId, imageUrl, baseColor, paletteTintMode));
         }
     }
 
@@ -68,7 +68,11 @@ public final class StoryPreviewImageMemoryCache {
         return storyId + ":" + imageUrl;
     }
 
-    private static String getTintKey(int storyId, String imageUrl, int baseColor) {
-        return getKey(storyId, imageUrl) + ":" + baseColor;
+    private static String getTintKey(int storyId, String imageUrl, int baseColor, String paletteTintMode) {
+        return getKey(storyId, imageUrl)
+                + ":"
+                + baseColor
+                + ":"
+                + SettingsUtils.getPaletteTintConfigKey(paletteTintMode);
     }
 }

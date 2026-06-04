@@ -132,6 +132,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                 SettingsUtils.shouldUseLeftAlign(this),
                 SettingsUtils.shouldUseCardStoryDisplayStyle(this),
                 SettingsUtils.shouldTintCardUsingPreview(this),
+                SettingsUtils.getPreferredPaletteTintConfigKey(this),
                 SettingsUtils.shouldGrayOutClicked(this),
                 SettingsUtils.getPreferredHotness(this),
                 SettingsUtils.getPreferredFaviconProvider(this),
@@ -224,6 +225,7 @@ public class SubmissionsActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         syncCompactPointsPreference();
+        syncPaletteTintPreference();
     }
 
     @Override
@@ -244,6 +246,18 @@ public class SubmissionsActivity extends AppCompatActivity {
         boolean compactPoints = SettingsUtils.shouldUseCompactPoints(this);
         if (adapter.compactPoints != compactPoints) {
             adapter.compactPoints = compactPoints;
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        }
+    }
+
+    private void syncPaletteTintPreference() {
+        if (adapter == null) {
+            return;
+        }
+
+        String paletteTintMode = SettingsUtils.getPreferredPaletteTintConfigKey(this);
+        if (!paletteTintMode.equals(adapter.paletteTintMode)) {
+            adapter.paletteTintMode = paletteTintMode;
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
     }

@@ -23,6 +23,7 @@ public class StoryDisplaySettings {
     public final boolean leftAlign;
     public final boolean cardStyle;
     public final boolean tintCardUsingPreview;
+    public final String paletteTintMode;
     public final boolean grayOutClicked;
     public final int hotness;
     public final String faviconProvider;
@@ -40,6 +41,7 @@ public class StoryDisplaySettings {
                                  boolean leftAlign,
                                  boolean cardStyle,
                                  boolean tintCardUsingPreview,
+                                 String paletteTintMode,
                                  boolean grayOutClicked,
                                  int hotness,
                                  String faviconProvider,
@@ -56,6 +58,7 @@ public class StoryDisplaySettings {
         this.leftAlign = leftAlign;
         this.cardStyle = cardStyle;
         this.tintCardUsingPreview = tintCardUsingPreview;
+        this.paletteTintMode = paletteTintMode;
         this.grayOutClicked = grayOutClicked;
         this.hotness = hotness;
         this.faviconProvider = faviconProvider;
@@ -77,6 +80,7 @@ public class StoryDisplaySettings {
                 SettingsUtils.shouldUseLeftAlign(context),
                 SettingsUtils.shouldUseCardStoryDisplayStyle(context),
                 SettingsUtils.shouldTintCardUsingPreview(context),
+                SettingsUtils.getPreferredPaletteTintConfigKey(context),
                 SettingsUtils.shouldGrayOutClicked(context),
                 SettingsUtils.getPreferredHotness(context),
                 SettingsUtils.getPreferredFaviconProvider(context),
@@ -101,6 +105,7 @@ public class StoryDisplaySettings {
                 leftAlign,
                 cardStyle,
                 tintCardUsingPreview,
+                paletteTintMode,
                 grayOutClicked,
                 hotness,
                 faviconProvider,
@@ -123,6 +128,7 @@ public class StoryDisplaySettings {
         adapter.leftAlign = leftAlign;
         adapter.cardStyle = cardStyle;
         adapter.tintCardUsingPreview = tintCardUsingPreview;
+        adapter.paletteTintMode = paletteTintMode;
         adapter.grayOutClicked = grayOutClicked;
         adapter.hotness = hotness;
         adapter.faviconProvider = faviconProvider;
@@ -143,6 +149,7 @@ public class StoryDisplaySettings {
         targetAdapter.leftAlign = sourceAdapter.leftAlign;
         targetAdapter.cardStyle = sourceAdapter.cardStyle;
         targetAdapter.tintCardUsingPreview = sourceAdapter.tintCardUsingPreview;
+        targetAdapter.paletteTintMode = sourceAdapter.paletteTintMode;
         targetAdapter.grayOutClicked = sourceAdapter.grayOutClicked;
         targetAdapter.hotness = sourceAdapter.hotness;
         targetAdapter.faviconProvider = sourceAdapter.faviconProvider;

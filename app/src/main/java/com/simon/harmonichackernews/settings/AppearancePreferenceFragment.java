@@ -21,6 +21,7 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
     private Preference themePreference;
     private Preference nighttimeThemePreference;
     private Preference fontPreference;
+    private Preference paletteTintPreference;
 
     @Override
     protected String getToolbarTitle() {
@@ -38,6 +39,8 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
         updateTimedRangeSummary();
         fontPreference = findPreference(SettingsUtils.PREF_FONT);
         updateFontSummary();
+        paletteTintPreference = findPreference(SettingsUtils.PREF_PALETTE_TINT_MODE);
+        updatePaletteTintSummary();
 
         getParentFragmentManager().setFragmentResultListener(
                 ThemeSelectionDialogFragment.RESULT_KEY,
@@ -95,6 +98,13 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
             });
         }
 
+        if (paletteTintPreference != null) {
+            paletteTintPreference.setOnPreferenceClickListener(preference -> {
+                PaletteTintDialogFragment.show(getParentFragmentManager());
+                return true;
+            });
+        }
+
         findPreference("pref_transparent_status_bar").setOnPreferenceChangeListener((preference, newValue) -> {
             restartSettingsActivity();
             return true;
@@ -137,6 +147,7 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
         updateThemeSummary();
         updateNighttimeThemeSummary();
         updateFontSummary();
+        updatePaletteTintSummary();
     }
 
     @Override
@@ -149,6 +160,11 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         if (SettingsUtils.PREF_FONT.equals(key)) {
             updateFontSummary();
+        } else if (SettingsUtils.PREF_PALETTE_TINT_MODE.equals(key)
+                || SettingsUtils.PREF_PALETTE_TINT_STRENGTH.equals(key)
+                || SettingsUtils.PREF_PALETTE_TINT_COLORFULNESS.equals(key)
+                || SettingsUtils.PREF_PALETTE_TINT_TONE.equals(key)) {
+            updatePaletteTintSummary();
         } else if (SettingsUtils.PREF_THEME.equals(key)) {
             updateThemeSummary();
         } else if (SettingsUtils.PREF_THEME_NIGHTTIME.equals(key)) {
@@ -192,6 +208,12 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
     private void updateFontSummary() {
         if (fontPreference != null && getContext() != null) {
             fontPreference.setSummary(SettingsUtils.getPreferredFontLabel(requireContext()));
+        }
+    }
+
+    private void updatePaletteTintSummary() {
+        if (paletteTintPreference != null && getContext() != null) {
+            paletteTintPreference.setSummary(SettingsUtils.getPreferredPaletteTintSummary(requireContext()));
         }
     }
 

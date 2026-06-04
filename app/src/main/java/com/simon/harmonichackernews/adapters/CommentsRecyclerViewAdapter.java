@@ -100,6 +100,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean showThumbnail;
     public String previewImageMode;
     public boolean tintHeaderUsingPreview;
+    public String paletteTintMode;
     public String commentDepthIndicatorMode;
     public boolean showNavigationBar;
     public boolean showInvert;
@@ -173,6 +174,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        boolean shouldShowThumbnail,
                                        String preferredPreviewImageMode,
                                        boolean shouldTintHeaderUsingPreview,
+                                       String preferredPaletteTintMode,
                                        String usernameParam,
                                        float prefTextSize,
                                        String prefCommentDepthIndicatorMode,
@@ -196,6 +198,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         showThumbnail = shouldShowThumbnail;
         previewImageMode = preferredPreviewImageMode;
         tintHeaderUsingPreview = shouldTintHeaderUsingPreview;
+        paletteTintMode = SettingsUtils.getPaletteTintConfigKey(preferredPaletteTintMode);
         commentDepthIndicatorMode = CommentDepthIndicatorUtils.sanitizeMode(prefCommentDepthIndicatorMode);
         showNavigationBar = shouldShowNavigationBar;
         username = usernameParam;
@@ -1002,7 +1005,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 story,
                 imageUrl,
                 drawable,
-                getPreviewTintBaseColor(context));
+                getPreviewTintBaseColor(context),
+                paletteTintMode);
     }
 
     private void loadHeaderFaviconTintColor(Context context, Story story, @Nullable HeaderViewHolder headerViewHolder) {
@@ -1017,6 +1021,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         if (!TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)) {
             story.faviconTintSourceUrl = faviconUrl;
+            story.faviconTintColorLoaded = false;
+            story.faviconTintColorLoading = false;
+            story.faviconTintColorLoadFailed = false;
+        }
+
+        if (story.faviconTintColorLoaded && !isFaviconTintColorCurrent(story)) {
             story.faviconTintColorLoaded = false;
             story.faviconTintColorLoading = false;
             story.faviconTintColorLoadFailed = false;
@@ -1076,8 +1086,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         try {
-            story.faviconTintColor = PreviewImageTintUtils.calculateCardTint(context, drawable);
+            story.faviconTintColor = PreviewImageTintUtils.calculateCardTint(context, drawable, paletteTintMode);
             story.faviconTintColorLoaded = true;
+            story.faviconTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode);
             story.faviconTintColorLoadFailed = false;
         } catch (RuntimeException e) {
             story.faviconTintColorLoaded = false;
@@ -1086,12 +1097,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private boolean shouldUseHeaderPreviewTint(Story story, int baseColor) {
-        PreviewImageTintUtils.syncStoryPreviewImageTintColorFromCache(story, baseColor);
+        PreviewImageTintUtils.syncStoryPreviewImageTintColorFromCache(story, baseColor, paletteTintMode);
         return shouldTintHeader()
                 && story != null
                 && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
                 && !story.previewImageLoadFailed
-                && PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor);
+                && PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor, paletteTintMode);
     }
 
     private boolean hasHeaderTint(Story story, int baseColor) {
@@ -1121,7 +1132,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private boolean isFaviconTintColorCurrent(Story story) {
         return story != null
                 && story.faviconTintColorLoaded
-                && TextUtils.equals(story.faviconTintSourceUrl, getFaviconTintSourceUrl(story));
+                && TextUtils.equals(story.faviconTintSourceUrl, getFaviconTintSourceUrl(story))
+                && SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+                .equals(SettingsUtils.getPaletteTintConfigKey(story.faviconTintMode));
     }
 
     private String getFaviconTintSourceUrl(Story story) {
@@ -1146,8 +1159,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         int baseColor = getPreviewTintBaseColor(context);
-        return PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor)
-                || PreviewImageTintUtils.syncStoryPreviewImageTintColorFromCache(story, baseColor);
+        return PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor, paletteTintMode)
+                || PreviewImageTintUtils.syncStoryPreviewImageTintColorFromCache(story, baseColor, paletteTintMode);
     }
 
     private boolean shouldTintHeader() {

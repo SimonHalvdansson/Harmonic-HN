@@ -97,6 +97,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public boolean leftAlign;
     public boolean cardStyle;
     public boolean tintCardUsingPreview;
+    public String paletteTintMode;
     public String faviconProvider;
     public int hotness;
     public int type;
@@ -126,6 +127,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     boolean shouldLeftAlign,
                                     boolean shouldUseCardStyle,
                                     boolean shouldTintCardUsingPreview,
+                                    String preferredPaletteTintMode,
                                     boolean shouldGrayOutClicked,
                                     int preferredHotness,
                                     String faviconProv,
@@ -145,6 +147,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         leftAlign = shouldLeftAlign;
         cardStyle = shouldUseCardStyle;
         tintCardUsingPreview = shouldTintCardUsingPreview;
+        paletteTintMode = SettingsUtils.getPaletteTintConfigKey(preferredPaletteTintMode);
         grayOutClicked = shouldGrayOutClicked;
         hotness = preferredHotness;
         faviconProvider = faviconProv;
@@ -904,7 +907,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return;
         }
 
-        PreviewImageTintUtils.updateStoryPreviewImageTintColor(story, imageUrl, drawable, storyCardBackgroundColor);
+        PreviewImageTintUtils.updateStoryPreviewImageTintColor(
+                story,
+                imageUrl,
+                drawable,
+                storyCardBackgroundColor,
+                paletteTintMode);
     }
 
     private void bindStoryCardTintFallback(StoryViewHolder storyViewHolder, Story story) {
@@ -935,6 +943,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         if (!TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)) {
             story.faviconTintSourceUrl = faviconUrl;
+            story.faviconTintColorLoaded = false;
+            story.faviconTintColorLoading = false;
+            story.faviconTintColorLoadFailed = false;
+        }
+
+        if (story.faviconTintColorLoaded && !isFaviconTintColorCurrent(story)) {
             story.faviconTintColorLoaded = false;
             story.faviconTintColorLoading = false;
             story.faviconTintColorLoadFailed = false;
@@ -1006,8 +1020,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         try {
-            story.faviconTintColor = PreviewImageTintUtils.calculateCardTint(context, drawable);
+            story.faviconTintColor = PreviewImageTintUtils.calculateCardTint(context, drawable, paletteTintMode);
             story.faviconTintColorLoaded = true;
+            story.faviconTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode);
             story.faviconTintColorLoadFailed = false;
         } catch (RuntimeException e) {
             story.faviconTintColorLoaded = false;
@@ -1016,12 +1031,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private boolean shouldUsePreviewTint(Story story, int baseColor) {
-        PreviewImageTintUtils.syncStoryPreviewImageTintColorFromCache(story, baseColor);
+        PreviewImageTintUtils.syncStoryPreviewImageTintColorFromCache(story, baseColor, paletteTintMode);
         return shouldTintStoryCards()
                 && story != null
                 && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
                 && !story.previewImageLoadFailed
-                && PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor);
+                && PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor, paletteTintMode);
     }
 
     private boolean shouldUseFaviconTint(Story story) {
@@ -1044,7 +1059,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private boolean isFaviconTintColorCurrent(Story story) {
         return story != null
                 && story.faviconTintColorLoaded
-                && TextUtils.equals(story.faviconTintSourceUrl, getFaviconTintSourceUrl(story));
+                && TextUtils.equals(story.faviconTintSourceUrl, getFaviconTintSourceUrl(story))
+                && SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+                .equals(SettingsUtils.getPaletteTintConfigKey(story.faviconTintMode));
     }
 
     private String getFaviconTintSourceUrl(Story story) {
@@ -1069,8 +1086,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         int baseColor = getDefaultStoryCardBackgroundColor(context);
-        return PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor)
-                || PreviewImageTintUtils.syncStoryPreviewImageTintColorFromCache(story, baseColor);
+        return PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor, paletteTintMode)
+                || PreviewImageTintUtils.syncStoryPreviewImageTintColorFromCache(story, baseColor, paletteTintMode);
     }
 
     private boolean isCurrentStoryHolder(@Nullable StoryViewHolder storyViewHolder, Story story) {
