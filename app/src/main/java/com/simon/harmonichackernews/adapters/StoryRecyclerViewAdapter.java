@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.adapters;
 
 import android.animation.ArgbEvaluator;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -77,6 +79,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final int TYPE_COMMENT_CARD = 8;
     private static final float CLICKED_PREVIEW_IMAGE_ALPHA = 0.6f;
     private static final long PREVIEW_IMAGE_FADE_IN_DURATION_MS = 160;
+    private static final long CLICKED_STATE_ANIMATION_DURATION_MS = 180;
     private static final long CARD_TINT_ANIMATION_DURATION_MS = 180;
     private static final int FAVICON_TINT_SIZE_DP = 64;
     private static final String PAYLOAD_CLICKED_STATE = "clicked_state";
@@ -174,7 +177,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             StoryViewHolder storyViewHolder = (StoryViewHolder) holder;
             Story story = stories.get(position);
             storyViewHolder.story = story;
-            applyStoryClickedState(storyViewHolder, story);
+            applyStoryClickedState(storyViewHolder, story, true);
             return;
         }
 
@@ -346,6 +349,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         if (holder instanceof StoryViewHolder) {
             StoryViewHolder storyViewHolder = (StoryViewHolder) holder;
             storyViewHolder.story = null;
+            storyViewHolder.cancelClickedStateAnimator();
             resetPreviewImages(storyViewHolder);
             resetStoryCardBackground(storyViewHolder);
         }
@@ -395,7 +399,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         StoryViewHolder storyViewHolder = (StoryViewHolder) holder;
         Story story = stories.get(position);
         storyViewHolder.story = story;
-        applyStoryClickedState(storyViewHolder, story);
+        applyStoryClickedState(storyViewHolder, story, true);
         return true;
     }
 
@@ -404,35 +408,113 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private void applyStoryClickedState(StoryViewHolder storyViewHolder, Story story) {
+        applyStoryClickedState(storyViewHolder, story, false);
+    }
+
+    private void applyStoryClickedState(StoryViewHolder storyViewHolder, Story story, boolean animate) {
         if (story == null) {
             return;
         }
 
         Context ctx = storyViewHolder.itemView.getContext();
         boolean useClickedEffects = shouldUseClickedEffects(story);
+        int storyColor = Utils.getColorViaAttr(
+                ctx,
+                useClickedEffects ? R.attr.storyColorDisabled : R.attr.storyColorNormal);
+        int textColor = Utils.getColorViaAttr(
+                ctx,
+                useClickedEffects ? R.attr.textColorDisabled : R.attr.textColorDefault);
+        float iconAlpha = useClickedEffects ? 0.6f : 1.0f;
+        float previewImageAlpha = useClickedEffects ? CLICKED_PREVIEW_IMAGE_ALPHA : 1.0f;
 
         if (story.loaded && !story.loadingFailed) {
             setStoryTitleText(storyViewHolder, story, useClickedEffects);
         }
 
-        if (showIndex) {
-            storyViewHolder.indexTextView.setTextColor(Utils.getColorViaAttr(
-                    ctx,
-                    useClickedEffects ? R.attr.storyColorDisabled : R.attr.storyColorNormal));
+        if (animate && isVisibleOnScreen(storyViewHolder.itemView)) {
+            animateStoryClickedState(storyViewHolder, storyColor, textColor, iconAlpha, previewImageAlpha);
+            return;
         }
 
-        storyViewHolder.titleView.setTextColor(Utils.getColorViaAttr(
-                ctx,
-                useClickedEffects ? R.attr.storyColorDisabled : R.attr.storyColorNormal));
-        storyViewHolder.commentsIcon.setAlpha(useClickedEffects ? 0.6f : 1.0f);
-        storyViewHolder.metaFavicon.setAlpha(useClickedEffects ? 0.6f : 1.0f);
-        storyViewHolder.commentsView.setTextColor(Utils.getColorViaAttr(
-                ctx,
-                useClickedEffects ? R.attr.textColorDisabled : R.attr.textColorDefault));
-        storyViewHolder.metaView.setTextColor(Utils.getColorViaAttr(
-                ctx,
-                useClickedEffects ? R.attr.textColorDisabled : R.attr.textColorDefault));
-        setPreviewImageAlpha(storyViewHolder, useClickedEffects);
+        storyViewHolder.cancelClickedStateAnimator();
+
+        if (showIndex) {
+            storyViewHolder.indexTextView.setTextColor(storyColor);
+        }
+
+        storyViewHolder.titleView.setTextColor(storyColor);
+        storyViewHolder.commentsIcon.setAlpha(iconAlpha);
+        storyViewHolder.metaFavicon.setAlpha(iconAlpha);
+        storyViewHolder.commentsView.setTextColor(textColor);
+        storyViewHolder.metaView.setTextColor(textColor);
+        setPreviewImageAlpha(storyViewHolder, previewImageAlpha);
+    }
+
+    private void animateStoryClickedState(
+            StoryViewHolder storyViewHolder,
+            int targetStoryColor,
+            int targetTextColor,
+            float targetIconAlpha,
+            float targetPreviewImageAlpha) {
+        storyViewHolder.cancelClickedStateAnimator();
+        cancelViewAnimation(storyViewHolder.smallPreviewImage);
+        cancelViewAnimation(storyViewHolder.largePreviewImage);
+
+        final int startTitleColor = storyViewHolder.titleView.getCurrentTextColor();
+        final int startIndexColor = storyViewHolder.indexTextView.getCurrentTextColor();
+        final int startCommentsColor = storyViewHolder.commentsView.getCurrentTextColor();
+        final int startMetaColor = storyViewHolder.metaView.getCurrentTextColor();
+        final float startCommentsIconAlpha = storyViewHolder.commentsIcon.getAlpha();
+        final float startFaviconAlpha = storyViewHolder.metaFavicon.getAlpha();
+        final float startSmallPreviewAlpha = getViewAlpha(storyViewHolder.smallPreviewImage);
+        final float startLargePreviewAlpha = getViewAlpha(storyViewHolder.largePreviewImage);
+        final ArgbEvaluator argbEvaluator = new ArgbEvaluator();
+
+        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        storyViewHolder.clickedStateAnimator = animator;
+        animator.setDuration(CLICKED_STATE_ANIMATION_DURATION_MS);
+        animator.addUpdateListener(animation -> {
+            float fraction = (float) animation.getAnimatedValue();
+            storyViewHolder.titleView.setTextColor((int) argbEvaluator.evaluate(fraction, startTitleColor, targetStoryColor));
+            if (showIndex) {
+                storyViewHolder.indexTextView.setTextColor((int) argbEvaluator.evaluate(fraction, startIndexColor, targetStoryColor));
+            }
+            storyViewHolder.commentsView.setTextColor((int) argbEvaluator.evaluate(fraction, startCommentsColor, targetTextColor));
+            storyViewHolder.metaView.setTextColor((int) argbEvaluator.evaluate(fraction, startMetaColor, targetTextColor));
+            storyViewHolder.commentsIcon.setAlpha(lerp(startCommentsIconAlpha, targetIconAlpha, fraction));
+            storyViewHolder.metaFavicon.setAlpha(lerp(startFaviconAlpha, targetIconAlpha, fraction));
+            setViewAlpha(storyViewHolder.smallPreviewImage, lerp(startSmallPreviewAlpha, targetPreviewImageAlpha, fraction));
+            setViewAlpha(storyViewHolder.largePreviewImage, lerp(startLargePreviewAlpha, targetPreviewImageAlpha, fraction));
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (storyViewHolder.clickedStateAnimator == animation) {
+                    storyViewHolder.clickedStateAnimator = null;
+                }
+            }
+        });
+        animator.start();
+    }
+
+    private static float lerp(float start, float end, float fraction) {
+        return start + ((end - start) * fraction);
+    }
+
+    private static void cancelViewAnimation(@Nullable View view) {
+        if (view != null) {
+            view.animate().cancel();
+        }
+    }
+
+    private static float getViewAlpha(@Nullable View view) {
+        return view == null ? 1.0f : view.getAlpha();
+    }
+
+    private static void setViewAlpha(@Nullable View view, float alpha) {
+        if (view != null) {
+            view.setAlpha(alpha);
+        }
     }
 
     private void setStoryTitleText(StoryViewHolder storyViewHolder, Story story, boolean useClickedEffects) {
@@ -969,7 +1051,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private static void setPreviewImageAlpha(StoryViewHolder storyViewHolder, boolean useClickedEffects) {
-        float alpha = useClickedEffects ? CLICKED_PREVIEW_IMAGE_ALPHA : 1.0f;
+        setPreviewImageAlpha(storyViewHolder, useClickedEffects ? CLICKED_PREVIEW_IMAGE_ALPHA : 1.0f);
+    }
+
+    private static void setPreviewImageAlpha(StoryViewHolder storyViewHolder, float alpha) {
         setPreviewImageAlpha(storyViewHolder.smallPreviewImage, alpha);
         setPreviewImageAlpha(storyViewHolder.largePreviewImage, alpha);
     }
@@ -1085,6 +1170,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         private Disposable largePreviewImageRequest;
         private Story largePreviewImageRequestStory;
         private ValueAnimator storyCardTintAnimator;
+        private ValueAnimator clickedStateAnimator;
         private Integer currentStoryCardBackgroundColor;
 
         public Story story;
@@ -1172,6 +1258,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             if (storyCardTintAnimator != null) {
                 storyCardTintAnimator.cancel();
                 storyCardTintAnimator = null;
+            }
+        }
+
+        void cancelClickedStateAnimator() {
+            if (clickedStateAnimator != null) {
+                clickedStateAnimator.cancel();
+                clickedStateAnimator = null;
             }
         }
 
