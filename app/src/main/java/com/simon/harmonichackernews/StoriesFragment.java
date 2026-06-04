@@ -93,11 +93,15 @@ public class StoriesFragment extends Fragment {
     private StoryClickListener storyClickListener;
     private SwipeRefreshLayout swipeRefreshLayout;
     private ExtendedFloatingActionButton updateFab;
+    private RecyclerView mainRecyclerView;
+    private RecyclerView searchRecyclerView;
     private RecyclerView recyclerView;
     private AppBarLayout appBarLayout;
     private AppBarLayout.OnOffsetChangedListener appBarOffsetChangedListener;
     private RecyclerView.OnScrollListener recyclerViewScrollListener;
+    private RecyclerView.OnScrollListener searchRecyclerViewScrollListener;
     private RecyclerView.AdapterDataObserver storyAdapterDataObserver;
+    private RecyclerView.AdapterDataObserver searchStoryAdapterDataObserver;
     private MaterialButtonToggleGroup.OnButtonCheckedListener userItemFilterCheckedListener;
     private StoryUpdate.StoryUpdateListener storyUpdateListener;
 
@@ -133,8 +137,12 @@ public class StoriesFragment extends Fragment {
     private Button retryButton;
     private Button showCachedButton;
 
+    private StoryRecyclerViewAdapter mainAdapter;
+    private StoryRecyclerViewAdapter searchAdapter;
     private StoryRecyclerViewAdapter adapter;
     private ArrayAdapter<CharSequence> typeSpinnerAdapter;
+    private final ArrayList<Story> mainStories = new ArrayList<>();
+    private final ArrayList<Story> searchStories = new ArrayList<>();
     private List<Story> stories;
     private final ArrayList<Story> bookmarkStories = new ArrayList<>();
     private final ArrayList<Story> userItemListStories = new ArrayList<>();
@@ -142,6 +150,8 @@ public class StoriesFragment extends Fragment {
     private RequestQueue queue;
     private final Object requestTag = new Object();
     private final Set<Integer> loadingStoryIds = new HashSet<>();
+    private LinearLayoutManager mainLinearLayoutManager;
+    private LinearLayoutManager searchLinearLayoutManager;
     private LinearLayoutManager linearLayoutManager;
     private ArrayList<String> filterWords;
     private ArrayList<String> filterDomains;
@@ -176,6 +186,8 @@ public class StoriesFragment extends Fragment {
     private int algoliaHitsPerPageBeforeSearch = ALGOLIA_HITS_INCREMENT;
     private int lastAlgoliaTopStoriesStartTimeBeforeSearch = 0;
     private boolean loadPendingBeforeSearch = false;
+    private int firstVisiblePositionBeforeSearch = RecyclerView.NO_POSITION;
+    private int firstVisibleTopBeforeSearch = 0;
 
     public static boolean showingCached = false;
 
@@ -195,6 +207,7 @@ public class StoriesFragment extends Fragment {
     private static final long SEARCH_HEADER_ANIMATION_DURATION_MS = 180;
     private static final long SEARCH_OPTIONS_ENTRANCE_ANIMATION_DELAY_MS = 100;
     private static final long SEARCH_OPTIONS_ENTRANCE_ANIMATION_DURATION_MS = 140;
+    private static final long SEARCH_CONTENT_EXIT_ANIMATION_DURATION_MS = 140;
     private static final long HEADER_LAYOUT_ANIMATION_DURATION_MS = 220;
     private static final long CACHE_PROGRESS_FINISHED_HOLD_MS = 1000;
     private static final long CACHE_PROGRESS_FADE_DURATION_MS = 140;
@@ -204,6 +217,7 @@ public class StoriesFragment extends Fragment {
     private static final String CACHE_PROGRESS_STATUS_FAILED = "Caching failed";
     private static final String CACHE_PROGRESS_STATUS_EMPTY = "No stories to cache";
     private static final float SEARCH_BACK_HEADER_SWITCH_PROGRESS = 0.5f;
+    private static final float SEARCH_BACK_CONTENT_TRANSLATION_DP = 24f;
     private static final String[] SEARCH_SORT_LABELS = new String[]{"Relevance", "Newest"};
     private static final String[] SEARCH_DATE_RANGE_LABELS = new String[]{"All time", "Past day", "Past week", "Past month", "Past year"};
     private static final int[] SEARCH_DATE_RANGE_DAYS = new int[]{0, 1, 7, 30, 365};
@@ -218,21 +232,17 @@ public class StoriesFragment extends Fragment {
     private int topInset = 0;
     private boolean predictiveSearchBackInProgress = false;
     private boolean predictiveSearchBackShowingMainHeader = false;
-    private boolean predictiveSearchBackShowingMainContent = false;
     private float predictiveSearchBackProgress = 0f;
-    private List<Story> predictiveSearchBackSearchStories = null;
-    private int predictiveSearchBackLoadedTo = -1;
-    private int predictiveSearchBackVisibleStoryCount = Integer.MAX_VALUE;
-    private boolean predictiveSearchBackShowingCached = false;
-    private boolean predictiveSearchBackLoadingFailed = false;
-    private boolean predictiveSearchBackLoadingFailedServerError = false;
-    private boolean predictiveSearchBackShowLoadMore = false;
     private boolean suppressNextSearchRestoreAnimations = false;
     private boolean skipNextSearchRestoreDataSwap = false;
     private boolean userItemListsDropdownVisible = false;
     private boolean userItemListInitialLoadInProgress = false;
     private int userItemListFilter = USER_ITEM_LIST_FILTER_BOTH;
+    private RecyclerView.ItemAnimator defaultMainStoryItemAnimator;
+    private RecyclerView.ItemAnimator defaultSearchStoryItemAnimator;
     private RecyclerView.ItemAnimator defaultStoryItemAnimator;
+    private boolean searchContentExitAnimationRunning = false;
+    private int searchContentExitAnimationGeneration = 0;
     private boolean cachingStories = false;
     private boolean cacheProgressIndicatorVisible = false;
     private boolean cacheProgressHidePending = false;
@@ -258,7 +268,9 @@ public class StoriesFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        recyclerView = view.findViewById(R.id.stories_recyclerview);
+        mainRecyclerView = view.findViewById(R.id.stories_recyclerview);
+        searchRecyclerView = view.findViewById(R.id.stories_search_recyclerview);
+        recyclerView = mainRecyclerView;
         swipeRefreshLayout = view.findViewById(R.id.stories_swipe_refresh);
         updateFab = view.findViewById(R.id.stories_update_fab);
         appBarLayout = view.findViewById(R.id.stories_appbar);
@@ -306,22 +318,22 @@ public class StoriesFragment extends Fragment {
         showCachedButton = view.findViewById(R.id.stories_header_show_cached);
 
         swipeRefreshLayout.setOnRefreshListener(() -> attemptRefresh(true));
+        swipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
+                recyclerView != null && recyclerView.canScrollVertically(-1));
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
-        linearLayoutManager = new LinearLayoutManager(getContext()) {
-            @Override
-            public boolean canScrollVertically() {
-                return !shouldLockRecyclerScroll() && super.canScrollVertically();
-            }
-        };
-        recyclerView.setHasFixedSize(true);
-        recyclerView.setLayoutManager(linearLayoutManager);
-        defaultStoryItemAnimator = recyclerView.getItemAnimator();
-        if (defaultStoryItemAnimator instanceof SimpleItemAnimator) {
-            ((SimpleItemAnimator) defaultStoryItemAnimator).setSupportsChangeAnimations(false);
-        }
+        mainLinearLayoutManager = createStoryLayoutManager();
+        searchLinearLayoutManager = createStoryLayoutManager();
+        setupStoryRecyclerView(mainRecyclerView, mainLinearLayoutManager);
+        setupStoryRecyclerView(searchRecyclerView, searchLinearLayoutManager);
+        defaultMainStoryItemAnimator = mainRecyclerView.getItemAnimator();
+        defaultSearchStoryItemAnimator = searchRecyclerView.getItemAnimator();
+        configureStoryItemAnimator(defaultMainStoryItemAnimator);
+        configureStoryItemAnimator(defaultSearchStoryItemAnimator);
+        linearLayoutManager = mainLinearLayoutManager;
+        defaultStoryItemAnimator = defaultMainStoryItemAnimator;
 
-        stories = new ArrayList<>();
+        stories = mainStories;
         filterWords = Utils.getFilterWords(requireContext());
         filterDomains = Utils.getFilterDomains(requireContext());
         filteredUsers = Utils.getFilteredUsers(requireContext());
@@ -329,8 +341,11 @@ public class StoriesFragment extends Fragment {
         hideClicked = SettingsUtils.shouldHideClicked(requireContext());
         alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(requireContext());
         setupAdapter();
-        recyclerView.setAdapter(adapter);
-        registerStoryAdapterDataObserver();
+        mainRecyclerView.setAdapter(mainAdapter);
+        searchRecyclerView.setAdapter(searchAdapter);
+        registerStoryAdapterDataObservers();
+        syncActiveStoryListToSearchState();
+        applySearchRecyclerVisibility(false);
 
         // Setup header after adapter so spinner callback can safely access adapter.type
         setupHeader();
@@ -363,11 +378,17 @@ public class StoriesFragment extends Fragment {
 
                 applyHeaderPadding(getContext());
 
-                // Apply bottom inset to RecyclerView so last item isn't behind nav bar
-                recyclerView.setPadding(
-                        recyclerView.getPaddingLeft(),
-                        recyclerView.getPaddingTop(),
-                        recyclerView.getPaddingRight(),
+                // Apply bottom inset to RecyclerViews so last item isn't behind nav bar
+                mainRecyclerView.setPadding(
+                        mainRecyclerView.getPaddingLeft(),
+                        mainRecyclerView.getPaddingTop(),
+                        mainRecyclerView.getPaddingRight(),
+                        insets.bottom
+                );
+                searchRecyclerView.setPadding(
+                        searchRecyclerView.getPaddingLeft(),
+                        searchRecyclerView.getPaddingTop(),
+                        searchRecyclerView.getPaddingRight(),
                         insets.bottom
                 );
 
@@ -381,23 +402,10 @@ public class StoriesFragment extends Fragment {
             recyclerView.smoothScrollToPosition(0);
         });
 
-        recyclerViewScrollListener = new RecyclerView.OnScrollListener() {
-
-            @Override
-            public void onScrolled(@NotNull RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-
-                int firstVisibleItem = linearLayoutManager.findFirstVisibleItemPosition();
-                int lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
-                prefetchLoadedPreviewImagesNearViewport(firstVisibleItem, lastVisibleItem);
-
-                // Only enable infinite scroll if pagination mode is OFF
-                if (!searching && !paginationMode && !currentTypeIsAlgolia()) {
-                    loadStoriesThroughIndex(Math.min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories.size()) - 1, storyListGeneration);
-                }
-            }
-        };
-        recyclerView.addOnScrollListener(recyclerViewScrollListener);
+        recyclerViewScrollListener = createStoryScrollListener(mainAdapter);
+        searchRecyclerViewScrollListener = createStoryScrollListener(searchAdapter);
+        mainRecyclerView.addOnScrollListener(recyclerViewScrollListener);
+        searchRecyclerView.addOnScrollListener(searchRecyclerViewScrollListener);
 
         queue = NetworkComponent.getRequestQueueInstance(requireContext());
         attemptRefresh();
@@ -499,6 +507,116 @@ public class StoriesFragment extends Fragment {
                 return !shouldLockRecyclerScroll();
             }
         });
+    }
+
+    private LinearLayoutManager createStoryLayoutManager() {
+        return new LinearLayoutManager(getContext()) {
+            @Override
+            public boolean canScrollVertically() {
+                return !shouldLockRecyclerScroll() && super.canScrollVertically();
+            }
+        };
+    }
+
+    private void setupStoryRecyclerView(@NonNull RecyclerView targetRecyclerView,
+                                        @NonNull LinearLayoutManager targetLayoutManager) {
+        targetRecyclerView.setHasFixedSize(true);
+        targetRecyclerView.setLayoutManager(targetLayoutManager);
+    }
+
+    private void configureStoryItemAnimator(@Nullable RecyclerView.ItemAnimator itemAnimator) {
+        if (itemAnimator instanceof SimpleItemAnimator) {
+            ((SimpleItemAnimator) itemAnimator).setSupportsChangeAnimations(false);
+        }
+    }
+
+    private RecyclerView.OnScrollListener createStoryScrollListener(@NonNull StoryRecyclerViewAdapter sourceAdapter) {
+        return new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NotNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+
+                if (adapter != sourceAdapter || linearLayoutManager == null) {
+                    return;
+                }
+
+                int firstVisibleItem = linearLayoutManager.findFirstVisibleItemPosition();
+                int lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
+                prefetchLoadedPreviewImagesNearViewport(firstVisibleItem, lastVisibleItem);
+
+                // Only enable infinite scroll if pagination mode is OFF
+                if (!searching && !paginationMode && !currentTypeIsAlgolia()) {
+                    loadStoriesThroughIndex(Math.min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories.size()) - 1, storyListGeneration);
+                }
+            }
+        };
+    }
+
+    private void syncActiveStoryListToSearchState() {
+        if (searching) {
+            useSearchStoryList();
+        } else {
+            useMainStoryList();
+        }
+    }
+
+    private void useMainStoryList() {
+        recyclerView = mainRecyclerView;
+        adapter = mainAdapter;
+        stories = mainStories;
+        linearLayoutManager = mainLinearLayoutManager;
+        defaultStoryItemAnimator = defaultMainStoryItemAnimator;
+    }
+
+    private void useSearchStoryList() {
+        recyclerView = searchRecyclerView;
+        adapter = searchAdapter;
+        stories = searchStories;
+        linearLayoutManager = searchLinearLayoutManager;
+        defaultStoryItemAnimator = defaultSearchStoryItemAnimator;
+    }
+
+    private void useStoryListForAdapter(@NonNull StoryRecyclerViewAdapter sourceAdapter) {
+        if (sourceAdapter == searchAdapter) {
+            useSearchStoryList();
+        } else {
+            useMainStoryList();
+        }
+    }
+
+    private void applySearchRecyclerVisibility(boolean predictiveBackInProgress) {
+        if (mainRecyclerView == null || searchRecyclerView == null) {
+            return;
+        }
+
+        if (predictiveBackInProgress) {
+            mainRecyclerView.setVisibility(View.VISIBLE);
+            searchRecyclerView.setVisibility(View.VISIBLE);
+            mainRecyclerView.setEnabled(false);
+            searchRecyclerView.setEnabled(false);
+            return;
+        }
+
+        mainRecyclerView.animate().cancel();
+        searchRecyclerView.animate().cancel();
+        mainRecyclerView.setTranslationY(0f);
+        searchRecyclerView.setTranslationY(0f);
+
+        if (searching) {
+            mainRecyclerView.setAlpha(0f);
+            mainRecyclerView.setVisibility(View.GONE);
+            mainRecyclerView.setEnabled(false);
+            searchRecyclerView.setVisibility(View.VISIBLE);
+            searchRecyclerView.setAlpha(1f);
+            searchRecyclerView.setEnabled(true);
+        } else {
+            searchRecyclerView.setAlpha(0f);
+            searchRecyclerView.setVisibility(View.GONE);
+            searchRecyclerView.setEnabled(false);
+            mainRecyclerView.setVisibility(View.VISIBLE);
+            mainRecyclerView.setAlpha(1f);
+            mainRecyclerView.setEnabled(true);
+        }
     }
 
     private void setupHeader() {
@@ -950,19 +1068,19 @@ public class StoriesFragment extends Fragment {
     }
 
     private void closeSearch(@Nullable View view) {
+        cancelSearchContentExitAnimation(false);
         cancelSearchOptionsAnimation();
         predictiveSearchBackInProgress = false;
         predictiveSearchBackShowingMainHeader = false;
-        predictiveSearchBackShowingMainContent = false;
         predictiveSearchBackProgress = 0f;
-        clearSearchBackSearchSnapshot();
         resetSearchBackVisualAlphas();
 
         searching = false;
         lastSearch = "";
+        skipNextSearchRestoreDataSwap = true;
         resetSearchOptions();
         updateSearchStatus();
-        resetSearchBackContentAlpha();
+        resetSearchBackContentVisualState();
 
         View tokenView = view != null ? view : searchEditText;
         InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -1100,6 +1218,129 @@ public class StoriesFragment extends Fragment {
 
         if (oldItemCount > 0) {
             adapter.notifyItemRangeRemoved(0, oldItemCount);
+        }
+    }
+
+    private void clearStoriesForSearchEntry() {
+        clearStoriesWithoutItemAnimations();
+        if (searchRecyclerView != null) {
+            searchRecyclerView.setVisibility(View.VISIBLE);
+            searchRecyclerView.setAlpha(1f);
+            searchRecyclerView.setTranslationY(0f);
+            searchRecyclerView.setEnabled(true);
+        }
+
+        if (mainRecyclerView == null || mainAdapter == null || mainAdapter.getItemCount() == 0) {
+            resetSearchContentExitVisualState();
+            return;
+        }
+
+        if (!ViewCompat.isLaidOut(mainRecyclerView)) {
+            resetSearchContentExitVisualState();
+            return;
+        }
+
+        animateSearchContentExitAndClear();
+    }
+
+    private void animateSearchContentExitAndClear() {
+        final RecyclerView currentRecyclerView = mainRecyclerView;
+        final int animationGeneration = ++searchContentExitAnimationGeneration;
+        searchContentExitAnimationRunning = true;
+
+        currentRecyclerView.animate().cancel();
+        currentRecyclerView.animate().setStartDelay(0);
+        currentRecyclerView.stopScroll();
+        currentRecyclerView.setEnabled(false);
+        currentRecyclerView.setAlpha(1f);
+        currentRecyclerView.setTranslationY(0f);
+        currentRecyclerView.animate()
+                .alpha(0f)
+                .setStartDelay(0)
+                .setDuration(SEARCH_CONTENT_EXIT_ANIMATION_DURATION_MS)
+                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                .withEndAction(() -> {
+                    if (animationGeneration != searchContentExitAnimationGeneration
+                            || mainRecyclerView != currentRecyclerView) {
+                        return;
+                    }
+
+                    searchContentExitAnimationRunning = false;
+                    if (searching) {
+                        currentRecyclerView.setVisibility(View.GONE);
+                        requestRecyclerScrollStateUpdate();
+                    }
+                    resetSearchContentExitVisualState();
+                })
+                .start();
+    }
+
+    private void finishSearchContentExitAnimationIfNeeded() {
+        if (searchContentExitAnimationRunning) {
+            cancelSearchContentExitAnimation(true);
+        }
+    }
+
+    private void cancelSearchContentExitAnimation(boolean clearPendingStories) {
+        if (!searchContentExitAnimationRunning) {
+            restoreStoryItemAnimator();
+            return;
+        }
+
+        searchContentExitAnimationGeneration++;
+        if (mainRecyclerView != null) {
+            mainRecyclerView.animate().cancel();
+            mainRecyclerView.animate().setStartDelay(0);
+        }
+
+        searchContentExitAnimationRunning = false;
+        if (clearPendingStories && searching) {
+            if (mainRecyclerView != null) {
+                mainRecyclerView.setVisibility(View.GONE);
+            }
+            requestRecyclerScrollStateUpdate();
+        }
+        resetSearchContentExitVisualState();
+    }
+
+    private void clearStoriesWithoutItemAnimations() {
+        int oldItemCount = adapter.getItemCount();
+        boolean detachedAdapter = detachAdapterForHardSwap();
+        stories.clear();
+        resetPaginationState();
+        adapter.showLoadMoreButton = false;
+
+        if (detachedAdapter) {
+            recyclerView.setAdapter(adapter);
+        } else if (oldItemCount > 0) {
+            adapter.notifyDataSetChanged();
+        }
+        restoreStoryItemAnimator();
+    }
+
+    private void disableStoryItemAnimations() {
+        if (recyclerView == null) {
+            return;
+        }
+
+        if (recyclerView.getItemAnimator() != null) {
+            recyclerView.getItemAnimator().endAnimations();
+            recyclerView.setItemAnimator(null);
+        }
+    }
+
+    private void restoreStoryItemAnimator() {
+        if (recyclerView != null
+                && recyclerView.getItemAnimator() == null
+                && defaultStoryItemAnimator != null) {
+            recyclerView.setItemAnimator(defaultStoryItemAnimator);
+        }
+    }
+
+    private void resetSearchContentExitVisualState() {
+        applySearchRecyclerVisibility(false);
+        if (recyclerView != null) {
+            recyclerView.animate().setStartDelay(0);
         }
     }
 
@@ -1243,6 +1484,38 @@ public class StoriesFragment extends Fragment {
         }
     }
 
+    private int getFirstVisibleStoryPosition() {
+        if (linearLayoutManager == null) {
+            return RecyclerView.NO_POSITION;
+        }
+
+        return linearLayoutManager.findFirstVisibleItemPosition();
+    }
+
+    private int getFirstVisibleStoryTop(int firstVisiblePosition) {
+        if (linearLayoutManager == null
+                || recyclerView == null
+                || firstVisiblePosition == RecyclerView.NO_POSITION) {
+            return 0;
+        }
+
+        View firstVisibleView = linearLayoutManager.findViewByPosition(firstVisiblePosition);
+        return firstVisibleView == null ? recyclerView.getPaddingTop() : firstVisibleView.getTop();
+    }
+
+    private void restoreStoryScrollPosition(int firstVisiblePosition, int firstVisibleTop) {
+        if (linearLayoutManager == null
+                || recyclerView == null
+                || firstVisiblePosition == RecyclerView.NO_POSITION
+                || adapter.getItemCount() == 0) {
+            return;
+        }
+
+        int position = Math.min(firstVisiblePosition, adapter.getItemCount() - 1);
+        int offset = firstVisibleTop - recyclerView.getPaddingTop();
+        linearLayoutManager.scrollToPositionWithOffset(position, offset);
+    }
+
     private void saveStoriesBeforeSearch() {
         if (storiesBeforeSearch != null) {
             return;
@@ -1262,6 +1535,8 @@ public class StoriesFragment extends Fragment {
                 && !loadingFailedServerError
                 && !isBookmarksType(adapter.type)
                 && !isUserItemListType(adapter.type);
+        firstVisiblePositionBeforeSearch = getFirstVisibleStoryPosition();
+        firstVisibleTopBeforeSearch = getFirstVisibleStoryTop(firstVisiblePositionBeforeSearch);
     }
 
     private boolean restoreStoriesBeforeSearch() {
@@ -1274,6 +1549,8 @@ public class StoriesFragment extends Fragment {
         if (skipNextSearchRestoreDataSwap) {
             skipNextSearchRestoreDataSwap = false;
             suppressNextSearchRestoreAnimations = false;
+            restoreStoryStateBeforeSearch();
+            restoreStoryScrollPosition(firstVisiblePositionBeforeSearch, firstVisibleTopBeforeSearch);
             clearStoriesBeforeSearchSnapshot();
             return true;
         }
@@ -1302,9 +1579,21 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemRangeInserted(0, newItemCount);
         }
 
+        restoreStoryScrollPosition(firstVisiblePositionBeforeSearch, firstVisibleTopBeforeSearch);
         clearStoriesBeforeSearchSnapshot();
 
         return true;
+    }
+
+    private void restoreStoryStateBeforeSearch() {
+        loadedTo = loadedToBeforeSearch;
+        adapter.visibleStoryCount = visibleStoryCountBeforeSearch;
+        showingCached = showingCachedBeforeSearch;
+        loadingFailed = loadingFailedBeforeSearch;
+        loadingFailedServerError = loadingFailedServerErrorBeforeSearch;
+        adapter.showLoadMoreButton = showLoadMoreBeforeSearch;
+        algoliaHitsPerPage = algoliaHitsPerPageBeforeSearch;
+        lastAlgoliaTopStoriesStartTime = lastAlgoliaTopStoriesStartTimeBeforeSearch;
     }
 
     private void clearStoriesBeforeSearchSnapshot() {
@@ -1317,6 +1606,8 @@ public class StoriesFragment extends Fragment {
         showLoadMoreBeforeSearch = false;
         algoliaHitsPerPageBeforeSearch = ALGOLIA_HITS_INCREMENT;
         lastAlgoliaTopStoriesStartTimeBeforeSearch = 0;
+        firstVisiblePositionBeforeSearch = RecyclerView.NO_POSITION;
+        firstVisibleTopBeforeSearch = 0;
     }
 
     private void resumeInterruptedStoryLoads() {
@@ -1336,7 +1627,93 @@ public class StoriesFragment extends Fragment {
     private void setupAdapter() {
         paginationMode = SettingsUtils.shouldUsePaginationMode(getContext());
 
-        adapter = new StoryRecyclerViewAdapter(stories,
+        mainAdapter = createStoryAdapter(mainStories);
+        searchAdapter = createStoryAdapter(searchStories);
+        adapter = mainAdapter;
+        stories = mainStories;
+
+        configureStoryAdapter(mainAdapter);
+        configureStoryAdapter(searchAdapter);
+        updateAdapterCommentRows();
+    }
+
+    private void rebuildStoryAdapters() {
+        int previousMainType = mainAdapter != null ? mainAdapter.type : getPreferredTypeIndex();
+        int previousSearchType = searchAdapter != null ? searchAdapter.type : previousMainType;
+        int previousMainVisibleStoryCount = mainAdapter != null
+                ? mainAdapter.visibleStoryCount
+                : (paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE);
+        int previousSearchVisibleStoryCount = searchAdapter != null
+                ? searchAdapter.visibleStoryCount
+                : (paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE);
+        boolean previousMainShowLoadMoreButton = mainAdapter != null && mainAdapter.showLoadMoreButton;
+        boolean previousSearchShowLoadMoreButton = searchAdapter != null && searchAdapter.showLoadMoreButton;
+
+        unregisterStoryAdapterDataObservers();
+        if (mainRecyclerView != null) {
+            mainRecyclerView.setAdapter(null);
+        }
+        if (searchRecyclerView != null) {
+            searchRecyclerView.setAdapter(null);
+        }
+
+        setupAdapter();
+
+        mainAdapter.type = previousMainType;
+        searchAdapter.type = previousSearchType;
+        mainAdapter.visibleStoryCount = previousMainVisibleStoryCount;
+        searchAdapter.visibleStoryCount = previousSearchVisibleStoryCount;
+        mainAdapter.showLoadMoreButton = previousMainShowLoadMoreButton;
+        searchAdapter.showLoadMoreButton = previousSearchShowLoadMoreButton;
+        syncActiveStoryListToSearchState();
+        updateAdapterCommentRows();
+
+        if (mainRecyclerView != null) {
+            mainRecyclerView.setAdapter(mainAdapter);
+        }
+        if (searchRecyclerView != null) {
+            searchRecyclerView.setAdapter(searchAdapter);
+        }
+        registerStoryAdapterDataObservers();
+        applySearchRecyclerVisibility(predictiveSearchBackInProgress);
+        requestRecyclerScrollStateUpdate();
+    }
+
+    private void syncInactiveStoryAdapterDisplaySettings() {
+        if (mainAdapter == null || searchAdapter == null || adapter == null) {
+            return;
+        }
+
+        StoryRecyclerViewAdapter inactiveAdapter = adapter == mainAdapter ? searchAdapter : mainAdapter;
+        copyStoryAdapterDisplaySettings(adapter, inactiveAdapter);
+        updateAdapterCommentRows(inactiveAdapter);
+        if (inactiveAdapter.getItemCount() > 0) {
+            inactiveAdapter.notifyItemRangeChanged(0, inactiveAdapter.getItemCount());
+        }
+    }
+
+    private void copyStoryAdapterDisplaySettings(@NonNull StoryRecyclerViewAdapter sourceAdapter,
+                                                 @NonNull StoryRecyclerViewAdapter targetAdapter) {
+        targetAdapter.showPoints = sourceAdapter.showPoints;
+        targetAdapter.compactPoints = sourceAdapter.compactPoints;
+        targetAdapter.showCommentsCount = sourceAdapter.showCommentsCount;
+        targetAdapter.compactView = sourceAdapter.compactView;
+        targetAdapter.thumbnails = sourceAdapter.thumbnails;
+        targetAdapter.previewImageMode = sourceAdapter.previewImageMode;
+        targetAdapter.storyTextSize = sourceAdapter.storyTextSize;
+        targetAdapter.showIndex = sourceAdapter.showIndex;
+        targetAdapter.compactHeader = sourceAdapter.compactHeader;
+        targetAdapter.leftAlign = sourceAdapter.leftAlign;
+        targetAdapter.cardStyle = sourceAdapter.cardStyle;
+        targetAdapter.tintCardUsingPreview = sourceAdapter.tintCardUsingPreview;
+        targetAdapter.grayOutClicked = sourceAdapter.grayOutClicked;
+        targetAdapter.hotness = sourceAdapter.hotness;
+        targetAdapter.faviconProvider = sourceAdapter.faviconProvider;
+        targetAdapter.font = sourceAdapter.font;
+    }
+
+    private StoryRecyclerViewAdapter createStoryAdapter(List<Story> adapterStories) {
+        return new StoryRecyclerViewAdapter(adapterStories,
                 SettingsUtils.shouldShowPoints(getContext()),
                 SettingsUtils.shouldUseCompactPoints(getContext()),
                 SettingsUtils.shouldShowCommentsCount(getContext()),
@@ -1356,12 +1733,14 @@ public class StoriesFragment extends Fragment {
                 null,
                 getPreferredTypeIndex()
         );
+    }
 
-        adapter.paginationMode = paginationMode;
-        adapter.visibleStoryCount = paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
-        updateAdapterCommentRows();
+    private void configureStoryAdapter(@NonNull StoryRecyclerViewAdapter configuredAdapter) {
+        configuredAdapter.paginationMode = paginationMode;
+        configuredAdapter.visibleStoryCount = paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
 
-        adapter.setOnLinkClickListener(position -> {
+        configuredAdapter.setOnLinkClickListener(position -> {
+            useStoryListForAdapter(configuredAdapter);
             if (position == RecyclerView.NO_POSITION) {
                 return;
             }
@@ -1399,12 +1778,22 @@ public class StoriesFragment extends Fragment {
             }
         });
 
-        adapter.setOnCommentClickListener(this::clickedComments);
-        adapter.setOnCommentStoryClickListener(this::clickedCommentStory);
-        adapter.setOnCommentRepliesClickListener(this::clickedComments);
+        configuredAdapter.setOnCommentClickListener(position -> {
+            useStoryListForAdapter(configuredAdapter);
+            clickedComments(position);
+        });
+        configuredAdapter.setOnCommentStoryClickListener(position -> {
+            useStoryListForAdapter(configuredAdapter);
+            clickedCommentStory(position);
+        });
+        configuredAdapter.setOnCommentRepliesClickListener(position -> {
+            useStoryListForAdapter(configuredAdapter);
+            clickedComments(position);
+        });
 
         // Set up pagination "Load More" button click listener
-        adapter.setOnLoadMoreClickListener(v -> {
+        configuredAdapter.setOnLoadMoreClickListener(v -> {
+            useStoryListForAdapter(configuredAdapter);
             if (paginationMode && adapter.visibleStoryCount < stories.size()) {
                 int newLoadedTo = Math.min(
                         loadedTo + PAGINATION_PAGE_SIZE,
@@ -1420,9 +1809,10 @@ public class StoriesFragment extends Fragment {
             }
         });
 
-        adapter.setOnLongClickListener(new StoryRecyclerViewAdapter.LongClickCoordinateListener() {
+        configuredAdapter.setOnLongClickListener(new StoryRecyclerViewAdapter.LongClickCoordinateListener() {
             @Override
             public boolean onLongClick(View v, int position, int x, int y) {
+                useStoryListForAdapter(configuredAdapter);
                 if (position == RecyclerView.NO_POSITION) {
                     return false;
                 }
@@ -1643,14 +2033,12 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.leftAlign != SettingsUtils.shouldUseLeftAlign(getContext())) {
             adapter.leftAlign = !adapter.leftAlign;
-            setupAdapter();
-            recyclerView.setAdapter(adapter);
+            rebuildStoryAdapters();
         }
 
         if (adapter.cardStyle != SettingsUtils.shouldUseCardStoryDisplayStyle(getContext())) {
             adapter.cardStyle = !adapter.cardStyle;
-            setupAdapter();
-            recyclerView.setAdapter(adapter);
+            rebuildStoryAdapters();
         }
 
         boolean tintCardUsingPreview = SettingsUtils.shouldTintCardUsingPreview(getContext());
@@ -1658,8 +2046,7 @@ public class StoriesFragment extends Fragment {
             boolean storyCardShellChanged = !adapter.cardStyle;
             adapter.tintCardUsingPreview = tintCardUsingPreview;
             if (storyCardShellChanged) {
-                setupAdapter();
-                recyclerView.setAdapter(adapter);
+                rebuildStoryAdapters();
             } else {
                 adapter.notifyItemRangeChanged(0, adapter.getItemCount());
             }
@@ -1727,6 +2114,7 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
+        syncInactiveStoryAdapterDisplaySettings();
         syncStoriesWithHistoriesIfNeeded();
     }
 
@@ -1795,18 +2183,27 @@ public class StoriesFragment extends Fragment {
             }
             clearAppBarDragCallback();
         }
-        if (recyclerView != null) {
-            if (recyclerViewScrollListener != null) {
-                recyclerView.removeOnScrollListener(recyclerViewScrollListener);
+        if (mainRecyclerView != null || searchRecyclerView != null) {
+            cancelSearchContentExitAnimation(false);
+            if (mainRecyclerView != null) {
+                if (recyclerViewScrollListener != null) {
+                    mainRecyclerView.removeOnScrollListener(recyclerViewScrollListener);
+                }
+                mainRecyclerView.setAdapter(null);
+                mainRecyclerView.setLayoutManager(null);
             }
-            if (adapter != null && storyAdapterDataObserver != null) {
-                adapter.unregisterAdapterDataObserver(storyAdapterDataObserver);
+            if (searchRecyclerView != null) {
+                if (searchRecyclerViewScrollListener != null) {
+                    searchRecyclerView.removeOnScrollListener(searchRecyclerViewScrollListener);
+                }
+                searchRecyclerView.setAdapter(null);
+                searchRecyclerView.setLayoutManager(null);
             }
-            recyclerView.setAdapter(null);
-            recyclerView.setLayoutManager(null);
+            unregisterStoryAdapterDataObservers();
         }
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setOnRefreshListener(null);
+            swipeRefreshLayout.setOnChildScrollUpCallback(null);
         }
         if (typeSpinner != null) {
             typeSpinner.setOnItemSelectedListener(null);
@@ -1845,11 +2242,15 @@ public class StoriesFragment extends Fragment {
     private void clearViewReferences() {
         swipeRefreshLayout = null;
         updateFab = null;
+        mainRecyclerView = null;
+        searchRecyclerView = null;
         recyclerView = null;
         appBarLayout = null;
         appBarOffsetChangedListener = null;
         recyclerViewScrollListener = null;
+        searchRecyclerViewScrollListener = null;
         storyAdapterDataObserver = null;
+        searchStoryAdapterDataObserver = null;
         userItemFilterCheckedListener = null;
         storyUpdateListener = null;
 
@@ -1884,8 +2285,14 @@ public class StoriesFragment extends Fragment {
         retryButton = null;
         showCachedButton = null;
 
+        mainAdapter = null;
+        searchAdapter = null;
         typeSpinnerAdapter = null;
+        mainLinearLayoutManager = null;
+        searchLinearLayoutManager = null;
         linearLayoutManager = null;
+        defaultMainStoryItemAnimator = null;
+        defaultSearchStoryItemAnimator = null;
         defaultStoryItemAnimator = null;
         cachingStories = false;
         cacheProgressIndicatorVisible = false;
@@ -2700,6 +3107,7 @@ public class StoriesFragment extends Fragment {
         swipeRefreshLayout.setEnabled(!searching);
 
         if (searching) {
+            useMainStoryList();
             saveStoriesBeforeSearch();
 
             // cancel all ongoing
@@ -2710,7 +3118,10 @@ public class StoriesFragment extends Fragment {
             swipeRefreshLayout.setRefreshing(false);
             loadingFailed = false;
             loadingFailedServerError = false;
-            clearStories();
+            useSearchStoryList();
+            searchAdapter.type = mainAdapter.type;
+            updateAdapterCommentRows();
+            clearStoriesForSearchEntry();
             appBarLayout.setExpanded(true, false);
         } else {
             shouldRefreshAfterRestore = loadPendingBeforeSearch
@@ -2723,11 +3134,16 @@ public class StoriesFragment extends Fragment {
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
             swipeRefreshLayout.setRefreshing(false);
+            useMainStoryList();
             restoredStories = restoreStoriesBeforeSearch();
 
             if (!restoredStories) {
                 clearStories();
             }
+            useSearchStoryList();
+            clearStoriesWithoutItemAnimations();
+            useMainStoryList();
+            applySearchRecyclerVisibility(false);
         }
 
         updateHeader(true);
@@ -2774,6 +3190,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void search(String query, boolean resetResultLimit) {
+        finishSearchContentExitAnimationIfNeeded();
         lastSearch = query;
         if (resetResultLimit) {
             resetAlgoliaResultLimit();
@@ -3050,17 +3467,7 @@ public class StoriesFragment extends Fragment {
                             loadingFailedServerError = false;
                             showingCached = false;
 
-                            if (predictiveSearchBackInProgress && predictiveSearchBackShowingMainContent) {
-                                predictiveSearchBackSearchStories = new ArrayList<>(parsedStories);
-                                predictiveSearchBackLoadedTo = parsedStories.size() - 1;
-                                predictiveSearchBackVisibleStoryCount = preservePaginationForLoadMore && paginationMode
-                                        ? Math.min(Math.max(algoliaLoadMoreVisibleStoryCount, PAGINATION_PAGE_SIZE), parsedStories.size())
-                                        : adapter.visibleStoryCount;
-                                predictiveSearchBackShowingCached = false;
-                                predictiveSearchBackLoadingFailed = false;
-                                predictiveSearchBackLoadingFailedServerError = false;
-                                predictiveSearchBackShowLoadMore = canLoadMoreAlgoliaResults(rawParsedStoryCount);
-                            } else if (preservePaginationForLoadMore) {
+                            if (preservePaginationForLoadMore) {
                                 replaceAlgoliaLoadMoreStories(parsedStories, canLoadMoreAlgoliaResults(rawParsedStoryCount));
                                 loadedTo = stories.size() - 1;
                                 scheduleLoadedPreviewImagePrefetchNearViewport();
@@ -3191,12 +3598,31 @@ public class StoriesFragment extends Fragment {
         }
     }
 
-    private void registerStoryAdapterDataObserver() {
-        if (adapter == null) {
+    private void registerStoryAdapterDataObservers() {
+        if (mainAdapter == null || searchAdapter == null) {
             return;
         }
 
-        storyAdapterDataObserver = new RecyclerView.AdapterDataObserver() {
+        unregisterStoryAdapterDataObservers();
+        storyAdapterDataObserver = createStoryAdapterDataObserver();
+        searchStoryAdapterDataObserver = createStoryAdapterDataObserver();
+        mainAdapter.registerAdapterDataObserver(storyAdapterDataObserver);
+        searchAdapter.registerAdapterDataObserver(searchStoryAdapterDataObserver);
+    }
+
+    private void unregisterStoryAdapterDataObservers() {
+        if (mainAdapter != null && storyAdapterDataObserver != null) {
+            mainAdapter.unregisterAdapterDataObserver(storyAdapterDataObserver);
+        }
+        if (searchAdapter != null && searchStoryAdapterDataObserver != null) {
+            searchAdapter.unregisterAdapterDataObserver(searchStoryAdapterDataObserver);
+        }
+        storyAdapterDataObserver = null;
+        searchStoryAdapterDataObserver = null;
+    }
+
+    private RecyclerView.AdapterDataObserver createStoryAdapterDataObserver() {
+        return new RecyclerView.AdapterDataObserver() {
             @Override
             public void onChanged() {
                 requestRecyclerScrollStateUpdate();
@@ -3227,7 +3653,6 @@ public class StoriesFragment extends Fragment {
                 requestRecyclerScrollStateUpdate();
             }
         };
-        adapter.registerAdapterDataObserver(storyAdapterDataObserver);
     }
 
     public boolean currentTypeIsAlgolia() {
@@ -3310,11 +3735,8 @@ public class StoriesFragment extends Fragment {
     }
 
     private void updateAdapterCommentRows() {
-        boolean usesCommentRows = adapter != null && currentTypeUsesCommentRows();
-        if (adapter != null) {
-            adapter.allowCommentRows = usesCommentRows;
-            adapter.disableClickedEffects = isBookmarksType(adapter.type) || isUserItemListType(adapter.type) || isHistoryType(adapter.type);
-        }
+        updateAdapterCommentRows(mainAdapter);
+        updateAdapterCommentRows(searchAdapter);
         if (recyclerView != null) {
             if (recyclerView.getItemAnimator() != null) {
                 recyclerView.getItemAnimator().endAnimations();
@@ -3324,6 +3746,15 @@ public class StoriesFragment extends Fragment {
                 recyclerView.setItemAnimator(defaultStoryItemAnimator);
             }
         }
+    }
+
+    private void updateAdapterCommentRows(@Nullable StoryRecyclerViewAdapter targetAdapter) {
+        if (targetAdapter == null) {
+            return;
+        }
+
+        targetAdapter.allowCommentRows = isBookmarksType(targetAdapter.type) || isUserItemListType(targetAdapter.type);
+        targetAdapter.disableClickedEffects = targetAdapter.allowCommentRows || isHistoryType(targetAdapter.type);
     }
 
     private boolean shouldHideStoryAsJob(Story story) {
@@ -3349,7 +3780,7 @@ public class StoriesFragment extends Fragment {
         cancelSearchOptionsAnimation();
         predictiveSearchBackInProgress = true;
         predictiveSearchBackShowingMainHeader = false;
-        predictiveSearchBackShowingMainContent = false;
+        applySearchRecyclerVisibility(true);
         appBarLayout.setExpanded(true, false);
         applySearchBackVisualProgress(progress);
     }
@@ -3374,28 +3805,21 @@ public class StoriesFragment extends Fragment {
 
         predictiveSearchBackInProgress = false;
         predictiveSearchBackShowingMainHeader = false;
-        restoreSearchBackSearchContentIfNeeded();
-        predictiveSearchBackShowingMainContent = false;
         predictiveSearchBackProgress = 0f;
+        useSearchStoryList();
         updateHeader(false);
         resetSearchBackVisualAlphas();
-        resetSearchBackContentAlpha();
+        resetSearchBackContentVisualState();
         appBarLayout.setExpanded(true, false);
-        clearSearchBackSearchSnapshot();
     }
 
     public boolean finishSearchBackProgress() {
-        setSearchBackContentAlpha(0f);
-        if (!predictiveSearchBackShowingMainContent) {
-            showSearchBackMainContent();
-        }
+        setSearchBackContentVisualState(0f, getSearchBackContentTranslation(1f), 1f, 0f);
         suppressNextSearchRestoreAnimations = true;
-        skipNextSearchRestoreDataSwap = predictiveSearchBackShowingMainContent;
+        skipNextSearchRestoreDataSwap = false;
         predictiveSearchBackInProgress = false;
         predictiveSearchBackShowingMainHeader = false;
-        predictiveSearchBackShowingMainContent = false;
         predictiveSearchBackProgress = 0f;
-        clearSearchBackSearchSnapshot();
         resetSearchBackVisualAlphas();
         return exitSearch();
     }
@@ -3409,23 +3833,30 @@ public class StoriesFragment extends Fragment {
             applySearchBackHeaderMode(showMainHeader);
         }
 
-        if (showMainHeader) {
-            showSearchBackMainContent();
-        } else {
-            restoreSearchBackSearchContentIfNeeded();
-        }
+        applySearchRecyclerVisibility(true);
 
         if (showMainHeader) {
             float mainAlpha = (predictiveSearchBackProgress - SEARCH_BACK_HEADER_SWITCH_PROGRESS)
                     / (1f - SEARCH_BACK_HEADER_SWITCH_PROGRESS);
             setSearchBackMainHeaderAlpha(mainAlpha);
             setSearchBackSearchHeaderAlpha(0f);
-            setSearchBackContentAlpha(mainAlpha);
+            setSearchBackContentVisualState(
+                    0f,
+                    getSearchBackContentTranslation(1f),
+                    mainAlpha,
+                    getSearchBackContentTranslation(1f - mainAlpha)
+            );
         } else {
-            float searchAlpha = 1f - (predictiveSearchBackProgress / SEARCH_BACK_HEADER_SWITCH_PROGRESS);
+            float searchProgress = predictiveSearchBackProgress / SEARCH_BACK_HEADER_SWITCH_PROGRESS;
+            float searchAlpha = 1f - searchProgress;
             setSearchBackSearchHeaderAlpha(searchAlpha);
             setSearchBackMainHeaderAlpha(0f);
-            setSearchBackContentAlpha(searchAlpha);
+            setSearchBackContentVisualState(
+                    searchAlpha,
+                    getSearchBackContentTranslation(searchProgress),
+                    0f,
+                    getSearchBackContentTranslation(1f)
+            );
         }
     }
 
@@ -3441,69 +3872,6 @@ public class StoriesFragment extends Fragment {
         closeSearchButton.setVisibility(showMainHeader ? View.GONE : View.VISIBLE);
         searchContainer.setVisibility(showMainHeader ? View.GONE : View.VISIBLE);
         searchOptionsScroll.setVisibility(showMainHeader ? View.GONE : View.VISIBLE);
-    }
-
-    private void showSearchBackMainContent() {
-        if (predictiveSearchBackShowingMainContent || storiesBeforeSearch == null) {
-            return;
-        }
-
-        saveSearchBackSearchSnapshot();
-        setSearchBackContentAlpha(0f);
-        predictiveSearchBackShowingMainContent = true;
-        displayStorySnapshot(
-                storiesBeforeSearch,
-                loadedToBeforeSearch,
-                visibleStoryCountBeforeSearch,
-                showingCachedBeforeSearch,
-                loadingFailedBeforeSearch,
-                loadingFailedServerErrorBeforeSearch,
-                showLoadMoreBeforeSearch,
-                true
-        );
-    }
-
-    private void saveSearchBackSearchSnapshot() {
-        if (predictiveSearchBackSearchStories != null) {
-            return;
-        }
-
-        predictiveSearchBackSearchStories = new ArrayList<>(stories);
-        predictiveSearchBackLoadedTo = loadedTo;
-        predictiveSearchBackVisibleStoryCount = adapter.visibleStoryCount;
-        predictiveSearchBackShowingCached = showingCached;
-        predictiveSearchBackLoadingFailed = loadingFailed;
-        predictiveSearchBackLoadingFailedServerError = loadingFailedServerError;
-        predictiveSearchBackShowLoadMore = adapter.showLoadMoreButton;
-    }
-
-    private void restoreSearchBackSearchContentIfNeeded() {
-        if (!predictiveSearchBackShowingMainContent || predictiveSearchBackSearchStories == null) {
-            return;
-        }
-
-        predictiveSearchBackShowingMainContent = false;
-        setSearchBackContentAlpha(0f);
-        displayStorySnapshot(
-                predictiveSearchBackSearchStories,
-                predictiveSearchBackLoadedTo,
-                predictiveSearchBackVisibleStoryCount,
-                predictiveSearchBackShowingCached,
-                predictiveSearchBackLoadingFailed,
-                predictiveSearchBackLoadingFailedServerError,
-                predictiveSearchBackShowLoadMore,
-                true
-        );
-    }
-
-    private void clearSearchBackSearchSnapshot() {
-        predictiveSearchBackSearchStories = null;
-        predictiveSearchBackLoadedTo = -1;
-        predictiveSearchBackVisibleStoryCount = Integer.MAX_VALUE;
-        predictiveSearchBackShowingCached = false;
-        predictiveSearchBackLoadingFailed = false;
-        predictiveSearchBackLoadingFailedServerError = false;
-        predictiveSearchBackShowLoadMore = false;
     }
 
     private void setSearchBackSearchHeaderAlpha(float alpha) {
@@ -3524,12 +3892,27 @@ public class StoriesFragment extends Fragment {
         setSearchBackMainHeaderAlpha(1f);
     }
 
-    private void setSearchBackContentAlpha(float alpha) {
-        recyclerView.setAlpha(alpha);
+    private float getSearchBackContentTranslation(float progress) {
+        return Utils.pxFromDp(getResources(), SEARCH_BACK_CONTENT_TRANSLATION_DP)
+                * Math.max(0f, Math.min(1f, progress));
     }
 
-    private void resetSearchBackContentAlpha() {
-        recyclerView.setAlpha(1f);
+    private void setSearchBackContentVisualState(float searchAlpha,
+                                                 float searchTranslationY,
+                                                 float mainAlpha,
+                                                 float mainTranslationY) {
+        if (searchRecyclerView != null) {
+            searchRecyclerView.setAlpha(searchAlpha);
+            searchRecyclerView.setTranslationY(searchTranslationY);
+        }
+        if (mainRecyclerView != null) {
+            mainRecyclerView.setAlpha(mainAlpha);
+            mainRecyclerView.setTranslationY(mainTranslationY);
+        }
+    }
+
+    private void resetSearchBackContentVisualState() {
+        applySearchRecyclerVisibility(false);
     }
 
     private void startCacheProgress(int total) {
