@@ -72,6 +72,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     private Button blockButton;
     private Button reportButton;
     private MaterialButton notificationsButton;
+    private TextView notificationsExplanation;
     private LinearProgressIndicator notificationsLoading;
     private TextView notificationsStatus;
     private LoadingIndicator loadingProgress;
@@ -129,6 +130,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         reportButton = rootView.findViewById(R.id.user_report_button);
         blockButton = rootView.findViewById(R.id.user_block_button);
         notificationsButton = rootView.findViewById(R.id.user_notifications_button);
+        notificationsExplanation = rootView.findViewById(R.id.user_notifications_explanation);
         notificationsLoading = rootView.findViewById(R.id.user_notifications_loading);
         notificationsStatus = rootView.findViewById(R.id.user_notifications_status);
         loadingProgress = rootView.findViewById(R.id.user_loading);
@@ -219,6 +221,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                                 blockButton.setVisibility(View.VISIBLE);
                                 tagButton.setVisibility(View.VISIBLE);
                                 notificationsButton.setVisibility(GONE);
+                                notificationsExplanation.setVisibility(GONE);
                                 notificationsLoading.setVisibility(GONE);
                                 notificationsStatus.setVisibility(GONE);
                             }
@@ -328,6 +331,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         reportButton = null;
         blockButton = null;
         notificationsButton = null;
+        notificationsExplanation = null;
         notificationsLoading = null;
         notificationsStatus = null;
         loadingProgress = null;
@@ -353,6 +357,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                 && reportButton != null
                 && blockButton != null
                 && notificationsButton != null
+                && notificationsExplanation != null
                 && notificationsLoading != null
                 && notificationsStatus != null
                 && loadingProgress != null
@@ -362,6 +367,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
 
     private void setupNotificationButton(String userName) {
         notificationsButton.setVisibility(View.VISIBLE);
+        notificationsExplanation.setVisibility(View.VISIBLE);
         notificationsButton.setOnClickListener(v -> {
             if (notificationsActiveForUser(userName)) {
                 RepliesChecker.disable(requireContext());

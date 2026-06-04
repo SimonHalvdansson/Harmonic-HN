@@ -67,7 +67,7 @@ public class RepliesChecker {
 
     private static final int JOB_ID = 98372;
     private static final int MAX_SUBMISSIONS_PER_CHECK = 1000;
-    private static final long CHECK_INTERVAL_MILLIS = 15L * 60L * 1000L;
+    private static final long CHECK_INTERVAL_MILLIS = 30L * 60L * 1000L;
     private static final long CHECK_FLEX_MILLIS = 5L * 60L * 1000L;
     private static final String HN_API_BASE = "https://hacker-news.firebaseio.com/v0/";
 

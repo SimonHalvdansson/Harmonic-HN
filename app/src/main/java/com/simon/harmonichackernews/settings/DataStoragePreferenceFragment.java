@@ -147,9 +147,11 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
             HistoriesUtils.INSTANCE.clearHistories(requireContext());
             updateDataSummaries();
 
-            Utils.toast(
-                    "Cleared " + oldCount + (oldCount == 1 ? " entry" : " entries"),
-                    requireContext());
+            if (oldCount > 0) {
+                Utils.toast(
+                        "Cleared " + oldCount + (oldCount == 1 ? " entry" : " entries"),
+                        requireContext());
+            }
 
             return false;
         });
@@ -158,9 +160,11 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
             int oldCount = Utils.clearPostCache(requireContext());
             updateDataSummaries();
 
-            Utils.toast(
-                    "Cleared " + oldCount + " cached " + (oldCount == 1 ? "post" : "posts"),
-                    requireContext());
+            if (oldCount > 0) {
+                Utils.toast(
+                        "Cleared " + oldCount + " cached " + (oldCount == 1 ? "post" : "posts"),
+                        requireContext());
+            }
 
             return false;
         });

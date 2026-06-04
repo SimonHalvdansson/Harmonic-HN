@@ -123,6 +123,18 @@
                 app:iconTint="?attr/storyColorNormal"
                 tools:visibility="visible" />
 
+            <TextView
+                android:id="@+id/user_notifications_explanation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:fontFamily="@font/product_sans"
+                android:text="Get notifications when someone replies to your comments or comments on your stories."
+                android:textColor="?attr/storyColorDisabled"
+                android:textSize="14sp"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
             <com.google.android.material.progressindicator.LinearProgressIndicator
                 android:id="@+id/user_notifications_loading"
                 android:layout_width="match_parent"
