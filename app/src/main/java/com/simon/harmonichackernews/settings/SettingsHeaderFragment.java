@@ -65,8 +65,7 @@ public class SettingsHeaderFragment extends BaseSettingsFragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        SettingsCallback callback = getSettingsCallback();
-        if (callback == null || !callback.isTwoPane()) {
+        if (!shouldShowSelectionHighlight()) {
             return;
         }
 
@@ -98,6 +97,16 @@ public class SettingsHeaderFragment extends BaseSettingsFragment {
     public void setSelectedKey(String key) {
         this.selectedKey = key;
         updateSelectionHighlight();
+    }
+
+    private boolean shouldShowSelectionHighlight() {
+        if (getActivity() instanceof SettingsActivity
+                && ((SettingsActivity) getActivity()).shouldShowHeaderSelection()) {
+            return true;
+        }
+
+        SettingsCallback callback = getSettingsCallback();
+        return callback != null && callback.isTwoPane();
     }
 
     private void updateSelectionHighlight() {

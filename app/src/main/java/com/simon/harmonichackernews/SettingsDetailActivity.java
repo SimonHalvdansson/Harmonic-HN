@@ -14,7 +14,9 @@ import androidx.window.layout.WindowMetrics;
 import androidx.window.layout.WindowMetricsCalculator;
 
 import com.simon.harmonichackernews.settings.SettingsCallback;
+import com.simon.harmonichackernews.settings.AppearancePreferenceFragment;
 import com.simon.harmonichackernews.settings.SettingsFragmentFactory;
+import com.simon.harmonichackernews.settings.SettingsHeaderFragment;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
 public class SettingsDetailActivity extends AppCompatActivity implements SettingsCallback {
@@ -65,6 +67,12 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
             Intent intent = getIntent();
             fragmentClassName = intent.getStringExtra(EXTRA_FRAGMENT_CLASS);
             detailKey = intent.getStringExtra(EXTRA_DETAIL_KEY);
+            if (fragmentClassName == null) {
+                fragmentClassName = AppearancePreferenceFragment.class.getName();
+            }
+            if (detailKey == null) {
+                detailKey = SettingsHeaderFragment.DEFAULT_KEY;
+            }
         }
 
         if (shouldUseSettingsTwoPane()) {
@@ -74,8 +82,7 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
         }
 
         if (savedInstanceState == null) {
-            Fragment fragment = SettingsFragmentFactory.create(
-                    getSupportFragmentManager(), getClassLoader(), fragmentClassName);
+            Fragment fragment = createDetailFragment();
             if (fragment == null) {
                 finish();
                 return;
@@ -155,6 +162,17 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
         float density = getResources().getDisplayMetrics().density;
         float widthDp = metrics.getBounds().width() / density;
         return widthDp >= SettingsActivity.TWO_PANE_MIN_WIDTH_DP;
+    }
+
+    private Fragment createDetailFragment() {
+        if (DebugFragment.class.getName().equals(fragmentClassName)) {
+            return new DebugFragment();
+        }
+        if (AboutFragment.class.getName().equals(fragmentClassName)) {
+            return new AboutFragment();
+        }
+        return SettingsFragmentFactory.create(
+                getSupportFragmentManager(), getClassLoader(), fragmentClassName);
     }
 
     private void returnToSettingsActivity() {

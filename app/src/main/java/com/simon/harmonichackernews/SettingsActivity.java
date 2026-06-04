@@ -27,6 +27,7 @@ import com.simon.harmonichackernews.settings.SettingsFragmentFactory;
 import com.simon.harmonichackernews.settings.SettingsHeaderFragment;
 import com.simon.harmonichackernews.settings.StoriesPreferenceFragment;
 import com.simon.harmonichackernews.settings.WebLinksPreferenceFragment;
+import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
 import java.util.HashMap;
@@ -40,6 +41,7 @@ public class SettingsActivity extends AppCompatActivity implements
     private static final int TWO_PANE_SPACER_DP = 16;
     private static final int TWO_PANE_LIST_WEIGHT = 2;
     private static final int TWO_PANE_DETAIL_WEIGHT = 3;
+    private static final int FOLDABLE_TWO_PANE_WEIGHT = 1;
 
     private static final String STATE_DETAIL_CLASS = "state_detail_class";
     private static final String STATE_DETAIL_KEY = "state_detail_key";
@@ -161,10 +163,13 @@ public class SettingsActivity extends AppCompatActivity implements
 
         if (widthDp >= TWO_PANE_MIN_WIDTH_DP && detailPane != null) {
             isTwoPane = true;
+            boolean useEqualPaneWeights = FoldableSplitInitializer.isFoldableSplitEnabled(this);
+            int listWeight = useEqualPaneWeights ? FOLDABLE_TWO_PANE_WEIGHT : TWO_PANE_LIST_WEIGHT;
+            int detailWeight = useEqualPaneWeights ? FOLDABLE_TWO_PANE_WEIGHT : TWO_PANE_DETAIL_WEIGHT;
 
             detailPane.setVisibility(View.VISIBLE);
             detailPane.setLayoutParams(new LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.MATCH_PARENT, TWO_PANE_DETAIL_WEIGHT));
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, detailWeight));
 
             if (spacer != null) {
                 spacer.setVisibility(View.VISIBLE);
@@ -174,7 +179,7 @@ public class SettingsActivity extends AppCompatActivity implements
             }
 
             settingsPane.setLayoutParams(new LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.MATCH_PARENT, TWO_PANE_LIST_WEIGHT));
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, listWeight));
 
             int padding = getResources().getDimensionPixelSize(R.dimen.extra_pane_padding);
             root.setPadding(padding, 0, padding, 0);
@@ -270,6 +275,7 @@ public class SettingsActivity extends AppCompatActivity implements
                 ((SettingsHeaderFragment) headerFragment).setSelectedKey(pref.getKey());
             }
         } else {
+            updateHeaderSelection(currentDetailKey);
             startActivity(SettingsDetailActivity.createIntent(
                     this,
                     currentDetailClassName,
@@ -338,6 +344,10 @@ public class SettingsActivity extends AppCompatActivity implements
         return isTwoPane;
     }
 
+    public boolean shouldShowHeaderSelection() {
+        return isTwoPane;
+    }
+
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
@@ -391,6 +401,13 @@ public class SettingsActivity extends AppCompatActivity implements
         }
         return SettingsFragmentFactory.create(
                 getSupportFragmentManager(), getClassLoader(), currentDetailClassName);
+    }
+
+    private void updateHeaderSelection(String key) {
+        Fragment headerFragment = getSupportFragmentManager().findFragmentById(R.id.settings);
+        if (headerFragment instanceof SettingsHeaderFragment) {
+            ((SettingsHeaderFragment) headerFragment).setSelectedKey(key);
+        }
     }
 
     private void updateStateFromIntent(Intent intent) {
