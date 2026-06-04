@@ -110,7 +110,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         bundle.putInt(CommentsFragment.EXTRA_FORWARD, pos - lastPosition);
         bundle.putBoolean(CommentsFragment.EXTRA_SHOW_WEBSITE, showWebsite);
 
-        if (FoldableSplitInitializer.isSplitSupported(this)) {
+        if (FoldableSplitInitializer.isFoldableSplitEnabled(this)) {
             bundle.putBoolean(CommentsActivity.PREVENT_BACK, true);
         }
 
