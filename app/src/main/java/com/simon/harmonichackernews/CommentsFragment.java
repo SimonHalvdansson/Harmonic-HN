@@ -926,6 +926,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         clickBrowser();
                         break;
 
+                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_READER:
+                        webViewController.toggleReaderMode();
+                        break;
+
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_INVERT:
                         // This whole thing should only be visible for SDK_INT larger than Q (29)
                         // We first check the "new" version of dark mode, algorithmic darkening

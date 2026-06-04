@@ -127,8 +127,8 @@
         </RelativeLayout>
 
 
-        <!-- This is reader mode
         <RelativeLayout
+            android:id="@+id/comments_sheet_container_reader"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content">
@@ -147,12 +147,14 @@
 
                 <ImageView
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_subject"
+                    android:background="@drawable/ic_action_reader_mode"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
                     android:layout_width="27dp"
                     android:layout_height="27dp"/>
 
             </RelativeLayout>
-        </RelativeLayout>-->
+        </RelativeLayout>
 
         <RelativeLayout
             android:id="@+id/comments_sheet_container_invert"

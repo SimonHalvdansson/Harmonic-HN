@@ -1,0 +1,438 @@
+(function() {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 1) {
+        return;
+    }
+
+    var STATE_KEY = "__harmonicReaderModeState";
+    var MIN_ARTICLE_TEXT_LENGTH = 250;
+    var POSITIVE_CLASS_RE = /article|body|content|entry|hentry|main|page|post|read|story|text/i;
+    var NEGATIVE_CLASS_RE = /ad-|ads|advert|banner|breadcrumb|comment|combx|contact|cookie|footer|masthead|menu|meta|modal|nav|outbrain|promo|related|scroll|share|shoutbox|sidebar|sponsor|subscribe|tag|tool|widget/i;
+    var REMOVE_SELECTOR = [
+        "script",
+        "style",
+        "noscript",
+        "template",
+        "svg",
+        "canvas",
+        "iframe",
+        "nav",
+        "header",
+        "footer",
+        "aside",
+        "form",
+        "button",
+        "input",
+        "select",
+        "textarea",
+        "dialog",
+        "[aria-hidden='true']",
+        "[hidden]"
+    ].join(",");
+
+    function getText(element) {
+        if (!element) {
+            return "";
+        }
+        return (element.textContent || "").replace(/\s+/g, " ").trim();
+    }
+
+    function getAttributeSignature(element) {
+        if (!element) {
+            return "";
+        }
+        return ((element.getAttribute("class") || "") + " " + (element.getAttribute("id") || "")).trim();
+    }
+
+    function linkDensity(element) {
+        var textLength = getText(element).length;
+        if (textLength === 0) {
+            return 0;
+        }
+
+        var linkTextLength = 0;
+        var links = element.getElementsByTagName("a");
+        for (var i = 0; i < links.length; i++) {
+            linkTextLength += getText(links[i]).length;
+        }
+        return linkTextLength / textLength;
+    }
+
+    function scoreElement(element) {
+        var text = getText(element);
+        if (text.length < MIN_ARTICLE_TEXT_LENGTH) {
+            return 0;
+        }
+
+        var score = Math.min(90, text.length / 75);
+        var paragraphs = element.getElementsByTagName("p").length;
+        var punctuation = text.match(/[.!?]/g);
+        var tagName = element.tagName ? element.tagName.toLowerCase() : "";
+        var signature = getAttributeSignature(element);
+
+        score += Math.min(70, paragraphs * 5);
+        score += Math.min(60, punctuation ? punctuation.length * 1.5 : 0);
+        score -= linkDensity(element) * 90;
+
+        if (tagName === "article") {
+            score += 35;
+        } else if (tagName === "main") {
+            score += 25;
+        }
+
+        if (POSITIVE_CLASS_RE.test(signature)) {
+            score += 25;
+        }
+        if (NEGATIVE_CLASS_RE.test(signature)) {
+            score -= 35;
+        }
+
+        return score;
+    }
+
+    function findArticle() {
+        if (!document.body || getText(document.body).length < MIN_ARTICLE_TEXT_LENGTH) {
+            return null;
+        }
+
+        var preferred = document.querySelector("article, main, [role='main']");
+        if (preferred && getText(preferred).length >= MIN_ARTICLE_TEXT_LENGTH && linkDensity(preferred) < 0.45) {
+            return preferred;
+        }
+
+        var selectors = "article, main, section, div, td, [role='main']";
+        var candidates = [document.body];
+        var nodes = document.body.querySelectorAll(selectors);
+        for (var i = 0; i < nodes.length; i++) {
+            candidates.push(nodes[i]);
+        }
+
+        var best = null;
+        var bestScore = 0;
+        for (var j = 0; j < candidates.length; j++) {
+            var candidate = candidates[j];
+            var score = scoreElement(candidate);
+            if (score > bestScore) {
+                best = candidate;
+                bestScore = score;
+            }
+        }
+
+        return bestScore >= 20 ? best : null;
+    }
+
+    function absolutizeUrl(value) {
+        if (!value) {
+            return value;
+        }
+        try {
+            return new URL(value, document.baseURI).href;
+        } catch (e) {
+            return value;
+        }
+    }
+
+    function cleanAttributes(element) {
+        var allowed = {
+            "a": ["href", "title"],
+            "img": ["src", "alt", "title", "width", "height"],
+            "video": ["src", "poster", "controls"],
+            "source": ["src", "type"],
+            "td": ["colspan", "rowspan"],
+            "th": ["colspan", "rowspan"],
+            "ol": ["start"],
+            "code": ["class"],
+            "pre": ["class"]
+        };
+        var tagName = element.tagName ? element.tagName.toLowerCase() : "";
+        var keep = allowed[tagName] || [];
+        for (var i = element.attributes.length - 1; i >= 0; i--) {
+            var name = element.attributes[i].name;
+            if (keep.indexOf(name) === -1) {
+                element.removeAttribute(name);
+            }
+        }
+    }
+
+    function pruneByClassName(root) {
+        var nodes = root.querySelectorAll("*");
+        for (var i = nodes.length - 1; i >= 0; i--) {
+            var node = nodes[i];
+            var signature = getAttributeSignature(node);
+            if (NEGATIVE_CLASS_RE.test(signature) && getText(node).length < 600) {
+                node.parentNode.removeChild(node);
+            }
+        }
+    }
+
+    function cleanArticle(root) {
+        var removals = root.querySelectorAll(REMOVE_SELECTOR);
+        for (var i = removals.length - 1; i >= 0; i--) {
+            removals[i].parentNode.removeChild(removals[i]);
+        }
+
+        pruneByClassName(root);
+
+        var nodes = root.querySelectorAll("*");
+        for (var j = 0; j < nodes.length; j++) {
+            var node = nodes[j];
+            var tagName = node.tagName ? node.tagName.toLowerCase() : "";
+
+            if (tagName === "img") {
+                var src = node.getAttribute("src") || node.getAttribute("data-src") || node.getAttribute("data-lazy-src");
+                if (src) {
+                    node.setAttribute("src", absolutizeUrl(src));
+                }
+            } else if (tagName === "a") {
+                var href = node.getAttribute("href");
+                if (href) {
+                    node.setAttribute("href", absolutizeUrl(href));
+                }
+            } else if (tagName === "video") {
+                var videoSrc = node.getAttribute("src");
+                var poster = node.getAttribute("poster");
+                if (videoSrc) {
+                    node.setAttribute("src", absolutizeUrl(videoSrc));
+                }
+                if (poster) {
+                    node.setAttribute("poster", absolutizeUrl(poster));
+                }
+                node.setAttribute("controls", "controls");
+            } else if (tagName === "source") {
+                var sourceSrc = node.getAttribute("src");
+                if (sourceSrc) {
+                    node.setAttribute("src", absolutizeUrl(sourceSrc));
+                }
+            }
+
+            cleanAttributes(node);
+        }
+
+        removeEmptyElements(root);
+    }
+
+    function removeEmptyElements(root) {
+        var keepEmpty = {
+            "br": true,
+            "hr": true,
+            "img": true,
+            "video": true,
+            "source": true,
+            "iframe": true
+        };
+        var nodes = root.querySelectorAll("*");
+        for (var i = nodes.length - 1; i >= 0; i--) {
+            var node = nodes[i];
+            var tagName = node.tagName ? node.tagName.toLowerCase() : "";
+            if (!keepEmpty[tagName] && getText(node).length === 0 && node.getElementsByTagName("img").length === 0) {
+                node.parentNode.removeChild(node);
+            }
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+    }
+
+    function normalizeTitle(value) {
+        return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    }
+
+    function getMetaContent(selector) {
+        var meta = document.querySelector(selector);
+        return meta ? (meta.getAttribute("content") || "").trim() : "";
+    }
+
+    function findTitle(article) {
+        var localTitle = article.querySelector("h1");
+        var title = localTitle ? getText(localTitle) : "";
+        if (!title) {
+            title = getMetaContent("meta[property='og:title']");
+        }
+        if (!title) {
+            title = getMetaContent("meta[name='twitter:title']");
+        }
+        if (!title) {
+            title = document.title || "";
+        }
+        return title.replace(/\s+[|-]\s+[^|-]+$/, "").trim();
+    }
+
+    function removeDuplicateTitle(root, title) {
+        var titleText = normalizeTitle(title);
+        if (!titleText) {
+            return;
+        }
+        var headings = root.querySelectorAll("h1, h2");
+        for (var i = 0; i < headings.length; i++) {
+            if (normalizeTitle(getText(headings[i])) === titleText) {
+                headings[i].parentNode.removeChild(headings[i]);
+                return;
+            }
+        }
+    }
+
+    function findByline(article) {
+        var selectors = [
+            "[rel='author']",
+            "[itemprop='author']",
+            ".byline",
+            ".author",
+            "[class*='byline']",
+            "[class*='author']"
+        ];
+        for (var i = 0; i < selectors.length; i++) {
+            var node = article.querySelector(selectors[i]);
+            var text = getText(node);
+            if (text && text.length <= 160) {
+                return text;
+            }
+        }
+        return getMetaContent("meta[name='author']");
+    }
+
+    function getAttributes(element) {
+        var attrs = {};
+        if (!element) {
+            return attrs;
+        }
+        for (var i = 0; i < element.attributes.length; i++) {
+            attrs[element.attributes[i].name] = element.attributes[i].value;
+        }
+        return attrs;
+    }
+
+    function restoreAttributes(element, attrs) {
+        if (!element) {
+            return;
+        }
+        for (var i = element.attributes.length - 1; i >= 0; i--) {
+            element.removeAttribute(element.attributes[i].name);
+        }
+        for (var name in attrs) {
+            if (Object.prototype.hasOwnProperty.call(attrs, name)) {
+                element.setAttribute(name, attrs[name]);
+            }
+        }
+    }
+
+    function readerStyles() {
+        return [
+            "<style id=\"harmonic-reader-style\">",
+            "body[data-harmonic-reader='true']{margin:0!important;background:#fafafa!important;color:#202124!important;font-family:Georgia,'Times New Roman',serif!important;line-height:1.68!important;font-size:18px!important;-webkit-text-size-adjust:100%!important;}",
+            "#harmonic-reader-mode{box-sizing:border-box;max-width:760px;margin:0 auto;padding:32px 20px 96px!important;}",
+            "#harmonic-reader-mode *{box-sizing:border-box;max-width:100%;}",
+            "#harmonic-reader-kicker{font:600 13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;letter-spacing:.04em!important;text-transform:uppercase!important;color:#8a4b00!important;margin-bottom:14px!important;}",
+            "#harmonic-reader-mode h1{font:700 32px/1.15 Georgia,'Times New Roman',serif!important;margin:0 0 12px!important;color:inherit!important;}",
+            "#harmonic-reader-byline{font:500 15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;color:#5f6368!important;margin:0 0 28px!important;}",
+            "#harmonic-reader-article p,#harmonic-reader-article li{font-size:18px!important;line-height:1.68!important;}",
+            "#harmonic-reader-article p{margin:0 0 1.05em!important;}",
+            "#harmonic-reader-article h2,#harmonic-reader-article h3,#harmonic-reader-article h4{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;line-height:1.25!important;margin:1.65em 0 .6em!important;color:inherit!important;}",
+            "#harmonic-reader-article a{color:#b35a00!important;text-decoration:underline!important;text-decoration-thickness:1px!important;text-underline-offset:3px!important;}",
+            "#harmonic-reader-article img,#harmonic-reader-article video{display:block;height:auto!important;margin:1.2em auto!important;border-radius:4px!important;}",
+            "#harmonic-reader-article figure{margin:1.4em 0!important;}",
+            "#harmonic-reader-article figcaption{font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;color:#6f7478!important;margin-top:.5em!important;}",
+            "#harmonic-reader-article blockquote{border-left:3px solid #d9822b!important;margin:1.3em 0!important;padding:.1em 0 .1em 1em!important;color:#3f454a!important;}",
+            "#harmonic-reader-article pre{overflow-x:auto!important;background:#f0f2f4!important;border-radius:4px!important;padding:14px!important;font-size:14px!important;line-height:1.5!important;}",
+            "#harmonic-reader-article code{font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace!important;font-size:.9em!important;}",
+            "#harmonic-reader-article table{border-collapse:collapse!important;display:block!important;overflow-x:auto!important;margin:1.2em 0!important;}",
+            "#harmonic-reader-article th,#harmonic-reader-article td{border:1px solid #dadce0!important;padding:8px!important;}",
+            "@media (prefers-color-scheme:dark){body[data-harmonic-reader='true']{background:#151617!important;color:#e8eaed!important;}#harmonic-reader-kicker{color:#ffb15f!important;}#harmonic-reader-byline{color:#aeb4ba!important;}#harmonic-reader-article a{color:#ffb15f!important;}#harmonic-reader-article blockquote{color:#d5d9de!important;border-left-color:#ffb15f!important;}#harmonic-reader-article pre{background:#222528!important;}#harmonic-reader-article th,#harmonic-reader-article td{border-color:#3d4248!important;}}",
+            "</style>"
+        ].join("");
+    }
+
+    function enable() {
+        try {
+            if (window[STATE_KEY] && window[STATE_KEY].enabled) {
+                return "enabled";
+            }
+            if (!document.body) {
+                return "unavailable";
+            }
+
+            var article = findArticle();
+            if (!article) {
+                return "no_article";
+            }
+
+            var clone = article.cloneNode(true);
+            cleanArticle(clone);
+
+            var title = findTitle(article);
+            removeDuplicateTitle(clone, title);
+
+            var articleText = getText(clone);
+            if (articleText.length < MIN_ARTICLE_TEXT_LENGTH) {
+                return "no_article";
+            }
+
+            var byline = findByline(article);
+            var site = (location.hostname || "").replace(/^www\./, "");
+            var meta = byline ? byline : site;
+            var originalTitle = document.title;
+
+            window[STATE_KEY] = {
+                enabled: true,
+                bodyHtml: document.body.innerHTML,
+                bodyAttrs: getAttributes(document.body),
+                htmlAttrs: getAttributes(document.documentElement),
+                title: originalTitle,
+                scrollX: window.pageXOffset || 0,
+                scrollY: window.pageYOffset || 0
+            };
+
+            var html = [
+                readerStyles(),
+                "<main id=\"harmonic-reader-mode\">",
+                site ? "<div id=\"harmonic-reader-kicker\">" + escapeHtml(site) + "</div>" : "",
+                title ? "<h1>" + escapeHtml(title) + "</h1>" : "",
+                meta ? "<div id=\"harmonic-reader-byline\">" + escapeHtml(meta) + "</div>" : "",
+                "<article id=\"harmonic-reader-article\">",
+                clone.innerHTML,
+                "</article>",
+                "</main>"
+            ].join("");
+
+            document.body.innerHTML = html;
+            restoreAttributes(document.body, {"data-harmonic-reader": "true"});
+            document.title = title || originalTitle;
+            window.scrollTo(0, 0);
+            return "enabled";
+        } catch (e) {
+            return "error";
+        }
+    }
+
+    function disable() {
+        try {
+            var state = window[STATE_KEY];
+            if (!state || !state.enabled || !document.body) {
+                return "disabled";
+            }
+            document.body.innerHTML = state.bodyHtml;
+            restoreAttributes(document.body, state.bodyAttrs || {});
+            restoreAttributes(document.documentElement, state.htmlAttrs || {});
+            document.title = state.title || document.title;
+            var scrollX = state.scrollX || 0;
+            var scrollY = state.scrollY || 0;
+            window[STATE_KEY] = null;
+            setTimeout(function() {
+                window.scrollTo(scrollX, scrollY);
+            }, 0);
+            return "disabled";
+        } catch (e) {
+            return "error";
+        }
+    }
+
+    window.HarmonicReaderMode = {
+        version: 1,
+        enable: enable,
+        disable: disable
+    };
+})();

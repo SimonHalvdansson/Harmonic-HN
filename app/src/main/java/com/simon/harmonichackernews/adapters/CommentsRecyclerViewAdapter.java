@@ -164,6 +164,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public final static int FLAG_ACTION_CLICK_BROWSER = -4;
     public final static int FLAG_ACTION_CLICK_INVERT = -5;
     public final static int FLAG_ACTION_CLICK_RESET_OP_FILTER = -6;
+    public final static int FLAG_ACTION_CLICK_READER = -7;
 
     public CommentsRecyclerViewAdapter(boolean useIntegratedWebview,
                                        LinearLayout sheet,
@@ -1940,6 +1941,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout sheetRefreshButton;
         public final RelativeLayout sheetExpandButton;
         public final RelativeLayout sheetBrowserButton;
+        public final RelativeLayout sheetReaderButton;
         public final RelativeLayout sheetInvertButton;
         public final View sheetHandleContainer;
         public final LinearLayout sheetButtonsContainer;
@@ -2015,6 +2017,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetRefreshButton = view.findViewById(R.id.comments_sheet_layout_refresh);
             sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
             sheetBrowserButton = view.findViewById(R.id.comments_sheet_layout_browser);
+            sheetReaderButton = view.findViewById(R.id.comments_sheet_layout_reader);
             sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
             sheetHandleContainer = view.findViewById(R.id.comments_sheet_handle_container);
             sheetButtonsContainer = view.findViewById(R.id.comment_sheet_buttons_container);
@@ -2099,11 +2102,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetRefreshButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_REFRESH, view));
             sheetExpandButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_EXPAND, view));
             sheetBrowserButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_BROWSER, view));
+            sheetReaderButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_READER, view));
             sheetInvertButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_INVERT, view));
 
             TooltipCompat.setTooltipText(sheetRefreshButton, "Refresh");
             TooltipCompat.setTooltipText(sheetExpandButton, "Open comments");
             TooltipCompat.setTooltipText(sheetBrowserButton, "Open in browser");
+            TooltipCompat.setTooltipText(sheetReaderButton, "Reader mode");
             TooltipCompat.setTooltipText(sheetInvertButton, "Invert colors");
 
             TooltipCompat.setTooltipText(userButton, "User");
@@ -2123,6 +2128,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetRefreshButton.setContentDescription("Refresh comments");
             sheetExpandButton.setContentDescription("Open comments");
             sheetBrowserButton.setContentDescription("Open story in browser");
+            sheetReaderButton.setContentDescription("Toggle reader mode");
             sheetInvertButton.setContentDescription("Invert colors");
 
             if (!showInvert) {

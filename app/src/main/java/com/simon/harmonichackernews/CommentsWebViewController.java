@@ -57,10 +57,14 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
 
 import okhttp3.Call;
 
@@ -69,6 +73,7 @@ class CommentsWebViewController {
     private static final String PDF_MIME_TYPE = "application/pdf";
     private static final String PDF_LOADER_URL = "file:///android_asset/pdf/index.html";
     private static final String OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html";
+    private static final String READER_MODE_SCRIPT_ASSET = "reader_mode.js";
 
     private enum ErrorPageType {
         OFFLINE,
@@ -132,6 +137,10 @@ class CommentsWebViewController {
     @Nullable
     private PdfAndroidJavascriptBridge pdfAndroidJavascriptBridge;
     private boolean retryingFailedWebViewUrl = false;
+    private boolean readerModeEnabled = false;
+    private boolean readerModePending = false;
+    @Nullable
+    private String readerModeScript;
 
     CommentsWebViewController(CommentsFragment fragment, Story story, LinkPreviewController linkPreviewController, Callbacks callbacks) {
         this.fragment = fragment;
@@ -286,6 +295,109 @@ class CommentsWebViewController {
 
     boolean isBlockingAds() {
         return blockAds;
+    }
+
+    void toggleReaderMode() {
+        if (webView == null) {
+            initialize();
+        }
+        Context context = fragment.getContext();
+        if (webView == null || context == null || fragment.getView() == null) {
+            return;
+        }
+
+        String currentUrl = webView.getUrl();
+        if (showingErrorPage || PDF_LOADER_URL.equals(currentUrl) || isErrorPageUrl(currentUrl)) {
+            Toast.makeText(context, "Reader mode unavailable for this page", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!startedLoading || TextUtils.isEmpty(currentUrl) || webView.getProgress() < 100) {
+            if (TextUtils.isEmpty(story.url)) {
+                Toast.makeText(context, "Reader mode unavailable for this page", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            readerModePending = true;
+            if (!startedLoading) {
+                startedLoading = true;
+                loadUrl(story.url);
+            }
+            Toast.makeText(context, "Reader mode will open after the page loads", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        applyReaderMode(!readerModeEnabled);
+    }
+
+    private void applyReaderMode(boolean enable) {
+        Context context = fragment.getContext();
+        if (webView == null || context == null || fragment.getView() == null) {
+            return;
+        }
+
+        String script = getReaderModeScript(context);
+        if (TextUtils.isEmpty(script)) {
+            Toast.makeText(context, "Reader mode unavailable", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String command = script + "\nHarmonicReaderMode." + (enable ? "enable" : "disable") + "();";
+        webView.evaluateJavascript(command, result -> {
+            Context callbackContext = fragment.getContext();
+            if (callbackContext == null || webView == null || fragment.getView() == null) {
+                return;
+            }
+
+            String status = normalizeJavascriptResult(result);
+            if ("enabled".equals(status)) {
+                readerModeEnabled = true;
+                Toast.makeText(callbackContext, "Reader mode enabled", Toast.LENGTH_SHORT).show();
+            } else if ("disabled".equals(status)) {
+                readerModeEnabled = false;
+                Toast.makeText(callbackContext, "Reader mode disabled", Toast.LENGTH_SHORT).show();
+            } else if ("no_article".equals(status)) {
+                readerModeEnabled = false;
+                Toast.makeText(callbackContext, "Couldn't find readable article", Toast.LENGTH_SHORT).show();
+            } else if ("unavailable".equals(status)) {
+                readerModeEnabled = false;
+                Toast.makeText(callbackContext, "Reader mode unavailable for this page", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(callbackContext, "Couldn't open reader mode", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @Nullable
+    private String getReaderModeScript(Context context) {
+        if (readerModeScript != null) {
+            return readerModeScript;
+        }
+
+        try (InputStream inputStream = context.getAssets().open(READER_MODE_SCRIPT_ASSET);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            StringBuilder builder = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line).append('\n');
+            }
+            readerModeScript = builder.toString();
+            return readerModeScript;
+        } catch (IOException e) {
+            Log.e("MY_APP_TAG", "Failed to load reader mode script", e);
+            return null;
+        }
+    }
+
+    private String normalizeJavascriptResult(@Nullable String result) {
+        if (result == null) {
+            return "";
+        }
+
+        String normalized = result.trim();
+        if (normalized.length() >= 2 && normalized.startsWith("\"") && normalized.endsWith("\"")) {
+            normalized = normalized.substring(1, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     void toggleDarkMode() {
@@ -563,6 +675,7 @@ class CommentsWebViewController {
         if (!isErrorPageUrl(url)) {
             showingErrorPage = false;
             showingCachedArticlePage = false;
+            readerModeEnabled = false;
             lastRequestedWebViewUrl = url;
         }
         if (PDF_LOADER_URL.equals(url)) {
@@ -883,6 +996,7 @@ class CommentsWebViewController {
                 return;
             }
             if (!isErrorPageUrl(url)) {
+                readerModeEnabled = false;
                 lastRequestedWebViewUrl = url;
             }
         }
@@ -918,6 +1032,15 @@ class CommentsWebViewController {
             }
 
             linkPreviewController.onWebViewPageFinished(fragment.getContext(), view, url);
+
+            if (readerModePending && !showingErrorPage && !PDF_LOADER_URL.equals(url)) {
+                readerModePending = false;
+                view.post(() -> {
+                    if (isCurrentWebViewCallback(view)) {
+                        applyReaderMode(true);
+                    }
+                });
+            }
         }
 
         @Override
