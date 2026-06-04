@@ -202,7 +202,9 @@ public class SettingsUtils {
     public static String getPreferredStoryPreviewImageMode(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         String mode = prefs.getString(PREF_STORY_PREVIEW_IMAGE_MODE, null);
-        if (STORY_PREVIEW_IMAGE_SMALL.equals(mode) || STORY_PREVIEW_IMAGE_LARGE.equals(mode)) {
+        if (STORY_PREVIEW_IMAGE_OFF.equals(mode)
+                || STORY_PREVIEW_IMAGE_SMALL.equals(mode)
+                || STORY_PREVIEW_IMAGE_LARGE.equals(mode)) {
             return mode;
         }
         return STORY_PREVIEW_IMAGE_SMALL;

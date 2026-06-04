@@ -10,10 +10,6 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
-import android.transition.AutoTransition;
-import android.transition.ChangeBounds;
-import android.transition.TransitionManager;
-import android.transition.TransitionSet;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -46,8 +42,8 @@ import org.sufficientlysecure.htmltextview.HtmlTextView;
 
 public class CommentContentPreviewPreference extends Preference implements SharedPreferences.OnSharedPreferenceChangeListener {
 
-    private static final long PREVIEW_ANIMATION_DURATION_MS = 180;
     private static final long TEXT_SIZE_ANIMATION_DURATION_MS = 120;
+    private static final int MIN_STABLE_PREVIEW_WIDTH_DP = 240;
     private static final int REFERENCE_LINK_MIN_HEIGHT_DP = 38;
     private static final int REFERENCE_LINK_CORNER_RADIUS_DP = 6;
     private static final int REFERENCE_LINK_ICON_SIZE_DP = 17;
@@ -206,7 +202,6 @@ public class CommentContentPreviewPreference extends Preference implements Share
             return;
         }
 
-        beginPreviewTransition();
         cardStyle = useCardStyle;
         inflatePreviewItem();
         updatePreview();
@@ -272,10 +267,6 @@ public class CommentContentPreviewPreference extends Preference implements Share
     private void updateCollectedLinksPreview(boolean animate) {
         if (commentBody == null) {
             return;
-        }
-
-        if (animate) {
-            beginPreviewTransition();
         }
 
         bindPreviewCommentContent(commentBody, referenceLinksContainer);
@@ -465,7 +456,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
             }
             float animatedTextSize = (float) animation.getAnimatedValue();
             targetBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, animatedTextSize);
-            requestPreviewRemeasure();
+            syncReservedPreviewHeight();
         });
         textSizeAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
@@ -610,11 +601,12 @@ public class CommentContentPreviewPreference extends Preference implements Share
         int containerWidth = previewItemContainer.getWidth()
                 - previewItemContainer.getPaddingLeft()
                 - previewItemContainer.getPaddingRight();
-        if (containerWidth <= 0) {
+        if (!isStablePreviewWidth(containerWidth)) {
+            clearReservedPreviewHeight();
             return;
         }
 
-        int reservedContentHeight = calculateMaxPreviewItemHeight(containerWidth);
+        int reservedContentHeight = measureCurrentPreviewItemHeight(containerWidth);
         if (reservedContentHeight <= 0) {
             return;
         }
@@ -626,50 +618,60 @@ public class CommentContentPreviewPreference extends Preference implements Share
         requestPreviewRemeasure();
     }
 
-    private int calculateMaxPreviewItemHeight(int containerWidth) {
-        LayoutInflater inflater = LayoutInflater.from(getContext());
-        return Math.max(
-                measurePreviewItemHeight(inflater, R.layout.comments_item, containerWidth),
-                measurePreviewItemHeight(inflater, R.layout.comments_item_card, containerWidth));
+    private boolean isStablePreviewWidth(int containerWidth) {
+        return containerWidth >= Utils.pxFromDpInt(previewItemContainer.getResources(), MIN_STABLE_PREVIEW_WIDTH_DP);
     }
 
-    @SuppressLint("SetTextI18n")
-    private int measurePreviewItemHeight(LayoutInflater inflater, int layout, int containerWidth) {
-        View itemView = inflater.inflate(layout, previewItemContainer, false);
-        HtmlTextView body = itemView.findViewById(R.id.comment_body);
-        TextView by = itemView.findViewById(R.id.comment_by);
-        TextView byTime = itemView.findViewById(R.id.comment_by_time);
-        TextView hiddenCount = itemView.findViewById(R.id.comment_hidden_count);
-        TextView hiddenText = itemView.findViewById(R.id.comment_hidden_short);
-        View indentIndicator = itemView.findViewById(R.id.comment_indent_indicator);
-        LinearLayout measuredReferenceLinksContainer = itemView.findViewById(R.id.comment_reference_links_container);
-
-        if (body != null) {
-            bindPreviewCommentContent(body, measuredReferenceLinksContainer);
-            ensureSelectedFontLoaded();
-            FontUtils.setCommentTextTypeface(body, SettingsUtils.MAX_COMMENT_TEXT_SIZE);
+    private int measureCurrentPreviewItemHeight(int containerWidth) {
+        if (previewItemContainer == null || previewItemContainer.getChildCount() == 0) {
+            return 0;
         }
-        if (by != null) {
-            by.setText("pg");
-        }
-        if (byTime != null) {
-            byTime.setText("1h");
-        }
-        if (hiddenCount != null) {
-            hiddenCount.setVisibility(View.GONE);
-        }
-        if (hiddenText != null) {
-            hiddenText.setVisibility(View.GONE);
-        }
-        if (indentIndicator != null) {
-            indentIndicator.setVisibility(View.VISIBLE);
-        }
-        applyCommentMetaTypefaces(by, byTime, hiddenText, hiddenCount);
-
+        View itemView = LayoutInflater.from(getContext()).inflate(
+                cardStyle ? R.layout.comments_item_card : R.layout.comments_item,
+                previewItemContainer,
+                false);
+        bindCurrentPreviewItemForMeasurement(itemView);
         int widthSpec = View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
         itemView.measure(widthSpec, heightSpec);
         return getMeasuredOuterHeight(itemView);
+    }
+
+    private void bindCurrentPreviewItemForMeasurement(View itemView) {
+        HtmlTextView measuredBody = itemView.findViewById(R.id.comment_body);
+        TextView measuredBy = itemView.findViewById(R.id.comment_by);
+        TextView measuredByTime = itemView.findViewById(R.id.comment_by_time);
+        TextView measuredHiddenCount = itemView.findViewById(R.id.comment_hidden_count);
+        TextView measuredHiddenText = itemView.findViewById(R.id.comment_hidden_short);
+        View measuredIndentIndicator = itemView.findViewById(R.id.comment_indent_indicator);
+        LinearLayout measuredReferenceLinksContainer = itemView.findViewById(R.id.comment_reference_links_container);
+
+        bindPreviewCommentContent(measuredBody, measuredReferenceLinksContainer);
+        copyTextViewForMeasurement(commentBody, measuredBody);
+        copyTextViewForMeasurement(commentBy, measuredBy);
+        copyTextViewForMeasurement(commentByTime, measuredByTime);
+        copyTextViewForMeasurement(commentHiddenCount, measuredHiddenCount);
+        copyTextViewForMeasurement(commentHiddenText, measuredHiddenText);
+        copyViewVisibilityForMeasurement(commentIndentIndicator, measuredIndentIndicator);
+    }
+
+    private void copyTextViewForMeasurement(TextView source, TextView target) {
+        if (source == null || target == null) {
+            return;
+        }
+
+        target.setText(source.getText());
+        target.setVisibility(source.getVisibility());
+        target.setTextSize(TypedValue.COMPLEX_UNIT_PX, source.getTextSize());
+        target.setTypeface(source.getTypeface());
+    }
+
+    private void copyViewVisibilityForMeasurement(View source, View target) {
+        if (source == null || target == null) {
+            return;
+        }
+
+        target.setVisibility(source.getVisibility());
     }
 
     private void setExactHeight(View view, int height) {
@@ -683,6 +685,30 @@ public class CommentContentPreviewPreference extends Preference implements Share
             view.setLayoutParams(layoutParams);
         }
         view.setMinimumHeight(height);
+    }
+
+    private void clearReservedPreviewHeight() {
+        if (previewItemContainer == null) {
+            return;
+        }
+
+        if (previewItemContainer.getChildCount() > 0) {
+            setWrapContentHeight(previewItemContainer.getChildAt(0));
+        }
+        setWrapContentHeight(previewItemContainer);
+    }
+
+    private void setWrapContentHeight(View view) {
+        if (view == null) {
+            return;
+        }
+
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+        if (layoutParams != null && layoutParams.height != ViewGroup.LayoutParams.WRAP_CONTENT) {
+            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            view.setLayoutParams(layoutParams);
+        }
+        view.setMinimumHeight(0);
     }
 
     private int getMeasuredOuterHeight(View view) {
@@ -715,22 +741,6 @@ public class CommentContentPreviewPreference extends Preference implements Share
         }
     }
 
-    private void beginPreviewTransition() {
-        if (previewRoot == null || !ViewCompat.isLaidOut(previewRoot)) {
-            return;
-        }
-
-        beginSettingsListTransition();
-        TransitionManager.beginDelayedTransition(previewRoot, createPreviewTransition());
-    }
-
-    private void beginSettingsListTransition() {
-        ViewGroup settingsList = findAncestorOfType(previewRoot, RecyclerView.class);
-        if (settingsList != null && ViewCompat.isLaidOut(settingsList)) {
-            TransitionManager.beginDelayedTransition(settingsList, createSettingsListTransition());
-        }
-    }
-
     private void disablePreviewItemScrollbars() {
         if (previewItemContainer == null) {
             return;
@@ -752,22 +762,6 @@ public class CommentContentPreviewPreference extends Preference implements Share
                 disableScrollbarsInTree(viewGroup.getChildAt(i));
             }
         }
-    }
-
-    private ChangeBounds createSettingsListTransition() {
-        ChangeBounds transition = new ChangeBounds();
-        transition.setDuration(PREVIEW_ANIMATION_DURATION_MS);
-        transition.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
-        transition.excludeChildren(previewRoot, true);
-        return transition;
-    }
-
-    private AutoTransition createPreviewTransition() {
-        AutoTransition transition = new AutoTransition();
-        transition.setOrdering(TransitionSet.ORDERING_TOGETHER);
-        transition.setDuration(PREVIEW_ANIMATION_DURATION_MS);
-        transition.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
-        return transition;
     }
 
     private <T extends ViewGroup> T findAncestorOfType(View view, Class<T> type) {
