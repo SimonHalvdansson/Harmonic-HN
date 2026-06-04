@@ -183,20 +183,14 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     }
 
     private void clearPreviewViews() {
-        if (previewHeightAnimator != null) {
-            previewHeightAnimator.cancel();
-            previewHeightAnimator = null;
-        }
+        cancelPreviewHeightAnimator();
         if (comments != null) {
             comments.animate().cancel();
         }
         if (commentsIcon != null) {
             commentsIcon.animate().cancel();
         }
-        if (cardTintAnimator != null) {
-            cardTintAnimator.cancel();
-            cardTintAnimator = null;
-        }
+        cancelCardTintAnimator();
         previewRoot = null;
         if (previewItemContainer != null) {
             previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
@@ -278,6 +272,8 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             return;
         }
 
+        cancelPreviewHeightAnimator();
+        cancelCardTintAnimator();
         previewItemContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(getContext());
         int layout = getStoryPreviewLayout(leftAlign, shouldUsePreviewCardShell());
@@ -441,9 +437,14 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             updatePreview(false);
             if (animate && tintCardUsingPreview && storyCard != null) {
                 int defaultColor = getDefaultCardBackgroundColor(storyCard);
-                storyCard.setCardBackgroundColor(defaultColor);
+                MaterialCardView targetCard = storyCard;
+                targetCard.setCardBackgroundColor(defaultColor);
                 currentCardBackgroundColor = defaultColor;
-                storyCard.post(() -> updateStoryCardBackground(getCurrentPreviewImageMode(), true));
+                targetCard.post(() -> {
+                    if (storyCard == targetCard) {
+                        updateStoryCardBackground(getCurrentPreviewImageMode(), true);
+                    }
+                });
             }
             requestPreviewRemeasure();
             return;
@@ -596,9 +597,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     }
 
     private void animatePreviewImageMode(String previewImageMode) {
-        if (previewHeightAnimator != null) {
-            previewHeightAnimator.cancel();
-        }
+        cancelPreviewHeightAnimator();
 
         PreviewHeights startHeights = getCurrentPreviewHeights();
         updatePreview(null, null, null, null, null, null, null, previewImageMode, false, false);
@@ -973,21 +972,19 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     }
 
     private void setStoryCardBackgroundColor(int targetColor, boolean animate) {
-        if (storyCard == null) {
+        MaterialCardView targetCard = storyCard;
+        if (targetCard == null) {
             return;
         }
 
-        if (cardTintAnimator != null) {
-            cardTintAnimator.cancel();
-            cardTintAnimator = null;
-        }
+        cancelCardTintAnimator();
 
         int currentColor = currentCardBackgroundColor != null
                 ? currentCardBackgroundColor
-                : storyCard.getCardBackgroundColor().getDefaultColor();
+                : targetCard.getCardBackgroundColor().getDefaultColor();
 
         if (!animate || currentColor == targetColor) {
-            storyCard.setCardBackgroundColor(targetColor);
+            targetCard.setCardBackgroundColor(targetColor);
             currentCardBackgroundColor = targetColor;
             return;
         }
@@ -995,11 +992,35 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         cardTintAnimator = ValueAnimator.ofObject(new ArgbEvaluator(), currentColor, targetColor);
         cardTintAnimator.setDuration(PREVIEW_ANIMATION_DURATION_MS);
         cardTintAnimator.addUpdateListener(animation -> {
+            if (storyCard != targetCard) {
+                animation.cancel();
+                return;
+            }
             int color = (int) animation.getAnimatedValue();
-            storyCard.setCardBackgroundColor(color);
+            targetCard.setCardBackgroundColor(color);
             currentCardBackgroundColor = color;
         });
         cardTintAnimator.start();
+    }
+
+    private void cancelPreviewHeightAnimator() {
+        if (previewHeightAnimator == null) {
+            return;
+        }
+
+        previewHeightAnimator.removeAllUpdateListeners();
+        previewHeightAnimator.cancel();
+        previewHeightAnimator = null;
+    }
+
+    private void cancelCardTintAnimator() {
+        if (cardTintAnimator == null) {
+            return;
+        }
+
+        cardTintAnimator.removeAllUpdateListeners();
+        cardTintAnimator.cancel();
+        cardTintAnimator = null;
     }
 
     private int getDefaultCardBackgroundColor(View view) {

@@ -181,10 +181,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
     }
 
     private void clearPreviewViews() {
-        if (textSizeAnimator != null) {
-            textSizeAnimator.cancel();
-            textSizeAnimator = null;
-        }
+        cancelTextSizeAnimator();
         if (previewItemContainer != null) {
             previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
         }
@@ -223,6 +220,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
             return;
         }
 
+        cancelTextSizeAnimator();
         previewItemContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(getContext());
         int layout = cardStyle ? R.layout.comments_item_card : R.layout.comments_item;
@@ -436,21 +434,21 @@ public class CommentContentPreviewPreference extends Preference implements Share
         textSizeTargetSp = adjustedTextSize;
 
         if (textSizeAnimator != null) {
-            textSizeAnimator.cancel();
-            textSizeAnimator = null;
+            cancelTextSizeAnimator();
         }
 
-        if (!animate || !ViewCompat.isLaidOut(commentBody)) {
-            commentBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, adjustedTextSize);
+        HtmlTextView targetBody = commentBody;
+        if (!animate || !ViewCompat.isLaidOut(targetBody)) {
+            targetBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, adjustedTextSize);
             syncReservedPreviewHeight();
             requestPreviewRemeasure();
             return;
         }
 
         float scaledDensity = getContext().getResources().getDisplayMetrics().scaledDensity;
-        float currentTextSizeSp = commentBody.getTextSize() / scaledDensity;
+        float currentTextSizeSp = targetBody.getTextSize() / scaledDensity;
         if (Math.abs(currentTextSizeSp - adjustedTextSize) < 0.01f) {
-            commentBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, adjustedTextSize);
+            targetBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, adjustedTextSize);
             syncReservedPreviewHeight();
             requestPreviewRemeasure();
             return;
@@ -461,17 +459,34 @@ public class CommentContentPreviewPreference extends Preference implements Share
         textSizeAnimator.setDuration(TEXT_SIZE_ANIMATION_DURATION_MS);
         textSizeAnimator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
         textSizeAnimator.addUpdateListener(animation -> {
+            if (commentBody != targetBody) {
+                animation.cancel();
+                return;
+            }
             float animatedTextSize = (float) animation.getAnimatedValue();
-            commentBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, animatedTextSize);
+            targetBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, animatedTextSize);
             requestPreviewRemeasure();
         });
         textSizeAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                textSizeAnimator = null;
+                if (textSizeAnimator == animation) {
+                    textSizeAnimator = null;
+                }
             }
         });
         textSizeAnimator.start();
+    }
+
+    private void cancelTextSizeAnimator() {
+        if (textSizeAnimator == null) {
+            return;
+        }
+
+        textSizeAnimator.removeAllUpdateListeners();
+        textSizeAnimator.removeAllListeners();
+        textSizeAnimator.cancel();
+        textSizeAnimator = null;
     }
 
     private void applyReferenceLinkTextSize(float commentTextSize) {
