@@ -142,6 +142,8 @@
         <item name="colorPrimary">@color/colorPrimaryGreen</item>
         <item name="colorPrimaryDark">@color/colorPrimaryGreen</item>
         <item name="colorAccent">@color/colorPrimaryGreen</item>
+        <item name="colorSecondary">@color/colorPrimaryGreen</item>
+        <item name="colorOnSecondary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/colorPrimaryGreenLighter</item>
         <item name="colorSurfaceContainerHigh">@color/lightBackground</item>
         <item name="settingsHeaderSelectedColor">@color/settings_header_selected_light</item>
@@ -169,6 +171,8 @@
         <item name="secondaryTextColor">@color/material_you_secondary_40</item>
 
         <item name="colorAccent">@color/material_you_600</item>
+        <item name="colorSecondary">@color/material_you_600</item>
+        <item name="colorOnSecondary">@android:color/white</item>
 
         <item name="colorPrimary">@color/material_you_third_400</item>
         <item name="colorPrimaryContainer">@color/material_you_third_700</item>
