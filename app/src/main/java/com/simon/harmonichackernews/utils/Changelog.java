@@ -18,6 +18,7 @@ public class Changelog {
                 "- Added new setting for graying out clicked posts<br>" +
                 "- Added new sharing option for link + HN comments (thanks daniel-egan!)<br>" +
                 "- Added new archive options<br>" +
+                "- Added reader mode for integrated WebView<br>" +
                 "- Added text size setting for titles<br>" +
                 "- Added a setting for number of stories to cache<br>" +
                 "- Added setting to automatically redirect certain domains to archive version<br>" +

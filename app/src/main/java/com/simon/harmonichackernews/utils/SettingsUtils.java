@@ -48,6 +48,7 @@ public class SettingsUtils {
     public static final String PREF_ALWAYS_SHOW_TAP_TO_REFRESH = "pref_always_show_tap_to_refresh";
     public static final String PREF_PRELOAD_WEBVIEW = "pref_preload_webview";
     public static final String PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY = "pref_preload_webview_minimum_battery";
+    public static final String PREF_WEBVIEW_READER_MODE_DEFAULT = "pref_webview_reader_mode_default";
     public static final String PREF_ARCHIVE_REDIRECT_DOMAINS = "pref_archive_redirect_domains";
     public static final String PREF_STORIES_TO_CACHE = "pref_stories_to_cache";
     public static final String PREF_FAVICON_PROVIDER = "pref_favicon_provider";
@@ -568,6 +569,10 @@ public class SettingsUtils {
 
     public static boolean shouldMatchWebViewTheme(Context ctx) {
         return getBooleanPref("pref_webview_match_theme", false, ctx);
+    }
+
+    public static boolean shouldUseReaderModeByDefault(Context ctx) {
+        return getBooleanPref(PREF_WEBVIEW_READER_MODE_DEFAULT, false, ctx);
     }
 
     public static boolean shouldCloseWebViewOnBack(Context ctx) {

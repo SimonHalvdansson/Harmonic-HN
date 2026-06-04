@@ -42,6 +42,7 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
 
         changePrefStatus(preloadWebViewPreference, integratedWebview);
         changePrefStatus(findPreference("pref_webview_match_theme"), integratedWebview);
+        changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT), integratedWebview);
         changePrefStatus(findPreference("pref_webview_adblock"), integratedWebview);
         changePrefStatus(findPreference("pref_close_webview_on_back"), integratedWebview);
 
@@ -53,6 +54,7 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
         findPreference("pref_webview").setOnPreferenceChangeListener((preference, newValue) -> {
             changePrefStatus(preloadWebViewPreference, (boolean) newValue);
             changePrefStatus(findPreference("pref_webview_match_theme"), (boolean) newValue);
+            changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT), (boolean) newValue);
             changePrefStatus(findPreference("pref_webview_adblock"), (boolean) newValue);
             changePrefStatus(findPreference("pref_close_webview_on_back"), (boolean) newValue);
             return true;

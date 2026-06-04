@@ -30,6 +30,7 @@
             app:defaultValue="never" />
 
         <SwitchPreferenceCompat
+            app:dependency="pref_webview"
             app:singleLineTitle="false"
             app:key="pref_webview_match_theme"
             app:defaultValue="false"
@@ -37,6 +38,15 @@
             app:title="Match WebView dark mode to theme" />
 
         <SwitchPreferenceCompat
+            app:dependency="pref_webview"
+            app:singleLineTitle="false"
+            app:key="pref_webview_reader_mode_default"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_action_reader_mode"
+            app:title="Reader mode on by default" />
+
+        <SwitchPreferenceCompat
+            app:dependency="pref_webview"
             app:singleLineTitle="false"
             app:key="pref_webview_adblock"
             app:defaultValue="false"

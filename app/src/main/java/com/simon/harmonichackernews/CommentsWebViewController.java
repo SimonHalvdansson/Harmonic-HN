@@ -120,6 +120,7 @@ class CommentsWebViewController {
     private String preloadWebview = "never";
     private int preloadWebviewMinimumBattery = SettingsUtils.DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY;
     private boolean matchWebviewTheme = true;
+    private boolean readerModeDefault = false;
     private boolean blockAds = true;
     private boolean startedLoading = false;
     private boolean initializedWebView = false;
@@ -139,6 +140,7 @@ class CommentsWebViewController {
     private boolean retryingFailedWebViewUrl = false;
     private boolean readerModeEnabled = false;
     private boolean readerModePending = false;
+    private boolean readerModeDisabledForCurrentPage = false;
     @Nullable
     private String readerModeScript;
 
@@ -161,12 +163,13 @@ class CommentsWebViewController {
         webViewBackdrop = rootView.findViewById(R.id.comments_webview_backdrop);
     }
 
-    void configure(boolean showWebsite, boolean integratedWebview, String preloadWebview, int preloadWebviewMinimumBattery, boolean matchWebviewTheme, boolean blockAds) {
+    void configure(boolean showWebsite, boolean integratedWebview, String preloadWebview, int preloadWebviewMinimumBattery, boolean matchWebviewTheme, boolean readerModeDefault, boolean blockAds) {
         this.showWebsite = showWebsite;
         this.integratedWebview = integratedWebview;
         this.preloadWebview = preloadWebview;
         this.preloadWebviewMinimumBattery = preloadWebviewMinimumBattery;
         this.matchWebviewTheme = matchWebviewTheme;
+        this.readerModeDefault = readerModeDefault;
         this.blockAds = blockAds;
     }
 
@@ -312,6 +315,8 @@ class CommentsWebViewController {
             return;
         }
 
+        boolean enableReaderMode = !readerModeEnabled;
+        readerModeDisabledForCurrentPage = !enableReaderMode;
         if (!startedLoading || TextUtils.isEmpty(currentUrl) || webView.getProgress() < 100) {
             if (TextUtils.isEmpty(story.url)) {
                 Toast.makeText(context, "Reader mode unavailable for this page", Toast.LENGTH_SHORT).show();
@@ -326,10 +331,14 @@ class CommentsWebViewController {
             return;
         }
 
-        applyReaderMode(!readerModeEnabled);
+        applyReaderMode(enableReaderMode);
     }
 
     private void applyReaderMode(boolean enable) {
+        applyReaderMode(enable, true);
+    }
+
+    private void applyReaderMode(boolean enable, boolean showFeedback) {
         Context context = fragment.getContext();
         if (webView == null || context == null || fragment.getView() == null) {
             return;
@@ -337,7 +346,9 @@ class CommentsWebViewController {
 
         String script = getReaderModeScript(context);
         if (TextUtils.isEmpty(script)) {
-            Toast.makeText(context, "Reader mode unavailable", Toast.LENGTH_SHORT).show();
+            if (showFeedback) {
+                Toast.makeText(context, "Reader mode unavailable", Toast.LENGTH_SHORT).show();
+            }
             return;
         }
 
@@ -351,18 +362,28 @@ class CommentsWebViewController {
             String status = normalizeJavascriptResult(result);
             if ("enabled".equals(status)) {
                 readerModeEnabled = true;
-                Toast.makeText(callbackContext, "Reader mode enabled", Toast.LENGTH_SHORT).show();
+                if (showFeedback) {
+                    Toast.makeText(callbackContext, "Reader mode enabled", Toast.LENGTH_SHORT).show();
+                }
             } else if ("disabled".equals(status)) {
                 readerModeEnabled = false;
-                Toast.makeText(callbackContext, "Reader mode disabled", Toast.LENGTH_SHORT).show();
+                if (showFeedback) {
+                    Toast.makeText(callbackContext, "Reader mode disabled", Toast.LENGTH_SHORT).show();
+                }
             } else if ("no_article".equals(status)) {
                 readerModeEnabled = false;
-                Toast.makeText(callbackContext, "Couldn't find readable article", Toast.LENGTH_SHORT).show();
+                if (showFeedback) {
+                    Toast.makeText(callbackContext, "Couldn't find readable article", Toast.LENGTH_SHORT).show();
+                }
             } else if ("unavailable".equals(status)) {
                 readerModeEnabled = false;
-                Toast.makeText(callbackContext, "Reader mode unavailable for this page", Toast.LENGTH_SHORT).show();
+                if (showFeedback) {
+                    Toast.makeText(callbackContext, "Reader mode unavailable for this page", Toast.LENGTH_SHORT).show();
+                }
             } else {
-                Toast.makeText(callbackContext, "Couldn't open reader mode", Toast.LENGTH_SHORT).show();
+                if (showFeedback) {
+                    Toast.makeText(callbackContext, "Couldn't open reader mode", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
@@ -676,6 +697,7 @@ class CommentsWebViewController {
             showingErrorPage = false;
             showingCachedArticlePage = false;
             readerModeEnabled = false;
+            readerModeDisabledForCurrentPage = false;
             lastRequestedWebViewUrl = url;
         }
         if (PDF_LOADER_URL.equals(url)) {
@@ -997,6 +1019,7 @@ class CommentsWebViewController {
             }
             if (!isErrorPageUrl(url)) {
                 readerModeEnabled = false;
+                readerModeDisabledForCurrentPage = false;
                 lastRequestedWebViewUrl = url;
             }
         }
@@ -1038,6 +1061,18 @@ class CommentsWebViewController {
                 view.post(() -> {
                     if (isCurrentWebViewCallback(view)) {
                         applyReaderMode(true);
+                    }
+                });
+            } else if (integratedWebview
+                    && readerModeDefault
+                    && !readerModeDisabledForCurrentPage
+                    && !readerModeEnabled
+                    && !showingErrorPage
+                    && !PDF_LOADER_URL.equals(url)
+                    && !isErrorPageUrl(url)) {
+                view.post(() -> {
+                    if (isCurrentWebViewCallback(view)) {
+                        applyReaderMode(true, false);
                     }
                 });
             }
