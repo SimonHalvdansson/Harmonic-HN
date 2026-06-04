@@ -13,7 +13,7 @@
 
     <color name="whiteStatusBarColor">@color/whiteBackground</color>
 
-    <color name="colorPrimaryGreen">#356858</color>
+    <color name="colorPrimaryGreen">#90EEBB</color>
     <color name="colorPrimaryGreenLighter">#478a74</color>
 
     <color name="background">#222431</color>
