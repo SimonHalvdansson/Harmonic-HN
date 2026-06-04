@@ -1706,6 +1706,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         int oldCommentCount = getAllCommentsSource().size();
+        boolean updateHeaderAfterLoad = false;
+        boolean fullHeaderRefreshAfterLoad = false;
 
         // This is what we get if the Algolia API has not indexed the post,
         // we should attempt to show the user an option to switch API:s in this
@@ -1723,9 +1725,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             JSONParser.AlgoliaCommentsResponse parsedResponse = JSONParser.parseAlgoliaCommentsResponse(response, story.kids, filteredUsers);
             applyParsedComments(parsedResponse.comments);
 
+            String oldStoryUrl = story.url;
+            boolean oldStoryIsLink = story.isLink;
+            boolean oldStoryIsComment = story.isComment;
             boolean storyChanged = parsedResponse.updateStoryInformation(story, forceHeaderRefresh, oldCommentCount);
             if (storyChanged || forceHeaderRefresh) {
-                adapter.notifyItemChanged(0);
+                updateHeaderAfterLoad = true;
+                fullHeaderRefreshAfterLoad = !TextUtils.equals(oldStoryUrl, story.url)
+                        || oldStoryIsLink != story.isLink
+                        || oldStoryIsComment != story.isComment;
             }
             maybeLoadPollOptions();
 
@@ -1768,6 +1776,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         adapter.commentsLoaded = true;
+        if (updateHeaderAfterLoad
+                && (fullHeaderRefreshAfterLoad || !adapter.updateBoundHeaderStoryViews())) {
+            adapter.notifyItemChanged(0);
+        }
         updateNavigationVisibility();
         recyclerView.post(() -> {
             if (!isCommentsViewActive()) {
@@ -1997,7 +2009,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (adapter != null) {
             adapter.invalidateCommentLookup();
             diffResult.dispatchUpdatesTo(adapter);
-            adapter.notifyItemChanged(0);
+            adapter.updateBoundHeaderStoryViews();
         }
         updateNavigationVisibility();
     }

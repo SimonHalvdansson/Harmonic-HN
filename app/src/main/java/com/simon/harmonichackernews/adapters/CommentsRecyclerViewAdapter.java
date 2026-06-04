@@ -536,6 +536,101 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         return Math.max(0f, Math.min(1f, slideOffset));
     }
 
+    public boolean updateBoundHeaderStoryViews() {
+        if (boundHeaderViewHolder == null
+                || !ViewCompat.isAttachedToWindow(boundHeaderViewHolder.itemView)) {
+            return false;
+        }
+
+        bindHeaderStoryViews(boundHeaderViewHolder, boundHeaderViewHolder.itemView.getContext());
+        return true;
+    }
+
+    private void bindHeaderStoryViews(HeaderViewHolder headerViewHolder, Context ctx) {
+        if (story.isLink && story.url != null) {
+            try {
+                headerViewHolder.urlView.setText("(" + Utils.getDomainName(story.url) + ")");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        headerViewHolder.headerView.setClickable(story.isLink);
+        headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : GONE);
+        bindStoryText(headerViewHolder);
+        LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story, integratedWebview, bottomSheet);
+        bindHeaderTitle(headerViewHolder, ctx);
+        bindHeaderMeta(headerViewHolder, ctx);
+        bindHeaderLoadingState(headerViewHolder, ctx);
+
+        headerViewHolder.favicon.setVisibility(showThumbnail ? View.VISIBLE : GONE);
+        headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
+        if (showThumbnail && !TextUtils.isEmpty(story.url)) {
+            FaviconLoader.loadFavicon(story.url, headerViewHolder.favicon, ctx, faviconProvider);
+        }
+        headerViewHolder.summarizeButtonParent.setVisibility(story.isLink && Utils.canProvideSummary(ctx) ? View.VISIBLE : View.GONE);
+        headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
+        headerViewHolder.commentButtonParent.setVisibility(Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time) ? GONE : View.VISIBLE);
+        headerViewHolder.commentButton.setContentDescription(story.isComment ? "Reply to comment" : "Reply to post");
+        bindHeaderTint(headerViewHolder);
+    }
+
+    private void bindHeaderTitle(HeaderViewHolder headerViewHolder, Context ctx) {
+        if (!TextUtils.isEmpty(story.pdfTitle)) {
+            SpannableStringBuilder sb = new SpannableStringBuilder(story.pdfTitle + " ");
+            ImageSpan imageSpan = new ImageSpan(ctx, R.drawable.ic_action_pdf_large);
+            sb.setSpan(imageSpan, story.pdfTitle.length(), story.pdfTitle.length() + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            headerViewHolder.titleView.setText(sb);
+        } else {
+            headerViewHolder.titleView.setText(story.title);
+        }
+    }
+
+    private void bindHeaderMeta(HeaderViewHolder headerViewHolder, Context ctx) {
+        if (story.loaded) {
+            headerViewHolder.metaVotes.setText(String.valueOf(story.score));
+            headerViewHolder.metaComments.setText(String.valueOf(story.descendants));
+            headerViewHolder.metaTime.setText(story.getTimeFormatted());
+            String tag = getCachedUserTag(ctx, story.by);
+            headerViewHolder.metaBy.setText(TextUtils.isEmpty(tag) ? story.by : story.by + " (" + tag + ")");
+            headerViewHolder.metaVotes.setContentDescription(pointCountDescription(story.score));
+            headerViewHolder.metaComments.setContentDescription(commentCountDescription(story.descendants));
+            headerViewHolder.metaTime.setContentDescription("Posted " + story.getTimeFormatted());
+            headerViewHolder.metaBy.setContentDescription("Submitted by " + story.by);
+            headerViewHolder.userButton.setContentDescription("Open submitter " + story.by);
+        }
+
+        headerViewHolder.metaContainer.setVisibility(story.loaded ? View.VISIBLE : GONE);
+        headerViewHolder.urlView.setVisibility(story.isLink ? View.VISIBLE : GONE);
+        headerViewHolder.metaVotes.setVisibility(story.isComment ? GONE : View.VISIBLE);
+        headerViewHolder.metaVotesIcon.setVisibility(story.isComment ? GONE : View.VISIBLE);
+    }
+
+    private void bindHeaderLoadingState(HeaderViewHolder headerViewHolder, Context ctx) {
+        if (loadingFailed) {
+            headerViewHolder.loadingIndicator.setVisibility(GONE);
+            headerViewHolder.emptyView.setVisibility(GONE);
+        } else if (commentsLoaded) {
+            headerViewHolder.loadingIndicator.setVisibility(GONE);
+            headerViewHolder.emptyView.setVisibility(story.descendants > 0 || comments.size() > 1 ? GONE : View.VISIBLE);
+        } else {
+            headerViewHolder.loadingIndicator.setVisibility(View.VISIBLE);
+            headerViewHolder.emptyView.setVisibility(GONE);
+        }
+
+        headerViewHolder.loadingFailed.setVisibility(loadingFailed ? VISIBLE : GONE);
+        if (loadingFailed) {
+            if (!Utils.isNetworkAvailable(ctx)) {
+                headerViewHolder.loadingFailedText.setText("No internet connection");
+            } else {
+                headerViewHolder.loadingFailedText.setText("Loading failed");
+            }
+        }
+
+        headerViewHolder.serverErrorText.setVisibility(loadingFailedServerError ? VISIBLE : GONE);
+        headerViewHolder.openInBrowserButton.setVisibility(loadingFailedServerError ? VISIBLE : GONE);
+    }
+
     private void bindHeaderPreviewImage(final HeaderViewHolder headerViewHolder) {
         if (!shouldLoadHeaderPreviewImage(story)) {
             resetHeaderPreviewImage(headerViewHolder);
