@@ -394,11 +394,8 @@ public class CommentContentPreviewPreference extends Preference implements Share
         label.setSingleLine(true);
         label.setEllipsize(TextUtils.TruncateAt.END);
         label.setTextColor(MaterialColors.getColor(container, R.attr.storyColorNormal));
-        FontUtils.setTypefaceForFont(
-                label,
-                SettingsUtils.getPreferredFont(context),
-                false,
-                Math.max(12f, SettingsUtils.getPreferredCommentTextSize(context) - 2f));
+        FontUtils.setTypefaceForFont(label, SettingsUtils.getPreferredFont(context), false,
+                getReferenceLinkLabelTextSize(SettingsUtils.getPreferredCommentTextSize(context)));
         label.setLayoutParams(new LinearLayout.LayoutParams(
                 0,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -424,6 +421,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
         float clampedTextSize = SettingsUtils.clampCommentTextSize(textSize);
         ensureSelectedFontLoaded();
         applyCommentMetaTypefaces(commentBy, commentByTime, commentHiddenText, commentHiddenCount);
+        applyReferenceLinkTextSize(clampedTextSize);
         if (commentBody == null) {
             textSizeTargetSp = FontUtils.getCommentTextSize(clampedTextSize);
             return;
@@ -474,6 +472,55 @@ public class CommentContentPreviewPreference extends Preference implements Share
             }
         });
         textSizeAnimator.start();
+    }
+
+    private void applyReferenceLinkTextSize(float commentTextSize) {
+        if (referenceLinksContainer == null) {
+            return;
+        }
+
+        String font = SettingsUtils.getPreferredFont(referenceLinksContainer.getContext());
+        float labelTextSize = getReferenceLinkLabelTextSize(commentTextSize);
+        for (int i = 0; i < referenceLinksContainer.getChildCount(); i++) {
+            View child = referenceLinksContainer.getChildAt(i);
+            if (!(child instanceof ViewGroup)) {
+                continue;
+            }
+
+            applyReferenceLinkRowTextSize((ViewGroup) child, font, labelTextSize);
+        }
+    }
+
+    private void applyReferenceLinkRowTextSize(ViewGroup row, String font, float labelTextSize) {
+        TextView label = null;
+        for (int i = 0; i < row.getChildCount(); i++) {
+            View child = row.getChildAt(i);
+            if (child instanceof TextView) {
+                label = (TextView) child;
+            }
+        }
+
+        if (label == null) {
+            return;
+        }
+
+        for (int i = 0; i < row.getChildCount(); i++) {
+            View child = row.getChildAt(i);
+            if (!(child instanceof TextView)) {
+                continue;
+            }
+
+            TextView textView = (TextView) child;
+            if (textView == label) {
+                FontUtils.setTypefaceForFont(textView, font, false, labelTextSize);
+            } else {
+                FontUtils.setTypefaceForFont(textView, font, true, 13);
+            }
+        }
+    }
+
+    private float getReferenceLinkLabelTextSize(float commentTextSize) {
+        return Math.max(12f, SettingsUtils.clampCommentTextSize(commentTextSize) - 2f);
     }
 
     private void applyCommentMetaTypefaces(
