@@ -9,7 +9,7 @@
             app:key="pref_story_content_preview" />
 
         <com.simon.harmonichackernews.settings.StoryPreviewImagePreference
-            app:defaultValue="off"
+            app:defaultValue="small"
             app:key="pref_story_preview_image_mode"
             app:title="Preview image" />
 
@@ -69,7 +69,7 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_tint_card_using_preview"
-            app:defaultValue="false"
+            app:defaultValue="true"
             app:icon="@drawable/ic_action_colors"
             app:summary="Uses preview or favicon"
             app:title="Tint" />

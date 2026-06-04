@@ -35,14 +35,14 @@ public class StoryPreviewImagePreference extends Preference {
         }
 
         group.clearOnButtonCheckedListeners();
-        group.check(getButtonIdForMode(getPersistedString(SettingsUtils.STORY_PREVIEW_IMAGE_OFF)));
+        group.check(getButtonIdForMode(getPersistedString(SettingsUtils.STORY_PREVIEW_IMAGE_SMALL)));
         group.addOnButtonCheckedListener((buttonGroup, checkedId, isChecked) -> {
             if (!isChecked) {
                 return;
             }
 
             String mode = getModeForButtonId(checkedId);
-            String currentMode = getPersistedString(SettingsUtils.STORY_PREVIEW_IMAGE_OFF);
+            String currentMode = getPersistedString(SettingsUtils.STORY_PREVIEW_IMAGE_SMALL);
             if (currentMode.equals(mode)) {
                 return;
             }

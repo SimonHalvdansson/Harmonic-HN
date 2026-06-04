@@ -6,7 +6,7 @@ public class Changelog {
         return  "<b>Version 3.0:</b><br>" +
                 "- This version is the to date most comprehensive quality of life cleanup release, consisting of nearly 200 commits. There are many small changes which are not mentioned in these notes.<br>" +
                 "- Added support for HN Favorites. You can convert all your bookmarks to favorites in Settings -> Data -> Bookmarks and also disable bookmarks from there.<br>" +
-                "- Added optional story preview images. Activate in Settings -> Stories<br>" +
+                "- Added story preview images. (De)activate in Settings -> Stories<br>" +
                 "- Redesigned comment details dialog, opened by long pressing a comment<br>" +
                 "- Added ability to bookmark comments<br>" +
                 "- Added new story display style: Card<br>" +

@@ -482,7 +482,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             index.setTypeface(FontUtils.activeRegular);
         }
         if (commentCount != null) {
-            FontUtils.setStoryCommentCountTypeface(commentCount);
+            FontUtils.setStoryCommentCountTypeface(commentCount, storyTextSize);
         }
     }
 

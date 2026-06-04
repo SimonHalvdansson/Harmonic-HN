@@ -189,7 +189,7 @@ public class SettingsUtils {
         if (STORY_PREVIEW_IMAGE_SMALL.equals(mode) || STORY_PREVIEW_IMAGE_LARGE.equals(mode)) {
             return mode;
         }
-        return STORY_PREVIEW_IMAGE_OFF;
+        return STORY_PREVIEW_IMAGE_SMALL;
     }
 
     public static boolean shouldCollapseParent(Context ctx) {
@@ -201,7 +201,7 @@ public class SettingsUtils {
     }
 
     public static boolean shouldTintCardUsingPreview(Context ctx) {
-        return getBooleanPref(PREF_TINT_CARD_USING_PREVIEW, false, ctx);
+        return getBooleanPref(PREF_TINT_CARD_USING_PREVIEW, true, ctx);
     }
 
     public static boolean shouldShowNavigationButtons(Context ctx) {

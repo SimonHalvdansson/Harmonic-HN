@@ -236,7 +236,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (holder instanceof HeaderViewHolder) {
             final HeaderViewHolder headerViewHolder = (HeaderViewHolder) holder;
             boundHeaderViewHolder = headerViewHolder;
-            setHeaderSlideOffset(BottomSheetBehavior.from(bottomSheet).calculateSlideOffset());
+            setHeaderSlideOffset(getCurrentHeaderSlideOffset());
 
             if (story.isLink && story.url != null) {
                 try {
@@ -529,6 +529,22 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (boundHeaderViewHolder != null) {
             applyHeaderBackground(boundHeaderViewHolder);
         }
+    }
+
+    private float getCurrentHeaderSlideOffset() {
+        if (bottomSheet == null) {
+            return 1f;
+        }
+
+        BottomSheetBehavior<LinearLayout> behavior = BottomSheetBehavior.from(bottomSheet);
+        int state = behavior.getState();
+        if (state == BottomSheetBehavior.STATE_COLLAPSED) {
+            return 0f;
+        }
+        if (state == BottomSheetBehavior.STATE_EXPANDED) {
+            return 1f;
+        }
+        return behavior.calculateSlideOffset();
     }
 
     private float sanitizeHeaderSlideOffset(float slideOffset) {
@@ -2091,6 +2107,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
                 @Override
                 public void onStateChanged(@NonNull View bottomSheet, int newState) {
+                    if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
+                        CommentsRecyclerViewAdapter.this.setHeaderSlideOffset(0f);
+                    } else if (newState == BottomSheetBehavior.STATE_EXPANDED) {
+                        CommentsRecyclerViewAdapter.this.setHeaderSlideOffset(1f);
+                    }
                 }
 
                 @Override

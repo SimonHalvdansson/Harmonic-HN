@@ -275,7 +275,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment);
 
                 applyStoryTextSizes(storyViewHolder);
-                FontUtils.setStoryCommentCountTypeface(storyViewHolder.commentsView);
 
                 storyViewHolder.titleShimmer.setVisibility(View.GONE);
                 storyViewHolder.metaShimmer.setVisibility(View.GONE);
@@ -975,6 +974,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private void applyStoryTextSizes(StoryViewHolder storyViewHolder) {
         FontUtils.setStoryTitleTypeface(storyViewHolder.titleView, storyTextSize);
         FontUtils.setStoryMetaTypeface(storyViewHolder.metaView, storyTextSize);
+        FontUtils.setStoryCommentCountTypeface(storyViewHolder.commentsView, storyTextSize);
     }
 
     private static boolean isCurrentPreviewTarget(ImageView previewImage, String imageUrl) {

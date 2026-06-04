@@ -105,8 +105,9 @@ public class FontUtils {
         setTypeface(textView, false, STORY_META_SIZES.times(metaScale));
     }
 
-    public static void setStoryCommentCountTypeface(TextView textView) {
-        setTypeface(textView, true, STORY_COMMENT_COUNT_SIZES);
+    public static void setStoryCommentCountTypeface(TextView textView, float storyTextSize) {
+        float countScale = SettingsUtils.clampStoryTextSize(storyTextSize) / SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
+        setTypeface(textView, true, STORY_COMMENT_COUNT_SIZES.times(countScale));
     }
 
     public static void setCommentTextTypeface(TextView textView, float commentTextSize) {
