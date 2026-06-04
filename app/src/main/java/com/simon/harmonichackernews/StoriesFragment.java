@@ -2,7 +2,6 @@ package com.simon.harmonichackernews;
 
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.transition.AutoTransition;
@@ -18,7 +17,6 @@ import android.view.animation.PathInterpolator;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -53,6 +51,7 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.search.SearchBar;
+import com.simon.harmonichackernews.adapters.StoryDisplaySettings;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.data.History;
@@ -65,7 +64,6 @@ import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
-import com.simon.harmonichackernews.utils.SearchRelevanceUtils;
 import com.simon.harmonichackernews.utils.StoryUpdate;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.UtilsKt;
@@ -77,8 +75,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -104,6 +100,8 @@ public class StoriesFragment extends Fragment {
     private RecyclerView.AdapterDataObserver searchStoryAdapterDataObserver;
     private MaterialButtonToggleGroup.OnButtonCheckedListener userItemFilterCheckedListener;
     private StoryUpdate.StoryUpdateListener storyUpdateListener;
+    private final StorySearchController searchController = new StorySearchController();
+    private StoryCacheController storyCacheController;
 
     // Header views
     private LinearLayout headerContainer;
@@ -140,7 +138,7 @@ public class StoriesFragment extends Fragment {
     private StoryRecyclerViewAdapter mainAdapter;
     private StoryRecyclerViewAdapter searchAdapter;
     private StoryRecyclerViewAdapter adapter;
-    private ArrayAdapter<CharSequence> typeSpinnerAdapter;
+    private StoryTypeSpinnerAdapter typeSpinnerAdapter;
     private final ArrayList<Story> mainStories = new ArrayList<>();
     private final ArrayList<Story> searchStories = new ArrayList<>();
     private List<Story> stories;
@@ -162,11 +160,6 @@ public class StoriesFragment extends Fragment {
     private boolean loadingFailed = false;
     private boolean loadingFailedServerError = false;
     private String lastSearch = "";
-    private int searchSortIndex = 0;
-    private int searchDateRangeIndex = 0;
-    private int searchMinimumPointsIndex = 0;
-    private int searchMinimumCommentsIndex = 0;
-    private boolean searchOnlyClicked = false;
     private int algoliaRequestGeneration = 0;
     private int storyListGeneration = 0;
     private boolean algoliaLoading = false;
@@ -175,7 +168,6 @@ public class StoriesFragment extends Fragment {
     private int algoliaLoadMoreVisibleStoryCount = -1;
     private int algoliaLoadMoreFirstVisiblePosition = RecyclerView.NO_POSITION;
     private int algoliaLoadMoreFirstVisibleTop = 0;
-    private static final int ALGOLIA_HITS_INCREMENT = 200;
     private List<Story> storiesBeforeSearch = null;
     private int loadedToBeforeSearch = -1;
     private int visibleStoryCountBeforeSearch = Integer.MAX_VALUE;
@@ -183,22 +175,19 @@ public class StoriesFragment extends Fragment {
     private boolean loadingFailedBeforeSearch = false;
     private boolean loadingFailedServerErrorBeforeSearch = false;
     private boolean showLoadMoreBeforeSearch = false;
-    private int algoliaHitsPerPageBeforeSearch = ALGOLIA_HITS_INCREMENT;
+    private int algoliaHitsPerPageBeforeSearch = StorySearchController.ALGOLIA_HITS_INCREMENT;
     private int lastAlgoliaTopStoriesStartTimeBeforeSearch = 0;
     private boolean loadPendingBeforeSearch = false;
     private int firstVisiblePositionBeforeSearch = RecyclerView.NO_POSITION;
     private int firstVisibleTopBeforeSearch = 0;
 
-    public static boolean showingCached = false;
+    private boolean showingCached = false;
 
     private int loadedTo = -1;
     private boolean paginationMode = false;
-    private static final int PAGINATION_PAGE_SIZE = 30;
     private static final int STORY_VISIBLE_PREFETCH_THRESHOLD = 17;
-    private int algoliaHitsPerPage = ALGOLIA_HITS_INCREMENT;
+    private int algoliaHitsPerPage = StorySearchController.ALGOLIA_HITS_INCREMENT;
     private int lastAlgoliaTopStoriesStartTime = 0;
-
-    public final static String[] hnUrls = new String[]{Utils.URL_TOP, Utils.URL_NEW, Utils.URL_BEST, Utils.URL_ASK, Utils.URL_SHOW, Utils.URL_JOBS};
 
     long lastLoaded = 0;
     long lastClick = 0;
@@ -210,22 +199,8 @@ public class StoriesFragment extends Fragment {
     private static final long SEARCH_CONTENT_EXIT_ANIMATION_DURATION_MS = 140;
     private static final long SEARCH_CONTENT_RETURN_ANIMATION_DURATION_MS = 180;
     private static final long HEADER_LAYOUT_ANIMATION_DURATION_MS = 220;
-    private static final long CACHE_PROGRESS_FINISHED_HOLD_MS = 1000;
-    private static final long CACHE_PROGRESS_FADE_DURATION_MS = 140;
-    private static final long CACHE_PROGRESS_STATUS_TEXT_FADE_DURATION_MS = 90;
-    private static final String CACHE_PROGRESS_STATUS_CACHING = "Caching stories";
-    private static final String CACHE_PROGRESS_STATUS_FINISHED = "Finished";
-    private static final String CACHE_PROGRESS_STATUS_FAILED = "Caching failed";
-    private static final String CACHE_PROGRESS_STATUS_EMPTY = "No stories to cache";
     private static final float SEARCH_BACK_HEADER_SWITCH_PROGRESS = 0.5f;
     private static final float SEARCH_BACK_CONTENT_TRANSLATION_DP = 24f;
-    private static final String[] SEARCH_SORT_LABELS = new String[]{"Relevance", "Newest"};
-    private static final String[] SEARCH_DATE_RANGE_LABELS = new String[]{"All time", "Past day", "Past week", "Past month", "Past year"};
-    private static final int[] SEARCH_DATE_RANGE_DAYS = new int[]{0, 1, 7, 30, 365};
-    private static final String[] SEARCH_MINIMUM_POINTS_LABELS = new String[]{"Any points", "5+ points", "25+ points", "100+ points"};
-    private static final int[] SEARCH_MINIMUM_POINTS = new int[]{0, 5, 25, 100};
-    private static final String[] SEARCH_MINIMUM_COMMENTS_LABELS = new String[]{"Any comments", "5+ comments", "25+ comments", "100+ comments"};
-    private static final int[] SEARCH_MINIMUM_COMMENTS = new int[]{0, 5, 25, 100};
     private static final int USER_ITEM_LIST_FILTER_STORIES = 0;
     private static final int USER_ITEM_LIST_FILTER_BOTH = 1;
     private static final int USER_ITEM_LIST_FILTER_COMMENTS = 2;
@@ -246,13 +221,6 @@ public class StoriesFragment extends Fragment {
     private int searchContentExitAnimationGeneration = 0;
     private boolean deferSearchRecyclerClearForReturnAnimation = false;
     private boolean skipNextSearchContentReturnAnimation = false;
-    private boolean cachingStories = false;
-    private boolean cacheProgressIndicatorVisible = false;
-    private boolean cacheProgressHidePending = false;
-    private int cacheProgressAnimationGeneration = 0;
-    private int cacheStoriesTotal = 1;
-    private int cacheStoriesCompleted = 0;
-    private String cacheProgressStatus = CACHE_PROGRESS_STATUS_CACHING;
 
     public StoriesFragment() {
         super(R.layout.fragment_stories);
@@ -307,6 +275,31 @@ public class StoriesFragment extends Fragment {
         lastUpdatedHeaderText = view.findViewById(R.id.stories_header_last_updated);
         cacheProgressStatusText = view.findViewById(R.id.stories_header_cache_status);
         cacheProgressIndicator = view.findViewById(R.id.stories_header_cache_progress);
+        storyCacheController = new StoryCacheController(new StoryCacheController.Callbacks() {
+            @Nullable
+            @Override
+            public Context getContext() {
+                return StoriesFragment.this.getContext();
+            }
+
+            @Nullable
+            @Override
+            public RequestQueue getRequestQueue() {
+                return queue;
+            }
+
+            @NonNull
+            @Override
+            public Object getRequestTag() {
+                return requestTag;
+            }
+
+            @Override
+            public void beginHeaderTransition() {
+                StoriesFragment.this.beginHeaderTransition(false);
+            }
+        });
+        storyCacheController.bindViews(cacheProgressIndicator, cacheProgressStatusText);
         userItemFilterGroup = view.findViewById(R.id.stories_header_user_item_filter_group);
         loadingIndicator = view.findViewById(R.id.stories_header_loading_indicator);
         loadingFailedLayout = view.findViewById(R.id.stories_header_loading_failed);
@@ -452,14 +445,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private ArrayList<CharSequence> buildTypeAdapterList(Context ctx) {
-        String[] sortingOptions = getResources().getStringArray(R.array.sorting_options);
-        ArrayList<CharSequence> typeAdapterList = new ArrayList<>(Arrays.asList(sortingOptions));
-        if (shouldShowUserItemLists(ctx)) {
-            int favoritesIndex = Math.min(SettingsUtils.getBookmarksIndex(getResources()) + 1, typeAdapterList.size());
-            typeAdapterList.add(favoritesIndex, SettingsUtils.FAVORITES_LABEL);
-            typeAdapterList.add(SettingsUtils.UPVOTED_LABEL);
-        }
-        return typeAdapterList;
+        return StoryType.buildAdapterLabels(getResources(), shouldShowUserItemLists(ctx));
     }
 
     private boolean shouldShowUserItemLists(@Nullable Context ctx) {
@@ -688,28 +674,28 @@ public class StoriesFragment extends Fragment {
         });
 
         searchBar.setOnClickListener(v -> focusSearchInput());
-        searchSortChip.setOnClickListener(v -> showSearchOptionMenu(v, SEARCH_SORT_LABELS, searchSortIndex, selectedIndex -> {
-            searchSortIndex = selectedIndex;
+        searchSortChip.setOnClickListener(v -> showSearchOptionMenu(v, searchController.getSortLabels(), searchController.getSortIndex(), selectedIndex -> {
+            searchController.setSortIndex(selectedIndex);
             updateSearchOptionChips();
             retrySearchWithCurrentOptions();
         }));
-        searchDateChip.setOnClickListener(v -> showSearchOptionMenu(v, SEARCH_DATE_RANGE_LABELS, searchDateRangeIndex, selectedIndex -> {
-            searchDateRangeIndex = selectedIndex;
+        searchDateChip.setOnClickListener(v -> showSearchOptionMenu(v, searchController.getDateRangeLabels(), searchController.getDateRangeIndex(), selectedIndex -> {
+            searchController.setDateRangeIndex(selectedIndex);
             updateSearchOptionChips();
             retrySearchWithCurrentOptions();
         }));
-        searchPointsChip.setOnClickListener(v -> showSearchOptionMenu(v, SEARCH_MINIMUM_POINTS_LABELS, searchMinimumPointsIndex, selectedIndex -> {
-            searchMinimumPointsIndex = selectedIndex;
+        searchPointsChip.setOnClickListener(v -> showSearchOptionMenu(v, searchController.getMinimumPointsLabels(), searchController.getMinimumPointsIndex(), selectedIndex -> {
+            searchController.setMinimumPointsIndex(selectedIndex);
             updateSearchOptionChips();
             retrySearchWithCurrentOptions();
         }));
-        searchCommentsChip.setOnClickListener(v -> showSearchOptionMenu(v, SEARCH_MINIMUM_COMMENTS_LABELS, searchMinimumCommentsIndex, selectedIndex -> {
-            searchMinimumCommentsIndex = selectedIndex;
+        searchCommentsChip.setOnClickListener(v -> showSearchOptionMenu(v, searchController.getMinimumCommentsLabels(), searchController.getMinimumCommentsIndex(), selectedIndex -> {
+            searchController.setMinimumCommentsIndex(selectedIndex);
             updateSearchOptionChips();
             retrySearchWithCurrentOptions();
         }));
         searchOnlyClickedChip.setOnClickListener(v -> {
-            searchOnlyClicked = !searchOnlyClicked;
+            searchController.toggleOnlyClicked();
             updateSearchOptionChips();
             retrySearchWithCurrentOptions();
         });
@@ -860,7 +846,9 @@ public class StoriesFragment extends Fragment {
         }
 
         showCachedButton.setVisibility(loadingFailed && !searching && Utils.hasCachedStories(ctx) ? View.VISIBLE : View.GONE);
-        updateCacheProgressIndicator();
+        if (storyCacheController != null) {
+            storyCacheController.updateProgressIndicator();
+        }
 
         loadingFailedAlgoliaLayout.setVisibility(loadingFailedServerError ? View.VISIBLE : View.GONE);
         requestRecyclerScrollStateUpdate();
@@ -1006,17 +994,17 @@ public class StoriesFragment extends Fragment {
             beginSearchOptionsTransition();
         }
 
-        searchSortChip.setText(SEARCH_SORT_LABELS[searchSortIndex]);
-        searchDateChip.setText(SEARCH_DATE_RANGE_LABELS[searchDateRangeIndex]);
-        searchPointsChip.setText(SEARCH_MINIMUM_POINTS_LABELS[searchMinimumPointsIndex]);
-        searchCommentsChip.setText(SEARCH_MINIMUM_COMMENTS_LABELS[searchMinimumCommentsIndex]);
-        searchOnlyClickedChip.setChecked(searchOnlyClicked);
+        searchSortChip.setText(searchController.getSortLabel());
+        searchDateChip.setText(searchController.getDateRangeLabel());
+        searchPointsChip.setText(searchController.getMinimumPointsLabel());
+        searchCommentsChip.setText(searchController.getMinimumCommentsLabel());
+        searchOnlyClickedChip.setChecked(searchController.isOnlyClicked());
 
-        searchSortChip.setContentDescription("Search sort: " + SEARCH_SORT_LABELS[searchSortIndex]);
-        searchDateChip.setContentDescription("Search date range: " + SEARCH_DATE_RANGE_LABELS[searchDateRangeIndex]);
-        searchPointsChip.setContentDescription("Search minimum points: " + SEARCH_MINIMUM_POINTS_LABELS[searchMinimumPointsIndex]);
-        searchCommentsChip.setContentDescription("Search minimum comments: " + SEARCH_MINIMUM_COMMENTS_LABELS[searchMinimumCommentsIndex]);
-        searchOnlyClickedChip.setContentDescription(searchOnlyClicked
+        searchSortChip.setContentDescription("Search sort: " + searchController.getSortLabel());
+        searchDateChip.setContentDescription("Search date range: " + searchController.getDateRangeLabel());
+        searchPointsChip.setContentDescription("Search minimum points: " + searchController.getMinimumPointsLabel());
+        searchCommentsChip.setContentDescription("Search minimum comments: " + searchController.getMinimumCommentsLabel());
+        searchOnlyClickedChip.setContentDescription(searchController.isOnlyClicked()
                 ? "From history search enabled"
                 : "From history search disabled");
     }
@@ -1140,11 +1128,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void resetSearchOptions() {
-        searchSortIndex = 0;
-        searchDateRangeIndex = 0;
-        searchMinimumPointsIndex = 0;
-        searchMinimumCommentsIndex = 0;
-        searchOnlyClicked = false;
+        searchController.resetOptions();
         updateSearchOptionChips(false);
         resetSearchOptionsScroll();
     }
@@ -1186,11 +1170,11 @@ public class StoriesFragment extends Fragment {
 
     private void resetPaginationState() {
         loadedTo = -1;
-        adapter.visibleStoryCount = paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
+        adapter.visibleStoryCount = paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
     }
 
     private void resetAlgoliaResultLimit() {
-        algoliaHitsPerPage = ALGOLIA_HITS_INCREMENT;
+        algoliaHitsPerPage = StorySearchController.ALGOLIA_HITS_INCREMENT;
         algoliaLoadMoreInProgress = false;
         algoliaLoadMoreVisibleStoryCount = -1;
         algoliaLoadMoreFirstVisiblePosition = RecyclerView.NO_POSITION;
@@ -1198,7 +1182,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private int getInitialLoadCount() {
-        return paginationMode ? PAGINATION_PAGE_SIZE : 20;
+        return paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : 20;
     }
 
     private void loadStoriesThroughIndex(int targetIndex, int loadGeneration) {
@@ -1488,7 +1472,7 @@ public class StoriesFragment extends Fragment {
             int requestedVisibleCount = algoliaLoadMoreVisibleStoryCount > 0
                     ? algoliaLoadMoreVisibleStoryCount
                     : adapter.visibleStoryCount;
-            adapter.visibleStoryCount = Math.min(Math.max(requestedVisibleCount, PAGINATION_PAGE_SIZE), stories.size());
+            adapter.visibleStoryCount = Math.min(Math.max(requestedVisibleCount, StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE), stories.size());
         } else {
             adapter.visibleStoryCount = Integer.MAX_VALUE;
         }
@@ -1706,7 +1690,7 @@ public class StoriesFragment extends Fragment {
         loadingFailedBeforeSearch = false;
         loadingFailedServerErrorBeforeSearch = false;
         showLoadMoreBeforeSearch = false;
-        algoliaHitsPerPageBeforeSearch = ALGOLIA_HITS_INCREMENT;
+        algoliaHitsPerPageBeforeSearch = StorySearchController.ALGOLIA_HITS_INCREMENT;
         lastAlgoliaTopStoriesStartTimeBeforeSearch = 0;
         firstVisiblePositionBeforeSearch = RecyclerView.NO_POSITION;
         firstVisibleTopBeforeSearch = 0;
@@ -1744,10 +1728,10 @@ public class StoriesFragment extends Fragment {
         int previousSearchType = searchAdapter != null ? searchAdapter.type : previousMainType;
         int previousMainVisibleStoryCount = mainAdapter != null
                 ? mainAdapter.visibleStoryCount
-                : (paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE);
+                : (paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : Integer.MAX_VALUE);
         int previousSearchVisibleStoryCount = searchAdapter != null
                 ? searchAdapter.visibleStoryCount
-                : (paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE);
+                : (paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : Integer.MAX_VALUE);
         boolean previousMainShowLoadMoreButton = mainAdapter != null && mainAdapter.showLoadMoreButton;
         boolean previousSearchShowLoadMoreButton = searchAdapter != null && searchAdapter.showLoadMoreButton;
 
@@ -1796,50 +1780,16 @@ public class StoriesFragment extends Fragment {
 
     private void copyStoryAdapterDisplaySettings(@NonNull StoryRecyclerViewAdapter sourceAdapter,
                                                  @NonNull StoryRecyclerViewAdapter targetAdapter) {
-        targetAdapter.showPoints = sourceAdapter.showPoints;
-        targetAdapter.compactPoints = sourceAdapter.compactPoints;
-        targetAdapter.showCommentsCount = sourceAdapter.showCommentsCount;
-        targetAdapter.compactView = sourceAdapter.compactView;
-        targetAdapter.thumbnails = sourceAdapter.thumbnails;
-        targetAdapter.previewImageMode = sourceAdapter.previewImageMode;
-        targetAdapter.storyTextSize = sourceAdapter.storyTextSize;
-        targetAdapter.showIndex = sourceAdapter.showIndex;
-        targetAdapter.compactHeader = sourceAdapter.compactHeader;
-        targetAdapter.leftAlign = sourceAdapter.leftAlign;
-        targetAdapter.cardStyle = sourceAdapter.cardStyle;
-        targetAdapter.tintCardUsingPreview = sourceAdapter.tintCardUsingPreview;
-        targetAdapter.grayOutClicked = sourceAdapter.grayOutClicked;
-        targetAdapter.hotness = sourceAdapter.hotness;
-        targetAdapter.faviconProvider = sourceAdapter.faviconProvider;
-        targetAdapter.font = sourceAdapter.font;
+        StoryDisplaySettings.copyAdapterSettings(sourceAdapter, targetAdapter);
     }
 
     private StoryRecyclerViewAdapter createStoryAdapter(List<Story> adapterStories) {
-        return new StoryRecyclerViewAdapter(adapterStories,
-                SettingsUtils.shouldShowPoints(getContext()),
-                SettingsUtils.shouldUseCompactPoints(getContext()),
-                SettingsUtils.shouldShowCommentsCount(getContext()),
-                SettingsUtils.shouldUseCompactView(getContext()),
-                SettingsUtils.shouldShowThumbnails(getContext()),
-                SettingsUtils.getPreferredStoryPreviewImageMode(getContext()),
-                SettingsUtils.getPreferredStoryTextSize(getContext()),
-                SettingsUtils.shouldShowIndex(getContext()),
-                SettingsUtils.shouldUseCompactHeader(getContext()),
-                SettingsUtils.shouldUseLeftAlign(getContext()),
-                SettingsUtils.shouldUseCardStoryDisplayStyle(getContext()),
-                SettingsUtils.shouldTintCardUsingPreview(getContext()),
-                SettingsUtils.shouldGrayOutClicked(getContext()),
-                SettingsUtils.getPreferredHotness(getContext()),
-                SettingsUtils.getPreferredFaviconProvider(getContext()),
-                SettingsUtils.getPreferredFont(getContext()),
-                null,
-                getPreferredTypeIndex()
-        );
+        return StoryDisplaySettings.from(requireContext()).createAdapter(adapterStories, null, getPreferredTypeIndex());
     }
 
     private void configureStoryAdapter(@NonNull StoryRecyclerViewAdapter configuredAdapter) {
         configuredAdapter.paginationMode = paginationMode;
-        configuredAdapter.visibleStoryCount = paginationMode ? PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
+        configuredAdapter.visibleStoryCount = paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
 
         configuredAdapter.setOnLinkClickListener(position -> {
             useStoryListForAdapter(configuredAdapter);
@@ -1898,7 +1848,7 @@ public class StoriesFragment extends Fragment {
             useStoryListForAdapter(configuredAdapter);
             if (paginationMode && adapter.visibleStoryCount < stories.size()) {
                 int newLoadedTo = Math.min(
-                        loadedTo + PAGINATION_PAGE_SIZE,
+                        loadedTo + StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE,
                         stories.size() - 1
                 );
 
@@ -2233,7 +2183,7 @@ public class StoriesFragment extends Fragment {
 
         historiesChangeVersion = currentHistoriesChangeVersion;
 
-        if (searching && searchOnlyClicked) {
+        if (searching && searchController.isOnlyClicked()) {
             boolean clickedStateChanged = false;
             for (Story story : stories) {
                 if (story.clicked) {
@@ -2342,6 +2292,11 @@ public class StoriesFragment extends Fragment {
     }
 
     private void clearViewReferences() {
+        if (storyCacheController != null) {
+            storyCacheController.clearViewReferences();
+            storyCacheController = null;
+        }
+
         swipeRefreshLayout = null;
         updateFab = null;
         mainRecyclerView = null;
@@ -2396,13 +2351,6 @@ public class StoriesFragment extends Fragment {
         defaultMainStoryItemAnimator = null;
         defaultSearchStoryItemAnimator = null;
         defaultStoryItemAnimator = null;
-        cachingStories = false;
-        cacheProgressIndicatorVisible = false;
-        cacheProgressHidePending = false;
-        cacheProgressAnimationGeneration++;
-        cacheStoriesTotal = 1;
-        cacheStoriesCompleted = 0;
-        cacheProgressStatus = CACHE_PROGRESS_STATUS_CACHING;
     }
 
     private void clickedComments(int position) {
@@ -2442,7 +2390,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void markStoryClicked(Story story) {
-        if (!searchOnlyClicked) {
+        if (!searchController.isOnlyClicked()) {
             story.clicked = true;
         }
         HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
@@ -2616,7 +2564,9 @@ public class StoriesFragment extends Fragment {
                 } else if (item.getItemId() == R.id.menu_profile) {
                     UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), AccountUtils.getAccountUsername(requireActivity()));
                 } else if (item.getItemId() == R.id.menu_cache) {
-                    cacheStories();
+                    if (storyCacheController != null) {
+                        storyCacheController.cacheStories();
+                    }
                 } else if (item.getItemId() == R.id.menu_submit) {
                     Intent submitIntent = new Intent(getContext(), ComposeActivity.class);
                     submitIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_POST);
@@ -2635,7 +2585,8 @@ public class StoriesFragment extends Fragment {
         menu.findItem(R.id.menu_profile).setVisible(loggedIn);
         menu.findItem(R.id.menu_submit).setVisible(loggedIn);
         //first only show cache button if we're not already looking at the cache
-        menu.findItem(R.id.menu_cache).setVisible(!showingCached && !cachingStories);
+        boolean cacheInProgress = storyCacheController != null && storyCacheController.isCachingStories();
+        menu.findItem(R.id.menu_cache).setVisible(!showingCached && !cacheInProgress);
         //also if we don't have internet, no need to show at all
         if (getContext() != null) {
             if (!Utils.isNetworkAvailable(getContext())) {
@@ -2735,7 +2686,7 @@ public class StoriesFragment extends Fragment {
             boolean shouldLoadCachedUserItemList = showMainLoadingIndicator || stories.isEmpty();
             boolean hasCachedUserItemList = shouldLoadCachedUserItemList
                     ? loadUserItemListCache()
-                    : !loadCurrentUserItemListCache(getContext()).isEmpty();
+                    : !UserItemListRepository.loadCache(getContext(), getCurrentUserItemListSource()).isEmpty();
             if (!shouldLoadCachedUserItemList) {
                 resumeInterruptedStoryLoads();
             }
@@ -2761,7 +2712,15 @@ public class StoriesFragment extends Fragment {
         }
 
         // if none of the above, do a normal loading
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, hnUrls[adapter.type == 0 ? 0 : adapter.type - 3],
+        String storyListUrl = getCurrentStoryType().getHackerNewsUrl();
+        if (storyListUrl == null) {
+            swipeRefreshLayout.setRefreshing(false);
+            loadingFailed = true;
+            updateHeader();
+            return;
+        }
+
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, storyListUrl,
                 response -> {
                     if (!isCurrentStoryListGeneration(refreshGeneration)) {
                         return;
@@ -2878,7 +2837,7 @@ public class StoriesFragment extends Fragment {
         loadingFailedServerError = false;
         userItemListInitialLoadInProgress = false;
 
-        UserItemListSnapshot snapshot = loadCachedUserItemListSnapshot(getContext());
+        UserItemListRepository.Snapshot snapshot = UserItemListRepository.loadCachedSnapshot(getContext(), getCurrentUserItemListSource());
         replaceUserItemListStoriesWithIds(snapshot.itemIds, snapshot.commentIds);
         return !snapshot.itemIds.isEmpty();
     }
@@ -2901,7 +2860,8 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
-        boolean upvotedTypeForSync = isUpvotedType(adapter.type);
+        UserItemListRepository.Source syncSource = getCurrentUserItemListSource();
+        boolean upvotedTypeForSync = syncSource == UserItemListRepository.Source.UPVOTED;
         userItemListInitialLoadInProgress = stories.isEmpty() && !showSwipeRefreshIndicator;
         swipeRefreshLayout.setRefreshing(showSwipeRefreshIndicator);
         updateHeader();
@@ -2922,12 +2882,11 @@ public class StoriesFragment extends Fragment {
                     return;
                 }
 
-                ArrayList<Integer> normalizedItemIds = normalizeUserItemListIds(itemIds);
-                Set<Integer> normalizedCommentIds = normalizeUserItemListCommentIds(normalizedItemIds, commentIds);
-                if (!userItemListIdsMatchCache(currentContext, normalizedItemIds, normalizedCommentIds)) {
-                    saveCurrentUserItemListIds(currentContext, normalizedItemIds, normalizedCommentIds);
+                UserItemListRepository.Snapshot snapshot = UserItemListRepository.normalizeSnapshot(itemIds, commentIds);
+                if (!UserItemListRepository.idsMatchCache(currentContext, syncSource, snapshot)) {
+                    UserItemListRepository.saveIds(currentContext, syncSource, snapshot);
                 }
-                syncUserItemListStoriesToIds(normalizedItemIds, normalizedCommentIds);
+                syncUserItemListStoriesToIds(snapshot.itemIds, snapshot.commentIds);
 
                 userItemListInitialLoadInProgress = false;
                 loadingFailed = false;
@@ -2960,74 +2919,12 @@ public class StoriesFragment extends Fragment {
         }
     }
 
-    private boolean userItemListIdsMatchCache(Context ctx, List<Integer> itemIds, Set<Integer> commentIds) {
-        ArrayList<Bookmark> cachedItems = loadCurrentUserItemListCache(ctx);
-        ArrayList<Integer> normalizedItemIds = normalizeUserItemListIds(itemIds);
-        Set<Integer> cachedCommentIds = loadCurrentUserItemListCommentIds(ctx);
-
-        if (cachedItems.size() != normalizedItemIds.size() || !cachedCommentIds.equals(commentIds)) {
-            return false;
-        }
-
-        for (int i = 0; i < cachedItems.size(); i++) {
-            if (cachedItems.get(i).id != normalizedItemIds.get(i)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private UserItemListSnapshot loadCachedUserItemListSnapshot(@Nullable Context ctx) {
-        ArrayList<Integer> itemIds = new ArrayList<>();
-        if (ctx == null) {
-            return new UserItemListSnapshot(itemIds, new HashSet<>());
-        }
-
-        ArrayList<Bookmark> items = loadCurrentUserItemListCache(ctx);
-        for (Bookmark item : items) {
-            if (!itemIds.contains(item.id)) {
-                itemIds.add(item.id);
-            }
-        }
-
-        Collections.sort(itemIds, (id1, id2) -> Integer.compare(id2, id1));
-        return new UserItemListSnapshot(itemIds, loadCurrentUserItemListCommentIds(ctx));
-    }
-
-    private ArrayList<Bookmark> loadCurrentUserItemListCache(@Nullable Context ctx) {
-        if (ctx == null) {
-            return new ArrayList<>();
-        }
-        if (isUpvotedType(adapter.type)) {
-            return Utils.loadUpvoted(ctx, true);
-        }
-        return Utils.loadFavorites(ctx, true);
-    }
-
-    private Set<Integer> loadCurrentUserItemListCommentIds(Context ctx) {
-        if (isUpvotedType(adapter.type)) {
-            return Utils.loadUpvotedCommentIds(ctx);
-        }
-        return Utils.loadFavoriteCommentIds(ctx);
-    }
-
-    private void saveCurrentUserItemListIds(Context ctx, List<Integer> itemIds, Set<Integer> commentIds) {
-        if (isUpvotedType(adapter.type)) {
-            Utils.saveUpvotedIds(ctx, itemIds);
-            Utils.saveUpvotedCommentIds(ctx, commentIds);
-        } else {
-            Utils.saveFavoriteIds(ctx, itemIds);
-            Utils.saveFavoriteCommentIds(ctx, commentIds);
-        }
-    }
-
     private void syncVisibleUserItemListWithLocalCache() {
         if (adapter == null || stories == null || !isUserItemListType(adapter.type)) {
             return;
         }
 
-        UserItemListSnapshot snapshot = loadCachedUserItemListSnapshot(getContext());
+        UserItemListRepository.Snapshot snapshot = UserItemListRepository.loadCachedSnapshot(getContext(), getCurrentUserItemListSource());
         syncUserItemListStoriesToIds(snapshot.itemIds, snapshot.commentIds);
     }
 
@@ -3080,29 +2977,6 @@ public class StoriesFragment extends Fragment {
         updateHeader();
     }
 
-    private ArrayList<Integer> normalizeUserItemListIds(List<Integer> itemIds) {
-        ArrayList<Integer> normalizedItemIds = new ArrayList<>();
-        for (int id : itemIds) {
-            if (!normalizedItemIds.contains(id)) {
-                normalizedItemIds.add(id);
-            }
-        }
-
-        Collections.sort(normalizedItemIds, (id1, id2) -> Integer.compare(id2, id1));
-        return normalizedItemIds;
-    }
-
-    private Set<Integer> normalizeUserItemListCommentIds(List<Integer> itemIds, List<Integer> commentIds) {
-        Set<Integer> itemIdSet = new HashSet<>(itemIds);
-        Set<Integer> normalizedCommentIds = new HashSet<>();
-        for (int id : commentIds) {
-            if (itemIdSet.contains(id)) {
-                normalizedCommentIds.add(id);
-            }
-        }
-        return normalizedCommentIds;
-    }
-
     private ArrayList<Story> getFilteredSavedItemStories() {
         ArrayList<Story> filteredStories = new ArrayList<>();
         ArrayList<Story> sourceStories = isBookmarksType(adapter.type) ? bookmarkStories : userItemListStories;
@@ -3131,16 +3005,6 @@ public class StoriesFragment extends Fragment {
         replaceStories(getFilteredSavedItemStories(), notifyDataSetChanged);
         loadInitialVisibleStories();
         updateHeader();
-    }
-
-    private static class UserItemListSnapshot {
-        final ArrayList<Integer> itemIds;
-        final Set<Integer> commentIds;
-
-        UserItemListSnapshot(ArrayList<Integer> itemIds, Set<Integer> commentIds) {
-            this.itemIds = itemIds;
-            this.commentIds = commentIds;
-        }
     }
 
     private void loadInitialVisibleStories() {
@@ -3269,27 +3133,12 @@ public class StoriesFragment extends Fragment {
     }
 
     private int getCurrentAlgoliaTopStoriesStartTime() {
-        int currentTime = (int) (System.currentTimeMillis() / 1000);
-        if (adapter.type == 1) {
-            return currentTime - 60 * 60 * 24;
-        } else if (adapter.type == 2) {
-            return currentTime - 60 * 60 * 48;
-        } else if (adapter.type == 3) {
-            return currentTime - 60 * 60 * 24 * 7;
-        }
-
-        return currentTime;
+        return searchController.getCurrentTopStoriesStartTime(getCurrentStoryType());
     }
 
     private void loadTopStoriesSince(int start_i, boolean showSwipeRefreshIndicator) {
         lastAlgoliaTopStoriesStartTime = start_i;
-        Uri uri = Uri.parse("https://hn.algolia.com/api/v1/search")
-                .buildUpon()
-                .appendQueryParameter("tags", "story")
-                .appendQueryParameter("numericFilters", "created_at_i>" + start_i)
-                .appendQueryParameter("hitsPerPage", String.valueOf(algoliaHitsPerPage))
-                .build();
-        loadAlgolia(uri.toString(), showSwipeRefreshIndicator);
+        loadAlgolia(searchController.buildTopStoriesUrl(start_i, algoliaHitsPerPage), showSwipeRefreshIndicator);
     }
 
     private void search(String query) {
@@ -3303,46 +3152,16 @@ public class StoriesFragment extends Fragment {
             resetAlgoliaResultLimit();
         }
 
-        if (searchOnlyClicked) {
+        if (searchController.isOnlyClicked()) {
             loadOnlyClickedSearch(query);
             return;
         }
 
-        String endpoint = searchSortIndex == 0
-                ? "https://hn.algolia.com/api/v1/search"
-                : "https://hn.algolia.com/api/v1/search_by_date";
-        Uri.Builder builder = Uri.parse(endpoint).buildUpon()
-                .appendQueryParameter("query", query)
-                .appendQueryParameter("tags", "story")
-                .appendQueryParameter("hitsPerPage", String.valueOf(algoliaHitsPerPage))
-                .appendQueryParameter("typoTolerance", "min");
-
-        List<String> numericFilters = new ArrayList<>();
-        int days = SEARCH_DATE_RANGE_DAYS[searchDateRangeIndex];
-        if (days > 0) {
-            long startTime = (System.currentTimeMillis() / 1000L) - (days * 24L * 60L * 60L);
-            numericFilters.add("created_at_i>=" + startTime);
-        }
-
-        int minimumPoints = SEARCH_MINIMUM_POINTS[searchMinimumPointsIndex];
-        if (minimumPoints > 0) {
-            numericFilters.add("points>=" + minimumPoints);
-        }
-
-        int minimumComments = SEARCH_MINIMUM_COMMENTS[searchMinimumCommentsIndex];
-        if (minimumComments > 0) {
-            numericFilters.add("num_comments>=" + minimumComments);
-        }
-
-        if (!numericFilters.isEmpty()) {
-            builder.appendQueryParameter("numericFilters", TextUtils.join(",", numericFilters));
-        }
-
-        loadAlgolia(builder.build().toString());
+        loadAlgolia(searchController.buildSearchUrl(query, algoliaHitsPerPage));
     }
 
     private boolean canLoadMoreAlgoliaResults(int rawParsedStoryCount) {
-        return rawParsedStoryCount >= algoliaHitsPerPage;
+        return searchController.canLoadMoreResults(rawParsedStoryCount, algoliaHitsPerPage);
     }
 
     private void loadMoreAlgoliaResults() {
@@ -3353,11 +3172,11 @@ public class StoriesFragment extends Fragment {
         algoliaLoadMoreInProgress = true;
         saveAlgoliaLoadMoreScrollPosition();
         if (paginationMode) {
-            algoliaLoadMoreVisibleStoryCount = adapter.visibleStoryCount + PAGINATION_PAGE_SIZE;
+            algoliaLoadMoreVisibleStoryCount = adapter.visibleStoryCount + StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE;
         } else {
             algoliaLoadMoreVisibleStoryCount = -1;
         }
-        algoliaHitsPerPage += ALGOLIA_HITS_INCREMENT;
+        algoliaHitsPerPage += StorySearchController.ALGOLIA_HITS_INCREMENT;
         if (searching) {
             search(lastSearch, false);
         } else if (currentTypeIsAlgolia()) {
@@ -3391,10 +3210,7 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
-        String normalizedQuery = query == null ? "" : query.trim().toLowerCase();
-        int minimumTime = getSearchMinimumTimeSeconds();
-        int minimumPoints = SEARCH_MINIMUM_POINTS[searchMinimumPointsIndex];
-        int minimumComments = SEARCH_MINIMUM_COMMENTS[searchMinimumCommentsIndex];
+        String normalizedQuery = searchController.normalizeQuery(query);
         List<Story> matchedStories = new ArrayList<>(histories.size());
         for (int i = 0; i < histories.size(); i++) {
             matchedStories.add(null);
@@ -3416,7 +3232,7 @@ public class StoriesFragment extends Fragment {
 
                         try {
                             if (JSONParser.updateStoryWithHNJson(response, story, false)
-                                    && shouldIncludeOnlyClickedSearchStory(story, normalizedQuery, minimumTime, minimumPoints, minimumComments)) {
+                                    && searchController.shouldIncludeOnlyClickedStory(story, normalizedQuery, thisStory -> shouldFilterLoadedStory(thisStory))) {
                                 matchedStories.set(storyIndex, story);
                             }
                         } catch (JSONException e) {
@@ -3443,39 +3259,6 @@ public class StoriesFragment extends Fragment {
         updateHeader();
     }
 
-    private int getSearchMinimumTimeSeconds() {
-        int days = SEARCH_DATE_RANGE_DAYS[searchDateRangeIndex];
-        if (days <= 0) {
-            return 0;
-        }
-
-        return (int) ((System.currentTimeMillis() / 1000L) - (days * 24L * 60L * 60L));
-    }
-
-    private boolean shouldIncludeOnlyClickedSearchStory(Story story,
-                                                        String normalizedQuery,
-                                                        int minimumTime,
-                                                        int minimumPoints,
-                                                        int minimumComments) {
-        if (story.title == null || !story.title.toLowerCase().contains(normalizedQuery)) {
-            return false;
-        }
-
-        if (minimumTime > 0 && story.time < minimumTime) {
-            return false;
-        }
-
-        if (minimumPoints > 0 && story.score < minimumPoints) {
-            return false;
-        }
-
-        if (minimumComments > 0 && story.descendants < minimumComments) {
-            return false;
-        }
-
-        return !shouldFilterLoadedStory(story);
-    }
-
     private void finishOnlyClickedSearchRequest(int requestGeneration,
                                                 int[] pendingRequests,
                                                 int[] failedRequests,
@@ -3491,9 +3274,7 @@ public class StoriesFragment extends Fragment {
                 finishedStories.add(story);
             }
         }
-        if (searchSortIndex == 0) {
-            SearchRelevanceUtils.sortStoriesByRelevance(finishedStories, lastSearch);
-        }
+        searchController.sortOnlyClickedResultsIfNeeded(finishedStories, lastSearch);
 
         completeOnlyClickedSearch(requestGeneration, finishedStories, failedRequests[0], matchedStories.size());
     }
@@ -3763,31 +3544,31 @@ public class StoriesFragment extends Fragment {
     }
 
     public boolean currentTypeIsAlgolia() {
-        return 0 < adapter.type && 4 > adapter.type;
+        return getCurrentStoryType().isAlgolia();
     }
 
     private boolean isBookmarksType(int type) {
-        return TextUtils.equals(getTypeLabel(type), "Bookmarks");
+        return getStoryType(type).isBookmarks();
     }
 
     private boolean isHistoryType(int type) {
-        return TextUtils.equals(getTypeLabel(type), "History");
+        return getStoryType(type).isHistory();
     }
 
     private boolean isFavoritesType(int type) {
-        return TextUtils.equals(getTypeLabel(type), SettingsUtils.FAVORITES_LABEL);
+        return getStoryType(type).isFavorites();
     }
 
     private boolean isUpvotedType(int type) {
-        return TextUtils.equals(getTypeLabel(type), SettingsUtils.UPVOTED_LABEL);
+        return getStoryType(type).isUpvoted();
     }
 
     private boolean isUserItemListType(int type) {
-        return isFavoritesType(type) || isUpvotedType(type);
+        return getStoryType(type).isUserItemList();
     }
 
     private boolean currentTypeUsesSavedItemFilter() {
-        return isBookmarksType(adapter.type) || isUserItemListType(adapter.type);
+        return getCurrentStoryType().usesSavedItemFilter();
     }
 
     private boolean currentSavedItemSourceHasItems() {
@@ -3804,8 +3585,22 @@ public class StoriesFragment extends Fragment {
         return upvotedType ? isUpvotedType(type) : isFavoritesType(type);
     }
 
+    private UserItemListRepository.Source getCurrentUserItemListSource() {
+        return isUpvotedType(adapter.type)
+                ? UserItemListRepository.Source.UPVOTED
+                : UserItemListRepository.Source.FAVORITES;
+    }
+
     private boolean currentTypeUsesCommentRows() {
-        return isBookmarksType(adapter.type) || isUserItemListType(adapter.type);
+        return getCurrentStoryType().usesCommentRows();
+    }
+
+    private StoryType getCurrentStoryType() {
+        return getStoryType(adapter.type);
+    }
+
+    private StoryType getStoryType(int type) {
+        return StoryType.fromLabel(getTypeLabel(type));
     }
 
     @Nullable
@@ -3866,7 +3661,7 @@ public class StoriesFragment extends Fragment {
 
     private boolean shouldHideStoryAsJob(Story story) {
         return hideJobs
-                && adapter.type != SettingsUtils.getJobsIndex(getResources())
+                && getCurrentStoryType() != StoryType.HN_JOBS
                 && (story.isJob
                 || "whoishiring".equals(story.by));
     }
@@ -4023,255 +3818,6 @@ public class StoriesFragment extends Fragment {
         applySearchRecyclerVisibility(false);
     }
 
-    private void startCacheProgress(int total) {
-        cachingStories = true;
-        cacheStoriesTotal = Math.max(total, 1);
-        cacheStoriesCompleted = 0;
-        cacheProgressStatus = CACHE_PROGRESS_STATUS_CACHING;
-        updateCacheProgressIndicator();
-    }
-
-    private void incrementCacheProgress() {
-        cacheStoriesCompleted = Math.min(cacheStoriesCompleted + 1, cacheStoriesTotal);
-        updateCacheProgressIndicator();
-    }
-
-    private void finishCacheProgress() {
-        finishCacheProgress(CACHE_PROGRESS_STATUS_FINISHED);
-    }
-
-    private void finishCacheProgress(@NonNull String status) {
-        cachingStories = false;
-        cacheProgressStatus = status;
-        updateCacheProgressIndicator();
-    }
-
-    private void updateCacheProgressIndicator() {
-        if (cacheProgressIndicator == null || cacheProgressStatusText == null) {
-            return;
-        }
-
-        LinearProgressIndicator currentProgressIndicator = cacheProgressIndicator;
-        TextView currentStatusText = cacheProgressStatusText;
-        String status = cachingStories ? getCacheProgressCachingStatus() : cacheProgressStatus;
-        currentProgressIndicator.setMax(Math.max(cacheStoriesTotal, 1));
-        currentProgressIndicator.setProgressCompat(cacheStoriesCompleted, true);
-        updateCacheProgressStatusText(currentStatusText, status);
-
-        if (cachingStories) {
-            showCacheProgressIndicator(currentProgressIndicator, currentStatusText);
-            return;
-        }
-
-        hideCacheProgressIndicator(currentProgressIndicator, currentStatusText);
-    }
-
-    private void updateCacheProgressStatusText(@NonNull TextView currentStatusText,
-                                               @NonNull String status) {
-        if (TextUtils.equals(currentStatusText.getText(), status)) {
-            return;
-        }
-
-        currentStatusText.animate().cancel();
-        if (currentStatusText.getVisibility() != View.VISIBLE || !ViewCompat.isLaidOut(currentStatusText)) {
-            currentStatusText.setAlpha(1f);
-            currentStatusText.setText(status);
-            return;
-        }
-
-        currentStatusText.animate()
-                .alpha(0f)
-                .setDuration(CACHE_PROGRESS_STATUS_TEXT_FADE_DURATION_MS)
-                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                .withEndAction(() -> {
-                    currentStatusText.setText(status);
-                    currentStatusText.animate()
-                            .alpha(1f)
-                            .setDuration(CACHE_PROGRESS_STATUS_TEXT_FADE_DURATION_MS)
-                            .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                            .start();
-                })
-                .start();
-    }
-
-    private void showCacheProgressIndicator(@NonNull LinearProgressIndicator currentProgressIndicator,
-                                            @NonNull TextView currentStatusText) {
-        if (cacheProgressIndicatorVisible
-                && currentProgressIndicator.getVisibility() == View.VISIBLE
-                && currentStatusText.getVisibility() == View.VISIBLE) {
-            return;
-        }
-
-        cacheProgressAnimationGeneration++;
-        cacheProgressHidePending = false;
-        currentProgressIndicator.animate().cancel();
-        currentStatusText.animate().cancel();
-        cacheProgressIndicatorVisible = true;
-        beginHeaderTransition(false);
-        currentStatusText.setAlpha(0f);
-        currentStatusText.setVisibility(View.VISIBLE);
-        currentProgressIndicator.setAlpha(0f);
-        currentProgressIndicator.setVisibility(View.VISIBLE);
-        currentStatusText.animate()
-                .alpha(1f)
-                .setDuration(CACHE_PROGRESS_FADE_DURATION_MS)
-                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                .start();
-        currentProgressIndicator.animate()
-                .alpha(1f)
-                .setDuration(CACHE_PROGRESS_FADE_DURATION_MS)
-                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                .start();
-    }
-
-    private void hideCacheProgressIndicator(@NonNull LinearProgressIndicator currentProgressIndicator,
-                                            @NonNull TextView currentStatusText) {
-        if (cacheProgressHidePending) {
-            return;
-        }
-
-        if (!cacheProgressIndicatorVisible
-                && currentProgressIndicator.getVisibility() != View.VISIBLE
-                && currentStatusText.getVisibility() != View.VISIBLE) {
-            resetCacheProgressState();
-            return;
-        }
-
-        cacheProgressIndicatorVisible = false;
-        cacheProgressHidePending = true;
-        int animationGeneration = ++cacheProgressAnimationGeneration;
-        currentProgressIndicator.animate().cancel();
-        currentProgressIndicator.postDelayed(() -> {
-            if (cacheProgressAnimationGeneration != animationGeneration
-                    || cacheProgressIndicator != currentProgressIndicator
-                    || cacheProgressStatusText != currentStatusText) {
-                return;
-            }
-
-            beginHeaderTransition(false);
-            currentStatusText.animate().cancel();
-            currentStatusText.setVisibility(View.GONE);
-            currentProgressIndicator.setVisibility(View.GONE);
-            currentProgressIndicator.postDelayed(() -> {
-                if (cacheProgressAnimationGeneration != animationGeneration
-                        || cacheProgressIndicator != currentProgressIndicator
-                        || cacheProgressStatusText != currentStatusText) {
-                    return;
-                }
-
-                currentStatusText.setAlpha(1f);
-                currentStatusText.setText(CACHE_PROGRESS_STATUS_CACHING);
-                currentProgressIndicator.setAlpha(1f);
-                currentProgressIndicator.setProgressCompat(0, false);
-                resetCacheProgressState();
-                cacheProgressHidePending = false;
-            }, HEADER_LAYOUT_ANIMATION_DURATION_MS);
-        }, CACHE_PROGRESS_FINISHED_HOLD_MS);
-    }
-
-    private void resetCacheProgressState() {
-        cacheStoriesTotal = 1;
-        cacheStoriesCompleted = 0;
-        cacheProgressStatus = CACHE_PROGRESS_STATUS_CACHING;
-    }
-
-    @NonNull
-    private String getCacheProgressCachingStatus() {
-        return "Caching " + cacheStoriesTotal + (cacheStoriesTotal == 1 ? " story" : " stories");
-    }
-
-    private void cacheStories() {
-        if (cachingStories) {
-            return;
-        }
-
-        Context context = getContext();
-        if (context == null) {
-            return;
-        }
-
-        int storiesToCache = SettingsUtils.getStoriesToCache(context);
-        startCacheProgress(storiesToCache);
-        boolean cacheArticles = SettingsUtils.shouldUseIntegratedWebView(context);
-        StringRequest request = new StringRequest(Request.Method.GET, Utils.URL_TOP,
-                response -> {
-                    try {
-                        JSONArray arr = new JSONArray(response);
-                        int storyCount = storiesToCache;
-                        if (storyCount == 0) {
-                            finishCacheProgress(CACHE_PROGRESS_STATUS_EMPTY);
-                            return;
-                        }
-
-                        final int[] remaining = { storyCount };
-                        final int[] articleFailures = { 0 };
-                        for (int i = 0; i < storyCount; i++) {
-                            int id = arr.getInt(i);
-                            String url = "https://hn.algolia.com/api/v1/items/" + id;
-                            StringRequest r = new StringRequest(Request.Method.GET, url,
-                                    res -> {
-                                        Utils.cacheStory(context, id, res);
-                                        if (cacheArticles) {
-                                            cacheStoryArticleSnapshot(context, id, res, articleFailures, () -> onCacheStoryFinished(remaining, articleFailures));
-                                        } else {
-                                            onCacheStoryFinished(remaining, articleFailures);
-                                        }
-                                    }, error -> onCacheStoryFinished(remaining, articleFailures));
-                            r.setTag(requestTag);
-                            queue.add(r);
-                        }
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                        finishCacheProgress(CACHE_PROGRESS_STATUS_FAILED);
-                    }
-                }, error -> finishCacheProgress(CACHE_PROGRESS_STATUS_FAILED));
-
-        request.setTag(requestTag);
-        queue.add(request);
-    }
-
-    private void onCacheStoryFinished(int[] remaining, int[] articleFailures) {
-        incrementCacheProgress();
-        remaining[0]--;
-        if (remaining[0] > 0) {
-            return;
-        }
-
-        finishCacheProgress();
-    }
-
-    private void cacheStoryArticleSnapshot(Context context, int id, String storyJson, int[] articleFailures, Runnable onComplete) {
-        try {
-            JSONObject storyObject = new JSONObject(storyJson);
-            if (!storyObject.has("url") || storyObject.isNull("url")) {
-                onComplete.run();
-                return;
-            }
-
-            String articleUrl = storyObject.optString("url", "");
-            if (TextUtils.isEmpty(articleUrl) || !(articleUrl.startsWith("http://") || articleUrl.startsWith("https://"))) {
-                onComplete.run();
-                return;
-            }
-
-            StringRequest articleRequest = new StringRequest(Request.Method.GET, articleUrl,
-                    html -> {
-                        Utils.cacheArticleSnapshot(context, id, articleUrl, html);
-                        onComplete.run();
-                    },
-                    error -> {
-                        articleFailures[0]++;
-                        onComplete.run();
-                    });
-            articleRequest.setTag(requestTag);
-            queue.add(articleRequest);
-        } catch (JSONException e) {
-            e.printStackTrace();
-            articleFailures[0]++;
-            onComplete.run();
-        }
-    }
-
     private void showCachedStories() {
         showingCached = true;
         swipeRefreshLayout.setRefreshing(false);
@@ -4309,47 +3855,6 @@ public class StoriesFragment extends Fragment {
 
     private void openComments(Story story, int pos, boolean showWebsite) {
         storyClickListener.openStory(story, pos, showWebsite);
-    }
-
-    private static class StoryTypeSpinnerAdapter extends ArrayAdapter<CharSequence> {
-        StoryTypeSpinnerAdapter(Context context, ArrayList<CharSequence> items) {
-            super(context, R.layout.spinner_top_layout, R.id.selection_dropdown_item_textview, items);
-            setDropDownViewResource(R.layout.spinner_item_layout);
-        }
-
-        @NonNull
-        @Override
-        public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-            View view = super.getView(position, convertView, parent);
-            applySelectedFont(view, true);
-            return view;
-        }
-
-        @Override
-        public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-            View view = super.getDropDownView(position, convertView, parent);
-            applySelectedFont(view, false);
-            return view;
-        }
-
-        private void applySelectedFont(View view, boolean selectedView) {
-            TextView textView = view instanceof TextView
-                    ? (TextView) view
-                    : view.findViewById(R.id.selection_dropdown_item_textview);
-            if (textView == null) {
-                return;
-            }
-
-            String preferredFont = SettingsUtils.getPreferredFont(getContext());
-            if (FontUtils.activeBold == null || TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(preferredFont)) {
-                FontUtils.init(getContext());
-            }
-            if (selectedView) {
-                FontUtils.setStoriesDropdownSelectedTypeface(textView);
-            } else {
-                textView.setTypeface(FontUtils.activeBold);
-            }
-        }
     }
 
     private interface SearchOptionSelectedListener {
