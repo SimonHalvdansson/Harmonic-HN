@@ -99,6 +99,7 @@ public class Story {
         bundle.putString(CommentsFragment.EXTRA_PDF_TITLE, pdfTitle);
         bundle.putString(CommentsFragment.EXTRA_BY, by);
         bundle.putString(CommentsFragment.EXTRA_URL, url);
+        bundle.putString(CommentsFragment.EXTRA_PREVIEW_IMAGE_URL, previewImageUrl);
         bundle.putInt(CommentsFragment.EXTRA_TIME, time);
         bundle.putIntArray(CommentsFragment.EXTRA_KIDS, kids);
         bundle.putIntArray(CommentsFragment.EXTRA_POLL_OPTIONS, pollOptions);

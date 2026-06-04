@@ -117,6 +117,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_PDF_TITLE = "com.simon.harmonichackernews.EXTRA_PDF_TITLE";
     public final static String EXTRA_BY = "com.simon.harmonichackernews.EXTRA_BY";
     public final static String EXTRA_URL = "com.simon.harmonichackernews.EXTRA_URL";
+    public final static String EXTRA_PREVIEW_IMAGE_URL = "com.simon.harmonichackernews.EXTRA_PREVIEW_IMAGE_URL";
     public final static String EXTRA_TIME = "com.simon.harmonichackernews.EXTRA_TIME";
     public final static String EXTRA_KIDS = "com.simon.harmonichackernews.EXTRA_KIDS";
     public final static String EXTRA_POLL_OPTIONS = "com.simon.harmonichackernews.EXTRA_POLL_OPTIONS";
@@ -262,6 +263,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             story.pdfTitle = bundle.getString(EXTRA_PDF_TITLE, null);
             story.by = bundle.getString(EXTRA_BY);
             story.url = bundle.getString(EXTRA_URL);
+            story.previewImageUrl = bundle.getString(EXTRA_PREVIEW_IMAGE_URL);
+            story.previewImageUrlLoaded = !TextUtils.isEmpty(story.previewImageUrl);
             story.time = bundle.getInt(EXTRA_TIME, 0);
             story.kids = bundle.getIntArray(EXTRA_KIDS);
             story.pollOptions = bundle.getIntArray(EXTRA_POLL_OPTIONS);

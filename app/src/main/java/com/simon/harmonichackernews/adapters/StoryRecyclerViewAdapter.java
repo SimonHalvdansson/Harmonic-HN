@@ -36,6 +36,7 @@ import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
@@ -522,6 +523,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         story.previewImageLoading = true;
+        final String imageUrl = story.previewImageUrl;
         int previewWidth = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
                 ? context.getResources().getDisplayMetrics().widthPixels
                 : Utils.pxFromDpInt(context.getResources(), 72);
@@ -529,7 +531,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 ? Utils.pxFromDpInt(context.getResources(), 176)
                 : Utils.pxFromDpInt(context.getResources(), 54);
         ImageRequest request = new ImageRequest.Builder(context)
-                .data(story.previewImageUrl)
+                .data(imageUrl)
                 .size(previewWidth, previewHeight)
                 .allowHardware(!shouldTintStoryCards())
                 .target(new Target() {
@@ -547,6 +549,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     public void onSuccess(Drawable result) {
                         story.previewImageLoading = false;
                         story.previewImageLoaded = true;
+                        StoryPreviewImageMemoryCache.put(story.id, imageUrl, result);
                         updatePreviewImageTintColor(context, story, result);
                     }
                 })
@@ -612,6 +615,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     public void onSuccess(Drawable result) {
                         story.previewImageLoading = false;
                         story.previewImageLoaded = true;
+                        StoryPreviewImageMemoryCache.put(story.id, imageUrl, result);
                         updatePreviewImageTintColor(previewImage.getContext(), story, result);
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
                             super.onSuccess(result);

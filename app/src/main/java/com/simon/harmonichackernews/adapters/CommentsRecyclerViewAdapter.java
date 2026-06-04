@@ -56,6 +56,7 @@ import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -606,6 +607,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         previewImage.animate().cancel();
         previewImage.clearAnimation();
         previewImage.setTag(imageUrl);
+        boolean hasMemoryPreviewImage = bindCachedHeaderPreviewImage(headerViewHolder, story, imageUrl);
 
         ImageRequest request = new ImageRequest.Builder(previewImage.getContext())
                 .data(imageUrl)
@@ -615,7 +617,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     @Override
                     public void onStart(Drawable placeholder) {
                         story.previewImageLoading = true;
-                        if (isCurrentHeaderPreviewTarget(previewImage, imageUrl)) {
+                        if (!hasMemoryPreviewImage && isCurrentHeaderPreviewTarget(previewImage, imageUrl)) {
                             super.onStart((Drawable) null);
                             setHeaderPreviewImageVisibility(headerViewHolder, View.INVISIBLE);
                         }
@@ -625,6 +627,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     public void onError(Drawable error) {
                         story.previewImageLoading = false;
                         if (isCurrentHeaderPreviewTarget(previewImage, imageUrl)) {
+                            if (hasMemoryPreviewImage) {
+                                story.previewImageLoadFailed = false;
+                                bindHeaderTint(headerViewHolder);
+                                return;
+                            }
                             story.previewImageLoadFailed = true;
                             story.previewImageTintColorLoaded = false;
                             super.onError(null);
@@ -637,6 +644,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     public void onSuccess(Drawable result) {
                         story.previewImageLoading = false;
                         story.previewImageLoaded = true;
+                        StoryPreviewImageMemoryCache.put(story.id, imageUrl, result);
                         updatePreviewImageTintColor(previewImage.getContext(), story, result);
                         if (isCurrentHeaderPreviewTarget(previewImage, imageUrl)) {
                             updateHeaderPreviewImageLayout(headerViewHolder, result);
@@ -649,6 +657,24 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 .build();
 
         Coil.imageLoader(previewImage.getContext()).enqueue(request);
+    }
+
+    private boolean bindCachedHeaderPreviewImage(
+            HeaderViewHolder headerViewHolder,
+            Story story,
+            String imageUrl) {
+        Drawable cachedPreviewImage = StoryPreviewImageMemoryCache.get(story.id, imageUrl);
+        if (cachedPreviewImage == null) {
+            return false;
+        }
+
+        headerViewHolder.previewImage.setImageDrawable(cachedPreviewImage);
+        updateHeaderPreviewImageLayout(headerViewHolder, cachedPreviewImage);
+        setHeaderPreviewImageVisibility(headerViewHolder, VISIBLE);
+        story.previewImageLoaded = true;
+        updatePreviewImageTintColor(headerViewHolder.previewImage.getContext(), story, cachedPreviewImage);
+        bindHeaderTint(headerViewHolder);
+        return true;
     }
 
     private int getHeaderPreviewImageWidth(ImageView previewImage) {
