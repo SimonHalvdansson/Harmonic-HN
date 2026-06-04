@@ -23,6 +23,10 @@ import java.util.Set;
 
 public class SettingsUtils {
 
+    public static final String PREF_THEME = "pref_theme";
+    public static final String PREF_THEME_NIGHTTIME = "pref_theme_nighttime";
+    public static final String DEFAULT_THEME = "material_daynight";
+    public static final String DEFAULT_NIGHTTIME_THEME = "dark";
     public static final String PREF_COMMENT_DEPTH_INDICATORS = "pref_comment_depth_indicators";
     public static final String PREF_MONOCHROME_COMMENT_DEPTH = "pref_monochrome_comment_depth";
     public static final String PREF_STORY_DISPLAY_STYLE = "pref_story_display_style";
@@ -79,6 +83,26 @@ public class SettingsUtils {
             + MAX_COMMENT_TEXT_SIZE_OFFSET * COMMENT_TEXT_SIZE_OFFSET_STEP;
     public static final String FAVORITES_LABEL = "Favorites";
     public static final String UPVOTED_LABEL = "Upvoted";
+
+    public static boolean isAutoTheme(String theme) {
+        return DEFAULT_THEME.equals(theme)
+                || "darklight_daynight".equals(theme)
+                || "amoledwhite_daynight".equals(theme);
+    }
+
+    public static boolean isDarkTheme(String theme) {
+        return "material_dark".equals(theme)
+                || "dark".equals(theme)
+                || "amoled".equals(theme)
+                || "gray".equals(theme);
+    }
+
+    public static String getSelectableNighttimeTheme(String theme) {
+        if (TextUtils.isEmpty(theme) || !isDarkTheme(theme)) {
+            return DEFAULT_NIGHTTIME_THEME;
+        }
+        return theme;
+    }
 
     public static Set<Integer> readIntSetFromSharedPreferences(Context ctx, String key) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);

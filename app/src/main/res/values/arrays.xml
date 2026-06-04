@@ -19,30 +19,30 @@
 
     <string-array name="theme_entries">
         <item>Material You (auto)</item>
-        <item>Dark/Light (auto)</item>
-        <item>Black/White (auto)</item>
-        <item>Dark</item>
-        <item>Material You (dark)</item>
-        <item>Gray</item>
-        <item>Black</item>
-        <item>Light</item>
-        <item>HN</item>
         <item>Material You (light)</item>
+        <item>Material You (dark)</item>
+        <item>Dark/Light (auto)</item>
+        <item>Light</item>
+        <item>Dark</item>
+        <item>HN</item>
+        <item>Black/White (auto)</item>
+        <item>Black</item>
         <item>White</item>
+        <item>Gray</item>
     </string-array>
 
     <string-array name="theme_values">
         <item>material_daynight</item>
-        <item>darklight_daynight</item>
-        <item>amoledwhite_daynight</item>
-        <item>dark</item>
-        <item>material_dark</item>
-        <item>gray</item>
-        <item>amoled</item>
-        <item>light</item>
-        <item>hacker_news</item>
         <item>material_light</item>
+        <item>material_dark</item>
+        <item>darklight_daynight</item>
+        <item>light</item>
+        <item>dark</item>
+        <item>hacker_news</item>
+        <item>amoledwhite_daynight</item>
+        <item>amoled</item>
         <item>white</item>
+        <item>gray</item>
     </string-array>
 
     <string-array name="font_entries">

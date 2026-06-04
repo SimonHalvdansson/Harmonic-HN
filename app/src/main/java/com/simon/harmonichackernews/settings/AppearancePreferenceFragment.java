@@ -18,6 +18,8 @@ import java.util.Date;
 
 public class AppearancePreferenceFragment extends BaseSettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
 
+    private Preference themePreference;
+    private Preference nighttimeThemePreference;
     private Preference fontPreference;
 
     @Override
@@ -29,9 +31,37 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.preferences_appearance, rootKey);
 
+        themePreference = findPreference(SettingsUtils.PREF_THEME);
+        updateThemeSummary();
+        nighttimeThemePreference = findPreference(SettingsUtils.PREF_THEME_NIGHTTIME);
+        updateNighttimeThemeSummary();
         updateTimedRangeSummary();
         fontPreference = findPreference(SettingsUtils.PREF_FONT);
         updateFontSummary();
+
+        getParentFragmentManager().setFragmentResultListener(
+                ThemeSelectionDialogFragment.RESULT_KEY,
+                this,
+                (requestKey, result) -> {
+                    String prefKey = result.getString(ThemeSelectionDialogFragment.RESULT_PREF_KEY);
+                    String selectedTheme = result.getString(ThemeSelectionDialogFragment.RESULT_THEME);
+                    String previousTheme = result.getString(ThemeSelectionDialogFragment.RESULT_PREVIOUS_THEME);
+                    if (SettingsUtils.PREF_THEME.equals(prefKey)) {
+                        updateThemeSummary();
+                        restartSettingsActivity();
+                    } else if (SettingsUtils.PREF_THEME_NIGHTTIME.equals(prefKey)) {
+                        updateNighttimeThemeSummary();
+                        restartSettingsActivityIfThemeChanged(
+                                ThemeUtils.getPreferredTheme(
+                                        requireContext(),
+                                        SettingsUtils.shouldUseSpecialNighttimeTheme(requireContext()),
+                                        previousTheme),
+                                ThemeUtils.getPreferredTheme(
+                                        requireContext(),
+                                        SettingsUtils.shouldUseSpecialNighttimeTheme(requireContext()),
+                                        selectedTheme));
+                    }
+                });
 
         boolean specialNighttime = SettingsUtils.shouldUseSpecialNighttimeTheme(getContext());
         changePrefStatus(findPreference("pref_theme_timed_range"), specialNighttime);
@@ -48,16 +78,13 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
             return true;
         });
 
-        findPreference("pref_theme").setOnPreferenceChangeListener((preference, newValue) -> {
-            restartSettingsActivity();
+        themePreference.setOnPreferenceClickListener(preference -> {
+            ThemeSelectionDialogFragment.show(getParentFragmentManager());
             return true;
         });
 
-        findPreference("pref_theme_nighttime").setOnPreferenceChangeListener((preference, newValue) -> {
-            restartSettingsActivityIfThemeChanged(ThemeUtils.getPreferredTheme(
-                    requireContext(),
-                    SettingsUtils.shouldUseSpecialNighttimeTheme(requireContext()),
-                    (String) newValue));
+        nighttimeThemePreference.setOnPreferenceClickListener(preference -> {
+            ThemeSelectionDialogFragment.showNighttimeTheme(getParentFragmentManager());
             return true;
         });
 
@@ -107,6 +134,8 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
     public void onResume() {
         super.onResume();
         getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        updateThemeSummary();
+        updateNighttimeThemeSummary();
         updateFontSummary();
     }
 
@@ -120,6 +149,10 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         if (SettingsUtils.PREF_FONT.equals(key)) {
             updateFontSummary();
+        } else if (SettingsUtils.PREF_THEME.equals(key)) {
+            updateThemeSummary();
+        } else if (SettingsUtils.PREF_THEME_NIGHTTIME.equals(key)) {
+            updateNighttimeThemeSummary();
         }
     }
 
@@ -141,9 +174,9 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
     }
 
     private String getNighttimeTheme() {
-        return getPreferenceManager()
+        return SettingsUtils.getSelectableNighttimeTheme(getPreferenceManager()
                 .getSharedPreferences()
-                .getString("pref_theme_nighttime", "material_daynight");
+                .getString(SettingsUtils.PREF_THEME_NIGHTTIME, SettingsUtils.DEFAULT_NIGHTTIME_THEME));
     }
 
     private void restartSettingsActivityIfThemeChanged(String newTheme) {
@@ -159,6 +192,26 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
     private void updateFontSummary() {
         if (fontPreference != null && getContext() != null) {
             fontPreference.setSummary(SettingsUtils.getPreferredFontLabel(requireContext()));
+        }
+    }
+
+    private void updateThemeSummary() {
+        if (themePreference != null && getContext() != null) {
+            String theme = getPreferenceManager()
+                    .getSharedPreferences()
+                    .getString(SettingsUtils.PREF_THEME, SettingsUtils.DEFAULT_THEME);
+            themePreference.setSummary(ThemeSelectionDialogFragment.getThemeLabel(requireContext(), theme));
+        }
+    }
+
+    private void updateNighttimeThemeSummary() {
+        if (nighttimeThemePreference != null && getContext() != null) {
+            nighttimeThemePreference.setSummary(ThemeSelectionDialogFragment.getThemeLabel(
+                    requireContext(),
+                    getNighttimeTheme(),
+                    false,
+                    true,
+                    SettingsUtils.DEFAULT_NIGHTTIME_THEME));
         }
     }
 }

@@ -5,15 +5,12 @@
         app:title="Theme"
         android:layout="@layout/preference_category">
 
-        <ListPreference
+        <Preference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_style"
             app:title="Theme"
             app:key="pref_theme"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/theme_entries"
-            app:defaultValue="material_daynight"
-            app:entryValues="@array/theme_values" />
+            app:summary="Material You (auto)" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
@@ -28,15 +25,12 @@
             app:icon="@drawable/ic_action_time"
             app:title="Timed range" />
 
-        <ListPreference
+        <Preference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_dark_mode"
             app:title="Nighttime theme"
             app:key="pref_theme_nighttime"
-            app:useSimpleSummaryProvider="true"
-            app:entries="@array/theme_entries"
-            app:defaultValue="dark"
-            app:entryValues="@array/theme_values" />
+            app:summary="Dark" />
 
     </PreferenceCategory>
 

@@ -178,15 +178,15 @@ public class ThemeUtils {
         return getPreferredTheme(
                 ctx,
                 SettingsUtils.shouldUseSpecialNighttimeTheme(ctx),
-                prefs.getString("pref_theme_nighttime", "material_daynight"));
+                prefs.getString(SettingsUtils.PREF_THEME_NIGHTTIME, SettingsUtils.DEFAULT_NIGHTTIME_THEME));
     }
 
     public static String getPreferredTheme(Context ctx, boolean useSpecialNighttimeTheme, String nighttimeTheme) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         if (useSpecialNighttimeTheme && isNighttimeThemeTime(ctx)) {
-            return nighttimeTheme;
+            return SettingsUtils.getSelectableNighttimeTheme(nighttimeTheme);
         }
-        return prefs.getString("pref_theme", "material_daynight");
+        return prefs.getString(SettingsUtils.PREF_THEME, SettingsUtils.DEFAULT_THEME);
     }
 
     private static boolean isNighttimeThemeTime(Context ctx) {
