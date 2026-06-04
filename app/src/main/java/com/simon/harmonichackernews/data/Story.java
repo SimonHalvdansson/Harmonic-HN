@@ -104,11 +104,17 @@ public class Story {
         bundle.putString(CommentsFragment.EXTRA_BY, by);
         bundle.putString(CommentsFragment.EXTRA_URL, url);
         bundle.putString(CommentsFragment.EXTRA_PREVIEW_IMAGE_URL, previewImageUrl);
+        bundle.putBoolean(CommentsFragment.EXTRA_PREVIEW_IMAGE_URL_LOADED, previewImageUrlLoaded);
+        bundle.putBoolean(CommentsFragment.EXTRA_PREVIEW_IMAGE_LOAD_FAILED, previewImageLoadFailed);
         bundle.putBoolean(CommentsFragment.EXTRA_PREVIEW_IMAGE_TINT_COLOR_LOADED, previewImageTintColorLoaded);
         bundle.putInt(CommentsFragment.EXTRA_PREVIEW_IMAGE_TINT_COLOR, previewImageTintColor);
         bundle.putString(CommentsFragment.EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL, previewImageTintSourceUrl);
         bundle.putInt(CommentsFragment.EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR, previewImageTintBaseColor);
         bundle.putString(CommentsFragment.EXTRA_PREVIEW_IMAGE_TINT_MODE, previewImageTintMode);
+        bundle.putBoolean(CommentsFragment.EXTRA_FAVICON_TINT_COLOR_LOADED, faviconTintColorLoaded);
+        bundle.putInt(CommentsFragment.EXTRA_FAVICON_TINT_COLOR, faviconTintColor);
+        bundle.putString(CommentsFragment.EXTRA_FAVICON_TINT_SOURCE_URL, faviconTintSourceUrl);
+        bundle.putString(CommentsFragment.EXTRA_FAVICON_TINT_MODE, faviconTintMode);
         bundle.putInt(CommentsFragment.EXTRA_TIME, time);
         bundle.putIntArray(CommentsFragment.EXTRA_KIDS, kids);
         bundle.putIntArray(CommentsFragment.EXTRA_POLL_OPTIONS, pollOptions);
