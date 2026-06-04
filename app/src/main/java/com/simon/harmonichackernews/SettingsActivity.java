@@ -15,8 +15,6 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
-import androidx.window.layout.WindowMetrics;
-import androidx.window.layout.WindowMetricsCalculator;
 
 import com.simon.harmonichackernews.settings.AppearancePreferenceFragment;
 import com.simon.harmonichackernews.settings.CommentsPreferenceFragment;
@@ -29,6 +27,7 @@ import com.simon.harmonichackernews.settings.StoriesPreferenceFragment;
 import com.simon.harmonichackernews.settings.WebLinksPreferenceFragment;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.ThemeUtils;
+import com.simon.harmonichackernews.utils.Utils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,7 +36,6 @@ public class SettingsActivity extends AppCompatActivity implements
         PreferenceFragmentCompat.OnPreferenceStartFragmentCallback,
         SettingsCallback {
 
-    public static final int TWO_PANE_MIN_WIDTH_DP = 600;
     private static final int TWO_PANE_SPACER_DP = 16;
     private static final int TWO_PANE_LIST_WEIGHT = 2;
     private static final int TWO_PANE_DETAIL_WEIGHT = 3;
@@ -151,17 +149,14 @@ public class SettingsActivity extends AppCompatActivity implements
     private void setupTwoPane() {
         boolean wasTwoPane = isTwoPane;
 
-        WindowMetrics metrics = WindowMetricsCalculator.getOrCreate()
-                .computeCurrentWindowMetrics(this);
         float density = getResources().getDisplayMetrics().density;
-        float widthDp = metrics.getBounds().width() / density;
 
         View root = findViewById(R.id.settings_linear_layout);
         View settingsPane = findViewById(R.id.settings);
         View detailPane = findViewById(R.id.settings_detail);
         View spacer = findViewById(R.id.settings_pane_spacer);
 
-        if (widthDp >= TWO_PANE_MIN_WIDTH_DP && detailPane != null) {
+        if (Utils.isTablet(getResources()) && detailPane != null) {
             isTwoPane = true;
             boolean useEqualPaneWeights = FoldableSplitInitializer.isFoldableSplitEnabled(this);
             int listWeight = useEqualPaneWeights ? FOLDABLE_TWO_PANE_WEIGHT : TWO_PANE_LIST_WEIGHT;
@@ -275,7 +270,6 @@ public class SettingsActivity extends AppCompatActivity implements
                 ((SettingsHeaderFragment) headerFragment).setSelectedKey(pref.getKey());
             }
         } else {
-            updateHeaderSelection(currentDetailKey);
             startActivity(SettingsDetailActivity.createIntent(
                     this,
                     currentDetailClassName,
@@ -401,13 +395,6 @@ public class SettingsActivity extends AppCompatActivity implements
         }
         return SettingsFragmentFactory.create(
                 getSupportFragmentManager(), getClassLoader(), currentDetailClassName);
-    }
-
-    private void updateHeaderSelection(String key) {
-        Fragment headerFragment = getSupportFragmentManager().findFragmentById(R.id.settings);
-        if (headerFragment instanceof SettingsHeaderFragment) {
-            ((SettingsHeaderFragment) headerFragment).setSelectedKey(key);
-        }
     }
 
     private void updateStateFromIntent(Intent intent) {

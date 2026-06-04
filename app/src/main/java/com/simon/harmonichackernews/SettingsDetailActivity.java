@@ -10,14 +10,13 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
-import androidx.window.layout.WindowMetrics;
-import androidx.window.layout.WindowMetricsCalculator;
 
 import com.simon.harmonichackernews.settings.SettingsCallback;
 import com.simon.harmonichackernews.settings.AppearancePreferenceFragment;
 import com.simon.harmonichackernews.settings.SettingsFragmentFactory;
 import com.simon.harmonichackernews.settings.SettingsHeaderFragment;
 import com.simon.harmonichackernews.utils.ThemeUtils;
+import com.simon.harmonichackernews.utils.Utils;
 
 public class SettingsDetailActivity extends AppCompatActivity implements SettingsCallback {
 
@@ -75,7 +74,7 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
             }
         }
 
-        if (shouldUseSettingsTwoPane()) {
+        if (Utils.isTablet(getResources())) {
             returnToSettingsActivity();
             finish();
             return;
@@ -135,7 +134,7 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         applySinglePanePadding();
-        if (shouldUseSettingsTwoPane()) {
+        if (Utils.isTablet(getResources())) {
             returnToSettingsActivity();
             finish();
         }
@@ -154,14 +153,6 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
         View root = findViewById(R.id.settings_linear_layout);
         int padding = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
         root.setPadding(padding, 0, padding, 0);
-    }
-
-    private boolean shouldUseSettingsTwoPane() {
-        WindowMetrics metrics = WindowMetricsCalculator.getOrCreate()
-                .computeCurrentWindowMetrics(this);
-        float density = getResources().getDisplayMetrics().density;
-        float widthDp = metrics.getBounds().width() / density;
-        return widthDp >= SettingsActivity.TWO_PANE_MIN_WIDTH_DP;
     }
 
     private Fragment createDetailFragment() {

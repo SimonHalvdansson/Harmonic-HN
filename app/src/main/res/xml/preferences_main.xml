@@ -12,15 +12,8 @@
         app:key="pref_header_stories"
         app:title="Stories"
         app:summary="Layout, behavior"
-        app:icon="@drawable/ic_action_bookmark_border"
+        app:icon="@drawable/ic_action_news"
         app:fragment="com.simon.harmonichackernews.settings.StoriesPreferenceFragment" />
-
-    <Preference
-        app:key="pref_header_web_links"
-        app:title="Web and links"
-        app:summary="WebView, browser, link previews"
-        app:icon="@drawable/ic_action_browser"
-        app:fragment="com.simon.harmonichackernews.settings.WebLinksPreferenceFragment" />
 
     <Preference
         app:key="pref_header_comments"
@@ -28,6 +21,13 @@
         app:summary="Display, interaction, navigation"
         app:icon="@drawable/ic_action_comment"
         app:fragment="com.simon.harmonichackernews.settings.CommentsPreferenceFragment" />
+
+    <Preference
+        app:key="pref_header_web_links"
+        app:title="Web and links"
+        app:summary="WebView, browser, link previews"
+        app:icon="@drawable/ic_action_browser"
+        app:fragment="com.simon.harmonichackernews.settings.WebLinksPreferenceFragment" />
 
     <Preference
         app:key="pref_header_filters_tags"
