@@ -472,7 +472,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         if (!TextUtils.isEmpty(story.previewImageUrl)) {
-            prefetchPreviewImageDrawable(context, story);
+            prefetchPreviewImageDrawable(
+                    context == null ? null : context.getApplicationContext(),
+                    story,
+                    getDefaultStoryCardBackgroundColor(context));
             return;
         }
 
@@ -495,6 +498,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         story.previewImageUrlLoading = true;
         Context appContext = context == null ? null : context.getApplicationContext();
+        int storyCardBackgroundColor = getDefaultStoryCardBackgroundColor(context);
         StoryPreviewImageLoader.PreviewImageRequest request = StoryPreviewImageLoader.loadPreviewImageUrl(appContext, story.id, story.url, imageUrl -> {
             previewImageUrlRequests.remove(story);
             story.previewImageUrlLoading = false;
@@ -510,7 +514,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             story.previewImageUrl = imageUrl;
             story.previewImageLoadFailed = false;
-            prefetchPreviewImageDrawable(appContext, story);
+            prefetchPreviewImageDrawable(appContext, story, storyCardBackgroundColor);
             int index = stories.indexOf(story);
             if (index >= 0 && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)) {
                 notifyItemChanged(index);
@@ -527,7 +531,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         previewImageUrlRequests.clear();
     }
 
-    private void prefetchPreviewImageDrawable(@Nullable Context context, Story story) {
+    private void prefetchPreviewImageDrawable(@Nullable Context context, Story story, int storyCardBackgroundColor) {
         if (context == null
                 || TextUtils.isEmpty(story.previewImageUrl)
                 || story.previewImageLoaded
@@ -563,7 +567,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         story.previewImageLoading = false;
                         story.previewImageLoaded = true;
                         StoryPreviewImageMemoryCache.put(story.id, imageUrl, result);
-                        updatePreviewImageTintColor(context, story, result);
+                        updatePreviewImageTintColor(story, result, storyCardBackgroundColor);
                     }
                 })
                 .build();
@@ -743,13 +747,35 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 Color.TRANSPARENT);
     }
 
+    private static int getDefaultStoryCardBackgroundColor(@Nullable Context context) {
+        if (context == null) {
+            return Color.TRANSPARENT;
+        }
+
+        return MaterialColors.getColor(
+                context,
+                com.google.android.material.R.attr.colorSurfaceContainerHigh,
+                Color.TRANSPARENT);
+    }
+
     private void updatePreviewImageTintColor(Context context, Story story, Drawable drawable) {
         if (!shouldTintStoryCards() || context == null || story == null || drawable == null) {
             return;
         }
 
+        updatePreviewImageTintColor(
+                story,
+                drawable,
+                getDefaultStoryCardBackgroundColor(context));
+    }
+
+    private void updatePreviewImageTintColor(Story story, Drawable drawable, int storyCardBackgroundColor) {
+        if (!shouldTintStoryCards() || story == null || drawable == null) {
+            return;
+        }
+
         try {
-            story.previewImageTintColor = PreviewImageTintUtils.calculateCardTint(context, drawable);
+            story.previewImageTintColor = PreviewImageTintUtils.calculateCardTint(storyCardBackgroundColor, drawable);
             story.previewImageTintColorLoaded = true;
         } catch (RuntimeException e) {
             story.previewImageTintColorLoaded = false;

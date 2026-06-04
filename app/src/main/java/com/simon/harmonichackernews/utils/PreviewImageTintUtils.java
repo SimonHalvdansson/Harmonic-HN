@@ -22,6 +22,10 @@ public class PreviewImageTintUtils {
                 context,
                 com.google.android.material.R.attr.colorSurfaceContainerHigh,
                 Color.TRANSPARENT);
+        return calculateCardTint(baseColor, drawable);
+    }
+
+    public static int calculateCardTint(int baseColor, Drawable drawable) {
         Bitmap bitmap = renderDrawableToSampleBitmap(drawable);
         if (bitmap == null) {
             return baseColor;
