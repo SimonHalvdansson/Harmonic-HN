@@ -3513,7 +3513,8 @@ public class StoriesFragment extends Fragment {
     }
 
     private void setSearchBackMainHeaderAlpha(float alpha) {
-        spinnerContainer.setAlpha(alpha);
+        spinnerContainer.setAlpha(1f);
+        typeSpinner.setAlpha(alpha);
         searchButton.setAlpha(alpha);
         moreButton.setAlpha(alpha);
     }
