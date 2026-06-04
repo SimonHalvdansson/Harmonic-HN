@@ -34,6 +34,7 @@ import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
+import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
@@ -632,6 +633,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 : Utils.pxFromDpInt(context.getResources(), 54);
         ImageRequest request = new ImageRequest.Builder(context)
                 .data(imageUrl)
+                .setHeader("User-Agent", NetworkComponent.USER_AGENT)
                 .size(previewWidth, previewHeight)
                 .allowHardware(!shouldTintStoryCards())
                 .target(new Target() {
@@ -680,6 +682,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 : Utils.pxFromDpInt(previewImage.getResources(), 54);
         ImageRequest request = new ImageRequest.Builder(previewImage.getContext())
                 .data(imageUrl)
+                .setHeader("User-Agent", NetworkComponent.USER_AGENT)
                 .size(previewWidth, previewHeight)
                 .allowHardware(!shouldTintStoryCards())
                 .target(new ImageViewTarget(previewImage) {

@@ -16,6 +16,9 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 
 public class NetworkComponent {
+    public static final String USER_AGENT =
+            "Harmonic-HN-Android/" + BuildConfig.VERSION_NAME + "/" + BuildConfig.BUILD_TYPE;
+
     private static volatile OkHttpClient okHttpClientInstance;
     private static volatile OkHttpClient okHttpClientCookieInstance;
 
@@ -29,8 +32,7 @@ public class NetworkComponent {
                     Interceptor userAgentInterceptor = chain -> {
                         Request original = chain.request();
                         Request withAgent = original.newBuilder()
-                                .header("User-Agent",
-                                        "Harmonic-HN-Android/" + BuildConfig.VERSION_NAME + "/" + BuildConfig.BUILD_TYPE)
+                                .header("User-Agent", USER_AGENT)
                                 .build();
                         return chain.proceed(withAgent);
                     };
@@ -55,8 +57,7 @@ public class NetworkComponent {
                     Interceptor userAgentInterceptor = chain -> {
                         Request original = chain.request();
                         Request withAgent = original.newBuilder()
-                                .header("User-Agent",
-                                        "Harmonic-HN-Android/" + BuildConfig.VERSION_NAME + "/" + BuildConfig.BUILD_TYPE)
+                                .header("User-Agent", USER_AGENT)
                                 .build();
                         return chain.proceed(withAgent);
                     };

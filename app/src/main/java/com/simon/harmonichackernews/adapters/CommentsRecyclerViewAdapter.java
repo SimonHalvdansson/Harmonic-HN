@@ -49,6 +49,7 @@ import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.FaviconLoader;
+import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
@@ -742,6 +743,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         ImageRequest request = new ImageRequest.Builder(previewImage.getContext())
                 .data(imageUrl)
+                .setHeader("User-Agent", NetworkComponent.USER_AGENT)
                 .size(getHeaderPreviewImageWidth(previewImage), getHeaderPreviewImageHeight(previewImage))
                 .allowHardware(!shouldTintHeader())
                 .target(new ImageViewTarget(previewImage) {
