@@ -38,11 +38,14 @@ public class StoriesToCachePreference extends Preference {
 
         int storiesToCache = SettingsUtils.getStoriesToCache(getContext());
         slider.clearOnChangeListeners();
+        slider.setValueFrom(SettingsUtils.MIN_STORIES_TO_CACHE);
+        slider.setValueTo(SettingsUtils.MAX_STORIES_TO_CACHE);
+        slider.setStepSize(SettingsUtils.STORIES_TO_CACHE_STEP);
         slider.setLabelFormatter(value -> String.valueOf(Math.round(value)));
         slider.setValue(storiesToCache);
         updateValueText(valueText, storiesToCache);
         slider.addOnChangeListener((changedSlider, value, fromUser) -> {
-            int roundedValue = Math.round(value);
+            int roundedValue = SettingsUtils.sanitizeStoriesToCache(Math.round(value));
             updateValueText(valueText, roundedValue);
             if (!fromUser) {
                 return;

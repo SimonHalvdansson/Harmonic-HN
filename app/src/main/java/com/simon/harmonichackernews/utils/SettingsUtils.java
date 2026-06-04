@@ -55,8 +55,9 @@ public class SettingsUtils {
     public static final String FAVICON_PROVIDER_TWENTY = "Twenty icons";
     public static final int DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY = 0;
     public static final int DEFAULT_STORIES_TO_CACHE = 20;
-    public static final int MIN_STORIES_TO_CACHE = 1;
-    public static final int MAX_STORIES_TO_CACHE = 100;
+    public static final int MIN_STORIES_TO_CACHE = 5;
+    public static final int MAX_STORIES_TO_CACHE = 200;
+    public static final int STORIES_TO_CACHE_STEP = 5;
     public static final String STORY_DISPLAY_STYLE_STANDARD = "standard";
     public static final String STORY_DISPLAY_STYLE_CARD = "card";
     public static final String STORY_PREVIEW_IMAGE_OFF = "off";
@@ -307,7 +308,7 @@ public class SettingsUtils {
 
     public static int getStoriesToCache(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return clampStoriesToCache(prefs.getInt(PREF_STORIES_TO_CACHE, DEFAULT_STORIES_TO_CACHE));
+        return sanitizeStoriesToCache(prefs.getInt(PREF_STORIES_TO_CACHE, DEFAULT_STORIES_TO_CACHE));
     }
 
     public static boolean hasEnoughBatteryForWebViewPreload(Context ctx, int minimumBattery) {
@@ -342,8 +343,9 @@ public class SettingsUtils {
         return Math.max(0, Math.min(100, value));
     }
 
-    private static int clampStoriesToCache(int value) {
-        return Math.max(MIN_STORIES_TO_CACHE, Math.min(MAX_STORIES_TO_CACHE, value));
+    public static int sanitizeStoriesToCache(int value) {
+        int clampedValue = Math.max(MIN_STORIES_TO_CACHE, Math.min(MAX_STORIES_TO_CACHE, value));
+        return Math.round(clampedValue / (float) STORIES_TO_CACHE_STEP) * STORIES_TO_CACHE_STEP;
     }
 
     public static boolean shouldMatchWebViewTheme(Context ctx) {

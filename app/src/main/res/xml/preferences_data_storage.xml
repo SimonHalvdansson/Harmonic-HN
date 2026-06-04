@@ -67,7 +67,7 @@
             app:key="pref_stories_to_cache"
             app:defaultValue="20"
             app:icon="@drawable/ic_action_cache"
-            app:title="Stories to cache" />
+            app:title="Stories to cache for offline" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"

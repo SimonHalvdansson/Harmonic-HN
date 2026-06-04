@@ -84,6 +84,7 @@ public class Utils {
     public final static String KEY_SHARED_PREFERENCES_CACHED_STORY = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORY";
     public final static String KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL";
     public final static String KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS";
+    private static final int MAX_CACHED_STORIES = 200;
     public final static String GLOBAL_SHARED_PREFERENCES_KEY = "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY";
 
     public final static String KEY_SHARED_PREFERENCES_BOOKMARKS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_BOOKMARKS";
@@ -193,7 +194,7 @@ public class Utils {
         }
         cachedStories.add(id + "-" + System.currentTimeMillis());
 
-        int maxCachedStories = SettingsUtils.getStoriesToCache(ctx);
+        int maxCachedStories = MAX_CACHED_STORIES;
         while (cachedStories.size() > maxCachedStories) {
             // If we have a lot of stories, lets delete the oldest one
             long oldestTime = -1;

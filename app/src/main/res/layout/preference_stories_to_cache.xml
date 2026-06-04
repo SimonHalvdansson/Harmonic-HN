@@ -47,9 +47,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:valueFrom="1"
-        android:valueTo="100"
-        android:stepSize="1"
+        android:valueFrom="5"
+        android:valueTo="200"
+        android:stepSize="5"
         app:labelBehavior="floating"
         app:tickVisible="false" />
 
