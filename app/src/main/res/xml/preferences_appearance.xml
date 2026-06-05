@@ -48,7 +48,7 @@
         <Preference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_action_colors"
-            app:title="Configure palette tint"
+            app:title="Palette tint"
             app:key="pref_palette_tint_mode"
             app:summary="Default" />
 
