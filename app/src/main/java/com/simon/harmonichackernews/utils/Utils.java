@@ -760,63 +760,23 @@ public class Utils {
     }
 
     public static ArrayList<String> getFilterWords(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        String prefText = prefs.getString("pref_filter", null);
-
-        ArrayList<String> phrases = new ArrayList<>();
-        if (!TextUtils.isEmpty(prefText)) {
-            for (String phrase : prefText.split(",")) {
-                phrases.add(phrase.trim());
-            }
-        }
-        return phrases;
+        return getCommaSeparatedPreference(ctx, "pref_filter");
     }
-    public static ArrayList<String> getFilterDomains(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        String prefText = prefs.getString("pref_filter_domains", null);
 
-        ArrayList<String> phrases = new ArrayList<>();
-        if (!TextUtils.isEmpty(prefText)) {
-            for (String phrase : prefText.split(",")) {
-                phrases.add(phrase.trim());
-            }
-        }
-        return phrases;
+    public static ArrayList<String> getFilterDomains(Context ctx) {
+        return getCommaSeparatedPreference(ctx, "pref_filter_domains");
     }
 
     public static Set<String> getFilteredUsers(Context ctx) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        String prefText = prefs.getString("pref_filter_users", null);
-
-        Set<String> usernames = new HashSet<>();
-        if (!TextUtils.isEmpty(prefText)) {
-            for (String username : prefText.toLowerCase().split(",")) {
-                usernames.add(username.trim());
-            }
-        }
-        return usernames;
+        return getCommaSeparatedPreferenceSet(ctx, "pref_filter_users", true);
     }
 
     public static boolean removeFilteredUser(Context ctx, String username) {
         if (TextUtils.isEmpty(username)) return false;
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        // Grab current set, add new entry
         Set<String> users = getFilteredUsers(ctx);
         users.remove(username.toLowerCase().trim());
-
-        // Join back into comma-separated string
-        StringBuilder sb = new StringBuilder();
-        Iterator<String> iter = users.iterator();
-        while (iter.hasNext()) {
-            sb.append(iter.next());
-            if (iter.hasNext()) sb.append(",");
-        }
-
-        // Persist updated list
-        prefs.edit()
-                .putString("pref_filter_users", sb.toString())
-                .apply();
+        saveCommaSeparatedPreferenceSet(ctx, "pref_filter_users", users);
 
         return true;
     }
@@ -824,25 +784,54 @@ public class Utils {
     public static boolean addFilteredUser(Context ctx, String username) {
         if (TextUtils.isEmpty(username)) return false;
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        // Grab current set, add new entry
         Set<String> users = getFilteredUsers(ctx);
         users.add(username.toLowerCase().trim());
-
-        // Join back into comma-separated string
-        StringBuilder sb = new StringBuilder();
-        Iterator<String> iter = users.iterator();
-        while (iter.hasNext()) {
-            sb.append(iter.next());
-            if (iter.hasNext()) sb.append(",");
-        }
-
-        // Persist updated list
-        prefs.edit()
-                .putString("pref_filter_users", sb.toString())
-                .apply();
+        saveCommaSeparatedPreferenceSet(ctx, "pref_filter_users", users);
 
         return true;
+    }
+
+    private static ArrayList<String> getCommaSeparatedPreference(Context ctx, String key) {
+        return getCommaSeparatedPreference(ctx, key, false);
+    }
+
+    private static ArrayList<String> getCommaSeparatedPreference(Context ctx, String key, boolean lowercase) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        String prefText = prefs.getString(key, null);
+
+        ArrayList<String> values = new ArrayList<>();
+        if (!TextUtils.isEmpty(prefText)) {
+            if (lowercase) {
+                prefText = prefText.toLowerCase();
+            }
+            for (String value : prefText.split(",")) {
+                values.add(value.trim());
+            }
+        }
+        return values;
+    }
+
+    private static Set<String> getCommaSeparatedPreferenceSet(Context ctx, String key, boolean lowercase) {
+        return new HashSet<>(getCommaSeparatedPreference(ctx, key, lowercase));
+    }
+
+    private static void saveCommaSeparatedPreferenceSet(Context ctx, String key, Set<String> values) {
+        PreferenceManager.getDefaultSharedPreferences(ctx)
+                .edit()
+                .putString(key, joinCommaSeparated(values))
+                .apply();
+    }
+
+    private static String joinCommaSeparated(Set<String> values) {
+        StringBuilder sb = new StringBuilder();
+        Iterator<String> iter = values.iterator();
+        while (iter.hasNext()) {
+            sb.append(iter.next());
+            if (iter.hasNext()) {
+                sb.append(",");
+            }
+        }
+        return sb.toString();
     }
 
     public static Map<String, String> getUserTags(Context ctx) {

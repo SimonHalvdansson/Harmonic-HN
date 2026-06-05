@@ -16,7 +16,6 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -27,7 +26,6 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceViewHolder;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
@@ -613,7 +611,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
         int reservedHeight = reservedContentHeight
                 + previewItemContainer.getPaddingTop()
                 + previewItemContainer.getPaddingBottom();
-        setExactHeight(previewItemContainer, reservedHeight);
+        PreviewPreferenceViewUtils.setExactHeight(previewItemContainer, reservedHeight);
         requestPreviewRemeasure();
     }
 
@@ -631,49 +629,17 @@ public class CommentContentPreviewPreference extends Preference implements Share
         int widthSpec = View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
         itemView.measure(widthSpec, heightSpec);
-        return getMeasuredOuterHeight(itemView);
+        return PreviewPreferenceViewUtils.getMeasuredOuterHeight(itemView);
     }
 
     private void bindCurrentPreviewItemForMeasurement(PreviewCommentItemBinding binding) {
         bindPreviewCommentContent(binding.commentBody, binding.referenceLinksContainer);
-        copyTextViewForMeasurement(commentBody, binding.commentBody);
-        copyTextViewForMeasurement(commentBy, binding.commentBy);
-        copyTextViewForMeasurement(commentByTime, binding.commentByTime);
-        copyTextViewForMeasurement(commentHiddenCount, binding.commentHiddenCount);
-        copyTextViewForMeasurement(commentHiddenText, binding.commentHiddenText);
-        copyViewVisibilityForMeasurement(commentIndentIndicator, binding.commentIndentIndicator);
-    }
-
-    private void copyTextViewForMeasurement(TextView source, TextView target) {
-        if (source == null || target == null) {
-            return;
-        }
-
-        target.setText(source.getText());
-        target.setVisibility(source.getVisibility());
-        target.setTextSize(TypedValue.COMPLEX_UNIT_PX, source.getTextSize());
-        target.setTypeface(source.getTypeface());
-    }
-
-    private void copyViewVisibilityForMeasurement(View source, View target) {
-        if (source == null || target == null) {
-            return;
-        }
-
-        target.setVisibility(source.getVisibility());
-    }
-
-    private void setExactHeight(View view, int height) {
-        if (view == null || height <= 0) {
-            return;
-        }
-
-        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
-        if (layoutParams != null && layoutParams.height != height) {
-            layoutParams.height = height;
-            view.setLayoutParams(layoutParams);
-        }
-        view.setMinimumHeight(height);
+        PreviewPreferenceViewUtils.copyTextViewForMeasurement(commentBody, binding.commentBody);
+        PreviewPreferenceViewUtils.copyTextViewForMeasurement(commentBy, binding.commentBy);
+        PreviewPreferenceViewUtils.copyTextViewForMeasurement(commentByTime, binding.commentByTime);
+        PreviewPreferenceViewUtils.copyTextViewForMeasurement(commentHiddenCount, binding.commentHiddenCount);
+        PreviewPreferenceViewUtils.copyTextViewForMeasurement(commentHiddenText, binding.commentHiddenText);
+        PreviewPreferenceViewUtils.copyViewVisibilityForMeasurement(commentIndentIndicator, binding.commentIndentIndicator);
     }
 
     private void clearReservedPreviewHeight() {
@@ -682,36 +648,9 @@ public class CommentContentPreviewPreference extends Preference implements Share
         }
 
         if (previewItemContainer.getChildCount() > 0) {
-            setWrapContentHeight(previewItemContainer.getChildAt(0));
+            PreviewPreferenceViewUtils.setWrapContentHeight(previewItemContainer.getChildAt(0));
         }
-        setWrapContentHeight(previewItemContainer);
-    }
-
-    private void setWrapContentHeight(View view) {
-        if (view == null) {
-            return;
-        }
-
-        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
-        if (layoutParams != null && layoutParams.height != ViewGroup.LayoutParams.WRAP_CONTENT) {
-            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-            view.setLayoutParams(layoutParams);
-        }
-        view.setMinimumHeight(0);
-    }
-
-    private int getMeasuredOuterHeight(View view) {
-        if (view == null || view.getVisibility() == View.GONE) {
-            return 0;
-        }
-
-        int height = view.getMeasuredHeight();
-        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
-        if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
-            ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) layoutParams;
-            height += margins.topMargin + margins.bottomMargin;
-        }
-        return height;
+        PreviewPreferenceViewUtils.setWrapContentHeight(previewItemContainer);
     }
 
     private PreviewCommentItemBinding inflatePreviewCommentItemBinding() {
@@ -773,19 +712,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
     }
 
     private void requestPreviewRemeasure() {
-        if (previewItemContainer != null) {
-            previewItemContainer.requestLayout();
-        }
-        if (previewRoot != null) {
-            previewRoot.requestLayout();
-            ViewGroup settingsList = findAncestorOfType(previewRoot, RecyclerView.class);
-            if (settingsList != null) {
-                settingsList.requestLayout();
-            }
-        }
-        if (boundItemView != null) {
-            boundItemView.requestLayout();
-        }
+        PreviewPreferenceViewUtils.requestPreviewRemeasure(previewItemContainer, previewRoot, boundItemView);
     }
 
     private void disablePreviewItemScrollbars() {
@@ -811,14 +738,4 @@ public class CommentContentPreviewPreference extends Preference implements Share
         }
     }
 
-    private <T extends ViewGroup> T findAncestorOfType(View view, Class<T> type) {
-        ViewParent parent = view.getParent();
-        while (parent != null) {
-            if (type.isInstance(parent)) {
-                return type.cast(parent);
-            }
-            parent = parent.getParent();
-        }
-        return null;
-    }
 }

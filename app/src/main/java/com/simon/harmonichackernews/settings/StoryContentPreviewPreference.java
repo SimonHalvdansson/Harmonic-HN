@@ -10,12 +10,10 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -25,7 +23,6 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceViewHolder;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
@@ -751,7 +748,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
                 + previewItemContainer.getPaddingTop()
                 + previewItemContainer.getPaddingBottom();
         int previewHeaderHeight = previewRoot.getChildCount() > 0
-                ? getOuterHeight(previewRoot.getChildAt(0))
+                ? PreviewPreferenceViewUtils.getOuterHeight(previewRoot.getChildAt(0))
                 : 0;
         int targetRootHeight = targetContainerHeight
                 + previewHeaderHeight
@@ -775,37 +772,18 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         int widthSpec = View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
         itemView.measure(widthSpec, heightSpec);
-        return getMeasuredOuterHeight(itemView);
+        return PreviewPreferenceViewUtils.getMeasuredOuterHeight(itemView);
     }
 
     private void bindCurrentPreviewItemForMeasurement(PreviewStoryItemBinding binding) {
-        copyTextViewForMeasurement(storyTitle, binding.storyTitle);
-        copyTextViewForMeasurement(storyIndex, binding.storyIndex);
-        copyTextViewForMeasurement(storyMeta, binding.storyMeta);
-        copyTextViewForMeasurement(comments, binding.comments);
-        copyViewVisibilityForMeasurement(metaContainer, binding.metaContainer);
-        copyViewVisibilityForMeasurement(favicon, binding.favicon);
-        copyViewVisibilityForMeasurement(smallPreviewImage, binding.smallPreviewImage);
-        copyViewVisibilityForMeasurement(largePreviewImage, binding.largePreviewImage);
-    }
-
-    private void copyTextViewForMeasurement(TextView source, TextView target) {
-        if (source == null || target == null) {
-            return;
-        }
-
-        target.setText(source.getText());
-        target.setVisibility(source.getVisibility());
-        target.setTextSize(TypedValue.COMPLEX_UNIT_PX, source.getTextSize());
-        target.setTypeface(source.getTypeface());
-    }
-
-    private void copyViewVisibilityForMeasurement(View source, View target) {
-        if (source == null || target == null) {
-            return;
-        }
-
-        target.setVisibility(source.getVisibility());
+        PreviewPreferenceViewUtils.copyTextViewForMeasurement(storyTitle, binding.storyTitle);
+        PreviewPreferenceViewUtils.copyTextViewForMeasurement(storyIndex, binding.storyIndex);
+        PreviewPreferenceViewUtils.copyTextViewForMeasurement(storyMeta, binding.storyMeta);
+        PreviewPreferenceViewUtils.copyTextViewForMeasurement(comments, binding.comments);
+        PreviewPreferenceViewUtils.copyViewVisibilityForMeasurement(metaContainer, binding.metaContainer);
+        PreviewPreferenceViewUtils.copyViewVisibilityForMeasurement(favicon, binding.favicon);
+        PreviewPreferenceViewUtils.copyViewVisibilityForMeasurement(smallPreviewImage, binding.smallPreviewImage);
+        PreviewPreferenceViewUtils.copyViewVisibilityForMeasurement(largePreviewImage, binding.largePreviewImage);
     }
 
     private void applyPreviewHeights(PreviewHeights heights) {
@@ -814,8 +792,8 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         }
 
         View previewItem = previewItemContainer.getChildAt(0);
-        setWrapContentHeight(previewItem);
-        setExactHeight(previewItemContainer, heights.containerHeight);
+        PreviewPreferenceViewUtils.setWrapContentHeight(previewItem);
+        PreviewPreferenceViewUtils.setExactHeight(previewItemContainer, heights.containerHeight);
         previewRoot.setMinimumHeight(heights.rootHeight);
         if (boundItemView != null) {
             boundItemView.setMinimumHeight(heights.rootHeight);
@@ -826,9 +804,9 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     private void clearPreviewHeights() {
         if (previewItemContainer != null) {
             if (previewItemContainer.getChildCount() > 0) {
-                setWrapContentHeight(previewItemContainer.getChildAt(0));
+                PreviewPreferenceViewUtils.setWrapContentHeight(previewItemContainer.getChildAt(0));
             }
-            setWrapContentHeight(previewItemContainer);
+            PreviewPreferenceViewUtils.setWrapContentHeight(previewItemContainer);
         }
         if (previewRoot != null) {
             previewRoot.setMinimumHeight(0);
@@ -838,69 +816,12 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         }
     }
 
-    private void setExactHeight(View view, int height) {
-        if (view == null || height <= 0) {
-            return;
-        }
-
-        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
-        if (layoutParams != null && layoutParams.height != height) {
-            layoutParams.height = height;
-            view.setLayoutParams(layoutParams);
-        }
-        view.setMinimumHeight(height);
-    }
-
-    private void setWrapContentHeight(View view) {
-        if (view == null) {
-            return;
-        }
-
-        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
-        if (layoutParams != null && layoutParams.height != ViewGroup.LayoutParams.WRAP_CONTENT) {
-            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-            view.setLayoutParams(layoutParams);
-        }
-        view.setMinimumHeight(0);
-    }
-
     private FrameLayout.LayoutParams createPreviewItemLayoutParams() {
         FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         layoutParams.gravity = Gravity.CENTER_VERTICAL;
         return layoutParams;
-    }
-
-    private int getOuterHeight(View view) {
-        if (view == null || view.getVisibility() == View.GONE) {
-            return 0;
-        }
-
-        int height = view.getMeasuredHeight();
-        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
-        if (layoutParams != null && layoutParams.height > 0) {
-            height = layoutParams.height;
-        }
-        if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
-            ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) layoutParams;
-            height += margins.topMargin + margins.bottomMargin;
-        }
-        return height;
-    }
-
-    private int getMeasuredOuterHeight(View view) {
-        if (view == null || view.getVisibility() == View.GONE) {
-            return 0;
-        }
-
-        int height = view.getMeasuredHeight();
-        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
-        if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
-            ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) layoutParams;
-            height += margins.topMargin + margins.bottomMargin;
-        }
-        return height;
     }
 
     private PreviewStoryItemBinding inflatePreviewStoryItemBinding(boolean leftAlign, boolean useCardStyle) {
@@ -1046,30 +967,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     }
 
     private void requestPreviewRemeasure() {
-        if (previewItemContainer != null) {
-            previewItemContainer.requestLayout();
-        }
-        if (previewRoot != null) {
-            previewRoot.requestLayout();
-            ViewGroup settingsList = findAncestorOfType(previewRoot, RecyclerView.class);
-            if (settingsList != null) {
-                settingsList.requestLayout();
-            }
-        }
-        if (boundItemView != null) {
-            boundItemView.requestLayout();
-        }
-    }
-
-    private <T extends ViewGroup> T findAncestorOfType(View view, Class<T> type) {
-        ViewParent parent = view.getParent();
-        while (parent != null) {
-            if (type.isInstance(parent)) {
-                return type.cast(parent);
-            }
-            parent = parent.getParent();
-        }
-        return null;
+        PreviewPreferenceViewUtils.requestPreviewRemeasure(previewItemContainer, previewRoot, boundItemView);
     }
 
     private void updatePointsText(boolean showPoints, boolean compactPoints, boolean animate) {
