@@ -49,6 +49,7 @@ private static final String VOTE_PATH = "vote";
 private static final String FAVE_PATH = "fave";
 private static final String FAVORITES_PATH = "favorites";
 private static final String UPVOTED_PATH = "upvoted";
+private static final String ACTIVE_PATH = "active";
 private static final String COMMENT_PATH = "comment";
 private static final String SUBMIT_PATH = "submit";
 private static final String ITEM_PATH = "item";
@@ -86,6 +87,7 @@ private static final String CAPTCHA_VALIDATION_TEXT = "Validation required. If t
 private static final String CAPTCHA_RESPONSE_PARAM = "g-recaptcha-response";
 private static final long MAX_RESPONSE_PREVIEW_BYTES = 1024 * 1024;
 private static final int MAX_USER_ITEM_LIST_PAGES = 50;
+private static final int MAX_STORY_LIST_PAGES = 50;
 
     public static void voteWithDir(Context ctx, int id, FragmentManager fm, String dir) {
         voteWithDir(ctx, id, fm, dir, null, null);
@@ -212,6 +214,71 @@ private static final int MAX_USER_ITEM_LIST_PAGES = 50;
         fetchUserItemList(ctx, UPVOTED_PATH, "upvoted", true, cb);
     }
 
+    public static void fetchActiveStoryIds(Context ctx, StoryIdsCallback cb) {
+        Handler main = new Handler(ctx.getMainLooper());
+        fetchStoryListPage(
+                NetworkComponent.getOkHttpClientInstance(),
+                buildStoryListUrl(ACTIVE_PATH),
+                new ArrayList<>(),
+                1,
+                "active stories",
+                main,
+                cb);
+    }
+
+    private static String buildStoryListUrl(String path) {
+        return Objects.requireNonNull(HttpUrl.parse(BASE_WEB_URL))
+                .newBuilder()
+                .addPathSegment(path)
+                .build()
+                .toString();
+    }
+
+    private static void fetchStoryListPage(OkHttpClient client,
+                                           String url,
+                                           List<Integer> itemIds,
+                                           int page,
+                                           String listName,
+                                           Handler main,
+                                           StoryIdsCallback cb) {
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                main.post(() -> cb.onFailure("Couldn't fetch " + listName, e.getMessage()));
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) {
+                if (!response.isSuccessful()) {
+                    String failure = response.toString();
+                    response.close();
+                    main.post(() -> cb.onFailure("Couldn't fetch " + listName, failure));
+                    return;
+                }
+
+                try {
+                    String body = response.body() == null ? "" : response.body().string();
+                    Document document = Jsoup.parse(body, BASE_WEB_URL + "/");
+                    addHackerNewsItemIds(document, itemIds);
+
+                    Element moreLink = document.selectFirst("a.morelink[href]");
+                    String nextPage = moreLink == null ? null : moreLink.absUrl("href");
+                    if (!TextUtils.isEmpty(nextPage) && page < MAX_STORY_LIST_PAGES) {
+                        fetchStoryListPage(client, nextPage, itemIds, page + 1, listName, main, cb);
+                    } else {
+                        main.post(() -> cb.onSuccess(itemIds));
+                    }
+                } catch (Exception e) {
+                    main.post(() -> cb.onFailure("Couldn't parse " + listName, e.getMessage()));
+                }
+            }
+        });
+    }
+
     private static void fetchUserItemList(Context ctx,
                                           String path,
                                           String listName,
@@ -330,16 +397,14 @@ private static final int MAX_USER_ITEM_LIST_PAGES = 50;
                 try {
                     String body = response.body() == null ? "" : response.body().string();
                     Document document = Jsoup.parse(body, BASE_WEB_URL + "/");
-                    for (Element item : document.select("tr.athing[id]")) {
-                        String idString = item.attr("id");
-                        if (TextUtils.isDigitsOnly(idString)) {
-                            int id = Integer.parseInt(idString);
-                            if (!itemIds.contains(id)) {
-                                itemIds.add(id);
-                            }
-                            if (commentsPage && !commentIds.contains(id)) {
-                                commentIds.add(id);
-                            }
+                    List<Integer> pageItemIds = new ArrayList<>();
+                    addHackerNewsItemIds(document, pageItemIds);
+                    for (int id : pageItemIds) {
+                        if (!itemIds.contains(id)) {
+                            itemIds.add(id);
+                        }
+                        if (commentsPage && !commentIds.contains(id)) {
+                            commentIds.add(id);
                         }
                     }
 
@@ -355,6 +420,20 @@ private static final int MAX_USER_ITEM_LIST_PAGES = 50;
                 }
             }
         });
+    }
+
+    private static void addHackerNewsItemIds(Document document, List<Integer> itemIds) {
+        for (Element item : document.select("tr.athing[id]")) {
+            String idString = item.attr("id");
+            if (!TextUtils.isDigitsOnly(idString)) {
+                continue;
+            }
+
+            int id = Integer.parseInt(idString);
+            if (!itemIds.contains(id)) {
+                itemIds.add(id);
+            }
+        }
     }
 
     private static void fetchFavoriteActionLink(Context ctx, int id, boolean favorite, ActionCallback cb) {
@@ -941,6 +1020,11 @@ private static final int MAX_USER_ITEM_LIST_PAGES = 50;
 
     public interface UserItemListCallback {
         void onSuccess(List<Integer> itemIds, List<Integer> commentIds);
+        void onFailure(String summary, String response);
+    }
+
+    public interface StoryIdsCallback {
+        void onSuccess(List<Integer> itemIds);
         void onFailure(String summary, String response);
     }
 

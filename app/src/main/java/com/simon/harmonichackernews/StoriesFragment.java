@@ -2730,6 +2730,11 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
+        if (currentTypeIsActive()) {
+            loadActiveStories(refreshGeneration);
+            return;
+        }
+
         // if none of the above, do a normal loading
         String storyListUrl = getCurrentStoryType().getHackerNewsUrl();
         if (storyListUrl == null) {
@@ -2747,28 +2752,15 @@ public class StoriesFragment extends Fragment {
                     swipeRefreshLayout.setRefreshing(false);
                     try {
                         JSONArray jsonArray = new JSONArray(response);
-                        ArrayList<Story> refreshedStories = new ArrayList<>();
-                        showingCached = false;
+                        ArrayList<Integer> itemIds = new ArrayList<>();
 
                         for (int i = 0; i < jsonArray.length(); i++) {
                             int id = Integer.parseInt(jsonArray.get(i).toString());
-                            if (hideClicked && HistoriesUtils.INSTANCE.isHistoryExist(id)) {
-                                continue;
-                            }
-
-                            Story s = new Story("Loading...", id, false, HistoriesUtils.INSTANCE.isHistoryExist(id));
-                            // let's try to fill this with old information if possible
-
-                            if (Utils.loadCachedStorySummary(getContext(), s)) {
-                                if (shouldFilterLoadedStory(s)) {
-                                    continue;
-                                }
-                            }
-
-                            refreshedStories.add(s);
+                            itemIds.add(id);
                         }
 
-                        replaceStories(refreshedStories);
+                        showingCached = false;
+                        replaceStories(createLoadingStoriesFromIds(itemIds));
 
                         if (loadingFailed) {
                             loadingFailed = false;
@@ -2780,6 +2772,8 @@ public class StoriesFragment extends Fragment {
                         loadInitialVisibleStories(refreshGeneration);
 
                     } catch (JSONException e) {
+                        e.printStackTrace();
+                    } catch (NumberFormatException e) {
                         e.printStackTrace();
                     }
                 }, error -> {
@@ -2794,6 +2788,78 @@ public class StoriesFragment extends Fragment {
         updateHeader();
         stringRequest.setTag(requestTag);
         queue.add(stringRequest);
+    }
+
+    private void loadActiveStories(int refreshGeneration) {
+        Context ctx = getContext();
+        if (ctx == null) {
+            swipeRefreshLayout.setRefreshing(false);
+            loadingFailed = true;
+            loadingFailedServerError = false;
+            updateHeader();
+            return;
+        }
+
+        UserActions.fetchActiveStoryIds(ctx, new UserActions.StoryIdsCallback() {
+            @Override
+            public void onSuccess(List<Integer> itemIds) {
+                if (!isAdded()
+                        || adapter == null
+                        || !currentTypeIsActive()
+                        || !isCurrentStoryListGeneration(refreshGeneration)) {
+                    return;
+                }
+
+                swipeRefreshLayout.setRefreshing(false);
+                loadingFailed = itemIds.isEmpty();
+                loadingFailedServerError = false;
+                showingCached = false;
+
+                if (!loadingFailed) {
+                    replaceStories(createLoadingStoriesFromIds(itemIds));
+                }
+
+                updateHeader();
+                loadInitialVisibleStories(refreshGeneration);
+            }
+
+            @Override
+            public void onFailure(String summary, String response) {
+                if (!isAdded()
+                        || adapter == null
+                        || !currentTypeIsActive()
+                        || !isCurrentStoryListGeneration(refreshGeneration)) {
+                    return;
+                }
+
+                swipeRefreshLayout.setRefreshing(false);
+                loadingFailed = true;
+                loadingFailedServerError = false;
+                updateHeader();
+            }
+        });
+
+        updateHeader();
+    }
+
+    private ArrayList<Story> createLoadingStoriesFromIds(List<Integer> itemIds) {
+        ArrayList<Story> refreshedStories = new ArrayList<>();
+        Context ctx = getContext();
+
+        for (int id : itemIds) {
+            if (hideClicked && HistoriesUtils.INSTANCE.isHistoryExist(id)) {
+                continue;
+            }
+
+            Story story = new Story("Loading...", id, false, HistoriesUtils.INSTANCE.isHistoryExist(id));
+            if (Utils.loadCachedStorySummary(ctx, story) && shouldFilterLoadedStory(story)) {
+                continue;
+            }
+
+            refreshedStories.add(story);
+        }
+
+        return refreshedStories;
     }
 
     private void loadCommentMaster(Story story, int parentId, int attempt) {
@@ -3562,6 +3628,10 @@ public class StoriesFragment extends Fragment {
 
     public boolean currentTypeIsAlgolia() {
         return getCurrentStoryType().isAlgolia();
+    }
+
+    private boolean currentTypeIsActive() {
+        return getCurrentStoryType().isActive();
     }
 
     private boolean isBookmarksType(int type) {

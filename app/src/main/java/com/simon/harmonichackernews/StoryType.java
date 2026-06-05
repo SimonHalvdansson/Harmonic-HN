@@ -19,6 +19,7 @@ enum StoryType {
     ASK_HN("Ask HN"),
     SHOW_HN("Show HN"),
     HN_JOBS("HN Jobs"),
+    ACTIVE("Active"),
     BOOKMARKS("Bookmarks"),
     FAVORITES(SettingsUtils.FAVORITES_LABEL),
     UPVOTED(SettingsUtils.UPVOTED_LABEL),
@@ -57,6 +58,10 @@ enum StoryType {
 
     boolean isAlgolia() {
         return this == LAST_24_HOURS || this == LAST_48_HOURS || this == LAST_WEEK;
+    }
+
+    boolean isActive() {
+        return this == ACTIVE;
     }
 
     boolean isBookmarks() {
