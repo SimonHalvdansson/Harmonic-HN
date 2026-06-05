@@ -1239,6 +1239,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.notifyItemChanged(0);
         }
         saveScreenHeight();
+        refreshCommentActionOverlayForConfiguration();
     }
 
     private void refreshCommentActionOverlayForConfiguration() {
@@ -1252,7 +1253,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
 
             configureCommentActionCardWidth(commentActionCard);
-            resizeCommentActionDialogScroll();
+            NestedScrollView cardScroll = commentActionOverlayBinding.commentActionCardScroll;
+            if (cardScroll != null) {
+                ViewGroup.LayoutParams params = cardScroll.getLayoutParams();
+                params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                cardScroll.setLayoutParams(params);
+            }
+
             NestedScrollView textScroll = commentActionOverlayBinding.commentActionTextScroll;
             HtmlTextView commentText = commentActionOverlayBinding.commentActionText;
             if (textScroll != null && commentText != null) {
@@ -1260,6 +1267,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
                 textScroll.setLayoutParams(params);
                 resizeCommentActionTextBox(textScroll, commentText);
+            } else {
+                resizeCommentActionDialogScroll();
             }
         });
     }
