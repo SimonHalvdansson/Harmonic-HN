@@ -269,6 +269,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
                 storyViewHolder.commentsView.setText(commentCountText);
                 storyViewHolder.commentsView.setContentDescription(commentCountDescription(storyViewHolder.story.descendants));
+                if (!showCommentsCount) {
+                    storyViewHolder.commentsView.setText(null);
+                    storyViewHolder.commentsView.setContentDescription(null);
+                }
                 storyViewHolder.commentLayoutView.setContentDescription(commentCountDescription(storyViewHolder.story.descendants));
 
                 String host = "";
@@ -310,7 +314,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.metaShimmer.setVisibility(View.GONE);
                 storyViewHolder.titleView.setVisibility(View.VISIBLE);
                 storyViewHolder.metaContainer.setVisibility(compactView ? View.GONE : View.VISIBLE);
-                storyViewHolder.commentsView.setVisibility(compactView ? View.GONE : View.VISIBLE);
+                storyViewHolder.commentsView.setVisibility(compactView || !showCommentsCount ? View.GONE : View.VISIBLE);
                 storyViewHolder.metaFavicon.setVisibility(thumbnails ? View.VISIBLE : View.GONE);
 
                 if (storyViewHolder.story.loadingFailed) {

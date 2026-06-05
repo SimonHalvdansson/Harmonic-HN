@@ -1129,8 +1129,8 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             return;
         }
 
-        String targetText = showCommentsCount ? "18" : "\u2022";
-        int targetVisibility = compact ? View.GONE : View.VISIBLE;
+        String targetText = showCommentsCount ? "18" : "";
+        int targetVisibility = compact || !showCommentsCount ? View.GONE : View.VISIBLE;
         currentComments.animate().cancel();
 
         if (!animate) {
