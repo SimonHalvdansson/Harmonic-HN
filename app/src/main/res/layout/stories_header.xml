@@ -16,16 +16,17 @@
     <LinearLayout
         android:id="@+id/stories_header_toolbar_row"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="56dp"
+        android:gravity="center_vertical">
 
         <LinearLayout
             android:id="@+id/stories_header_spinner_container"
             android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="wrap_content">
+            android:layout_height="match_parent"
+            android:gravity="center_vertical">
 
             <androidx.appcompat.widget.AppCompatSpinner
-                android:layout_marginTop="2dp"
                 android:layout_marginRight="-10dp"
                 android:id="@+id/stories_header_spinner"
                 android:dropDownVerticalOffset="49dp"
@@ -72,12 +73,11 @@
         <LinearLayout
             android:id="@+id/stories_header_actions_container"
             android:orientation="horizontal"
-            android:layout_marginTop="-2dp"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
+            android:layout_height="match_parent"
+            android:gravity="center_vertical">
 
             <FrameLayout
-                android:layout_marginTop="4dp"
                 android:layout_marginEnd="-4dp"
                 android:layout_width="48dp"
                 android:layout_height="48dp">
@@ -107,7 +107,6 @@
                 android:src="@drawable/ic_action_more"
                 android:contentDescription="More options"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:layout_marginTop="4dp"
                 android:layout_width="48dp"
                 android:layout_height="48dp"    />
 
