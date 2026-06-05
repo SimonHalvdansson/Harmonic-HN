@@ -33,6 +33,13 @@ import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.databinding.LoadMoreButtonBinding;
+import com.simon.harmonichackernews.databinding.StoryListItemBinding;
+import com.simon.harmonichackernews.databinding.StoryListItemCardBinding;
+import com.simon.harmonichackernews.databinding.StoryListItemCardLeftBinding;
+import com.simon.harmonichackernews.databinding.StoryListItemLeftBinding;
+import com.simon.harmonichackernews.databinding.SubmissionsCommentBinding;
+import com.simon.harmonichackernews.databinding.SubmissionsCommentCardBinding;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
@@ -162,13 +169,25 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     @NotNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NotNull ViewGroup parent, int viewType) {
+        LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         if (isStoryViewType(viewType)) {
-            return new StoryViewHolder(LayoutInflater.from(parent.getContext()).inflate(getStoryLayout(viewType), parent, false));
+            if (viewType == TYPE_STORY_CARD) {
+                return new StoryViewHolder(StoryListItemCardBinding.inflate(inflater, parent, false));
+            }
+            if (viewType == TYPE_STORY_CARD_LEFT) {
+                return new StoryViewHolder(StoryListItemCardLeftBinding.inflate(inflater, parent, false));
+            }
+            if (viewType == TYPE_STORY_LEFT) {
+                return new StoryViewHolder(StoryListItemLeftBinding.inflate(inflater, parent, false));
+            }
+            return new StoryViewHolder(StoryListItemBinding.inflate(inflater, parent, false));
         } else if (viewType == TYPE_LOAD_MORE_BUTTON) {
-            return new LoadMoreViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.load_more_button, parent, false));
+            return new LoadMoreViewHolder(LoadMoreButtonBinding.inflate(inflater, parent, false));
         } else {
-            int layout = viewType == TYPE_COMMENT_CARD ? R.layout.submissions_comment_card : R.layout.submissions_comment;
-            return new CommentViewHolder(LayoutInflater.from(parent.getContext()).inflate(layout, parent, false));
+            if (viewType == TYPE_COMMENT_CARD) {
+                return new CommentViewHolder(SubmissionsCommentCardBinding.inflate(inflater, parent, false));
+            }
+            return new CommentViewHolder(SubmissionsCommentBinding.inflate(inflater, parent, false));
         }
     }
 
@@ -1247,6 +1266,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final ImageView smallPreviewImage;
         public final ImageView largePreviewImage;
         public final TextView indexTextView;
+        @Nullable
         public final MaterialCardView storyCard;
 
         private int touchX, touchY;
@@ -1260,24 +1280,114 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         public Story story;
 
+        public StoryViewHolder(StoryListItemBinding binding) {
+            this(
+                    binding.getRoot(),
+                    binding.storyTitle,
+                    binding.storyMeta,
+                    binding.storyMetaContainer,
+                    binding.storyComments,
+                    binding.storyLinkLayout,
+                    binding.storyCommentLayout,
+                    binding.storyCommentsIcon,
+                    binding.storyTitleShimmer,
+                    binding.storyTitleShimmerMeta,
+                    binding.storyMetaFavicon,
+                    binding.storyPreviewImageSmall,
+                    binding.storyPreviewImageLarge,
+                    binding.storyIndex,
+                    null);
+        }
+
+        public StoryViewHolder(StoryListItemLeftBinding binding) {
+            this(
+                    binding.getRoot(),
+                    binding.storyTitle,
+                    binding.storyMeta,
+                    binding.storyMetaContainer,
+                    binding.storyComments,
+                    binding.storyLinkLayout,
+                    binding.storyCommentLayout,
+                    binding.storyCommentsIcon,
+                    binding.storyTitleShimmer,
+                    binding.storyTitleShimmerMeta,
+                    binding.storyMetaFavicon,
+                    binding.storyPreviewImageSmall,
+                    binding.storyPreviewImageLarge,
+                    binding.storyIndex,
+                    null);
+        }
+
+        public StoryViewHolder(StoryListItemCardBinding binding) {
+            this(
+                    binding.getRoot(),
+                    binding.storyContainer.storyTitle,
+                    binding.storyContainer.storyMeta,
+                    binding.storyContainer.storyMetaContainer,
+                    binding.storyContainer.storyComments,
+                    binding.storyContainer.storyLinkLayout,
+                    binding.storyContainer.storyCommentLayout,
+                    binding.storyContainer.storyCommentsIcon,
+                    binding.storyContainer.storyTitleShimmer,
+                    binding.storyContainer.storyTitleShimmerMeta,
+                    binding.storyContainer.storyMetaFavicon,
+                    binding.storyContainer.storyPreviewImageSmall,
+                    binding.storyContainer.storyPreviewImageLarge,
+                    binding.storyContainer.storyIndex,
+                    binding.storyCard);
+        }
+
+        public StoryViewHolder(StoryListItemCardLeftBinding binding) {
+            this(
+                    binding.getRoot(),
+                    binding.storyContainer.storyTitle,
+                    binding.storyContainer.storyMeta,
+                    binding.storyContainer.storyMetaContainer,
+                    binding.storyContainer.storyComments,
+                    binding.storyContainer.storyLinkLayout,
+                    binding.storyContainer.storyCommentLayout,
+                    binding.storyContainer.storyCommentsIcon,
+                    binding.storyContainer.storyTitleShimmer,
+                    binding.storyContainer.storyTitleShimmerMeta,
+                    binding.storyContainer.storyMetaFavicon,
+                    binding.storyContainer.storyPreviewImageSmall,
+                    binding.storyContainer.storyPreviewImageLarge,
+                    binding.storyContainer.storyIndex,
+                    binding.storyCard);
+        }
+
         @SuppressLint("ClickableViewAccessibility")
-        public StoryViewHolder(View view) {
+        private StoryViewHolder(View view,
+                                TextView title,
+                                TextView meta,
+                                LinearLayout metaLayout,
+                                TextView comments,
+                                LinearLayout linkLayout,
+                                LinearLayout commentLayout,
+                                ImageView commentIcon,
+                                LinearLayout shimmerTitle,
+                                View shimmerMeta,
+                                ImageView favicon,
+                                ImageView smallPreview,
+                                ImageView largePreview,
+                                TextView index,
+                                @Nullable MaterialCardView card) {
             super(view);
             mView = view;
-            titleView = view.findViewById(R.id.story_title);
-            metaView = view.findViewById(R.id.story_meta);
-            metaContainer = view.findViewById(R.id.story_meta_container);
-            commentsView = view.findViewById(R.id.story_comments);
-            linkLayoutView = view.findViewById(R.id.story_link_layout);
-            commentLayoutView = view.findViewById(R.id.story_comment_layout);
-            commentsIcon = view.findViewById(R.id.story_comments_icon);
-            titleShimmer = view.findViewById(R.id.story_title_shimmer);
-            metaShimmer = view.findViewById(R.id.story_title_shimmer_meta);
-            metaFavicon = view.findViewById(R.id.story_meta_favicon);
-            smallPreviewImage = view.findViewById(R.id.story_preview_image_small);
-            largePreviewImage = view.findViewById(R.id.story_preview_image_large);
-            indexTextView = view.findViewById(R.id.story_index);
-            storyCard = view.findViewById(R.id.story_card);
+            titleView = title;
+            metaView = meta;
+            metaContainer = metaLayout;
+            commentsView = comments;
+            linkLayoutView = linkLayout;
+            commentLayoutView = commentLayout;
+            commentsIcon = commentIcon;
+            titleShimmer = shimmerTitle;
+            metaShimmer = shimmerMeta;
+            metaFavicon = favicon;
+            smallPreviewImage = smallPreview;
+            largePreviewImage = largePreview;
+            indexTextView = index;
+            storyCard = card;
             ViewCompat.setAccessibilityHeading(titleView, true);
 
             linkLayoutView.setOnClickListener(v -> linkClickListener.onItemClick(getAbsoluteAdapterPosition()));
@@ -1374,14 +1484,22 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final View scrim;
 
 
-        public CommentViewHolder(View view) {
+        public CommentViewHolder(SubmissionsCommentBinding binding) {
+            this(binding.getRoot(), binding, false);
+        }
+
+        public CommentViewHolder(SubmissionsCommentCardBinding binding) {
+            this(binding.getRoot(), binding.submissionsCommentContainer, true);
+        }
+
+        private CommentViewHolder(View view, SubmissionsCommentBinding binding, boolean cardStyle) {
             super(view);
-            headerText = view.findViewById(R.id.submissions_comment_header);
-            headerTime = view.findViewById(R.id.submissions_comment_time);
-            bodyText = view.findViewById(R.id.submissions_comment_body);
-            storyButton = view.findViewById(R.id.submissions_comment_button_story);
-            repliesButton = view.findViewById(R.id.submissions_comment_button_replies);
-            scrim = view.findViewById(R.id.submissions_comment_scrim);
+            headerText = binding.submissionsCommentHeader;
+            headerTime = binding.submissionsCommentTime;
+            bodyText = binding.submissionsCommentBody;
+            storyButton = binding.submissionsCommentButtonStory;
+            repliesButton = binding.submissionsCommentButtonReplies;
+            scrim = binding.submissionsCommentScrim;
 
             Context ctx = view.getContext();
 
@@ -1389,7 +1507,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     GradientDrawable.Orientation.TOP_BOTTOM,
                     new int[]{
                             Color.TRANSPARENT,
-                            view.findViewById(R.id.submissions_comment_card) != null
+                            cardStyle
                                     ? Utils.getColorViaAttr(ctx, com.google.android.material.R.attr.colorSurfaceContainerHigh)
                                     : ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx))
                     });
@@ -1461,9 +1579,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public static class LoadMoreViewHolder extends RecyclerView.ViewHolder {
         public Button loadMoreButton;
 
-        public LoadMoreViewHolder(View view) {
-            super(view);
-            loadMoreButton = view.findViewById(R.id.load_more_button);
+        public LoadMoreViewHolder(LoadMoreButtonBinding binding) {
+            super(binding.getRoot());
+            loadMoreButton = binding.loadMoreButton;
         }
     }
 
@@ -1521,19 +1639,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 || viewType == TYPE_STORY_LEFT
                 || viewType == TYPE_STORY_CARD
                 || viewType == TYPE_STORY_CARD_LEFT;
-    }
-
-    private static int getStoryLayout(int viewType) {
-        if (viewType == TYPE_STORY_CARD) {
-            return R.layout.story_list_item_card;
-        }
-        if (viewType == TYPE_STORY_CARD_LEFT) {
-            return R.layout.story_list_item_card_left;
-        }
-        if (viewType == TYPE_STORY_LEFT) {
-            return R.layout.story_list_item_left;
-        }
-        return R.layout.story_list_item;
     }
 
 }

@@ -7,6 +7,7 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.simon.harmonichackernews.databinding.ActivitySplitPlaceholderBinding;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
 public class SplitPlaceholderActivity extends AppCompatActivity {
@@ -18,7 +19,8 @@ public class SplitPlaceholderActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         ThemeUtils.setupTheme(this);
-        setContentView(R.layout.activity_split_placeholder);
+        ActivitySplitPlaceholderBinding binding = ActivitySplitPlaceholderBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
         setupSearchBackCallback();
         MainActivity.addSearchBackStateListener(searchBackStateListener);
     }

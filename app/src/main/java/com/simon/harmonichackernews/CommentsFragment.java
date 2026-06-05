@@ -250,7 +250,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private AlgoliaFallbackManager fallbackManager;
 
     public CommentsFragment() {
-        super(R.layout.fragment_comments);
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        return FragmentCommentsBinding.inflate(inflater, container, false).getRoot();
     }
 
     @Override

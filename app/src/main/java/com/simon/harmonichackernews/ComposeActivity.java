@@ -36,6 +36,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.simon.harmonichackernews.databinding.ActivityComposeBinding;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -85,25 +86,26 @@ public class ComposeActivity extends AppCompatActivity {
 
         ThemeUtils.setupTheme(this, false, false);
 
-        setContentView(R.layout.activity_compose);
+        ActivityComposeBinding binding = ActivityComposeBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
-        editText = findViewById(R.id.compose_edittext);
-        editTextTitle = findViewById(R.id.compose_edittext_title);
-        editTextUrl = findViewById(R.id.compose_edittext_url);
-        editTextText = findViewById(R.id.compose_edittext_text);
-        titleContainer = findViewById(R.id.compose_title_container);
-        urlContainer = findViewById(R.id.compose_url_container);
-        textContainer = findViewById(R.id.compose_text_container);
-        submitButton = findViewById(R.id.compose_submit);
-        replyingTextView = findViewById(R.id.compose_replying_text);
-        replyingHeaderTextView = findViewById(R.id.compose_replying_text_header);
-        replyingScrollView = findViewById(R.id.compose_replying_scrollview);
-        topCommentTextView = findViewById(R.id.compose_top_comment);
+        editText = binding.composeEdittext;
+        editTextTitle = binding.composeEdittextTitle;
+        editTextUrl = binding.composeEdittextUrl;
+        editTextText = binding.composeEdittextText;
+        titleContainer = binding.composeTitleContainer;
+        urlContainer = binding.composeUrlContainer;
+        textContainer = binding.composeTextContainer;
+        submitButton = binding.composeSubmit;
+        replyingTextView = binding.composeReplyingText;
+        replyingHeaderTextView = binding.composeReplyingTextHeader;
+        replyingScrollView = binding.composeReplyingScrollview;
+        topCommentTextView = binding.composeTopComment;
         ViewCompat.setAccessibilityHeading(topCommentTextView, true);
         ViewCompat.setAccessibilityHeading(replyingHeaderTextView, true);
-        TextView postInfo = findViewById(R.id.compose_submit_info);
-        LinearLayout bottomContainer = findViewById(R.id.compose_bottom_container);
-        LinearLayout container = findViewById(R.id.compose_container);
+        TextView postInfo = binding.composeSubmitInfo;
+        LinearLayout bottomContainer = binding.composeBottomContainer;
+        LinearLayout container = binding.composeContainer;
 
         titleMaxLength = getResources().getInteger(R.integer.title_max_length);
 

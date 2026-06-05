@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.settings;
 import android.app.Dialog;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RadioGroup;
@@ -18,6 +17,7 @@ import androidx.preference.PreferenceManager;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.PreloadWebviewDialogBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 public class PreloadWebViewDialogFragment extends AppCompatDialogFragment {
@@ -28,12 +28,11 @@ public class PreloadWebViewDialogFragment extends AppCompatDialogFragment {
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View rootView = inflater.inflate(R.layout.preload_webview_dialog, null);
-        RadioGroup modeGroup = rootView.findViewById(R.id.preload_webview_mode_group);
-        Slider batterySlider = rootView.findViewById(R.id.preload_webview_battery_slider);
-        TextView batteryLabel = rootView.findViewById(R.id.preload_webview_battery_label);
-        View batteryControls = rootView.findViewById(R.id.preload_webview_battery_controls);
+        PreloadWebviewDialogBinding binding = PreloadWebviewDialogBinding.inflate(getLayoutInflater());
+        RadioGroup modeGroup = binding.preloadWebviewModeGroup;
+        Slider batterySlider = binding.preloadWebviewBatterySlider;
+        TextView batteryLabel = binding.preloadWebviewBatteryLabel;
+        View batteryControls = binding.preloadWebviewBatteryControls;
 
         String currentMode = SettingsUtils.shouldPreloadWebView(requireContext());
         modeGroup.check(getRadioButtonIdForMode(currentMode));
@@ -50,7 +49,7 @@ public class PreloadWebViewDialogFragment extends AppCompatDialogFragment {
                 updateBatteryLabel(batteryLabel, Math.round(value)));
 
         builder.setTitle("Preload websites");
-        builder.setView(rootView);
+        builder.setView(binding.getRoot());
         builder.setNegativeButton(android.R.string.cancel, null);
         builder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
             SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(requireContext()).edit();

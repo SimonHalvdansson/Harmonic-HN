@@ -11,7 +11,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -31,6 +30,7 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.ThemeSelectionDialogBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -82,10 +82,9 @@ public class ThemeSelectionDialogFragment extends AppCompatDialogFragment {
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View rootView = inflater.inflate(R.layout.theme_selection_dialog, null);
-        View scrollView = rootView.findViewById(R.id.theme_options_scroll);
-        LinearLayout container = rootView.findViewById(R.id.theme_options_container);
+        ThemeSelectionDialogBinding binding = ThemeSelectionDialogBinding.inflate(getLayoutInflater());
+        View scrollView = binding.themeOptionsScroll;
+        LinearLayout container = binding.themeOptionsContainer;
 
         Bundle args = getArguments();
         prefKey = args != null ? args.getString(ARG_PREF_KEY, SettingsUtils.PREF_THEME) : SettingsUtils.PREF_THEME;
@@ -100,7 +99,7 @@ public class ThemeSelectionDialogFragment extends AppCompatDialogFragment {
         setWholeRowDialogHeight(scrollView, optionCount);
 
         builder.setTitle(title);
-        builder.setView(rootView);
+        builder.setView(binding.getRoot());
         return builder.create();
     }
 

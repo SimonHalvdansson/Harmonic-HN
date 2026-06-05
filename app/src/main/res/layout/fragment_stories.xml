@@ -16,7 +16,9 @@
         app:statusBarForeground="?attr/colorSurface"
         app:elevation="0dp">
 
-        <include layout="@layout/stories_header" />
+        <include
+            android:id="@+id/stories_header_container"
+            layout="@layout/stories_header" />
 
     </com.google.android.material.appbar.AppBarLayout>
 

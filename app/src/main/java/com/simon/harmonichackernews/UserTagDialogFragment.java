@@ -4,8 +4,6 @@ import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.LayoutInflater;
-import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
@@ -17,6 +15,7 @@ import androidx.appcompat.app.AppCompatDialogFragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.simon.harmonichackernews.databinding.TagDialogBinding;
 import com.google.android.material.textfield.TextInputEditText;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -57,10 +56,10 @@ public class UserTagDialogFragment extends AppCompatDialogFragment {
         userName = bundle.getString(EXTRA_USER_NAME, "");
         String currentTag = bundle.getString(EXTRA_CURRENT_TAG, "");
 
-        View rootView = LayoutInflater.from(context).inflate(R.layout.tag_dialog, null, false);
-        editText = rootView.findViewById(R.id.tag_dialog_edittext);
-        Button cancel = rootView.findViewById(R.id.tag_dialog_cancel);
-        Button save = rootView.findViewById(R.id.tag_dialog_save);
+        TagDialogBinding binding = TagDialogBinding.inflate(getLayoutInflater());
+        editText = binding.tagDialogEdittext;
+        Button cancel = binding.tagDialogCancel;
+        Button save = binding.tagDialogSave;
 
         editText.setText(currentTag);
         if (!TextUtils.isEmpty(currentTag)) {
@@ -71,7 +70,7 @@ public class UserTagDialogFragment extends AppCompatDialogFragment {
         save.setOnClickListener(v -> saveTag());
 
         Dialog dialog = new MaterialAlertDialogBuilder(context)
-                .setView(rootView)
+                .setView(binding.getRoot())
                 .create();
         dialog.setOnShowListener(dialogInterface -> focusTagInput());
         return dialog;

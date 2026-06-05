@@ -16,6 +16,7 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 
+import com.simon.harmonichackernews.databinding.ActivitySettingsBinding;
 import com.simon.harmonichackernews.settings.AppearancePreferenceFragment;
 import com.simon.harmonichackernews.settings.CommentsPreferenceFragment;
 import com.simon.harmonichackernews.settings.DataStoragePreferenceFragment;
@@ -70,6 +71,7 @@ public class SettingsActivity extends AppCompatActivity implements
     private String currentDetailClassName = AppearancePreferenceFragment.class.getName();
     private String currentDetailKey = SettingsHeaderFragment.DEFAULT_KEY;
     private OnBackPressedCallback backPressedCallback;
+    private ActivitySettingsBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,7 +81,8 @@ public class SettingsActivity extends AppCompatActivity implements
 
         ThemeUtils.setupTheme(this, false);
 
-        setContentView(R.layout.activity_settings);
+        binding = ActivitySettingsBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         if (savedInstanceState != null) {
             currentDetailClassName = savedInstanceState.getString(STATE_DETAIL_CLASS,
@@ -151,10 +154,10 @@ public class SettingsActivity extends AppCompatActivity implements
 
         float density = getResources().getDisplayMetrics().density;
 
-        View root = findViewById(R.id.settings_linear_layout);
-        View settingsPane = findViewById(R.id.settings);
-        View detailPane = findViewById(R.id.settings_detail);
-        View spacer = findViewById(R.id.settings_pane_spacer);
+        View root = binding.settingsLinearLayout;
+        View settingsPane = binding.settings;
+        View detailPane = binding.settingsDetail;
+        View spacer = binding.settingsPaneSpacer;
 
         if (Utils.isTablet(getResources()) && detailPane != null) {
             isTwoPane = true;

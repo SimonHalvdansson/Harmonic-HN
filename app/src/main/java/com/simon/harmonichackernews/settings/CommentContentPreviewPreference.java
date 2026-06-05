@@ -31,6 +31,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.CommentsItemBinding;
+import com.simon.harmonichackernews.databinding.CommentsItemCardBinding;
+import com.simon.harmonichackernews.databinding.PreferenceCommentContentPreviewBinding;
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
@@ -90,13 +93,10 @@ public class CommentContentPreviewPreference extends Preference implements Share
 
         View itemView = holder.itemView;
         boundItemView = itemView;
-        View root = itemView.findViewById(R.id.comment_content_preview_root);
-        previewRoot = root instanceof ViewGroup
-                ? (ViewGroup) root
-                : itemView instanceof ViewGroup
-                ? (ViewGroup) itemView
-                : null;
-        previewItemContainer = itemView.findViewById(R.id.comment_content_preview_item_container);
+        PreferenceCommentContentPreviewBinding binding =
+                PreferenceCommentContentPreviewBinding.bind(itemView);
+        previewRoot = binding.commentContentPreviewRoot;
+        previewItemContainer = binding.commentContentPreviewItemContainer;
         if (previewItemContainer != null) {
             previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
             previewItemContainer.addOnLayoutChangeListener(previewContainerLayoutChangeListener);
@@ -217,18 +217,17 @@ public class CommentContentPreviewPreference extends Preference implements Share
 
         cancelTextSizeAnimator();
         previewItemContainer.removeAllViews();
-        LayoutInflater inflater = LayoutInflater.from(getContext());
-        int layout = cardStyle ? R.layout.comments_item_card : R.layout.comments_item;
-        View itemView = inflater.inflate(layout, previewItemContainer, false);
+        PreviewCommentItemBinding binding = inflatePreviewCommentItemBinding();
+        View itemView = binding.root;
         previewItemContainer.addView(itemView, createPreviewItemLayoutParams());
 
-        commentBody = itemView.findViewById(R.id.comment_body);
-        commentBy = itemView.findViewById(R.id.comment_by);
-        commentByTime = itemView.findViewById(R.id.comment_by_time);
-        commentHiddenCount = itemView.findViewById(R.id.comment_hidden_count);
-        commentHiddenText = itemView.findViewById(R.id.comment_hidden_short);
-        commentIndentIndicator = itemView.findViewById(R.id.comment_indent_indicator);
-        referenceLinksContainer = itemView.findViewById(R.id.comment_reference_links_container);
+        commentBody = binding.commentBody;
+        commentBy = binding.commentBy;
+        commentByTime = binding.commentByTime;
+        commentHiddenCount = binding.commentHiddenCount;
+        commentHiddenText = binding.commentHiddenText;
+        commentIndentIndicator = binding.commentIndentIndicator;
+        referenceLinksContainer = binding.referenceLinksContainer;
 
         itemView.setClickable(false);
         itemView.setFocusable(false);
@@ -626,33 +625,23 @@ public class CommentContentPreviewPreference extends Preference implements Share
         if (previewItemContainer == null || previewItemContainer.getChildCount() == 0) {
             return 0;
         }
-        View itemView = LayoutInflater.from(getContext()).inflate(
-                cardStyle ? R.layout.comments_item_card : R.layout.comments_item,
-                previewItemContainer,
-                false);
-        bindCurrentPreviewItemForMeasurement(itemView);
+        PreviewCommentItemBinding binding = inflatePreviewCommentItemBinding();
+        View itemView = binding.root;
+        bindCurrentPreviewItemForMeasurement(binding);
         int widthSpec = View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
         itemView.measure(widthSpec, heightSpec);
         return getMeasuredOuterHeight(itemView);
     }
 
-    private void bindCurrentPreviewItemForMeasurement(View itemView) {
-        HtmlTextView measuredBody = itemView.findViewById(R.id.comment_body);
-        TextView measuredBy = itemView.findViewById(R.id.comment_by);
-        TextView measuredByTime = itemView.findViewById(R.id.comment_by_time);
-        TextView measuredHiddenCount = itemView.findViewById(R.id.comment_hidden_count);
-        TextView measuredHiddenText = itemView.findViewById(R.id.comment_hidden_short);
-        View measuredIndentIndicator = itemView.findViewById(R.id.comment_indent_indicator);
-        LinearLayout measuredReferenceLinksContainer = itemView.findViewById(R.id.comment_reference_links_container);
-
-        bindPreviewCommentContent(measuredBody, measuredReferenceLinksContainer);
-        copyTextViewForMeasurement(commentBody, measuredBody);
-        copyTextViewForMeasurement(commentBy, measuredBy);
-        copyTextViewForMeasurement(commentByTime, measuredByTime);
-        copyTextViewForMeasurement(commentHiddenCount, measuredHiddenCount);
-        copyTextViewForMeasurement(commentHiddenText, measuredHiddenText);
-        copyViewVisibilityForMeasurement(commentIndentIndicator, measuredIndentIndicator);
+    private void bindCurrentPreviewItemForMeasurement(PreviewCommentItemBinding binding) {
+        bindPreviewCommentContent(binding.commentBody, binding.referenceLinksContainer);
+        copyTextViewForMeasurement(commentBody, binding.commentBody);
+        copyTextViewForMeasurement(commentBy, binding.commentBy);
+        copyTextViewForMeasurement(commentByTime, binding.commentByTime);
+        copyTextViewForMeasurement(commentHiddenCount, binding.commentHiddenCount);
+        copyTextViewForMeasurement(commentHiddenText, binding.commentHiddenText);
+        copyViewVisibilityForMeasurement(commentIndentIndicator, binding.commentIndentIndicator);
     }
 
     private void copyTextViewForMeasurement(TextView source, TextView target) {
@@ -723,6 +712,64 @@ public class CommentContentPreviewPreference extends Preference implements Share
             height += margins.topMargin + margins.bottomMargin;
         }
         return height;
+    }
+
+    private PreviewCommentItemBinding inflatePreviewCommentItemBinding() {
+        LayoutInflater inflater = LayoutInflater.from(getContext());
+        if (cardStyle) {
+            CommentsItemCardBinding binding =
+                    CommentsItemCardBinding.inflate(inflater, previewItemContainer, false);
+            return new PreviewCommentItemBinding(
+                    binding.getRoot(),
+                    binding.commentBody,
+                    binding.commentBy,
+                    binding.commentByTime,
+                    binding.commentHiddenCount,
+                    binding.commentHiddenShort,
+                    binding.commentIndentIndicator,
+                    binding.commentReferenceLinksContainer);
+        }
+
+        CommentsItemBinding binding = CommentsItemBinding.inflate(inflater, previewItemContainer, false);
+        return new PreviewCommentItemBinding(
+                binding.getRoot(),
+                binding.commentBody,
+                binding.commentBy,
+                binding.commentByTime,
+                binding.commentHiddenCount,
+                binding.commentHiddenShort,
+                binding.commentIndentIndicator,
+                binding.commentReferenceLinksContainer);
+    }
+
+    private static class PreviewCommentItemBinding {
+        final View root;
+        final HtmlTextView commentBody;
+        final TextView commentBy;
+        final TextView commentByTime;
+        final TextView commentHiddenCount;
+        final TextView commentHiddenText;
+        final View commentIndentIndicator;
+        final LinearLayout referenceLinksContainer;
+
+        PreviewCommentItemBinding(
+                View root,
+                HtmlTextView commentBody,
+                TextView commentBy,
+                TextView commentByTime,
+                TextView commentHiddenCount,
+                TextView commentHiddenText,
+                View commentIndentIndicator,
+                LinearLayout referenceLinksContainer) {
+            this.root = root;
+            this.commentBody = commentBody;
+            this.commentBy = commentBy;
+            this.commentByTime = commentByTime;
+            this.commentHiddenCount = commentHiddenCount;
+            this.commentHiddenText = commentHiddenText;
+            this.commentIndentIndicator = commentIndentIndicator;
+            this.referenceLinksContainer = referenceLinksContainer;
+        }
     }
 
     private void requestPreviewRemeasure() {

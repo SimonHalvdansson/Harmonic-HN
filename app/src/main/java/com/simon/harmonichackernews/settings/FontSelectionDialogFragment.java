@@ -5,7 +5,6 @@ import android.content.Context;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -20,6 +19,7 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.FontSelectionDialogBinding;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -38,9 +38,8 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View rootView = inflater.inflate(R.layout.font_selection_dialog, null);
-        LinearLayout container = rootView.findViewById(R.id.font_options_container);
+        FontSelectionDialogBinding binding = FontSelectionDialogBinding.inflate(getLayoutInflater());
+        LinearLayout container = binding.fontOptionsContainer;
 
         selectedFont = SettingsUtils.getPreferredFont(requireContext());
 
@@ -48,7 +47,7 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
         updateSelection();
 
         builder.setTitle("Title and comment font");
-        builder.setView(rootView);
+        builder.setView(binding.getRoot());
         return builder.create();
     }
 

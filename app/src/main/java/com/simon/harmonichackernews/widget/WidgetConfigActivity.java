@@ -4,13 +4,12 @@ import android.appwidget.AppWidgetManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.RadioGroup;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.ActivityWidgetConfigBinding;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -35,7 +34,8 @@ public class WidgetConfigActivity extends AppCompatActivity {
         // Set canceled result initially — if user backs out, widget won't be added
         setResult(RESULT_CANCELED);
 
-        setContentView(R.layout.activity_widget_config);
+        ActivityWidgetConfigBinding binding = ActivityWidgetConfigBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         // Get widget ID from intent
         Intent intent = getIntent();
@@ -50,29 +50,27 @@ public class WidgetConfigActivity extends AppCompatActivity {
             return;
         }
 
-        RadioGroup feedGroup = findViewById(R.id.widget_config_feed_group);
-        MaterialButtonToggleGroup storyCountGroup = findViewById(R.id.widget_config_story_count_group);
-        Button confirmButton = findViewById(R.id.widget_config_confirm);
+        MaterialButtonToggleGroup storyCountGroup = binding.widgetConfigStoryCountGroup;
         storyCountGroup.check(getStoryCountButtonId(getStoryCount(this, appWidgetId)));
 
-        confirmButton.setOnClickListener(v -> {
+        binding.widgetConfigConfirm.setOnClickListener(v -> {
             String feedUrl;
             String feedName;
 
-            int checkedId = feedGroup.getCheckedRadioButtonId();
-            if (checkedId == R.id.widget_config_new) {
+            int checkedId = binding.widgetConfigFeedGroup.getCheckedRadioButtonId();
+            if (checkedId == binding.widgetConfigNew.getId()) {
                 feedUrl = Utils.URL_NEW;
                 feedName = "New stories";
-            } else if (checkedId == R.id.widget_config_best) {
+            } else if (checkedId == binding.widgetConfigBest.getId()) {
                 feedUrl = Utils.URL_BEST;
                 feedName = "Best stories";
-            } else if (checkedId == R.id.widget_config_ask) {
+            } else if (checkedId == binding.widgetConfigAsk.getId()) {
                 feedUrl = Utils.URL_ASK;
                 feedName = "Ask HN";
-            } else if (checkedId == R.id.widget_config_show) {
+            } else if (checkedId == binding.widgetConfigShow.getId()) {
                 feedUrl = Utils.URL_SHOW;
                 feedName = "Show HN";
-            } else if (checkedId == R.id.widget_config_jobs) {
+            } else if (checkedId == binding.widgetConfigJobs.getId()) {
                 feedUrl = Utils.URL_JOBS;
                 feedName = "Jobs";
             } else {

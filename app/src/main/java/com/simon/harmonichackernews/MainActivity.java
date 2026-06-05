@@ -19,6 +19,7 @@ import androidx.fragment.app.FragmentTransaction;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.databinding.ActivityMainBinding;
 import com.simon.harmonichackernews.utils.Changelog;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -40,6 +41,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     int lastPosition = 0;
     public OnBackPressedCallback backPressedCallback;
     private boolean searchBackEnabled = false;
+    private ActivityMainBinding binding;
 
     public int bottom = 0;
 
@@ -55,7 +57,8 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
         ThemeUtils.setupTheme(this);
 
-        setContentView(R.layout.activity_main);
+        binding = ActivityMainBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         updateFragmentLayout();
 
@@ -241,15 +244,15 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     private void updateFragmentLayout() {
-        if (Utils.isTablet(getResources()) && findViewById(R.id.main_fragments_container) instanceof LinearLayout) {
+        if (Utils.isTablet(getResources()) && binding.mainFragmentsContainer instanceof LinearLayout) {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     0,
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     getResources().getInteger(R.integer.stories_pane_weight));
-            findViewById(R.id.main_fragment_stories_container).setLayoutParams(params);
+            binding.mainFragmentStoriesContainer.setLayoutParams(params);
 
             int extraPadding = getResources().getDimensionPixelSize(R.dimen.extra_pane_padding);
-            findViewById(R.id.main_fragments_container).setPadding(extraPadding, 0, 0, 0);
+            binding.mainFragmentsContainer.setPadding(extraPadding, 0, 0, 0);
         }
     }
 

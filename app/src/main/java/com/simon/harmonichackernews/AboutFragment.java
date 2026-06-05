@@ -4,7 +4,9 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Html;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -23,7 +25,12 @@ import com.simon.harmonichackernews.utils.Utils;
 public class AboutFragment extends Fragment {
 
     public AboutFragment() {
-        super(R.layout.activity_about);
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        return ActivityAboutBinding.inflate(inflater, container, false).getRoot();
     }
 
     @Override

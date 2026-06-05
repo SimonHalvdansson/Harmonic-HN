@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.CookieManager;
@@ -14,9 +13,7 @@ import android.webkit.ValueCallback;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Button;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -24,6 +21,7 @@ import androidx.appcompat.app.AppCompatDialogFragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.simon.harmonichackernews.databinding.CaptchaDialogBinding;
 import com.simon.harmonichackernews.network.UserActions;
 
 import org.json.JSONArray;
@@ -60,33 +58,29 @@ public class CaptchaDialogFragment extends AppCompatDialogFragment {
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireActivity());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View rootView = inflater.inflate(R.layout.captcha_dialog, null);
-        builder.setView(rootView);
+        CaptchaDialogBinding binding = CaptchaDialogBinding.inflate(requireActivity().getLayoutInflater());
+        builder.setView(binding.getRoot());
         hideKeyboard();
 
-        webView = rootView.findViewById(R.id.captcha_dialog_webview);
-        ProgressBar progressBar = rootView.findViewById(R.id.captcha_dialog_progress);
-        TextView errorText = rootView.findViewById(R.id.captcha_dialog_error);
-        Button cancelButton = rootView.findViewById(R.id.captcha_dialog_cancel);
-        Button continueButton = rootView.findViewById(R.id.captcha_dialog_continue);
+        webView = binding.captchaDialogWebview;
+        ProgressBar progressBar = binding.captchaDialogProgress;
 
         if (challenge == null) {
-            errorText.setText("Captcha challenge could not be loaded. Please try again.");
-            errorText.setVisibility(View.VISIBLE);
-            continueButton.setEnabled(false);
+            binding.captchaDialogError.setText("Captcha challenge could not be loaded. Please try again.");
+            binding.captchaDialogError.setVisibility(View.VISIBLE);
+            binding.captchaDialogContinue.setEnabled(false);
         } else {
             configureWebView(progressBar);
             webView.loadDataWithBaseURL(HN_BASE_URL, challenge.getCaptchaHtml(), "text/html", "UTF-8", null);
         }
 
-        cancelButton.setOnClickListener(view -> dismiss());
-        continueButton.setOnClickListener(view -> {
+        binding.captchaDialogCancel.setOnClickListener(view -> dismiss());
+        binding.captchaDialogContinue.setOnClickListener(view -> {
             WebView currentWebView = webView;
             if (currentWebView == null) {
                 return;
             }
-            errorText.setVisibility(View.GONE);
+            binding.captchaDialogError.setVisibility(View.GONE);
             currentWebView.evaluateJavascript(GET_CAPTCHA_RESPONSE_JS, new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String value) {
@@ -95,8 +89,8 @@ public class CaptchaDialogFragment extends AppCompatDialogFragment {
                     }
                     String captchaResponse = decodeJavascriptString(value);
                     if (TextUtils.isEmpty(captchaResponse)) {
-                        errorText.setText("Complete the captcha before continuing.");
-                        errorText.setVisibility(View.VISIBLE);
+                        binding.captchaDialogError.setText("Complete the captcha before continuing.");
+                        binding.captchaDialogError.setVisibility(View.VISIBLE);
                         return;
                     }
 

@@ -9,7 +9,6 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -30,6 +29,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.google.android.material.slider.Slider;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.PaletteTintDialogBinding;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -82,11 +82,10 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View rootView = inflater.inflate(R.layout.palette_tint_dialog, null);
-        LinearLayout previewContainer = rootView.findViewById(R.id.palette_tint_preview_container);
-        LinearLayout optionsContainer = rootView.findViewById(R.id.palette_tint_options_container);
-        LinearLayout slidersContainer = rootView.findViewById(R.id.palette_tint_sliders_container);
+        PaletteTintDialogBinding binding = PaletteTintDialogBinding.inflate(getLayoutInflater());
+        LinearLayout previewContainer = binding.paletteTintPreviewContainer;
+        LinearLayout optionsContainer = binding.paletteTintOptionsContainer;
+        LinearLayout slidersContainer = binding.paletteTintSlidersContainer;
 
         selectedMode = SettingsUtils.getPreferredPaletteTintMode(requireContext());
         tintStrength = SettingsUtils.getPreferredPaletteTintStrength(requireContext());
@@ -99,7 +98,7 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
         updatePreviewCards();
 
         builder.setTitle("Configure palette tint");
-        builder.setView(rootView);
+        builder.setView(binding.getRoot());
         builder.setNeutralButton("Reset", null);
         builder.setPositiveButton("Done", null);
         return builder.create();

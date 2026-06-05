@@ -30,6 +30,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.PreferenceStoryContentPreviewBinding;
+import com.simon.harmonichackernews.databinding.StoryListItemBinding;
+import com.simon.harmonichackernews.databinding.StoryListItemCardBinding;
+import com.simon.harmonichackernews.databinding.StoryListItemCardLeftBinding;
+import com.simon.harmonichackernews.databinding.StoryListItemLeftBinding;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -99,13 +104,10 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
 
         View itemView = holder.itemView;
         boundItemView = itemView;
-        View root = itemView.findViewById(R.id.story_content_preview_root);
-        previewRoot = root instanceof ViewGroup
-                ? (ViewGroup) root
-                : itemView instanceof ViewGroup
-                ? (ViewGroup) itemView
-                : null;
-        previewItemContainer = itemView.findViewById(R.id.story_content_preview_item_container);
+        PreferenceStoryContentPreviewBinding binding =
+                PreferenceStoryContentPreviewBinding.bind(itemView);
+        previewRoot = binding.storyContentPreviewRoot;
+        previewItemContainer = binding.storyContentPreviewItemContainer;
         if (previewItemContainer != null) {
             previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
             previewItemContainer.addOnLayoutChangeListener(previewContainerLayoutChangeListener);
@@ -279,23 +281,23 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         cancelPreviewImageModeAnimator();
         cancelCardTintAnimator();
         previewItemContainer.removeAllViews();
-        LayoutInflater inflater = LayoutInflater.from(getContext());
-        int layout = getStoryPreviewLayout(leftAlign, shouldUsePreviewCardShell());
-        View itemView = inflater.inflate(layout, previewItemContainer, false);
+        PreviewStoryItemBinding binding =
+                inflatePreviewStoryItemBinding(leftAlign, shouldUsePreviewCardShell());
+        View itemView = binding.root;
         previewItemContainer.addView(itemView, createPreviewItemLayoutParams());
 
-        storyLinkLayout = itemView.findViewById(R.id.story_link_layout);
-        commentLayout = itemView.findViewById(R.id.story_comment_layout);
-        metaContainer = itemView.findViewById(R.id.story_meta_container);
-        favicon = itemView.findViewById(R.id.story_meta_favicon);
-        commentsIcon = itemView.findViewById(R.id.story_comments_icon);
-        smallPreviewImage = itemView.findViewById(R.id.story_preview_image_small);
-        largePreviewImage = itemView.findViewById(R.id.story_preview_image_large);
-        storyCard = itemView.findViewById(R.id.story_card);
-        storyTitle = itemView.findViewById(R.id.story_title);
-        storyIndex = itemView.findViewById(R.id.story_index);
-        storyMeta = itemView.findViewById(R.id.story_meta);
-        comments = itemView.findViewById(R.id.story_comments);
+        storyLinkLayout = binding.storyLinkLayout;
+        commentLayout = binding.commentLayout;
+        metaContainer = binding.metaContainer;
+        favicon = binding.favicon;
+        commentsIcon = binding.commentsIcon;
+        smallPreviewImage = binding.smallPreviewImage;
+        largePreviewImage = binding.largePreviewImage;
+        storyCard = binding.storyCard;
+        storyTitle = binding.storyTitle;
+        storyIndex = binding.storyIndex;
+        storyMeta = binding.storyMeta;
+        comments = binding.comments;
         currentCardBackgroundColor = storyCard != null
                 ? storyCard.getCardBackgroundColor().getDefaultColor()
                 : null;
@@ -306,13 +308,6 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         disablePreviewTextScrolling(comments);
         configureStoryCardAppearance();
         bindStaticPreviewContent();
-    }
-
-    private int getStoryPreviewLayout(boolean leftAlign, boolean useCardStyle) {
-        if (useCardStyle) {
-            return leftAlign ? R.layout.story_list_item_card_left : R.layout.story_list_item_card;
-        }
-        return leftAlign ? R.layout.story_list_item_left : R.layout.story_list_item;
     }
 
     private boolean shouldUsePreviewCardShell() {
@@ -773,26 +768,25 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         if (previewItemContainer == null || previewItemContainer.getChildCount() == 0) {
             return 0;
         }
-        View itemView = LayoutInflater.from(getContext()).inflate(
-                getStoryPreviewLayout(leftAligned, shouldUsePreviewCardShell()),
-                previewItemContainer,
-                false);
-        bindCurrentPreviewItemForMeasurement(itemView);
+        PreviewStoryItemBinding binding =
+                inflatePreviewStoryItemBinding(leftAligned, shouldUsePreviewCardShell());
+        View itemView = binding.root;
+        bindCurrentPreviewItemForMeasurement(binding);
         int widthSpec = View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
         itemView.measure(widthSpec, heightSpec);
         return getMeasuredOuterHeight(itemView);
     }
 
-    private void bindCurrentPreviewItemForMeasurement(View itemView) {
-        copyTextViewForMeasurement(storyTitle, itemView.findViewById(R.id.story_title));
-        copyTextViewForMeasurement(storyIndex, itemView.findViewById(R.id.story_index));
-        copyTextViewForMeasurement(storyMeta, itemView.findViewById(R.id.story_meta));
-        copyTextViewForMeasurement(comments, itemView.findViewById(R.id.story_comments));
-        copyViewVisibilityForMeasurement(metaContainer, itemView.findViewById(R.id.story_meta_container));
-        copyViewVisibilityForMeasurement(favicon, itemView.findViewById(R.id.story_meta_favicon));
-        copyViewVisibilityForMeasurement(smallPreviewImage, itemView.findViewById(R.id.story_preview_image_small));
-        copyViewVisibilityForMeasurement(largePreviewImage, itemView.findViewById(R.id.story_preview_image_large));
+    private void bindCurrentPreviewItemForMeasurement(PreviewStoryItemBinding binding) {
+        copyTextViewForMeasurement(storyTitle, binding.storyTitle);
+        copyTextViewForMeasurement(storyIndex, binding.storyIndex);
+        copyTextViewForMeasurement(storyMeta, binding.storyMeta);
+        copyTextViewForMeasurement(comments, binding.comments);
+        copyViewVisibilityForMeasurement(metaContainer, binding.metaContainer);
+        copyViewVisibilityForMeasurement(favicon, binding.favicon);
+        copyViewVisibilityForMeasurement(smallPreviewImage, binding.smallPreviewImage);
+        copyViewVisibilityForMeasurement(largePreviewImage, binding.largePreviewImage);
     }
 
     private void copyTextViewForMeasurement(TextView source, TextView target) {
@@ -907,6 +901,128 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
             height += margins.topMargin + margins.bottomMargin;
         }
         return height;
+    }
+
+    private PreviewStoryItemBinding inflatePreviewStoryItemBinding(boolean leftAlign, boolean useCardStyle) {
+        LayoutInflater inflater = LayoutInflater.from(getContext());
+        if (useCardStyle) {
+            if (leftAlign) {
+                StoryListItemCardLeftBinding binding =
+                        StoryListItemCardLeftBinding.inflate(inflater, previewItemContainer, false);
+                return new PreviewStoryItemBinding(
+                        binding.getRoot(),
+                        binding.storyContainer.storyTitle,
+                        binding.storyContainer.storyMeta,
+                        binding.storyContainer.storyMetaContainer,
+                        binding.storyContainer.storyComments,
+                        binding.storyContainer.storyLinkLayout,
+                        binding.storyContainer.storyCommentLayout,
+                        binding.storyContainer.storyCommentsIcon,
+                        binding.storyContainer.storyMetaFavicon,
+                        binding.storyContainer.storyPreviewImageSmall,
+                        binding.storyContainer.storyPreviewImageLarge,
+                        binding.storyContainer.storyIndex,
+                        binding.storyCard);
+            }
+
+            StoryListItemCardBinding binding =
+                    StoryListItemCardBinding.inflate(inflater, previewItemContainer, false);
+            return new PreviewStoryItemBinding(
+                    binding.getRoot(),
+                    binding.storyContainer.storyTitle,
+                    binding.storyContainer.storyMeta,
+                    binding.storyContainer.storyMetaContainer,
+                    binding.storyContainer.storyComments,
+                    binding.storyContainer.storyLinkLayout,
+                    binding.storyContainer.storyCommentLayout,
+                    binding.storyContainer.storyCommentsIcon,
+                    binding.storyContainer.storyMetaFavicon,
+                    binding.storyContainer.storyPreviewImageSmall,
+                    binding.storyContainer.storyPreviewImageLarge,
+                    binding.storyContainer.storyIndex,
+                    binding.storyCard);
+        }
+
+        if (leftAlign) {
+            StoryListItemLeftBinding binding =
+                    StoryListItemLeftBinding.inflate(inflater, previewItemContainer, false);
+            return new PreviewStoryItemBinding(
+                    binding.getRoot(),
+                    binding.storyTitle,
+                    binding.storyMeta,
+                    binding.storyMetaContainer,
+                    binding.storyComments,
+                    binding.storyLinkLayout,
+                    binding.storyCommentLayout,
+                    binding.storyCommentsIcon,
+                    binding.storyMetaFavicon,
+                    binding.storyPreviewImageSmall,
+                    binding.storyPreviewImageLarge,
+                    binding.storyIndex,
+                    null);
+        }
+
+        StoryListItemBinding binding =
+                StoryListItemBinding.inflate(inflater, previewItemContainer, false);
+        return new PreviewStoryItemBinding(
+                binding.getRoot(),
+                binding.storyTitle,
+                binding.storyMeta,
+                binding.storyMetaContainer,
+                binding.storyComments,
+                binding.storyLinkLayout,
+                binding.storyCommentLayout,
+                binding.storyCommentsIcon,
+                binding.storyMetaFavicon,
+                binding.storyPreviewImageSmall,
+                binding.storyPreviewImageLarge,
+                binding.storyIndex,
+                null);
+    }
+
+    private static class PreviewStoryItemBinding {
+        final View root;
+        final TextView storyTitle;
+        final TextView storyMeta;
+        final View metaContainer;
+        final TextView comments;
+        final View storyLinkLayout;
+        final View commentLayout;
+        final ImageView commentsIcon;
+        final ImageView favicon;
+        final ImageView smallPreviewImage;
+        final ImageView largePreviewImage;
+        final TextView storyIndex;
+        final MaterialCardView storyCard;
+
+        PreviewStoryItemBinding(
+                View root,
+                TextView storyTitle,
+                TextView storyMeta,
+                View metaContainer,
+                TextView comments,
+                View storyLinkLayout,
+                View commentLayout,
+                ImageView commentsIcon,
+                ImageView favicon,
+                ImageView smallPreviewImage,
+                ImageView largePreviewImage,
+                TextView storyIndex,
+                MaterialCardView storyCard) {
+            this.root = root;
+            this.storyTitle = storyTitle;
+            this.storyMeta = storyMeta;
+            this.metaContainer = metaContainer;
+            this.comments = comments;
+            this.storyLinkLayout = storyLinkLayout;
+            this.commentLayout = commentLayout;
+            this.commentsIcon = commentsIcon;
+            this.favicon = favicon;
+            this.smallPreviewImage = smallPreviewImage;
+            this.largePreviewImage = largePreviewImage;
+            this.storyIndex = storyIndex;
+            this.storyCard = storyCard;
+        }
     }
 
     private static class PreviewHeights {

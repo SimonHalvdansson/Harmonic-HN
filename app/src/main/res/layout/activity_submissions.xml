@@ -18,7 +18,9 @@
         app:elevation="0dp"
         app:statusBarForeground="?attr/colorSurface">
 
-        <include layout="@layout/submissions_header" />
+        <include
+            android:id="@+id/submissions_header_container"
+            layout="@layout/submissions_header" />
 
     </com.google.android.material.appbar.AppBarLayout>
 

@@ -13,6 +13,7 @@ import androidx.preference.PreferenceViewHolder;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.UserDialogFragment;
 import com.simon.harmonichackernews.UserTagDialogFragment;
+import com.simon.harmonichackernews.databinding.UserTagItemBinding;
 import com.simon.harmonichackernews.utils.Utils;
 
 public class UserTagPreference extends Preference {
@@ -61,10 +62,11 @@ public class UserTagPreference extends Preference {
     public void onBindViewHolder(@NonNull PreferenceViewHolder holder) {
         super.onBindViewHolder(holder);
 
-        android.widget.TextView textView = (android.widget.TextView) holder.findViewById(R.id.user_tag_item_text);
-        View userIcon = holder.findViewById(R.id.user_tag_item_icon);
-        View editButton = holder.findViewById(R.id.user_tag_item_edit);
-        View deleteButton = holder.findViewById(R.id.user_tag_item_delete);
+        UserTagItemBinding binding = UserTagItemBinding.bind(holder.itemView);
+        android.widget.TextView textView = binding.userTagItemText;
+        View userIcon = binding.userTagItemIcon;
+        View editButton = binding.userTagItemEdit;
+        View deleteButton = binding.userTagItemDelete;
 
         if (empty) {
             textView.setText("No user with tags");

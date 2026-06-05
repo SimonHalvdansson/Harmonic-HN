@@ -20,7 +20,9 @@
         app:strokeColor="?attr/commentDividerColor"
         app:strokeWidth="1dp">
 
-        <include layout="@layout/submissions_comment" />
+        <include
+            android:id="@+id/submissions_comment_container"
+            layout="@layout/submissions_comment" />
 
     </com.google.android.material.card.MaterialCardView>
 </FrameLayout>

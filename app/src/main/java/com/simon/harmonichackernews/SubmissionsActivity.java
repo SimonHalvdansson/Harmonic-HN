@@ -24,6 +24,7 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.databinding.ActivitySubmissionsBinding;
 import com.simon.harmonichackernews.network.BackgroundJSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -58,6 +59,7 @@ public class SubmissionsActivity extends AppCompatActivity {
     private TextView headerText;
     private MaterialButtonToggleGroup filterGroup;
     private MaterialButtonToggleGroup.OnButtonCheckedListener filterCheckedListener;
+    private ActivitySubmissionsBinding binding;
     private boolean initialLoadFinished = false;
     private boolean submissionsLoading = false;
     private int submissionsRequestGeneration = 0;
@@ -72,12 +74,13 @@ public class SubmissionsActivity extends AppCompatActivity {
 
         ThemeUtils.setupTheme(this, false);
 
-        setContentView(R.layout.activity_submissions);
-        swipeRefreshLayout = findViewById(R.id.submissions_swiperefreshlayout);
-        initialLoadingIndicator = findViewById(R.id.submissions_initial_loading);
-        appBarLayout = findViewById(R.id.submissions_appbar);
-        headerText = findViewById(R.id.submissions_header_text);
-        filterGroup = findViewById(R.id.submissions_header_filter_group);
+        binding = ActivitySubmissionsBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+        swipeRefreshLayout = binding.submissionsSwiperefreshlayout;
+        initialLoadingIndicator = binding.submissionsInitialLoading;
+        appBarLayout = binding.submissionsAppbar;
+        headerText = binding.submissionsHeaderContainer.submissionsHeaderText;
+        filterGroup = binding.submissionsHeaderContainer.submissionsHeaderFilterGroup;
 
         String userName = getIntent().getStringExtra(KEY_USER);
         headerText.setText(userName + "'s submissions");
@@ -110,7 +113,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         swipeRefreshLayout.setOnRefreshListener(() -> loadSubmissions(true));
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
-        RecyclerView recyclerView = findViewById(R.id.submissions_recyclerview);
+        RecyclerView recyclerView = binding.submissionsRecyclerview;
 
         submissions = new ArrayList<>();
 
@@ -283,7 +286,7 @@ public class SubmissionsActivity extends AppCompatActivity {
     }
 
     private void setUpWindowInsets(RecyclerView recyclerView) {
-        View root = findViewById(R.id.submissions_root);
+        View root = binding.submissionsRoot;
         final int rootPaddingLeft = root.getPaddingLeft();
         final int rootPaddingTop = root.getPaddingTop();
         final int rootPaddingRight = root.getPaddingRight();

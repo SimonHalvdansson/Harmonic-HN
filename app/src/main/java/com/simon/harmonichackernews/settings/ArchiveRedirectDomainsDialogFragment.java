@@ -5,10 +5,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
-import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -23,7 +21,8 @@ import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
-import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.ArchiveRedirectDomainItemBinding;
+import com.simon.harmonichackernews.databinding.ArchiveRedirectDomainsDialogBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 import java.util.ArrayList;
@@ -75,14 +74,15 @@ public class ArchiveRedirectDomainsDialogFragment extends AppCompatDialogFragmen
                     prefs.getString(SettingsUtils.PREF_ARCHIVE_REDIRECT_DOMAINS, "")));
         }
 
-        View rootView = LayoutInflater.from(context).inflate(R.layout.archive_redirect_domains_dialog, null, false);
-        listContainer = rootView.findViewById(R.id.archive_redirect_items);
-        emptyView = rootView.findViewById(R.id.archive_redirect_empty);
-        inputLayout = rootView.findViewById(R.id.archive_redirect_input_layout);
-        inputEditText = rootView.findViewById(R.id.archive_redirect_input);
-        suggestionsSection = rootView.findViewById(R.id.archive_redirect_suggestions_section);
-        suggestionsGroup = rootView.findViewById(R.id.archive_redirect_suggestions);
-        MaterialButton addButton = rootView.findViewById(R.id.archive_redirect_add);
+        ArchiveRedirectDomainsDialogBinding binding =
+                ArchiveRedirectDomainsDialogBinding.inflate(getLayoutInflater());
+        listContainer = binding.archiveRedirectItems;
+        emptyView = binding.archiveRedirectEmpty;
+        inputLayout = binding.archiveRedirectInputLayout;
+        inputEditText = binding.archiveRedirectInput;
+        suggestionsSection = binding.archiveRedirectSuggestionsSection;
+        suggestionsGroup = binding.archiveRedirectSuggestions;
+        MaterialButton addButton = binding.archiveRedirectAdd;
 
         renderDomains();
         renderSuggestions();
@@ -98,7 +98,7 @@ public class ArchiveRedirectDomainsDialogFragment extends AppCompatDialogFragmen
 
         Dialog dialog = new MaterialAlertDialogBuilder(context)
                 .setTitle("Redirect to archive version")
-                .setView(rootView)
+                .setView(binding.getRoot())
                 .create();
         dialog.setCanceledOnTouchOutside(true);
         dialog.setOnShowListener(dialogInterface -> inputEditText.requestFocus());
@@ -188,12 +188,12 @@ public class ArchiveRedirectDomainsDialogFragment extends AppCompatDialogFragmen
     }
 
     private void addDomainView(String domain) {
-        View row = LayoutInflater.from(requireContext()).inflate(R.layout.archive_redirect_domain_item, listContainer, false);
-        TextView textView = row.findViewById(R.id.filter_list_item_text);
-        ImageButton removeButton = row.findViewById(R.id.filter_list_item_remove);
-        textView.setText(domain);
-        removeButton.setContentDescription("Remove " + domain);
-        removeButton.setOnClickListener(view -> removeDomain(row, domain));
+        ArchiveRedirectDomainItemBinding binding =
+                ArchiveRedirectDomainItemBinding.inflate(getLayoutInflater(), listContainer, false);
+        View row = binding.getRoot();
+        binding.filterListItemText.setText(domain);
+        binding.filterListItemRemove.setContentDescription("Remove " + domain);
+        binding.filterListItemRemove.setOnClickListener(view -> removeDomain(row, domain));
 
         listContainer.addView(row);
     }

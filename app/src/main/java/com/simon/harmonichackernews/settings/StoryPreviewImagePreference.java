@@ -8,6 +8,7 @@ import androidx.preference.PreferenceViewHolder;
 
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.PreferenceStoryPreviewImageBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 public class StoryPreviewImagePreference extends Preference {
@@ -29,10 +30,8 @@ public class StoryPreviewImagePreference extends Preference {
         holder.itemView.setClickable(false);
         holder.itemView.setFocusable(false);
 
-        MaterialButtonToggleGroup group = (MaterialButtonToggleGroup) holder.findViewById(R.id.story_preview_image_mode_group);
-        if (group == null) {
-            return;
-        }
+        PreferenceStoryPreviewImageBinding binding = PreferenceStoryPreviewImageBinding.bind(holder.itemView);
+        MaterialButtonToggleGroup group = binding.storyPreviewImageModeGroup;
 
         group.clearOnButtonCheckedListeners();
         group.check(getButtonIdForMode(getPersistedString(SettingsUtils.STORY_PREVIEW_IMAGE_SMALL)));

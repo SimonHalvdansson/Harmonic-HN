@@ -8,6 +8,7 @@ import androidx.preference.PreferenceViewHolder;
 
 import com.google.android.material.slider.Slider;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.PreferenceCommentTextSizeBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 import java.util.Locale;
@@ -31,10 +32,8 @@ public class CommentTextSizePreference extends Preference {
         holder.itemView.setClickable(false);
         holder.itemView.setFocusable(false);
 
-        Slider slider = (Slider) holder.findViewById(R.id.comment_text_size_slider);
-        if (slider == null) {
-            return;
-        }
+        PreferenceCommentTextSizeBinding binding = PreferenceCommentTextSizeBinding.bind(holder.itemView);
+        Slider slider = binding.commentTextSizeSlider;
 
         float textSize = getPersistedTextSize();
         int offset = SettingsUtils.getCommentTextSizeOffset(textSize);

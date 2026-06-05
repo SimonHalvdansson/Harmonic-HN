@@ -5,10 +5,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
-import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -21,7 +19,8 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
-import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.FilterListDialogBinding;
+import com.simon.harmonichackernews.databinding.FilterListItemBinding;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,12 +77,12 @@ public class FilterListDialogFragment extends AppCompatDialogFragment {
             items.addAll(parseItems(prefs.getString(preferenceKey, "")));
         }
 
-        View rootView = LayoutInflater.from(context).inflate(R.layout.filter_list_dialog, null, false);
-        listContainer = rootView.findViewById(R.id.filter_list_items);
-        emptyView = rootView.findViewById(R.id.filter_list_empty);
-        inputLayout = rootView.findViewById(R.id.filter_list_input_layout);
-        inputEditText = rootView.findViewById(R.id.filter_list_input);
-        MaterialButton addButton = rootView.findViewById(R.id.filter_list_add);
+        FilterListDialogBinding binding = FilterListDialogBinding.inflate(getLayoutInflater());
+        listContainer = binding.filterListItems;
+        emptyView = binding.filterListEmpty;
+        inputLayout = binding.filterListInputLayout;
+        inputEditText = binding.filterListInput;
+        MaterialButton addButton = binding.filterListAdd;
 
         inputLayout.setHint(inputHint);
         emptyView.setText(emptyMessage);
@@ -100,7 +99,7 @@ public class FilterListDialogFragment extends AppCompatDialogFragment {
 
         Dialog dialog = new MaterialAlertDialogBuilder(context)
                 .setTitle(title)
-                .setView(rootView)
+                .setView(binding.getRoot())
                 .create();
         dialog.setCanceledOnTouchOutside(true);
         dialog.setOnShowListener(dialogInterface -> inputEditText.requestFocus());
@@ -177,12 +176,12 @@ public class FilterListDialogFragment extends AppCompatDialogFragment {
     }
 
     private void addItemView(String item) {
-        View row = LayoutInflater.from(requireContext()).inflate(R.layout.filter_list_item, listContainer, false);
-        TextView textView = row.findViewById(R.id.filter_list_item_text);
-        ImageButton removeButton = row.findViewById(R.id.filter_list_item_remove);
-        textView.setText(item);
-        removeButton.setContentDescription("Remove " + item);
-        removeButton.setOnClickListener(view -> removeItem(row, item));
+        FilterListItemBinding binding =
+                FilterListItemBinding.inflate(getLayoutInflater(), listContainer, false);
+        View row = binding.getRoot();
+        binding.filterListItemText.setText(item);
+        binding.filterListItemRemove.setContentDescription("Remove " + item);
+        binding.filterListItemRemove.setOnClickListener(view -> removeItem(row, item));
 
         listContainer.addView(row);
     }

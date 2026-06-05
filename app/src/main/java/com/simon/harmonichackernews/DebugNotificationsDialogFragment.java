@@ -6,7 +6,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
 
@@ -24,6 +23,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.simon.harmonichackernews.databinding.DebugNotificationsDialogBinding;
 import com.simon.harmonichackernews.network.RepliesChecker;
 import com.simon.harmonichackernews.utils.ViewUtils;
 
@@ -81,18 +81,17 @@ public class DebugNotificationsDialogFragment extends AppCompatDialogFragment {
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View rootView = inflater.inflate(R.layout.debug_notifications_dialog, null);
+        DebugNotificationsDialogBinding binding = DebugNotificationsDialogBinding.inflate(requireActivity().getLayoutInflater());
         builder.setTitle("Debug notifications");
-        builder.setView(rootView);
+        builder.setView(binding.getRoot());
 
-        usernameLayout = rootView.findViewById(R.id.debug_notifications_username_layout);
-        usernameInput = rootView.findViewById(R.id.debug_notifications_username);
-        statusText = rootView.findViewById(R.id.debug_notifications_status);
-        testButton = rootView.findViewById(R.id.debug_notifications_test);
-        enableButton = rootView.findViewById(R.id.debug_notifications_enable);
-        disableButton = rootView.findViewById(R.id.debug_notifications_disable);
-        loadingIndicator = rootView.findViewById(R.id.debug_notifications_loading);
+        usernameLayout = binding.debugNotificationsUsernameLayout;
+        usernameInput = binding.debugNotificationsUsername;
+        statusText = binding.debugNotificationsStatus;
+        testButton = binding.debugNotificationsTest;
+        enableButton = binding.debugNotificationsEnable;
+        disableButton = binding.debugNotificationsDisable;
+        loadingIndicator = binding.debugNotificationsLoading;
 
         usernameInput.setText(RepliesChecker.getConfiguredUsername(requireContext()));
         usernameWatcher = new ViewUtils.SimpleTextWatcher() {

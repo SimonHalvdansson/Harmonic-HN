@@ -5,6 +5,7 @@ import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 
+import com.simon.harmonichackernews.databinding.ActivitySettingsDetailBinding;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
 public class DebugActivity extends AppCompatActivity {
@@ -15,7 +16,8 @@ public class DebugActivity extends AppCompatActivity {
 
         ThemeUtils.setupTheme(this, false);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
-        setContentView(R.layout.activity_settings_detail);
+        ActivitySettingsDetailBinding binding = ActivitySettingsDetailBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         if (savedInstanceState == null) {
             getSupportFragmentManager()

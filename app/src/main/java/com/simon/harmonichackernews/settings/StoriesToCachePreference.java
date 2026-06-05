@@ -9,6 +9,7 @@ import androidx.preference.PreferenceViewHolder;
 
 import com.google.android.material.slider.Slider;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.PreferenceStoriesToCacheBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 public class StoriesToCachePreference extends Preference {
@@ -30,11 +31,9 @@ public class StoriesToCachePreference extends Preference {
         holder.itemView.setClickable(false);
         holder.itemView.setFocusable(false);
 
-        Slider slider = (Slider) holder.findViewById(R.id.stories_to_cache_slider);
-        TextView valueText = (TextView) holder.findViewById(R.id.stories_to_cache_value);
-        if (slider == null) {
-            return;
-        }
+        PreferenceStoriesToCacheBinding binding = PreferenceStoriesToCacheBinding.bind(holder.itemView);
+        Slider slider = binding.storiesToCacheSlider;
+        TextView valueText = binding.storiesToCacheValue;
 
         int storiesToCache = SettingsUtils.getStoriesToCache(getContext());
         slider.clearOnChangeListeners();

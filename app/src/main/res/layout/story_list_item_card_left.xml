@@ -20,7 +20,9 @@
         app:strokeColor="?attr/commentDividerColor"
         app:strokeWidth="1dp">
 
-        <include layout="@layout/story_list_item_left" />
+        <include
+            android:id="@+id/story_container"
+            layout="@layout/story_list_item_left" />
 
     </com.google.android.material.card.MaterialCardView>
 </FrameLayout>

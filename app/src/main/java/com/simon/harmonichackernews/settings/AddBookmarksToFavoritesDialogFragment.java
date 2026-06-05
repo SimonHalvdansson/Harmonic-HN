@@ -6,8 +6,6 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.LayoutInflater;
-import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -17,7 +15,7 @@ import androidx.fragment.app.DialogFragment;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
-import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.AddBookmarksToFavoritesDialogBinding;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -57,17 +55,17 @@ public class AddBookmarksToFavoritesDialogFragment extends DialogFragment {
             }
         }
 
-        View view = LayoutInflater.from(requireContext())
-                .inflate(R.layout.add_bookmarks_to_favorites_dialog, null, false);
-        progressIndicator = view.findViewById(R.id.add_bookmarks_to_favorites_progress);
-        statusView = view.findViewById(R.id.add_bookmarks_to_favorites_status);
+        AddBookmarksToFavoritesDialogBinding binding =
+                AddBookmarksToFavoritesDialogBinding.inflate(getLayoutInflater());
+        progressIndicator = binding.addBookmarksToFavoritesProgress;
+        statusView = binding.addBookmarksToFavoritesStatus;
 
         progressIndicator.setMax(Math.max(bookmarkIds.length, 1));
         updateProgress();
 
         return new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Adding favorites")
-                .setView(view)
+                .setView(binding.getRoot())
                 .setNegativeButton("Cancel", (dialog, which) -> cancelled = true)
                 .create();
     }

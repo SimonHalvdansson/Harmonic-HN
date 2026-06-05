@@ -8,6 +8,7 @@ import androidx.preference.PreferenceViewHolder;
 
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.PreferenceStoryDisplayStyleBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 public class StoryDisplayStylePreference extends Preference {
@@ -29,10 +30,7 @@ public class StoryDisplayStylePreference extends Preference {
         holder.itemView.setClickable(false);
         holder.itemView.setFocusable(false);
 
-        MaterialButtonToggleGroup group = (MaterialButtonToggleGroup) holder.findViewById(getToggleGroupId());
-        if (group == null) {
-            return;
-        }
+        MaterialButtonToggleGroup group = getToggleGroup(holder);
 
         group.clearOnButtonCheckedListeners();
         group.check(getButtonIdForStyle(getPersistedString(getDefaultStyle())));
@@ -76,6 +74,10 @@ public class StoryDisplayStylePreference extends Preference {
 
     protected int getToggleGroupId() {
         return R.id.story_display_style_group;
+    }
+
+    protected MaterialButtonToggleGroup getToggleGroup(PreferenceViewHolder holder) {
+        return PreferenceStoryDisplayStyleBinding.bind(holder.itemView).storyDisplayStyleGroup;
     }
 
     protected int getStandardButtonId() {

@@ -7,7 +7,6 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -24,6 +23,7 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.FaviconProviderDialogBinding;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -48,16 +48,15 @@ public class FaviconProviderDialogFragment extends AppCompatDialogFragment {
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View rootView = inflater.inflate(R.layout.favicon_provider_dialog, null);
-        LinearLayout container = rootView.findViewById(R.id.favicon_provider_options_container);
+        FaviconProviderDialogBinding binding = FaviconProviderDialogBinding.inflate(getLayoutInflater());
+        LinearLayout container = binding.faviconProviderOptionsContainer;
 
         selectedProvider = SettingsUtils.getPreferredFaviconProvider(requireContext());
         buildProviderOptions(container);
         updateSelection();
 
         builder.setTitle("Favicon provider");
-        builder.setView(rootView);
+        builder.setView(binding.getRoot());
         return builder.create();
     }
 

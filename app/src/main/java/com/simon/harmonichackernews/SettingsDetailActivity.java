@@ -11,8 +11,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
-import com.simon.harmonichackernews.settings.SettingsCallback;
+import com.simon.harmonichackernews.databinding.ActivitySettingsDetailBinding;
 import com.simon.harmonichackernews.settings.AppearancePreferenceFragment;
+import com.simon.harmonichackernews.settings.SettingsCallback;
 import com.simon.harmonichackernews.settings.SettingsFragmentFactory;
 import com.simon.harmonichackernews.settings.SettingsHeaderFragment;
 import com.simon.harmonichackernews.utils.ThemeUtils;
@@ -34,6 +35,7 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
     private boolean needsRestart;
     private boolean needsFullRestart;
     private boolean returningToSettings;
+    private ActivitySettingsDetailBinding binding;
 
     public static Intent createIntent(
             @NonNull AppCompatActivity activity,
@@ -54,7 +56,8 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
         super.onCreate(savedInstanceState);
 
         ThemeUtils.setupTheme(this, false);
-        setContentView(R.layout.activity_settings_detail);
+        binding = ActivitySettingsDetailBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
         applySinglePanePadding();
 
         if (savedInstanceState != null) {
@@ -150,7 +153,7 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
     }
 
     private void applySinglePanePadding() {
-        View root = findViewById(R.id.settings_linear_layout);
+        View root = binding.settingsLinearLayout;
         int padding = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
         root.setPadding(padding, 0, padding, 0);
     }

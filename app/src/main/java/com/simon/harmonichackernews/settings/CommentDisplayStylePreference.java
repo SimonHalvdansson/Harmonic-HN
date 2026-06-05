@@ -3,7 +3,11 @@ package com.simon.harmonichackernews.settings;
 import android.content.Context;
 import android.util.AttributeSet;
 
+import androidx.preference.PreferenceViewHolder;
+
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.PreferenceCommentDisplayStyleBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 public class CommentDisplayStylePreference extends StoryDisplayStylePreference {
@@ -24,6 +28,11 @@ public class CommentDisplayStylePreference extends StoryDisplayStylePreference {
     @Override
     protected int getToggleGroupId() {
         return R.id.comment_display_style_group;
+    }
+
+    @Override
+    protected MaterialButtonToggleGroup getToggleGroup(PreferenceViewHolder holder) {
+        return PreferenceCommentDisplayStyleBinding.bind(holder.itemView).commentDisplayStyleGroup;
     }
 
     @Override

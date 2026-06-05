@@ -56,6 +56,8 @@ import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.data.History;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.databinding.FragmentStoriesBinding;
+import com.simon.harmonichackernews.databinding.StoriesHeaderBinding;
 import com.simon.harmonichackernews.network.BackgroundJSONParser;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
@@ -87,6 +89,8 @@ import okhttp3.Response;
 public class StoriesFragment extends Fragment {
 
     private StoryClickListener storyClickListener;
+    private FragmentStoriesBinding binding;
+    private StoriesHeaderBinding headerBinding;
     private SwipeRefreshLayout swipeRefreshLayout;
     private ExtendedFloatingActionButton updateFab;
     private RecyclerView mainRecyclerView;
@@ -223,7 +227,6 @@ public class StoriesFragment extends Fragment {
     private boolean skipNextSearchContentReturnAnimation = false;
 
     public StoriesFragment() {
-        super(R.layout.fragment_stories);
     }
 
     @Nullable
@@ -232,19 +235,21 @@ public class StoriesFragment extends Fragment {
         HistoriesUtils.INSTANCE.init(requireContext());
         historiesChangeVersion = HistoriesUtils.INSTANCE.getChangeVersion();
 
-        return super.onCreateView(inflater, container, savedInstanceState);
+        return FragmentStoriesBinding.inflate(inflater, container, false).getRoot();
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        binding = FragmentStoriesBinding.bind(view);
+        headerBinding = binding.storiesHeaderContainer;
 
-        mainRecyclerView = view.findViewById(R.id.stories_recyclerview);
-        searchRecyclerView = view.findViewById(R.id.stories_search_recyclerview);
+        mainRecyclerView = binding.storiesRecyclerview;
+        searchRecyclerView = binding.storiesSearchRecyclerview;
         recyclerView = mainRecyclerView;
-        swipeRefreshLayout = view.findViewById(R.id.stories_swipe_refresh);
-        updateFab = view.findViewById(R.id.stories_update_fab);
-        appBarLayout = view.findViewById(R.id.stories_appbar);
+        swipeRefreshLayout = binding.storiesSwipeRefresh;
+        updateFab = binding.storiesUpdateFab;
+        appBarLayout = binding.storiesAppbar;
         appBarOffsetChangedListener = (appBar, verticalOffset) -> {
             float totalScrollRange = appBar.getTotalScrollRange();
             if (totalScrollRange > 0) {
@@ -255,26 +260,26 @@ public class StoriesFragment extends Fragment {
         configureAppBarDragBehavior();
 
         // Bind header views
-        headerContainer = view.findViewById(R.id.stories_header_container);
-        typeSpinner = view.findViewById(R.id.stories_header_spinner);
-        spinnerContainer = view.findViewById(R.id.stories_header_spinner_container);
-        searchContainer = view.findViewById(R.id.stories_header_search_container);
-        searchBar = view.findViewById(R.id.stories_header_search_bar);
-        searchEditText = view.findViewById(R.id.stories_header_search_edittext);
-        searchOptionsScroll = view.findViewById(R.id.stories_header_search_options_scroll);
-        searchSortChip = view.findViewById(R.id.stories_header_search_sort_chip);
-        searchDateChip = view.findViewById(R.id.stories_header_search_date_chip);
-        searchPointsChip = view.findViewById(R.id.stories_header_search_points_chip);
-        searchCommentsChip = view.findViewById(R.id.stories_header_search_comments_chip);
-        searchOnlyClickedChip = view.findViewById(R.id.stories_header_search_only_clicked_chip);
+        headerContainer = headerBinding.storiesHeaderContainer;
+        typeSpinner = headerBinding.storiesHeaderSpinner;
+        spinnerContainer = headerBinding.storiesHeaderSpinnerContainer;
+        searchContainer = headerBinding.storiesHeaderSearchContainer;
+        searchBar = headerBinding.storiesHeaderSearchBar;
+        searchEditText = headerBinding.storiesHeaderSearchEdittext;
+        searchOptionsScroll = headerBinding.storiesHeaderSearchOptionsScroll;
+        searchSortChip = headerBinding.storiesHeaderSearchSortChip;
+        searchDateChip = headerBinding.storiesHeaderSearchDateChip;
+        searchPointsChip = headerBinding.storiesHeaderSearchPointsChip;
+        searchCommentsChip = headerBinding.storiesHeaderSearchCommentsChip;
+        searchOnlyClickedChip = headerBinding.storiesHeaderSearchOnlyClickedChip;
         searchBar.setElevation(0f);
         searchEditText.bringToFront();
-        searchButton = view.findViewById(R.id.stories_header_search_button);
-        closeSearchButton = view.findViewById(R.id.stories_header_close_search_button);
-        moreButton = view.findViewById(R.id.stories_header_more);
-        lastUpdatedHeaderText = view.findViewById(R.id.stories_header_last_updated);
-        cacheProgressStatusText = view.findViewById(R.id.stories_header_cache_status);
-        cacheProgressIndicator = view.findViewById(R.id.stories_header_cache_progress);
+        searchButton = headerBinding.storiesHeaderSearchButton;
+        closeSearchButton = headerBinding.storiesHeaderCloseSearchButton;
+        moreButton = headerBinding.storiesHeaderMore;
+        lastUpdatedHeaderText = headerBinding.storiesHeaderLastUpdated;
+        cacheProgressStatusText = headerBinding.storiesHeaderCacheStatus;
+        cacheProgressIndicator = headerBinding.storiesHeaderCacheProgress;
         storyCacheController = new StoryCacheController(new StoryCacheController.Callbacks() {
             @Nullable
             @Override
@@ -300,18 +305,18 @@ public class StoriesFragment extends Fragment {
             }
         });
         storyCacheController.bindViews(cacheProgressIndicator, cacheProgressStatusText);
-        userItemFilterGroup = view.findViewById(R.id.stories_header_user_item_filter_group);
-        loadingIndicator = view.findViewById(R.id.stories_header_loading_indicator);
-        loadingFailedLayout = view.findViewById(R.id.stories_header_loading_failed);
-        loadingFailedText = view.findViewById(R.id.stories_header_loading_failed_text);
-        loadingFailedAlgoliaLayout = view.findViewById(R.id.stories_header_loading_failed_algolia);
-        noBookmarksLayout = view.findViewById(R.id.stories_header_no_bookmarks);
-        noBookmarksImage = view.findViewById(R.id.stories_header_no_bookmarks_icon);
-        noBookmarksText = view.findViewById(R.id.stories_header_no_bookmarks_text);
-        showingCachedText = view.findViewById(R.id.stories_header_cached_stories_header);
-        searchEmptyContainer = view.findViewById(R.id.stories_header_search_empty_container);
-        retryButton = view.findViewById(R.id.stories_header_retry_button);
-        showCachedButton = view.findViewById(R.id.stories_header_show_cached);
+        userItemFilterGroup = headerBinding.storiesHeaderUserItemFilterGroup;
+        loadingIndicator = headerBinding.storiesHeaderLoadingIndicator;
+        loadingFailedLayout = headerBinding.storiesHeaderLoadingFailed;
+        loadingFailedText = headerBinding.storiesHeaderLoadingFailedText;
+        loadingFailedAlgoliaLayout = headerBinding.storiesHeaderLoadingFailedAlgolia;
+        noBookmarksLayout = headerBinding.storiesHeaderNoBookmarks;
+        noBookmarksImage = headerBinding.storiesHeaderNoBookmarksIcon;
+        noBookmarksText = headerBinding.storiesHeaderNoBookmarksText;
+        showingCachedText = headerBinding.storiesHeaderCachedStoriesHeader;
+        searchEmptyContainer = headerBinding.storiesHeaderSearchEmptyContainer;
+        retryButton = headerBinding.storiesHeaderRetryButton;
+        showCachedButton = headerBinding.storiesHeaderShowCached;
 
         swipeRefreshLayout.setOnRefreshListener(() -> attemptRefresh(true));
         swipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
@@ -2303,6 +2308,8 @@ public class StoriesFragment extends Fragment {
             storyCacheController = null;
         }
 
+        binding = null;
+        headerBinding = null;
         swipeRefreshLayout = null;
         updateFab = null;
         mainRecyclerView = null;

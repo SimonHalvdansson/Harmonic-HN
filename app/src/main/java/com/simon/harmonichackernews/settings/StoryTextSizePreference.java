@@ -8,6 +8,7 @@ import androidx.preference.PreferenceViewHolder;
 
 import com.google.android.material.slider.Slider;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.PreferenceStoryTextSizeBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 import java.util.Locale;
@@ -31,10 +32,8 @@ public class StoryTextSizePreference extends Preference {
         holder.itemView.setClickable(false);
         holder.itemView.setFocusable(false);
 
-        Slider slider = (Slider) holder.findViewById(R.id.story_text_size_slider);
-        if (slider == null) {
-            return;
-        }
+        PreferenceStoryTextSizeBinding binding = PreferenceStoryTextSizeBinding.bind(holder.itemView);
+        Slider slider = binding.storyTextSizeSlider;
 
         float textSize = getPersistedTextSize();
         int offset = SettingsUtils.getStoryTextSizeOffset(textSize);

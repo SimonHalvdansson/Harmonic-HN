@@ -4,7 +4,6 @@ import android.app.Dialog;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -16,8 +15,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatDialogFragment;
 
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.simon.harmonichackernews.databinding.LoginDialogBinding;
 import com.google.android.material.textfield.TextInputEditText;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
@@ -37,21 +36,20 @@ public class LoginDialogFragment extends AppCompatDialogFragment {
         super.onCreateDialog(savedInstanceState);
 
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireActivity());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View rootView = inflater.inflate(R.layout.login_dialog, null);
-        builder.setView(rootView);
+        LoginDialogBinding binding = LoginDialogBinding.inflate(requireActivity().getLayoutInflater());
+        builder.setView(binding.getRoot());
         AlertDialog dialog = builder.create();
 
-        TextInputEditText usernameInput = rootView.findViewById(R.id.login_dialog_username);
-        TextInputEditText passwordInput = rootView.findViewById(R.id.login_dialog_password);
-        MaterialButton cancelButton = rootView.findViewById(R.id.login_dialog_cancel);
-        MaterialButton saveButton = rootView.findViewById(R.id.login_dialog_save);
-        Button infoButton = rootView.findViewById(R.id.login_dialog_more_info);
-        Button createAccountButton = rootView.findViewById(R.id.login_dialog_create_account);
-        LinearLayout infoContainer = rootView.findViewById(R.id.login_dialog_info_container);
-        LinearLayout loadingContainer = rootView.findViewById(R.id.login_dialog_loading_container);
-        TextView errorText = rootView.findViewById(R.id.login_dialog_error);
-        ProgressBar progressBar = rootView.findViewById(R.id.login_dialog_progress);
+        TextInputEditText usernameInput = binding.loginDialogUsername;
+        TextInputEditText passwordInput = binding.loginDialogPassword;
+        Button cancelButton = binding.loginDialogCancel;
+        Button saveButton = binding.loginDialogSave;
+        Button infoButton = binding.loginDialogMoreInfo;
+        Button createAccountButton = binding.loginDialogCreateAccount;
+        LinearLayout infoContainer = binding.loginDialogInfoContainer;
+        LinearLayout loadingContainer = binding.loginDialogLoadingContainer;
+        TextView errorText = binding.loginDialogError;
+        ProgressBar progressBar = binding.loginDialogProgress;
 
         usernameInput.addTextChangedListener(new ViewUtils.SimpleTextWatcher() {
             @Override

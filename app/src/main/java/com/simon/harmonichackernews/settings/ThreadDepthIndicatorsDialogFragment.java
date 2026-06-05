@@ -10,7 +10,6 @@ import android.content.Context;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
@@ -29,6 +28,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.databinding.ThreadDepthIndicatorsDialogBinding;
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
@@ -53,19 +53,18 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View rootView = inflater.inflate(R.layout.thread_depth_indicators_dialog, null);
+        ThreadDepthIndicatorsDialogBinding binding =
+                ThreadDepthIndicatorsDialogBinding.inflate(getLayoutInflater());
         builder.setTitle("Thread depth indicators");
-        builder.setView(rootView);
+        builder.setView(binding.getRoot());
 
-        LinearLayout previewContainer = rootView.findViewById(R.id.thread_depth_preview);
-        buildPreviewRows(rootView, previewContainer);
+        buildPreviewRows(binding.getRoot(), binding.threadDepthPreview);
 
-        modeButtons.put(CommentDepthIndicatorUtils.MODE_THEME_DEFAULT, rootView.findViewById(R.id.thread_depth_theme_default));
-        modeButtons.put(CommentDepthIndicatorUtils.MODE_MATERIAL_YOU, rootView.findViewById(R.id.thread_depth_material_you));
-        modeButtons.put(CommentDepthIndicatorUtils.MODE_COLORS, rootView.findViewById(R.id.thread_depth_colors));
-        modeButtons.put(CommentDepthIndicatorUtils.MODE_MONOCHROME, rootView.findViewById(R.id.thread_depth_monochrome));
-        modeButtons.put(CommentDepthIndicatorUtils.MODE_NONE, rootView.findViewById(R.id.thread_depth_none));
+        modeButtons.put(CommentDepthIndicatorUtils.MODE_THEME_DEFAULT, binding.threadDepthThemeDefault);
+        modeButtons.put(CommentDepthIndicatorUtils.MODE_MATERIAL_YOU, binding.threadDepthMaterialYou);
+        modeButtons.put(CommentDepthIndicatorUtils.MODE_COLORS, binding.threadDepthColors);
+        modeButtons.put(CommentDepthIndicatorUtils.MODE_MONOCHROME, binding.threadDepthMonochrome);
+        modeButtons.put(CommentDepthIndicatorUtils.MODE_NONE, binding.threadDepthNone);
 
         String currentMode = SettingsUtils.getPreferredCommentDepthIndicatorMode(requireContext());
         for (Map.Entry<String, MaterialButton> entry : modeButtons.entrySet()) {
