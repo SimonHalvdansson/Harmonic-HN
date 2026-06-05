@@ -236,7 +236,10 @@ public class SettingsUtils {
     }
 
     public static boolean shouldTintCommentsHeader(Context ctx) {
-        return getBooleanPref(PREF_COMMENTS_HEADER_TINT, true, ctx);
+        return getBooleanPref(
+                PREF_COMMENTS_HEADER_TINT,
+                ctx.getResources().getBoolean(R.bool.default_comments_header_tint),
+                ctx);
     }
 
     public static String getPreferredPaletteTintMode(Context ctx) {

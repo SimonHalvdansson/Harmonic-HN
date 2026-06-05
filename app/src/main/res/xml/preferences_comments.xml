@@ -69,7 +69,7 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_comments_header_tint"
-            app:defaultValue="true"
+            app:defaultValue="@bool/default_comments_header_tint"
             app:icon="@drawable/ic_action_colors"
             app:title="Tint header" />
 
