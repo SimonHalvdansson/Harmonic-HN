@@ -8,6 +8,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -110,6 +111,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean swapLongPressTap;
     public boolean cardStyle;
     public boolean collectReferenceLinks;
+    private boolean readerModeEnabled = false;
     private boolean commentsByOpFilterActive = false;
     public String username;
     public float preferredTextSize;
@@ -255,6 +257,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : GONE);
             bindHeaderPreviewImage(headerViewHolder);
             bindHeaderTint(headerViewHolder);
+            bindReaderModeButton(headerViewHolder);
             bindStoryText(headerViewHolder);
 
             LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story, integratedWebview, bottomSheet);
@@ -569,6 +572,35 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         return true;
     }
 
+    public void setReaderModeEnabled(boolean enabled) {
+        if (readerModeEnabled == enabled) {
+            return;
+        }
+
+        readerModeEnabled = enabled;
+        if (boundHeaderViewHolder != null
+                && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.sheetReaderIcon)) {
+            bindReaderModeButton(boundHeaderViewHolder);
+        }
+    }
+
+    private void bindReaderModeButton(HeaderViewHolder headerViewHolder) {
+        int normalColor = MaterialColors.getColor(headerViewHolder.sheetReaderIcon, R.attr.drawableColor);
+        if (readerModeEnabled) {
+            int activeColor = MaterialColors.getColor(
+                    headerViewHolder.sheetReaderIcon,
+                    com.google.android.material.R.attr.colorSecondary,
+                    normalColor);
+            ViewCompat.setBackgroundTintList(headerViewHolder.sheetReaderIcon, ColorStateList.valueOf(activeColor));
+            headerViewHolder.sheetReaderButton.setContentDescription("Reader mode on");
+            TooltipCompat.setTooltipText(headerViewHolder.sheetReaderButton, "Reader mode on");
+        } else {
+            ViewCompat.setBackgroundTintList(headerViewHolder.sheetReaderIcon, ColorStateList.valueOf(normalColor));
+            headerViewHolder.sheetReaderButton.setContentDescription("Toggle reader mode");
+            TooltipCompat.setTooltipText(headerViewHolder.sheetReaderButton, "Reader mode");
+        }
+    }
+
     private void bindHeaderStoryViews(HeaderViewHolder headerViewHolder, Context ctx) {
         if (story.isLink && story.url != null) {
             try {
@@ -585,6 +617,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         bindHeaderTitle(headerViewHolder, ctx);
         bindHeaderMeta(headerViewHolder, ctx);
         bindHeaderLoadingState(headerViewHolder, ctx);
+        bindReaderModeButton(headerViewHolder);
 
         headerViewHolder.favicon.setVisibility(showThumbnail ? View.VISIBLE : GONE);
         headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
@@ -1942,6 +1975,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout sheetExpandButton;
         public final RelativeLayout sheetBrowserButton;
         public final RelativeLayout sheetReaderButton;
+        public final ImageView sheetReaderIcon;
         public final RelativeLayout sheetInvertButton;
         public final View sheetHandleContainer;
         public final LinearLayout sheetButtonsContainer;
@@ -2018,6 +2052,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
             sheetBrowserButton = view.findViewById(R.id.comments_sheet_layout_browser);
             sheetReaderButton = view.findViewById(R.id.comments_sheet_layout_reader);
+            sheetReaderIcon = view.findViewById(R.id.comments_sheet_reader_icon);
             sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
             sheetHandleContainer = view.findViewById(R.id.comments_sheet_handle_container);
             sheetButtonsContainer = view.findViewById(R.id.comment_sheet_buttons_container);
@@ -2108,7 +2143,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             TooltipCompat.setTooltipText(sheetRefreshButton, "Refresh");
             TooltipCompat.setTooltipText(sheetExpandButton, "Open comments");
             TooltipCompat.setTooltipText(sheetBrowserButton, "Open in browser");
-            TooltipCompat.setTooltipText(sheetReaderButton, "Reader mode");
             TooltipCompat.setTooltipText(sheetInvertButton, "Invert colors");
 
             TooltipCompat.setTooltipText(userButton, "User");
@@ -2128,7 +2162,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetRefreshButton.setContentDescription("Refresh comments");
             sheetExpandButton.setContentDescription("Open comments");
             sheetBrowserButton.setContentDescription("Open story in browser");
-            sheetReaderButton.setContentDescription("Toggle reader mode");
             sheetInvertButton.setContentDescription("Invert colors");
 
             if (!showInvert) {

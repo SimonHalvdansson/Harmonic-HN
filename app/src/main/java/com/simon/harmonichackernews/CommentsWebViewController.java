@@ -92,6 +92,8 @@ class CommentsWebViewController {
         void onSwitchView(boolean isAtWebView);
 
         void syncOnBackPressedCallbackEnabledState();
+
+        void onReaderModeChanged(boolean enabled);
     }
 
     private final CommentsFragment fragment;
@@ -380,22 +382,16 @@ class CommentsWebViewController {
 
             String status = normalizeJavascriptResult(result);
             if ("enabled".equals(status)) {
-                readerModeEnabled = true;
-                if (showFeedback) {
-                    Toast.makeText(callbackContext, "Reader mode enabled", Toast.LENGTH_SHORT).show();
-                }
+                setReaderModeEnabled(true);
             } else if ("disabled".equals(status)) {
-                readerModeEnabled = false;
-                if (showFeedback) {
-                    Toast.makeText(callbackContext, "Reader mode disabled", Toast.LENGTH_SHORT).show();
-                }
+                setReaderModeEnabled(false);
             } else if ("no_article".equals(status)) {
-                readerModeEnabled = false;
+                setReaderModeEnabled(false);
                 if (showFeedback) {
                     Toast.makeText(callbackContext, "Couldn't find readable article", Toast.LENGTH_SHORT).show();
                 }
             } else if ("unavailable".equals(status)) {
-                readerModeEnabled = false;
+                setReaderModeEnabled(false);
                 if (showFeedback) {
                     Toast.makeText(callbackContext, "Reader mode unavailable for this page", Toast.LENGTH_SHORT).show();
                 }
@@ -405,6 +401,15 @@ class CommentsWebViewController {
                 }
             }
         });
+    }
+
+    private void setReaderModeEnabled(boolean enabled) {
+        if (readerModeEnabled == enabled) {
+            return;
+        }
+
+        readerModeEnabled = enabled;
+        callbacks.onReaderModeChanged(enabled);
     }
 
     @Nullable
@@ -885,7 +890,7 @@ class CommentsWebViewController {
         if (!isErrorPageUrl(url)) {
             showingErrorPage = false;
             showingCachedArticlePage = false;
-            readerModeEnabled = false;
+            setReaderModeEnabled(false);
             readerModeDisabledForCurrentPage = false;
             lastRequestedWebViewUrl = url;
         }
@@ -1221,7 +1226,7 @@ class CommentsWebViewController {
             }
             beginWebViewLoad(view, url);
             if (!isErrorPageUrl(url)) {
-                readerModeEnabled = false;
+                setReaderModeEnabled(false);
                 readerModeDisabledForCurrentPage = false;
                 lastRequestedWebViewUrl = url;
             }

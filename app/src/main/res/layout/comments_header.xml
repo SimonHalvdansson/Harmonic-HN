@@ -146,6 +146,7 @@
                 android:layout_height="wrap_content">
 
                 <ImageView
+                    android:id="@+id/comments_sheet_reader_icon"
                     android:layout_centerHorizontal="true"
                     android:background="@drawable/ic_action_reader_mode"
                     android:contentDescription="@null"

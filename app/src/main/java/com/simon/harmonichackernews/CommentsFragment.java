@@ -411,6 +411,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void syncOnBackPressedCallbackEnabledState() {
                 CommentsFragment.this.syncOnBackPressedCallbackEnabledState();
             }
+
+            @Override
+            public void onReaderModeChanged(boolean enabled) {
+                if (adapter != null) {
+                    adapter.setReaderModeEnabled(enabled);
+                }
+            }
         });
         webViewController.bindViews(view, bottomSheet, swipeRefreshLayout, progressIndicator);
         webViewController.configure(showWebsite, integratedWebview, preloadWebview, preloadWebviewMinimumBattery, matchWebviewTheme, readerModeDefault, blockAds);
