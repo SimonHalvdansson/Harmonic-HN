@@ -13,6 +13,7 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
 
     private PreloadWebViewPreference preloadWebViewPreference;
     private Preference archiveRedirectPreference;
+    private Preference readerModeFontPreference;
 
     @Override
     protected String getToolbarTitle() {
@@ -40,13 +41,15 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
                 return true;
             });
         }
+        readerModeFontPreference = findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_FONT);
+        if (readerModeFontPreference != null) {
+            readerModeFontPreference.setOnPreferenceClickListener(preference -> {
+                FontSelectionDialogFragment.showReaderMode(getParentFragmentManager());
+                return true;
+            });
+        }
 
-        changePrefStatus(preloadWebViewPreference, integratedWebview);
-        changePrefStatus(findPreference("pref_webview_match_theme"), integratedWebview);
-        changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED), integratedWebview);
-        changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT), integratedWebview && readerModeEnabled);
-        changePrefStatus(findPreference("pref_webview_adblock"), integratedWebview);
-        changePrefStatus(findPreference("pref_close_webview_on_back"), integratedWebview);
+        updateWebViewDependentPreferenceStatus(integratedWebview, readerModeEnabled);
 
         boolean redirectNitter = SettingsUtils.shouldRedirectNitter(getContext());
 
@@ -56,18 +59,12 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
         findPreference("pref_webview").setOnPreferenceChangeListener((preference, newValue) -> {
             boolean webViewEnabled = (boolean) newValue;
             boolean currentReaderModeEnabled = SettingsUtils.shouldUseReaderMode(getContext());
-            changePrefStatus(preloadWebViewPreference, webViewEnabled);
-            changePrefStatus(findPreference("pref_webview_match_theme"), webViewEnabled);
-            changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED), webViewEnabled);
-            changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT), webViewEnabled && currentReaderModeEnabled);
-            changePrefStatus(findPreference("pref_webview_adblock"), webViewEnabled);
-            changePrefStatus(findPreference("pref_close_webview_on_back"), webViewEnabled);
+            updateWebViewDependentPreferenceStatus(webViewEnabled, currentReaderModeEnabled);
             return true;
         });
 
         findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED).setOnPreferenceChangeListener((preference, newValue) -> {
-            changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT),
-                    SettingsUtils.shouldUseIntegratedWebView(getContext()) && (boolean) newValue);
+            updateReaderModePreferenceStatus(SettingsUtils.shouldUseIntegratedWebView(getContext()) && (boolean) newValue);
             return true;
         });
 
@@ -85,6 +82,7 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
                 .registerOnSharedPreferenceChangeListener(this);
         updatePreloadWebViewSummary();
         updateArchiveRedirectSummary();
+        updateReaderModeFontSummary();
     }
 
     @Override
@@ -101,7 +99,24 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
             updatePreloadWebViewSummary();
         } else if (SettingsUtils.PREF_ARCHIVE_REDIRECT_DOMAINS.equals(key)) {
             updateArchiveRedirectSummary();
+        } else if (SettingsUtils.PREF_WEBVIEW_READER_MODE_FONT.equals(key)) {
+            updateReaderModeFontSummary();
         }
+    }
+
+    private void updateWebViewDependentPreferenceStatus(boolean integratedWebview, boolean readerModeEnabled) {
+        changePrefStatus(preloadWebViewPreference, integratedWebview);
+        changePrefStatus(findPreference("pref_webview_match_theme"), integratedWebview);
+        changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED), integratedWebview);
+        updateReaderModePreferenceStatus(integratedWebview && readerModeEnabled);
+        changePrefStatus(findPreference("pref_webview_adblock"), integratedWebview);
+        changePrefStatus(findPreference("pref_close_webview_on_back"), integratedWebview);
+    }
+
+    private void updateReaderModePreferenceStatus(boolean enabled) {
+        changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT), enabled);
+        changePrefStatus(readerModeFontPreference, enabled);
+        changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_FONT_SIZE), enabled);
     }
 
     private void updatePreloadWebViewSummary() {
@@ -122,6 +137,12 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
             archiveRedirectPreference.setSummary("1 domain");
         } else {
             archiveRedirectPreference.setSummary(domainCount + " domains");
+        }
+    }
+
+    private void updateReaderModeFontSummary() {
+        if (readerModeFontPreference != null && getContext() != null) {
+            readerModeFontPreference.setSummary(SettingsUtils.getPreferredReaderModeFontLabel(requireContext()));
         }
     }
 }

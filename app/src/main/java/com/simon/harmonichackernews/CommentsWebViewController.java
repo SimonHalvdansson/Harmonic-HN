@@ -64,6 +64,7 @@ import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -626,9 +627,15 @@ class CommentsWebViewController {
         int secondaryTextColor = MaterialColors.getColor(context, R.attr.secondaryTextColor, isLightMode ? Color.rgb(95, 99, 104) : Color.rgb(174, 180, 186));
         int dividerColor = MaterialColors.getColor(context, R.attr.commentDividerColor, isLightMode ? Color.rgb(218, 220, 224) : Color.rgb(61, 66, 72));
         int codeBackgroundColor = MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurfaceContainerHigh, backgroundColor);
+        String readerModeFont = SettingsUtils.getPreferredReaderModeFont(context);
+        String readerModeFontFaceCss = getReaderModeFontFaceCss(context, readerModeFont);
+        String readerModeFontFamily = TextUtils.isEmpty(readerModeFontFaceCss)
+                ? getReaderModeSystemFontFamily(readerModeFont)
+                : "'HarmonicReaderFont', " + getReaderModeSystemFontFamily(readerModeFont);
+        int readerModeFontSize = SettingsUtils.getReaderModeFontSize(context);
 
         return String.format(Locale.US,
-                "{\"isLight\":%s,\"backgroundColor\":\"%s\",\"textColor\":\"%s\",\"headingColor\":\"%s\",\"secondaryTextColor\":\"%s\",\"linkColor\":\"%s\",\"dividerColor\":\"%s\",\"codeBackgroundColor\":\"%s\"}",
+                "{\"isLight\":%s,\"backgroundColor\":\"%s\",\"textColor\":\"%s\",\"headingColor\":\"%s\",\"secondaryTextColor\":\"%s\",\"linkColor\":\"%s\",\"dividerColor\":\"%s\",\"codeBackgroundColor\":\"%s\",\"fontFaceCss\":%s,\"fontFamily\":%s,\"headingFontFamily\":%s,\"fontSizePx\":%d}",
                 isLightMode ? "true" : "false",
                 colorToCss(backgroundColor),
                 colorToCss(textColor),
@@ -636,11 +643,124 @@ class CommentsWebViewController {
                 colorToCss(secondaryTextColor),
                 colorToCss(linkColor),
                 colorToCss(dividerColor),
-                colorToCss(codeBackgroundColor));
+                colorToCss(codeBackgroundColor),
+                jsonString(readerModeFontFaceCss),
+                jsonString(readerModeFontFamily),
+                jsonString(readerModeFontFamily),
+                readerModeFontSize);
     }
 
     private String colorToCss(int color) {
         return String.format(Locale.US, "#%06X", 0xFFFFFF & color);
+    }
+
+    private String getReaderModeSystemFontFamily(String font) {
+        switch (SettingsUtils.sanitizeReaderModeFont(font)) {
+            case "productsans":
+            case "googlesansflexrounded":
+            case "verdana":
+                return "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+            case "robotoslab":
+            case "georgia":
+                return "Georgia, 'Times New Roman', serif";
+            case "jetbrainsmono":
+            case "googlesanscode":
+                return "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace";
+            case "devicedefault":
+            default:
+                return "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+        }
+    }
+
+    private String getReaderModeFontFaceCss(Context context, String font) {
+        int regularFontResource;
+        int boldFontResource;
+        switch (SettingsUtils.sanitizeReaderModeFont(font)) {
+            case "productsans":
+                regularFontResource = R.font.product_sans_regular;
+                boldFontResource = R.font.product_sans_bold;
+                break;
+            case "googlesansflexrounded":
+                regularFontResource = R.font.google_sans_flex_rounded_regular;
+                boldFontResource = R.font.google_sans_flex_rounded_bold;
+                break;
+            case "verdana":
+                regularFontResource = R.font.verdana_regular;
+                boldFontResource = R.font.verdana_bold;
+                break;
+            case "robotoslab":
+                regularFontResource = R.font.roboto_slab_regular;
+                boldFontResource = R.font.roboto_slab_bold;
+                break;
+            case "googlesanscode":
+                regularFontResource = R.font.google_sans_code_regular;
+                boldFontResource = R.font.google_sans_code_regular;
+                break;
+            case "jetbrainsmono":
+                regularFontResource = R.font.jetbrains_mono_regular;
+                boldFontResource = R.font.jetbrains_mono_bold;
+                break;
+            case "georgia":
+                regularFontResource = R.font.georgia_regular;
+                boldFontResource = R.font.georgia_bold;
+                break;
+            case "devicedefault":
+            default:
+                return "";
+        }
+
+        String regularFontData = getFontDataUrl(context, regularFontResource);
+        String boldFontData = getFontDataUrl(context, boldFontResource);
+        if (TextUtils.isEmpty(regularFontData) || TextUtils.isEmpty(boldFontData)) {
+            return "";
+        }
+
+        return "@font-face{font-family:'HarmonicReaderFont';font-style:normal;font-weight:400;src:url(" + regularFontData + ") format('truetype');}"
+                + "@font-face{font-family:'HarmonicReaderFont';font-style:normal;font-weight:700;src:url(" + boldFontData + ") format('truetype');}";
+    }
+
+    private String getFontDataUrl(Context context, int fontResource) {
+        try (InputStream inputStream = context.getResources().openRawResource(fontResource)) {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+            return "data:font/ttf;base64," + Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP);
+        } catch (IOException e) {
+            Log.e("MY_APP_TAG", "Failed to load reader mode font", e);
+            return "";
+        }
+    }
+
+    private String jsonString(String value) {
+        String safeValue = value != null ? value : "";
+        StringBuilder builder = new StringBuilder(safeValue.length() + 2);
+        builder.append('"');
+        for (int i = 0; i < safeValue.length(); i++) {
+            char c = safeValue.charAt(i);
+            switch (c) {
+                case '\\':
+                case '"':
+                    builder.append('\\').append(c);
+                    break;
+                case '\n':
+                    builder.append("\\n");
+                    break;
+                case '\r':
+                    builder.append("\\r");
+                    break;
+                case '\t':
+                    builder.append("\\t");
+                    break;
+                default:
+                    builder.append(c);
+                    break;
+            }
+        }
+        builder.append('"');
+        return builder.toString();
     }
 
     void toggleDarkMode() {

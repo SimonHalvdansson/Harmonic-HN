@@ -30,9 +30,13 @@ import java.util.Map;
 public class FontSelectionDialogFragment extends AppCompatDialogFragment {
 
     public static final String TAG = "tag_font_selection_dialog";
+    private static final String ARG_MODE = "arg_mode";
+    private static final String MODE_APP = "app";
+    private static final String MODE_READER_MODE = "reader_mode";
 
     private final Map<String, MaterialRadioButton> radioButtons = new HashMap<>();
     private String selectedFont;
+    private String mode = MODE_APP;
 
     @NonNull
     @Override
@@ -41,12 +45,13 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
         FontSelectionDialogBinding binding = FontSelectionDialogBinding.inflate(getLayoutInflater());
         LinearLayout container = binding.fontOptionsContainer;
 
-        selectedFont = SettingsUtils.getPreferredFont(requireContext());
+        mode = getArguments() != null ? getArguments().getString(ARG_MODE, MODE_APP) : MODE_APP;
+        selectedFont = isReaderMode() ? SettingsUtils.getPreferredReaderModeFont(requireContext()) : SettingsUtils.getPreferredFont(requireContext());
 
         buildFontOptions(container);
         updateSelection();
 
-        builder.setTitle("Title and comment font");
+        builder.setTitle(isReaderMode() ? "Reader mode font" : "Title and comment font");
         builder.setView(binding.getRoot());
         return builder.create();
     }
@@ -55,10 +60,22 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
         new FontSelectionDialogFragment().show(fm, TAG);
     }
 
+    public static void showReaderMode(FragmentManager fm) {
+        FontSelectionDialogFragment fragment = new FontSelectionDialogFragment();
+        Bundle args = new Bundle();
+        args.putString(ARG_MODE, MODE_READER_MODE);
+        fragment.setArguments(args);
+        fragment.show(fm, TAG);
+    }
+
     private void buildFontOptions(LinearLayout container) {
         Context context = container.getContext();
-        String[] entries = getResources().getStringArray(R.array.font_entries);
-        String[] values = getResources().getStringArray(R.array.font_values);
+        String[] entries = getResources().getStringArray(isReaderMode()
+                ? R.array.reader_mode_font_entries
+                : R.array.font_entries);
+        String[] values = getResources().getStringArray(isReaderMode()
+                ? R.array.reader_mode_font_values
+                : R.array.font_values);
         int optionCount = Math.min(entries.length, values.length);
         int textColor = MaterialColors.getColor(container, R.attr.storyColorNormal);
         int secondaryTextColor = MaterialColors.getColor(container, R.attr.secondaryTextColor);
@@ -125,8 +142,12 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
 
         row.setOnClickListener(view -> {
             selectedFont = font;
-            SettingsUtils.setPreferredFont(requireContext(), selectedFont);
-            FontUtils.init(requireContext());
+            if (isReaderMode()) {
+                SettingsUtils.setPreferredReaderModeFont(requireContext(), selectedFont);
+            } else {
+                SettingsUtils.setPreferredFont(requireContext(), selectedFont);
+                FontUtils.init(requireContext());
+            }
             updateSelection();
             dismiss();
         });
@@ -134,9 +155,15 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
     }
 
     private void updateSelection() {
-        String safeSelectedFont = SettingsUtils.sanitizeFont(selectedFont);
+        String safeSelectedFont = isReaderMode()
+                ? SettingsUtils.sanitizeReaderModeFont(selectedFont)
+                : SettingsUtils.sanitizeFont(selectedFont);
         for (Map.Entry<String, MaterialRadioButton> entry : radioButtons.entrySet()) {
             entry.getValue().setChecked(entry.getKey().equals(safeSelectedFont));
         }
+    }
+
+    private boolean isReaderMode() {
+        return MODE_READER_MODE.equals(mode);
     }
 }

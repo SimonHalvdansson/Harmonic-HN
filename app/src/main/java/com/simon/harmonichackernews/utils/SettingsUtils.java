@@ -52,6 +52,8 @@ public class SettingsUtils {
     public static final String PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY = "pref_preload_webview_minimum_battery";
     public static final String PREF_WEBVIEW_READER_MODE_ENABLED = "pref_webview_reader_mode_enabled";
     public static final String PREF_WEBVIEW_READER_MODE_DEFAULT = "pref_webview_reader_mode_default";
+    public static final String PREF_WEBVIEW_READER_MODE_FONT = "pref_webview_reader_mode_font";
+    public static final String PREF_WEBVIEW_READER_MODE_FONT_SIZE = "pref_webview_reader_mode_font_size";
     public static final String PREF_ARCHIVE_REDIRECT_DOMAINS = "pref_archive_redirect_domains";
     public static final String PREF_STORIES_TO_CACHE = "pref_stories_to_cache";
     public static final String PREF_FAVICON_PROVIDER = "pref_favicon_provider";
@@ -98,6 +100,9 @@ public class SettingsUtils {
     public static final int MIN_COMMENT_TEXT_SIZE_OFFSET = -6;
     public static final int MAX_COMMENT_TEXT_SIZE_OFFSET = 6;
     public static final float COMMENT_TEXT_SIZE_OFFSET_STEP = 0.5f;
+    public static final int DEFAULT_READER_MODE_FONT_SIZE = 18;
+    public static final int MIN_READER_MODE_FONT_SIZE = 14;
+    public static final int MAX_READER_MODE_FONT_SIZE = 24;
     public static final float MIN_COMMENT_TEXT_SIZE = DEFAULT_COMMENT_TEXT_SIZE
             + MIN_COMMENT_TEXT_SIZE_OFFSET * COMMENT_TEXT_SIZE_OFFSET_STEP;
     public static final float MAX_COMMENT_TEXT_SIZE = DEFAULT_COMMENT_TEXT_SIZE
@@ -479,6 +484,34 @@ public class SettingsUtils {
         return entries.length > 0 ? entries[0] : sanitizedFont;
     }
 
+    public static String getPreferredReaderModeFont(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return sanitizeReaderModeFont(prefs.getString(PREF_WEBVIEW_READER_MODE_FONT, "georgia"));
+    }
+
+    public static void setPreferredReaderModeFont(Context ctx, String font) {
+        PreferenceManager.getDefaultSharedPreferences(ctx)
+                .edit()
+                .putString(PREF_WEBVIEW_READER_MODE_FONT, sanitizeReaderModeFont(font))
+                .apply();
+    }
+
+    public static String getPreferredReaderModeFontLabel(Context ctx) {
+        return getReaderModeFontLabel(ctx, getPreferredReaderModeFont(ctx));
+    }
+
+    public static String getReaderModeFontLabel(Context ctx, String font) {
+        String sanitizedFont = sanitizeReaderModeFont(font);
+        String[] entries = ctx.getResources().getStringArray(R.array.reader_mode_font_entries);
+        String[] values = ctx.getResources().getStringArray(R.array.reader_mode_font_values);
+        for (int i = 0; i < Math.min(entries.length, values.length); i++) {
+            if (sanitizedFont.equals(values[i])) {
+                return entries[i];
+            }
+        }
+        return entries.length > 0 ? entries[0] : sanitizedFont;
+    }
+
     public static String sanitizeFont(String font) {
         if ("productsans".equals(font)
                 || "googlesansflexrounded".equals(font)
@@ -491,6 +524,20 @@ public class SettingsUtils {
             return font;
         }
         return "productsans";
+    }
+
+    public static String sanitizeReaderModeFont(String font) {
+        if ("georgia".equals(font)
+                || "productsans".equals(font)
+                || "googlesansflexrounded".equals(font)
+                || "verdana".equals(font)
+                || "robotoslab".equals(font)
+                || "googlesanscode".equals(font)
+                || "jetbrainsmono".equals(font)
+                || "devicedefault".equals(font)) {
+            return font;
+        }
+        return "georgia";
     }
 
     public static boolean shouldUseExternalBrowser(Context ctx) {
@@ -588,6 +635,15 @@ public class SettingsUtils {
 
     public static boolean shouldUseReaderModeByDefault(Context ctx) {
         return shouldUseReaderMode(ctx) && getBooleanPref(PREF_WEBVIEW_READER_MODE_DEFAULT, false, ctx);
+    }
+
+    public static int getReaderModeFontSize(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return clampReaderModeFontSize(prefs.getInt(PREF_WEBVIEW_READER_MODE_FONT_SIZE, DEFAULT_READER_MODE_FONT_SIZE));
+    }
+
+    public static int clampReaderModeFontSize(int textSize) {
+        return Math.max(MIN_READER_MODE_FONT_SIZE, Math.min(MAX_READER_MODE_FONT_SIZE, textSize));
     }
 
     public static boolean shouldCloseWebViewOnBack(Context ctx) {

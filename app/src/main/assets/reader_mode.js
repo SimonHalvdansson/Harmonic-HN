@@ -1,11 +1,14 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 3) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 4) {
         return;
     }
 
     var STATE_KEY = "__harmonicReaderModeState";
     var THEME_KEY = "__harmonicReaderModeTheme";
+    var TRANSITION_KEY = "__harmonicReaderModeTransition";
     var MIN_ARTICLE_TEXT_LENGTH = 250;
+    var TRANSITION_DURATION_MS = 180;
+    var TRANSITION_TRANSLATE_Y = "12px";
     var DEFAULT_LIGHT_READER_THEME = {
         isLight: true,
         backgroundColor: "#fafafa",
@@ -345,6 +348,19 @@
         return /^#[0-9a-f]{6}$/i.test(String(value || "")) ? value : fallback;
     }
 
+    function sanitizeCssText(value, fallback) {
+        value = String(value || "");
+        return /[<>]/.test(value) ? fallback : value;
+    }
+
+    function sanitizeFontSize(value, fallback) {
+        var parsed = parseInt(value, 10);
+        if (!isFinite(parsed)) {
+            return fallback;
+        }
+        return Math.max(14, Math.min(24, parsed));
+    }
+
     function getReaderTheme() {
         var configured = window[THEME_KEY] || {};
         var fallback = configured.isLight === false ? DEFAULT_DARK_READER_THEME : DEFAULT_LIGHT_READER_THEME;
@@ -356,7 +372,11 @@
             secondaryTextColor: sanitizeColor(configured.secondaryTextColor, fallback.secondaryTextColor),
             linkColor: sanitizeColor(configured.linkColor, fallback.linkColor),
             dividerColor: sanitizeColor(configured.dividerColor, fallback.dividerColor),
-            codeBackgroundColor: sanitizeColor(configured.codeBackgroundColor, fallback.codeBackgroundColor)
+            codeBackgroundColor: sanitizeColor(configured.codeBackgroundColor, fallback.codeBackgroundColor),
+            fontFaceCss: sanitizeCssText(configured.fontFaceCss, ""),
+            fontFamily: sanitizeCssText(configured.fontFamily, "Georgia,'Times New Roman',serif"),
+            headingFontFamily: sanitizeCssText(configured.headingFontFamily, "Georgia,'Times New Roman',serif"),
+            fontSizePx: sanitizeFontSize(configured.fontSizePx, 18)
         };
     }
 
@@ -367,28 +387,112 @@
 
     function readerStyles() {
         var theme = getReaderTheme();
+        var bodyFontSize = theme.fontSizePx;
+        var titleFontSize = Math.round(bodyFontSize * 1.78);
+        var bylineFontSize = Math.max(13, bodyFontSize - 3);
+        var captionFontSize = Math.max(12, bodyFontSize - 4);
+        var codeFontSize = Math.max(12, bodyFontSize - 4);
         return [
             "<style id=\"harmonic-reader-style\">",
-            "body[data-harmonic-reader='true']{margin:0!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;font-family:Georgia,'Times New Roman',serif!important;line-height:1.68!important;font-size:18px!important;-webkit-text-size-adjust:100%!important;}",
+            theme.fontFaceCss,
+            "body[data-harmonic-reader='true']{margin:0!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;font-family:" + theme.fontFamily + "!important;line-height:1.68!important;font-size:" + bodyFontSize + "px!important;-webkit-text-size-adjust:100%!important;}",
             "#harmonic-reader-mode{box-sizing:border-box;max-width:760px;margin:0 auto;padding:32px 20px 96px!important;}",
             "#harmonic-reader-mode *{box-sizing:border-box;max-width:100%;}",
             "#harmonic-reader-kicker{font:600 13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;letter-spacing:.04em!important;text-transform:uppercase!important;color:" + theme.linkColor + "!important;margin-bottom:14px!important;}",
-            "#harmonic-reader-mode h1{font:700 32px/1.15 Georgia,'Times New Roman',serif!important;margin:0 0 12px!important;color:" + theme.headingColor + "!important;}",
-            "#harmonic-reader-byline{font:500 15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;color:" + theme.secondaryTextColor + "!important;margin:0 0 28px!important;}",
-            "#harmonic-reader-article p,#harmonic-reader-article li{font-size:18px!important;line-height:1.68!important;}",
+            "#harmonic-reader-mode h1{font:700 " + titleFontSize + "px/1.15 " + theme.headingFontFamily + "!important;margin:0 0 12px!important;color:" + theme.headingColor + "!important;}",
+            "#harmonic-reader-byline{font:500 " + bylineFontSize + "px/1.5 " + theme.fontFamily + "!important;color:" + theme.secondaryTextColor + "!important;margin:0 0 28px!important;}",
+            "#harmonic-reader-article p,#harmonic-reader-article li{font-size:" + bodyFontSize + "px!important;line-height:1.68!important;}",
             "#harmonic-reader-article p{margin:0 0 1.05em!important;}",
-            "#harmonic-reader-article h2,#harmonic-reader-article h3,#harmonic-reader-article h4{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;line-height:1.25!important;margin:1.65em 0 .6em!important;color:inherit!important;}",
+            "#harmonic-reader-article h2,#harmonic-reader-article h3,#harmonic-reader-article h4{font-family:" + theme.headingFontFamily + "!important;line-height:1.25!important;margin:1.65em 0 .6em!important;color:inherit!important;}",
             "#harmonic-reader-article a{color:" + theme.linkColor + "!important;text-decoration:underline!important;text-decoration-thickness:1px!important;text-underline-offset:3px!important;}",
             "#harmonic-reader-article img,#harmonic-reader-article video{display:block;height:auto!important;margin:1.2em auto!important;border-radius:4px!important;}",
             "#harmonic-reader-article figure{margin:1.4em 0!important;}",
-            "#harmonic-reader-article figcaption{font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;color:" + theme.secondaryTextColor + "!important;margin-top:.5em!important;}",
+            "#harmonic-reader-article figcaption{font:" + captionFontSize + "px/1.45 " + theme.fontFamily + "!important;color:" + theme.secondaryTextColor + "!important;margin-top:.5em!important;}",
             "#harmonic-reader-article blockquote{border-left:3px solid " + theme.linkColor + "!important;margin:1.3em 0!important;padding:.1em 0 .1em 1em!important;color:" + theme.textColor + "!important;}",
-            "#harmonic-reader-article pre{overflow-x:auto!important;background:" + theme.codeBackgroundColor + "!important;border-radius:4px!important;padding:14px!important;font-size:14px!important;line-height:1.5!important;}",
+            "#harmonic-reader-article pre{overflow-x:auto!important;background:" + theme.codeBackgroundColor + "!important;border-radius:4px!important;padding:14px!important;font-size:" + codeFontSize + "px!important;line-height:1.5!important;}",
             "#harmonic-reader-article code{font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace!important;font-size:.9em!important;}",
             "#harmonic-reader-article table{border-collapse:collapse!important;display:block!important;overflow-x:auto!important;margin:1.2em 0!important;}",
             "#harmonic-reader-article th,#harmonic-reader-article td{border:1px solid " + theme.dividerColor + "!important;padding:8px!important;}",
             "</style>"
         ].join("");
+    }
+
+    function nextTransitionId() {
+        window[TRANSITION_KEY] = (window[TRANSITION_KEY] || 0) + 1;
+        return window[TRANSITION_KEY];
+    }
+
+    function isCurrentTransition(transitionId) {
+        return window[TRANSITION_KEY] === transitionId;
+    }
+
+    function captureTransitionStyles(element) {
+        return {
+            opacity: element.style.getPropertyValue("opacity"),
+            opacityPriority: element.style.getPropertyPriority("opacity"),
+            transform: element.style.getPropertyValue("transform"),
+            transformPriority: element.style.getPropertyPriority("transform"),
+            transition: element.style.getPropertyValue("transition"),
+            transitionPriority: element.style.getPropertyPriority("transition"),
+            willChange: element.style.getPropertyValue("will-change"),
+            willChangePriority: element.style.getPropertyPriority("will-change")
+        };
+    }
+
+    function restoreTransitionStyles(element, styles) {
+        element.style.setProperty("opacity", styles.opacity, styles.opacityPriority);
+        element.style.setProperty("transform", styles.transform, styles.transformPriority);
+        element.style.setProperty("transition", styles.transition, styles.transitionPriority);
+        element.style.setProperty("will-change", styles.willChange, styles.willChangePriority);
+    }
+
+    function setTransitionStyle(element, opacity, translateY) {
+        element.style.setProperty("opacity", opacity, "important");
+        element.style.setProperty("transform", "translateY(" + translateY + ")", "important");
+        element.style.setProperty("transition", "opacity " + TRANSITION_DURATION_MS + "ms ease, transform " + TRANSITION_DURATION_MS + "ms ease", "important");
+        element.style.setProperty("will-change", "opacity, transform", "important");
+    }
+
+    function animateOut(element, after) {
+        var transitionId = nextTransitionId();
+        var styles = captureTransitionStyles(element);
+        setTransitionStyle(element, "1", "0");
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                if (!isCurrentTransition(transitionId)) {
+                    restoreTransitionStyles(element, styles);
+                    return;
+                }
+                setTransitionStyle(element, "0", TRANSITION_TRANSLATE_Y);
+                setTimeout(function() {
+                    if (!isCurrentTransition(transitionId)) {
+                        return;
+                    }
+                    after(transitionId);
+                }, TRANSITION_DURATION_MS);
+            });
+        });
+        return transitionId;
+    }
+
+    function animateIn(element, transitionId, after) {
+        var styles = captureTransitionStyles(element);
+        setTransitionStyle(element, "0", TRANSITION_TRANSLATE_Y);
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                if (!isCurrentTransition(transitionId)) {
+                    restoreTransitionStyles(element, styles);
+                    return;
+                }
+                setTransitionStyle(element, "1", "0");
+                setTimeout(function() {
+                    restoreTransitionStyles(element, styles);
+                    if (after) {
+                        after();
+                    }
+                }, TRANSITION_DURATION_MS);
+            });
+        });
     }
 
     function enable() {
@@ -443,10 +547,17 @@
                 "</main>"
             ].join("");
 
-            document.body.innerHTML = html;
-            restoreAttributes(document.body, {"data-harmonic-reader": "true"});
-            document.title = title || originalTitle;
-            window.scrollTo(0, 0);
+            animateOut(document.body, function(transitionId) {
+                var state = window[STATE_KEY];
+                if (!state || !state.enabled || !isCurrentTransition(transitionId)) {
+                    return;
+                }
+                document.body.innerHTML = html;
+                restoreAttributes(document.body, {"data-harmonic-reader": "true"});
+                document.title = title || originalTitle;
+                window.scrollTo(0, 0);
+                animateIn(document.getElementById("harmonic-reader-mode") || document.body, transitionId);
+            });
             return "enabled";
         } catch (e) {
             return "error";
@@ -459,16 +570,24 @@
             if (!state || !state.enabled || !document.body) {
                 return "disabled";
             }
-            document.body.innerHTML = state.bodyHtml;
-            restoreAttributes(document.body, state.bodyAttrs || {});
-            restoreAttributes(document.documentElement, state.htmlAttrs || {});
-            document.title = state.title || document.title;
-            var scrollX = state.scrollX || 0;
-            var scrollY = state.scrollY || 0;
-            window[STATE_KEY] = null;
-            setTimeout(function() {
-                window.scrollTo(scrollX, scrollY);
-            }, 0);
+            var readerElement = document.getElementById("harmonic-reader-mode") || document.body;
+            animateOut(readerElement, function(transitionId) {
+                var currentState = window[STATE_KEY];
+                if (!currentState || !currentState.enabled || !isCurrentTransition(transitionId)) {
+                    return;
+                }
+                document.body.innerHTML = currentState.bodyHtml;
+                restoreAttributes(document.body, currentState.bodyAttrs || {});
+                restoreAttributes(document.documentElement, currentState.htmlAttrs || {});
+                document.title = currentState.title || document.title;
+                var scrollX = currentState.scrollX || 0;
+                var scrollY = currentState.scrollY || 0;
+                window[STATE_KEY] = null;
+                setTimeout(function() {
+                    window.scrollTo(scrollX, scrollY);
+                }, 0);
+                animateIn(document.body, transitionId);
+            });
             return "disabled";
         } catch (e) {
             return "error";
@@ -484,7 +603,7 @@
     }
 
     window.HarmonicReaderMode = {
-        version: 3,
+        version: 4,
         setTheme: setTheme,
         isAvailable: isAvailable,
         enable: enable,

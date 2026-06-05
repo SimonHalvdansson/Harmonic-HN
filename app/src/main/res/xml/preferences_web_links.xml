@@ -40,6 +40,21 @@
         <SwitchPreferenceCompat
             app:dependency="pref_webview"
             app:singleLineTitle="false"
+            app:key="pref_webview_adblock"
+            app:defaultValue="false"
+            app:summary="May cause some sites to stop working and has a small performance penalty"
+            app:icon="@drawable/ic_action_block"
+            app:title="Block WebView ads" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="Reader mode"
+        android:layout="@layout/preference_category">
+
+        <SwitchPreferenceCompat
+            app:dependency="pref_webview"
+            app:singleLineTitle="false"
             app:key="pref_webview_reader_mode_enabled"
             app:defaultValue="true"
             app:icon="@drawable/ic_action_reader_mode"
@@ -53,14 +68,19 @@
             app:icon="@drawable/ic_action_reader_mode"
             app:title="Reader mode on by default" />
 
-        <SwitchPreferenceCompat
-            app:dependency="pref_webview"
+        <Preference
+            app:dependency="pref_webview_reader_mode_enabled"
             app:singleLineTitle="false"
-            app:key="pref_webview_adblock"
-            app:defaultValue="false"
-            app:summary="May cause some sites to stop working and has a small performance penalty"
-            app:icon="@drawable/ic_action_block"
-            app:title="Block WebView ads" />
+            app:key="pref_webview_reader_mode_font"
+            app:icon="@drawable/ic_action_font"
+            app:title="Font" />
+
+        <com.simon.harmonichackernews.settings.ReaderModeFontSizePreference
+            app:dependency="pref_webview_reader_mode_enabled"
+            app:singleLineTitle="false"
+            app:key="pref_webview_reader_mode_font_size"
+            app:defaultValue="18"
+            app:title="Text size" />
 
     </PreferenceCategory>
 
