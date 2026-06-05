@@ -542,16 +542,29 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     private void setStoryTitleText(StoryViewHolder storyViewHolder, Story story, boolean useClickedEffects) {
         if (!TextUtils.isEmpty(story.pdfTitle)) {
-            SpannableStringBuilder sb = new SpannableStringBuilder(story.pdfTitle + " ");
-            ImageSpan imageSpan = new ImageSpan(
+            storyViewHolder.titleView.setText(getTitleWithBadge(
                     storyViewHolder.itemView.getContext(),
-                    useClickedEffects ? R.drawable.ic_action_pdf_clicked : R.drawable.ic_action_pdf);
-            sb.setSpan(imageSpan, sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            storyViewHolder.titleView.setText(sb);
+                    story.pdfTitle,
+                    useClickedEffects ? R.drawable.ic_action_pdf_clicked : R.drawable.ic_action_pdf));
+            return;
+        }
+
+        if (!TextUtils.isEmpty(story.videoTitle)) {
+            storyViewHolder.titleView.setText(getTitleWithBadge(
+                    storyViewHolder.itemView.getContext(),
+                    story.videoTitle,
+                    useClickedEffects ? R.drawable.ic_action_video_clicked : R.drawable.ic_action_video));
             return;
         }
 
         storyViewHolder.titleView.setText(story.title);
+    }
+
+    private SpannableStringBuilder getTitleWithBadge(Context context, String title, int badgeDrawable) {
+        SpannableStringBuilder sb = new SpannableStringBuilder(title + " ");
+        ImageSpan imageSpan = new ImageSpan(context, badgeDrawable);
+        sb.setSpan(imageSpan, sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return sb;
     }
 
     private void bindPreviewImage(final StoryViewHolder storyViewHolder, final Story story) {

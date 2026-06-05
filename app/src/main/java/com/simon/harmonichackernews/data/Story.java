@@ -17,6 +17,7 @@ public class Story {
     public int time;
     public String title;
     public String pdfTitle;
+    public String videoTitle;
     public String url;
     public transient String previewImageUrl;
     public transient boolean previewImageUrlLoaded;
@@ -101,6 +102,7 @@ public class Story {
         Bundle bundle = new Bundle();
         bundle.putString(CommentsFragment.EXTRA_TITLE, title);
         bundle.putString(CommentsFragment.EXTRA_PDF_TITLE, pdfTitle);
+        bundle.putString(CommentsFragment.EXTRA_VIDEO_TITLE, videoTitle);
         bundle.putString(CommentsFragment.EXTRA_BY, by);
         bundle.putString(CommentsFragment.EXTRA_URL, url);
         bundle.putString(CommentsFragment.EXTRA_PREVIEW_IMAGE_URL, previewImageUrl);

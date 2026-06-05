@@ -295,11 +295,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
 
             if (!TextUtils.isEmpty(story.pdfTitle)) {
-                SpannableStringBuilder sb = new SpannableStringBuilder(story.pdfTitle + " ");
-                ImageSpan imageSpan = new ImageSpan(ctx, R.drawable.ic_action_pdf_large);
-                sb.setSpan(imageSpan, story.pdfTitle.length(), story.pdfTitle.length() + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-                headerViewHolder.titleView.setText(sb);
+                headerViewHolder.titleView.setText(getTitleWithBadge(ctx, story.pdfTitle, R.drawable.ic_action_pdf_large));
+            } else if (!TextUtils.isEmpty(story.videoTitle)) {
+                headerViewHolder.titleView.setText(getTitleWithBadge(ctx, story.videoTitle, R.drawable.ic_action_video_large));
             } else {
                 headerViewHolder.titleView.setText(story.title);
             }
@@ -649,13 +647,19 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     private void bindHeaderTitle(HeaderViewHolder headerViewHolder, Context ctx) {
         if (!TextUtils.isEmpty(story.pdfTitle)) {
-            SpannableStringBuilder sb = new SpannableStringBuilder(story.pdfTitle + " ");
-            ImageSpan imageSpan = new ImageSpan(ctx, R.drawable.ic_action_pdf_large);
-            sb.setSpan(imageSpan, story.pdfTitle.length(), story.pdfTitle.length() + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            headerViewHolder.titleView.setText(sb);
+            headerViewHolder.titleView.setText(getTitleWithBadge(ctx, story.pdfTitle, R.drawable.ic_action_pdf_large));
+        } else if (!TextUtils.isEmpty(story.videoTitle)) {
+            headerViewHolder.titleView.setText(getTitleWithBadge(ctx, story.videoTitle, R.drawable.ic_action_video_large));
         } else {
             headerViewHolder.titleView.setText(story.title);
         }
+    }
+
+    private SpannableStringBuilder getTitleWithBadge(Context ctx, String title, int badgeDrawable) {
+        SpannableStringBuilder sb = new SpannableStringBuilder(title + " ");
+        ImageSpan imageSpan = new ImageSpan(ctx, badgeDrawable);
+        sb.setSpan(imageSpan, title.length(), title.length() + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return sb;
     }
 
     private void bindHeaderMeta(HeaderViewHolder headerViewHolder, Context ctx) {

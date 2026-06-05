@@ -83,7 +83,7 @@ public class JSONParser {
                 }
             }
 
-            updatePdfProperties(story);
+            updateTitleBadgeProperties(story);
 
             stories.add(story);
         }
@@ -157,7 +157,7 @@ public class JSONParser {
             updateStoryText(story, jsonObject.getString("text"));
         }
 
-        updatePdfProperties(story);
+        updateTitleBadgeProperties(story);
 
         story.loaded = true;
         story.loadingFailed = false;
@@ -211,21 +211,44 @@ public class JSONParser {
         return true;
     }
 
-    public static void updatePdfProperties(Story story) {
+    public static void updateTitleBadgeProperties(Story story) {
         if (story == null || TextUtils.isEmpty(story.url) || TextUtils.isEmpty(story.title)) {
             return;
         }
-        if (story.url.endsWith(".pdf") || story.title.endsWith("[pdf]") || story.title.endsWith("(pdf)")) {
-            story.pdfTitle = story.title;
 
-            String[] suffixes = {" [pdf]", "[pdf]", " (pdf)", "(pdf)"};
-            for (String suffix : suffixes) {
-                if (story.pdfTitle.endsWith(suffix)) {
-                    story.pdfTitle = story.pdfTitle.substring(0, story.pdfTitle.length() - suffix.length());
-                    break;
-                }
+        story.pdfTitle = null;
+        story.videoTitle = null;
+
+        String[] pdfSuffixes = {" [pdf]", "[pdf]", " (pdf)", "(pdf)"};
+        String[] videoSuffixes = {" [video]", "[video]", " (video)", "(video)"};
+        if (endsWithIgnoreCase(story.url, ".pdf") || hasTitleSuffix(story.title, pdfSuffixes)) {
+            story.pdfTitle = stripTitleSuffix(story.title, pdfSuffixes);
+        } else if (hasTitleSuffix(story.title, videoSuffixes)) {
+            story.videoTitle = stripTitleSuffix(story.title, videoSuffixes);
+        }
+    }
+
+    private static boolean hasTitleSuffix(String title, String[] suffixes) {
+        for (String suffix : suffixes) {
+            if (endsWithIgnoreCase(title, suffix)) {
+                return true;
             }
         }
+        return false;
+    }
+
+    private static String stripTitleSuffix(String title, String[] suffixes) {
+        for (String suffix : suffixes) {
+            if (endsWithIgnoreCase(title, suffix)) {
+                return title.substring(0, title.length() - suffix.length());
+            }
+        }
+        return title;
+    }
+
+    private static boolean endsWithIgnoreCase(String value, String suffix) {
+        return value.length() >= suffix.length()
+                && value.regionMatches(true, value.length() - suffix.length(), suffix, 0, suffix.length());
     }
 
     public static boolean updateStoryInformation(Story story, JSONObject item, boolean forceRefresh, int oldCommentCount, int newCommentCount) throws JSONException {
@@ -264,7 +287,7 @@ public class JSONParser {
                 story.url = "https://news.ycombinator.com/item?id=" + story.id;
             }
 
-            updatePdfProperties(story);
+            updateTitleBadgeProperties(story);
         }
 
         if (item.has("text") && !item.getString("text").equals(JSON_NULL_LITERAL)) {
@@ -562,7 +585,7 @@ public class JSONParser {
                     story.url = "https://news.ycombinator.com/item?id=" + story.id;
                 }
 
-                updatePdfProperties(story);
+                updateTitleBadgeProperties(story);
             }
 
             if (!TextUtils.isEmpty(text) && !JSON_NULL_LITERAL.equals(text)) {
@@ -627,7 +650,7 @@ public class JSONParser {
                 story.url = "https://news.ycombinator.com/item?id=" + story.id;
             }
 
-            updatePdfProperties(story);
+            updateTitleBadgeProperties(story);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -766,7 +789,7 @@ public class JSONParser {
                 updateStoryText(story, jsonObject.getString("text"));
             }
 
-            updatePdfProperties(story);
+            updateTitleBadgeProperties(story);
             
             story.loaded = true;
             story.loadingFailed = false;

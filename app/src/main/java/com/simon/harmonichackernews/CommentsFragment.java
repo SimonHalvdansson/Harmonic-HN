@@ -114,6 +114,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     public final static String EXTRA_TITLE = "com.simon.harmonichackernews.EXTRA_TITLE";
     public final static String EXTRA_PDF_TITLE = "com.simon.harmonichackernews.EXTRA_PDF_TITLE";
+    public final static String EXTRA_VIDEO_TITLE = "com.simon.harmonichackernews.EXTRA_VIDEO_TITLE";
     public final static String EXTRA_BY = "com.simon.harmonichackernews.EXTRA_BY";
     public final static String EXTRA_URL = "com.simon.harmonichackernews.EXTRA_URL";
     public final static String EXTRA_PREVIEW_IMAGE_URL = "com.simon.harmonichackernews.EXTRA_PREVIEW_IMAGE_URL";
@@ -272,6 +273,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (bundle != null && bundle.getString(EXTRA_TITLE) != null && bundle.getString(EXTRA_BY) != null) {
             story.title = bundle.getString(EXTRA_TITLE);
             story.pdfTitle = bundle.getString(EXTRA_PDF_TITLE, null);
+            story.videoTitle = bundle.getString(EXTRA_VIDEO_TITLE, null);
             story.by = bundle.getString(EXTRA_BY);
             story.url = bundle.getString(EXTRA_URL);
             story.previewImageUrl = bundle.getString(EXTRA_PREVIEW_IMAGE_URL);
