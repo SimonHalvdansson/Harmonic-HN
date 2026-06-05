@@ -1,10 +1,31 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 1) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 2) {
         return;
     }
 
     var STATE_KEY = "__harmonicReaderModeState";
+    var THEME_KEY = "__harmonicReaderModeTheme";
     var MIN_ARTICLE_TEXT_LENGTH = 250;
+    var DEFAULT_LIGHT_READER_THEME = {
+        isLight: true,
+        backgroundColor: "#fafafa",
+        textColor: "#202124",
+        headingColor: "#202124",
+        secondaryTextColor: "#5f6368",
+        linkColor: "#1a73e8",
+        dividerColor: "#dadce0",
+        codeBackgroundColor: "#f0f2f4"
+    };
+    var DEFAULT_DARK_READER_THEME = {
+        isLight: false,
+        backgroundColor: "#151617",
+        textColor: "#e8eaed",
+        headingColor: "#e8eaed",
+        secondaryTextColor: "#aeb4ba",
+        linkColor: "#8ab4f8",
+        dividerColor: "#3d4248",
+        codeBackgroundColor: "#222528"
+    };
     var POSITIVE_CLASS_RE = /article|body|content|entry|hentry|main|page|post|read|story|text/i;
     var NEGATIVE_CLASS_RE = /ad-|ads|advert|banner|breadcrumb|comment|combx|contact|cookie|footer|masthead|menu|meta|modal|nav|outbrain|promo|related|scroll|share|shoutbox|sidebar|sponsor|subscribe|tag|tool|widget/i;
     var REMOVE_SELECTOR = [
@@ -320,28 +341,52 @@
         }
     }
 
+    function sanitizeColor(value, fallback) {
+        return /^#[0-9a-f]{6}$/i.test(String(value || "")) ? value : fallback;
+    }
+
+    function getReaderTheme() {
+        var configured = window[THEME_KEY] || {};
+        var fallback = configured.isLight === false ? DEFAULT_DARK_READER_THEME : DEFAULT_LIGHT_READER_THEME;
+        return {
+            isLight: configured.isLight !== false,
+            backgroundColor: sanitizeColor(configured.backgroundColor, fallback.backgroundColor),
+            textColor: sanitizeColor(configured.textColor, fallback.textColor),
+            headingColor: sanitizeColor(configured.headingColor, fallback.headingColor),
+            secondaryTextColor: sanitizeColor(configured.secondaryTextColor, fallback.secondaryTextColor),
+            linkColor: sanitizeColor(configured.linkColor, fallback.linkColor),
+            dividerColor: sanitizeColor(configured.dividerColor, fallback.dividerColor),
+            codeBackgroundColor: sanitizeColor(configured.codeBackgroundColor, fallback.codeBackgroundColor)
+        };
+    }
+
+    function setTheme(theme) {
+        window[THEME_KEY] = theme || {};
+        return "theme_set";
+    }
+
     function readerStyles() {
+        var theme = getReaderTheme();
         return [
             "<style id=\"harmonic-reader-style\">",
-            "body[data-harmonic-reader='true']{margin:0!important;background:#fafafa!important;color:#202124!important;font-family:Georgia,'Times New Roman',serif!important;line-height:1.68!important;font-size:18px!important;-webkit-text-size-adjust:100%!important;}",
+            "body[data-harmonic-reader='true']{margin:0!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;font-family:Georgia,'Times New Roman',serif!important;line-height:1.68!important;font-size:18px!important;-webkit-text-size-adjust:100%!important;}",
             "#harmonic-reader-mode{box-sizing:border-box;max-width:760px;margin:0 auto;padding:32px 20px 96px!important;}",
             "#harmonic-reader-mode *{box-sizing:border-box;max-width:100%;}",
-            "#harmonic-reader-kicker{font:600 13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;letter-spacing:.04em!important;text-transform:uppercase!important;color:#8a4b00!important;margin-bottom:14px!important;}",
-            "#harmonic-reader-mode h1{font:700 32px/1.15 Georgia,'Times New Roman',serif!important;margin:0 0 12px!important;color:inherit!important;}",
-            "#harmonic-reader-byline{font:500 15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;color:#5f6368!important;margin:0 0 28px!important;}",
+            "#harmonic-reader-kicker{font:600 13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;letter-spacing:.04em!important;text-transform:uppercase!important;color:" + theme.linkColor + "!important;margin-bottom:14px!important;}",
+            "#harmonic-reader-mode h1{font:700 32px/1.15 Georgia,'Times New Roman',serif!important;margin:0 0 12px!important;color:" + theme.headingColor + "!important;}",
+            "#harmonic-reader-byline{font:500 15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;color:" + theme.secondaryTextColor + "!important;margin:0 0 28px!important;}",
             "#harmonic-reader-article p,#harmonic-reader-article li{font-size:18px!important;line-height:1.68!important;}",
             "#harmonic-reader-article p{margin:0 0 1.05em!important;}",
             "#harmonic-reader-article h2,#harmonic-reader-article h3,#harmonic-reader-article h4{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;line-height:1.25!important;margin:1.65em 0 .6em!important;color:inherit!important;}",
-            "#harmonic-reader-article a{color:#b35a00!important;text-decoration:underline!important;text-decoration-thickness:1px!important;text-underline-offset:3px!important;}",
+            "#harmonic-reader-article a{color:" + theme.linkColor + "!important;text-decoration:underline!important;text-decoration-thickness:1px!important;text-underline-offset:3px!important;}",
             "#harmonic-reader-article img,#harmonic-reader-article video{display:block;height:auto!important;margin:1.2em auto!important;border-radius:4px!important;}",
             "#harmonic-reader-article figure{margin:1.4em 0!important;}",
-            "#harmonic-reader-article figcaption{font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;color:#6f7478!important;margin-top:.5em!important;}",
-            "#harmonic-reader-article blockquote{border-left:3px solid #d9822b!important;margin:1.3em 0!important;padding:.1em 0 .1em 1em!important;color:#3f454a!important;}",
-            "#harmonic-reader-article pre{overflow-x:auto!important;background:#f0f2f4!important;border-radius:4px!important;padding:14px!important;font-size:14px!important;line-height:1.5!important;}",
+            "#harmonic-reader-article figcaption{font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;color:" + theme.secondaryTextColor + "!important;margin-top:.5em!important;}",
+            "#harmonic-reader-article blockquote{border-left:3px solid " + theme.linkColor + "!important;margin:1.3em 0!important;padding:.1em 0 .1em 1em!important;color:" + theme.textColor + "!important;}",
+            "#harmonic-reader-article pre{overflow-x:auto!important;background:" + theme.codeBackgroundColor + "!important;border-radius:4px!important;padding:14px!important;font-size:14px!important;line-height:1.5!important;}",
             "#harmonic-reader-article code{font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace!important;font-size:.9em!important;}",
             "#harmonic-reader-article table{border-collapse:collapse!important;display:block!important;overflow-x:auto!important;margin:1.2em 0!important;}",
-            "#harmonic-reader-article th,#harmonic-reader-article td{border:1px solid #dadce0!important;padding:8px!important;}",
-            "@media (prefers-color-scheme:dark){body[data-harmonic-reader='true']{background:#151617!important;color:#e8eaed!important;}#harmonic-reader-kicker{color:#ffb15f!important;}#harmonic-reader-byline{color:#aeb4ba!important;}#harmonic-reader-article a{color:#ffb15f!important;}#harmonic-reader-article blockquote{color:#d5d9de!important;border-left-color:#ffb15f!important;}#harmonic-reader-article pre{background:#222528!important;}#harmonic-reader-article th,#harmonic-reader-article td{border-color:#3d4248!important;}}",
+            "#harmonic-reader-article th,#harmonic-reader-article td{border:1px solid " + theme.dividerColor + "!important;padding:8px!important;}",
             "</style>"
         ].join("");
     }
@@ -431,7 +476,8 @@
     }
 
     window.HarmonicReaderMode = {
-        version: 1,
+        version: 2,
+        setTheme: setTheme,
         enable: enable,
         disable: disable
     };

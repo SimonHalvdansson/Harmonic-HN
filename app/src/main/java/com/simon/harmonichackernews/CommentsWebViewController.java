@@ -39,6 +39,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -48,6 +49,7 @@ import androidx.webkit.WebViewFeature;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import com.simon.harmonichackernews.data.Story;
@@ -65,6 +67,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 import okhttp3.Call;
 
@@ -365,7 +368,9 @@ class CommentsWebViewController {
             return;
         }
 
-        String command = script + "\nHarmonicReaderMode." + (enable ? "enable" : "disable") + "();";
+        String command = script
+                + "\nHarmonicReaderMode.setTheme(" + getReaderModeThemeJson(context) + ");"
+                + "\nHarmonicReaderMode." + (enable ? "enable" : "disable") + "();";
         webView.evaluateJavascript(command, result -> {
             Context callbackContext = fragment.getContext();
             if (callbackContext == null || webView == null || fragment.getView() == null) {
@@ -432,6 +437,40 @@ class CommentsWebViewController {
             normalized = normalized.substring(1, normalized.length() - 1);
         }
         return normalized;
+    }
+
+    private String getReaderModeThemeJson(Context context) {
+        int backgroundColor = Color.TRANSPARENT;
+        try {
+            backgroundColor = ContextCompat.getColor(context, ThemeUtils.getBackgroundColorResource(context));
+        } catch (Exception ignored) {
+        }
+        if (backgroundColor == Color.TRANSPARENT) {
+            backgroundColor = MaterialColors.getColor(context, android.R.attr.colorBackground, Color.WHITE);
+        }
+
+        boolean isLightMode = ThemeUtils.isLightMode(context);
+        int linkColor = MaterialColors.getColor(context, com.google.android.material.R.attr.colorSecondary, Color.rgb(26, 115, 232));
+        int textColor = MaterialColors.getColor(context, R.attr.textColorDefault, isLightMode ? Color.rgb(32, 33, 36) : Color.rgb(232, 234, 237));
+        int headingColor = MaterialColors.getColor(context, R.attr.storyColorNormal, textColor);
+        int secondaryTextColor = MaterialColors.getColor(context, R.attr.secondaryTextColor, isLightMode ? Color.rgb(95, 99, 104) : Color.rgb(174, 180, 186));
+        int dividerColor = MaterialColors.getColor(context, R.attr.commentDividerColor, isLightMode ? Color.rgb(218, 220, 224) : Color.rgb(61, 66, 72));
+        int codeBackgroundColor = MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurfaceContainerHigh, backgroundColor);
+
+        return String.format(Locale.US,
+                "{\"isLight\":%s,\"backgroundColor\":\"%s\",\"textColor\":\"%s\",\"headingColor\":\"%s\",\"secondaryTextColor\":\"%s\",\"linkColor\":\"%s\",\"dividerColor\":\"%s\",\"codeBackgroundColor\":\"%s\"}",
+                isLightMode ? "true" : "false",
+                colorToCss(backgroundColor),
+                colorToCss(textColor),
+                colorToCss(headingColor),
+                colorToCss(secondaryTextColor),
+                colorToCss(linkColor),
+                colorToCss(dividerColor),
+                colorToCss(codeBackgroundColor));
+    }
+
+    private String colorToCss(int color) {
+        return String.format(Locale.US, "#%06X", 0xFFFFFF & color);
     }
 
     void toggleDarkMode() {

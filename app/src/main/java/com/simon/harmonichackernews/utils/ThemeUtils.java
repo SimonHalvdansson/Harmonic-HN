@@ -138,6 +138,10 @@ public class ThemeUtils {
         return isDarkMode(ctx, theme);
     }
 
+    public static boolean isLightMode(Context ctx) {
+        return !isDarkMode(ctx);
+    }
+
     public static boolean uiModeNight(Context ctx) {
         int currentNightMode = ctx.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         return currentNightMode == Configuration.UI_MODE_NIGHT_YES;
