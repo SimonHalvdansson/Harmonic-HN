@@ -78,6 +78,8 @@ import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.databinding.CommentActionOverlayBinding;
+import com.simon.harmonichackernews.databinding.FragmentCommentsBinding;
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController;
 import com.simon.harmonichackernews.network.AlgoliaFallbackManager;
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
@@ -186,6 +188,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private RequestQueue queue;
     private final Object requestTag = new Object();
     private CommentsRecyclerViewAdapter adapter;
+    private FragmentCommentsBinding binding;
     private SwipeRefreshLayout swipeRefreshLayout;
     private RecyclerView recyclerView;
     private RecyclerView recyclerViewSwipe;
@@ -229,6 +232,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int scrollToCommentId = -1;
     private boolean commentsByOpFilterActive = false;
     private FrameLayout commentActionOverlay;
+    private CommentActionOverlayBinding commentActionOverlayBinding;
     private MaterialCardView commentActionCard;
     private View commentActionSourceView;
     private int commentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
@@ -366,6 +370,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        binding = FragmentCommentsBinding.bind(view);
 
         if (savedInstanceState != null) {
             pendingCommentActionCommentId = savedInstanceState.getInt(STATE_COMMENT_ACTION_COMMENT_ID, NO_COMMENT_ACTION_COMMENT_ID);
@@ -393,11 +398,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         boolean blockAds = SettingsUtils.shouldBlockAds(getContext()) && !adBlockDisabledForSession;
         closeWebViewOnBack = SettingsUtils.shouldCloseWebViewOnBack(getContext());
 
-        swipeRefreshLayout = view.findViewById(R.id.comments_swipe_refresh);
-        recyclerViewRegular = view.findViewById(R.id.comments_recyclerview);
-        recyclerViewSwipe = view.findViewById(R.id.comments_recyclerview_swipe);
-        bottomSheet = view.findViewById(R.id.comments_bottom_sheet);
-        progressIndicator = view.findViewById(R.id.webview_progress);
+        swipeRefreshLayout = binding.commentsSwipeRefresh;
+        recyclerViewRegular = binding.commentsRecyclerview;
+        recyclerViewSwipe = binding.commentsRecyclerviewSwipe;
+        bottomSheet = binding.commentsBottomSheet;
+        progressIndicator = binding.webviewProgress;
         linkPreviewController = new LinkPreviewController(story, CommentsFragment.this::onLinkPreviewChanged);
         webViewController = new CommentsWebViewController(this, story, linkPreviewController, new CommentsWebViewController.Callbacks() {
             @Override
@@ -419,12 +424,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             }
         });
-        webViewController.bindViews(view, bottomSheet, swipeRefreshLayout, progressIndicator);
+        webViewController.bindViews(binding, bottomSheet, swipeRefreshLayout, progressIndicator);
         webViewController.configure(showWebsite, integratedWebview, preloadWebview, preloadWebviewMinimumBattery, matchWebviewTheme, readerModeDefault, blockAds);
 
         if (story.title == null) {
             // Empty view for tablets
-            view.findViewById(R.id.comments_empty).setVisibility(View.VISIBLE);
+            binding.commentsEmpty.setVisibility(View.VISIBLE);
             bottomSheet.setVisibility(View.GONE);
             webViewController.setContainerVisibility(View.GONE);
 
@@ -445,7 +450,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     bottomSheet.setTranslationY(0f);
                     try {
                         setSheetButtonsContentAlpha(1f);
-                        adapter.bottomSheet.findViewById(R.id.comments_header).setAlpha(0f);
+                        adapter.setBoundHeaderAlpha(0f);
                     } catch (Exception ignored) {
 
                     }
@@ -463,7 +468,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
                     try {
                         setSheetButtonsContentAlpha(1f - backEvent.getProgress() * 0.7f);
-                        adapter.bottomSheet.findViewById(R.id.comments_header).setAlpha(backEvent.getProgress()*0.7f);
+                        adapter.setBoundHeaderAlpha(backEvent.getProgress() * 0.7f);
                     } catch (Exception ignored) {
 
                     }
@@ -481,7 +486,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
                     try {
                         setSheetButtonsContentAlpha(1f - backEvent.getProgress() * 0.7f);
-                        adapter.bottomSheet.findViewById(R.id.comments_header).setAlpha(backEvent.getProgress()*0.7f);
+                        adapter.setBoundHeaderAlpha(backEvent.getProgress() * 0.7f);
                     } catch (Exception ignored) {
 
                     }
@@ -560,7 +565,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 int rightPadding = Math.max(Math.max(cutoutInsets.right, systemInsets.right), contentPaddingRight);
                 bottomSheet.setPadding(leftPadding, 0, rightPadding, 0);
 
-                View emptyView = view.findViewById(R.id.comments_empty);
+                View emptyView = binding.commentsEmpty;
                 emptyView.setPadding(leftPadding, emptyView.getPaddingTop(), rightPadding, emptyView.getPaddingBottom());
 
                 webViewController.setContainerPadding(0, systemInsets.top, 0, 0);
@@ -584,7 +589,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             swipeRefreshLayout.setNestedScrollingEnabled(true);
         }
 
-        progressIndicator = view.findViewById(R.id.webview_progress);
+        progressIndicator = binding.webviewProgress;
 
         boolean shouldInitializeWebViewBeforeFirstDraw = integratedWebview && showWebsite;
         boolean shouldInitializeWebViewAfterFirstDraw = integratedWebview && !showWebsite;
@@ -606,7 +611,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         username = AccountUtils.getAccountUsername(getContext());
 
-        scrollNavigation = view.findViewById(R.id.comments_scroll_navigation);
+        scrollNavigation = binding.commentsScrollNavigation;
         scrollNavigationBaseBottomMargin = ((FrameLayout.LayoutParams) scrollNavigation.getLayoutParams()).bottomMargin;
         ViewCompat.setOnApplyWindowInsetsListener(scrollNavigation, new OnApplyWindowInsetsListener() {
             @NonNull
@@ -625,7 +630,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
         ViewUtils.requestApplyInsetsWhenAttached(scrollNavigation);
 
-        searchScrollTopFab = view.findViewById(R.id.comments_search_scroll_top_fab);
+        searchScrollTopFab = binding.commentsSearchScrollTopFab;
         FrameLayout.LayoutParams searchScrollTopFabParams = (FrameLayout.LayoutParams) searchScrollTopFab.getLayoutParams();
         searchScrollTopFabBaseBottomMargin = searchScrollTopFabParams.bottomMargin;
         ViewCompat.setOnApplyWindowInsetsListener(searchScrollTopFab, new OnApplyWindowInsetsListener() {
@@ -658,9 +663,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         showCommentsScrollbar = SettingsUtils.shouldUseCommentsScrollbar(getContext());
         updateNavigationVisibility();
 
-        ImageButton scrollPrev = view.findViewById(R.id.comments_scroll_previous);
-        ImageButton scrollNext = view.findViewById(R.id.comments_scroll_next);
-        ImageView scrollIcon = view.findViewById(R.id.comments_scroll_icon);
+        ImageButton scrollPrev = binding.commentsScrollPrevious;
+        ImageButton scrollNext = binding.commentsScrollNext;
+        ImageView scrollIcon = binding.commentsScrollIcon;
 
         scrollIcon.setOnClickListener(null);
 
@@ -759,20 +764,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void setSheetButtonsContentAlpha(float alpha) {
-        if (adapter == null || adapter.bottomSheet == null) {
+        if (adapter == null) {
             return;
         }
-
-        View sheetButtons = adapter.bottomSheet.findViewById(R.id.comment_sheet_buttons_container);
-        sheetButtons.setAlpha(1f);
-        if (!(sheetButtons instanceof ViewGroup)) {
-            return;
-        }
-
-        ViewGroup sheetButtonsContainer = (ViewGroup) sheetButtons;
-        for (int i = 0; i < sheetButtonsContainer.getChildCount(); i++) {
-            sheetButtonsContainer.getChildAt(i).setAlpha(alpha);
-        }
+        adapter.setBoundSheetButtonsContentAlpha(alpha);
     }
 
     @Override
@@ -1226,19 +1221,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void refreshCommentActionOverlayForConfiguration() {
-        if (commentActionOverlay == null || commentActionCard == null) {
+        if (commentActionOverlay == null || commentActionCard == null || commentActionOverlayBinding == null) {
             return;
         }
 
         commentActionOverlay.post(() -> {
-            if (commentActionOverlay == null || commentActionCard == null) {
+            if (commentActionOverlay == null || commentActionCard == null || commentActionOverlayBinding == null) {
                 return;
             }
 
             configureCommentActionCardWidth(commentActionCard);
             resizeCommentActionDialogScroll();
-            NestedScrollView textScroll = commentActionOverlay.findViewById(R.id.comment_action_text_scroll);
-            HtmlTextView commentText = commentActionOverlay.findViewById(R.id.comment_action_text);
+            NestedScrollView textScroll = commentActionOverlayBinding.commentActionTextScroll;
+            HtmlTextView commentText = commentActionOverlayBinding.commentActionText;
             if (textScroll != null && commentText != null) {
                 ViewGroup.LayoutParams params = textScroll.getLayoutParams();
                 params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
@@ -1476,6 +1471,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     private void clearViewReferences() {
         adapter = null;
+        binding = null;
         swipeRefreshLayout = null;
         recyclerView = null;
         recyclerViewSwipe = null;
@@ -1490,6 +1486,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         progressIndicator = null;
         bottomSheet = null;
         headerSpacer = null;
+        commentActionOverlayBinding = null;
         if (webViewController != null) {
             webViewController.clearViewReferences();
             webViewController = null;
@@ -2458,16 +2455,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.disableCommentATagClick = true;
         }
 
-        commentActionOverlay = (FrameLayout) LayoutInflater.from(ctx)
-                .inflate(R.layout.comment_action_overlay, overlayHost, false);
+        commentActionOverlayBinding = CommentActionOverlayBinding.inflate(LayoutInflater.from(ctx), overlayHost, false);
+        commentActionOverlay = commentActionOverlayBinding.getRoot();
         overlayHost.addView(commentActionOverlay, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         cancelCurrentCommentListTouch(overlayHost);
 
-        View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
-        View content = commentActionOverlay.findViewById(R.id.comment_action_content);
-        commentActionCard = commentActionOverlay.findViewById(R.id.comment_action_card);
+        View scrim = commentActionOverlayBinding.commentActionScrim;
+        View content = commentActionOverlayBinding.commentActionContent;
+        commentActionCard = commentActionOverlayBinding.commentActionCard;
         commentActionCard.setCardBackgroundColor(getCommentActionCardBackgroundColor(ctx));
         commentActionCard.setStrokeWidth(0);
         commentActionCard.setStrokeColor(Color.TRANSPARENT);
@@ -2529,7 +2526,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         boolean oldBookmarked = bookmarksEnabled && Utils.isBookmarked(ctx, comment.id);
         boolean oldFavorited = Utils.isFavorited(ctx, comment.id);
 
-        MaterialButton userButton = commentActionOverlay.findViewById(R.id.comment_action_user);
+        MaterialButton userButton = commentActionOverlayBinding.commentActionUser;
         String userLabel = TextUtils.isEmpty(comment.by) ? "Unknown user" : comment.by;
         if (story != null && TextUtils.equals(story.by, comment.by)) {
             userLabel += " (OP)";
@@ -2541,7 +2538,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         userButton.setOnClickListener(v ->
                 performCommentAction(COMMENT_ACTION_VIEW_USER, comment, oldBookmarked, oldFavorited));
 
-        HtmlTextView commentText = commentActionOverlay.findViewById(R.id.comment_action_text);
+        HtmlTextView commentText = commentActionOverlayBinding.commentActionText;
         String text = Utils.expandShortenedAnchorText(comment.text == null ? "" : comment.text);
         commentText.setHtml(text);
         commentText.setTextIsSelectable(true);
@@ -2551,10 +2548,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
         FontUtils.setCommentTextTypeface(commentText, SettingsUtils.getPreferredCommentTextSize(ctx));
 
-        NestedScrollView textScroll = commentActionOverlay.findViewById(R.id.comment_action_text_scroll);
+        NestedScrollView textScroll = commentActionOverlayBinding.commentActionTextScroll;
         resizeCommentActionTextBox(textScroll, commentText);
 
-        LinearLayout actionsContainer = commentActionOverlay.findViewById(R.id.comment_action_actions);
+        LinearLayout actionsContainer = commentActionOverlayBinding.commentActionActions;
         bindCommentActionButtons(actionsContainer, ctx, comment, bookmarksEnabled, oldBookmarked, oldFavorited);
     }
 
@@ -3100,15 +3097,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Nullable
     private FrameLayout findCommentActionButtonSlot(int action) {
-        if (commentActionOverlay == null) {
+        if (commentActionOverlayBinding == null) {
             return null;
         }
 
-        View actionsContainer = commentActionOverlay.findViewById(R.id.comment_action_actions);
-        if (actionsContainer instanceof ViewGroup) {
-            return findCommentActionButtonSlot((ViewGroup) actionsContainer, action);
-        }
-        return null;
+        return findCommentActionButtonSlot(commentActionOverlayBinding.commentActionActions, action);
     }
 
     @Nullable
@@ -3306,18 +3299,18 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void resizeCommentActionDialogScroll() {
-        if (commentActionOverlay == null) {
+        if (commentActionOverlayBinding == null) {
             return;
         }
 
-        NestedScrollView cardScroll = commentActionOverlay.findViewById(R.id.comment_action_card_scroll);
-        View content = commentActionOverlay.findViewById(R.id.comment_action_content);
+        NestedScrollView cardScroll = commentActionOverlayBinding.commentActionCardScroll;
+        View content = commentActionOverlayBinding.commentActionContent;
         if (cardScroll == null || content == null) {
             return;
         }
 
         cardScroll.post(() -> {
-            if (commentActionOverlay == null) {
+            if (commentActionOverlayBinding == null) {
                 return;
             }
 
@@ -3450,11 +3443,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (commentActionOverlayDismissing) {
             return;
         }
+        if (commentActionOverlayBinding == null || commentActionCard == null) {
+            finishCommentActionOverlayDismiss(afterDismiss);
+            return;
+        }
 
         commentActionOverlayDismissing = true;
         commentActionPredictiveBackActive = false;
         ViewGroup overlayHost = getCommentActionOverlayHost();
-        View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
+        View scrim = commentActionOverlayBinding.commentActionScrim;
         View endView = resolveCommentActionSourceView(commentActionCommentId);
 
         pendingCommentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
@@ -3523,7 +3520,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
 
-        View content = commentActionOverlay.findViewById(R.id.comment_action_content);
+        View content = commentActionOverlayBinding != null ? commentActionOverlayBinding.commentActionContent : null;
         if (content != null) {
             ViewCompat.setOnApplyWindowInsetsListener(content, null);
         }
@@ -3533,6 +3530,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         commentActionOverlay = null;
+        commentActionOverlayBinding = null;
         commentActionCard = null;
         commentActionSourceView = null;
         commentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
@@ -3544,13 +3542,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void startCommentActionPredictiveBack(@NonNull BackEventCompat backEvent) {
-        if (commentActionCard == null || commentActionOverlayDismissing) {
+        if (commentActionCard == null || commentActionOverlayBinding == null || commentActionOverlayDismissing) {
             return;
         }
 
         commentActionPredictiveBackActive = true;
         commentActionCard.animate().cancel();
-        View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
+        View scrim = commentActionOverlayBinding.commentActionScrim;
         if (scrim != null) {
             scrim.animate().cancel();
         }
@@ -3558,7 +3556,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void updateCommentActionPredictiveBack(@NonNull BackEventCompat backEvent) {
-        if (commentActionCard == null || commentActionOverlayDismissing) {
+        if (commentActionCard == null || commentActionOverlayBinding == null || commentActionOverlayDismissing) {
             return;
         }
 
@@ -3580,14 +3578,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         commentActionCard.setTranslationY(Utils.pxFromDpInt(getResources(), COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_Y_DP)
                 * easedProgress);
 
-        View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
+        View scrim = commentActionOverlayBinding.commentActionScrim;
         if (scrim != null) {
             scrim.setAlpha(1f - ((1f - COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCRIM_ALPHA) * easedProgress));
         }
     }
 
     private void cancelCommentActionPredictiveBack() {
-        if (commentActionCard == null || !commentActionPredictiveBackActive) {
+        if (commentActionCard == null || commentActionOverlayBinding == null || !commentActionPredictiveBackActive) {
             return;
         }
 
@@ -3601,7 +3599,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 .setListener(null)
                 .start();
 
-        View scrim = commentActionOverlay.findViewById(R.id.comment_action_scrim);
+        View scrim = commentActionOverlayBinding.commentActionScrim;
         if (scrim != null) {
             scrim.animate()
                     .alpha(1f)
@@ -3611,7 +3609,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void commitCommentActionPredictiveBack() {
-        if (commentActionOverlay == null || commentActionCard == null || commentActionOverlayDismissing) {
+        if (commentActionOverlay == null || commentActionCard == null || commentActionOverlayBinding == null || commentActionOverlayDismissing) {
             return;
         }
 
@@ -3676,8 +3674,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (holder == null) {
                     return null;
                 }
-                View commentCard = holder.itemView.findViewById(R.id.comment_card);
-                return commentCard != null ? commentCard : holder.itemView;
+                if (holder instanceof CommentsRecyclerViewAdapter.ItemViewHolder) {
+                    return ((CommentsRecyclerViewAdapter.ItemViewHolder) holder).getCommentActionSourceView();
+                }
+                return holder.itemView;
             }
         }
         return null;

@@ -26,6 +26,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.search.SearchBar;
 import com.simon.harmonichackernews.adapters.CommentSearchAdapter;
 import com.simon.harmonichackernews.data.Comment;
+import com.simon.harmonichackernews.databinding.CommentsSearchDialogBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 import java.io.Serializable;
@@ -43,6 +44,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
     private TextView matchesText;
     private CommentSearchAdapter adapter;
     private List<Comment> comments;
+    private CommentsSearchDialogBinding binding;
     @Nullable
     private CommentSelectedListener listener;
     private TextWatcher searchWatcher;
@@ -70,14 +72,15 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
 
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
         LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View rootView = inflater.inflate(R.layout.comments_search_dialog, null);
+        binding = CommentsSearchDialogBinding.inflate(inflater);
+        View rootView = binding.getRoot();
 
-        searchBarBackground = rootView.findViewById(R.id.comments_search_bar);
-        searchBar = rootView.findViewById(R.id.comments_search_edittext);
+        searchBarBackground = binding.commentsSearchBar;
+        searchBar = binding.commentsSearchEdittext;
         searchBarBackground.setElevation(0f);
         searchBar.bringToFront();
-        recyclerView = rootView.findViewById(R.id.comments_search_recyclerview);
-        matchesText = rootView.findViewById(R.id.comments_search_matches);
+        recyclerView = binding.commentsSearchRecyclerview;
+        matchesText = binding.commentsSearchMatches;
 
         if (getArguments() != null) {
             comments = (List<Comment>) getArguments().getSerializable(EXTRA_SEARCHABLE_COMMENTS);
@@ -168,6 +171,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         searchBar = null;
         recyclerView = null;
         matchesText = null;
+        binding = null;
         adapter = null;
         super.onDestroyView();
     }

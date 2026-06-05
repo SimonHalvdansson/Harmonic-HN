@@ -15,6 +15,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Comment;
+import com.simon.harmonichackernews.databinding.CommentsItemBinding;
+import com.simon.harmonichackernews.databinding.CommentsItemCardBinding;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -110,15 +112,46 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         public View commentCard;
         public View commentContentContainer;
 
-        public CommentViewHolder(View view) {
+        public CommentViewHolder(CommentsItemBinding binding) {
+            this(
+                    binding.getRoot(),
+                    binding.commentBody,
+                    binding.commentBy,
+                    binding.commentByTime,
+                    binding.commentHiddenCount,
+                    binding.commentHiddenShort,
+                    binding.commentIndentIndicator,
+                    null);
+        }
+
+        public CommentViewHolder(CommentsItemCardBinding binding) {
+            this(
+                    binding.getRoot(),
+                    binding.commentBody,
+                    binding.commentBy,
+                    binding.commentByTime,
+                    binding.commentHiddenCount,
+                    binding.commentHiddenShort,
+                    binding.commentIndentIndicator,
+                    binding.commentCard);
+        }
+
+        private CommentViewHolder(View view,
+                                  HtmlTextView text,
+                                  TextView by,
+                                  TextView byTime,
+                                  TextView hiddenCount,
+                                  TextView hiddenText,
+                                  View indentIndicator,
+                                  View card) {
             super(view);
-            commentText = view.findViewById(R.id.comment_body);
-            commentBy = view.findViewById(R.id.comment_by);
-            commentByTime = view.findViewById(R.id.comment_by_time);
-            commentHiddenCount = view.findViewById(R.id.comment_hidden_count);
-            commentHiddenText = view.findViewById(R.id.comment_hidden_short);
-            commentIndentIndicator = view.findViewById(R.id.comment_indent_indicator);
-            commentCard = view.findViewById(R.id.comment_card);
+            commentText = text;
+            commentBy = by;
+            commentByTime = byTime;
+            commentHiddenCount = hiddenCount;
+            commentHiddenText = hiddenText;
+            commentIndentIndicator = indentIndicator;
+            commentCard = card;
             commentContentContainer = commentText == null ? null : (View) commentText.getParent();
 
             if (commentCard == null) {
@@ -183,11 +216,11 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext()).inflate(
-                viewType == TYPE_COMMENT_CARD ? R.layout.comments_item_card : R.layout.comments_item,
-                parent,
-                false);
-        return new CommentViewHolder(v);
+        LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+        if (viewType == TYPE_COMMENT_CARD) {
+            return new CommentViewHolder(CommentsItemCardBinding.inflate(inflater, parent, false));
+        }
+        return new CommentViewHolder(CommentsItemBinding.inflate(inflater, parent, false));
     }
 
     @Override

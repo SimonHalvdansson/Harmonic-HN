@@ -329,17 +329,29 @@
 
             </LinearLayout>
 
-            <include layout="@layout/link_preview_wikipedia" />
+            <include
+                android:id="@+id/comments_header_wikipedia_container"
+                layout="@layout/link_preview_wikipedia" />
 
-            <include layout="@layout/link_preview_arxiv" />
+            <include
+                android:id="@+id/comments_header_arxiv_container"
+                layout="@layout/link_preview_arxiv" />
 
-            <include layout="@layout/link_preview_github" />
+            <include
+                android:id="@+id/comments_header_github_container"
+                layout="@layout/link_preview_github" />
 
-            <include layout="@layout/link_preview_gitlab" />
+            <include
+                android:id="@+id/comments_header_gitlab_container"
+                layout="@layout/link_preview_gitlab" />
 
-            <include layout="@layout/link_preview_stack_exchange" />
+            <include
+                android:id="@+id/comments_header_stack_exchange_container"
+                layout="@layout/link_preview_stack_exchange" />
 
-            <include layout="@layout/link_preview_nitter" />
+            <include
+                android:id="@+id/comments_header_nitter_container"
+                layout="@layout/link_preview_nitter" />
 
         </LinearLayout>
 

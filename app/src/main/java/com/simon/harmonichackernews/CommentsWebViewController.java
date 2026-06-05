@@ -54,6 +54,8 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.databinding.CommentsWebviewBinding;
+import com.simon.harmonichackernews.databinding.FragmentCommentsBinding;
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController;
 import com.simon.harmonichackernews.utils.FileDownloader;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -168,18 +170,18 @@ class CommentsWebViewController {
         this.callbacks = callbacks;
     }
 
-    void bindViews(@NonNull View rootView, @NonNull LinearLayout bottomSheet, @NonNull SwipeRefreshLayout swipeRefreshLayout, @NonNull LinearProgressIndicator progressIndicator) {
+    void bindViews(@NonNull FragmentCommentsBinding binding, @NonNull LinearLayout bottomSheet, @NonNull SwipeRefreshLayout swipeRefreshLayout, @NonNull LinearProgressIndicator progressIndicator) {
         this.bottomSheet = bottomSheet;
         this.swipeRefreshLayout = swipeRefreshLayout;
         this.progressIndicator = progressIndicator;
         this.progressIndicator.setVisibility(View.GONE);
         this.progressIndicator.setProgress(0);
-        webViewStub = rootView.findViewById(R.id.comments_webview_stub);
-        webView = rootView.findViewById(R.id.comments_webview);
-        downloadButton = rootView.findViewById(R.id.webview_download);
-        webViewContainer = rootView.findViewById(R.id.webview_container);
-        fullscreenContainer = rootView.findViewById(R.id.comments_fullscreen_container);
-        webViewBackdrop = rootView.findViewById(R.id.comments_webview_backdrop);
+        webViewStub = binding.commentsWebviewStub;
+        webView = null;
+        downloadButton = binding.webviewDownload;
+        webViewContainer = binding.webviewContainer;
+        fullscreenContainer = binding.commentsFullscreenContainer;
+        webViewBackdrop = binding.commentsWebviewBackdrop;
     }
 
     void configure(boolean showWebsite, boolean integratedWebview, String preloadWebview, int preloadWebviewMinimumBattery, boolean matchWebviewTheme, boolean readerModeDefault, boolean blockAds) {
@@ -939,11 +941,7 @@ class CommentsWebViewController {
         }
 
         View inflated = webViewStub.inflate();
-        if (inflated instanceof WebView) {
-            webView = (WebView) inflated;
-        } else {
-            webView = inflated.findViewById(R.id.comments_webview);
-        }
+        webView = CommentsWebviewBinding.bind(inflated).getRoot();
         webViewStub = null;
         return webView;
     }

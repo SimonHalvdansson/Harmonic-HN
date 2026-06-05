@@ -49,6 +49,9 @@ import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.databinding.CommentsHeaderBinding;
+import com.simon.harmonichackernews.databinding.CommentsItemBinding;
+import com.simon.harmonichackernews.databinding.CommentsItemCardBinding;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
@@ -221,18 +224,17 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     @NotNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         if (isCommentViewType(viewType)) {
-            View view = LayoutInflater.from(parent.getContext())
-                    .inflate(viewType == TYPE_COMMENT_CARD ? R.layout.comments_item_card : R.layout.comments_item, parent, false);
-            return new ItemViewHolder(view);
+            if (viewType == TYPE_COMMENT_CARD) {
+                return new ItemViewHolder(CommentsItemCardBinding.inflate(inflater, parent, false));
+            }
+            return new ItemViewHolder(CommentsItemBinding.inflate(inflater, parent, false));
         } else if (viewType == TYPE_COLLAPSED) {
             return new RecyclerView.ViewHolder(new View(parent.getContext())) {
             };
         } else {
-            View view = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.comments_header, parent, false);
-
-            return new HeaderViewHolder(view);
+            return new HeaderViewHolder(CommentsHeaderBinding.inflate(inflater, parent, false));
         }
     }
 
@@ -536,6 +538,20 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         headerSlideOffset = sanitizedSlideOffset;
         if (boundHeaderViewHolder != null) {
             applyHeaderBackground(boundHeaderViewHolder);
+        }
+    }
+
+    public void setBoundHeaderAlpha(float alpha) {
+        if (boundHeaderViewHolder != null
+                && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.headerView)) {
+            boundHeaderViewHolder.headerView.setAlpha(alpha);
+        }
+    }
+
+    public void setBoundSheetButtonsContentAlpha(float alpha) {
+        if (boundHeaderViewHolder != null
+                && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.sheetButtonsContainer)) {
+            boundHeaderViewHolder.setSheetButtonsContentAlpha(alpha);
         }
     }
 
@@ -1802,16 +1818,50 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public boolean referenceLinksVisible = false;
         public Comment comment;
 
-        public ItemViewHolder(View view) {
+        public ItemViewHolder(CommentsItemBinding binding) {
+            this(
+                    binding.getRoot(),
+                    binding.commentBody,
+                    binding.commentBy,
+                    binding.commentByTime,
+                    binding.commentHiddenCount,
+                    binding.commentHiddenShort,
+                    binding.commentIndentIndicator,
+                    null,
+                    binding.commentReferenceLinksContainer);
+        }
+
+        public ItemViewHolder(CommentsItemCardBinding binding) {
+            this(
+                    binding.getRoot(),
+                    binding.commentBody,
+                    binding.commentBy,
+                    binding.commentByTime,
+                    binding.commentHiddenCount,
+                    binding.commentHiddenShort,
+                    binding.commentIndentIndicator,
+                    binding.commentCard,
+                    binding.commentReferenceLinksContainer);
+        }
+
+        private ItemViewHolder(View view,
+                               HtmlTextView body,
+                               TextView by,
+                               TextView byTime,
+                               TextView hiddenCount,
+                               TextView hiddenText,
+                               View indentIndicator,
+                               @Nullable View card,
+                               LinearLayout linksContainer) {
             super(view);
-            commentBody = view.findViewById(R.id.comment_body);
-            commentBy = view.findViewById(R.id.comment_by);
-            commentByTime = view.findViewById(R.id.comment_by_time);
-            commentHiddenCount = view.findViewById(R.id.comment_hidden_count);
-            commentHiddenText = view.findViewById(R.id.comment_hidden_short);
-            commentIndentIndicator = view.findViewById(R.id.comment_indent_indicator);
-            commentCard = view.findViewById(R.id.comment_card);
-            referenceLinksContainer = view.findViewById(R.id.comment_reference_links_container);
+            commentBody = body;
+            commentBy = by;
+            commentByTime = byTime;
+            commentHiddenCount = hiddenCount;
+            commentHiddenText = hiddenText;
+            commentIndentIndicator = indentIndicator;
+            commentCard = card;
+            referenceLinksContainer = linksContainer;
 
             itemView.setOnLongClickListener(v -> {
                 longPressed(comment, getAbsoluteAdapterPosition(), getCommentActionSourceView());
@@ -1840,7 +1890,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             });
         }
 
-        private View getCommentActionSourceView() {
+        public View getCommentActionSourceView() {
             return commentCard != null ? commentCard : itemView;
         }
 
@@ -1990,129 +2040,130 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final int headerBasePaddingTop;
         private ValueAnimator refreshPromptHeightAnimator;
 
-        public HeaderViewHolder(View view) {
-            super(view);
+        public HeaderViewHolder(CommentsHeaderBinding binding) {
+            super(binding.getRoot());
+            View view = binding.getRoot();
             mView = view;
-            titleView = view.findViewById(R.id.comments_header_title);
-            linkImage = view.findViewById(R.id.comments_header_link_image);
-            metaContainer = view.findViewById(R.id.comments_header_meta_container);
-            metaVotes = view.findViewById(R.id.comments_header_meta_votes);
-            metaComments = view.findViewById(R.id.comments_header_meta_comments);
-            metaTime = view.findViewById(R.id.comments_header_meta_time);
-            metaBy = view.findViewById(R.id.comments_header_meta_by);
-            metaVotesIcon = view.findViewById(R.id.comments_header_meta_votes_icon);
-            urlView = view.findViewById(R.id.comments_header_url);
-            textView = view.findViewById(R.id.comments_header_text);
-            referenceLinksContainer = view.findViewById(R.id.comments_header_reference_links_container);
-            arxivAbstract = view.findViewById(R.id.comments_header_arxiv_abstract);
-            infoContainer = view.findViewById(R.id.comments_header_info_container);
-            infoHeader = view.findViewById(R.id.comments_header_info_header);
-            linkPreviewLoadingContainer = view.findViewById(R.id.comments_header_link_preview_loading);
-            emptyView = view.findViewById(R.id.comments_header_empty);
-            emptyViewText = view.findViewById(R.id.comments_header_empty_text);
-            headerView = view.findViewById(R.id.comments_header);
+            titleView = binding.commentsHeaderTitle;
+            linkImage = binding.commentsHeaderLinkImage;
+            metaContainer = binding.commentsHeaderMetaContainer;
+            metaVotes = binding.commentsHeaderMetaVotes;
+            metaComments = binding.commentsHeaderMetaComments;
+            metaTime = binding.commentsHeaderMetaTime;
+            metaBy = binding.commentsHeaderMetaBy;
+            metaVotesIcon = binding.commentsHeaderMetaVotesIcon;
+            urlView = binding.commentsHeaderUrl;
+            textView = binding.commentsHeaderText;
+            referenceLinksContainer = binding.commentsHeaderReferenceLinksContainer;
+            arxivAbstract = binding.commentsHeaderArxivContainer.commentsHeaderArxivAbstract;
+            infoContainer = binding.commentsHeaderInfoContainer;
+            infoHeader = binding.commentsHeaderInfoHeader;
+            linkPreviewLoadingContainer = binding.commentsHeaderLinkPreviewLoading;
+            emptyView = binding.commentsHeaderEmpty;
+            emptyViewText = binding.commentsHeaderEmptyText;
+            headerView = binding.commentsHeader;
             headerBasePaddingTop = headerView.getPaddingTop();
-            loadingIndicator = view.findViewById(R.id.comments_header_loading);
-            loadingFailed = view.findViewById(R.id.comments_header_loading_failed);
-            loadingFailedText = view.findViewById(R.id.comments_header_loading_failed_text);
-            serverErrorText = view.findViewById(R.id.comments_header_server_error);
-            refreshPrompt = view.findViewById(R.id.comments_header_refresh_prompt);
-            lastRefreshedText = view.findViewById(R.id.comments_header_last_refreshed);
-            refreshButton = view.findViewById(R.id.comments_header_refresh);
-            favicon = view.findViewById(R.id.comments_header_favicon);
-            previewImage = view.findViewById(R.id.comments_header_story_preview_image);
-            linkInfoContainer = view.findViewById(R.id.comments_header_link_info_container);
-            userButton = view.findViewById(R.id.comments_header_button_user);
-            commentButton = view.findViewById(R.id.comments_header_button_comment);
-            voteButton = view.findViewById(R.id.comments_header_button_vote);
-            favoriteButton = view.findViewById(R.id.comments_header_button_favorite);
-            bookmarkButton = view.findViewById(R.id.comments_header_button_bookmark);
-            shareButton = view.findViewById(R.id.comments_header_button_share);
-            summarizeButtonParent = view.findViewById(R.id.comments_header_button_summarize_parent);
-            summarizeButton = view.findViewById(R.id.comments_header_button_summarize);
-            summaryContainer = view.findViewById(R.id.comments_header_summary_container);
-            summaryContentContainer = view.findViewById(R.id.comments_header_summary_content_container);
-            summaryLoadingContainer = view.findViewById(R.id.comments_header_summary_loading);
-            summary = view.findViewById(R.id.comments_header_summary);
-            summaryTitle = view.findViewById(R.id.comments_header_summary_title);
-            moreButton = view.findViewById(R.id.comments_header_button_more);
-            userButtonParent = view.findViewById(R.id.comments_header_button_user_parent);
-            moreButtonParent = view.findViewById(R.id.comments_header_button_more_parent);
-            commentButtonParent = view.findViewById(R.id.comments_header_button_comment_parent);
-            favoriteButtonParent = view.findViewById(R.id.comments_header_button_favorite_parent);
-            bookmarkButtonParent = view.findViewById(R.id.comments_header_button_bookmark_parent);
-            divider = view.findViewById(R.id.comments_header_divider);
-            tintFade = view.findViewById(R.id.comments_header_tint_fade);
-            retryButton = view.findViewById(R.id.comments_header_retry);
-            openInBrowserButton = view.findViewById(R.id.comments_header_open_in_browser);
-            opFilterContainer = view.findViewById(R.id.comments_header_op_filter);
-            opFilterResetButton = view.findViewById(R.id.comments_header_op_filter_reset);
-            pollLayout = view.findViewById(R.id.comments_header_poll_layout);
-            sheetRefreshButton = view.findViewById(R.id.comments_sheet_layout_refresh);
-            sheetExpandButton = view.findViewById(R.id.comments_sheet_layout_expand);
-            sheetBrowserButton = view.findViewById(R.id.comments_sheet_layout_browser);
-            sheetReaderButton = view.findViewById(R.id.comments_sheet_layout_reader);
-            sheetReaderIcon = view.findViewById(R.id.comments_sheet_reader_icon);
-            sheetInvertButton = view.findViewById(R.id.comments_sheet_layout_invert);
-            sheetHandleContainer = view.findViewById(R.id.comments_sheet_handle_container);
-            sheetButtonsContainer = view.findViewById(R.id.comment_sheet_buttons_container);
-            actionsContainer = view.findViewById(R.id.comments_header_actions_container);
-            spacer = view.findViewById(R.id.comments_header_spacer);
-            githubContainer = view.findViewById(R.id.comments_header_github_container);
-            gitLabContainer = view.findViewById(R.id.comments_header_gitlab_container);
-            arxivContainer = view.findViewById(R.id.comments_header_arxiv_container);
-            stackExchangeContainer = view.findViewById(R.id.comments_header_stack_exchange_container);
-            wikiContainer = view.findViewById(R.id.comments_header_wikipedia_container);
-            wikiSummary = view.findViewById(R.id.comments_header_wikipedia_summary);
-            githubAbout = view.findViewById(R.id.comments_header_github_about);
-            githubWebsite = view.findViewById(R.id.comments_header_github_website);
-            githubLicense = view.findViewById(R.id.comments_header_github_license);
-            githubLanguage = view.findViewById(R.id.comments_header_github_language);
-            githubStars = view.findViewById(R.id.comments_header_github_stars);
-            githubWatching = view.findViewById(R.id.comments_header_github_watching);
-            githubForks = view.findViewById(R.id.comments_header_github_forks);
-            githubWebsiteContainer = view.findViewById(R.id.comments_header_github_website_container);
-            githubLicenseContainer = view.findViewById(R.id.comments_header_github_license_container);
-            githubLanguageContainer = view.findViewById(R.id.comments_header_github_language_container);
-            gitLabDescription = view.findViewById(R.id.comments_header_gitlab_description);
-            gitLabWebsite = view.findViewById(R.id.comments_header_gitlab_website);
-            gitLabVisibility = view.findViewById(R.id.comments_header_gitlab_visibility);
-            gitLabLanguage = view.findViewById(R.id.comments_header_gitlab_language);
-            gitLabStars = view.findViewById(R.id.comments_header_gitlab_stars);
-            gitLabForks = view.findViewById(R.id.comments_header_gitlab_forks);
-            gitLabWebsiteContainer = view.findViewById(R.id.comments_header_gitlab_website_container);
-            gitLabVisibilityContainer = view.findViewById(R.id.comments_header_gitlab_visibility_container);
-            gitLabLanguageContainer = view.findViewById(R.id.comments_header_gitlab_language_container);
-            stackExchangeTitle = view.findViewById(R.id.comments_header_stack_exchange_title);
-            stackExchangeBy = view.findViewById(R.id.comments_header_stack_exchange_by);
-            stackExchangeScore = view.findViewById(R.id.comments_header_stack_exchange_score);
-            stackExchangeAnswers = view.findViewById(R.id.comments_header_stack_exchange_answers);
-            stackExchangeViews = view.findViewById(R.id.comments_header_stack_exchange_views);
-            stackExchangeAnswerState = view.findViewById(R.id.comments_header_stack_exchange_answer_state);
-            stackExchangeAuthor = view.findViewById(R.id.comments_header_stack_exchange_author);
-            stackExchangeTags = view.findViewById(R.id.comments_header_stack_exchange_tags);
-            stackExchangeTagsContainer = view.findViewById(R.id.comments_header_stack_exchange_tags_container);
-            arxivBy = view.findViewById(R.id.comments_header_arxiv_by);
-            arxivDate = view.findViewById(R.id.comments_header_arxiv_date);
-            arxivSubjects = view.findViewById(R.id.comments_header_arxiv_subjects);
-            arxivByIcon = view.findViewById(R.id.comments_header_arxiv_by_icon);
-            arxivDownloadButton = view.findViewById(R.id.comments_header_arxiv_download);
+            loadingIndicator = binding.commentsHeaderLoading;
+            loadingFailed = binding.commentsHeaderLoadingFailed;
+            loadingFailedText = binding.commentsHeaderLoadingFailedText;
+            serverErrorText = binding.commentsHeaderServerError;
+            refreshPrompt = binding.commentsHeaderRefreshPrompt;
+            lastRefreshedText = binding.commentsHeaderLastRefreshed;
+            refreshButton = binding.commentsHeaderRefresh;
+            favicon = binding.commentsHeaderFavicon;
+            previewImage = binding.commentsHeaderStoryPreviewImage;
+            linkInfoContainer = binding.commentsHeaderLinkInfoContainer;
+            userButton = binding.commentsHeaderButtonUser;
+            commentButton = binding.commentsHeaderButtonComment;
+            voteButton = binding.commentsHeaderButtonVote;
+            favoriteButton = binding.commentsHeaderButtonFavorite;
+            bookmarkButton = binding.commentsHeaderButtonBookmark;
+            shareButton = binding.commentsHeaderButtonShare;
+            summarizeButtonParent = binding.commentsHeaderButtonSummarizeParent;
+            summarizeButton = binding.commentsHeaderButtonSummarize;
+            summaryContainer = binding.commentsHeaderSummaryContainer;
+            summaryContentContainer = binding.commentsHeaderSummaryContentContainer;
+            summaryLoadingContainer = binding.commentsHeaderSummaryLoading;
+            summary = binding.commentsHeaderSummary;
+            summaryTitle = binding.commentsHeaderSummaryTitle;
+            moreButton = binding.commentsHeaderButtonMore;
+            userButtonParent = binding.commentsHeaderButtonUserParent;
+            moreButtonParent = binding.commentsHeaderButtonMoreParent;
+            commentButtonParent = binding.commentsHeaderButtonCommentParent;
+            favoriteButtonParent = binding.commentsHeaderButtonFavoriteParent;
+            bookmarkButtonParent = binding.commentsHeaderButtonBookmarkParent;
+            divider = binding.commentsHeaderDivider;
+            tintFade = binding.commentsHeaderTintFade;
+            retryButton = binding.commentsHeaderRetry;
+            openInBrowserButton = binding.commentsHeaderOpenInBrowser;
+            opFilterContainer = binding.commentsHeaderOpFilter;
+            opFilterResetButton = binding.commentsHeaderOpFilterReset;
+            pollLayout = binding.commentsHeaderPollLayout;
+            sheetRefreshButton = binding.commentsSheetLayoutRefresh;
+            sheetExpandButton = binding.commentsSheetLayoutExpand;
+            sheetBrowserButton = binding.commentsSheetLayoutBrowser;
+            sheetReaderButton = binding.commentsSheetLayoutReader;
+            sheetReaderIcon = binding.commentsSheetReaderIcon;
+            sheetInvertButton = binding.commentsSheetLayoutInvert;
+            sheetHandleContainer = binding.commentsSheetHandleContainer;
+            sheetButtonsContainer = binding.commentSheetButtonsContainer;
+            actionsContainer = binding.commentsHeaderActionsContainer;
+            spacer = binding.commentsHeaderSpacer;
+            githubContainer = binding.commentsHeaderGithubContainer.commentsHeaderGithubContainer;
+            gitLabContainer = binding.commentsHeaderGitlabContainer.commentsHeaderGitlabContainer;
+            arxivContainer = binding.commentsHeaderArxivContainer.commentsHeaderArxivContainer;
+            stackExchangeContainer = binding.commentsHeaderStackExchangeContainer.commentsHeaderStackExchangeContainer;
+            wikiContainer = binding.commentsHeaderWikipediaContainer.commentsHeaderWikipediaContainer;
+            wikiSummary = binding.commentsHeaderWikipediaContainer.commentsHeaderWikipediaSummary;
+            githubAbout = binding.commentsHeaderGithubContainer.commentsHeaderGithubAbout;
+            githubWebsite = binding.commentsHeaderGithubContainer.commentsHeaderGithubWebsite;
+            githubLicense = binding.commentsHeaderGithubContainer.commentsHeaderGithubLicense;
+            githubLanguage = binding.commentsHeaderGithubContainer.commentsHeaderGithubLanguage;
+            githubStars = binding.commentsHeaderGithubContainer.commentsHeaderGithubStars;
+            githubWatching = binding.commentsHeaderGithubContainer.commentsHeaderGithubWatching;
+            githubForks = binding.commentsHeaderGithubContainer.commentsHeaderGithubForks;
+            githubWebsiteContainer = binding.commentsHeaderGithubContainer.commentsHeaderGithubWebsiteContainer;
+            githubLicenseContainer = binding.commentsHeaderGithubContainer.commentsHeaderGithubLicenseContainer;
+            githubLanguageContainer = binding.commentsHeaderGithubContainer.commentsHeaderGithubLanguageContainer;
+            gitLabDescription = binding.commentsHeaderGitlabContainer.commentsHeaderGitlabDescription;
+            gitLabWebsite = binding.commentsHeaderGitlabContainer.commentsHeaderGitlabWebsite;
+            gitLabVisibility = binding.commentsHeaderGitlabContainer.commentsHeaderGitlabVisibility;
+            gitLabLanguage = binding.commentsHeaderGitlabContainer.commentsHeaderGitlabLanguage;
+            gitLabStars = binding.commentsHeaderGitlabContainer.commentsHeaderGitlabStars;
+            gitLabForks = binding.commentsHeaderGitlabContainer.commentsHeaderGitlabForks;
+            gitLabWebsiteContainer = binding.commentsHeaderGitlabContainer.commentsHeaderGitlabWebsiteContainer;
+            gitLabVisibilityContainer = binding.commentsHeaderGitlabContainer.commentsHeaderGitlabVisibilityContainer;
+            gitLabLanguageContainer = binding.commentsHeaderGitlabContainer.commentsHeaderGitlabLanguageContainer;
+            stackExchangeTitle = binding.commentsHeaderStackExchangeContainer.commentsHeaderStackExchangeTitle;
+            stackExchangeBy = binding.commentsHeaderStackExchangeContainer.commentsHeaderStackExchangeBy;
+            stackExchangeScore = binding.commentsHeaderStackExchangeContainer.commentsHeaderStackExchangeScore;
+            stackExchangeAnswers = binding.commentsHeaderStackExchangeContainer.commentsHeaderStackExchangeAnswers;
+            stackExchangeViews = binding.commentsHeaderStackExchangeContainer.commentsHeaderStackExchangeViews;
+            stackExchangeAnswerState = binding.commentsHeaderStackExchangeContainer.commentsHeaderStackExchangeAnswerState;
+            stackExchangeAuthor = binding.commentsHeaderStackExchangeContainer.commentsHeaderStackExchangeAuthor;
+            stackExchangeTags = binding.commentsHeaderStackExchangeContainer.commentsHeaderStackExchangeTags;
+            stackExchangeTagsContainer = binding.commentsHeaderStackExchangeContainer.commentsHeaderStackExchangeTagsContainer;
+            arxivBy = binding.commentsHeaderArxivContainer.commentsHeaderArxivBy;
+            arxivDate = binding.commentsHeaderArxivContainer.commentsHeaderArxivDate;
+            arxivSubjects = binding.commentsHeaderArxivContainer.commentsHeaderArxivSubjects;
+            arxivByIcon = binding.commentsHeaderArxivContainer.commentsHeaderArxivByIcon;
+            arxivDownloadButton = binding.commentsHeaderArxivContainer.commentsHeaderArxivDownload;
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
 
-            nitterContainer = view.findViewById(R.id.comments_header_nitter_container);
-            nitterText = view.findViewById(R.id.comments_header_nitter_text);
-            nitterDate = view.findViewById(R.id.comments_header_nitter_date);
-            nitterButton = view.findViewById(R.id.comments_header_nitter_button_open);
-            nitterReplyCount = view.findViewById(R.id.comments_header_nitter_reply_count);
-            nitterReposts = view.findViewById(R.id.comments_header_nitter_reposts);
-            nitterLikes = view.findViewById(R.id.comments_header_nitter_likes);
-            nitterLikesImageView = view.findViewById(R.id.comments_header_nitter_likes_image);
-            nitterRetweetImageView = view.findViewById(R.id.comments_header_nitter_reposts_image);
-            nitterReplyImageView = view.findViewById(R.id.comments_header_nitter_reply_image);
-            nitterMediaContainer = view.findViewById(R.id.comments_header_nitter_media_container);
-            nitterImage = view.findViewById(R.id.comments_header_nitter_image);
-            nitterVideoLabel = view.findViewById(R.id.comments_header_nitter_video_label);
+            nitterContainer = binding.commentsHeaderNitterContainer.commentsHeaderNitterContainer;
+            nitterText = binding.commentsHeaderNitterContainer.commentsHeaderNitterText;
+            nitterDate = binding.commentsHeaderNitterContainer.commentsHeaderNitterDate;
+            nitterButton = binding.commentsHeaderNitterContainer.commentsHeaderNitterButtonOpen;
+            nitterReplyCount = binding.commentsHeaderNitterContainer.commentsHeaderNitterReplyCount;
+            nitterReposts = binding.commentsHeaderNitterContainer.commentsHeaderNitterReposts;
+            nitterLikes = binding.commentsHeaderNitterContainer.commentsHeaderNitterLikes;
+            nitterLikesImageView = binding.commentsHeaderNitterContainer.commentsHeaderNitterLikesImage;
+            nitterRetweetImageView = binding.commentsHeaderNitterContainer.commentsHeaderNitterRepostsImage;
+            nitterReplyImageView = binding.commentsHeaderNitterContainer.commentsHeaderNitterReplyImage;
+            nitterMediaContainer = binding.commentsHeaderNitterContainer.commentsHeaderNitterMediaContainer;
+            nitterImage = binding.commentsHeaderNitterContainer.commentsHeaderNitterImage;
+            nitterVideoLabel = binding.commentsHeaderNitterContainer.commentsHeaderNitterVideoLabel;
 
             retryButton.setOnClickListener((v) -> retryListener.onRetry());
             openInBrowserButton.setOnClickListener((v) -> retryListener.onOpenInBrowser());
@@ -2165,7 +2216,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetInvertButton.setContentDescription("Invert colors");
 
             if (!showInvert) {
-                view.findViewById(R.id.comments_sheet_container_invert).setVisibility(GONE);
+                binding.commentsSheetContainerInvert.setVisibility(GONE);
             }
 
             headerView.setOnClickListener(view1 -> headerClickListener.onItemClick(story));
@@ -2248,7 +2299,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             } else {
                 sheetButtonsContainer.setVisibility(GONE);
-                view.findViewById(R.id.comments_sheet_handle).setVisibility(GONE);
+                binding.commentsSheetHandle.setVisibility(GONE);
             }
         }
 
