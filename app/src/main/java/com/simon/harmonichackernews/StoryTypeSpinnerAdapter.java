@@ -54,7 +54,7 @@ class StoryTypeSpinnerAdapter extends ArrayAdapter<CharSequence> {
         if (selectedView) {
             FontUtils.setStoriesDropdownSelectedTypeface(textView);
         } else {
-            textView.setTypeface(FontUtils.activeBold);
+            FontUtils.setStoriesDropdownItemTypeface(textView);
         }
     }
 }

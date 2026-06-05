@@ -16,6 +16,7 @@ public class FontUtils {
     private static final FontSizes STORY_META_SIZES = new FontSizes(13, 13f, 13, 12, 12, 12, 13, 13);
     private static final FontSizes STORY_COMMENT_COUNT_SIZES = new FontSizes(14, 13.5f, 13, 13, 14, 14, 14, 14);
     private static final FontSizes STORIES_DROPDOWN_SELECTED_SIZES = new FontSizes(36, 34, 36, 33, 34, 34, 35, 35);
+    private static final FontSizes STORIES_DROPDOWN_ITEM_SIZES = new FontSizes(19, 18, 19, 18, 18, 18, 19, 19);
     private static final FontSizes COMMENTS_HEADER_META_SIZES = new FontSizes(14, 13.5f, 13, 13, 13, 13, 13, 13);
     private static final FontSizes COMMENTS_HEADER_TITLE_SIZES = new FontSizes(27, 26, 26, 23, 26, 26, 24, 26);
     private static final FontSizes COMMENT_TEXT_SIZES = new FontSizes(
@@ -120,6 +121,10 @@ public class FontUtils {
 
     public static void setStoriesDropdownSelectedTypeface(TextView textView) {
         setTypeface(textView, true, STORIES_DROPDOWN_SELECTED_SIZES, TypedValue.COMPLEX_UNIT_DIP);
+    }
+
+    public static void setStoriesDropdownItemTypeface(TextView textView) {
+        setTypeface(textView, true, STORIES_DROPDOWN_ITEM_SIZES);
     }
 
     public static void setCommentsHeaderMetaTypefaces(TextView... textViews) {
