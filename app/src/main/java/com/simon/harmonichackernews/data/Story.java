@@ -22,6 +22,7 @@ public class Story {
     public transient String previewImageUrl;
     public transient boolean previewImageUrlLoaded;
     public transient boolean previewImageUrlLoading;
+    public transient boolean previewImageUrlNeedsRefresh;
     public transient boolean previewImageLoaded;
     public transient boolean previewImageLoading;
     public transient boolean previewImageLoadFailed;
@@ -35,6 +36,7 @@ public class Story {
     public transient boolean faviconTintColorLoading;
     public transient boolean faviconTintColorLoadFailed;
     public transient String faviconTintSourceUrl;
+    public transient int faviconTintBaseColor;
     public transient String faviconTintMode;
     public int[] kids;
     public int[] pollOptions;
@@ -116,6 +118,7 @@ public class Story {
         bundle.putBoolean(CommentsFragment.EXTRA_FAVICON_TINT_COLOR_LOADED, faviconTintColorLoaded);
         bundle.putInt(CommentsFragment.EXTRA_FAVICON_TINT_COLOR, faviconTintColor);
         bundle.putString(CommentsFragment.EXTRA_FAVICON_TINT_SOURCE_URL, faviconTintSourceUrl);
+        bundle.putInt(CommentsFragment.EXTRA_FAVICON_TINT_BASE_COLOR, faviconTintBaseColor);
         bundle.putString(CommentsFragment.EXTRA_FAVICON_TINT_MODE, faviconTintMode);
         bundle.putInt(CommentsFragment.EXTRA_TIME, time);
         bundle.putIntArray(CommentsFragment.EXTRA_KIDS, kids);

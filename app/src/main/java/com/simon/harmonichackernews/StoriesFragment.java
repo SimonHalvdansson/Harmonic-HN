@@ -3,6 +3,8 @@ package com.simon.harmonichackernews;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.transition.AutoTransition;
 import android.transition.TransitionManager;
@@ -190,8 +192,26 @@ public class StoriesFragment extends Fragment {
     private int loadedTo = -1;
     private boolean paginationMode = false;
     private static final int STORY_VISIBLE_PREFETCH_THRESHOLD = 17;
+    private static final int PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE = 10;
+    private static final long PREVIEW_IMAGE_PREFETCH_RAMP_DELAY_MS = 450L;
     private int algoliaHitsPerPage = StorySearchController.ALGOLIA_HITS_INCREMENT;
     private int lastAlgoliaTopStoriesStartTime = 0;
+    private final Handler previewImagePrefetchHandler = new Handler(Looper.getMainLooper());
+    private final ArrayList<Story> previewImagePrefetchQueue = new ArrayList<>();
+    private final Set<Integer> queuedPreviewImagePrefetchStoryIds = new HashSet<>();
+    private final Set<Integer> requestedPreviewImagePrefetchStoryIds = new HashSet<>();
+    private final Runnable previewImagePrefetchRampRunnable = new Runnable() {
+        @Override
+        public void run() {
+            previewImagePrefetchRampScheduled = false;
+            previewImagePrefetchRampSlotsRemaining = PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE;
+            drainPreviewImagePrefetchQueue();
+        }
+    };
+    private boolean previewImagePrefetchRampScheduled = false;
+    private boolean previewImagePrefetchRampComplete = false;
+    private int previewImagePrefetchRampSlotsRemaining = PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE;
+    private int previewImagePrefetchRampTargetIndex = -1;
 
     long lastLoaded = 0;
     long lastClick = 0;
@@ -1224,6 +1244,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void clearStories() {
+        resetPreviewImagePrefetchRamp();
         int oldItemCount = adapter.getItemCount();
         stories.clear();
         resetPaginationState();
@@ -1318,6 +1339,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void clearStoriesWithoutItemAnimations() {
+        resetPreviewImagePrefetchRamp();
         int oldItemCount = adapter.getItemCount();
         boolean detachedAdapter = detachAdapterForHardSwap();
         stories.clear();
@@ -1444,6 +1466,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void replaceStories(List<Story> newStories, boolean notifyDataSetChanged, boolean showLoadMoreButton) {
+        resetPreviewImagePrefetchRamp();
         if (notifyDataSetChanged) {
             boolean detachedAdapter = detachAdapterForHardSwap();
             stories.clear();
@@ -1469,6 +1492,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void replaceAlgoliaLoadMoreStories(List<Story> newStories, boolean showLoadMoreButton) {
+        resetPreviewImagePrefetchRamp();
         stories.clear();
         stories.addAll(newStories);
         adapter.showLoadMoreButton = showLoadMoreButton;
@@ -2292,6 +2316,7 @@ public class StoriesFragment extends Fragment {
         if (queue != null) {
             storyListGeneration++;
             loadingStoryIds.clear();
+            resetPreviewImagePrefetchRamp();
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
         }
@@ -2535,7 +2560,7 @@ public class StoriesFragment extends Fragment {
 
                         Context context = getContext();
                         if (context != null) {
-                            adapter.prefetchPreviewImage(context, story);
+                            requestPreviewImagePrefetch(context, story);
                         }
 
                         adapter.notifyItemChanged(index);
@@ -2543,6 +2568,7 @@ public class StoriesFragment extends Fragment {
                         e.printStackTrace();
                         Utils.log("Failed to load story with id: " + story.id);
                         story.loadingFailed = true;
+                        updatePreviewImagePrefetchRampCompletion();
                         if (index >= 0) {
                             adapter.notifyItemChanged(index);
                         }
@@ -2554,6 +2580,7 @@ public class StoriesFragment extends Fragment {
             loadingStoryIds.remove(story.id);
             error.printStackTrace();
             story.loadingFailed = true;
+            updatePreviewImagePrefetchRampCompletion();
             int index = stories.indexOf(story);
             if (index >= 0) {
                 adapter.notifyItemChanged(index);
@@ -2633,6 +2660,7 @@ public class StoriesFragment extends Fragment {
     private int beginStoryListRefresh() {
         storyListGeneration++;
         loadingStoryIds.clear();
+        resetPreviewImagePrefetchRamp();
         invalidateAlgoliaLoad();
         queue.cancelAll(requestTag);
         return storyListGeneration;
@@ -3095,7 +3123,156 @@ public class StoriesFragment extends Fragment {
     }
 
     private void loadInitialVisibleStories(int loadGeneration) {
-        loadStoriesThroughIndex(Math.min(getInitialLoadCount(), stories.size()) - 1, loadGeneration);
+        int targetIndex = Math.min(getInitialLoadCount(), stories.size()) - 1;
+        beginPreviewImagePrefetchRamp(targetIndex);
+        loadStoriesThroughIndex(targetIndex, loadGeneration);
+    }
+
+    private void beginPreviewImagePrefetchRamp(int targetIndex) {
+        if (targetIndex < 0
+                || adapter == null
+                || SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(adapter.previewImageMode)
+                || previewImagePrefetchRampComplete) {
+            return;
+        }
+
+        previewImagePrefetchRampTargetIndex = Math.max(previewImagePrefetchRampTargetIndex, targetIndex);
+    }
+
+    private void requestPreviewImagePrefetch(Context context, Story story) {
+        if (context == null || adapter == null || story == null || !story.loaded || story.loadingFailed) {
+            return;
+        }
+
+        if (previewImagePrefetchRampComplete || previewImagePrefetchRampTargetIndex < 0) {
+            adapter.prefetchPreviewImage(context, story);
+            return;
+        }
+
+        if (story.id > 0) {
+            if (requestedPreviewImagePrefetchStoryIds.contains(story.id)
+                    || !queuedPreviewImagePrefetchStoryIds.add(story.id)) {
+                return;
+            }
+        }
+
+        previewImagePrefetchQueue.add(story);
+        drainPreviewImagePrefetchQueue();
+    }
+
+    private void drainPreviewImagePrefetchQueue() {
+        if (previewImagePrefetchRampScheduled) {
+            return;
+        }
+
+        Context context = getContext();
+        if (context == null || adapter == null) {
+            return;
+        }
+
+        while (previewImagePrefetchRampSlotsRemaining > 0 && !previewImagePrefetchQueue.isEmpty()) {
+            Story story = removeNextPreviewImagePrefetchStory();
+            if (story == null) {
+                break;
+            }
+
+            if (story.id > 0) {
+                requestedPreviewImagePrefetchStoryIds.add(story.id);
+            }
+            previewImagePrefetchRampSlotsRemaining--;
+            adapter.prefetchPreviewImage(context, story);
+        }
+
+        updatePreviewImagePrefetchRampCompletion();
+        if (!previewImagePrefetchRampComplete && previewImagePrefetchRampSlotsRemaining <= 0) {
+            scheduleNextPreviewImagePrefetchRampBatch();
+        }
+    }
+
+    @Nullable
+    private Story removeNextPreviewImagePrefetchStory() {
+        int bestQueueIndex = -1;
+        int bestStoryIndex = Integer.MAX_VALUE;
+        for (int i = 0; i < previewImagePrefetchQueue.size(); i++) {
+            Story story = previewImagePrefetchQueue.get(i);
+            int storyIndex = stories == null ? -1 : stories.indexOf(story);
+            if (storyIndex < 0 || !story.loaded || story.loadingFailed) {
+                previewImagePrefetchQueue.remove(i);
+                if (story.id > 0) {
+                    queuedPreviewImagePrefetchStoryIds.remove(story.id);
+                }
+                i--;
+                continue;
+            }
+
+            if (storyIndex < bestStoryIndex) {
+                bestStoryIndex = storyIndex;
+                bestQueueIndex = i;
+            }
+        }
+
+        if (bestQueueIndex < 0) {
+            return null;
+        }
+
+        Story story = previewImagePrefetchQueue.remove(bestQueueIndex);
+        if (story.id > 0) {
+            queuedPreviewImagePrefetchStoryIds.remove(story.id);
+        }
+        return story;
+    }
+
+    private void scheduleNextPreviewImagePrefetchRampBatch() {
+        if (previewImagePrefetchRampScheduled) {
+            return;
+        }
+
+        previewImagePrefetchRampScheduled = true;
+        previewImagePrefetchHandler.postDelayed(
+                previewImagePrefetchRampRunnable,
+                PREVIEW_IMAGE_PREFETCH_RAMP_DELAY_MS);
+    }
+
+    private void updatePreviewImagePrefetchRampCompletion() {
+        if (previewImagePrefetchRampComplete
+                || previewImagePrefetchRampTargetIndex < 0
+                || !previewImagePrefetchQueue.isEmpty()
+                || !arePreviewImagePrefetchRampStoriesSettled()) {
+            return;
+        }
+
+        previewImagePrefetchRampComplete = true;
+        previewImagePrefetchRampTargetIndex = -1;
+        previewImagePrefetchHandler.removeCallbacks(previewImagePrefetchRampRunnable);
+        previewImagePrefetchRampScheduled = false;
+        queuedPreviewImagePrefetchStoryIds.clear();
+        requestedPreviewImagePrefetchStoryIds.clear();
+    }
+
+    private boolean arePreviewImagePrefetchRampStoriesSettled() {
+        if (stories == null || stories.isEmpty()) {
+            return true;
+        }
+
+        int targetIndex = Math.min(previewImagePrefetchRampTargetIndex, stories.size() - 1);
+        for (int i = 0; i <= targetIndex; i++) {
+            Story story = stories.get(i);
+            if (!story.loaded && !story.loadingFailed) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void resetPreviewImagePrefetchRamp() {
+        previewImagePrefetchHandler.removeCallbacks(previewImagePrefetchRampRunnable);
+        previewImagePrefetchQueue.clear();
+        queuedPreviewImagePrefetchStoryIds.clear();
+        requestedPreviewImagePrefetchStoryIds.clear();
+        previewImagePrefetchRampScheduled = false;
+        previewImagePrefetchRampComplete = false;
+        previewImagePrefetchRampSlotsRemaining = PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE;
+        previewImagePrefetchRampTargetIndex = -1;
     }
 
     private void scheduleLoadedPreviewImagePrefetchNearViewport() {
@@ -3139,8 +3316,9 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
+        beginPreviewImagePrefetchRamp(lastIndex);
         for (int i = firstIndex; i <= lastIndex; i++) {
-            adapter.prefetchPreviewImage(context, stories.get(i));
+            requestPreviewImagePrefetch(context, stories.get(i));
         }
     }
 
@@ -3162,6 +3340,7 @@ public class StoriesFragment extends Fragment {
             // cancel all ongoing
             storyListGeneration++;
             loadingStoryIds.clear();
+            resetPreviewImagePrefetchRamp();
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
             swipeRefreshLayout.setRefreshing(false);
@@ -3181,6 +3360,7 @@ public class StoriesFragment extends Fragment {
 
             storyListGeneration++;
             loadingStoryIds.clear();
+            resetPreviewImagePrefetchRamp();
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
             swipeRefreshLayout.setRefreshing(false);
@@ -3273,6 +3453,7 @@ public class StoriesFragment extends Fragment {
     private void loadOnlyClickedSearch(String query) {
         storyListGeneration++;
         loadingStoryIds.clear();
+        resetPreviewImagePrefetchRamp();
         invalidateAlgoliaLoad();
         final int requestGeneration = algoliaRequestGeneration;
         algoliaLoading = true;

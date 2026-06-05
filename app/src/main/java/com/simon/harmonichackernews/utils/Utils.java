@@ -307,6 +307,36 @@ public class Utils {
         return JSONParser.updateStoryWithCachedStorySummary(story, summary);
     }
 
+    public static void cacheStoryPreviewState(Context ctx, Story story) {
+        if (ctx == null
+                || story == null
+                || story.id <= 0
+                || (!story.previewImageUrlLoaded
+                && TextUtils.isEmpty(story.previewImageUrl)
+                && !story.faviconTintColorLoaded)) {
+            return;
+        }
+
+        Context appContext = ctx.getApplicationContext();
+        Story previewState = new Story();
+        previewState.id = story.id;
+        previewState.previewImageUrl = story.previewImageUrl;
+        previewState.previewImageUrlLoaded = story.previewImageUrlLoaded || !TextUtils.isEmpty(story.previewImageUrl);
+        previewState.previewImageLoadFailed = story.previewImageLoadFailed;
+        previewState.previewImageTintColor = story.previewImageTintColor;
+        previewState.previewImageTintColorLoaded = story.previewImageTintColorLoaded;
+        previewState.previewImageTintSourceUrl = story.previewImageTintSourceUrl;
+        previewState.previewImageTintBaseColor = story.previewImageTintBaseColor;
+        previewState.previewImageTintMode = story.previewImageTintMode;
+        previewState.faviconTintColor = story.faviconTintColor;
+        previewState.faviconTintColorLoaded = story.faviconTintColorLoaded;
+        previewState.faviconTintSourceUrl = story.faviconTintSourceUrl;
+        previewState.faviconTintBaseColor = story.faviconTintBaseColor;
+        previewState.faviconTintMode = story.faviconTintMode;
+
+        AsyncTask.execute(() -> writeCachedStoryPreviewState(appContext, previewState));
+    }
+
     public static int getCachedPostCount(Context ctx) {
         if (ctx == null) {
             return 0;
@@ -502,6 +532,24 @@ public class Utils {
         String summary = JSONParser.compactAlgoliaStoryResponse(data, id);
         if (!TextUtils.isEmpty(summary)) {
             writeStringToFile(getCachedStorySummaryFile(ctx, id), summary);
+        }
+    }
+
+    private static void writeCachedStoryPreviewState(Context ctx, Story previewState) {
+        File summaryFile = getCachedStorySummaryFile(ctx, previewState.id);
+        if (!summaryFile.exists()) {
+            return;
+        }
+
+        String summary = readStringFromFile(summaryFile);
+        if (TextUtils.isEmpty(summary)) {
+            String fullStory = readStringFromFile(getCachedStoryFullFile(ctx, previewState.id));
+            summary = JSONParser.compactAlgoliaStoryResponse(fullStory, previewState.id);
+        }
+
+        String updatedSummary = JSONParser.updateCachedStorySummaryPreviewState(summary, previewState);
+        if (!TextUtils.isEmpty(updatedSummary) && !TextUtils.equals(summary, updatedSummary)) {
+            writeStringToFile(summaryFile, updatedSummary);
         }
     }
 

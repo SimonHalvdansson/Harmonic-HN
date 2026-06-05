@@ -25,6 +25,19 @@ public class JSONParser {
     public final static String ALGOLIA_ERROR_STRING = "{\"status\":404,\"error\":\"Not Found\"}";
     private static final String JSON_NULL_LITERAL = "null";
     private static final int CACHED_STORY_SUMMARY_VERSION = 1;
+    private static final String KEY_PREVIEW_IMAGE_URL = "preview_image_url";
+    private static final String KEY_PREVIEW_IMAGE_URL_LOADED = "preview_image_url_loaded";
+    private static final String KEY_PREVIEW_IMAGE_LOAD_FAILED = "preview_image_load_failed";
+    private static final String KEY_PREVIEW_IMAGE_TINT_COLOR = "preview_image_tint_color";
+    private static final String KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED = "preview_image_tint_color_loaded";
+    private static final String KEY_PREVIEW_IMAGE_TINT_SOURCE_URL = "preview_image_tint_source_url";
+    private static final String KEY_PREVIEW_IMAGE_TINT_BASE_COLOR = "preview_image_tint_base_color";
+    private static final String KEY_PREVIEW_IMAGE_TINT_MODE = "preview_image_tint_mode";
+    private static final String KEY_FAVICON_TINT_COLOR = "favicon_tint_color";
+    private static final String KEY_FAVICON_TINT_COLOR_LOADED = "favicon_tint_color_loaded";
+    private static final String KEY_FAVICON_TINT_SOURCE_URL = "favicon_tint_source_url";
+    private static final String KEY_FAVICON_TINT_BASE_COLOR = "favicon_tint_base_color";
+    private static final String KEY_FAVICON_TINT_MODE = "favicon_tint_mode";
 
     private static boolean hasOnlyTwoTopLevelFields(JSONObject jsonObject) {
         JSONArray names = jsonObject.names();
@@ -690,6 +703,71 @@ public class JSONParser {
             }
             putNonNullString(summary, "story_title", item.optString("story_title", ""));
             putNonNullString(summary, "story_url", item.optString("story_url", ""));
+            copyPreviewImageSummaryFields(item, summary);
+            copyFaviconTintSummaryFields(item, summary);
+
+            return summary.toString();
+        } catch (JSONException e) {
+            return null;
+        }
+    }
+
+    public static String updateCachedStorySummaryPreviewState(String response, Story story) {
+        if (story == null || TextUtils.isEmpty(response) || JSON_NULL_LITERAL.equals(response)) {
+            return null;
+        }
+
+        try {
+            JSONObject summary = new JSONObject(response);
+            if (summary.optInt("id", story.id) != story.id) {
+                return null;
+            }
+
+            if (story.previewImageUrlLoaded || !TextUtils.isEmpty(story.previewImageUrl)) {
+                summary.put(KEY_PREVIEW_IMAGE_URL_LOADED, true);
+                if (TextUtils.isEmpty(story.previewImageUrl)) {
+                    summary.remove(KEY_PREVIEW_IMAGE_URL);
+                } else {
+                    summary.put(KEY_PREVIEW_IMAGE_URL, story.previewImageUrl);
+                }
+                summary.put(KEY_PREVIEW_IMAGE_LOAD_FAILED, story.previewImageLoadFailed);
+            }
+
+            if (story.previewImageTintColorLoaded && !TextUtils.isEmpty(story.previewImageTintSourceUrl)) {
+                summary.put(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, true);
+                summary.put(KEY_PREVIEW_IMAGE_TINT_COLOR, story.previewImageTintColor);
+                summary.put(KEY_PREVIEW_IMAGE_TINT_SOURCE_URL, story.previewImageTintSourceUrl);
+                summary.put(KEY_PREVIEW_IMAGE_TINT_BASE_COLOR, story.previewImageTintBaseColor);
+                if (TextUtils.isEmpty(story.previewImageTintMode)) {
+                    summary.remove(KEY_PREVIEW_IMAGE_TINT_MODE);
+                } else {
+                    summary.put(KEY_PREVIEW_IMAGE_TINT_MODE, story.previewImageTintMode);
+                }
+            } else {
+                summary.remove(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED);
+                summary.remove(KEY_PREVIEW_IMAGE_TINT_COLOR);
+                summary.remove(KEY_PREVIEW_IMAGE_TINT_SOURCE_URL);
+                summary.remove(KEY_PREVIEW_IMAGE_TINT_BASE_COLOR);
+                summary.remove(KEY_PREVIEW_IMAGE_TINT_MODE);
+            }
+
+            if (story.faviconTintColorLoaded && !TextUtils.isEmpty(story.faviconTintSourceUrl)) {
+                summary.put(KEY_FAVICON_TINT_COLOR_LOADED, true);
+                summary.put(KEY_FAVICON_TINT_COLOR, story.faviconTintColor);
+                summary.put(KEY_FAVICON_TINT_SOURCE_URL, story.faviconTintSourceUrl);
+                summary.put(KEY_FAVICON_TINT_BASE_COLOR, story.faviconTintBaseColor);
+                if (TextUtils.isEmpty(story.faviconTintMode)) {
+                    summary.remove(KEY_FAVICON_TINT_MODE);
+                } else {
+                    summary.put(KEY_FAVICON_TINT_MODE, story.faviconTintMode);
+                }
+            } else {
+                summary.remove(KEY_FAVICON_TINT_COLOR_LOADED);
+                summary.remove(KEY_FAVICON_TINT_COLOR);
+                summary.remove(KEY_FAVICON_TINT_SOURCE_URL);
+                summary.remove(KEY_FAVICON_TINT_BASE_COLOR);
+                summary.remove(KEY_FAVICON_TINT_MODE);
+            }
 
             return summary.toString();
         } catch (JSONException e) {
@@ -738,6 +816,8 @@ public class JSONParser {
                 story.isJob = "job".equals(type);
             }
 
+            applyPreviewImageSummaryFields(story, item);
+            applyFaviconTintSummaryFields(story, item);
             updateTitleBadgeProperties(story);
             story.loaded = true;
             story.loadingFailed = false;
@@ -750,6 +830,84 @@ public class JSONParser {
     private static void putNonNullString(JSONObject object, String key, String value) throws JSONException {
         if (!TextUtils.isEmpty(value) && !JSON_NULL_LITERAL.equalsIgnoreCase(value)) {
             object.put(key, value);
+        }
+    }
+
+    private static void copyPreviewImageSummaryFields(JSONObject source, JSONObject destination) throws JSONException {
+        copyString(source, destination, KEY_PREVIEW_IMAGE_URL);
+        copyBoolean(source, destination, KEY_PREVIEW_IMAGE_URL_LOADED);
+        copyBoolean(source, destination, KEY_PREVIEW_IMAGE_LOAD_FAILED);
+        copyBoolean(source, destination, KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED);
+        copyInt(source, destination, KEY_PREVIEW_IMAGE_TINT_COLOR);
+        copyString(source, destination, KEY_PREVIEW_IMAGE_TINT_SOURCE_URL);
+        copyInt(source, destination, KEY_PREVIEW_IMAGE_TINT_BASE_COLOR);
+        copyString(source, destination, KEY_PREVIEW_IMAGE_TINT_MODE);
+    }
+
+    private static void copyFaviconTintSummaryFields(JSONObject source, JSONObject destination) throws JSONException {
+        copyBoolean(source, destination, KEY_FAVICON_TINT_COLOR_LOADED);
+        copyInt(source, destination, KEY_FAVICON_TINT_COLOR);
+        copyString(source, destination, KEY_FAVICON_TINT_SOURCE_URL);
+        copyInt(source, destination, KEY_FAVICON_TINT_BASE_COLOR);
+        copyString(source, destination, KEY_FAVICON_TINT_MODE);
+    }
+
+    private static void applyPreviewImageSummaryFields(Story story, JSONObject item) {
+        boolean hasPreviewImageUrl = item.has(KEY_PREVIEW_IMAGE_URL);
+        boolean previewImageUrlLoaded = item.optBoolean(KEY_PREVIEW_IMAGE_URL_LOADED, hasPreviewImageUrl);
+        if (previewImageUrlLoaded) {
+            String previewImageUrl = item.optString(KEY_PREVIEW_IMAGE_URL, "").trim();
+            story.previewImageUrl = TextUtils.isEmpty(previewImageUrl) ? null : previewImageUrl;
+            story.previewImageUrlLoaded = true;
+            story.previewImageUrlNeedsRefresh = true;
+            story.previewImageLoadFailed = item.optBoolean(
+                    KEY_PREVIEW_IMAGE_LOAD_FAILED,
+                    TextUtils.isEmpty(story.previewImageUrl));
+        }
+
+        if (item.optBoolean(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, false)
+                && !TextUtils.isEmpty(story.previewImageUrl)) {
+            String tintSourceUrl = item.optString(KEY_PREVIEW_IMAGE_TINT_SOURCE_URL, story.previewImageUrl);
+            story.previewImageTintColor = item.optInt(KEY_PREVIEW_IMAGE_TINT_COLOR, story.previewImageTintColor);
+            story.previewImageTintColorLoaded = !TextUtils.isEmpty(tintSourceUrl);
+            story.previewImageTintSourceUrl = tintSourceUrl;
+            story.previewImageTintBaseColor = item.optInt(KEY_PREVIEW_IMAGE_TINT_BASE_COLOR, story.previewImageTintBaseColor);
+            story.previewImageTintMode = item.optString(KEY_PREVIEW_IMAGE_TINT_MODE, story.previewImageTintMode);
+        }
+    }
+
+    private static void applyFaviconTintSummaryFields(Story story, JSONObject item) {
+        if (!item.optBoolean(KEY_FAVICON_TINT_COLOR_LOADED, false)) {
+            return;
+        }
+
+        String tintSourceUrl = item.optString(KEY_FAVICON_TINT_SOURCE_URL, null);
+        if (TextUtils.isEmpty(tintSourceUrl)) {
+            return;
+        }
+
+        story.faviconTintColor = item.optInt(KEY_FAVICON_TINT_COLOR, story.faviconTintColor);
+        story.faviconTintColorLoaded = true;
+        story.faviconTintSourceUrl = tintSourceUrl;
+        story.faviconTintBaseColor = item.optInt(KEY_FAVICON_TINT_BASE_COLOR, story.faviconTintBaseColor);
+        story.faviconTintMode = item.optString(KEY_FAVICON_TINT_MODE, story.faviconTintMode);
+    }
+
+    private static void copyString(JSONObject source, JSONObject destination, String key) throws JSONException {
+        if (source.has(key)) {
+            putNonNullString(destination, key, source.optString(key, ""));
+        }
+    }
+
+    private static void copyBoolean(JSONObject source, JSONObject destination, String key) throws JSONException {
+        if (source.has(key)) {
+            destination.put(key, source.optBoolean(key, false));
+        }
+    }
+
+    private static void copyInt(JSONObject source, JSONObject destination, String key) throws JSONException {
+        if (source.has(key)) {
+            destination.put(key, source.optInt(key, 0));
         }
     }
 

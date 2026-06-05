@@ -12,7 +12,7 @@
       "filters": [],
       "attributes": [],
       "versionCode": 74,
-      "versionName": "2.4",
+      "versionName": "3.0",
       "outputFile": "app-release.apk"
     }
   ],
@@ -33,5 +33,5 @@
       ]
     }
   ],
-  "minSdkVersionForDexing": 23
+  "minSdkVersionForDexing": 24
 }

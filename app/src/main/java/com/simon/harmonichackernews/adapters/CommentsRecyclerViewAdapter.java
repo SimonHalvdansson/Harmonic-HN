@@ -842,12 +842,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             if (TextUtils.isEmpty(imageUrl)) {
                 story.previewImageLoadFailed = true;
                 PreviewImageTintUtils.clearStoryPreviewImageTintColor(story);
+                cacheHeaderPreviewState(appContext, story);
                 notifyHeaderChanged();
                 return;
             }
 
             setPreviewImageUrl(story, imageUrl);
             story.previewImageLoadFailed = false;
+            cacheHeaderPreviewState(appContext, story);
             notifyHeaderChanged();
         });
     }
@@ -1056,6 +1058,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void bindHeaderTint(HeaderViewHolder headerViewHolder) {
+        if (shouldTintHeader()) {
+            hydrateCachedHeaderPreviewTintColor(
+                    headerViewHolder.itemView.getContext(),
+                    story,
+                    getPreviewTintBaseColor(headerViewHolder.itemView));
+        }
         applyHeaderBackground(headerViewHolder);
         if (shouldUseHeaderFaviconTint(story)) {
             loadHeaderFaviconTintColor(headerViewHolder.itemView.getContext(), story, headerViewHolder);
@@ -1091,7 +1099,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
         if (shouldUseHeaderFaviconTint(story)
                 && story.faviconTintColorLoaded
-                && isFaviconTintColorCurrent(story)) {
+                && isFaviconTintColorCurrent(story, previewTintBaseColor)) {
             return story.faviconTintColor;
         }
         return normalColor;
@@ -1147,12 +1155,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             return;
         }
 
-        PreviewImageTintUtils.updateStoryPreviewImageTintColor(
+        boolean updated = PreviewImageTintUtils.updateStoryPreviewImageTintColor(
                 story,
                 imageUrl,
                 drawable,
                 getPreviewTintBaseColor(context),
                 paletteTintMode);
+        if (updated) {
+            cacheHeaderPreviewState(context, story);
+        }
     }
 
     private void loadHeaderFaviconTintColor(Context context, Story story, @Nullable HeaderViewHolder headerViewHolder) {
@@ -1172,13 +1183,30 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             story.faviconTintColorLoadFailed = false;
         }
 
-        if (story.faviconTintColorLoaded && !isFaviconTintColorCurrent(story)) {
+        int baseColor = getPreviewTintBaseColor(context);
+        if (story.faviconTintColorLoaded && !isFaviconTintColorCurrent(story, baseColor)) {
             story.faviconTintColorLoaded = false;
             story.faviconTintColorLoading = false;
             story.faviconTintColorLoadFailed = false;
         }
 
-        if (story.faviconTintColorLoaded || story.faviconTintColorLoading || story.faviconTintColorLoadFailed) {
+        boolean loadedBeforeHydration = story.faviconTintColorLoaded;
+        if (!loadedBeforeHydration) {
+            hydrateCachedHeaderFaviconTintColor(context, story, faviconUrl, baseColor);
+        }
+
+        if (story.faviconTintColorLoaded) {
+            if (!loadedBeforeHydration) {
+                if (headerViewHolder == boundHeaderViewHolder) {
+                    applyHeaderBackground(headerViewHolder);
+                } else {
+                    notifyHeaderChanged();
+                }
+            }
+            return;
+        }
+
+        if (story.faviconTintColorLoading || story.faviconTintColorLoadFailed) {
             return;
         }
 
@@ -1214,6 +1242,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
                         story.faviconTintColorLoading = false;
                         updateFaviconTintColor(context, story, result);
+                        if (story.faviconTintColorLoaded) {
+                            cacheHeaderPreviewState(context, story);
+                        }
                         if (headerViewHolder == boundHeaderViewHolder) {
                             applyHeaderBackground(headerViewHolder);
                         } else {
@@ -1232,13 +1263,66 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         try {
-            story.faviconTintColor = PreviewImageTintUtils.calculateCardTint(context, drawable, paletteTintMode);
+            int baseColor = getPreviewTintBaseColor(context);
+            story.faviconTintColor = PreviewImageTintUtils.calculateCardTint(baseColor, drawable, paletteTintMode);
             story.faviconTintColorLoaded = true;
+            story.faviconTintBaseColor = baseColor;
             story.faviconTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode);
             story.faviconTintColorLoadFailed = false;
         } catch (RuntimeException e) {
             story.faviconTintColorLoaded = false;
             story.faviconTintColorLoadFailed = true;
+        }
+    }
+
+    private void hydrateCachedHeaderFaviconTintColor(
+            Context context,
+            Story story,
+            String faviconUrl,
+            int baseColor) {
+        Integer tintColor = StoryPreviewImageLoader.loadCachedPreviewImageTintColor(
+                context,
+                story.id,
+                faviconUrl,
+                baseColor,
+                paletteTintMode);
+        if (tintColor == null) {
+            return;
+        }
+
+        story.faviconTintSourceUrl = faviconUrl;
+        story.faviconTintColor = tintColor;
+        story.faviconTintColorLoaded = true;
+        story.faviconTintColorLoading = false;
+        story.faviconTintColorLoadFailed = false;
+        story.faviconTintBaseColor = baseColor;
+        story.faviconTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode);
+    }
+
+    private void cacheHeaderPreviewState(@Nullable Context context, Story story) {
+        if (context == null || story == null) {
+            return;
+        }
+
+        Context appContext = context.getApplicationContext();
+        Utils.cacheStoryPreviewState(appContext, story);
+        if (story.previewImageTintColorLoaded && !TextUtils.isEmpty(story.previewImageTintSourceUrl)) {
+            StoryPreviewImageLoader.saveCachedPreviewImageTintColor(
+                    appContext,
+                    story.id,
+                    story.previewImageTintSourceUrl,
+                    story.previewImageTintBaseColor,
+                    story.previewImageTintMode,
+                    story.previewImageTintColor);
+        }
+        if (story.faviconTintColorLoaded && !TextUtils.isEmpty(story.faviconTintSourceUrl)) {
+            StoryPreviewImageLoader.saveCachedPreviewImageTintColor(
+                    appContext,
+                    story.id,
+                    story.faviconTintSourceUrl,
+                    story.faviconTintBaseColor,
+                    story.faviconTintMode,
+                    story.faviconTintColor);
         }
     }
 
@@ -1255,7 +1339,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         return shouldUseHeaderPreviewTint(story, baseColor)
                 || (shouldUseHeaderFaviconTint(story)
                 && story.faviconTintColorLoaded
-                && isFaviconTintColorCurrent(story));
+                && isFaviconTintColorCurrent(story, baseColor));
     }
 
     private boolean shouldUseHeaderFaviconTint(Story story) {
@@ -1275,10 +1359,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 && TextUtils.isEmpty(story.previewImageUrl);
     }
 
-    private boolean isFaviconTintColorCurrent(Story story) {
+    private boolean isFaviconTintColorCurrent(Story story, int baseColor) {
         return story != null
                 && story.faviconTintColorLoaded
                 && TextUtils.equals(story.faviconTintSourceUrl, getFaviconTintSourceUrl(story))
+                && story.faviconTintBaseColor == baseColor
                 && SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
                 .equals(SettingsUtils.getPaletteTintConfigKey(story.faviconTintMode));
     }
@@ -1306,7 +1391,28 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         int baseColor = getPreviewTintBaseColor(context);
         return PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor, paletteTintMode)
-                || PreviewImageTintUtils.syncStoryPreviewImageTintColorFromCache(story, baseColor, paletteTintMode);
+                || PreviewImageTintUtils.syncStoryPreviewImageTintColorFromCache(story, baseColor, paletteTintMode)
+                || hydrateCachedHeaderPreviewTintColor(context, story, baseColor);
+    }
+
+    private boolean hydrateCachedHeaderPreviewTintColor(Context context, Story story, int baseColor) {
+        if (story == null || TextUtils.isEmpty(story.previewImageUrl)) {
+            return false;
+        }
+
+        Integer tintColor = StoryPreviewImageLoader.loadCachedPreviewImageTintColor(
+                context,
+                story.id,
+                story.previewImageUrl,
+                baseColor,
+                paletteTintMode);
+        return tintColor != null
+                && PreviewImageTintUtils.applyCachedStoryPreviewImageTintColor(
+                        story,
+                        story.previewImageUrl,
+                        baseColor,
+                        paletteTintMode,
+                        tintColor);
     }
 
     private boolean shouldTintHeader() {

@@ -232,6 +232,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             boolean useClickedEffects = shouldUseClickedEffects(storyViewHolder.story);
             resetPreviewImages(storyViewHolder);
             configureStoryCardAppearance(storyViewHolder);
+            hydrateCachedPreviewState(ctx, storyViewHolder.story);
             applyStoryCardBackground(storyViewHolder, storyViewHolder.story, false);
             setPreviewImageAlpha(storyViewHolder, useClickedEffects);
 
@@ -582,10 +583,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         if (!TextUtils.isEmpty(story.previewImageUrl)) {
             loadPreviewImage(storyViewHolder, story);
+            refreshPreviewImageUrlIfNeeded(storyViewHolder.itemView.getContext(), story);
             return;
         }
 
         if (story.previewImageUrlLoaded) {
+            refreshPreviewImageUrlIfNeeded(storyViewHolder.itemView.getContext(), story);
             return;
         }
 
@@ -593,6 +596,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     public void prefetchPreviewImage(Context context, Story story) {
+        hydrateCachedPreviewState(context, story);
         if (!shouldLoadPreviewImage(story)) {
             return;
         }
@@ -602,6 +606,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     context == null ? null : context.getApplicationContext(),
                     story,
                     getDefaultStoryCardBackgroundColor(context));
+            refreshPreviewImageUrlIfNeeded(context, story);
+            return;
+        }
+
+        if (story.previewImageUrlLoaded && story.previewImageUrlNeedsRefresh) {
+            refreshPreviewImageUrlIfNeeded(context, story);
             return;
         }
 
@@ -614,7 +624,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 && !story.loadingFailed
                 && !story.isComment
                 && !TextUtils.isEmpty(story.url)
-                && !story.previewImageLoadFailed;
+                && (!story.previewImageLoadFailed || story.previewImageUrlNeedsRefresh);
     }
 
     private void loadPreviewImageUrl(@Nullable Context context, Story story) {
@@ -632,6 +642,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             if (TextUtils.isEmpty(imageUrl)) {
                 story.previewImageLoadFailed = true;
                 PreviewImageTintUtils.clearStoryPreviewImageTintColor(story);
+                cachePreviewState(appContext, story);
                 int index = stories.indexOf(story);
                 if (index >= 0 && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)) {
                     notifyItemChanged(index);
@@ -641,6 +652,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             setPreviewImageUrl(story, imageUrl);
             story.previewImageLoadFailed = false;
+            cachePreviewState(appContext, story);
             prefetchPreviewImageDrawable(appContext, story, storyCardBackgroundColor);
             int index = stories.indexOf(story);
             if (index >= 0 && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)) {
@@ -648,6 +660,184 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             }
         });
         previewImageUrlRequests.put(story, request);
+    }
+
+    private void refreshPreviewImageUrlIfNeeded(@Nullable Context context, Story story) {
+        if (context == null
+                || story == null
+                || !story.previewImageUrlNeedsRefresh
+                || story.previewImageUrlLoading
+                || TextUtils.isEmpty(story.url)) {
+            return;
+        }
+
+        story.previewImageUrlNeedsRefresh = false;
+        story.previewImageUrlLoading = true;
+        Context appContext = context.getApplicationContext();
+        int storyCardBackgroundColor = getDefaultStoryCardBackgroundColor(context);
+        final String oldImageUrl = story.previewImageUrl;
+        final boolean oldPreviewImageLoadFailed = story.previewImageLoadFailed;
+        final boolean oldPreviewImageTintColorLoaded = story.previewImageTintColorLoaded;
+        StoryPreviewImageLoader.PreviewImageRequest request = StoryPreviewImageLoader.loadPreviewImageUrl(
+                appContext,
+                story.id,
+                story.url,
+                true,
+                imageUrl -> {
+                    previewImageUrlRequests.remove(story);
+                    story.previewImageUrlLoading = false;
+                    story.previewImageUrlLoaded = true;
+
+                    if (TextUtils.isEmpty(imageUrl)) {
+                        if (TextUtils.isEmpty(oldImageUrl)) {
+                            story.previewImageLoadFailed = true;
+                            PreviewImageTintUtils.clearStoryPreviewImageTintColor(story);
+                            cachePreviewState(appContext, story);
+                            if (!oldPreviewImageLoadFailed || oldPreviewImageTintColorLoaded) {
+                                notifyStoryChangedIfPreviewEnabled(story);
+                            }
+                        }
+                        return;
+                    }
+
+                    if (!TextUtils.equals(oldImageUrl, imageUrl)) {
+                        setPreviewImageUrl(story, imageUrl);
+                        story.previewImageLoadFailed = false;
+                        cachePreviewState(appContext, story);
+                        prefetchPreviewImageDrawable(appContext, story, storyCardBackgroundColor);
+                        notifyStoryChangedIfPreviewEnabled(story);
+                        return;
+                    }
+
+                    story.previewImageLoadFailed = false;
+                    cachePreviewState(appContext, story);
+                });
+        previewImageUrlRequests.put(story, request);
+    }
+
+    public void hydrateCachedPreviewState(@Nullable Context context, Story story) {
+        if (context == null
+                || story == null
+                || SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                || !story.loaded
+                || story.loadingFailed
+                || story.isComment
+                || TextUtils.isEmpty(story.url)) {
+            return;
+        }
+
+        if (TextUtils.isEmpty(story.previewImageUrl) && !story.previewImageUrlLoaded) {
+            String cachedPreviewImageUrl = StoryPreviewImageLoader.getCachedPreviewImageUrl(
+                    context,
+                    story.id,
+                    story.url);
+            boolean cachedPreviewImageUrlLoaded = StoryPreviewImageLoader.isCachedPreviewImageUrlLoaded(
+                    context,
+                    story.id,
+                    story.url);
+            if (cachedPreviewImageUrlLoaded) {
+                setPreviewImageUrl(story, cachedPreviewImageUrl);
+                story.previewImageUrlLoaded = true;
+                story.previewImageUrlNeedsRefresh = true;
+                story.previewImageLoadFailed = TextUtils.isEmpty(cachedPreviewImageUrl);
+            }
+        }
+
+        hydrateCachedPreviewTintColor(context, story);
+        hydrateCachedFaviconTintColor(context, story);
+    }
+
+    private void hydrateCachedPreviewTintColor(Context context, Story story) {
+        if (!shouldTintStoryCards() || story == null || TextUtils.isEmpty(story.previewImageUrl)) {
+            return;
+        }
+
+        int baseColor = getDefaultStoryCardBackgroundColor(context);
+        if (PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor, paletteTintMode)) {
+            return;
+        }
+
+        Integer tintColor = StoryPreviewImageLoader.loadCachedPreviewImageTintColor(
+                context,
+                story.id,
+                story.previewImageUrl,
+                baseColor,
+                paletteTintMode);
+        if (tintColor != null) {
+            PreviewImageTintUtils.applyCachedStoryPreviewImageTintColor(
+                    story,
+                    story.previewImageUrl,
+                    baseColor,
+                    paletteTintMode,
+                    tintColor);
+        }
+    }
+
+    private void hydrateCachedFaviconTintColor(Context context, Story story) {
+        if (!shouldUseFaviconTint(story)) {
+            return;
+        }
+
+        String faviconUrl = getFaviconTintSourceUrl(story);
+        if (TextUtils.isEmpty(faviconUrl)) {
+            return;
+        }
+
+        int baseColor = getDefaultStoryCardBackgroundColor(context);
+        if (isFaviconTintColorCurrent(story, faviconUrl, baseColor)) {
+            return;
+        }
+
+        Integer tintColor = StoryPreviewImageLoader.loadCachedPreviewImageTintColor(
+                context,
+                story.id,
+                faviconUrl,
+                baseColor,
+                paletteTintMode);
+        if (tintColor == null) {
+            return;
+        }
+
+        story.faviconTintSourceUrl = faviconUrl;
+        story.faviconTintColor = tintColor;
+        story.faviconTintColorLoaded = true;
+        story.faviconTintColorLoading = false;
+        story.faviconTintColorLoadFailed = false;
+        story.faviconTintBaseColor = baseColor;
+        story.faviconTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode);
+    }
+
+    private void cachePreviewState(@Nullable Context context, Story story) {
+        if (context == null || story == null) {
+            return;
+        }
+
+        Utils.cacheStoryPreviewState(context, story);
+        if (story.previewImageTintColorLoaded && !TextUtils.isEmpty(story.previewImageTintSourceUrl)) {
+            StoryPreviewImageLoader.saveCachedPreviewImageTintColor(
+                    context,
+                    story.id,
+                    story.previewImageTintSourceUrl,
+                    story.previewImageTintBaseColor,
+                    story.previewImageTintMode,
+                    story.previewImageTintColor);
+        }
+        if (story.faviconTintColorLoaded && !TextUtils.isEmpty(story.faviconTintSourceUrl)) {
+            StoryPreviewImageLoader.saveCachedPreviewImageTintColor(
+                    context,
+                    story.id,
+                    story.faviconTintSourceUrl,
+                    story.faviconTintBaseColor,
+                    story.faviconTintMode,
+                    story.faviconTintColor);
+        }
+    }
+
+    private void notifyStoryChangedIfPreviewEnabled(Story story) {
+        int index = stories.indexOf(story);
+        if (index >= 0 && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)) {
+            notifyItemChanged(index);
+        }
     }
 
     private void cancelPreviewImageUrlRequests() {
@@ -696,6 +886,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         story.previewImageLoaded = true;
                         StoryPreviewImageMemoryCache.put(story.id, imageUrl, result);
                         updatePreviewImageTintColor(story, imageUrl, result, storyCardBackgroundColor);
+                        cachePreviewState(context, story);
                     }
                 })
                 .build();
@@ -770,6 +961,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         story.previewImageLoadFailed = false;
                         StoryPreviewImageMemoryCache.put(story.id, imageUrl, result);
                         updatePreviewImageTintColor(previewImage.getContext(), story, imageUrl, result);
+                        cachePreviewState(previewImage.getContext(), story);
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
                             super.onSuccess(result);
                             applyStoryCardBackground(
@@ -810,6 +1002,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         story.previewImageLoaded = true;
         story.previewImageLoadFailed = false;
         updatePreviewImageTintColor(previewImage.getContext(), story, imageUrl, cachedPreviewImage);
+        cachePreviewState(previewImage.getContext(), story);
         applyStoryCardBackground(storyViewHolder, story, false);
         return true;
     }
@@ -852,7 +1045,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             targetColor = story.previewImageTintColor;
         } else if (shouldUseFaviconTint(story)
                 && story.faviconTintColorLoaded
-                && isFaviconTintColorCurrent(story)) {
+                && isFaviconTintColorCurrent(story, getFaviconTintSourceUrl(story), targetColor)) {
             targetColor = story.faviconTintColor;
         }
 
@@ -988,7 +1181,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             story.faviconTintColorLoadFailed = false;
         }
 
-        if (story.faviconTintColorLoaded && !isFaviconTintColorCurrent(story)) {
+        int baseColor = getDefaultStoryCardBackgroundColor(context);
+        if (story.faviconTintColorLoaded && !isFaviconTintColorCurrent(story, faviconUrl, baseColor)) {
             story.faviconTintColorLoaded = false;
             story.faviconTintColorLoading = false;
             story.faviconTintColorLoadFailed = false;
@@ -1041,6 +1235,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         story.faviconTintColorLoading = false;
                         updateFaviconTintColor(context, story, result);
                         if (story.faviconTintColorLoaded) {
+                            cachePreviewState(context, story);
                             if (isCurrentStoryHolder(storyViewHolder, story)) {
                                 applyStoryCardBackground(storyViewHolder, story, animate);
                             } else {
@@ -1060,8 +1255,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         try {
-            story.faviconTintColor = PreviewImageTintUtils.calculateCardTint(context, drawable, paletteTintMode);
+            int baseColor = getDefaultStoryCardBackgroundColor(context);
+            story.faviconTintColor = PreviewImageTintUtils.calculateCardTint(baseColor, drawable, paletteTintMode);
             story.faviconTintColorLoaded = true;
+            story.faviconTintBaseColor = baseColor;
             story.faviconTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode);
             story.faviconTintColorLoadFailed = false;
         } catch (RuntimeException e) {
@@ -1096,10 +1293,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 && TextUtils.isEmpty(story.previewImageUrl);
     }
 
-    private boolean isFaviconTintColorCurrent(Story story) {
+    private boolean isFaviconTintColorCurrent(Story story, String faviconUrl, int baseColor) {
         return story != null
                 && story.faviconTintColorLoaded
-                && TextUtils.equals(story.faviconTintSourceUrl, getFaviconTintSourceUrl(story))
+                && TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)
+                && story.faviconTintBaseColor == baseColor
                 && SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
                 .equals(SettingsUtils.getPaletteTintConfigKey(story.faviconTintMode));
     }

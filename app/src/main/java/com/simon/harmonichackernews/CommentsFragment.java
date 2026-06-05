@@ -128,6 +128,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_FAVICON_TINT_COLOR_LOADED = "com.simon.harmonichackernews.EXTRA_FAVICON_TINT_COLOR_LOADED";
     public final static String EXTRA_FAVICON_TINT_COLOR = "com.simon.harmonichackernews.EXTRA_FAVICON_TINT_COLOR";
     public final static String EXTRA_FAVICON_TINT_SOURCE_URL = "com.simon.harmonichackernews.EXTRA_FAVICON_TINT_SOURCE_URL";
+    public final static String EXTRA_FAVICON_TINT_BASE_COLOR = "com.simon.harmonichackernews.EXTRA_FAVICON_TINT_BASE_COLOR";
     public final static String EXTRA_FAVICON_TINT_MODE = "com.simon.harmonichackernews.EXTRA_FAVICON_TINT_MODE";
     public final static String EXTRA_TIME = "com.simon.harmonichackernews.EXTRA_TIME";
     public final static String EXTRA_KIDS = "com.simon.harmonichackernews.EXTRA_KIDS";
@@ -288,6 +289,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             story.faviconTintColorLoaded = bundle.getBoolean(EXTRA_FAVICON_TINT_COLOR_LOADED, false);
             story.faviconTintColor = bundle.getInt(EXTRA_FAVICON_TINT_COLOR, 0);
             story.faviconTintSourceUrl = bundle.getString(EXTRA_FAVICON_TINT_SOURCE_URL);
+            story.faviconTintBaseColor = bundle.getInt(EXTRA_FAVICON_TINT_BASE_COLOR, Color.TRANSPARENT);
             story.faviconTintMode = bundle.getString(EXTRA_FAVICON_TINT_MODE);
             story.time = bundle.getInt(EXTRA_TIME, 0);
             story.kids = bundle.getIntArray(EXTRA_KIDS);

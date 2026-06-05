@@ -11,7 +11,12 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.json.JSONObject;
 
+import com.simon.harmonichackernews.utils.SettingsUtils;
+
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,14 +49,21 @@ public class StoryPreviewImageLoader {
             "com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES";
     private static final String KEY_PREVIEW_IMAGE_CACHE_ORDER =
             "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_CACHE_ORDER";
+    private static final String KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER =
+            "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER";
     private static final String KEY_PREVIEW_IMAGE_URL =
             "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_URL";
+    private static final String KEY_PREVIEW_IMAGE_URL_LOADED =
+            "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_URL_LOADED";
+    private static final String KEY_PREVIEW_IMAGE_TINT_COLOR =
+            "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_TINT_COLOR";
     private static final String YOUTUBE_OEMBED_ENDPOINT = "https://www.youtube.com/oembed";
     private static final String YOUTUBE_OEMBED_CACHE_SUFFIX = "youtube_oembed";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
     private static final Map<String, String> IMAGE_CACHE = new HashMap<>();
     private static final Set<String> MISS_CACHE = new HashSet<>();
     private static final Map<String, PendingPreviewImageBatch> PENDING_CALLBACKS = new HashMap<>();
+    private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
     private static final Pattern YOUTUBE_VIDEO_URL_PATTERN = Pattern.compile(
             "^https?://(?:(?:www|m|music)\\.)?(?:youtube\\.com|youtube-nocookie\\.com)/"
                     + "(?:watch\\?(?:[^#]*&)?v=|embed/|v/|shorts/|live/)"
@@ -136,6 +148,10 @@ public class StoryPreviewImageLoader {
     }
 
     public static PreviewImageRequest loadPreviewImageUrl(Context context, int storyId, String pageUrl, PreviewImageCallback callback) {
+        return loadPreviewImageUrl(context, storyId, pageUrl, false, callback);
+    }
+
+    public static PreviewImageRequest loadPreviewImageUrl(Context context, int storyId, String pageUrl, boolean forceRefresh, PreviewImageCallback callback) {
         Context appContext = context == null ? null : context.getApplicationContext();
         PendingPreviewImageRequest previewImageRequest = new PendingPreviewImageRequest(appContext, storyId, callback);
         String normalizedPageUrl = normalizeHttpUrl(pageUrl);
@@ -145,10 +161,15 @@ public class StoryPreviewImageLoader {
         }
 
         String previewImageCacheEntryId = getPreviewImageCacheEntryId(storyId, normalizedPageUrl);
-        String cachedDiskImageUrl = loadCachedPreviewImageUrl(appContext, previewImageCacheEntryId);
-        if (!TextUtils.isEmpty(cachedDiskImageUrl)) {
-            postResult(previewImageRequest, cachedDiskImageUrl);
-            return previewImageRequest;
+        if (!forceRefresh) {
+            CachedPreviewImageUrl cachedDiskImageUrl = loadCachedPreviewImageUrl(
+                    appContext,
+                    previewImageCacheEntryId,
+                    true);
+            if (cachedDiskImageUrl.loaded) {
+                postResult(previewImageRequest, cachedDiskImageUrl.imageUrl);
+                return previewImageRequest;
+            }
         }
 
         if (isLikelyImageUrl(normalizedPageUrl)) {
@@ -166,16 +187,18 @@ public class StoryPreviewImageLoader {
 
         PendingPreviewImageBatch pendingBatch;
         synchronized (StoryPreviewImageLoader.class) {
-            String cachedImageUrl = IMAGE_CACHE.get(normalizedPageUrl);
-            if (!TextUtils.isEmpty(cachedImageUrl)) {
-                saveCachedPreviewImageUrl(appContext, previewImageCacheEntryId, cachedImageUrl);
-                postResult(previewImageRequest, cachedImageUrl);
-                return previewImageRequest;
-            }
+            if (!forceRefresh) {
+                String cachedImageUrl = IMAGE_CACHE.get(normalizedPageUrl);
+                if (!TextUtils.isEmpty(cachedImageUrl)) {
+                    saveCachedPreviewImageUrl(appContext, previewImageCacheEntryId, cachedImageUrl);
+                    postResult(previewImageRequest, cachedImageUrl);
+                    return previewImageRequest;
+                }
 
-            if (MISS_CACHE.contains(normalizedPageUrl)) {
-                postResult(previewImageRequest, null);
-                return previewImageRequest;
+                if (MISS_CACHE.contains(normalizedPageUrl)) {
+                    postResult(previewImageRequest, null);
+                    return previewImageRequest;
+                }
             }
 
             pendingBatch = PENDING_CALLBACKS.get(normalizedPageUrl);
@@ -243,6 +266,28 @@ public class StoryPreviewImageLoader {
             }
         });
         return previewImageRequest;
+    }
+
+    public static String getCachedPreviewImageUrl(Context context, int storyId, String pageUrl) {
+        Context appContext = context == null ? null : context.getApplicationContext();
+        String normalizedPageUrl = normalizeHttpUrl(pageUrl);
+        if (TextUtils.isEmpty(normalizedPageUrl)) {
+            return null;
+        }
+
+        String previewImageCacheEntryId = getPreviewImageCacheEntryId(storyId, normalizedPageUrl);
+        return loadCachedPreviewImageUrl(appContext, previewImageCacheEntryId, false).imageUrl;
+    }
+
+    public static boolean isCachedPreviewImageUrlLoaded(Context context, int storyId, String pageUrl) {
+        Context appContext = context == null ? null : context.getApplicationContext();
+        String normalizedPageUrl = normalizeHttpUrl(pageUrl);
+        if (TextUtils.isEmpty(normalizedPageUrl)) {
+            return false;
+        }
+
+        String previewImageCacheEntryId = getPreviewImageCacheEntryId(storyId, normalizedPageUrl);
+        return loadCachedPreviewImageUrl(appContext, previewImageCacheEntryId, false).loaded;
     }
 
     private static String extractPreviewImageUrl(String html, String baseUrl) {
@@ -375,14 +420,12 @@ public class StoryPreviewImageLoader {
             return;
         }
 
-        if (!TextUtils.isEmpty(imageUrl)) {
-            for (PendingPreviewImageRequest pendingRequest : pendingRequests) {
-                if (!pendingRequest.isCancelled()) {
-                    saveCachedPreviewImageUrl(
-                            pendingRequest.context,
-                            getPreviewImageCacheEntryId(pendingRequest.storyId, pageUrl),
-                            imageUrl);
-                }
+        for (PendingPreviewImageRequest pendingRequest : pendingRequests) {
+            if (!pendingRequest.isCancelled()) {
+                saveCachedPreviewImageUrl(
+                        pendingRequest.context,
+                        getPreviewImageCacheEntryId(pendingRequest.storyId, pageUrl),
+                        imageUrl);
             }
         }
 
@@ -413,7 +456,10 @@ public class StoryPreviewImageLoader {
             SharedPreferences.Editor editor = preferences.edit();
             for (String key : preferences.getAll().keySet()) {
                 if (KEY_PREVIEW_IMAGE_CACHE_ORDER.equals(key)
-                        || key.startsWith(KEY_PREVIEW_IMAGE_URL)) {
+                        || KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER.equals(key)
+                        || key.startsWith(KEY_PREVIEW_IMAGE_URL)
+                        || key.startsWith(KEY_PREVIEW_IMAGE_URL_LOADED)
+                        || key.startsWith(KEY_PREVIEW_IMAGE_TINT_COLOR)) {
                     editor.remove(key);
                 }
             }
@@ -421,23 +467,32 @@ public class StoryPreviewImageLoader {
         }
     }
 
-    private static String loadCachedPreviewImageUrl(Context context, String previewImageCacheEntryId) {
+    private static CachedPreviewImageUrl loadCachedPreviewImageUrl(Context context, String previewImageCacheEntryId) {
+        return loadCachedPreviewImageUrl(context, previewImageCacheEntryId, true);
+    }
+
+    private static CachedPreviewImageUrl loadCachedPreviewImageUrl(
+            Context context,
+            String previewImageCacheEntryId,
+            boolean updateCacheOrder) {
         if (context == null || TextUtils.isEmpty(previewImageCacheEntryId)) {
-            return null;
+            return new CachedPreviewImageUrl(false, null);
         }
 
         synchronized (StoryPreviewImageLoader.class) {
             SharedPreferences preferences = getPreviewImageCachePreferences(context);
             String imageUrl = preferences.getString(getPreviewImageUrlKey(previewImageCacheEntryId), null);
-            if (!TextUtils.isEmpty(imageUrl)) {
+            boolean loaded = preferences.getBoolean(getPreviewImageUrlLoadedKey(previewImageCacheEntryId), false)
+                    || !TextUtils.isEmpty(imageUrl);
+            if (updateCacheOrder && loaded) {
                 movePreviewImageCacheIdToEnd(preferences, previewImageCacheEntryId);
             }
-            return imageUrl;
+            return new CachedPreviewImageUrl(loaded, imageUrl);
         }
     }
 
     private static void saveCachedPreviewImageUrl(Context context, String previewImageCacheEntryId, String imageUrl) {
-        if (context == null || TextUtils.isEmpty(previewImageCacheEntryId) || TextUtils.isEmpty(imageUrl)) {
+        if (context == null || TextUtils.isEmpty(previewImageCacheEntryId)) {
             return;
         }
 
@@ -448,14 +503,71 @@ public class StoryPreviewImageLoader {
             orderedIds.add(previewImageCacheEntryId);
 
             SharedPreferences.Editor editor = preferences.edit()
-                    .putString(getPreviewImageUrlKey(previewImageCacheEntryId), imageUrl);
+                    .putBoolean(getPreviewImageUrlLoadedKey(previewImageCacheEntryId), true);
+            if (TextUtils.isEmpty(imageUrl)) {
+                editor.remove(getPreviewImageUrlKey(previewImageCacheEntryId));
+            } else {
+                editor.putString(getPreviewImageUrlKey(previewImageCacheEntryId), imageUrl);
+            }
 
             while (orderedIds.size() > MAX_DISK_CACHE_SIZE) {
                 String oldestId = orderedIds.remove(0);
                 editor.remove(getPreviewImageUrlKey(oldestId));
+                editor.remove(getPreviewImageUrlLoadedKey(oldestId));
             }
 
             editor.putString(KEY_PREVIEW_IMAGE_CACHE_ORDER, TextUtils.join(",", orderedIds)).apply();
+        }
+    }
+
+    public static void saveCachedPreviewImageTintColor(
+            Context context,
+            int storyId,
+            String imageUrl,
+            int baseColor,
+            String paletteTintMode,
+            int tintColor) {
+        if (context == null || storyId <= 0 || TextUtils.isEmpty(imageUrl)) {
+            return;
+        }
+
+        synchronized (StoryPreviewImageLoader.class) {
+            SharedPreferences preferences = getPreviewImageCachePreferences(context);
+            String tintColorKey = getPreviewImageTintColorKey(storyId, imageUrl, baseColor, paletteTintMode);
+            List<String> orderedKeys = readPreviewImageTintCacheOrder(preferences);
+            orderedKeys.remove(tintColorKey);
+            orderedKeys.add(tintColorKey);
+
+            SharedPreferences.Editor editor = preferences.edit()
+                    .putInt(tintColorKey, tintColor);
+            while (orderedKeys.size() > MAX_DISK_CACHE_SIZE) {
+                editor.remove(orderedKeys.remove(0));
+            }
+
+            editor.putString(KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER, TextUtils.join(",", orderedKeys)).apply();
+        }
+    }
+
+    public static Integer loadCachedPreviewImageTintColor(
+            Context context,
+            int storyId,
+            String imageUrl,
+            int baseColor,
+            String paletteTintMode) {
+        if (context == null || storyId <= 0 || TextUtils.isEmpty(imageUrl)) {
+            return null;
+        }
+
+        synchronized (StoryPreviewImageLoader.class) {
+            SharedPreferences preferences = getPreviewImageCachePreferences(context);
+            String key = getPreviewImageTintColorKey(storyId, imageUrl, baseColor, paletteTintMode);
+            if (!preferences.contains(key)) {
+                return null;
+            }
+
+            int tintColor = preferences.getInt(key, baseColor);
+            movePreviewImageTintCacheKeyToEnd(preferences, key);
+            return tintColor;
         }
     }
 
@@ -469,8 +581,16 @@ public class StoryPreviewImageLoader {
     }
 
     private static List<String> readPreviewImageCacheOrder(SharedPreferences preferences) {
+        return readCacheOrder(preferences, KEY_PREVIEW_IMAGE_CACHE_ORDER);
+    }
+
+    private static List<String> readPreviewImageTintCacheOrder(SharedPreferences preferences) {
+        return readCacheOrder(preferences, KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER);
+    }
+
+    private static List<String> readCacheOrder(SharedPreferences preferences, String orderKey) {
         List<String> orderedIds = new ArrayList<>();
-        String order = preferences.getString(KEY_PREVIEW_IMAGE_CACHE_ORDER, "");
+        String order = preferences.getString(orderKey, "");
         if (TextUtils.isEmpty(order)) {
             return orderedIds;
         }
@@ -482,6 +602,15 @@ public class StoryPreviewImageLoader {
             }
         }
         return orderedIds;
+    }
+
+    private static void movePreviewImageTintCacheKeyToEnd(SharedPreferences preferences, String tintColorKey) {
+        List<String> orderedKeys = readPreviewImageTintCacheOrder(preferences);
+        orderedKeys.remove(tintColorKey);
+        orderedKeys.add(tintColorKey);
+        preferences.edit()
+                .putString(KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER, TextUtils.join(",", orderedKeys))
+                .apply();
     }
 
     private static SharedPreferences getPreviewImageCachePreferences(Context context) {
@@ -501,5 +630,59 @@ public class StoryPreviewImageLoader {
 
     private static String getPreviewImageUrlKey(String previewImageCacheEntryId) {
         return KEY_PREVIEW_IMAGE_URL + previewImageCacheEntryId;
+    }
+
+    private static String getPreviewImageUrlLoadedKey(String previewImageCacheEntryId) {
+        return KEY_PREVIEW_IMAGE_URL_LOADED + previewImageCacheEntryId;
+    }
+
+    private static String getPreviewImageTintColorKey(
+            int storyId,
+            String imageUrl,
+            int baseColor,
+            String paletteTintMode) {
+        return KEY_PREVIEW_IMAGE_TINT_COLOR
+                + getPreviewImageTintColorCacheId(storyId, imageUrl, baseColor, paletteTintMode);
+    }
+
+    private static String getPreviewImageTintColorCacheId(
+            int storyId,
+            String imageUrl,
+            int baseColor,
+            String paletteTintMode) {
+        return ""
+                + storyId
+                + ":"
+                + baseColor
+                + ":"
+                + SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+                + ":"
+                + sha256Hex(imageUrl);
+    }
+
+    private static String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            char[] hex = new char[bytes.length * 2];
+            for (int i = 0; i < bytes.length; i++) {
+                int unsignedByte = bytes[i] & 0xff;
+                hex[i * 2] = HEX_DIGITS[unsignedByte >>> 4];
+                hex[i * 2 + 1] = HEX_DIGITS[unsignedByte & 0x0f];
+            }
+            return new String(hex);
+        } catch (NoSuchAlgorithmException e) {
+            return Integer.toHexString(value.hashCode());
+        }
+    }
+
+    private static class CachedPreviewImageUrl {
+        final boolean loaded;
+        final String imageUrl;
+
+        CachedPreviewImageUrl(boolean loaded, String imageUrl) {
+            this.loaded = loaded;
+            this.imageUrl = imageUrl;
+        }
     }
 }

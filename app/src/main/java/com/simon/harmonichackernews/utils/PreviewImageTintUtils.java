@@ -169,6 +169,26 @@ public class PreviewImageTintUtils {
         return true;
     }
 
+    public static boolean applyCachedStoryPreviewImageTintColor(
+            Story story,
+            String imageUrl,
+            int baseColor,
+            String paletteTintMode,
+            int tintColor) {
+        if (story == null || TextUtils.isEmpty(imageUrl)) {
+            return false;
+        }
+
+        String safePaletteTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode);
+        StoryPreviewImageMemoryCache.putTintColor(story.id, imageUrl, baseColor, safePaletteTintMode, tintColor);
+        return setCurrentStoryPreviewImageTintColor(
+                story,
+                imageUrl,
+                baseColor,
+                safePaletteTintMode,
+                tintColor);
+    }
+
     public static boolean isStoryPreviewImageTintColorCurrent(Story story, int baseColor) {
         return isStoryPreviewImageTintColorCurrent(story, baseColor, SettingsUtils.PALETTE_TINT_DEFAULT);
     }
