@@ -74,6 +74,9 @@ class CommentsWebViewController {
     private static final String PDF_LOADER_URL = "file:///android_asset/pdf/index.html";
     private static final String OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html";
     private static final String READER_MODE_SCRIPT_ASSET = "reader_mode.js";
+    private static final long WEBVIEW_VISIBLE_LOAD_GRACE_MS = 1500;
+    private static final long WEBVIEW_LOAD_TIMEOUT_MS = 45000;
+    private static final long SUMMARY_LOAD_TIMEOUT_MS = 30000;
 
     private enum ErrorPageType {
         OFFLINE,
@@ -91,6 +94,7 @@ class CommentsWebViewController {
     private final Story story;
     private final LinkPreviewController linkPreviewController;
     private final Callbacks callbacks;
+    private final Handler webViewHandler = new Handler(Looper.getMainLooper());
     private final Runnable initializeWebViewRunnable = this::initialize;
     private final Runnable webViewBackdropFadeInRunnable = new Runnable() {
         @Override
@@ -127,10 +131,17 @@ class CommentsWebViewController {
     private boolean showingErrorPage = false;
     private boolean showingCachedArticlePage = false;
     private boolean clearWebViewHistoryOnNextFinish = false;
+    private boolean webViewLoadInProgress = false;
+    private boolean webViewLoadUiSettled = true;
+    private boolean webViewLoadCommittedVisible = false;
+    private int webViewLoadGeneration = 0;
     @Nullable
     private String lastFailedWebViewUrl;
     @Nullable
     private String lastRequestedWebViewUrl;
+    @Nullable
+    private Runnable pendingSummaryOnDone;
+    private int pendingSummaryGeneration = 0;
     @Nullable
     private View customView;
     @Nullable
@@ -155,6 +166,8 @@ class CommentsWebViewController {
         this.bottomSheet = bottomSheet;
         this.swipeRefreshLayout = swipeRefreshLayout;
         this.progressIndicator = progressIndicator;
+        this.progressIndicator.setVisibility(View.GONE);
+        this.progressIndicator.setProgress(0);
         webViewStub = rootView.findViewById(R.id.comments_webview_stub);
         webView = rootView.findViewById(R.id.comments_webview);
         downloadButton = rootView.findViewById(R.id.webview_download);
@@ -317,7 +330,7 @@ class CommentsWebViewController {
 
         boolean enableReaderMode = !readerModeEnabled;
         readerModeDisabledForCurrentPage = !enableReaderMode;
-        if (!startedLoading || TextUtils.isEmpty(currentUrl) || webView.getProgress() < 100) {
+        if (!startedLoading || TextUtils.isEmpty(currentUrl) || (webView.getProgress() < 100 && webViewLoadInProgress)) {
             if (TextUtils.isEmpty(story.url)) {
                 Toast.makeText(context, "Reader mode unavailable for this page", Toast.LENGTH_SHORT).show();
                 return;
@@ -481,10 +494,6 @@ class CommentsWebViewController {
         }
 
         webView.setWebViewClient(new MyWebViewClient());
-        if (shouldPreloadStoryUrl(context) || showWebsite || linkPreviewController.shouldInitializeWebViewForPreview(context)) {
-            loadUrl(story.url);
-            startedLoading = true;
-        }
 
         webView.getSettings().setBuiltInZoomControls(true);
         webView.getSettings().setDisplayZoomControls(false);
@@ -528,29 +537,7 @@ class CommentsWebViewController {
 
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                LinearProgressIndicator currentProgressIndicator = progressIndicator;
-                if (view != webView || fragment.getContext() == null || fragment.getView() == null || currentProgressIndicator == null) {
-                    return;
-                }
-                cancelProgressAnimator();
-
-                int current = currentProgressIndicator.getProgress();
-                if (newProgress > current) {
-                    progressAnimator = ValueAnimator.ofInt(current, newProgress);
-                    progressAnimator.setDuration(400);
-                    progressAnimator.addUpdateListener(anim -> {
-                        if (progressAnimator != anim || progressIndicator != currentProgressIndicator) {
-                            return;
-                        }
-                        int animatedValue = (int) anim.getAnimatedValue();
-                        currentProgressIndicator.setProgress(animatedValue);
-                    });
-                    progressAnimator.start();
-                } else {
-                    currentProgressIndicator.setProgress(newProgress);
-                }
-
-                currentProgressIndicator.setVisibility(newProgress < 100 ? View.VISIBLE : View.GONE);
+                updateWebViewProgress(view, newProgress);
             }
         });
 
@@ -564,8 +551,9 @@ class CommentsWebViewController {
 
         webView.setBackgroundColor(Color.TRANSPARENT);
 
-        if (webViewBackdrop != null) {
-            webViewBackdrop.postDelayed(webViewBackdropFadeInRunnable, 2000);
+        if (shouldPreloadStoryUrl(context) || showWebsite || linkPreviewController.shouldInitializeWebViewForPreview(context)) {
+            loadUrl(story.url);
+            startedLoading = true;
         }
     }
 
@@ -574,6 +562,163 @@ class CommentsWebViewController {
                 || (SettingsUtils.PRELOAD_WEBVIEW_ONLY_WIFI.equals(preloadWebview) && Utils.isOnWiFi(context));
         return enabledForConnection
                 && SettingsUtils.hasEnoughBatteryForWebViewPreload(context, preloadWebviewMinimumBattery);
+    }
+
+    private boolean isCurrentWebViewCallback(WebView view) {
+        return view != null
+                && view == webView
+                && fragment.getContext() != null
+                && fragment.getView() != null
+                && bottomSheet != null
+                && webViewBackdrop != null;
+    }
+
+    private void beginWebViewLoad(@NonNull WebView view, @Nullable String url) {
+        if (view != webView || fragment.getContext() == null || fragment.getView() == null) {
+            return;
+        }
+
+        webViewLoadGeneration++;
+        webViewLoadInProgress = true;
+        webViewLoadUiSettled = false;
+        webViewLoadCommittedVisible = false;
+
+        if (webViewBackdrop != null) {
+            webViewBackdrop.removeCallbacks(webViewBackdropFadeInRunnable);
+            webViewBackdrop.animate().cancel();
+            webViewBackdrop.setAlpha(0f);
+            webViewBackdrop.setVisibility(View.VISIBLE);
+            webViewBackdrop.postDelayed(webViewBackdropFadeInRunnable, 2000);
+        }
+
+        showWebViewProgress(0);
+
+        int generation = webViewLoadGeneration;
+        webViewHandler.postDelayed(() -> handleWebViewLoadTimeout(view, url, generation), WEBVIEW_LOAD_TIMEOUT_MS);
+    }
+
+    private void handleWebViewLoadTimeout(@NonNull WebView view, @Nullable String url, int generation) {
+        if (view != webView || generation != webViewLoadGeneration || !webViewLoadInProgress) {
+            return;
+        }
+
+        if (webViewLoadCommittedVisible) {
+            finishWebViewLoadUi(view, generation, false);
+            return;
+        }
+
+        showCustomErrorPage(view, !TextUtils.isEmpty(url) ? url : view.getUrl(), ErrorPageType.GENERIC);
+    }
+
+    private void scheduleVisibleCommitSettle(@NonNull WebView view) {
+        int generation = webViewLoadGeneration;
+        webViewHandler.postDelayed(() -> {
+            if (webViewLoadCommittedVisible && webViewLoadInProgress) {
+                finishWebViewLoadUi(view, generation, false);
+            }
+        }, WEBVIEW_VISIBLE_LOAD_GRACE_MS);
+    }
+
+    private void showWebViewProgress(int progress) {
+        LinearProgressIndicator currentProgressIndicator = progressIndicator;
+        if (currentProgressIndicator == null) {
+            return;
+        }
+
+        cancelProgressAnimator();
+        currentProgressIndicator.setProgress(progress);
+        currentProgressIndicator.setVisibility(View.VISIBLE);
+    }
+
+    private void updateWebViewProgress(@NonNull WebView view, int newProgress) {
+        LinearProgressIndicator currentProgressIndicator = progressIndicator;
+        if (view != webView || fragment.getContext() == null || fragment.getView() == null || currentProgressIndicator == null) {
+            return;
+        }
+        cancelProgressAnimator();
+
+        int current = currentProgressIndicator.getProgress();
+        if (newProgress > current) {
+            progressAnimator = ValueAnimator.ofInt(current, newProgress);
+            progressAnimator.setDuration(400);
+            progressAnimator.addUpdateListener(anim -> {
+                if (progressAnimator != anim || progressIndicator != currentProgressIndicator) {
+                    return;
+                }
+                int animatedValue = (int) anim.getAnimatedValue();
+                currentProgressIndicator.setProgress(animatedValue);
+            });
+            progressAnimator.start();
+        } else {
+            currentProgressIndicator.setProgress(newProgress);
+        }
+
+        if (newProgress >= 100) {
+            finishWebViewLoadUi(view, webViewLoadGeneration, true);
+        } else if (!webViewLoadUiSettled) {
+            currentProgressIndicator.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void finishWebViewLoadUi(@NonNull WebView view, int generation, boolean completeProgress) {
+        if (view != webView || generation != webViewLoadGeneration) {
+            return;
+        }
+
+        webViewLoadInProgress = false;
+        webViewLoadUiSettled = true;
+
+        view.setBackgroundColor(Color.WHITE);
+        hideWebViewLoadingBackdrop();
+
+        LinearProgressIndicator currentProgressIndicator = progressIndicator;
+        if (currentProgressIndicator != null) {
+            cancelProgressAnimator();
+            if (completeProgress) {
+                currentProgressIndicator.setProgress(100);
+            }
+            currentProgressIndicator.setVisibility(View.GONE);
+        }
+
+        completePendingSummaryIfReady(view);
+    }
+
+    private void hideWebViewLoadingBackdrop() {
+        if (webViewBackdrop == null) {
+            return;
+        }
+
+        webViewBackdrop.removeCallbacks(webViewBackdropFadeInRunnable);
+        webViewBackdrop.animate().cancel();
+        webViewBackdrop.setVisibility(View.GONE);
+        webViewBackdrop.setAlpha(0f);
+    }
+
+    private void showCustomErrorPage(WebView view, @Nullable String failingUrl, @NonNull ErrorPageType errorPageType) {
+        if (!isCurrentWebViewCallback(view) || showingErrorPage || showingCachedArticlePage) {
+            return;
+        }
+        linkPreviewController.onWebViewOfflineFallback(fragment.getContext());
+        if (errorPageType == ErrorPageType.OFFLINE && loadCachedArticleSnapshot(view, failingUrl)) {
+            return;
+        }
+        if (!TextUtils.isEmpty(failingUrl)) {
+            lastFailedWebViewUrl = failingUrl;
+        } else if (lastRequestedWebViewUrl != null) {
+            lastFailedWebViewUrl = lastRequestedWebViewUrl;
+        } else if (view.getUrl() != null && !TextUtils.isEmpty(view.getUrl()) && !isErrorPageUrl(view.getUrl())) {
+            lastFailedWebViewUrl = view.getUrl();
+        }
+        retryingFailedWebViewUrl = false;
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setRefreshing(false);
+        }
+        view.stopLoading();
+        finishWebViewLoadUi(view, webViewLoadGeneration, false);
+        clearWebViewHistoryOnNextFinish = !view.canGoBack();
+        showingErrorPage = true;
+        showingCachedArticlePage = false;
+        loadUrl(getErrorPageUrl(errorPageType));
     }
 
     void hideCustomView(boolean notifyCallback) {
@@ -727,6 +872,7 @@ class CommentsWebViewController {
         if (TextUtils.isEmpty(url)) {
             return;
         }
+        beginWebViewLoad(webView, url);
         webView.loadUrl(url);
         if (isErrorPageUrl(url)) {
             showingErrorPage = true;
@@ -800,36 +946,51 @@ class CommentsWebViewController {
     }
 
     void requestSummary(Runnable onDone) {
-        Handler handler = new Handler(Looper.getMainLooper());
-
         if (webView == null || !startedLoading) {
             startedLoading = true;
             loadUrl(story.url);
         }
 
         if (webView == null) {
-            handler.post(onDone);
+            webViewHandler.post(onDone);
             return;
         }
 
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
+        pendingSummaryOnDone = onDone;
+        int generation = ++pendingSummaryGeneration;
+        webViewHandler.postDelayed(() -> finishPendingSummary(generation, "", null), SUMMARY_LOAD_TIMEOUT_MS);
 
-                view.evaluateJavascript(
-                        "(function() { return document.body.innerText || ''; })();",
-                        result -> {
-                            if (result != null) {
-                                story.summary = result.replaceAll("^\"|\"$", "");
-                            } else {
-                                story.summary = "";
-                            }
-                            handler.post(onDone);
-                        }
-                );
-            }
-        });
+        if (!webViewLoadInProgress || webView.getProgress() >= 100) {
+            completePendingSummaryIfReady(webView);
+        }
+    }
+
+    private void completePendingSummaryIfReady(@Nullable WebView targetWebView) {
+        Runnable onDone = pendingSummaryOnDone;
+        if (onDone == null || targetWebView == null || targetWebView != webView) {
+            return;
+        }
+
+        int generation = pendingSummaryGeneration;
+        pendingSummaryOnDone = null;
+        targetWebView.evaluateJavascript(
+                "(function() { return document.body ? (document.body.innerText || '') : ''; })();",
+                result -> finishPendingSummary(generation, result != null ? result.replaceAll("^\"|\"$", "") : "", onDone)
+        );
+    }
+
+    private void finishPendingSummary(int generation, String summary, @Nullable Runnable completedCallback) {
+        if (generation != pendingSummaryGeneration) {
+            return;
+        }
+
+        Runnable onDone = completedCallback != null ? completedCallback : pendingSummaryOnDone;
+        if (onDone == null) {
+            return;
+        }
+        pendingSummaryOnDone = null;
+        story.summary = summary;
+        webViewHandler.post(onDone);
     }
 
     @Nullable
@@ -895,6 +1056,12 @@ class CommentsWebViewController {
 
     private void destroy(boolean rendererProcessGone) {
         cancelProgressAnimator();
+        webViewLoadGeneration++;
+        webViewLoadInProgress = false;
+        webViewLoadUiSettled = true;
+        webViewLoadCommittedVisible = false;
+        pendingSummaryOnDone = null;
+        webViewHandler.removeCallbacksAndMessages(null);
         linkPreviewController.cancelPendingNitterLinkPreviewRead();
         if (webView != null) {
             WebView webViewToDestroy = webView;
@@ -1002,21 +1169,13 @@ class CommentsWebViewController {
 
     private class MyWebViewClient extends WebViewClient {
 
-        private boolean isCurrentWebViewCallback(WebView view) {
-            return view != null
-                    && view == webView
-                    && fragment.getContext() != null
-                    && fragment.getView() != null
-                    && bottomSheet != null
-                    && webViewBackdrop != null;
-        }
-
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
             super.onPageStarted(view, url, favicon);
             if (!isCurrentWebViewCallback(view)) {
                 return;
             }
+            beginWebViewLoad(view, url);
             if (!isErrorPageUrl(url)) {
                 readerModeEnabled = false;
                 readerModeDisabledForCurrentPage = false;
@@ -1025,13 +1184,22 @@ class CommentsWebViewController {
         }
 
         @Override
+        public void onPageCommitVisible(WebView view, String url) {
+            super.onPageCommitVisible(view, url);
+            if (!isCurrentWebViewCallback(view)) {
+                return;
+            }
+            webViewLoadCommittedVisible = true;
+            scheduleVisibleCommitSettle(view);
+        }
+
+        @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
             if (!isCurrentWebViewCallback(view)) {
                 return;
             }
-            view.setBackgroundColor(Color.WHITE);
-            webViewBackdrop.setVisibility(View.GONE);
+            finishWebViewLoadUi(view, webViewLoadGeneration, true);
 
             if (retryingFailedWebViewUrl) {
                 if (swipeRefreshLayout != null) {
@@ -1088,7 +1256,7 @@ class CommentsWebViewController {
                     String fallbackUrl = intent.getStringExtra("browser_fallback_url");
                     if (fallbackUrl != null) {
                         String archiveRedirectUrl = SettingsUtils.getArchiveRedirectUrl(context, fallbackUrl);
-                        view.loadUrl(archiveRedirectUrl != null ? archiveRedirectUrl : fallbackUrl);
+                        loadUrl(archiveRedirectUrl != null ? archiveRedirectUrl : fallbackUrl);
                         return true;
                     } else {
                         if (intent.resolveActivity(context.getPackageManager()) != null) {
@@ -1103,7 +1271,7 @@ class CommentsWebViewController {
 
             String archiveRedirectUrl = SettingsUtils.getArchiveRedirectUrl(view.getContext(), url);
             if (archiveRedirectUrl != null) {
-                view.loadUrl(archiveRedirectUrl);
+                loadUrl(archiveRedirectUrl);
                 return true;
             }
 
@@ -1165,32 +1333,6 @@ class CommentsWebViewController {
 
             Log.e("MY_APP_TAG", "The WebView rendering process crashed!");
             return true;
-        }
-
-        private void showCustomErrorPage(WebView view, @Nullable String failingUrl, @NonNull ErrorPageType errorPageType) {
-            if (!isCurrentWebViewCallback(view) || showingErrorPage || showingCachedArticlePage) {
-                return;
-            }
-            linkPreviewController.onWebViewOfflineFallback(fragment.getContext());
-            if (errorPageType == ErrorPageType.OFFLINE && loadCachedArticleSnapshot(view, failingUrl)) {
-                return;
-            }
-            if (!TextUtils.isEmpty(failingUrl)) {
-                lastFailedWebViewUrl = failingUrl;
-            } else if (lastRequestedWebViewUrl != null) {
-                lastFailedWebViewUrl = lastRequestedWebViewUrl;
-            } else if (view.getUrl() != null && !TextUtils.isEmpty(view.getUrl()) && !isErrorPageUrl(view.getUrl())) {
-                lastFailedWebViewUrl = view.getUrl();
-            }
-            retryingFailedWebViewUrl = false;
-            if (swipeRefreshLayout != null) {
-                swipeRefreshLayout.setRefreshing(false);
-            }
-            view.stopLoading();
-            clearWebViewHistoryOnNextFinish = !view.canGoBack();
-            showingErrorPage = true;
-            showingCachedArticlePage = false;
-            loadUrl(getErrorPageUrl(errorPageType));
         }
 
         @Override
