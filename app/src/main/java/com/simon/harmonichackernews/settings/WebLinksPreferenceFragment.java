@@ -24,6 +24,7 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
         setPreferencesFromResource(R.xml.preferences_web_links, rootKey);
 
         boolean integratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
+        boolean readerModeEnabled = SettingsUtils.shouldUseReaderMode(getContext());
 
         preloadWebViewPreference = findPreference(SettingsUtils.PREF_PRELOAD_WEBVIEW);
         if (preloadWebViewPreference != null) {
@@ -42,7 +43,8 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
 
         changePrefStatus(preloadWebViewPreference, integratedWebview);
         changePrefStatus(findPreference("pref_webview_match_theme"), integratedWebview);
-        changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT), integratedWebview);
+        changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED), integratedWebview);
+        changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT), integratedWebview && readerModeEnabled);
         changePrefStatus(findPreference("pref_webview_adblock"), integratedWebview);
         changePrefStatus(findPreference("pref_close_webview_on_back"), integratedWebview);
 
@@ -52,11 +54,20 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
         changePrefStatus(findPreference("pref_link_preview_x"), redirectNitter);
 
         findPreference("pref_webview").setOnPreferenceChangeListener((preference, newValue) -> {
-            changePrefStatus(preloadWebViewPreference, (boolean) newValue);
-            changePrefStatus(findPreference("pref_webview_match_theme"), (boolean) newValue);
-            changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT), (boolean) newValue);
-            changePrefStatus(findPreference("pref_webview_adblock"), (boolean) newValue);
-            changePrefStatus(findPreference("pref_close_webview_on_back"), (boolean) newValue);
+            boolean webViewEnabled = (boolean) newValue;
+            boolean currentReaderModeEnabled = SettingsUtils.shouldUseReaderMode(getContext());
+            changePrefStatus(preloadWebViewPreference, webViewEnabled);
+            changePrefStatus(findPreference("pref_webview_match_theme"), webViewEnabled);
+            changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED), webViewEnabled);
+            changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT), webViewEnabled && currentReaderModeEnabled);
+            changePrefStatus(findPreference("pref_webview_adblock"), webViewEnabled);
+            changePrefStatus(findPreference("pref_close_webview_on_back"), webViewEnabled);
+            return true;
+        });
+
+        findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED).setOnPreferenceChangeListener((preference, newValue) -> {
+            changePrefStatus(findPreference(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT),
+                    SettingsUtils.shouldUseIntegratedWebView(getContext()) && (boolean) newValue);
             return true;
         });
 

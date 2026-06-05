@@ -38,6 +38,8 @@ import androidx.core.graphics.ColorUtils;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.transition.AutoTransition;
+import androidx.transition.TransitionManager;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
@@ -114,6 +116,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean swapLongPressTap;
     public boolean cardStyle;
     public boolean collectReferenceLinks;
+    private boolean readerModeAvailable = false;
     private boolean readerModeEnabled = false;
     private boolean commentsByOpFilterActive = false;
     public String username;
@@ -148,6 +151,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private static final int HEADER_ACTION_ICON_SWAP_OUT_DURATION_MS = 90;
     private static final int HEADER_ACTION_ICON_SWAP_IN_DURATION_MS = 150;
     private static final float HEADER_ACTION_ICON_SWAP_MIN_SCALE = 0.72f;
+    private static final int HEADER_READER_BUTTON_VISIBILITY_DURATION_MS = 160;
     private static final int HEADER_FAVORITE_LOADING_SIZE_DP = 28;
     private static final int REFERENCE_LINK_MIN_HEIGHT_DP = 38;
     private static final int REFERENCE_LINK_CORNER_RADIUS_DP = 6;
@@ -594,11 +598,28 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         readerModeEnabled = enabled;
         if (boundHeaderViewHolder != null
                 && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.sheetReaderIcon)) {
-            bindReaderModeButton(boundHeaderViewHolder);
+            bindReaderModeButtonState(boundHeaderViewHolder);
+        }
+    }
+
+    public void setReaderModeAvailable(boolean available) {
+        if (readerModeAvailable == available) {
+            return;
+        }
+
+        readerModeAvailable = available;
+        if (boundHeaderViewHolder != null
+                && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.sheetReaderContainer)) {
+            setReaderModeButtonVisible(boundHeaderViewHolder, available, true);
         }
     }
 
     private void bindReaderModeButton(HeaderViewHolder headerViewHolder) {
+        setReaderModeButtonVisible(headerViewHolder, readerModeAvailable, false);
+        bindReaderModeButtonState(headerViewHolder);
+    }
+
+    private void bindReaderModeButtonState(HeaderViewHolder headerViewHolder) {
         int normalColor = MaterialColors.getColor(headerViewHolder.sheetReaderIcon, R.attr.drawableColor);
         if (readerModeEnabled) {
             int activeColor = MaterialColors.getColor(
@@ -612,6 +633,64 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             ViewCompat.setBackgroundTintList(headerViewHolder.sheetReaderIcon, ColorStateList.valueOf(normalColor));
             headerViewHolder.sheetReaderButton.setContentDescription("Toggle reader mode");
             TooltipCompat.setTooltipText(headerViewHolder.sheetReaderButton, "Reader mode");
+        }
+    }
+
+    private void setReaderModeButtonVisible(HeaderViewHolder headerViewHolder, boolean visible, boolean animate) {
+        View readerContainer = headerViewHolder.sheetReaderContainer;
+        readerContainer.animate().setListener(null);
+        readerContainer.animate().cancel();
+
+        if (!animate || !ViewCompat.isAttachedToWindow(readerContainer)) {
+            readerContainer.setVisibility(visible ? VISIBLE : GONE);
+            readerContainer.setAlpha(1f);
+            readerContainer.setScaleX(1f);
+            readerContainer.setScaleY(1f);
+            headerViewHolder.sheetReaderButton.setEnabled(visible);
+            return;
+        }
+
+        headerViewHolder.sheetReaderButton.setEnabled(visible);
+        if (visible) {
+            if (readerContainer.getVisibility() != VISIBLE) {
+                AutoTransition transition = new AutoTransition();
+                transition.setDuration(HEADER_READER_BUTTON_VISIBILITY_DURATION_MS);
+                TransitionManager.beginDelayedTransition(headerViewHolder.sheetButtonsContainer, transition);
+                readerContainer.setAlpha(0f);
+                readerContainer.setScaleX(HEADER_ACTION_ICON_SWAP_MIN_SCALE);
+                readerContainer.setScaleY(HEADER_ACTION_ICON_SWAP_MIN_SCALE);
+                readerContainer.setVisibility(VISIBLE);
+            }
+            readerContainer.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(HEADER_READER_BUTTON_VISIBILITY_DURATION_MS)
+                    .start();
+        } else {
+            readerContainer.animate()
+                    .alpha(0f)
+                    .scaleX(HEADER_ACTION_ICON_SWAP_MIN_SCALE)
+                    .scaleY(HEADER_ACTION_ICON_SWAP_MIN_SCALE)
+                    .setDuration(HEADER_READER_BUTTON_VISIBILITY_DURATION_MS)
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            readerContainer.animate().setListener(null);
+                            if (readerModeAvailable) {
+                                return;
+                            }
+
+                            AutoTransition transition = new AutoTransition();
+                            transition.setDuration(HEADER_READER_BUTTON_VISIBILITY_DURATION_MS);
+                            TransitionManager.beginDelayedTransition(headerViewHolder.sheetButtonsContainer, transition);
+                            readerContainer.setVisibility(GONE);
+                            readerContainer.setAlpha(1f);
+                            readerContainer.setScaleX(1f);
+                            readerContainer.setScaleY(1f);
+                        }
+                    })
+                    .start();
         }
     }
 
@@ -2028,6 +2107,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout sheetRefreshButton;
         public final RelativeLayout sheetExpandButton;
         public final RelativeLayout sheetBrowserButton;
+        public final RelativeLayout sheetReaderContainer;
         public final RelativeLayout sheetReaderButton;
         public final ImageView sheetReaderIcon;
         public final RelativeLayout sheetInvertButton;
@@ -2106,6 +2186,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetRefreshButton = binding.commentsSheetLayoutRefresh;
             sheetExpandButton = binding.commentsSheetLayoutExpand;
             sheetBrowserButton = binding.commentsSheetLayoutBrowser;
+            sheetReaderContainer = binding.commentsSheetContainerReader;
             sheetReaderButton = binding.commentsSheetLayoutReader;
             sheetReaderIcon = binding.commentsSheetReaderIcon;
             sheetInvertButton = binding.commentsSheetLayoutInvert;

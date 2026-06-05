@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 2) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 3) {
         return;
     }
 
@@ -475,9 +475,18 @@
         }
     }
 
+    function isAvailable() {
+        try {
+            return document.body && findArticle() ? "available" : "unavailable";
+        } catch (e) {
+            return "unavailable";
+        }
+    }
+
     window.HarmonicReaderMode = {
-        version: 2,
+        version: 3,
         setTheme: setTheme,
+        isAvailable: isAvailable,
         enable: enable,
         disable: disable
     };

@@ -40,6 +40,14 @@
         <SwitchPreferenceCompat
             app:dependency="pref_webview"
             app:singleLineTitle="false"
+            app:key="pref_webview_reader_mode_enabled"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_reader_mode"
+            app:title="Enable reader mode" />
+
+        <SwitchPreferenceCompat
+            app:dependency="pref_webview_reader_mode_enabled"
+            app:singleLineTitle="false"
             app:key="pref_webview_reader_mode_default"
             app:defaultValue="false"
             app:icon="@drawable/ic_action_reader_mode"

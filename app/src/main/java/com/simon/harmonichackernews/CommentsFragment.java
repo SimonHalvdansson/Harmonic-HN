@@ -218,6 +218,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private String preloadWebview = "never";
     private int preloadWebviewMinimumBattery = SettingsUtils.DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY;
     private boolean matchWebviewTheme = true;
+    private boolean readerModeEnabled = true;
     private boolean readerModeDefault = false;
     private boolean adBlockDisabledForSession = false;
     private boolean pollOptionsLoadStarted = false;
@@ -401,6 +402,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         preloadWebview = SettingsUtils.shouldPreloadWebView(getContext());
         preloadWebviewMinimumBattery = SettingsUtils.getPreloadWebViewMinimumBattery(getContext());
         matchWebviewTheme = SettingsUtils.shouldMatchWebViewTheme(getContext());
+        readerModeEnabled = SettingsUtils.shouldUseReaderMode(getContext());
         readerModeDefault = SettingsUtils.shouldUseReaderModeByDefault(getContext());
         boolean blockAds = SettingsUtils.shouldBlockAds(getContext()) && !adBlockDisabledForSession;
         closeWebViewOnBack = SettingsUtils.shouldCloseWebViewOnBack(getContext());
@@ -430,9 +432,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     adapter.setReaderModeEnabled(enabled);
                 }
             }
+
+            @Override
+            public void onReaderModeAvailabilityChanged(boolean available) {
+                if (adapter != null) {
+                    adapter.setReaderModeAvailable(available);
+                }
+            }
         });
         webViewController.bindViews(binding, bottomSheet, swipeRefreshLayout, progressIndicator);
-        webViewController.configure(showWebsite, integratedWebview, preloadWebview, preloadWebviewMinimumBattery, matchWebviewTheme, readerModeDefault, blockAds);
+        webViewController.configure(showWebsite, integratedWebview, preloadWebview, preloadWebviewMinimumBattery, matchWebviewTheme, readerModeEnabled, readerModeDefault, blockAds);
 
         if (story.title == null) {
             // Empty view for tablets
@@ -816,6 +825,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 this);
         adapter.lastRefreshed = lastLoaded;
         adapter.setCommentsByOpFilterActive(commentsByOpFilterActive);
+        if (webViewController != null) {
+            adapter.setReaderModeEnabled(webViewController.isReaderModeEnabled());
+            adapter.setReaderModeAvailable(webViewController.isReaderModeAvailable());
+        }
         adapter.setHeaderBackgroundColorListener(this::updateHeaderStatusBarColor);
         adapter.loadUserTags(requireContext());
 
