@@ -232,6 +232,8 @@
             android:id="@+id/comments_header_link_info_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:gravity="center_vertical"
             android:paddingLeft="16dp"
             android:paddingRight="16dp"
             android:layout_marginTop="3dp"
