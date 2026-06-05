@@ -458,7 +458,7 @@ public class SettingsUtils {
 
     public static String getPreferredFont(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return sanitizeFont(prefs.getString(PREF_FONT, "productsans"));
+        return sanitizeFont(prefs.getString(PREF_FONT, "googlesansflexrounded"));
     }
 
     public static void setPreferredFont(Context ctx, String font) {
@@ -523,7 +523,7 @@ public class SettingsUtils {
                 || "robotoslab".equals(font)) {
             return font;
         }
-        return "productsans";
+        return "googlesansflexrounded";
     }
 
     public static String sanitizeReaderModeFont(String font) {

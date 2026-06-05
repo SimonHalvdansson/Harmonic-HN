@@ -59,7 +59,7 @@ public class FontUtils {
             case "robotoslab":
                 return ResourcesCompat.getFont(ctx, R.font.roboto_slab);
         }
-        return ResourcesCompat.getFont(ctx, R.font.product_sans);
+        return ResourcesCompat.getFont(ctx, R.font.google_sans_flex_rounded);
     }
 
     public static Typeface getBoldTypeface(Context ctx, String font) {
@@ -81,7 +81,7 @@ public class FontUtils {
             case "robotoslab":
                 return ResourcesCompat.getFont(ctx, R.font.roboto_slab_bold);
         }
-        return ResourcesCompat.getFont(ctx, R.font.product_sans_bold);
+        return ResourcesCompat.getFont(ctx, R.font.google_sans_flex_rounded_bold);
     }
 
     public static void setTypefaceForFont(TextView textView, String font, boolean bold, float size) {
