@@ -179,7 +179,7 @@ public class SettingsActivity extends AppCompatActivity implements
             settingsPane.setLayoutParams(new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, listWeight));
 
-            int padding = getResources().getDimensionPixelSize(R.dimen.extra_pane_padding);
+            int padding = getResources().getDimensionPixelSize(R.dimen.settings_extra_pane_padding);
             root.setPadding(padding, 0, padding, 0);
 
         } else {

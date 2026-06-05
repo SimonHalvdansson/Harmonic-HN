@@ -6,6 +6,7 @@
     <dimen name="welcome_bottom_action_scroll_padding">88dp</dimen>
     <dimen name="single_view_side_margin">0dp</dimen>
     <dimen name="extra_pane_padding">0dp</dimen>
+    <dimen name="settings_extra_pane_padding">0dp</dimen>
     <dimen name="comments_header_top_padding">24dp</dimen>
     <dimen name="margin_between_panes">0dp</dimen>
 
