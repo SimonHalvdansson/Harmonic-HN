@@ -126,11 +126,24 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
     }
 
     public void updatePoints(boolean showPoints) {
-        updatePreview(null, showPoints, null, null, null, null, null, null, true);
+        updatePreview(null, showPoints, null, null, null, null, null, null, false);
     }
 
     public void updateCompactPoints(boolean compactPoints) {
-        updatePointsText(SettingsUtils.shouldShowPoints(getContext()), compactPoints, true);
+        updatePointsText(
+                SettingsUtils.shouldShowPoints(getContext()),
+                compactPoints,
+                SettingsUtils.shouldIncludeTopLevelDomain(getContext()),
+                true);
+        syncPreviewContainerHeight(getCurrentPreviewImageMode());
+    }
+
+    public void updateIncludeTopLevelDomain(boolean includeTopLevelDomain) {
+        updatePointsText(
+                SettingsUtils.shouldShowPoints(getContext()),
+                SettingsUtils.shouldUseCompactPoints(getContext()),
+                includeTopLevelDomain,
+                false);
         syncPreviewContainerHeight(getCurrentPreviewImageMode());
     }
 
@@ -377,6 +390,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
                     storyMeta,
                     SettingsUtils.shouldShowPoints(getContext()),
                     SettingsUtils.shouldUseCompactPoints(getContext()),
+                    SettingsUtils.shouldIncludeTopLevelDomain(getContext()),
                     false);
         }
         if (comments != null) {
@@ -550,6 +564,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
                 ? showPointsOverride
                 : SettingsUtils.shouldShowPoints(getContext());
         boolean compactPoints = SettingsUtils.shouldUseCompactPoints(getContext());
+        boolean includeTopLevelDomain = SettingsUtils.shouldIncludeTopLevelDomain(getContext());
         boolean showCommentsCount = showCommentsCountOverride != null
                 ? showCommentsCountOverride
                 : SettingsUtils.shouldShowCommentsCount(getContext());
@@ -589,7 +604,7 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         updateStoryIndex(showIndex);
         updatePreviewImage(previewImageMode);
         updateStoryCardBackground(previewImageMode, animate);
-        updatePointsText(showPoints, compactPoints, animate && !compactVisibilityChanged);
+        updatePointsText(showPoints, compactPoints, includeTopLevelDomain, animate && !compactVisibilityChanged);
         updateCommentCount(showCommentsCount, compact, animate && !compactVisibilityChanged);
         updateHotnessIcon(hotness, animate);
         if (syncHeight) {
@@ -970,8 +985,17 @@ public class StoryContentPreviewPreference extends Preference implements SharedP
         PreviewPreferenceViewUtils.requestPreviewRemeasure(previewItemContainer, previewRoot, boundItemView);
     }
 
-    private void updatePointsText(boolean showPoints, boolean compactPoints, boolean animate) {
-        StoryMetaPreviewAnimator.setPointsVisible(storyMeta, showPoints, compactPoints, animate);
+    private void updatePointsText(
+            boolean showPoints,
+            boolean compactPoints,
+            boolean includeTopLevelDomain,
+            boolean animate) {
+        StoryMetaPreviewAnimator.setPointsVisible(
+                storyMeta,
+                showPoints,
+                compactPoints,
+                includeTopLevelDomain,
+                animate);
     }
 
     private void updateStoryIndex(boolean showIndex) {

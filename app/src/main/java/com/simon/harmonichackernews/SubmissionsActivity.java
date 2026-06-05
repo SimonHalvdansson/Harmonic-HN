@@ -125,6 +125,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         adapter = new StoryRecyclerViewAdapter(submissions,
                 SettingsUtils.shouldShowPoints(this),
                 SettingsUtils.shouldUseCompactPoints(this),
+                SettingsUtils.shouldIncludeTopLevelDomain(this),
                 SettingsUtils.shouldShowCommentsCount(this),
                 SettingsUtils.shouldUseCompactView(this),
                 SettingsUtils.shouldShowThumbnails(this),
@@ -249,6 +250,12 @@ public class SubmissionsActivity extends AppCompatActivity {
         boolean compactPoints = SettingsUtils.shouldUseCompactPoints(this);
         if (adapter.compactPoints != compactPoints) {
             adapter.compactPoints = compactPoints;
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        }
+
+        boolean includeTopLevelDomain = SettingsUtils.shouldIncludeTopLevelDomain(this);
+        if (adapter.includeTopLevelDomain != includeTopLevelDomain) {
+            adapter.includeTopLevelDomain = includeTopLevelDomain;
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
     }

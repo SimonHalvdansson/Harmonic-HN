@@ -143,6 +143,19 @@ public class Utils {
         return domain.startsWith("www.") ? domain.substring(4) : domain;
     }
 
+    public static String formatDomainNameForDisplay(String domain, boolean includeTopLevelDomain) {
+        if (includeTopLevelDomain || TextUtils.isEmpty(domain)) {
+            return domain;
+        }
+
+        int lastDotIndex = domain.lastIndexOf('.');
+        if (lastDotIndex <= 0) {
+            return domain;
+        }
+
+        return domain.substring(0, lastDotIndex);
+    }
+
     public static void loadAdservers(Resources resources) {
         Runnable r = new Runnable() {
             @Override

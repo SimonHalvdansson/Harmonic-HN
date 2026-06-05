@@ -94,6 +94,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     public boolean showPoints;
     public boolean compactPoints;
+    public boolean includeTopLevelDomain;
     public boolean showCommentsCount;
     public boolean compactView;
     public boolean thumbnails;
@@ -124,6 +125,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public StoryRecyclerViewAdapter(List<Story> items,
                                     boolean shouldShowPoints,
                                     boolean shouldUseCompactPoints,
+                                    boolean shouldIncludeTopLevelDomain,
                                     boolean shouldShowCommentsCount,
                                     boolean shouldUseCompactView,
                                     boolean shouldShowThumbnails,
@@ -144,6 +146,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         stories = items;
         showPoints = shouldShowPoints;
         compactPoints = shouldUseCompactPoints;
+        includeTopLevelDomain = shouldIncludeTopLevelDomain;
         showCommentsCount = shouldShowCommentsCount;
         compactView = shouldUseCompactView;
         thumbnails = shouldShowThumbnails;
@@ -272,6 +275,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 try {
                     if (storyViewHolder.story.url != null) {
                         host = Utils.getDomainName(storyViewHolder.story.url);
+                        host = Utils.formatDomainNameForDisplay(host, includeTopLevelDomain);
                     }
                 } catch (Exception e) {
                     host = "Unknown";

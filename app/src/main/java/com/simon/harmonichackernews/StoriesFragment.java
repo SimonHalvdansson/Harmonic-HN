@@ -2055,6 +2055,12 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
+        boolean includeTopLevelDomain = SettingsUtils.shouldIncludeTopLevelDomain(getContext());
+        if (adapter.includeTopLevelDomain != includeTopLevelDomain) {
+            adapter.includeTopLevelDomain = includeTopLevelDomain;
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        }
+
         if (adapter.showCommentsCount != SettingsUtils.shouldShowCommentsCount(getContext())) {
             adapter.showCommentsCount = !adapter.showCommentsCount;
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());

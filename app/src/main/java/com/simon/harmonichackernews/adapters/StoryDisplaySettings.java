@@ -13,6 +13,7 @@ import java.util.List;
 public class StoryDisplaySettings {
     public final boolean showPoints;
     public final boolean compactPoints;
+    public final boolean includeTopLevelDomain;
     public final boolean showCommentsCount;
     public final boolean compactView;
     public final boolean thumbnails;
@@ -31,6 +32,7 @@ public class StoryDisplaySettings {
 
     private StoryDisplaySettings(boolean showPoints,
                                  boolean compactPoints,
+                                 boolean includeTopLevelDomain,
                                  boolean showCommentsCount,
                                  boolean compactView,
                                  boolean thumbnails,
@@ -48,6 +50,7 @@ public class StoryDisplaySettings {
                                  String font) {
         this.showPoints = showPoints;
         this.compactPoints = compactPoints;
+        this.includeTopLevelDomain = includeTopLevelDomain;
         this.showCommentsCount = showCommentsCount;
         this.compactView = compactView;
         this.thumbnails = thumbnails;
@@ -70,6 +73,7 @@ public class StoryDisplaySettings {
         return new StoryDisplaySettings(
                 SettingsUtils.shouldShowPoints(context),
                 SettingsUtils.shouldUseCompactPoints(context),
+                SettingsUtils.shouldIncludeTopLevelDomain(context),
                 SettingsUtils.shouldShowCommentsCount(context),
                 SettingsUtils.shouldUseCompactView(context),
                 SettingsUtils.shouldShowThumbnails(context),
@@ -95,6 +99,7 @@ public class StoryDisplaySettings {
         return new StoryRecyclerViewAdapter(stories,
                 showPoints,
                 compactPoints,
+                includeTopLevelDomain,
                 showCommentsCount,
                 compactView,
                 thumbnails,
@@ -118,6 +123,7 @@ public class StoryDisplaySettings {
     public void applyTo(@NonNull StoryRecyclerViewAdapter adapter) {
         adapter.showPoints = showPoints;
         adapter.compactPoints = compactPoints;
+        adapter.includeTopLevelDomain = includeTopLevelDomain;
         adapter.showCommentsCount = showCommentsCount;
         adapter.compactView = compactView;
         adapter.thumbnails = thumbnails;
@@ -139,6 +145,7 @@ public class StoryDisplaySettings {
                                            @NonNull StoryRecyclerViewAdapter targetAdapter) {
         targetAdapter.showPoints = sourceAdapter.showPoints;
         targetAdapter.compactPoints = sourceAdapter.compactPoints;
+        targetAdapter.includeTopLevelDomain = sourceAdapter.includeTopLevelDomain;
         targetAdapter.showCommentsCount = sourceAdapter.showCommentsCount;
         targetAdapter.compactView = sourceAdapter.compactView;
         targetAdapter.thumbnails = sourceAdapter.thumbnails;

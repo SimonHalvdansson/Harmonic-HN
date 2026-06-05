@@ -54,6 +54,13 @@
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
+            app:key="pref_include_top_level_domain"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_web"
+            app:title="Include top level domain" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
             app:key="pref_show_comments_count"
             app:defaultValue="true"
             app:icon="@drawable/ic_action_comment"

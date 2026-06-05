@@ -271,6 +271,9 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         if (story.url != null && story.isLink) {
             try {
                 String domain = Utils.getDomainName(story.url);
+                domain = Utils.formatDomainNameForDisplay(
+                        domain,
+                        SettingsUtils.shouldIncludeTopLevelDomain(context));
                 meta += " \u00B7 " + domain;
             } catch (Exception ignored) {
             }

@@ -16,6 +16,7 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
     private Preference grayOutClickedPreference;
     private Preference tintCardUsingPreviewPreference;
     private Preference compactPointsPreference;
+    private Preference includeTopLevelDomainPreference;
     private Preference faviconProviderPreference;
 
     @Override
@@ -32,11 +33,13 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
         grayOutClickedPreference = findPreference(SettingsUtils.PREF_GRAY_OUT_CLICKED);
         tintCardUsingPreviewPreference = findPreference(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW);
         compactPointsPreference = findPreference(SettingsUtils.PREF_COMPACT_POINTS);
+        includeTopLevelDomainPreference = findPreference(SettingsUtils.PREF_INCLUDE_TOP_LEVEL_DOMAIN);
         faviconProviderPreference = findPreference(SettingsUtils.PREF_FAVICON_PROVIDER);
         ListPreference startingPagePreference = findPreference("pref_default_story_type");
 
         changePrefStatus(findPreference("pref_show_points"), !compact);
         updateCompactPointsPreference(!compact && SettingsUtils.shouldShowPoints(getContext()));
+        changePrefStatus(includeTopLevelDomainPreference, !compact);
         changePrefStatus(findPreference("pref_show_comments_count"), !compact);
         changePrefStatus(findPreference("pref_thumbnails"), !compact);
         updateFaviconProviderPreference();
@@ -62,6 +65,7 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
             }
             changePrefStatus(findPreference("pref_show_points"), !(boolean) newValue);
             updateCompactPointsPreference(!(boolean) newValue && SettingsUtils.shouldShowPoints(getContext()));
+            changePrefStatus(includeTopLevelDomainPreference, !(boolean) newValue);
             changePrefStatus(findPreference("pref_show_comments_count"), !(boolean) newValue);
             changePrefStatus(findPreference("pref_thumbnails"), !(boolean) newValue);
             changePrefStatus(faviconProviderPreference, !(boolean) newValue && SettingsUtils.shouldShowThumbnails(getContext()));
@@ -112,6 +116,14 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
             return true;
         });
 
+        findPreference(SettingsUtils.PREF_INCLUDE_TOP_LEVEL_DOMAIN).setOnPreferenceChangeListener((preference, newValue) -> {
+            if (previewPreference != null) {
+                previewPreference.updateIncludeTopLevelDomain((boolean) newValue);
+            }
+            refreshStoryWidgets();
+            return true;
+        });
+
         findPreference("pref_show_comments_count").setOnPreferenceChangeListener((preference, newValue) -> {
             if (previewPreference != null) {
                 previewPreference.updateCommentsCount((boolean) newValue);
@@ -123,14 +135,7 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
             if (previewPreference != null) {
                 previewPreference.updateShowIndex((boolean) newValue);
             }
-            // Re-render widget list items to show/hide indices (no network fetch)
-            AppWidgetManager awm = AppWidgetManager.getInstance(requireContext());
-            int[] ids = awm.getAppWidgetIds(
-                    new ComponentName(requireContext(), StoriesWidgetProvider.class));
-            if (ids.length > 0) {
-                StoriesRemoteViewsFactory.setSkipFetchAll(requireContext(), true);
-                awm.notifyAppWidgetViewDataChanged(ids, R.id.widget_stories_list);
-            }
+            refreshStoryWidgets();
             return true;
         });
 
@@ -207,6 +212,16 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
 
     private void updateCompactPointsPreference(boolean enabled) {
         changePrefStatus(compactPointsPreference, enabled);
+    }
+
+    private void refreshStoryWidgets() {
+        AppWidgetManager awm = AppWidgetManager.getInstance(requireContext());
+        int[] ids = awm.getAppWidgetIds(
+                new ComponentName(requireContext(), StoriesWidgetProvider.class));
+        if (ids.length > 0) {
+            StoriesRemoteViewsFactory.setSkipFetchAll(requireContext(), true);
+            awm.notifyAppWidgetViewDataChanged(ids, R.id.widget_stories_list);
+        }
     }
 
     private void updateFaviconProviderPreference() {

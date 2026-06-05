@@ -23,8 +23,8 @@ public final class StoryMetaPreviewAnimator {
     private static final String POINTS_PREFIX = "53 points \u2022 ";
     private static final String COMPACT_POINTS_PREFIX = "+53 \u2022 ";
     private static final String FORMAT_TRANSITION_PREFIX = "+53 points \u2022 ";
-    private static final String META_SUFFIX = "quantamagazine.org \u2022 2h";
-    private static final String META_WITHOUT_POINTS = META_SUFFIX;
+    private static final String META_SUFFIX_WITH_TOP_LEVEL_DOMAIN = "quantamagazine.org \u2022 2h";
+    private static final String META_SUFFIX_WITHOUT_TOP_LEVEL_DOMAIN = "quantamagazine \u2022 2h";
     private static final WeakHashMap<TextView, ValueAnimator> RUNNING_ANIMATORS = new WeakHashMap<>();
 
     private StoryMetaPreviewAnimator() {
@@ -32,11 +32,21 @@ public final class StoryMetaPreviewAnimator {
 
     @SuppressLint("SetTextI18n")
     public static void setPointsVisible(TextView storyMeta, boolean showPoints, boolean animate) {
-        setPointsVisible(storyMeta, showPoints, false, animate);
+        setPointsVisible(storyMeta, showPoints, false, true, animate);
     }
 
     @SuppressLint("SetTextI18n")
     public static void setPointsVisible(TextView storyMeta, boolean showPoints, boolean compactPoints, boolean animate) {
+        setPointsVisible(storyMeta, showPoints, compactPoints, true, animate);
+    }
+
+    @SuppressLint("SetTextI18n")
+    public static void setPointsVisible(
+            TextView storyMeta,
+            boolean showPoints,
+            boolean compactPoints,
+            boolean includeTopLevelDomain,
+            boolean animate) {
         if (storyMeta == null) {
             return;
         }
@@ -46,7 +56,8 @@ public final class StoryMetaPreviewAnimator {
         storyMeta.setAlpha(1f);
 
         String targetPrefix = compactPoints ? COMPACT_POINTS_PREFIX : POINTS_PREFIX;
-        String targetText = showPoints ? targetPrefix + META_SUFFIX : META_WITHOUT_POINTS;
+        String metaSuffix = getMetaSuffix(includeTopLevelDomain);
+        String targetText = showPoints ? targetPrefix + metaSuffix : metaSuffix;
         if (!animate || !storyMeta.isLaidOut()) {
             storyMeta.setText(targetText);
             return;
@@ -58,11 +69,17 @@ public final class StoryMetaPreviewAnimator {
         }
 
         if (showPoints && isPointsFormatChange(currentText, compactPoints)) {
-            animateCompactPointsFormat(storyMeta, compactPoints);
+            animateCompactPointsFormat(storyMeta, compactPoints, metaSuffix);
             return;
         }
 
-        animatePointsPrefix(storyMeta, showPoints, targetPrefix, getCurrentPointsPrefix(currentText));
+        animatePointsPrefix(storyMeta, showPoints, targetPrefix, getCurrentPointsPrefix(currentText), metaSuffix);
+    }
+
+    private static String getMetaSuffix(boolean includeTopLevelDomain) {
+        return includeTopLevelDomain
+                ? META_SUFFIX_WITH_TOP_LEVEL_DOMAIN
+                : META_SUFFIX_WITHOUT_TOP_LEVEL_DOMAIN;
     }
 
     private static String getCurrentPointsPrefix(CharSequence currentText) {
@@ -104,10 +121,10 @@ public final class StoryMetaPreviewAnimator {
         return spanned.getSpans(0, spanned.length(), AnimatedWidthAlphaSpan.class).length > 0;
     }
 
-    private static void animateCompactPointsFormat(TextView storyMeta, boolean compactPoints) {
+    private static void animateCompactPointsFormat(TextView storyMeta, boolean compactPoints, String metaSuffix) {
         AnimatedWidthAlphaSpan plusSpan = new AnimatedWidthAlphaSpan(compactPoints ? 0f : 1f);
         AnimatedWidthAlphaSpan labelSpan = new AnimatedWidthAlphaSpan(compactPoints ? 1f : 0f);
-        SpannableString text = new SpannableString(FORMAT_TRANSITION_PREFIX + META_SUFFIX);
+        SpannableString text = new SpannableString(FORMAT_TRANSITION_PREFIX + metaSuffix);
         text.setSpan(plusSpan, 0, COMPACT_POINTS_SIGN.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
         int labelStart = COMPACT_POINTS_SIGN.length() + POINTS_VALUE.length();
@@ -129,7 +146,7 @@ public final class StoryMetaPreviewAnimator {
         animator.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(android.animation.Animator animation) {
-                finishAnimation(storyMeta, animator, true, compactPoints ? COMPACT_POINTS_PREFIX : POINTS_PREFIX);
+                finishAnimation(storyMeta, animator, true, compactPoints ? COMPACT_POINTS_PREFIX : POINTS_PREFIX, metaSuffix);
             }
 
             @Override
@@ -146,10 +163,11 @@ public final class StoryMetaPreviewAnimator {
             TextView storyMeta,
             boolean showPoints,
             String targetPrefix,
-            String currentPrefix) {
+            String currentPrefix,
+            String metaSuffix) {
         String animatedPrefix = showPoints ? targetPrefix : currentPrefix;
         AnimatedWidthAlphaSpan span = new AnimatedWidthAlphaSpan(showPoints ? 0f : 1f);
-        SpannableString text = new SpannableString(animatedPrefix + META_SUFFIX);
+        SpannableString text = new SpannableString(animatedPrefix + metaSuffix);
         text.setSpan(span, 0, animatedPrefix.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         storyMeta.setText(text);
 
@@ -165,7 +183,7 @@ public final class StoryMetaPreviewAnimator {
         animator.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(android.animation.Animator animation) {
-                finishAnimation(storyMeta, animator, showPoints, targetPrefix);
+                finishAnimation(storyMeta, animator, showPoints, targetPrefix, metaSuffix);
             }
 
             @Override
@@ -183,13 +201,14 @@ public final class StoryMetaPreviewAnimator {
             TextView storyMeta,
             ValueAnimator animator,
             boolean showPoints,
-            String pointsPrefix) {
+            String pointsPrefix,
+            String metaSuffix) {
         if (RUNNING_ANIMATORS.get(storyMeta) != animator) {
             return;
         }
 
         RUNNING_ANIMATORS.remove(storyMeta);
-        storyMeta.setText(showPoints ? pointsPrefix + META_SUFFIX : META_WITHOUT_POINTS);
+        storyMeta.setText(showPoints ? pointsPrefix + metaSuffix : metaSuffix);
         storyMeta.setAlpha(1f);
     }
 

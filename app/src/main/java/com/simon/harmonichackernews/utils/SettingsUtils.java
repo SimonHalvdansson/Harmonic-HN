@@ -38,6 +38,7 @@ public class SettingsUtils {
     public static final String PREF_PALETTE_TINT_TONE = "pref_palette_tint_tone";
     public static final String PREF_STORY_TEXT_SIZE = "pref_story_text_size";
     public static final String PREF_COMPACT_POINTS = "pref_compact_points";
+    public static final String PREF_INCLUDE_TOP_LEVEL_DOMAIN = "pref_include_top_level_domain";
     public static final String PREF_COMMENT_DISPLAY_STYLE = "pref_comment_display_style";
     public static final String PREF_COMMENT_TEXT_SIZE = "pref_comment_text_size";
     public static final String PREF_COMMENTS_HEADER_PREVIEW_IMAGE = "pref_comments_header_preview_image";
@@ -194,6 +195,10 @@ public class SettingsUtils {
 
     public static boolean shouldUseCompactPoints(Context ctx) {
         return getBooleanPref(PREF_COMPACT_POINTS, false, ctx);
+    }
+
+    public static boolean shouldIncludeTopLevelDomain(Context ctx) {
+        return getBooleanPref(PREF_INCLUDE_TOP_LEVEL_DOMAIN, true, ctx);
     }
 
     public static boolean shouldShowCommentsCount(Context ctx) {
