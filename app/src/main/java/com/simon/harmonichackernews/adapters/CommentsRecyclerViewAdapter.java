@@ -102,8 +102,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean commentsLoaded = false;
     public boolean collapseParent;
     public boolean showThumbnail;
-    public String previewImageMode;
-    public boolean tintHeaderUsingPreview;
+    public boolean showHeaderPreviewImage;
+    public boolean tintHeader;
     public String paletteTintMode;
     public String commentDepthIndicatorMode;
     public boolean showNavigationBar;
@@ -178,8 +178,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                        Story masterItem,
                                        boolean shouldCollapseParent,
                                        boolean shouldShowThumbnail,
-                                       String preferredPreviewImageMode,
-                                       boolean shouldTintHeaderUsingPreview,
+                                       boolean shouldShowHeaderPreviewImage,
+                                       boolean shouldTintHeader,
                                        String preferredPaletteTintMode,
                                        String usernameParam,
                                        float prefTextSize,
@@ -202,8 +202,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         story = masterItem;
         collapseParent = shouldCollapseParent;
         showThumbnail = shouldShowThumbnail;
-        previewImageMode = preferredPreviewImageMode;
-        tintHeaderUsingPreview = shouldTintHeaderUsingPreview;
+        showHeaderPreviewImage = shouldShowHeaderPreviewImage;
+        tintHeader = shouldTintHeader;
         paletteTintMode = SettingsUtils.getPaletteTintConfigKey(preferredPaletteTintMode);
         commentDepthIndicatorMode = CommentDepthIndicatorUtils.sanitizeMode(prefCommentDepthIndicatorMode);
         showNavigationBar = shouldShowNavigationBar;
@@ -724,7 +724,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private boolean shouldLoadHeaderPreviewImage(Story story) {
-        return !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+        return showHeaderPreviewImage
                 && story != null
                 && story.loaded
                 && !story.loadingFailed
@@ -1150,7 +1150,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         PreviewImageTintUtils.syncStoryPreviewImageTintColorFromCache(story, baseColor, paletteTintMode);
         return shouldTintHeader()
                 && story != null
-                && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                && showHeaderPreviewImage
                 && !story.previewImageLoadFailed
                 && PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor, paletteTintMode);
     }
@@ -1169,7 +1169,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 && !story.loadingFailed
                 && !story.isComment
                 && !TextUtils.isEmpty(story.url)
-                && (SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                && (!showHeaderPreviewImage
                 || hasNoPreviewImageUrl(story));
     }
 
@@ -1214,7 +1214,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private boolean shouldTintHeader() {
-        return tintHeaderUsingPreview;
+        return tintHeader;
     }
 
     private void notifyHeaderChanged() {

@@ -795,8 +795,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 story,
                 SettingsUtils.shouldCollapseParent(getContext()),
                 SettingsUtils.shouldShowThumbnails(getContext()),
-                SettingsUtils.getPreferredStoryPreviewImageMode(getContext()),
-                SettingsUtils.shouldTintCardUsingPreview(getContext()),
+                SettingsUtils.shouldShowCommentsHeaderPreviewImage(getContext()),
+                SettingsUtils.shouldTintCommentsHeader(getContext()),
                 SettingsUtils.getPreferredPaletteTintConfigKey(getContext()),
                 username,
                 SettingsUtils.getPreferredCommentTextSize(getContext()),
@@ -1122,14 +1122,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 updateHeader = true;
             }
 
-            String previewImageMode = SettingsUtils.getPreferredStoryPreviewImageMode(ctx);
-            if (!previewImageMode.equals(adapter.previewImageMode)) {
-                adapter.previewImageMode = previewImageMode;
+            boolean showHeaderPreviewImage = SettingsUtils.shouldShowCommentsHeaderPreviewImage(ctx);
+            if (adapter.showHeaderPreviewImage != showHeaderPreviewImage) {
+                adapter.showHeaderPreviewImage = showHeaderPreviewImage;
                 updateHeader = true;
             }
 
-            if (adapter.tintHeaderUsingPreview != SettingsUtils.shouldTintCardUsingPreview(ctx)) {
-                adapter.tintHeaderUsingPreview = SettingsUtils.shouldTintCardUsingPreview(ctx);
+            boolean tintHeader = SettingsUtils.shouldTintCommentsHeader(ctx);
+            if (adapter.tintHeader != tintHeader) {
+                adapter.tintHeader = tintHeader;
                 updateHeader = true;
             }
 

@@ -2,7 +2,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <PreferenceCategory
-        app:title="Display"
+        app:title="Comments display"
         android:layout="@layout/preference_category">
 
         <com.simon.harmonichackernews.settings.CommentContentPreviewPreference
@@ -52,6 +52,26 @@
             app:defaultValue="true"
             app:icon="@drawable/ic_action_animation"
             app:title="Animate comment expand/collapse" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="Header display"
+        android:layout="@layout/preference_category">
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_comments_header_preview_image"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_web"
+            app:title="Story preview image" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_comments_header_tint"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_colors"
+            app:title="Tint header" />
 
     </PreferenceCategory>
 
