@@ -38,12 +38,65 @@ public final class CollectedReferenceLinks {
         }
 
         List<Node> nodesToRemove = new ArrayList<>();
-        List<Node> trailingIgnorableNodes = new ArrayList<>();
+        List<CollectedNode> collectedNodes = new ArrayList<>();
+
+        collectStandaloneLinkNodes(nodes, collectedNodes, nodesToRemove);
+        collectTrailingReferenceNodes(nodes, collectedNodes, nodesToRemove);
+
+        if (collectedNodes.isEmpty()) {
+            return Result.empty(inputHtml);
+        }
+
+        Collections.sort(collectedNodes, (first, second) -> Integer.compare(first.index, second.index));
+        List<ContentBlock> contentBlocks = buildContentBlocks(nodes, collectedNodes, nodesToRemove);
         List<ReferenceLink> links = new ArrayList<>();
-        boolean hasNumberedLinks = false;
+        for (CollectedNode collectedNode : collectedNodes) {
+            links.addAll(collectedNode.links);
+        }
+
+        for (Node node : nodesToRemove) {
+            node.remove();
+        }
+
+        return new Result(body.html().trim(), links, contentBlocks);
+    }
+
+    private static void collectStandaloneLinkNodes(
+            List<Node> nodes,
+            List<CollectedNode> collectedNodes,
+            List<Node> nodesToRemove) {
+        for (int i = 0; i < nodes.size(); i++) {
+            Node node = nodes.get(i);
+            if (isIgnorable(node)) {
+                continue;
+            }
+
+            List<ReferenceLink> parsedLinks = parseUnnumberedLinkNode(node);
+            if (parsedLinks.isEmpty()) {
+                continue;
+            }
+            if (!hasStandaloneLineBoundaries(nodes, i, node)) {
+                continue;
+            }
+
+            collectedNodes.add(new CollectedNode(i, node, parsedLinks));
+            addNodeToRemove(nodesToRemove, node);
+        }
+    }
+
+    private static void collectTrailingReferenceNodes(
+            List<Node> nodes,
+            List<CollectedNode> collectedNodes,
+            List<Node> nodesToRemove) {
+        List<Node> trailingIgnorableNodes = new ArrayList<>();
 
         for (int i = nodes.size() - 1; i >= 0; i--) {
             Node node = nodes.get(i);
+            if (hasCollectedNode(collectedNodes, node)) {
+                addNodesToRemove(nodesToRemove, trailingIgnorableNodes);
+                trailingIgnorableNodes.clear();
+                continue;
+            }
             if (isIgnorable(node)) {
                 trailingIgnorableNodes.add(node);
                 continue;
@@ -51,28 +104,162 @@ public final class CollectedReferenceLinks {
 
             List<ReferenceLink> parsedLinks = parseReferenceNode(node);
             if (parsedLinks.isEmpty()) {
-                parsedLinks = parseUnnumberedLinkNode(node);
-            }
-            if (parsedLinks.isEmpty()) {
                 break;
             }
 
-            links.addAll(0, parsedLinks);
-            hasNumberedLinks = hasNumberedLinks || containsNumberedLinks(parsedLinks);
-            nodesToRemove.add(node);
-            nodesToRemove.addAll(trailingIgnorableNodes);
+            collectedNodes.add(new CollectedNode(i, node, parsedLinks));
+            addNodeToRemove(nodesToRemove, node);
+            addNodesToRemove(nodesToRemove, trailingIgnorableNodes);
             trailingIgnorableNodes.clear();
         }
+    }
 
-        if (links.isEmpty() || (!hasNumberedLinks && links.size() < 2)) {
-            return Result.empty(inputHtml);
+    private static void addNodesToRemove(List<Node> nodesToRemove, List<Node> nodes) {
+        for (Node node : nodes) {
+            addNodeToRemove(nodesToRemove, node);
+        }
+    }
+
+    private static void addNodeToRemove(List<Node> nodesToRemove, Node node) {
+        if (!containsNode(nodesToRemove, node)) {
+            nodesToRemove.add(node);
+        }
+    }
+
+    private static boolean hasCollectedNode(List<CollectedNode> collectedNodes, Node node) {
+        for (CollectedNode collectedNode : collectedNodes) {
+            if (collectedNode.node == node) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean containsNode(List<Node> nodes, Node node) {
+        for (Node existingNode : nodes) {
+            if (existingNode == node) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasStandaloneLineBoundaries(List<Node> nodes, int index, Node node) {
+        if (node instanceof Element) {
+            Element element = (Element) node;
+            if (isBlockLineBoundaryElement(element)) {
+                return true;
+            }
+        }
+        return hasLineBoundaryBefore(nodes, index) && hasLineBoundaryAfter(nodes, index);
+    }
+
+    private static boolean hasLineBoundaryBefore(List<Node> nodes, int index) {
+        for (int i = index - 1; i >= 0; i--) {
+            Node node = nodes.get(i);
+            if (isBlankTextNode(node)) {
+                continue;
+            }
+            return isLineBreakElement(node)
+                    || isBlockLineBoundaryNode(node)
+                    || isTextBoundaryBefore(node);
+        }
+        return true;
+    }
+
+    private static boolean hasLineBoundaryAfter(List<Node> nodes, int index) {
+        for (int i = index + 1; i < nodes.size(); i++) {
+            Node node = nodes.get(i);
+            if (isBlankTextNode(node)) {
+                continue;
+            }
+            return isLineBreakElement(node)
+                    || isBlockLineBoundaryNode(node)
+                    || isTextBoundaryAfter(node);
+        }
+        return true;
+    }
+
+    private static boolean isBlankTextNode(Node node) {
+        return node instanceof TextNode && ((TextNode) node).isBlank();
+    }
+
+    private static boolean isLineBreakElement(Node node) {
+        return node instanceof Element && "br".equalsIgnoreCase(((Element) node).tagName());
+    }
+
+    private static boolean isBlockLineBoundaryNode(Node node) {
+        return node instanceof Element && isBlockLineBoundaryElement((Element) node);
+    }
+
+    private static boolean isBlockLineBoundaryElement(Element element) {
+        String tagName = element.tagName().toLowerCase(Locale.US);
+        return "p".equals(tagName)
+                || "div".equals(tagName)
+                || "li".equals(tagName);
+    }
+
+    private static boolean isTextBoundaryBefore(Node node) {
+        return node instanceof TextNode && endsWithLineBreak(((TextNode) node).getWholeText());
+    }
+
+    private static boolean isTextBoundaryAfter(Node node) {
+        return node instanceof TextNode && startsWithLineBreak(((TextNode) node).getWholeText());
+    }
+
+    private static boolean startsWithLineBreak(String text) {
+        return text != null && !text.isEmpty() && (text.charAt(0) == '\n' || text.charAt(0) == '\r');
+    }
+
+    private static boolean endsWithLineBreak(String text) {
+        return text != null
+                && !text.isEmpty()
+                && (text.charAt(text.length() - 1) == '\n' || text.charAt(text.length() - 1) == '\r');
+    }
+
+    private static List<ContentBlock> buildContentBlocks(
+            List<Node> nodes,
+            List<CollectedNode> collectedNodes,
+            List<Node> nodesToRemove) {
+        List<ContentBlock> blocks = new ArrayList<>();
+        StringBuilder html = new StringBuilder();
+
+        for (Node node : nodes) {
+            CollectedNode collectedNode = getCollectedNode(collectedNodes, node);
+            if (collectedNode != null) {
+                addTextBlock(blocks, html);
+                for (ReferenceLink link : collectedNode.links) {
+                    blocks.add(ContentBlock.link(link));
+                }
+                continue;
+            }
+
+            if (containsNode(nodesToRemove, node)) {
+                continue;
+            }
+
+            html.append(node.outerHtml());
         }
 
-        for (Node node : nodesToRemove) {
-            node.remove();
-        }
+        addTextBlock(blocks, html);
+        return blocks;
+    }
 
-        return new Result(body.html().trim(), links);
+    private static CollectedNode getCollectedNode(List<CollectedNode> collectedNodes, Node node) {
+        for (CollectedNode collectedNode : collectedNodes) {
+            if (collectedNode.node == node) {
+                return collectedNode;
+            }
+        }
+        return null;
+    }
+
+    private static void addTextBlock(List<ContentBlock> blocks, StringBuilder html) {
+        String value = html.toString().trim();
+        if (!value.isEmpty()) {
+            blocks.add(ContentBlock.text(value));
+        }
+        html.setLength(0);
     }
 
     private static boolean isIgnorable(Node node) {
@@ -315,15 +502,6 @@ public final class CollectedReferenceLinks {
         return displayLabel;
     }
 
-    private static boolean containsNumberedLinks(List<ReferenceLink> links) {
-        for (ReferenceLink link : links) {
-            if (link.hasNumber()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private static boolean startsWithReferenceMarker(String text) {
         if (text == null) {
             return false;
@@ -403,17 +581,31 @@ public final class CollectedReferenceLinks {
         return lower.matches("[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}(:\\d+)?(/\\S*)?");
     }
 
+    private static class CollectedNode {
+        private final int index;
+        private final Node node;
+        private final List<ReferenceLink> links;
+
+        private CollectedNode(int index, Node node, List<ReferenceLink> links) {
+            this.index = index;
+            this.node = node;
+            this.links = links;
+        }
+    }
+
     public static class Result {
         private final String bodyHtml;
         private final List<ReferenceLink> links;
+        private final List<ContentBlock> contentBlocks;
 
-        private Result(String bodyHtml, List<ReferenceLink> links) {
+        private Result(String bodyHtml, List<ReferenceLink> links, List<ContentBlock> contentBlocks) {
             this.bodyHtml = bodyHtml == null ? "" : bodyHtml;
             this.links = Collections.unmodifiableList(new ArrayList<>(links));
+            this.contentBlocks = Collections.unmodifiableList(new ArrayList<>(contentBlocks));
         }
 
         public static Result empty(String bodyHtml) {
-            return new Result(bodyHtml, Collections.emptyList());
+            return new Result(bodyHtml, Collections.emptyList(), Collections.emptyList());
         }
 
         public String getBodyHtml() {
@@ -424,8 +616,54 @@ public final class CollectedReferenceLinks {
             return links;
         }
 
+        public List<ContentBlock> getContentBlocks() {
+            return contentBlocks;
+        }
+
         public boolean hasLinks() {
             return !links.isEmpty();
+        }
+
+        public boolean hasInterleavedLinks() {
+            boolean hasSeenLink = false;
+            for (ContentBlock block : contentBlocks) {
+                if (block.isLink()) {
+                    hasSeenLink = true;
+                } else if (hasSeenLink) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    public static class ContentBlock {
+        private final String bodyHtml;
+        private final ReferenceLink link;
+
+        private ContentBlock(String bodyHtml, ReferenceLink link) {
+            this.bodyHtml = bodyHtml;
+            this.link = link;
+        }
+
+        private static ContentBlock text(String bodyHtml) {
+            return new ContentBlock(bodyHtml, null);
+        }
+
+        private static ContentBlock link(ReferenceLink link) {
+            return new ContentBlock(null, link);
+        }
+
+        public boolean isLink() {
+            return link != null;
+        }
+
+        public String getBodyHtml() {
+            return bodyHtml;
+        }
+
+        public ReferenceLink getLink() {
+            return link;
         }
     }
 

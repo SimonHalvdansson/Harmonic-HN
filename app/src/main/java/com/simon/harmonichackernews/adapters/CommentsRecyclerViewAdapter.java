@@ -156,6 +156,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private static final int REFERENCE_LINK_MIN_HEIGHT_DP = 38;
     private static final int REFERENCE_LINK_CORNER_RADIUS_DP = 6;
     private static final int REFERENCE_LINK_ICON_SIZE_DP = 17;
+    private static final int REFERENCE_LINKS_CONTAINER_TOP_MARGIN_DP = 5;
+    private static final int INTERLEAVED_REFERENCE_LINK_TOP_MARGIN_DP = 4;
+    private static final int INTERLEAVED_REFERENCE_LINK_BOTTOM_MARGIN_DP = 2;
+    private static final int INTERLEAVED_COMMENT_TEXT_TOP_MARGIN_DP = 5;
     private static final int HEADER_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP = 176;
     private static final int HEADER_PREVIEW_IMAGE_MIN_HEIGHT_DP = 164;
     private static final int HEADER_PREVIEW_IMAGE_MAX_HEIGHT_DP = 208;
@@ -1352,17 +1356,30 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (TextUtils.isEmpty(comment.text)) {
             itemViewHolder.commentBodyHasText = false;
             itemViewHolder.commentBody.setText("");
+            setReferenceLinksContainerTopMargin(
+                    itemViewHolder.referenceLinksContainer,
+                    REFERENCE_LINKS_CONTAINER_TOP_MARGIN_DP);
             itemViewHolder.referenceLinksVisible = bindReferenceLinks(itemViewHolder.referenceLinksContainer, null);
             return;
         }
 
+        String expandedCommentText = Utils.expandShortenedAnchorText(comment.text);
         CollectedReferenceLinks.Result referenceLinks = null;
         if (collectReferenceLinks) {
             referenceLinks = getCommentReferenceLinks(comment);
         }
 
         boolean hasCollectedLinks = referenceLinks != null && referenceLinks.hasLinks();
-        String bodyHtml = hasCollectedLinks ? referenceLinks.getBodyHtml() : Utils.expandShortenedAnchorText(comment.text);
+        if (hasCollectedLinks && referenceLinks.hasInterleavedLinks()) {
+            bindInterleavedCommentContent(itemViewHolder, referenceLinks);
+            bindInterleavedHiddenCommentPreview(itemViewHolder, comment);
+            return;
+        }
+
+        setReferenceLinksContainerTopMargin(
+                itemViewHolder.referenceLinksContainer,
+                REFERENCE_LINKS_CONTAINER_TOP_MARGIN_DP);
+        String bodyHtml = hasCollectedLinks ? referenceLinks.getBodyHtml() : expandedCommentText;
         itemViewHolder.commentBodyHasText = !TextUtils.isEmpty(bodyHtml);
 
         if (itemViewHolder.commentBodyHasText) {
@@ -1389,6 +1406,144 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         itemViewHolder.referenceLinksVisible = bindReferenceLinks(itemViewHolder.referenceLinksContainer, referenceLinks);
+    }
+
+    private void bindInterleavedCommentContent(
+            ItemViewHolder itemViewHolder,
+            CollectedReferenceLinks.Result referenceLinks) {
+        itemViewHolder.referenceLinksContainer.removeAllViews();
+        setReferenceLinksContainerTopMargin(itemViewHolder.referenceLinksContainer, 0);
+
+        List<CollectedReferenceLinks.ContentBlock> blocks = referenceLinks.getContentBlocks();
+        int firstContainerBlock = 0;
+        if (!blocks.isEmpty() && !blocks.get(0).isLink()) {
+            String bodyHtml = blocks.get(0).getBodyHtml();
+            itemViewHolder.commentBodyHasText = !TextUtils.isEmpty(bodyHtml);
+            if (itemViewHolder.commentBodyHasText) {
+                itemViewHolder.commentBody.setHtml(bodyHtml);
+                FontUtils.setCommentTextTypeface(itemViewHolder.commentBody, preferredTextSize);
+            } else {
+                itemViewHolder.commentBody.setText("");
+            }
+            firstContainerBlock = 1;
+        } else {
+            itemViewHolder.commentBodyHasText = false;
+            itemViewHolder.commentBody.setText("");
+        }
+
+        for (int i = firstContainerBlock; i < blocks.size(); i++) {
+            CollectedReferenceLinks.ContentBlock block = blocks.get(i);
+            if (block.isLink()) {
+                View row = createReferenceLinkRow(itemViewHolder.referenceLinksContainer, block.getLink());
+                setInterleavedReferenceLinkMargins(row);
+                itemViewHolder.referenceLinksContainer.addView(row);
+            } else if (!TextUtils.isEmpty(block.getBodyHtml())) {
+                itemViewHolder.referenceLinksContainer.addView(
+                        createInterleavedCommentBodyView(itemViewHolder, block.getBodyHtml()));
+            }
+        }
+
+        itemViewHolder.referenceLinksVisible = itemViewHolder.referenceLinksContainer.getChildCount() > 0;
+        itemViewHolder.referenceLinksContainer.setVisibility(itemViewHolder.referenceLinksVisible ? VISIBLE : GONE);
+    }
+
+    private HtmlTextView createInterleavedCommentBodyView(ItemViewHolder itemViewHolder, String bodyHtml) {
+        Context context = itemViewHolder.referenceLinksContainer.getContext();
+        HtmlTextView body = new HtmlTextView(context);
+        body.setTextColor(MaterialColors.getColor(itemViewHolder.referenceLinksContainer, R.attr.storyColorNormal));
+        configureCommentBodyInteractions(itemViewHolder, body);
+        body.setHtml(bodyHtml);
+        FontUtils.setCommentTextTypeface(body, preferredTextSize);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.topMargin = Utils.pxFromDpInt(
+                context.getResources(),
+                INTERLEAVED_COMMENT_TEXT_TOP_MARGIN_DP);
+        body.setLayoutParams(params);
+        return body;
+    }
+
+    private void configureCommentBodyInteractions(ItemViewHolder itemViewHolder, HtmlTextView body) {
+        body.setOnLongClickListener(v -> {
+            if (swapLongPressTap) {
+                commentClickListener.onItemClick(
+                        itemViewHolder.comment,
+                        itemViewHolder.getAbsoluteAdapterPosition(),
+                        itemViewHolder.getCommentActionSourceView());
+            } else {
+                commentLongClickListener.onItemClick(
+                        itemViewHolder.comment,
+                        itemViewHolder.getAbsoluteAdapterPosition(),
+                        itemViewHolder.getCommentActionSourceView());
+            }
+            return true;
+        });
+        body.setOnClickListener(v -> {
+            if (swapLongPressTap) {
+                commentLongClickListener.onItemClick(
+                        itemViewHolder.comment,
+                        itemViewHolder.getAbsoluteAdapterPosition(),
+                        itemViewHolder.getCommentActionSourceView());
+            } else {
+                commentClickListener.onItemClick(
+                        itemViewHolder.comment,
+                        itemViewHolder.getAbsoluteAdapterPosition(),
+                        itemViewHolder.getCommentActionSourceView());
+            }
+        });
+        body.setOnClickATagListener(new OnClickATagListener() {
+            @Override
+            public boolean onClick(View widget, String spannedText, @Nullable String href) {
+                if (disableCommentATagClick) return true;
+
+                Utils.openLinkMaybeHN(widget.getContext(), href);
+                return true;
+            }
+        });
+    }
+
+    private void bindInterleavedHiddenCommentPreview(ItemViewHolder itemViewHolder, Comment comment) {
+        if (collapseParent) {
+            itemViewHolder.commentHiddenText.setText(" \u2022 " + Html.fromHtml(comment.text.substring(0, Math.min(120, comment.text.length()))));
+        }
+    }
+
+    private void setReferenceLinksContainerTopMargin(LinearLayout container, int marginDp) {
+        setTopMargin(container, Utils.pxFromDpInt(container.getResources(), marginDp));
+    }
+
+    private void setInterleavedReferenceLinkMargins(View view) {
+        int margin = Utils.pxFromDpInt(
+                view.getResources(),
+                INTERLEAVED_REFERENCE_LINK_TOP_MARGIN_DP);
+        int bottomMargin = Utils.pxFromDpInt(
+                view.getResources(),
+                INTERLEAVED_REFERENCE_LINK_BOTTOM_MARGIN_DP);
+        setVerticalMargins(view, margin, bottomMargin);
+    }
+
+    private void setTopMargin(View view, int topMargin) {
+        setVerticalMargins(view, topMargin, null);
+    }
+
+    private void setVerticalMargins(View view, int topMargin, @Nullable Integer bottomMargin) {
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+        if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams marginLayoutParams = (ViewGroup.MarginLayoutParams) layoutParams;
+            boolean changed = marginLayoutParams.topMargin != topMargin;
+            if (changed) {
+                marginLayoutParams.topMargin = topMargin;
+            }
+            if (bottomMargin != null && marginLayoutParams.bottomMargin != bottomMargin) {
+                marginLayoutParams.bottomMargin = bottomMargin;
+                changed = true;
+            }
+            if (changed) {
+                view.setLayoutParams(marginLayoutParams);
+            }
+        }
     }
 
     private CollectedReferenceLinks.Result getStoryReferenceLinks() {
