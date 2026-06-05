@@ -13,12 +13,12 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ImageSpan;
-import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -1596,18 +1596,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 Utils.pxFromDpInt(ctx.getResources(), 8),
                 Utils.pxFromDpInt(ctx.getResources(), 5));
 
+        int cornerRadius = Utils.pxFromDpInt(ctx.getResources(), REFERENCE_LINK_CORNER_RADIUS_DP);
+
         GradientDrawable background = new GradientDrawable();
         background.setColor(Color.TRANSPARENT);
-        background.setCornerRadius(Utils.pxFromDpInt(ctx.getResources(), REFERENCE_LINK_CORNER_RADIUS_DP));
+        background.setCornerRadius(cornerRadius);
         background.setStroke(
                 Utils.pxFromDpInt(ctx.getResources(), 1),
                 MaterialColors.getColor(container, R.attr.commentDividerColor));
         row.setBackground(background);
-
-        TypedValue selectableBackground = new TypedValue();
-        if (ctx.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, selectableBackground, true)) {
-            row.setForeground(ContextCompat.getDrawable(ctx, selectableBackground.resourceId));
-        }
+        row.setForeground(createReferenceLinkRipple(container, cornerRadius));
 
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1656,6 +1654,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         FaviconLoader.loadFavicon(link.getUrl(), favicon, ctx, faviconProvider);
 
         return row;
+    }
+
+    private Drawable createReferenceLinkRipple(View source, int cornerRadius) {
+        GradientDrawable mask = new GradientDrawable();
+        mask.setColor(Color.WHITE);
+        mask.setCornerRadius(cornerRadius);
+        return new RippleDrawable(
+                ColorStateList.valueOf(MaterialColors.getColor(source, android.R.attr.colorControlHighlight)),
+                null,
+                mask);
     }
 
     private String getReferenceLinkContentDescription(CollectedReferenceLinks.ReferenceLink link) {
