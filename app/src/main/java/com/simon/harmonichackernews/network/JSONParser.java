@@ -24,6 +24,7 @@ public class JSONParser {
 
     public final static String ALGOLIA_ERROR_STRING = "{\"status\":404,\"error\":\"Not Found\"}";
     private static final String JSON_NULL_LITERAL = "null";
+    private static final int CACHED_STORY_SUMMARY_VERSION = 1;
 
     private static boolean hasOnlyTwoTopLevelFields(JSONObject jsonObject) {
         JSONArray names = jsonObject.names();
@@ -654,6 +655,118 @@ public class JSONParser {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+
+    public static String compactAlgoliaStoryResponse(String response, int fallbackId) {
+        if (TextUtils.isEmpty(response)
+                || JSON_NULL_LITERAL.equals(response)
+                || ALGOLIA_ERROR_STRING.equals(response)) {
+            return null;
+        }
+
+        try {
+            JSONObject item = new JSONObject(response);
+            JSONObject summary = new JSONObject();
+            int id = item.optInt("id", fallbackId);
+            if (id <= 0) {
+                id = fallbackId;
+            }
+
+            summary.put("cache_version", CACHED_STORY_SUMMARY_VERSION);
+            summary.put("id", id);
+            summary.put("type", item.optString("type", "story"));
+            summary.put("title", item.optString("title", ""));
+            summary.put("author", item.optString("author", ""));
+            summary.put("points", item.optInt("points", 0));
+            summary.put("created_at_i", item.optInt("created_at_i", 0));
+            summary.put("descendants", countAlgoliaComments(item.optJSONArray("children")));
+            putNonNullString(summary, "url", item.optString("url", ""));
+
+            if (item.has("story_id")) {
+                summary.put("story_id", item.optInt("story_id", 0));
+            }
+            if (item.has("parent_id")) {
+                summary.put("parent_id", item.optInt("parent_id", 0));
+            }
+            putNonNullString(summary, "story_title", item.optString("story_title", ""));
+            putNonNullString(summary, "story_url", item.optString("story_url", ""));
+
+            return summary.toString();
+        } catch (JSONException e) {
+            return null;
+        }
+    }
+
+    public static boolean updateStoryWithCachedStorySummary(Story story, String response) {
+        if (story == null || TextUtils.isEmpty(response) || JSON_NULL_LITERAL.equals(response)) {
+            return false;
+        }
+
+        try {
+            JSONObject item = new JSONObject(response);
+            int id = item.optInt("id", story.id);
+            if (id <= 0) {
+                return false;
+            }
+
+            story.id = id;
+            story.time = item.optInt("created_at_i", item.optInt("time", story.time));
+            story.score = item.optInt("points", item.optInt("score", story.score));
+            story.by = item.optString("author", item.optString("by", story.by));
+            story.descendants = item.has("descendants")
+                    ? item.optInt("descendants", story.descendants)
+                    : countAlgoliaComments(item.optJSONArray("children"));
+
+            String type = item.optString("type", "");
+            if ("comment".equals(type)) {
+                story.isComment = true;
+                story.title = "Comment by " + story.by;
+                story.isLink = false;
+                story.parentId = item.optInt("parent_id", 0);
+                story.commentMasterId = item.optInt("story_id", 0);
+                story.commentMasterTitle = item.optString("story_title", "");
+                story.commentMasterUrl = item.optString("story_url", "");
+                int urlId = story.commentMasterId > 0 ? story.commentMasterId : story.id;
+                story.url = "https://news.ycombinator.com/item?id=" + urlId;
+            } else {
+                story.isComment = false;
+                story.title = item.optString("title", story.title);
+                String rawUrl = item.optString("url", "").trim();
+                boolean hasValidUrl = !rawUrl.isEmpty() && !rawUrl.equalsIgnoreCase(JSON_NULL_LITERAL);
+                story.isLink = hasValidUrl;
+                story.url = hasValidUrl ? rawUrl : "https://news.ycombinator.com/item?id=" + story.id;
+                story.isJob = "job".equals(type);
+            }
+
+            updateTitleBadgeProperties(story);
+            story.loaded = true;
+            story.loadingFailed = false;
+            return !TextUtils.isEmpty(story.title);
+        } catch (JSONException e) {
+            return false;
+        }
+    }
+
+    private static void putNonNullString(JSONObject object, String key, String value) throws JSONException {
+        if (!TextUtils.isEmpty(value) && !JSON_NULL_LITERAL.equalsIgnoreCase(value)) {
+            object.put(key, value);
+        }
+    }
+
+    private static int countAlgoliaComments(JSONArray children) throws JSONException {
+        if (children == null) {
+            return 0;
+        }
+
+        int count = children.length();
+        for (int i = 0; i < children.length(); i++) {
+            JSONObject child = children.optJSONObject(i);
+            if (child == null) {
+                continue;
+            }
+            count += countAlgoliaComments(child.optJSONArray("children"));
+        }
+        return count;
     }
 
     private static void updateStoryText(Story story, String rawText) {

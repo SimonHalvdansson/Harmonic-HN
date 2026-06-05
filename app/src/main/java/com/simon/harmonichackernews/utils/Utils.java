@@ -85,7 +85,12 @@ public class Utils {
     public final static String KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL";
     public final static String KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS";
     private static final int MAX_CACHED_STORIES = 200;
+    private static final String STORY_CACHE_DIR = "story_cache";
+    private static final String STORY_CACHE_FULL_DIR = "full";
+    private static final String STORY_CACHE_SUMMARY_DIR = "summary";
+    private static final String STORY_CACHE_FILE_SUFFIX = ".json";
     public final static String GLOBAL_SHARED_PREFERENCES_KEY = "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY";
+    private static boolean legacyStoryCacheMigrationScheduled = false;
 
     public final static String KEY_SHARED_PREFERENCES_BOOKMARKS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_BOOKMARKS";
     public final static String KEY_SHARED_PREFERENCES_USER_TAGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_USER_TAGS";
@@ -178,77 +183,128 @@ public class Utils {
         AsyncTask.execute(r);
     }
 
+    private static void scheduleLegacyStoryCacheMigration(Context ctx) {
+        if (ctx == null) {
+            return;
+        }
+
+        synchronized (Utils.class) {
+            if (legacyStoryCacheMigrationScheduled) {
+                return;
+            }
+            legacyStoryCacheMigrationScheduled = true;
+        }
+
+        Context appContext = ctx.getApplicationContext();
+        AsyncTask.execute(() -> migrateLegacyStoryCache(appContext));
+    }
+
+    private static void migrateLegacyStoryCache(Context ctx) {
+        if (ctx == null) {
+            return;
+        }
+
+        SharedPreferences sharedPreferences = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
+        Map<String, ?> existingValues = sharedPreferences.getAll();
+        Set<String> cachedStories = new HashSet<>();
+        Object cachedStoriesValue = existingValues.get(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
+        if (cachedStoriesValue instanceof Set) {
+            for (Object value : (Set<?>) cachedStoriesValue) {
+                if (value instanceof String) {
+                    cachedStories.add((String) value);
+                }
+            }
+        }
+
+        long now = System.currentTimeMillis();
+        int migratedCount = 0;
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        for (Map.Entry<String, ?> entry : existingValues.entrySet()) {
+            String key = entry.getKey();
+            if (!key.startsWith(KEY_SHARED_PREFERENCES_CACHED_STORY) || !(entry.getValue() instanceof String)) {
+                continue;
+            }
+
+            int id;
+            try {
+                id = Integer.parseInt(key.substring(KEY_SHARED_PREFERENCES_CACHED_STORY.length()));
+            } catch (NumberFormatException e) {
+                editor.remove(key);
+                continue;
+            }
+
+            String data = (String) entry.getValue();
+            if (!TextUtils.isEmpty(data) && !JSONParser.ALGOLIA_ERROR_STRING.equals(data)) {
+                writeCachedStoryFiles(ctx, id, data);
+                long existingTime = findCachedStoryIndexEntryTime(cachedStories, id);
+                addCachedStoryIndexEntry(cachedStories, id, existingTime >= 0 ? existingTime : now - migratedCount);
+                migratedCount++;
+            }
+            editor.remove(key);
+        }
+
+        if (migratedCount > 0) {
+            evictOldCachedStories(ctx, cachedStories);
+            editor.putStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS, cachedStories);
+        }
+        editor.apply();
+    }
+
     public static void cacheStory(Context ctx, int id, String data) {
-        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id, data);
+        if (ctx == null || id <= 0 || TextUtils.isEmpty(data) || JSONParser.ALGOLIA_ERROR_STRING.equals(data)) {
+            return;
+        }
 
+        writeCachedStoryFiles(ctx, id, data);
+
+        SharedPreferences sharedPreferences = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
         Set<String> cachedStories = SettingsUtils.readStringSetFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
-
         if (cachedStories == null) {
             cachedStories = new HashSet<>();
         }
-        // if there already exists a story with the same id, remove it from list of cached since 
-        // we're only saving the latest one
-        if (!cachedStories.isEmpty()) {
-            for (Iterator<String> iterator = cachedStories.iterator(); iterator.hasNext();) {
-                String cached = iterator.next();
-                String[] idAndDate = cached.split("-");
-                if (idAndDate.length != 2) {
-                    iterator.remove();
-                    continue;
-                }
-                try {
-                    if (Integer.parseInt(idAndDate[0]) == id) {
-                        iterator.remove();
-                    }
-                } catch (NumberFormatException e) {
-                    iterator.remove();
-                }
-            }
-        }
-        cachedStories.add(id + "-" + System.currentTimeMillis());
 
-        int maxCachedStories = MAX_CACHED_STORIES;
-        while (cachedStories.size() > maxCachedStories) {
-            // If we have a lot of stories, lets delete the oldest one
-            long oldestTime = -1;
-            int oldestId = -1;
-            String oldestEntry = null;
-            for (String cachedStory : cachedStories) {
-                String[] idAndDate = cachedStory.split("-");
-                if (idAndDate.length != 2) {
-                    oldestEntry = cachedStory;
-                    break;
-                }
-                try {
-                    long cachedTime = Long.parseLong(idAndDate[1]);
-                    if (oldestTime == -1 || cachedTime < oldestTime) {
-                        oldestTime = cachedTime;
-                        oldestId = Integer.parseInt(idAndDate[0]);
-                        oldestEntry = cachedStory;
-                    }
-                } catch (NumberFormatException e) {
-                    oldestEntry = cachedStory;
-                    break;
-                }
-            }
+        addCachedStoryIndexEntry(cachedStories, id, System.currentTimeMillis());
+        evictOldCachedStories(ctx, cachedStories);
 
-            if (oldestEntry == null) {
-                break;
-            }
-
-            cachedStories.remove(oldestEntry);
-
-            if (oldestId > 0) {
-                ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE).edit().remove(KEY_SHARED_PREFERENCES_CACHED_STORY + oldestId).apply();
-                deleteCachedArticleSnapshot(ctx, oldestId);
-            }
-        }
-
-        SettingsUtils.saveStringSetToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS, cachedStories);
+        sharedPreferences.edit()
+                .remove(KEY_SHARED_PREFERENCES_CACHED_STORY + id)
+                .putStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS, cachedStories)
+                .apply();
     }
 
     public static String loadCachedStory(Context ctx, int id) {
-        return SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id);
+        if (ctx == null || id <= 0) {
+            return null;
+        }
+
+        String cachedStory = readStringFromFile(getCachedStoryFullFile(ctx, id));
+        if (!TextUtils.isEmpty(cachedStory)) {
+            return cachedStory;
+        }
+
+        // Backward compatibility for caches written before story data moved out of global prefs.
+        cachedStory = SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id);
+        if (!TextUtils.isEmpty(cachedStory)) {
+            cacheStory(ctx, id, cachedStory);
+        }
+        return cachedStory;
+    }
+
+    public static boolean loadCachedStorySummary(Context ctx, Story story) {
+        if (ctx == null || story == null || story.id <= 0) {
+            return false;
+        }
+
+        String summary = readStringFromFile(getCachedStorySummaryFile(ctx, story.id));
+        if (TextUtils.isEmpty(summary)) {
+            String fullStory = readStringFromFile(getCachedStoryFullFile(ctx, story.id));
+            summary = JSONParser.compactAlgoliaStoryResponse(fullStory, story.id);
+            if (!TextUtils.isEmpty(summary)) {
+                writeStringToFile(getCachedStorySummaryFile(ctx, story.id), summary);
+            }
+        }
+
+        return JSONParser.updateStoryWithCachedStorySummary(story, summary);
     }
 
     public static int getCachedPostCount(Context ctx) {
@@ -278,13 +334,8 @@ public class Utils {
 
         editor.remove(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS).apply();
 
-        File articleCacheDir = getArticleCacheDir(ctx);
-        File[] cachedArticleFiles = articleCacheDir.listFiles();
-        if (cachedArticleFiles != null) {
-            for (File cachedArticleFile : cachedArticleFiles) {
-                deleteFileOrDirectory(cachedArticleFile);
-            }
-        }
+        deleteFileOrDirectory(getStoryCacheDir(ctx));
+        deleteFileOrDirectory(getArticleCacheDir(ctx));
 
         StoryPreviewImageLoader.clearDiskCache(ctx);
 
@@ -297,11 +348,9 @@ public class Utils {
         Set<String> cachedStories = SettingsUtils.readStringSetFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
         if (cachedStories != null) {
             for (String cachedStory : cachedStories) {
-                String[] idAndDate = cachedStory.split("-");
-                if (idAndDate.length == 2) {
-                    try {
-                        cachedPostIds.add(Integer.parseInt(idAndDate[0]));
-                    } catch (NumberFormatException ignored) {}
+                int id = getCachedStoryIndexEntryId(cachedStory);
+                if (id > 0) {
+                    cachedPostIds.add(id);
                 }
             }
         }
@@ -323,7 +372,113 @@ public class Utils {
             }
         }
 
+        addCachedPostIdsFromStoryCacheDir(cachedPostIds, getCachedStoryFullDir(ctx));
+        addCachedPostIdsFromStoryCacheDir(cachedPostIds, getCachedStorySummaryDir(ctx));
+
         return cachedPostIds;
+    }
+
+    private static void addCachedStoryIndexEntry(Set<String> cachedStories, int id, long time) {
+        removeCachedStoryIndexEntry(cachedStories, id);
+        cachedStories.add(id + "-" + time);
+    }
+
+    private static void removeCachedStoryIndexEntry(Set<String> cachedStories, int id) {
+        if (cachedStories == null) {
+            return;
+        }
+
+        for (Iterator<String> iterator = cachedStories.iterator(); iterator.hasNext();) {
+            String cached = iterator.next();
+            int cachedId = getCachedStoryIndexEntryId(cached);
+            if (cachedId <= 0 || cachedId == id) {
+                iterator.remove();
+            }
+        }
+    }
+
+    private static void evictOldCachedStories(Context ctx, Set<String> cachedStories) {
+        while (cachedStories.size() > MAX_CACHED_STORIES) {
+            String oldestEntry = null;
+            long oldestTime = -1;
+            int oldestId = -1;
+
+            for (String cachedStory : cachedStories) {
+                int id = getCachedStoryIndexEntryId(cachedStory);
+                long time = getCachedStoryIndexEntryTime(cachedStory);
+                if (id <= 0 || time < 0) {
+                    oldestEntry = cachedStory;
+                    break;
+                }
+                if (oldestTime == -1 || time < oldestTime) {
+                    oldestTime = time;
+                    oldestId = id;
+                    oldestEntry = cachedStory;
+                }
+            }
+
+            if (oldestEntry == null) {
+                break;
+            }
+
+            cachedStories.remove(oldestEntry);
+            if (oldestId > 0) {
+                deleteCachedStoryFiles(ctx, oldestId);
+                deleteCachedArticleSnapshot(ctx, oldestId);
+                ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
+                        .edit()
+                        .remove(KEY_SHARED_PREFERENCES_CACHED_STORY + oldestId)
+                        .apply();
+            }
+        }
+    }
+
+    private static int getCachedStoryIndexEntryId(String entry) {
+        String[] idAndDate = entry == null ? new String[0] : entry.split("-");
+        if (idAndDate.length != 2) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(idAndDate[0]);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private static long getCachedStoryIndexEntryTime(String entry) {
+        String[] idAndDate = entry == null ? new String[0] : entry.split("-");
+        if (idAndDate.length != 2) {
+            return -1;
+        }
+        try {
+            return Long.parseLong(idAndDate[1]);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private static long findCachedStoryIndexEntryTime(Set<String> cachedStories, int id) {
+        if (cachedStories == null) {
+            return -1;
+        }
+
+        for (String entry : cachedStories) {
+            if (getCachedStoryIndexEntryId(entry) == id) {
+                return getCachedStoryIndexEntryTime(entry);
+            }
+        }
+        return -1;
+    }
+
+    private static void addCachedPostIdsFromStoryCacheDir(Set<Integer> cachedPostIds, File cacheDir) {
+        File[] cachedStoryFiles = cacheDir.listFiles();
+        if (cachedStoryFiles == null) {
+            return;
+        }
+
+        for (File cachedStoryFile : cachedStoryFiles) {
+            addCachedPostId(cachedPostIds, cachedStoryFile.getName(), "", STORY_CACHE_FILE_SUFFIX);
+        }
     }
 
     private static void addCachedPostId(Set<Integer> cachedPostIds, String value, String prefix) {
@@ -339,6 +494,100 @@ public class Utils {
         try {
             cachedPostIds.add(Integer.parseInt(value.substring(prefix.length(), end)));
         } catch (NumberFormatException ignored) {}
+    }
+
+    private static void writeCachedStoryFiles(Context ctx, int id, String data) {
+        writeStringToFile(getCachedStoryFullFile(ctx, id), data);
+
+        String summary = JSONParser.compactAlgoliaStoryResponse(data, id);
+        if (!TextUtils.isEmpty(summary)) {
+            writeStringToFile(getCachedStorySummaryFile(ctx, id), summary);
+        }
+    }
+
+    private static File getStoryCacheDir(Context ctx) {
+        return new File(ctx.getFilesDir(), STORY_CACHE_DIR);
+    }
+
+    private static File getCachedStoryFullDir(Context ctx) {
+        return new File(getStoryCacheDir(ctx), STORY_CACHE_FULL_DIR);
+    }
+
+    private static File getCachedStorySummaryDir(Context ctx) {
+        return new File(getStoryCacheDir(ctx), STORY_CACHE_SUMMARY_DIR);
+    }
+
+    private static File getCachedStoryFullFile(Context ctx, int id) {
+        return new File(getCachedStoryFullDir(ctx), id + STORY_CACHE_FILE_SUFFIX);
+    }
+
+    private static File getCachedStorySummaryFile(Context ctx, int id) {
+        return new File(getCachedStorySummaryDir(ctx), id + STORY_CACHE_FILE_SUFFIX);
+    }
+
+    private static void deleteCachedStoryFiles(Context ctx, int id) {
+        File fullFile = getCachedStoryFullFile(ctx, id);
+        if (fullFile.exists() && !fullFile.delete()) {
+            fullFile.deleteOnExit();
+        }
+
+        File summaryFile = getCachedStorySummaryFile(ctx, id);
+        if (summaryFile.exists() && !summaryFile.delete()) {
+            summaryFile.deleteOnExit();
+        }
+    }
+
+    private static String readStringFromFile(File file) {
+        if (file == null || !file.exists()) {
+            return null;
+        }
+
+        FileInputStream inputStream = null;
+        try {
+            inputStream = new FileInputStream(file);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
+            StringBuilder builder = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line).append('\n');
+            }
+            return builder.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException ignored) {}
+            }
+        }
+    }
+
+    private static boolean writeStringToFile(File file, String data) {
+        if (file == null || TextUtils.isEmpty(data)) {
+            return false;
+        }
+
+        FileOutputStream outputStream = null;
+        try {
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs()) {
+                return false;
+            }
+            outputStream = new FileOutputStream(file);
+            outputStream.write(data.getBytes("UTF-8"));
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (outputStream != null) {
+                try {
+                    outputStream.close();
+                } catch (IOException ignored) {}
+            }
+        }
     }
 
     public static void cacheArticleSnapshot(Context ctx, int id, String url, String html) {
@@ -453,8 +702,9 @@ public class Utils {
 
         long limit = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
         for (String entry : cached) {
-            String[] split = entry.split("-");
-            if (split.length == 2 && Long.parseLong(split[1]) >= limit) {
+            int id = getCachedStoryIndexEntryId(entry);
+            long time = getCachedStoryIndexEntryTime(entry);
+            if (id > 0 && time >= limit && hasCachedStoryData(ctx, id)) {
                 return true;
             }
         }
@@ -473,11 +723,9 @@ public class Utils {
         List<Pair<Long, Integer>> orderedIds = new ArrayList<>();
 
         for (String entry : cached) {
-            String[] split = entry.split("-");
-            if (split.length != 2) continue;
-
-            int id = Integer.parseInt(split[0]);
-            long time = Long.parseLong(split[1]);
+            int id = getCachedStoryIndexEntryId(entry);
+            long time = getCachedStoryIndexEntryTime(entry);
+            if (id <= 0 || time < 0) continue;
             if (time < limit) continue;
 
             orderedIds.add(new Pair<>(time, id));
@@ -487,37 +735,28 @@ public class Utils {
         Collections.sort(orderedIds, (a, b) -> Long.compare(a.first, b.first));
 
         for (Pair<Long, Integer> pair : orderedIds) {
-            String json = loadCachedStory(ctx, pair.second);
-            if (json == null || json.equals(JSONParser.ALGOLIA_ERROR_STRING)) continue;
-
-            try {
-                JSONObject obj = new JSONObject(json);
-                Story story = new Story();
-
-                JSONParser.updateStoryInformation(story, obj, true, -1, getTotalCommentCount(obj)+1);
+            Story story = new Story();
+            story.id = pair.second;
+            if (loadCachedStorySummary(ctx, story)) {
                 stories.add(story);
-            } catch (Exception ignored) {}
+                continue;
+            }
+
+            String fullStory = loadCachedStory(ctx, pair.second);
+            String summary = JSONParser.compactAlgoliaStoryResponse(fullStory, pair.second);
+            if (!TextUtils.isEmpty(summary) && JSONParser.updateStoryWithCachedStorySummary(story, summary)) {
+                stories.add(story);
+            }
         }
 
         return stories;
     }
 
-    private static int getTotalCommentCount(JSONObject storyJson) throws JSONException {
-        JSONArray topLevel = storyJson.optJSONArray("children");
-        if (topLevel == null) return 0;
-        return countRecursively(topLevel);
-    }
-
-    private static int countRecursively(JSONArray arr) throws JSONException {
-        int count = arr.length();
-        for (int i = 0; i < arr.length(); i++) {
-            JSONObject child = arr.getJSONObject(i);
-            JSONArray replies = child.optJSONArray("children");
-            if (replies != null && replies.length() > 0) {
-                count += countRecursively(replies);
-            }
-        }
-        return count;
+    private static boolean hasCachedStoryData(Context ctx, int id) {
+        return getCachedStorySummaryFile(ctx, id).exists()
+                || getCachedStoryFullFile(ctx, id).exists()
+                || ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
+                .contains(KEY_SHARED_PREFERENCES_CACHED_STORY + id);
     }
 
     public static ArrayList<Bookmark> loadBookmarks(Context ctx, boolean sorted) {
@@ -902,6 +1141,7 @@ public class Utils {
 
     public static boolean isFirstAppStart(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
+        scheduleLegacyStoryCacheMigration(ctx);
         if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true)) {
             sharedPref.edit().putBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, false).apply();
             return true;
@@ -911,6 +1151,7 @@ public class Utils {
 
     public static boolean justUpdated(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
+        scheduleLegacyStoryCacheMigration(ctx);
         if (BuildConfig.VERSION_CODE > sharedPref.getInt(KEY_SHARED_PREFERENCES_LAST_VERSION, -1)) {
             sharedPref.edit().putInt(KEY_SHARED_PREFERENCES_LAST_VERSION, BuildConfig.VERSION_CODE).apply();
             return true;

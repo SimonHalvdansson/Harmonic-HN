@@ -2759,9 +2759,7 @@ public class StoriesFragment extends Fragment {
                             Story s = new Story("Loading...", id, false, HistoriesUtils.INSTANCE.isHistoryExist(id));
                             // let's try to fill this with old information if possible
 
-                            String cachedResponse = Utils.loadCachedStory(getContext(), id);
-                            if (cachedResponse != null && !cachedResponse.equals(JSONParser.ALGOLIA_ERROR_STRING)) {
-                                JSONParser.updateStoryWithAlgoliaResponse(s, cachedResponse);
+                            if (Utils.loadCachedStorySummary(getContext(), s)) {
                                 if (shouldFilterLoadedStory(s)) {
                                     continue;
                                 }
