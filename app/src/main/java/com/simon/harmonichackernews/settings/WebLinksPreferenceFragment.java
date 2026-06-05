@@ -17,7 +17,7 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
 
     @Override
     protected String getToolbarTitle() {
-        return "Web & Links";
+        return "Web and links";
     }
 
     @Override

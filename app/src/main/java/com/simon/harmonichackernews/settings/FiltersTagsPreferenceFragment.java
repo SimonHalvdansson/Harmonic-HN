@@ -19,7 +19,7 @@ public class FiltersTagsPreferenceFragment extends BaseSettingsFragment {
 
     @Override
     protected String getToolbarTitle() {
-        return "Filters & Tags";
+        return "Filters and tags";
     }
 
     @Override
