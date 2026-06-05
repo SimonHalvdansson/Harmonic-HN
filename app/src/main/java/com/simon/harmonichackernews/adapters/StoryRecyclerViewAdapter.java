@@ -300,7 +300,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
 
                 if (thumbnails) {
-                    FaviconLoader.loadFavicon(storyViewHolder.story.url, storyViewHolder.metaFavicon, ctx, faviconProvider);
+                    FaviconLoader.loadFavicon(storyViewHolder.story.url, storyViewHolder.metaFavicon, ctx, faviconProvider, true);
                 }
 
                 bindPreviewImage(storyViewHolder, storyViewHolder.story);

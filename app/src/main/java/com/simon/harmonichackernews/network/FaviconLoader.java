@@ -18,6 +18,10 @@ import java.util.Objects;
 public class FaviconLoader {
 
     public static void loadFavicon(String url, ImageView into, Context ctx, String faviconProvider) {
+        loadFavicon(url, into, ctx, faviconProvider, false);
+    }
+
+    public static void loadFavicon(String url, ImageView into, Context ctx, String faviconProvider, boolean fadeIn) {
         try {
             String host = Utils.getDomainName(url);
             int faviconSize = Utils.pxFromDpInt(ctx.getResources(), 17);
@@ -30,6 +34,7 @@ public class FaviconLoader {
                     .placeholder(webDrawable)
                     .error(webDrawable)
                     .fallback(webDrawable)
+                    .crossfade(fadeIn)
                     .target(into)
                     .build();
 
