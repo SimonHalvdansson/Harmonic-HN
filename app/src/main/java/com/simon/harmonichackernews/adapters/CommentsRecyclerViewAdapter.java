@@ -543,6 +543,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
     }
 
+    private float getHeaderAlphaForSlideOffset(float slideOffset) {
+        return Math.min(1f, slideOffset * slideOffset * 20f);
+    }
+
+    private float getEffectiveHeaderTintProgress() {
+        return headerSlideOffset * getHeaderAlphaForSlideOffset(headerSlideOffset);
+    }
+
     public void setBoundHeaderAlpha(float alpha) {
         if (boundHeaderViewHolder != null
                 && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.headerView)) {
@@ -1059,17 +1067,18 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         int previewTintBaseColor = getPreviewTintBaseColor(headerViewHolder.itemView);
         int targetColor = getHeaderTintColor(story, normalColor, previewTintBaseColor);
         int color = ColorUtils.blendARGB(normalColor, targetColor, headerSlideOffset);
+        int visibleColor = ColorUtils.blendARGB(normalColor, targetColor, getEffectiveHeaderTintProgress());
         headerViewHolder.itemView.setBackgroundColor(normalColor);
-        headerViewHolder.spacer.setBackgroundColor(color);
-        headerViewHolder.sheetHandleContainer.setBackgroundColor(color);
-        headerViewHolder.sheetButtonsContainer.setBackgroundColor(color);
+        headerViewHolder.spacer.setBackgroundColor(visibleColor);
+        headerViewHolder.sheetHandleContainer.setBackgroundColor(visibleColor);
+        headerViewHolder.sheetButtonsContainer.setBackgroundColor(visibleColor);
         headerViewHolder.headerView.setBackgroundColor(color);
         headerViewHolder.summaryContainer.setBackgroundColor(color);
         headerViewHolder.actionsContainer.setBackgroundColor(color);
         if (headerBackgroundColorListener != null) {
-            headerBackgroundColorListener.onHeaderBackgroundColorChanged(color);
+            headerBackgroundColorListener.onHeaderBackgroundColorChanged(visibleColor);
         }
-        applyHeaderBottomTransition(headerViewHolder, normalColor, color, previewTintBaseColor);
+        applyHeaderBottomTransition(headerViewHolder, normalColor, visibleColor, previewTintBaseColor);
     }
 
     private int getHeaderTintColor(Story story, int normalColor, int previewTintBaseColor) {
@@ -2364,7 +2373,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     sheetButtonsContainer.getLayoutParams().height = Math.round((1 - slideOffset) * (SHEET_ITEM_HEIGHT + navbarHeight));
                     sheetButtonsContainer.requestLayout();
 
-                    float headerAlpha = Math.min(1, slideOffset * slideOffset * 20);
+                    float headerAlpha = getHeaderAlphaForSlideOffset(slideOffset);
                     actionsContainer.setAlpha(headerAlpha);
                     headerView.setAlpha(headerAlpha);
                     CommentsRecyclerViewAdapter.this.setHeaderSlideOffset(slideOffset);
