@@ -2,13 +2,21 @@
 
 # Harmonic for Hacker News
 
-Harmonic for Hacker News is a Hacker News client for Android which is feature rich, nicely designed and has a ton of customization options!
+A fully-featured, mature Hacker News client for Android with a focus on (material) design, polish, and customization.
 
 <p align="center">
-  <img src="google play/Screenshot_20251016-175525-min.png" width="20%"/><img src="google play/Screenshot_20251016-175645-min.png" width="20%"/><img src="google play/Screenshot_20251016-175725-min.png" width="20%"/><img src="google play/Screenshot_20251016-175746-min.png" width="20%"/><img src="google play/Screenshot_20251016-175758-min.png" width="20%"/>
+  <img src="google play/Screenshot_20260606_201906" width="100%"/>
 </p>
 
-This has been my personal side project since 2020 and since starting my PhD in 2021 the time I have to dedicate to Harmonic has decreased. My personal philosophy on side projects is that the most important thing is building something that is actually shipped. Since much of my knowledge on building Android apps is ~10 years old, Harmonic does not use Kotlin or the latest Android API's and is probably not the easiest app to dig into the source code of. However, it is shipped, and the user experience stays top notch.
+Over nearly 6 years of development, Harmonic has been been accumulating features and relentlessly improving all of the hundreds of small interactions which make up the app. It is my main personal side project which I use daily and has over 100 000 downloads on Google Play. It is not meant as a display of the best code quality, but rather as the product of continuous iteration and pixel pushing.
+
+## Features
+
+* Full account functionality: log in, vote, comment, submit, favorites, see upvoted
+* Material 3 Expressive design with nice animations
+* Theming support and extensive customization options
+* A large collection of quality of life features such as reader mode, preview images, link previews and much more
+* Strong smooth performance
 
 ## Contributing
 
@@ -16,15 +24,11 @@ If you would like to see a change in Harmonic, feel free to open an issue or cre
 
 ### AI-aided PRs
 
-Using your favorite LLM workflow to create PRs is completely fine - anything that gets the job done. As always, still build the app (this should be hassle-free) and try out your changes to make sure they work before before submitting a PR.
+Using your favorite LLM workflow to create PRs is completely fine - anything that gets the job done. As always, still build the app (this should be hassle-free) and try out your changes to make sure they work properly before before submitting a PR.
 
-## Features
+### Code
 
-* Basic account functionality: log in, vote, comment, and submit
-* Material 3 Expressive design with some nice animations
-* Several themes including full black
-* A ton of customization options, bordering on feature creep
-* Fast!
+Harmonic is written in Java mainly with views, old-school Android style. With MDC-Android (Views) being end of life, there will be a need to migrate to Kotlin Compose at some point in the future. While you are welcome to contribute to that, don't be afraid of using views as long as the rest of the app does.
   
 <a href="https://play.google.com/store/apps/details?id=com.simon.harmonichackernews">
 <img src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png" alt="Get it on Google Play" height="80">
