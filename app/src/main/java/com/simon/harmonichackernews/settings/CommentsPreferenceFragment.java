@@ -13,6 +13,8 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
 
     private Preference threadDepthIndicatorsPreference;
     private CommentContentPreviewPreference previewPreference;
+    private Preference enableHeaderTintPreference;
+    private Preference enableHeaderPreviewImagePreference;
 
     @Override
     protected String getToolbarTitle() {
@@ -25,6 +27,8 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
 
         previewPreference = findPreference("pref_comment_content_preview");
         threadDepthIndicatorsPreference = findPreference(SettingsUtils.PREF_COMMENT_DEPTH_INDICATORS);
+        enableHeaderTintPreference = findPreference(SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_TINT);
+        enableHeaderPreviewImagePreference = findPreference(SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE);
         if (threadDepthIndicatorsPreference != null) {
             updateThreadDepthIndicatorsSummary();
             threadDepthIndicatorsPreference.setOnPreferenceClickListener(preference -> {
@@ -46,6 +50,8 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
             }
             return true;
         });
+
+        updateHeaderDisplayPreferenceStatus();
     }
 
     @Override
@@ -53,6 +59,7 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
         super.onResume();
         getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
         updateThreadDepthIndicatorsSummary();
+        updateHeaderDisplayPreferenceStatus();
     }
 
     @Override
@@ -66,6 +73,9 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
         if (SettingsUtils.PREF_COMMENT_DEPTH_INDICATORS.equals(key)
                 || SettingsUtils.PREF_MONOCHROME_COMMENT_DEPTH.equals(key)) {
             updateThreadDepthIndicatorsSummary();
+        } else if (SettingsUtils.PREF_TINT_CARD_USING_PREVIEW.equals(key)
+                || SettingsUtils.PREF_STORY_PREVIEW_IMAGE_MODE.equals(key)) {
+            updateHeaderDisplayPreferenceStatus();
         }
     }
 
@@ -76,5 +86,16 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
 
         threadDepthIndicatorsPreference.setSummary(CommentDepthIndicatorUtils.getModeLabel(
                 SettingsUtils.getPreferredCommentDepthIndicatorMode(requireContext())));
+    }
+
+    private void updateHeaderDisplayPreferenceStatus() {
+        if (getContext() == null) {
+            return;
+        }
+
+        changePrefStatus(enableHeaderTintPreference, SettingsUtils.shouldTintCardUsingPreview(requireContext()));
+        changePrefStatus(
+                enableHeaderPreviewImagePreference,
+                !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(SettingsUtils.getPreferredStoryPreviewImageMode(requireContext())));
     }
 }
