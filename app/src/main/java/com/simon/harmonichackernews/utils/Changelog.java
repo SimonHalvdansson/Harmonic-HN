@@ -4,22 +4,35 @@ package com.simon.harmonichackernews.utils;
 public class Changelog {
     static public String getHTML() {
         return  "<b>Version 3.0:</b><br>" +
-                "- This version is the to date most comprehensive quality of life cleanup release, consisting of nearly 200 commits. There are many small changes which are not mentioned in these notes.<br>" +
+                "- This version is the to date most comprehensive quality of life cleanup release, consisting of more than 200 commits. There are many small changes which are not mentioned in these notes.<br>" +
                 "- Added support for HN Favorites. You can convert all your bookmarks to favorites in Settings -> Data -> Bookmarks and also disable bookmarks from there.<br>" +
+                "- Added an Upvoted story list.<br>" +
+                "- Added support for the HN Active page.<br>" +
                 "- Added story preview images. (De)activate in Settings -> Stories<br>" +
                 "- Redesigned comment details dialog, opened by long pressing a comment<br>" +
                 "- Added ability to bookmark comments<br>" +
                 "- Added new story display style: Card<br>" +
+                "- Added card display style for comments.<br>" +
                 "- Updated many parts of settings with previews<br>" +
                 "- Added support for HN CAPTCHAs<br>" +
                 "- Always enable foldable support<br>" +
                 "- Added setting to tint cards using preview images<br>" +
                 "- Added button to only show comment threads where the OP has commented<br>" +
                 "- Added new setting for graying out clicked posts<br>" +
+                "- Added collected reference link boxes for comments and text posts.<br>" +
+                "- Added [video] badges for video posts.<br>" +
                 "- Added new sharing option for link + HN comments (thanks daniel-egan!)<br>" +
                 "- Added new archive options<br>" +
                 "- Added reader mode for integrated WebView<br>" +
                 "- Added text size setting for titles<br>" +
+                "- Changed the default app font to Google Sans Flex Rounded.<br>" +
+                "- Added separate text size control for comments.<br>" +
+                "- Added a setting to hide top-level domains in story rows.<br>" +
+                "- Added a compact points setting for story rows.<br>" +
+                "- Added a \"None\" option for comment depth indicators.<br>" +
+                "- Added comment sorting from the comments screen.<br>" +
+                "- Improved comment search with highlighted results.<br>" +
+                "- Redesigned the welcome flow.<br>" +
                 "- Added a setting for number of stories to cache<br>" +
                 "- Added setting to automatically redirect certain domains to archive version<br>" +
                 "- Fixed some crashes and reduced memory usage when opening large threads<br>" +
