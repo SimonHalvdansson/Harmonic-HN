@@ -142,6 +142,13 @@
         <TextView
             android:paddingTop="3dp"
             android:paddingBottom="3dp"
+            android:text="• Readability by Mozilla - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
             android:text="• hidroh/Materialistic - Apache 2.0"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>

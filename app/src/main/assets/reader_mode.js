@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 4) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 5) {
         return;
     }
 
@@ -144,6 +144,83 @@
         return bestScore >= 20 ? best : null;
     }
 
+    function parseReadabilityDocument() {
+        if (typeof Readability !== "function" || !document.body) {
+            return null;
+        }
+
+        try {
+            var documentClone = document.cloneNode(true);
+            var parsed = new Readability(documentClone, {
+                charThreshold: MIN_ARTICLE_TEXT_LENGTH,
+                keepClasses: false
+            }).parse();
+            if (!parsed || !parsed.content || !parsed.textContent || parsed.textContent.length < MIN_ARTICLE_TEXT_LENGTH) {
+                return null;
+            }
+            return parsed;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function parseWithReadability() {
+        var parsed = parseReadabilityDocument();
+        if (!parsed) {
+            return null;
+        }
+
+        try {
+            var container = document.createElement("div");
+            container.innerHTML = parsed.content;
+            cleanArticle(container);
+            if (getText(container).length < MIN_ARTICLE_TEXT_LENGTH) {
+                return null;
+            }
+
+            return {
+                root: container,
+                title: parsed.title || "",
+                byline: parsed.byline || "",
+                siteName: parsed.siteName || "",
+                publishedTime: parsed.publishedTime || ""
+            };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function extractArticle() {
+        var parsedArticle = parseWithReadability();
+        if (parsedArticle) {
+            removeDuplicateTitle(parsedArticle.root, parsedArticle.title);
+            return parsedArticle;
+        }
+
+        var article = findArticle();
+        if (!article) {
+            return null;
+        }
+
+        var clone = article.cloneNode(true);
+        cleanArticle(clone);
+
+        var title = findTitle(article);
+        removeDuplicateTitle(clone, title);
+
+        if (getText(clone).length < MIN_ARTICLE_TEXT_LENGTH) {
+            return null;
+        }
+
+        return {
+            root: clone,
+            title: title,
+            byline: findByline(article),
+            siteName: "",
+            publishedTime: ""
+        };
+    }
+
     function absolutizeUrl(value) {
         if (!value) {
             return value;
@@ -155,12 +232,27 @@
         }
     }
 
+    function absolutizeSrcset(value) {
+        if (!value) {
+            return value;
+        }
+        return String(value).split(",").map(function(part) {
+            var trimmed = part.trim();
+            var match = /^(\S+)(.*)$/.exec(trimmed);
+            if (!match) {
+                return trimmed;
+            }
+            return absolutizeUrl(match[1]) + match[2];
+        }).join(", ");
+    }
+
     function cleanAttributes(element) {
         var allowed = {
             "a": ["href", "title"],
-            "img": ["src", "alt", "title", "width", "height"],
+            "img": ["src", "srcset", "sizes", "alt", "title", "width", "height"],
+            "picture": [],
             "video": ["src", "poster", "controls"],
-            "source": ["src", "type"],
+            "source": ["src", "srcset", "sizes", "media", "type"],
             "td": ["colspan", "rowspan"],
             "th": ["colspan", "rowspan"],
             "ol": ["start"],
@@ -203,8 +295,12 @@
 
             if (tagName === "img") {
                 var src = node.getAttribute("src") || node.getAttribute("data-src") || node.getAttribute("data-lazy-src");
+                var srcset = node.getAttribute("srcset") || node.getAttribute("data-srcset");
                 if (src) {
                     node.setAttribute("src", absolutizeUrl(src));
+                }
+                if (srcset) {
+                    node.setAttribute("srcset", absolutizeSrcset(srcset));
                 }
             } else if (tagName === "a") {
                 var href = node.getAttribute("href");
@@ -223,8 +319,12 @@
                 node.setAttribute("controls", "controls");
             } else if (tagName === "source") {
                 var sourceSrc = node.getAttribute("src");
+                var sourceSrcset = node.getAttribute("srcset") || node.getAttribute("data-srcset");
                 if (sourceSrc) {
                     node.setAttribute("src", absolutizeUrl(sourceSrc));
+                }
+                if (sourceSrcset) {
+                    node.setAttribute("srcset", absolutizeSrcset(sourceSrcset));
                 }
             }
 
@@ -395,24 +495,28 @@
         return [
             "<style id=\"harmonic-reader-style\">",
             theme.fontFaceCss,
-            "body[data-harmonic-reader='true']{margin:0!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;font-family:" + theme.fontFamily + "!important;line-height:1.68!important;font-size:" + bodyFontSize + "px!important;-webkit-text-size-adjust:100%!important;}",
-            "#harmonic-reader-mode{box-sizing:border-box;max-width:760px;margin:0 auto;padding:32px 20px 96px!important;}",
+            "body[data-harmonic-reader='true']{margin:0!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;font-family:" + theme.fontFamily + "!important;line-height:1.68!important;font-size:" + bodyFontSize + "px!important;-webkit-text-size-adjust:100%!important;visibility:visible!important;opacity:1!important;}",
+            "#harmonic-reader-mode{box-sizing:border-box;max-width:760px;margin:0 auto;padding:32px 20px 96px!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;visibility:visible!important;opacity:1!important;}",
             "#harmonic-reader-mode *{box-sizing:border-box;max-width:100%;}",
             "#harmonic-reader-kicker{font:600 13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;letter-spacing:.04em!important;text-transform:uppercase!important;color:" + theme.linkColor + "!important;margin-bottom:14px!important;}",
             "#harmonic-reader-mode h1{font:700 " + titleFontSize + "px/1.15 " + theme.headingFontFamily + "!important;margin:0 0 12px!important;color:" + theme.headingColor + "!important;}",
             "#harmonic-reader-byline{font:500 " + bylineFontSize + "px/1.5 " + theme.fontFamily + "!important;color:" + theme.secondaryTextColor + "!important;margin:0 0 28px!important;}",
-            "#harmonic-reader-article p,#harmonic-reader-article li{font-size:" + bodyFontSize + "px!important;line-height:1.68!important;}",
+            "#harmonic-reader-article,#harmonic-reader-article section,#harmonic-reader-article div,#harmonic-reader-article figure{background:transparent!important;color:" + theme.textColor + "!important;visibility:visible!important;opacity:1!important;}",
+            "#harmonic-reader-article *{background:transparent!important;visibility:visible!important;opacity:1!important;}",
+            "#harmonic-reader-article p,#harmonic-reader-article li{font-size:" + bodyFontSize + "px!important;line-height:1.68!important;color:" + theme.textColor + "!important;}",
+            "#harmonic-reader-article span,#harmonic-reader-article strong,#harmonic-reader-article em,#harmonic-reader-article small{color:inherit!important;}",
             "#harmonic-reader-article p{margin:0 0 1.05em!important;}",
-            "#harmonic-reader-article h2,#harmonic-reader-article h3,#harmonic-reader-article h4{font-family:" + theme.headingFontFamily + "!important;line-height:1.25!important;margin:1.65em 0 .6em!important;color:inherit!important;}",
+            "#harmonic-reader-article h2,#harmonic-reader-article h3,#harmonic-reader-article h4,#harmonic-reader-article h5,#harmonic-reader-article h6{font-family:" + theme.headingFontFamily + "!important;line-height:1.25!important;margin:1.65em 0 .6em!important;background:transparent!important;color:" + theme.headingColor + "!important;}",
             "#harmonic-reader-article a{color:" + theme.linkColor + "!important;text-decoration:underline!important;text-decoration-thickness:1px!important;text-underline-offset:3px!important;}",
             "#harmonic-reader-article img,#harmonic-reader-article video{display:block;height:auto!important;margin:1.2em auto!important;border-radius:4px!important;}",
             "#harmonic-reader-article figure{margin:1.4em 0!important;}",
             "#harmonic-reader-article figcaption{font:" + captionFontSize + "px/1.45 " + theme.fontFamily + "!important;color:" + theme.secondaryTextColor + "!important;margin-top:.5em!important;}",
             "#harmonic-reader-article blockquote{border-left:3px solid " + theme.linkColor + "!important;margin:1.3em 0!important;padding:.1em 0 .1em 1em!important;color:" + theme.textColor + "!important;}",
-            "#harmonic-reader-article pre{overflow-x:auto!important;background:" + theme.codeBackgroundColor + "!important;border-radius:4px!important;padding:14px!important;font-size:" + codeFontSize + "px!important;line-height:1.5!important;}",
-            "#harmonic-reader-article code{font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace!important;font-size:.9em!important;}",
-            "#harmonic-reader-article table{border-collapse:collapse!important;display:block!important;overflow-x:auto!important;margin:1.2em 0!important;}",
-            "#harmonic-reader-article th,#harmonic-reader-article td{border:1px solid " + theme.dividerColor + "!important;padding:8px!important;}",
+            "#harmonic-reader-article pre{overflow-x:auto!important;background:" + theme.codeBackgroundColor + "!important;color:" + theme.textColor + "!important;border-radius:4px!important;padding:14px!important;font-size:" + codeFontSize + "px!important;line-height:1.5!important;}",
+            "#harmonic-reader-article code,#harmonic-reader-article pre *{font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace!important;font-size:.9em!important;background:transparent!important;color:" + theme.textColor + "!important;}",
+            "#harmonic-reader-article table{border-collapse:collapse!important;display:block!important;overflow-x:auto!important;margin:1.2em 0!important;background:transparent!important;color:" + theme.textColor + "!important;}",
+            "#harmonic-reader-article thead,#harmonic-reader-article tbody,#harmonic-reader-article tfoot,#harmonic-reader-article tr{background:transparent!important;color:" + theme.textColor + "!important;}",
+            "#harmonic-reader-article th,#harmonic-reader-article td{border:1px solid " + theme.dividerColor + "!important;padding:8px!important;background:transparent!important;color:" + theme.textColor + "!important;}",
             "</style>"
         ].join("");
     }
@@ -504,25 +608,14 @@
                 return "unavailable";
             }
 
-            var article = findArticle();
-            if (!article) {
+            var extractedArticle = extractArticle();
+            if (!extractedArticle) {
                 return "no_article";
             }
 
-            var clone = article.cloneNode(true);
-            cleanArticle(clone);
-
-            var title = findTitle(article);
-            removeDuplicateTitle(clone, title);
-
-            var articleText = getText(clone);
-            if (articleText.length < MIN_ARTICLE_TEXT_LENGTH) {
-                return "no_article";
-            }
-
-            var byline = findByline(article);
-            var site = (location.hostname || "").replace(/^www\./, "");
-            var meta = byline ? byline : site;
+            var title = extractedArticle.title || findTitle(extractedArticle.root);
+            var site = (extractedArticle.siteName || location.hostname || "").replace(/^www\./, "");
+            var meta = extractedArticle.byline ? extractedArticle.byline : site;
             var originalTitle = document.title;
 
             window[STATE_KEY] = {
@@ -542,7 +635,7 @@
                 title ? "<h1>" + escapeHtml(title) + "</h1>" : "",
                 meta ? "<div id=\"harmonic-reader-byline\">" + escapeHtml(meta) + "</div>" : "",
                 "<article id=\"harmonic-reader-article\">",
-                clone.innerHTML,
+                extractedArticle.root.innerHTML,
                 "</article>",
                 "</main>"
             ].join("");
@@ -596,14 +689,14 @@
 
     function isAvailable() {
         try {
-            return document.body && findArticle() ? "available" : "unavailable";
+            return document.body && extractArticle() ? "available" : "unavailable";
         } catch (e) {
             return "unavailable";
         }
     }
 
     window.HarmonicReaderMode = {
-        version: 4,
+        version: 5,
         setTheme: setTheme,
         isAvailable: isAvailable,
         enable: enable,

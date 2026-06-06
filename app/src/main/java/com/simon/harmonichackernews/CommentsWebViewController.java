@@ -81,9 +81,11 @@ class CommentsWebViewController {
     private static final String PDF_MIME_TYPE = "application/pdf";
     private static final String PDF_LOADER_URL = "file:///android_asset/pdf/index.html";
     private static final String OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html";
+    private static final String READER_MODE_READABILITY_SCRIPT_ASSET = "vendor/mozilla/readability/0.6.0/Readability.min.js";
     private static final String READER_MODE_SCRIPT_ASSET = "reader_mode.js";
     private static final long WEBVIEW_VISIBLE_LOAD_GRACE_MS = 1500;
     private static final long READER_MODE_INITIAL_AVAILABILITY_GRACE_MS = 2000;
+    private static final long READER_MODE_AVAILABILITY_RECHECK_DELAY_MS = 2500;
     private static final long WEBVIEW_LOAD_TIMEOUT_MS = 45000;
     private static final long SUMMARY_LOAD_TIMEOUT_MS = 30000;
 
@@ -171,6 +173,8 @@ class CommentsWebViewController {
     private boolean readerModeInitialAvailabilityGraceUsed = false;
     private int readerModeInitialAvailabilityGraceGeneration = -1;
     private int readerModeUnavailableDelayGeneration = -1;
+    private int readerModeAvailabilityRecheckGeneration = -1;
+    private boolean readerModeAvailabilityRecheckUsed = false;
     private long readerModeInitialAvailabilityGraceStartedAtMs = 0L;
     @Nullable
     private String readerModeScript;
@@ -467,6 +471,7 @@ class CommentsWebViewController {
                 setReaderModeConfirmedAvailable();
             } else {
                 setReaderModeUnavailableRespectingInitialGrace(generation);
+                scheduleReaderModeAvailabilityRecheck(view, generation);
             }
         });
     }
@@ -503,6 +508,7 @@ class CommentsWebViewController {
     private void setReaderModeConfirmedAvailable() {
         readerModeInitialAvailabilityGraceGeneration = -1;
         readerModeUnavailableDelayGeneration = -1;
+        readerModeAvailabilityRecheckGeneration = -1;
         setReaderModeAvailable(true);
     }
 
@@ -535,7 +541,27 @@ class CommentsWebViewController {
         }, remaining);
     }
 
+    private void scheduleReaderModeAvailabilityRecheck(WebView view, int generation) {
+        if (readerModeAvailabilityRecheckUsed
+                || view != webView
+                || generation != webViewLoadGeneration) {
+            return;
+        }
+
+        readerModeAvailabilityRecheckUsed = true;
+        readerModeAvailabilityRecheckGeneration = generation;
+        webViewHandler.postDelayed(() -> {
+            if (readerModeAvailabilityRecheckGeneration == generation
+                    && generation == webViewLoadGeneration
+                    && view == webView) {
+                checkReaderModeAvailability(view, generation);
+            }
+        }, READER_MODE_AVAILABILITY_RECHECK_DELAY_MS);
+    }
+
     private void updateReaderModeAvailabilityForLoadStart(@Nullable String url, int generation) {
+        readerModeAvailabilityRecheckGeneration = -1;
+        readerModeAvailabilityRecheckUsed = false;
         if (!readerModeFeatureEnabled
                 || !integratedWebview
                 || TextUtils.isEmpty(url)
@@ -583,18 +609,25 @@ class CommentsWebViewController {
             return readerModeScript;
         }
 
-        try (InputStream inputStream = context.getAssets().open(READER_MODE_SCRIPT_ASSET);
-             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+        try {
             StringBuilder builder = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                builder.append(line).append('\n');
-            }
+            appendAssetFile(context, READER_MODE_READABILITY_SCRIPT_ASSET, builder);
+            appendAssetFile(context, READER_MODE_SCRIPT_ASSET, builder);
             readerModeScript = builder.toString();
             return readerModeScript;
         } catch (IOException e) {
             Log.e("MY_APP_TAG", "Failed to load reader mode script", e);
             return null;
+        }
+    }
+
+    private void appendAssetFile(Context context, String assetPath, StringBuilder builder) throws IOException {
+        try (InputStream inputStream = context.getAssets().open(assetPath);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line).append('\n');
+            }
         }
     }
 
