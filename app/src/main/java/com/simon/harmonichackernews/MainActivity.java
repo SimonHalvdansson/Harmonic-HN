@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
-import android.text.Html;
 import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -294,7 +293,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml(Changelog.getHTML()))
+                .setMessage(Changelog.getFormatted(this))
                 .setNeutralButton("GitHub", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {

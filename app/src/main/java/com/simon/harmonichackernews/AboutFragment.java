@@ -3,7 +3,6 @@ package com.simon.harmonichackernews;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.text.Html;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -90,7 +89,7 @@ public class AboutFragment extends Fragment {
     private void openChangelog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Changelog")
-                .setMessage(Html.fromHtml(Changelog.getHTML()))
+                .setMessage(Changelog.getFormatted(requireContext()))
                 .setNegativeButton("Done", null).create();
 
         dialog.show();
