@@ -7,9 +7,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
-import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -18,7 +15,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -27,7 +23,6 @@ import androidx.core.view.ViewCompat;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceViewHolder;
 
-import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.databinding.CommentsItemBinding;
 import com.simon.harmonichackernews.databinding.CommentsItemCardBinding;
@@ -35,6 +30,7 @@ import com.simon.harmonichackernews.databinding.PreferenceCommentContentPreviewB
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
+import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -45,9 +41,6 @@ public class CommentContentPreviewPreference extends Preference implements Share
 
     private static final long TEXT_SIZE_ANIMATION_DURATION_MS = 120;
     private static final int MIN_STABLE_PREVIEW_WIDTH_DP = 240;
-    private static final int REFERENCE_LINK_MIN_HEIGHT_DP = 38;
-    private static final int REFERENCE_LINK_CORNER_RADIUS_DP = 6;
-    private static final int REFERENCE_LINK_ICON_SIZE_DP = 17;
     private static final String PREVIEW_COMMENT_BODY = "This reminds me of the old systems where the boring path was often the most durable one. The less hidden state there is, the easier it is to reason about. [0]<p>[0] <a href=\"https://example.com/reference\" rel=\"nofollow\">https://example.com/reference</a>";
 
     private ViewGroup previewRoot;
@@ -322,88 +315,14 @@ public class CommentContentPreviewPreference extends Preference implements Share
 
     private View createPreviewReferenceLinkRow(LinearLayout container, CollectedReferenceLinks.ReferenceLink link) {
         Context context = container.getContext();
-
-        LinearLayout row = new LinearLayout(context);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setBaselineAligned(false);
-        row.setClickable(true);
-        row.setFocusable(false);
-        row.setVerticalScrollBarEnabled(false);
-        row.setHorizontalScrollBarEnabled(false);
-        row.setMinimumHeight(Utils.pxFromDpInt(context.getResources(), REFERENCE_LINK_MIN_HEIGHT_DP));
-        row.setPadding(
-                Utils.pxFromDpInt(context.getResources(), 8),
-                Utils.pxFromDpInt(context.getResources(), 5),
-                Utils.pxFromDpInt(context.getResources(), 8),
-                Utils.pxFromDpInt(context.getResources(), 5));
-
-        GradientDrawable background = new GradientDrawable();
-        background.setColor(Color.TRANSPARENT);
-        background.setCornerRadius(Utils.pxFromDpInt(context.getResources(), REFERENCE_LINK_CORNER_RADIUS_DP));
-        background.setStroke(
-                Utils.pxFromDpInt(context.getResources(), 1),
-                MaterialColors.getColor(container, R.attr.commentDividerColor));
-        row.setBackground(background);
-
-        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        rowParams.topMargin = Utils.pxFromDpInt(context.getResources(), 4);
-        row.setLayoutParams(rowParams);
-
-        ImageView favicon = new ImageView(context);
-        int iconSize = Utils.pxFromDpInt(context.getResources(), REFERENCE_LINK_ICON_SIZE_DP);
-        LinearLayout.LayoutParams faviconParams = new LinearLayout.LayoutParams(iconSize, iconSize);
-        faviconParams.rightMargin = Utils.pxFromDpInt(context.getResources(), 8);
-        favicon.setLayoutParams(faviconParams);
-        favicon.setImageResource(R.drawable.ic_action_web);
-        favicon.setContentDescription(null);
-        favicon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        row.addView(favicon);
-
-        if (link.hasNumber()) {
-            TextView number = new TextView(context);
-            number.setText(link.getMarkerLabel());
-            number.setIncludeFontPadding(false);
-            number.setTextColor(MaterialColors.getColor(container, R.attr.storyColorDisabled));
-            number.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-            FontUtils.setTypefaceForFont(number, SettingsUtils.getPreferredFont(context), true, 13);
-            LinearLayout.LayoutParams numberParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT);
-            numberParams.rightMargin = Utils.pxFromDpInt(context.getResources(), 8);
-            number.setLayoutParams(numberParams);
-            row.addView(number);
-        }
-
-        TextView label = new TextView(context);
-        label.setText(getPreviewReferenceLinkLabel(link));
-        label.setSingleLine(true);
-        label.setIncludeFontPadding(false);
-        label.setEllipsize(TextUtils.TruncateAt.END);
-        label.setTextColor(MaterialColors.getColor(container, R.attr.storyColorNormal));
-        FontUtils.setTypefaceForFont(label, SettingsUtils.getPreferredFont(context), false,
-                getReferenceLinkLabelTextSize(SettingsUtils.getPreferredCommentTextSize(context)));
-        label.setLayoutParams(new LinearLayout.LayoutParams(
-                0,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                1f));
-        row.addView(label);
-
-        row.setContentDescription("Reference link preview: " + getPreviewReferenceLinkLabel(link));
-        row.setOnClickListener(v -> {
-        });
-
-        return row;
-    }
-
-    private String getPreviewReferenceLinkLabel(CollectedReferenceLinks.ReferenceLink link) {
-        String label = link.getLabel();
-        if (TextUtils.isEmpty(label)) {
-            return link.getUrl();
-        }
-        return label.replace('\n', ' ').replaceAll("\\s+", " ").trim();
+        return ReferenceLinkRowUtils.createReferenceLinkRow(
+                container,
+                link,
+                SettingsUtils.getPreferredFont(context),
+                getReferenceLinkLabelTextSize(SettingsUtils.getPreferredCommentTextSize(context)),
+                "Reference link preview: " + ReferenceLinkRowUtils.getReferenceLinkLabel(link),
+                null,
+                null);
     }
 
     private void applyTextSize(float textSize, boolean animate) {
