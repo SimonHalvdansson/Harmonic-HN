@@ -326,6 +326,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setBaselineAligned(false);
         row.setClickable(true);
         row.setFocusable(false);
         row.setVerticalScrollBarEnabled(false);
@@ -364,6 +365,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
         if (link.hasNumber()) {
             TextView number = new TextView(context);
             number.setText(link.getMarkerLabel());
+            number.setIncludeFontPadding(false);
             number.setTextColor(MaterialColors.getColor(container, R.attr.storyColorDisabled));
             number.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             FontUtils.setTypefaceForFont(number, SettingsUtils.getPreferredFont(context), true, 13);
@@ -378,6 +380,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
         TextView label = new TextView(context);
         label.setText(getPreviewReferenceLinkLabel(link));
         label.setSingleLine(true);
+        label.setIncludeFontPadding(false);
         label.setEllipsize(TextUtils.TruncateAt.END);
         label.setTextColor(MaterialColors.getColor(container, R.attr.storyColorNormal));
         FontUtils.setTypefaceForFont(label, SettingsUtils.getPreferredFont(context), false,

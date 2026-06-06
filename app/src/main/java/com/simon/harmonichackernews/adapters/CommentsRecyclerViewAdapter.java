@@ -1772,6 +1772,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         LinearLayout row = new LinearLayout(ctx);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setBaselineAligned(false);
         row.setClickable(true);
         row.setFocusable(true);
         row.setMinimumHeight(Utils.pxFromDpInt(ctx.getResources(), REFERENCE_LINK_MIN_HEIGHT_DP));
@@ -1811,6 +1812,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (link.hasNumber()) {
             TextView number = new TextView(ctx);
             number.setText(link.getMarkerLabel());
+            number.setIncludeFontPadding(false);
             number.setTextColor(MaterialColors.getColor(container, R.attr.storyColorDisabled));
             number.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             FontUtils.setTypefaceForFont(number, font, true, 13);
@@ -1825,6 +1827,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         TextView label = new TextView(ctx);
         label.setText(getReferenceLinkLabel(link));
         label.setSingleLine(true);
+        label.setIncludeFontPadding(false);
         label.setEllipsize(TextUtils.TruncateAt.END);
         label.setTextColor(MaterialColors.getColor(container, R.attr.storyColorNormal));
         FontUtils.setTypefaceForFont(label, font, false, Math.max(12f, preferredTextSize - 2f));
