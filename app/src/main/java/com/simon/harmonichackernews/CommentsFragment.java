@@ -1075,11 +1075,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 // breaking transparent status bar. Instead, the spacing needs to be _within_ the recyclerview header!
                 // NOTE: this also needs to be set in onBindViewHolder of the adapter to stay up to date if the header item
                 // should be refreshed
-                loadHeaderSpacer();
-                if (headerSpacer != null) {
-                    headerSpacer.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Math.round(topInset * slideOffset)));
-                    adapter.spacerHeight = Math.round(topInset * slideOffset);
-                }
+                updateHeaderSpacer(slideOffset);
             }
         };
         BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(recyclerBottomSheetCallback);
@@ -1091,13 +1087,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
                 topInset = insets.top;
 
-                float offset = BottomSheetBehavior.from(bottomSheet).calculateSlideOffset();
-
-                loadHeaderSpacer();
-                if (headerSpacer != null) {
-                    headerSpacer.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Math.round(topInset * offset)));
-                    adapter.spacerHeight = Math.round(topInset * offset);
-                }
+                updateHeaderSpacer(BottomSheetBehavior.from(bottomSheet).calculateSlideOffset());
 
                 int paddingBottom = insets.bottom + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard);
                 recyclerView.setPadding(recyclerView.getPaddingLeft(), recyclerView.getPaddingTop(), recyclerView.getPaddingRight(), paddingBottom);
@@ -1108,6 +1098,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         ViewUtils.requestApplyInsetsWhenAttached(recyclerView);
 
         recyclerView.setAdapter(adapter);
+        recyclerView.post(this::updateHeaderSpacerForCurrentSheetOffset);
 
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COMMENT, 300);
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COMMENT_CARD, 300);
@@ -1339,6 +1330,36 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (viewHolder instanceof CommentsRecyclerViewAdapter.HeaderViewHolder) {
             headerSpacer = ((CommentsRecyclerViewAdapter.HeaderViewHolder) viewHolder).spacer;
         }
+    }
+
+    private void updateHeaderSpacerForCurrentSheetOffset() {
+        if (bottomSheet == null) {
+            return;
+        }
+
+        updateHeaderSpacer(BottomSheetBehavior.from(bottomSheet).calculateSlideOffset());
+    }
+
+    private void updateHeaderSpacer(float slideOffset) {
+        if (adapter == null) {
+            return;
+        }
+
+        float sanitizedSlideOffset = Float.isNaN(slideOffset) ? 1f : Math.max(0f, Math.min(1f, slideOffset));
+        int spacerHeight = Math.round(topInset * sanitizedSlideOffset);
+        adapter.spacerHeight = spacerHeight;
+
+        loadHeaderSpacer();
+        if (headerSpacer == null) {
+            return;
+        }
+
+        ViewGroup.LayoutParams params = headerSpacer.getLayoutParams();
+        if (params != null && params.height == spacerHeight) {
+            return;
+        }
+
+        headerSpacer.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, spacerHeight));
     }
 
     private CommentsScrollProgress recordScrollProgress() {
