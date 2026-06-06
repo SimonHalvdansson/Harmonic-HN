@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 public final class CollectedReferenceLinks {
 
     private static final Pattern REFERENCE_MARKER_PATTERN =
-            Pattern.compile("\\G\\s*\\[(\\d{1,3})\\]\\s*(?::|\\.|-|\\u2013|\\u2014)?\\s*");
+            Pattern.compile("\\G\\s*(?:\\[(\\d{1,3})\\]\\s*(?::|\\.|-|\\u2013|\\u2014)?|(\\d{1,3})\\s*:)\\s*");
 
     private CollectedReferenceLinks() {
     }
@@ -376,7 +376,7 @@ public final class CollectedReferenceLinks {
                 return Collections.emptyList();
             }
             String label = getAnchorLabel(displayLabel, url);
-            links.add(new ReferenceLink(marker.group(1), url, label));
+            links.add(new ReferenceLink(getReferenceNumber(marker), getReferenceMarkerLabel(marker), url, label));
         }
 
         return position == text.length() ? links : Collections.emptyList();
@@ -439,7 +439,7 @@ public final class CollectedReferenceLinks {
                 return Collections.emptyList();
             }
 
-            links.add(new ReferenceLink(marker.group(1), url, label));
+            links.add(new ReferenceLink(getReferenceNumber(marker), getReferenceMarkerLabel(marker), url, label));
             position = skipInterReferenceSeparators(normalizedText, position);
         }
 
@@ -507,6 +507,19 @@ public final class CollectedReferenceLinks {
             return false;
         }
         return REFERENCE_MARKER_PATTERN.matcher(text).lookingAt();
+    }
+
+    private static String getReferenceNumber(Matcher marker) {
+        String bracketedNumber = marker.group(1);
+        return bracketedNumber != null ? bracketedNumber : marker.group(2);
+    }
+
+    private static String getReferenceMarkerLabel(Matcher marker) {
+        String bracketedNumber = marker.group(1);
+        if (bracketedNumber != null) {
+            return "[" + bracketedNumber + "]";
+        }
+        return marker.group(2) + ":";
     }
 
     private static boolean startsWithAt(String text, String value, int position) {
@@ -669,11 +682,17 @@ public final class CollectedReferenceLinks {
 
     public static class ReferenceLink {
         private final String number;
+        private final String markerLabel;
         private final String url;
         private final String label;
 
         private ReferenceLink(String number, String url, String label) {
+            this(number, number == null ? null : "[" + number + "]", url, label);
+        }
+
+        private ReferenceLink(String number, String markerLabel, String url, String label) {
             this.number = number;
+            this.markerLabel = markerLabel;
             this.url = url;
             this.label = label;
         }
@@ -684,6 +703,10 @@ public final class CollectedReferenceLinks {
 
         public boolean hasNumber() {
             return number != null && !number.isEmpty();
+        }
+
+        public String getMarkerLabel() {
+            return markerLabel;
         }
 
         public String getUrl() {

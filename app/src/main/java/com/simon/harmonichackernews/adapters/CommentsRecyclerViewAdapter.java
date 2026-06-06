@@ -1810,7 +1810,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         if (link.hasNumber()) {
             TextView number = new TextView(ctx);
-            number.setText("[" + link.getNumber() + "]");
+            number.setText(link.getMarkerLabel());
             number.setTextColor(MaterialColors.getColor(container, R.attr.storyColorDisabled));
             number.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             FontUtils.setTypefaceForFont(number, font, true, 13);

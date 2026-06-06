@@ -363,7 +363,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
 
         if (link.hasNumber()) {
             TextView number = new TextView(context);
-            number.setText("[" + link.getNumber() + "]");
+            number.setText(link.getMarkerLabel());
             number.setTextColor(MaterialColors.getColor(container, R.attr.storyColorDisabled));
             number.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             FontUtils.setTypefaceForFont(number, SettingsUtils.getPreferredFont(context), true, 13);
