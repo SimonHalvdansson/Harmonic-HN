@@ -19,7 +19,6 @@ import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
-import android.text.style.ImageSpan;
 import android.text.style.ReplacementSpan;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -66,6 +65,7 @@ import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache;
+import com.simon.harmonichackernews.utils.TextSizeImageSpan;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -746,7 +746,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     private SpannableStringBuilder getTitleWithBadge(Context ctx, String title, int badgeDrawable) {
         SpannableStringBuilder sb = new SpannableStringBuilder(title + " ");
-        ImageSpan imageSpan = new ImageSpan(ctx, badgeDrawable);
+        TextSizeImageSpan imageSpan = new TextSizeImageSpan(ctx, badgeDrawable);
         sb.setSpan(imageSpan, title.length(), title.length() + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         return sb;
     }
