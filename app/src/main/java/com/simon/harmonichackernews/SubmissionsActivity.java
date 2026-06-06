@@ -144,7 +144,6 @@ public class SubmissionsActivity extends AppCompatActivity {
                 SettingsUtils.getPreferredFaviconProvider(this),
                 SettingsUtils.getPreferredFont(this),
                 SettingsUtils.getPreferredCommentTextSize(this),
-                SettingsUtils.shouldCollectLinksInComments(this),
                 userName,
                 -1);
 
@@ -304,12 +303,6 @@ public class SubmissionsActivity extends AppCompatActivity {
         float commentTextSize = SettingsUtils.getPreferredCommentTextSize(this);
         if (Float.compare(adapter.commentTextSize, commentTextSize) != 0) {
             adapter.commentTextSize = SettingsUtils.clampCommentTextSize(commentTextSize);
-            changed = true;
-        }
-
-        boolean collectReferenceLinks = SettingsUtils.shouldCollectLinksInComments(this);
-        if (adapter.collectReferenceLinks != collectReferenceLinks) {
-            adapter.collectReferenceLinks = collectReferenceLinks;
             changed = true;
         }
 

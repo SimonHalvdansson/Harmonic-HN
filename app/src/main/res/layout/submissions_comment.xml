@@ -76,15 +76,6 @@
     </FrameLayout>
 
     <LinearLayout
-        android:id="@+id/submissions_comment_reference_links_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
-        android:orientation="vertical"
-        android:visibility="gone"
-        tools:visibility="visible" />
-
-    <LinearLayout
         android:layout_marginTop="6dp"
         android:orientation="horizontal"
         android:layout_width="match_parent"

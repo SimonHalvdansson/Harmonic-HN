@@ -2241,12 +2241,6 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
-        boolean collectReferenceLinks = SettingsUtils.shouldCollectLinksInComments(getContext());
-        if (adapter.collectReferenceLinks != collectReferenceLinks) {
-            adapter.collectReferenceLinks = collectReferenceLinks;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-
         syncInactiveStoryAdapterDisplaySettings();
         syncStoriesWithHistoriesIfNeeded();
     }
