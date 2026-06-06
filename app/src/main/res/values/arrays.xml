@@ -67,28 +67,6 @@
         <item>robotoslab</item>
     </string-array>
 
-    <string-array name="reader_mode_font_entries">
-        <item>Georgia</item>
-        <item>Product Sans</item>
-        <item>Google Sans Flex Rounded</item>
-        <item>Verdana</item>
-        <item>Roboto Slab</item>
-        <item>Google Sans Code</item>
-        <item>JetBrains Mono</item>
-        <item>Device default</item>
-    </string-array>
-
-    <string-array name="reader_mode_font_values">
-        <item>georgia</item>
-        <item>productsans</item>
-        <item>googlesansflexrounded</item>
-        <item>verdana</item>
-        <item>robotoslab</item>
-        <item>googlesanscode</item>
-        <item>jetbrainsmono</item>
-        <item>devicedefault</item>
-    </string-array>
-
     <string-array name="preload_entries">
         <item>Always</item>
         <item>Only on WiFi</item>

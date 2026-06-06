@@ -493,7 +493,7 @@ public class SettingsUtils {
 
     public static String getPreferredReaderModeFont(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return sanitizeReaderModeFont(prefs.getString(PREF_WEBVIEW_READER_MODE_FONT, "georgia"));
+        return sanitizeReaderModeFont(prefs.getString(PREF_WEBVIEW_READER_MODE_FONT, "googlesansflexrounded"));
     }
 
     public static void setPreferredReaderModeFont(Context ctx, String font) {
@@ -508,15 +508,7 @@ public class SettingsUtils {
     }
 
     public static String getReaderModeFontLabel(Context ctx, String font) {
-        String sanitizedFont = sanitizeReaderModeFont(font);
-        String[] entries = ctx.getResources().getStringArray(R.array.reader_mode_font_entries);
-        String[] values = ctx.getResources().getStringArray(R.array.reader_mode_font_values);
-        for (int i = 0; i < Math.min(entries.length, values.length); i++) {
-            if (sanitizedFont.equals(values[i])) {
-                return entries[i];
-            }
-        }
-        return entries.length > 0 ? entries[0] : sanitizedFont;
+        return getFontLabel(ctx, sanitizeReaderModeFont(font));
     }
 
     public static String sanitizeFont(String font) {
@@ -544,7 +536,7 @@ public class SettingsUtils {
                 || "devicedefault".equals(font)) {
             return font;
         }
-        return "georgia";
+        return "googlesansflexrounded";
     }
 
     public static boolean shouldUseExternalBrowser(Context ctx) {

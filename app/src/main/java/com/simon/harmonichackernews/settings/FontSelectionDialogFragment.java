@@ -70,12 +70,8 @@ public class FontSelectionDialogFragment extends AppCompatDialogFragment {
 
     private void buildFontOptions(LinearLayout container) {
         Context context = container.getContext();
-        String[] entries = getResources().getStringArray(isReaderMode()
-                ? R.array.reader_mode_font_entries
-                : R.array.font_entries);
-        String[] values = getResources().getStringArray(isReaderMode()
-                ? R.array.reader_mode_font_values
-                : R.array.font_values);
+        String[] entries = getResources().getStringArray(R.array.font_entries);
+        String[] values = getResources().getStringArray(R.array.font_values);
         int optionCount = Math.min(entries.length, values.length);
         int textColor = MaterialColors.getColor(container, R.attr.storyColorNormal);
         int secondaryTextColor = MaterialColors.getColor(container, R.attr.secondaryTextColor);
