@@ -18,5 +18,4 @@
     <integer name="stories_pane_weight">4</integer>
 
     <bool name="is_tablet">false</bool>
-    <bool name="default_comments_header_tint">true</bool>
 </resources>

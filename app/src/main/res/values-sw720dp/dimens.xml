@@ -9,5 +9,4 @@
 
     <dimen name="comments_header_top_padding">32dp</dimen>
     <bool name="is_tablet">true</bool>
-    <bool name="default_comments_header_tint">false</bool>
 </resources>

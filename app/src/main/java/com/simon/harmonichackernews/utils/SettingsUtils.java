@@ -41,8 +41,6 @@ public class SettingsUtils {
     public static final String PREF_INCLUDE_TOP_LEVEL_DOMAIN = "pref_include_top_level_domain";
     public static final String PREF_COMMENT_DISPLAY_STYLE = "pref_comment_display_style";
     public static final String PREF_COMMENT_TEXT_SIZE = "pref_comment_text_size";
-    public static final String PREF_COMMENTS_HEADER_PREVIEW_IMAGE = "pref_comments_header_preview_image";
-    public static final String PREF_COMMENTS_HEADER_TINT = "pref_comments_header_tint";
     public static final String PREF_COLLECT_LINKS_IN_COMMENTS = "pref_collect_links_in_comments";
     public static final String PREF_FONT = "pref_font";
     public static final String PREF_BOOKMARKS_ENABLED = "pref_bookmarks_enabled";
@@ -237,14 +235,11 @@ public class SettingsUtils {
     }
 
     public static boolean shouldShowCommentsHeaderPreviewImage(Context ctx) {
-        return getBooleanPref(PREF_COMMENTS_HEADER_PREVIEW_IMAGE, true, ctx);
+        return !STORY_PREVIEW_IMAGE_OFF.equals(getPreferredStoryPreviewImageMode(ctx));
     }
 
     public static boolean shouldTintCommentsHeader(Context ctx) {
-        return getBooleanPref(
-                PREF_COMMENTS_HEADER_TINT,
-                ctx.getResources().getBoolean(R.bool.default_comments_header_tint),
-                ctx);
+        return shouldTintCardUsingPreview(ctx);
     }
 
     public static String getPreferredPaletteTintMode(Context ctx) {
