@@ -12,7 +12,7 @@ android {
         applicationId = "com.simon.harmonichackernews"
         minSdk = 24
         targetSdk = 37
-        versionCode = 74
+        versionCode = 75
         versionName = "3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
