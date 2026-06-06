@@ -685,6 +685,7 @@ public final class CollectedReferenceLinks {
         private final String markerLabel;
         private final String url;
         private final String label;
+        private String resolvedTitle;
 
         private ReferenceLink(String number, String url, String label) {
             this(number, number == null ? null : "[" + number + "]", url, label);
@@ -715,6 +716,14 @@ public final class CollectedReferenceLinks {
 
         public String getLabel() {
             return label;
+        }
+
+        public String getResolvedTitle() {
+            return resolvedTitle;
+        }
+
+        public void setResolvedTitle(String resolvedTitle) {
+            this.resolvedTitle = resolvedTitle;
         }
     }
 }

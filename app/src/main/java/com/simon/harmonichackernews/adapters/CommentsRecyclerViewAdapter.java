@@ -15,6 +15,7 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -42,6 +43,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.AutoTransition;
 import androidx.transition.TransitionManager;
 
+import com.android.volley.Request;
+import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
@@ -70,13 +73,17 @@ import com.simon.harmonichackernews.utils.TextSizeImageSpan;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import coil.Coil;
 import coil.request.ImageRequest;
@@ -95,6 +102,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private RetryListener retryListener;
     private final Map<Integer, Comment> commentsById = new HashMap<>();
     private final Map<Integer, Boolean> commentVisibilityById = new HashMap<>();
+    private final Map<Integer, String> hackerNewsReferenceTitlesByItemId = new HashMap<>();
+    private final Set<Integer> requestedHackerNewsReferenceTitleItemIds = new HashSet<>();
     private int commentLookupSize = -1;
     private Map<String, String> userTagsByUser = new HashMap<>();
     private String userTagsJson;
@@ -1763,6 +1772,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private View createReferenceLinkRow(LinearLayout container, CollectedReferenceLinks.ReferenceLink link) {
+        loadHackerNewsReferenceTitleIfNeeded(container.getContext(), link);
         return ReferenceLinkRowUtils.createReferenceLinkRow(
                 container,
                 link,
@@ -1779,6 +1789,127 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             return "Open reference link " + link.getNumber() + ": " + label;
         }
         return "Open link: " + label;
+    }
+
+    private void loadHackerNewsReferenceTitleIfNeeded(
+            Context context,
+            CollectedReferenceLinks.ReferenceLink link) {
+        int itemId = getHackerNewsReferencePostCandidateId(link.getUrl());
+        if (itemId <= 0) {
+            return;
+        }
+
+        String cachedTitle = hackerNewsReferenceTitlesByItemId.get(itemId);
+        if (!TextUtils.isEmpty(cachedTitle)) {
+            link.setResolvedTitle(cachedTitle);
+            return;
+        }
+
+        if (!requestedHackerNewsReferenceTitleItemIds.add(itemId)) {
+            return;
+        }
+
+        String url = "https://hacker-news.firebaseio.com/v0/item/" + itemId + ".json";
+        StringRequest request = new StringRequest(Request.Method.GET, url, response -> {
+            String title = parseHackerNewsItemTitle(response);
+            if (TextUtils.isEmpty(title)) {
+                return;
+            }
+
+            hackerNewsReferenceTitlesByItemId.put(itemId, title);
+            applyHackerNewsReferenceTitle(itemId, title);
+            notifyHackerNewsReferenceTitleChanged(itemId);
+        }, error -> {
+        });
+        NetworkComponent.getRequestQueueInstance(context).add(request);
+    }
+
+    private int getHackerNewsReferencePostCandidateId(String url) {
+        if (TextUtils.isEmpty(url)) {
+            return -1;
+        }
+
+        Uri uri = Uri.parse(url);
+        if (!Utils.isHackerNewsItemUri(uri) || !TextUtils.isEmpty(uri.getFragment())) {
+            return -1;
+        }
+
+        String itemId = uri.getQueryParameter("id");
+        if (TextUtils.isEmpty(itemId)) {
+            return -1;
+        }
+
+        try {
+            return Integer.parseInt(itemId);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private String parseHackerNewsItemTitle(String response) {
+        if (TextUtils.isEmpty(response)) {
+            return null;
+        }
+
+        try {
+            JSONObject item = new JSONObject(response);
+            if ("comment".equals(item.optString("type"))) {
+                return null;
+            }
+
+            String title = item.optString("title", "").replace('\n', ' ').replaceAll("\\s+", " ").trim();
+            return TextUtils.isEmpty(title) ? null : title;
+        } catch (JSONException e) {
+            return null;
+        }
+    }
+
+    private void applyHackerNewsReferenceTitle(int itemId, String title) {
+        if (story != null && story.collectedReferenceLinks != null) {
+            applyHackerNewsReferenceTitle(story.collectedReferenceLinks, itemId, title);
+        }
+
+        for (Comment comment : comments) {
+            if (comment.collectedReferenceLinks != null) {
+                applyHackerNewsReferenceTitle(comment.collectedReferenceLinks, itemId, title);
+            }
+        }
+    }
+
+    private void applyHackerNewsReferenceTitle(
+            CollectedReferenceLinks.Result referenceLinks,
+            int itemId,
+            String title) {
+        for (CollectedReferenceLinks.ReferenceLink link : referenceLinks.getLinks()) {
+            if (getHackerNewsReferencePostCandidateId(link.getUrl()) == itemId) {
+                link.setResolvedTitle(title);
+            }
+        }
+    }
+
+    private void notifyHackerNewsReferenceTitleChanged(int itemId) {
+        if (story != null && story.collectedReferenceLinks != null
+                && hasHackerNewsReferenceLink(story.collectedReferenceLinks, itemId)) {
+            notifyItemChanged(0);
+        }
+
+        for (int i = 1; i < comments.size(); i++) {
+            Comment comment = comments.get(i);
+            if (comment.collectedReferenceLinks != null
+                    && hasHackerNewsReferenceLink(comment.collectedReferenceLinks, itemId)
+                    && isCommentViewType(getItemViewType(i))) {
+                notifyItemChanged(i);
+            }
+        }
+    }
+
+    private boolean hasHackerNewsReferenceLink(CollectedReferenceLinks.Result referenceLinks, int itemId) {
+        for (CollectedReferenceLinks.ReferenceLink link : referenceLinks.getLinks()) {
+            if (getHackerNewsReferencePostCandidateId(link.getUrl()) == itemId) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void setHighlightedCommentId(int commentId) {

@@ -19,6 +19,11 @@ public final class ReferenceLinkRowUtils {
     }
 
     public static String getReferenceLinkLabel(CollectedReferenceLinks.ReferenceLink link) {
+        String resolvedTitle = link.getResolvedTitle();
+        if (!TextUtils.isEmpty(resolvedTitle)) {
+            return resolvedTitle.replace('\n', ' ').replaceAll("\\s+", " ").trim();
+        }
+
         String label = link.getLabel();
         if (TextUtils.isEmpty(label)) {
             return link.getUrl();
