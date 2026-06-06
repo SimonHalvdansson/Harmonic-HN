@@ -13,7 +13,6 @@
     android:paddingRight="8dp"
     android:paddingBottom="5dp"
     android:background="@drawable/reference_link_row_background"
-    android:foreground="@drawable/reference_link_row_ripple"
     android:scrollbars="none">
 
     <ImageView
