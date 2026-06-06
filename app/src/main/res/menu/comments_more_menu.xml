@@ -33,6 +33,6 @@
 
     <item
         android:id="@+id/menu_archive"
-        android:title="View archived" />
+        android:title="View on archive" />
 
 </menu>
