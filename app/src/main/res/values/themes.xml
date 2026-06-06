@@ -286,4 +286,9 @@
 
     <style name="CommentsDefaultTheme" parent="ThemeSwipeBackNoActionBarMaterialDayNight"/>
 
+    <style name="ThemeDialogHost" parent="ThemeSwipeBackNoActionBarMaterialDayNight">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+    </style>
+
 </resources>

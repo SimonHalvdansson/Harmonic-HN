@@ -50,11 +50,6 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         super.onCreate(savedInstanceState);
         currentMainActivity = this;
 
-        if (Utils.isFirstAppStart(this)) {
-            startActivity(new Intent(this, WelcomeActivity.class));
-            finish();
-        }
-
         ThemeUtils.setupTheme(this);
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
@@ -62,7 +57,11 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
         updateFragmentLayout();
 
-        if (Utils.justUpdated(this) && SettingsUtils.shouldShowChangelog(this)) {
+        boolean shouldShowWelcomeDialog = Utils.shouldShowWelcomeDialog(this);
+        boolean justUpdated = Utils.justUpdated(this);
+        if (shouldShowWelcomeDialog) {
+            showWelcomeDialog(Utils.hasLegacyWelcomePreference(this));
+        } else if (justUpdated && SettingsUtils.shouldShowChangelog(this)) {
             showUpdateDialog();
         }
 
@@ -141,6 +140,20 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
     public static boolean finishActiveSearchBackProgress() {
         return currentMainActivity != null && currentMainActivity.finishSearchBackProgress();
+    }
+
+    public static void applyWelcomePresetToActiveUi() {
+        if (currentMainActivity != null) {
+            currentMainActivity.applyWelcomePresetToUi();
+        }
+    }
+
+    private void applyWelcomePresetToUi() {
+        final StoriesFragment fragment = getStoriesFragment();
+
+        if (fragment != null) {
+            fragment.applyWelcomePresetSettings();
+        }
     }
 
     private void startSearchBackProgress(float progress) {
@@ -264,7 +277,21 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         }
     }
 
+    private void showWelcomeDialog(boolean showVersionTitle) {
+        if (shouldUseExpandedDialogHost()) {
+            DialogHostActivity.showWelcome(this, showVersionTitle);
+            return;
+        }
+
+        WelcomeDialogFragment.show(getSupportFragmentManager(), showVersionTitle);
+    }
+
     private void showUpdateDialog() {
+        if (shouldUseExpandedDialogHost()) {
+            DialogHostActivity.showChangelog(this);
+            return;
+        }
+
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Html.fromHtml(Changelog.getHTML()))
@@ -280,5 +307,9 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                 .setNegativeButton("Done", null).create();
 
         dialog.show();
+    }
+
+    private boolean shouldUseExpandedDialogHost() {
+        return FoldableSplitInitializer.isFoldableSplitEnabled(this);
     }
 }

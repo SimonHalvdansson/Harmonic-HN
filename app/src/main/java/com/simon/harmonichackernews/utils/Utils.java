@@ -95,6 +95,7 @@ public class Utils {
     public final static String KEY_SHARED_PREFERENCES_BOOKMARKS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_BOOKMARKS";
     public final static String KEY_SHARED_PREFERENCES_USER_TAGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_USER_TAGS";
     public final static String KEY_SHARED_PREFERENCES_FIRST_TIME = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FIRST_TIME";
+    public final static String KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN";
     public final static String KEY_SHARED_PREFERENCES_LAST_VERSION = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION";
     public final static String KEY_SHARED_PREFERENCES_FAVORITES = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FAVORITES";
     public final static String KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS";
@@ -1187,14 +1188,20 @@ public class Utils {
         );
     }
 
-    public static boolean isFirstAppStart(Context ctx) {
+    public static boolean shouldShowWelcomeDialog(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
         scheduleLegacyStoryCacheMigration(ctx);
-        if (sharedPref.getBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, true)) {
-            sharedPref.edit().putBoolean(KEY_SHARED_PREFERENCES_FIRST_TIME, false).apply();
-            return true;
-        }
-        return false;
+        return !sharedPref.getBoolean(KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN, false);
+    }
+
+    public static boolean hasLegacyWelcomePreference(Context ctx) {
+        SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
+        return sharedPref.contains(KEY_SHARED_PREFERENCES_FIRST_TIME);
+    }
+
+    public static void markWelcomeDialogShown(Context ctx) {
+        SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
+        sharedPref.edit().putBoolean(KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN, true).apply();
     }
 
     public static boolean justUpdated(Context ctx) {

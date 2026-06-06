@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews;
 
-import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -114,7 +113,7 @@ public class DebugFragment extends Fragment {
     }
 
     private void openDebugWelcome() {
-        startActivity(new Intent(requireContext(), WelcomeActivity.class));
+        WelcomeDialogFragment.show(getParentFragmentManager(), false);
     }
 
     private void openDebugNotifications() {

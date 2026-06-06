@@ -47,9 +47,6 @@
             android:parentActivityName=".SettingsActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"/>
         <activity
-            android:name=".WelcomeActivity"
-            android:configChanges="orientation|screenSize"/>
-        <activity
             android:name=".SubmissionsActivity"
             android:configChanges="orientation|screenSize"/>
         <activity
@@ -58,6 +55,10 @@
         <activity
             android:name=".DebugActivity"
             android:configChanges="orientation|screenSize" />
+        <activity
+            android:name=".DialogHostActivity"
+            android:configChanges="orientation|screenSize"
+            android:theme="@style/ThemeDialogHost" />
         <activity
             android:name=".ComposeActivity"
             android:windowSoftInputMode="adjustResize"

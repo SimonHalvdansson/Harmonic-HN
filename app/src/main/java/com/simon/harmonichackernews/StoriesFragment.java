@@ -2250,6 +2250,50 @@ public class StoriesFragment extends Fragment {
         updateHeader();
     }
 
+    public void applyWelcomePresetSettings() {
+        if (adapter == null || getContext() == null) {
+            return;
+        }
+
+        String previewImageMode = SettingsUtils.getPreferredStoryPreviewImageMode(getContext());
+        boolean previewImageModeChanged = !adapter.previewImageMode.equals(previewImageMode);
+        boolean tintCardUsingPreview = SettingsUtils.shouldTintCardUsingPreview(getContext());
+        boolean storyCardShellChanged = adapter.tintCardUsingPreview != tintCardUsingPreview && !adapter.cardStyle;
+        String preferredFont = SettingsUtils.getPreferredFont(getContext());
+        boolean fontChanged = !preferredFont.equals(adapter.font);
+        boolean fontCacheChanged = TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(preferredFont);
+
+        if (fontCacheChanged) {
+            FontUtils.init(getContext());
+        }
+
+        adapter.previewImageMode = previewImageMode;
+        adapter.tintCardUsingPreview = tintCardUsingPreview;
+        adapter.font = preferredFont;
+
+        if (storyCardShellChanged) {
+            rebuildStoryAdapters();
+        } else {
+            syncInactiveStoryAdapterDisplaySettings();
+            notifyStoryDisplaySettingsChanged(mainAdapter);
+            notifyStoryDisplaySettingsChanged(searchAdapter);
+        }
+
+        if (previewImageModeChanged) {
+            scheduleLoadedPreviewImagePrefetchNearViewport();
+        }
+
+        if ((fontChanged || fontCacheChanged) && typeSpinnerAdapter != null) {
+            typeSpinnerAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private void notifyStoryDisplaySettingsChanged(@Nullable StoryRecyclerViewAdapter targetAdapter) {
+        if (targetAdapter != null && targetAdapter.getItemCount() > 0) {
+            targetAdapter.notifyItemRangeChanged(0, targetAdapter.getItemCount());
+        }
+    }
+
     private void syncStoriesWithHistoriesIfNeeded() {
         long currentHistoriesChangeVersion = HistoriesUtils.INSTANCE.getChangeVersion();
         if (historiesChangeVersion == currentHistoriesChangeVersion || adapter == null || stories == null) {
