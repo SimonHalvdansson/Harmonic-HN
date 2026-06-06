@@ -4081,6 +4081,9 @@ public class StoriesFragment extends Fragment {
         closeSearchButton.setVisibility(showMainHeader ? View.GONE : View.VISIBLE);
         searchContainer.setVisibility(showMainHeader ? View.GONE : View.VISIBLE);
         searchOptionsScroll.setVisibility(showMainHeader ? View.GONE : View.VISIBLE);
+        userItemFilterGroup.setVisibility(showMainHeader && shouldShowUserItemFilterGroupInMain()
+                ? View.VISIBLE
+                : View.GONE);
     }
 
     private void setSearchBackSearchHeaderAlpha(float alpha) {
@@ -4094,6 +4097,7 @@ public class StoriesFragment extends Fragment {
         typeSpinner.setAlpha(alpha);
         searchButton.setAlpha(alpha);
         moreButton.setAlpha(alpha);
+        userItemFilterGroup.setAlpha(alpha);
     }
 
     private void resetSearchBackVisualAlphas() {
@@ -4120,10 +4124,12 @@ public class StoriesFragment extends Fragment {
         typeSpinner.animate().cancel();
         searchButton.animate().cancel();
         moreButton.animate().cancel();
+        userItemFilterGroup.animate().cancel();
 
         typeSpinner.setVisibility(View.VISIBLE);
         searchButton.setVisibility(View.VISIBLE);
         moreButton.setVisibility(View.VISIBLE);
+        userItemFilterGroup.setVisibility(shouldShowUserItemFilterGroupInMain() ? View.VISIBLE : View.GONE);
 
         typeSpinner.animate()
                 .alpha(1f)
@@ -4144,6 +4150,16 @@ public class StoriesFragment extends Fragment {
                 .setInterpolator(interpolator)
                 .withEndAction(this::resetSearchBackVisualAlphas)
                 .start();
+        userItemFilterGroup.animate()
+                .alpha(1f)
+                .setStartDelay(0)
+                .setDuration(duration)
+                .setInterpolator(interpolator)
+                .start();
+    }
+
+    private boolean shouldShowUserItemFilterGroupInMain() {
+        return currentTypeUsesSavedItemFilter() && currentSavedItemSourceHasItems();
     }
 
     private float getSearchBackContentTranslation(float progress) {
