@@ -163,6 +163,13 @@
         <TextView
             android:paddingTop="3dp"
             android:paddingBottom="3dp"
+            android:text="• Markwon by Noties - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
             android:text="• gongwen/SwipeBackLayout - Apache 2.0"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
