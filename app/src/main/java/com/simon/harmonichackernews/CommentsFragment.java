@@ -377,6 +377,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
+    private void loadInitialStorySummaryFromCache() {
+        if (story == null || story.loaded || story.id <= 0) {
+            return;
+        }
+
+        Utils.loadCachedStorySummary(getContext(), story);
+    }
+
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -399,6 +407,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         originalStatusBarColorCaptured = true;
 
         prefIntegratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
+        loadInitialStorySummaryFromCache();
 
         integratedWebview = prefIntegratedWebview && story.isLink;
         preloadWebview = SettingsUtils.shouldPreloadWebView(getContext());
