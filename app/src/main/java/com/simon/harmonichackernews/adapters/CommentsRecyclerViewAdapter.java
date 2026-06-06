@@ -9,7 +9,10 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -19,6 +22,7 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ImageSpan;
+import android.text.style.ReplacementSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -484,7 +488,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             itemViewHolder.commentByTime.setText(comment.getTimeFormatted());
 
-            boolean byOp = story.by.equals(comment.by);
+            boolean byOp = TextUtils.equals(story.by, comment.by);
             boolean byUser = false;
             if (!TextUtils.isEmpty(username)) {
                 byUser = comment.by.equals(username);
@@ -495,17 +499,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             if (!TextUtils.isEmpty(cTag)) {
                 displayName += " (" + cTag + ")";
             }
-            if (byOp) {
-                displayName += " (OP)";
-            }
-            itemViewHolder.commentBy.setText(displayName);
-            itemViewHolder.commentBy.setContentDescription("Comment by " + comment.by);
+            int opCommentColor = MaterialColors.getColor(itemViewHolder.commentBy, R.attr.opCommentColor);
+            itemViewHolder.commentBy.setText(getCommentByWithOpBadge(ctx, displayName, byOp, opCommentColor));
+            itemViewHolder.commentBy.setContentDescription(
+                    "Comment by " + comment.by + (byOp ? ", original poster" : ""));
             itemViewHolder.commentByTime.setContentDescription("Posted " + comment.getTimeFormatted());
 
             if (byUser) {
                 itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.selfCommentColor));
             } else if (byOp) {
-                itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.opCommentColor));
+                itemViewHolder.commentBy.setTextColor(opCommentColor);
             } else {
                 itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.storyColorDisabled));
             }
@@ -751,6 +754,82 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         ImageSpan imageSpan = new ImageSpan(ctx, badgeDrawable);
         sb.setSpan(imageSpan, title.length(), title.length() + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         return sb;
+    }
+
+    private CharSequence getCommentByWithOpBadge(Context ctx, String displayName, boolean byOp, int badgeColor) {
+        if (!byOp) {
+            return displayName;
+        }
+
+        SpannableStringBuilder sb = new SpannableStringBuilder(displayName + "OP");
+        int badgeStart = sb.length() - 2;
+        sb.setSpan(new OpBadgeSpan(ctx, badgeColor), badgeStart, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return sb;
+    }
+
+    private static class OpBadgeSpan extends ReplacementSpan {
+        private final int color;
+        private final int backgroundColor;
+        private final float leadingMargin;
+        private final float trailingMargin;
+        private final float horizontalPadding;
+        private final float cornerRadius;
+
+        OpBadgeSpan(Context ctx, int color) {
+            this.color = color;
+            this.backgroundColor = ColorUtils.setAlphaComponent(color, 35);
+            this.leadingMargin = Utils.pxFromDp(ctx.getResources(), 3);
+            this.trailingMargin = Utils.pxFromDp(ctx.getResources(), 3);
+            this.horizontalPadding = Utils.pxFromDp(ctx.getResources(), 3);
+            this.cornerRadius = Utils.pxFromDp(ctx.getResources(), 3);
+        }
+
+        @Override
+        public int getSize(@NonNull Paint paint,
+                           CharSequence text,
+                           int start,
+                           int end,
+                           @Nullable Paint.FontMetricsInt fm) {
+            return Math.round(leadingMargin + paint.measureText(text, start, end) + 2 * horizontalPadding + trailingMargin);
+        }
+
+        @Override
+        public void draw(@NonNull Canvas canvas,
+                         CharSequence text,
+                         int start,
+                         int end,
+                         float x,
+                         int top,
+                         int y,
+                         int bottom,
+                         @NonNull Paint paint) {
+            int oldColor = paint.getColor();
+            Paint.Style oldStyle = paint.getStyle();
+            boolean oldFakeBold = paint.isFakeBoldText();
+
+            Paint.FontMetrics fontMetrics = paint.getFontMetrics();
+            float textWidth = paint.measureText(text, start, end);
+            float badgeStart = x + leadingMargin;
+            float badgeWidth = textWidth + 2 * horizontalPadding;
+            float lineCenter = (top + bottom) / 2f;
+            float badgeHeight = fontMetrics.descent - fontMetrics.ascent;
+            float rectTop = lineCenter - badgeHeight / 2f;
+            float rectBottom = lineCenter + badgeHeight / 2f;
+            float textBaseline = lineCenter - (fontMetrics.ascent + fontMetrics.descent) / 2f;
+            RectF rect = new RectF(badgeStart, rectTop, badgeStart + badgeWidth, rectBottom);
+
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(backgroundColor);
+            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint);
+
+            paint.setColor(color);
+            paint.setFakeBoldText(true);
+            canvas.drawText(text, start, end, badgeStart + horizontalPadding, textBaseline, paint);
+
+            paint.setFakeBoldText(oldFakeBold);
+            paint.setStyle(oldStyle);
+            paint.setColor(oldColor);
+        }
     }
 
     private void bindHeaderMeta(HeaderViewHolder headerViewHolder, Context ctx) {
