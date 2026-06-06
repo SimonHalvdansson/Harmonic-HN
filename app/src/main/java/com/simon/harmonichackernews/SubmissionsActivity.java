@@ -27,6 +27,7 @@ import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.databinding.ActivitySubmissionsBinding;
 import com.simon.harmonichackernews.network.BackgroundJSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
+import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -85,6 +86,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         String userName = getIntent().getStringExtra(KEY_USER);
         headerText.setText(userName + "'s submissions");
         headerText.setContentDescription("Submissions by " + userName);
+        applyPreferredHeaderTypeface();
         ViewCompat.setAccessibilityHeading(headerText, true);
 
         appBarLayout.addOnOffsetChangedListener((appBar, verticalOffset) -> {
@@ -141,6 +143,8 @@ public class SubmissionsActivity extends AppCompatActivity {
                 SettingsUtils.getPreferredHotness(this),
                 SettingsUtils.getPreferredFaviconProvider(this),
                 SettingsUtils.getPreferredFont(this),
+                SettingsUtils.getPreferredCommentTextSize(this),
+                SettingsUtils.shouldCollectLinksInComments(this),
                 userName,
                 -1);
 
@@ -230,6 +234,8 @@ public class SubmissionsActivity extends AppCompatActivity {
         super.onResume();
         syncCompactPointsPreference();
         syncPaletteTintPreference();
+        syncFontPreference();
+        syncCommentDisplayPreferences();
     }
 
     @Override
@@ -270,6 +276,54 @@ public class SubmissionsActivity extends AppCompatActivity {
             adapter.paletteTintMode = paletteTintMode;
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
+    }
+
+    private void syncFontPreference() {
+        String preferredFont = SettingsUtils.getPreferredFont(this);
+        if (FontUtils.font == null || !FontUtils.font.equals(preferredFont)) {
+            FontUtils.init(this);
+        }
+        applyPreferredHeaderTypeface();
+
+        if (adapter == null) {
+            return;
+        }
+
+        if (!preferredFont.equals(adapter.font)) {
+            adapter.font = preferredFont;
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        }
+    }
+
+    private void syncCommentDisplayPreferences() {
+        if (adapter == null) {
+            return;
+        }
+
+        boolean changed = false;
+        float commentTextSize = SettingsUtils.getPreferredCommentTextSize(this);
+        if (Float.compare(adapter.commentTextSize, commentTextSize) != 0) {
+            adapter.commentTextSize = SettingsUtils.clampCommentTextSize(commentTextSize);
+            changed = true;
+        }
+
+        boolean collectReferenceLinks = SettingsUtils.shouldCollectLinksInComments(this);
+        if (adapter.collectReferenceLinks != collectReferenceLinks) {
+            adapter.collectReferenceLinks = collectReferenceLinks;
+            changed = true;
+        }
+
+        if (changed) {
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        }
+    }
+
+    private void applyPreferredHeaderTypeface() {
+        String preferredFont = SettingsUtils.getPreferredFont(this);
+        if (FontUtils.font == null || !FontUtils.font.equals(preferredFont)) {
+            FontUtils.init(this);
+        }
+        FontUtils.setTypeface(headerText, true, 26);
     }
 
     private void configureAppBarDragBehavior() {

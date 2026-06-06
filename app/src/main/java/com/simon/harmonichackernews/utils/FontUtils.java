@@ -115,6 +115,11 @@ public class FontUtils {
         setTypeface(textView, false, getCommentTextSizes(commentTextSize));
     }
 
+    public static void setCommentTextTypefaceForFont(TextView textView, String font, float commentTextSize) {
+        textView.setTypeface(getRegularTypeface(textView.getContext(), font));
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, getCommentTextSizes(commentTextSize).get(font));
+    }
+
     public static float getCommentTextSize(float commentTextSize) {
         return getCommentTextSizes(commentTextSize).get(font);
     }

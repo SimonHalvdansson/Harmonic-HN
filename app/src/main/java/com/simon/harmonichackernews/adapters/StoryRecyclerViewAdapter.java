@@ -43,6 +43,7 @@ import com.simon.harmonichackernews.databinding.SubmissionsCommentCardBinding;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
+import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -110,6 +111,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public int hotness;
     public int type;
     public String font;
+    public float commentTextSize;
+    public boolean collectReferenceLinks;
     public boolean allowCommentRows;
     public boolean disableClickedEffects;
     public boolean grayOutClicked;
@@ -141,6 +144,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     int preferredHotness,
                                     String faviconProv,
                                     String prefFont,
+                                    float preferredCommentTextSize,
+                                    boolean shouldCollectReferenceLinks,
                                     String submissionsUserName,
                                     int wantedType) {
         stories = items;
@@ -162,6 +167,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         hotness = preferredHotness;
         faviconProvider = faviconProv;
         font = prefFont;
+        commentTextSize = SettingsUtils.clampCommentTextSize(preferredCommentTextSize);
+        collectReferenceLinks = shouldCollectReferenceLinks;
         type = wantedType;
 
         atSubmissions = !TextUtils.isEmpty(submissionsUserName);
@@ -357,14 +364,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             commentViewHolder.headerText.setText("On \"" + masterTitle + "\"");
             commentViewHolder.headerTime.setText(Utils.getTimeAgo(story.time));
             commentViewHolder.storyButton.setEnabled(story.commentMasterId > 0 || story.parentId > 0);
-            if (story.spannedText != null) {
-                commentViewHolder.bodyText.setHtml(story.spannedText);
-            } else {
-                commentViewHolder.bodyText.setHtml(story.text == null ? "" : story.text);
-                if (story.loaded) {
-                    story.spannedText = (Spanned) commentViewHolder.bodyText.getText();
-                }
-            }
+            bindCommentRowText(commentViewHolder, story);
+            applyCommentRowTypefaces(commentViewHolder);
 
             commentViewHolder.bodyText.post(new Runnable() {
                 @Override
@@ -1423,6 +1424,60 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         FontUtils.setStoryCommentCountTypeface(storyViewHolder.commentsView, storyTextSize);
     }
 
+    private void bindCommentRowText(CommentViewHolder commentViewHolder, Story story) {
+        String commentText = story.text == null ? "" : story.text;
+        String expandedCommentText = Utils.expandShortenedAnchorText(commentText);
+        CollectedReferenceLinks.Result referenceLinks = null;
+        if (collectReferenceLinks) {
+            referenceLinks = getCommentRowReferenceLinks(story);
+        }
+
+        boolean hasCollectedLinks = referenceLinks != null && referenceLinks.hasLinks();
+        String bodyHtml = hasCollectedLinks ? referenceLinks.getBodyHtml() : expandedCommentText;
+        if (TextUtils.isEmpty(bodyHtml)) {
+            commentViewHolder.bodyText.setText("");
+        } else if (hasCollectedLinks) {
+            if (story.collectedReferenceLinksSpannedText != null) {
+                commentViewHolder.bodyText.setHtml(story.collectedReferenceLinksSpannedText);
+            } else {
+                commentViewHolder.bodyText.setHtml(bodyHtml);
+                story.collectedReferenceLinksSpannedText = (Spanned) commentViewHolder.bodyText.getText();
+            }
+        } else if (story.spannedText != null) {
+            commentViewHolder.bodyText.setHtml(story.spannedText);
+        } else {
+            commentViewHolder.bodyText.setHtml(bodyHtml);
+            if (story.loaded) {
+                story.spannedText = (Spanned) commentViewHolder.bodyText.getText();
+            }
+        }
+
+        ReferenceLinkRowBinder.bind(
+                commentViewHolder.referenceLinksContainer,
+                referenceLinks,
+                collectReferenceLinks,
+                font,
+                commentTextSize,
+                faviconProvider);
+    }
+
+    private CollectedReferenceLinks.Result getCommentRowReferenceLinks(Story story) {
+        String commentText = story.text == null ? "" : story.text;
+        if (!TextUtils.equals(story.collectedReferenceLinksSource, commentText)
+                || story.collectedReferenceLinks == null) {
+            story.collectedReferenceLinksSource = commentText;
+            story.collectedReferenceLinks = CollectedReferenceLinks.parse(Utils.expandShortenedAnchorText(commentText));
+            story.collectedReferenceLinksSpannedText = null;
+        }
+        return story.collectedReferenceLinks;
+    }
+
+    private void applyCommentRowTypefaces(CommentViewHolder commentViewHolder) {
+        FontUtils.setTypefaceForFont(commentViewHolder.headerText, font, true, 13);
+        FontUtils.setTypefaceForFont(commentViewHolder.headerTime, font, true, 12);
+        FontUtils.setCommentTextTypefaceForFont(commentViewHolder.bodyText, font, commentTextSize);
+    }
+
     private static boolean isCurrentPreviewTarget(ImageView previewImage, String imageUrl) {
         return imageUrl.equals(previewImage.getTag());
     }
@@ -1713,6 +1768,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final Button storyButton;
         public final Button repliesButton;
         public final View scrim;
+        public final LinearLayout referenceLinksContainer;
 
 
         public CommentViewHolder(SubmissionsCommentBinding binding) {
@@ -1731,6 +1787,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyButton = binding.submissionsCommentButtonStory;
             repliesButton = binding.submissionsCommentButtonReplies;
             scrim = binding.submissionsCommentScrim;
+            referenceLinksContainer = binding.submissionsCommentReferenceLinksContainer;
 
             Context ctx = view.getContext();
 

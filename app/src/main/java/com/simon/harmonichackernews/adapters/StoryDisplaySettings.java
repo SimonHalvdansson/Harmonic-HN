@@ -29,6 +29,8 @@ public class StoryDisplaySettings {
     public final int hotness;
     public final String faviconProvider;
     public final String font;
+    public final float commentTextSize;
+    public final boolean collectReferenceLinks;
 
     private StoryDisplaySettings(boolean showPoints,
                                  boolean compactPoints,
@@ -47,7 +49,9 @@ public class StoryDisplaySettings {
                                  boolean grayOutClicked,
                                  int hotness,
                                  String faviconProvider,
-                                 String font) {
+                                 String font,
+                                 float commentTextSize,
+                                 boolean collectReferenceLinks) {
         this.showPoints = showPoints;
         this.compactPoints = compactPoints;
         this.includeTopLevelDomain = includeTopLevelDomain;
@@ -66,6 +70,8 @@ public class StoryDisplaySettings {
         this.hotness = hotness;
         this.faviconProvider = faviconProvider;
         this.font = font;
+        this.commentTextSize = SettingsUtils.clampCommentTextSize(commentTextSize);
+        this.collectReferenceLinks = collectReferenceLinks;
     }
 
     @NonNull
@@ -88,7 +94,9 @@ public class StoryDisplaySettings {
                 SettingsUtils.shouldGrayOutClicked(context),
                 SettingsUtils.getPreferredHotness(context),
                 SettingsUtils.getPreferredFaviconProvider(context),
-                SettingsUtils.getPreferredFont(context)
+                SettingsUtils.getPreferredFont(context),
+                SettingsUtils.getPreferredCommentTextSize(context),
+                SettingsUtils.shouldCollectLinksInComments(context)
         );
     }
 
@@ -115,6 +123,8 @@ public class StoryDisplaySettings {
                 hotness,
                 faviconProvider,
                 font,
+                commentTextSize,
+                collectReferenceLinks,
                 submissionsUserName,
                 wantedType
         );
@@ -139,6 +149,8 @@ public class StoryDisplaySettings {
         adapter.hotness = hotness;
         adapter.faviconProvider = faviconProvider;
         adapter.font = font;
+        adapter.commentTextSize = commentTextSize;
+        adapter.collectReferenceLinks = collectReferenceLinks;
     }
 
     public static void copyAdapterSettings(@NonNull StoryRecyclerViewAdapter sourceAdapter,
@@ -161,5 +173,7 @@ public class StoryDisplaySettings {
         targetAdapter.hotness = sourceAdapter.hotness;
         targetAdapter.faviconProvider = sourceAdapter.faviconProvider;
         targetAdapter.font = sourceAdapter.font;
+        targetAdapter.commentTextSize = sourceAdapter.commentTextSize;
+        targetAdapter.collectReferenceLinks = sourceAdapter.collectReferenceLinks;
     }
 }

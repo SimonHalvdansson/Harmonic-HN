@@ -2141,6 +2141,12 @@ public class StoriesFragment extends Fragment {
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
+        float commentTextSize = SettingsUtils.getPreferredCommentTextSize(getContext());
+        if (Float.compare(adapter.commentTextSize, commentTextSize) != 0) {
+            adapter.commentTextSize = SettingsUtils.clampCommentTextSize(commentTextSize);
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        }
+
         if (adapter.showIndex != SettingsUtils.shouldShowIndex(getContext())) {
             adapter.showIndex = !adapter.showIndex;
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
@@ -2232,6 +2238,12 @@ public class StoriesFragment extends Fragment {
 
         if (adapter.faviconProvider != SettingsUtils.getPreferredFaviconProvider(getContext())) {
             adapter.faviconProvider = SettingsUtils.getPreferredFaviconProvider(getContext());
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        }
+
+        boolean collectReferenceLinks = SettingsUtils.shouldCollectLinksInComments(getContext());
+        if (adapter.collectReferenceLinks != collectReferenceLinks) {
+            adapter.collectReferenceLinks = collectReferenceLinks;
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
