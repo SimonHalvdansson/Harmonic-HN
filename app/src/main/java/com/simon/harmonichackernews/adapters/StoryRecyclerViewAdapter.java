@@ -592,6 +592,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return;
         }
 
+        reservePendingPreviewImageSpace(storyViewHolder);
         loadPreviewImageUrl(storyViewHolder.itemView.getContext(), story);
     }
 
@@ -1005,6 +1006,17 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         cachePreviewState(previewImage.getContext(), story);
         applyStoryCardBackground(storyViewHolder, story, false);
         return true;
+    }
+
+    private void reservePendingPreviewImageSpace(StoryViewHolder storyViewHolder) {
+        ImageView previewImage = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
+                ? storyViewHolder.largePreviewImage
+                : storyViewHolder.smallPreviewImage;
+        if (previewImage != null) {
+            previewImage.setImageDrawable(null);
+            previewImage.setAlpha(1.0f);
+            setPreviewImageVisibility(storyViewHolder, previewImage, View.INVISIBLE);
+        }
     }
 
     private static void resetPreviewImages(StoryViewHolder storyViewHolder) {
