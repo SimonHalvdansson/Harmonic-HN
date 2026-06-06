@@ -1,0 +1,49 @@
+AntiFeatures:
+  NonFreeNet:
+    en-US: Depends on Hacker News for story and comment data.
+
+Categories:
+  - Reading
+  - Internet
+
+License: Apache-2.0
+AuthorName: Simon Halvdansson
+SourceCode: https://github.com/SimonHalvdansson/Harmonic-HN
+IssueTracker: https://github.com/SimonHalvdansson/Harmonic-HN/issues
+Changelog: https://github.com/SimonHalvdansson/Harmonic-HN/releases
+
+AutoName: Harmonic
+
+RepoType: git
+Repo: https://github.com/SimonHalvdansson/Harmonic-HN.git
+
+Binaries: https://github.com/SimonHalvdansson/Harmonic-HN/releases/download/v%v/app-release.apk
+
+Builds:
+  - versionName: '2.4'
+    versionCode: 74
+    commit: v2.4
+    subdir: app
+    sudo:
+      - echo "deb https://deb.debian.org/debian trixie main" > /etc/apt/sources.list.d/trixie.list
+      - apt-get update
+      - apt-get install -y -t trixie openjdk-21-jdk-headless
+      - update-alternatives --auto java
+    gradle:
+      - yes
+    rm:
+      - app/release
+      - gradle/gradle-daemon-jvm.properties
+    prebuild: sed -i -e '/foojay/d' ../settings.gradle
+
+AllowedAPKSigningKeys: fb12dbf6d0692512ed7018150637a1932eab09d67dbf9900457096a552f88ec6
+
+MaintainerNotes: |-
+  The upstream release tree contains Play/GitHub release artifacts under app/release;
+  remove them before scanner/build. The Foojay toolchain resolver is removed because
+  the buildserver installs JDK 21 directly.
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags v.*
+CurrentVersion: '2.4'
+CurrentVersionCode: 74
