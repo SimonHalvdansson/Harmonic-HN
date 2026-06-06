@@ -5,7 +5,7 @@
 A fully-featured, mature Hacker News client for Android with a focus on (material) design, polish, and customization.
 
 <p align="center">
-  <img src="google play/Screenshot_20260606_201906" width="100%"/>
+  <img src="google play/Screenshot_20260606_201906.png" width="80%"/>
 </p>
 
 Over nearly 6 years of development, Harmonic has been been accumulating features and relentlessly improving all of the hundreds of small interactions which make up the app. It is my main personal side project which I use daily and has over 100 000 downloads on Google Play. It is not meant as a display of the best code quality, but rather as the product of continuous iteration and pixel pushing.
