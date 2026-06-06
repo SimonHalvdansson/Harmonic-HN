@@ -1766,7 +1766,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             bodyText.setOnClickATagListener(new OnClickATagListener() {
                 @Override
                 public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                    Utils.launchCustomTab(widget.getContext(), href);
+                    Utils.openLinkMaybeHN(widget.getContext(), href);
                     return true;
                 }
             });
