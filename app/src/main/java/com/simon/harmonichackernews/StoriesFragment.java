@@ -235,6 +235,7 @@ public class StoriesFragment extends Fragment {
     private float predictiveSearchBackProgress = 0f;
     private boolean suppressNextSearchRestoreAnimations = false;
     private boolean skipNextSearchRestoreDataSwap = false;
+    private boolean finishSearchBackFromCurrentVisualState = false;
     private boolean userItemListsDropdownVisible = false;
     private boolean userItemListInitialLoadInProgress = false;
     private int userItemListFilter = USER_ITEM_LIST_FILTER_BOTH;
@@ -1086,6 +1087,8 @@ public class StoriesFragment extends Fragment {
         cancelSearchContentReturnAnimation();
         deferSearchRecyclerClearForReturnAnimation = false;
         skipNextSearchContentReturnAnimation = false;
+        finishSearchBackFromCurrentVisualState = false;
+        resetSearchBackVisualAlphas();
         searching = true;
         resetSearchOptions();
         updateSearchStatus();
@@ -1095,12 +1098,18 @@ public class StoriesFragment extends Fragment {
     }
 
     private void closeSearch(@Nullable View view) {
+        boolean animateFromSearchBackProgress = finishSearchBackFromCurrentVisualState;
+        float searchBackFinishProgress = predictiveSearchBackProgress;
+        finishSearchBackFromCurrentVisualState = false;
+
         cancelSearchContentExitAnimation(false);
-        cancelSearchOptionsAnimation();
+        cancelSearchOptionsAnimation(!animateFromSearchBackProgress);
         predictiveSearchBackInProgress = false;
         predictiveSearchBackShowingMainHeader = false;
         predictiveSearchBackProgress = 0f;
-        resetSearchBackVisualAlphas();
+        if (!animateFromSearchBackProgress) {
+            resetSearchBackVisualAlphas();
+        }
 
         boolean animateContentReturn = !skipNextSearchContentReturnAnimation
                 && mainRecyclerView != null
@@ -1113,9 +1122,16 @@ public class StoriesFragment extends Fragment {
         skipNextSearchRestoreDataSwap = true;
         resetSearchOptions();
         updateSearchStatus();
-        if (animateContentReturn) {
+        if (animateFromSearchBackProgress) {
+            long searchBackFinishAnimationDuration = getSearchBackFinishAnimationDuration(searchBackFinishProgress);
+            animateSearchBackHeaderToMain(searchBackFinishAnimationDuration);
+            if (animateContentReturn) {
+                animateSearchContentReturn(true, searchBackFinishAnimationDuration);
+            }
+        } else if (animateContentReturn) {
             animateSearchContentReturn();
-        } else {
+        }
+        if (!animateContentReturn) {
             resetSearchBackContentVisualState();
         }
 
@@ -1183,13 +1199,19 @@ public class StoriesFragment extends Fragment {
     }
 
     private void cancelSearchOptionsAnimation() {
+        cancelSearchOptionsAnimation(true);
+    }
+
+    private void cancelSearchOptionsAnimation(boolean resetVisualState) {
         if (searchOptionsScroll == null) {
             return;
         }
 
         searchOptionsScroll.animate().cancel();
-        searchOptionsScroll.setAlpha(1f);
-        searchOptionsScroll.setTranslationY(0f);
+        if (resetVisualState) {
+            searchOptionsScroll.setAlpha(1f);
+            searchOptionsScroll.setTranslationY(0f);
+        }
         searchOptionsScroll.animate().setStartDelay(0);
     }
 
@@ -1381,6 +1403,10 @@ public class StoriesFragment extends Fragment {
     }
 
     private void animateSearchContentReturn() {
+        animateSearchContentReturn(false, SEARCH_CONTENT_RETURN_ANIMATION_DURATION_MS);
+    }
+
+    private void animateSearchContentReturn(boolean fromCurrentVisualState, long duration) {
         if (mainRecyclerView == null || searchRecyclerView == null) {
             resetSearchBackContentVisualState();
             return;
@@ -1400,24 +1426,26 @@ public class StoriesFragment extends Fragment {
         currentSearchRecyclerView.setVisibility(View.VISIBLE);
         currentMainRecyclerView.setEnabled(false);
         currentSearchRecyclerView.setEnabled(false);
-        currentMainRecyclerView.setAlpha(0f);
-        currentMainRecyclerView.setTranslationY(contentTranslation);
-        currentSearchRecyclerView.setAlpha(1f);
-        currentSearchRecyclerView.setTranslationY(0f);
+        if (!fromCurrentVisualState) {
+            currentMainRecyclerView.setAlpha(0f);
+            currentMainRecyclerView.setTranslationY(contentTranslation);
+            currentSearchRecyclerView.setAlpha(1f);
+            currentSearchRecyclerView.setTranslationY(0f);
+        }
 
         PathInterpolator interpolator = new PathInterpolator(0.2f, 0f, 0f, 1f);
         currentSearchRecyclerView.animate()
                 .alpha(0f)
                 .translationY(contentTranslation)
                 .setStartDelay(0)
-                .setDuration(SEARCH_CONTENT_RETURN_ANIMATION_DURATION_MS)
+                .setDuration(duration)
                 .setInterpolator(interpolator)
                 .start();
         currentMainRecyclerView.animate()
                 .alpha(1f)
                 .translationY(0f)
                 .setStartDelay(0)
-                .setDuration(SEARCH_CONTENT_RETURN_ANIMATION_DURATION_MS)
+                .setDuration(duration)
                 .setInterpolator(interpolator)
                 .withEndAction(() -> {
                     if (animationGeneration != searchContentExitAnimationGeneration
@@ -3973,6 +4001,7 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
+        finishSearchBackFromCurrentVisualState = false;
         predictiveSearchBackInProgress = false;
         predictiveSearchBackShowingMainHeader = false;
         predictiveSearchBackProgress = 0f;
@@ -3984,14 +4013,17 @@ public class StoriesFragment extends Fragment {
     }
 
     public boolean finishSearchBackProgress() {
-        setSearchBackContentVisualState(0f, getSearchBackContentTranslation(1f), 1f, 0f);
+        if (!searching) {
+            finishSearchBackFromCurrentVisualState = false;
+            return false;
+        }
+
         suppressNextSearchRestoreAnimations = true;
         skipNextSearchRestoreDataSwap = false;
-        skipNextSearchContentReturnAnimation = true;
+        skipNextSearchContentReturnAnimation = false;
+        finishSearchBackFromCurrentVisualState = predictiveSearchBackInProgress;
         predictiveSearchBackInProgress = false;
         predictiveSearchBackShowingMainHeader = false;
-        predictiveSearchBackProgress = 0f;
-        resetSearchBackVisualAlphas();
         return exitSearch();
     }
 
@@ -4061,6 +4093,51 @@ public class StoriesFragment extends Fragment {
     private void resetSearchBackVisualAlphas() {
         setSearchBackSearchHeaderAlpha(1f);
         setSearchBackMainHeaderAlpha(1f);
+    }
+
+    private long getSearchBackFinishAnimationDuration(float progress) {
+        float finishProgress = Math.max(0f, Math.min(1f, progress));
+        float remainingProgress = 1f;
+        if (finishProgress >= SEARCH_BACK_HEADER_SWITCH_PROGRESS) {
+            remainingProgress = 1f - ((finishProgress - SEARCH_BACK_HEADER_SWITCH_PROGRESS)
+                    / (1f - SEARCH_BACK_HEADER_SWITCH_PROGRESS));
+        }
+
+        return Math.max(
+                SEARCH_CONTENT_RETURN_ANIMATION_DURATION_MS / 3,
+                Math.round(SEARCH_CONTENT_RETURN_ANIMATION_DURATION_MS * remainingProgress)
+        );
+    }
+
+    private void animateSearchBackHeaderToMain(long duration) {
+        PathInterpolator interpolator = new PathInterpolator(0.2f, 0f, 0f, 1f);
+        typeSpinner.animate().cancel();
+        searchButton.animate().cancel();
+        moreButton.animate().cancel();
+
+        typeSpinner.setVisibility(View.VISIBLE);
+        searchButton.setVisibility(View.VISIBLE);
+        moreButton.setVisibility(View.VISIBLE);
+
+        typeSpinner.animate()
+                .alpha(1f)
+                .setStartDelay(0)
+                .setDuration(duration)
+                .setInterpolator(interpolator)
+                .start();
+        searchButton.animate()
+                .alpha(1f)
+                .setStartDelay(0)
+                .setDuration(duration)
+                .setInterpolator(interpolator)
+                .start();
+        moreButton.animate()
+                .alpha(1f)
+                .setStartDelay(0)
+                .setDuration(duration)
+                .setInterpolator(interpolator)
+                .withEndAction(this::resetSearchBackVisualAlphas)
+                .start();
     }
 
     private float getSearchBackContentTranslation(float progress) {
