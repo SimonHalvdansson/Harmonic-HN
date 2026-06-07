@@ -34,6 +34,7 @@ There are many small changes which are not mentioned in these notes, but this is
 - Added setting to automatically redirect certain domains to archive version
 - Fixed some crashes and reduced memory usage when opening large threads
 - Added additional guarding against memory leaks
+- Fixed foldable navigation issues in 3.0.1
 
 
 # Version 2.4

@@ -13,6 +13,7 @@ import io.noties.markwon.Markwon;
 public class Changelog {
     private static final String CHANGELOG_ASSET = "changelog.md";
     private static final String FALLBACK_CHANGELOG = "Changelog unavailable.";
+    private static final char UTF8_BOM = '\uFEFF';
     private static String cachedMarkdown;
 
     static public Spanned getFormatted(Context context) {
@@ -32,6 +33,9 @@ public class Changelog {
                 outputStream.write(buffer, 0, read);
             }
             cachedMarkdown = outputStream.toString(StandardCharsets.UTF_8.name());
+            if (!cachedMarkdown.isEmpty() && cachedMarkdown.charAt(0) == UTF8_BOM) {
+                cachedMarkdown = cachedMarkdown.substring(1);
+            }
         } catch (IOException e) {
             Utils.log("Failed to read changelog: " + e);
             cachedMarkdown = FALLBACK_CHANGELOG;
