@@ -48,21 +48,21 @@
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"/>
         <activity
             android:name=".SubmissionsActivity"
-            android:configChanges="orientation|screenSize"/>
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"/>
         <activity
             android:name=".AboutActivity"
-            android:configChanges="orientation|screenSize" />
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout" />
         <activity
             android:name=".DebugActivity"
-            android:configChanges="orientation|screenSize" />
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout" />
         <activity
             android:name=".DialogHostActivity"
-            android:configChanges="orientation|screenSize"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
             android:theme="@style/ThemeDialogHost" />
         <activity
             android:name=".ComposeActivity"
             android:windowSoftInputMode="adjustResize"
-            android:configChanges="orientation|screenSize"/>
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"/>
         <activity
             android:name=".CommentsActivity"
             android:theme="@style/CommentsDefaultTheme"
@@ -109,11 +109,13 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".SplitPlaceholderActivity" />
+        <activity
+            android:name=".SplitPlaceholderActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout" />
 
         <activity
             android:name=".widget.WidgetConfigActivity"
-            android:configChanges="orientation|screenSize"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
             android:exported="true" />
 
         <receiver

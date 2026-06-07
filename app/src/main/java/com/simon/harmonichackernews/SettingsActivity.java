@@ -18,6 +18,7 @@ import androidx.preference.PreferenceFragmentCompat;
 
 import com.simon.harmonichackernews.databinding.ActivitySettingsBinding;
 import com.simon.harmonichackernews.settings.AppearancePreferenceFragment;
+import com.simon.harmonichackernews.settings.BaseSettingsFragment;
 import com.simon.harmonichackernews.settings.CommentsPreferenceFragment;
 import com.simon.harmonichackernews.settings.DataStoragePreferenceFragment;
 import com.simon.harmonichackernews.settings.FiltersTagsPreferenceFragment;
@@ -46,6 +47,7 @@ public class SettingsActivity extends AppCompatActivity implements
     private static final String STATE_DETAIL_KEY = "state_detail_key";
     private static final String STATE_NEEDS_RESTART = "state_needs_restart";
     private static final String STATE_TWO_PANE = "state_two_pane";
+    private static final String STATE_PENDING_DETAIL_SCROLL = "state_pending_detail_scroll";
 
     private static final Map<String, String> FRAGMENT_TO_KEY = new HashMap<>();
     static {
@@ -65,6 +67,7 @@ public class SettingsActivity extends AppCompatActivity implements
     public final static String EXTRA_DETAIL_CLASS = "EXTRA_DETAIL_CLASS";
     public final static String EXTRA_DETAIL_KEY = "EXTRA_DETAIL_KEY";
     public final static String EXTRA_RELAUNCH_DETAIL = "EXTRA_RELAUNCH_DETAIL";
+    public final static String EXTRA_DETAIL_SCROLL_STATE = "EXTRA_DETAIL_SCROLL_STATE";
 
     private boolean needsRestart = false;
     private boolean isTwoPane = false;
@@ -72,6 +75,7 @@ public class SettingsActivity extends AppCompatActivity implements
     private String currentDetailKey = SettingsHeaderFragment.DEFAULT_KEY;
     private OnBackPressedCallback backPressedCallback;
     private ActivitySettingsBinding binding;
+    private Bundle pendingDetailScrollState;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,6 +95,7 @@ public class SettingsActivity extends AppCompatActivity implements
                     SettingsHeaderFragment.DEFAULT_KEY);
             needsRestart = savedInstanceState.getBoolean(STATE_NEEDS_RESTART, false);
             isTwoPane = savedInstanceState.getBoolean(STATE_TWO_PANE, false);
+            pendingDetailScrollState = savedInstanceState.getBundle(STATE_PENDING_DETAIL_SCROLL);
         }
 
         updateStateFromIntent(getIntent());
@@ -108,11 +113,14 @@ public class SettingsActivity extends AppCompatActivity implements
                 if (detail == null) {
                     detail = new AppearancePreferenceFragment();
                 }
+                Bundle detailScrollState = consumePendingDetailScrollState();
                 getSupportFragmentManager()
                         .beginTransaction()
                         .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                         .replace(R.id.settings_detail, detail)
                         .commit();
+                getSupportFragmentManager().executePendingTransactions();
+                restoreSettingsScrollState(detail, detailScrollState);
             }
         } else if (isTwoPane) {
             // Restore header selection highlight after process death
@@ -206,8 +214,10 @@ public class SettingsActivity extends AppCompatActivity implements
             if (isTwoPane) {
                 // Single-pane -> two-pane: remember what the user was viewing
                 Fragment currentSingle = fm.findFragmentById(R.id.settings);
+                Bundle detailScrollState = consumePendingDetailScrollState();
                 if (currentSingle != null && !(currentSingle instanceof SettingsHeaderFragment)) {
                     currentDetailClassName = currentSingle.getClass().getName();
+                    detailScrollState = captureSettingsScrollState(currentSingle);
                     String key = FRAGMENT_TO_KEY.get(currentDetailClassName);
                     if (key != null) {
                         currentDetailKey = key;
@@ -223,9 +233,10 @@ public class SettingsActivity extends AppCompatActivity implements
                 fm.beginTransaction()
                         .replace(R.id.settings_detail, detail)
                         .commit();
+                fm.executePendingTransactions();
+                restoreSettingsScrollState(detail, detailScrollState);
 
                 // Update header selection
-                fm.executePendingTransactions();
                 Fragment header = fm.findFragmentById(R.id.settings);
                 if (header instanceof SettingsHeaderFragment) {
                     ((SettingsHeaderFragment) header).setSelectedKey(currentDetailKey);
@@ -234,6 +245,7 @@ public class SettingsActivity extends AppCompatActivity implements
                 // Two-pane -> single-pane: move detail into main pane
                 Fragment detailFragment = fm.findFragmentById(R.id.settings_detail);
                 if (detailFragment != null) {
+                    Bundle detailScrollState = captureSettingsScrollState(detailFragment);
                     Fragment detail = createCurrentDetailFragment();
                     if (detail == null) {
                         detail = new AppearancePreferenceFragment();
@@ -244,6 +256,8 @@ public class SettingsActivity extends AppCompatActivity implements
                             .replace(R.id.settings, detail)
                             .addToBackStack(null)
                             .commit();
+                    fm.executePendingTransactions();
+                    restoreSettingsScrollState(detail, detailScrollState);
                 }
             }
         }
@@ -358,6 +372,7 @@ public class SettingsActivity extends AppCompatActivity implements
         outState.putString(STATE_DETAIL_KEY, currentDetailKey);
         outState.putBoolean(STATE_NEEDS_RESTART, needsRestart);
         outState.putBoolean(STATE_TWO_PANE, isTwoPane);
+        outState.putBundle(STATE_PENDING_DETAIL_SCROLL, pendingDetailScrollState);
     }
 
     @Override
@@ -374,10 +389,13 @@ public class SettingsActivity extends AppCompatActivity implements
         if (isTwoPane) {
             Fragment detail = createCurrentDetailFragment();
             if (detail != null) {
+                Bundle detailScrollState = consumePendingDetailScrollState();
                 getSupportFragmentManager()
                         .beginTransaction()
                         .replace(R.id.settings_detail, detail)
                         .commit();
+                getSupportFragmentManager().executePendingTransactions();
+                restoreSettingsScrollState(detail, detailScrollState);
             }
 
             Fragment header = getSupportFragmentManager().findFragmentById(R.id.settings);
@@ -423,6 +441,11 @@ public class SettingsActivity extends AppCompatActivity implements
             needsRestart = true;
             requestFullRestart = true;
         }
+
+        Bundle detailScrollState = intent.getBundleExtra(EXTRA_DETAIL_SCROLL_STATE);
+        if (detailScrollState != null) {
+            pendingDetailScrollState = detailScrollState;
+        }
     }
 
     private void maybeRelaunchDetail(Intent intent) {
@@ -447,5 +470,24 @@ public class SettingsActivity extends AppCompatActivity implements
         if (requestFullRestart) {
             Runtime.getRuntime().exit(0);
         }
+    }
+
+    private Bundle captureSettingsScrollState(Fragment fragment) {
+        if (fragment instanceof BaseSettingsFragment) {
+            return ((BaseSettingsFragment) fragment).saveListScrollState();
+        }
+        return null;
+    }
+
+    private void restoreSettingsScrollState(Fragment fragment, Bundle scrollState) {
+        if (fragment instanceof BaseSettingsFragment) {
+            ((BaseSettingsFragment) fragment).restoreListScrollState(scrollState);
+        }
+    }
+
+    private Bundle consumePendingDetailScrollState() {
+        Bundle scrollState = pendingDetailScrollState;
+        pendingDetailScrollState = null;
+        return scrollState;
     }
 }

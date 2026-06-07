@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.settings;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,6 +25,8 @@ import com.simon.harmonichackernews.SettingsDetailActivity;
 import com.simon.harmonichackernews.utils.ViewUtils;
 
 public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
+
+    private static final String STATE_LIST_LAYOUT_MANAGER = "state_list_layout_manager";
 
     protected @Nullable String getToolbarTitle() {
         return null;
@@ -142,6 +145,44 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
             return (SettingsCallback) getActivity();
         }
         return null;
+    }
+
+    @Nullable
+    public Bundle saveListScrollState() {
+        RecyclerView listView = getListView();
+        RecyclerView.LayoutManager layoutManager = listView.getLayoutManager();
+        if (layoutManager == null) {
+            return null;
+        }
+
+        Parcelable state = layoutManager.onSaveInstanceState();
+        if (state == null) {
+            return null;
+        }
+
+        Bundle bundle = new Bundle();
+        bundle.putParcelable(STATE_LIST_LAYOUT_MANAGER, state);
+        return bundle;
+    }
+
+    public void restoreListScrollState(@Nullable Bundle state) {
+        if (state == null) {
+            return;
+        }
+
+        RecyclerView listView = getListView();
+        state.setClassLoader(getClass().getClassLoader());
+        Parcelable layoutState = state.getParcelable(STATE_LIST_LAYOUT_MANAGER);
+        if (layoutState == null) {
+            return;
+        }
+
+        listView.post(() -> {
+            RecyclerView.LayoutManager layoutManager = listView.getLayoutManager();
+            if (layoutManager != null) {
+                layoutManager.onRestoreInstanceState(layoutState);
+            }
+        });
     }
 
     protected void restartSettingsActivity() {

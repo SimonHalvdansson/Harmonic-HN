@@ -72,6 +72,7 @@ public class ComposeActivity extends AppCompatActivity {
     private TextView replyingHeaderTextView;
     private ScrollView replyingScrollView;
     private TextView topCommentTextView;
+    private LinearLayout composeContainer;
     private int id;
     private String parentText;
     private String user;
@@ -105,7 +106,7 @@ public class ComposeActivity extends AppCompatActivity {
         ViewCompat.setAccessibilityHeading(replyingHeaderTextView, true);
         TextView postInfo = binding.composeSubmitInfo;
         LinearLayout bottomContainer = binding.composeBottomContainer;
-        LinearLayout container = binding.composeContainer;
+        composeContainer = binding.composeContainer;
 
         titleMaxLength = getResources().getInteger(R.integer.title_max_length);
 
@@ -171,7 +172,7 @@ public class ComposeActivity extends AppCompatActivity {
 
         WindowCompat.setDecorFitsSystemWindows(getWindow(),false);
 
-        ViewCompat.setOnApplyWindowInsetsListener(container, new OnApplyWindowInsetsListener() {
+        ViewCompat.setOnApplyWindowInsetsListener(composeContainer, new OnApplyWindowInsetsListener() {
             @NonNull
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
@@ -179,12 +180,12 @@ public class ComposeActivity extends AppCompatActivity {
                 int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
 
                 bottomContainer.setPadding(0, 0, 0, insets.bottom);
-                container.setPadding(insets.left + sideMargin, insets.top, insets.right + sideMargin, 0);
+                composeContainer.setPadding(insets.left + sideMargin, insets.top, insets.right + sideMargin, 0);
 
                 return windowInsets;
             }
         });
-        ViewUtils.requestApplyInsetsWhenAttached(container);
+        ViewUtils.requestApplyInsetsWhenAttached(composeContainer);
 
         ViewCompat.setWindowInsetsAnimationCallback(
                 bottomContainer,
@@ -265,6 +266,9 @@ public class ComposeActivity extends AppCompatActivity {
         int screenHeightThird = Resources.getSystem().getDisplayMetrics().heightPixels / 3;
         layout.height = Math.min(dp160, screenHeightThird);
         replyingScrollView.setLayoutParams(layout);
+        if (composeContainer != null) {
+            ViewCompat.requestApplyInsets(composeContainer);
+        }
     }
 
     public void infoClick(View view) {

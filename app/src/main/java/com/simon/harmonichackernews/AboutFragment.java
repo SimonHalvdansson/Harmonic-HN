@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -57,9 +58,6 @@ public class AboutFragment extends Fragment {
     private void applyInsets(ActivityAboutBinding binding, boolean isSettingsTwoPane) {
         final View root = binding.getRoot();
         final View container = binding.aboutContainer;
-        final int sidePadding = isSettingsTwoPane
-                ? 0
-                : getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
         final int padTop = container.getPaddingTop();
         final int padBot = container.getPaddingBottom();
 
@@ -67,6 +65,9 @@ public class AboutFragment extends Fragment {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
             Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+            int sidePadding = isSettingsTwoPane
+                    ? 0
+                    : getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
 
             container.setPadding(
                     sidePadding + Math.max(bars.left, cutout.left),
@@ -77,6 +78,14 @@ public class AboutFragment extends Fragment {
             return insets;
         });
         ViewCompat.requestApplyInsets(root);
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (getView() != null) {
+            ViewCompat.requestApplyInsets(getView());
+        }
     }
 
     private void openGithub() {

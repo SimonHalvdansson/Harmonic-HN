@@ -13,6 +13,7 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.simon.harmonichackernews.databinding.ActivitySettingsDetailBinding;
 import com.simon.harmonichackernews.settings.AppearancePreferenceFragment;
+import com.simon.harmonichackernews.settings.BaseSettingsFragment;
 import com.simon.harmonichackernews.settings.SettingsCallback;
 import com.simon.harmonichackernews.settings.SettingsFragmentFactory;
 import com.simon.harmonichackernews.settings.SettingsHeaderFragment;
@@ -185,6 +186,10 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
         if (needsFullRestart) {
             intent.putExtra(SettingsActivity.EXTRA_REQUEST_FULL_RESTART, true);
         }
+        Bundle detailScrollState = captureCurrentScrollState();
+        if (detailScrollState != null) {
+            intent.putExtra(SettingsActivity.EXTRA_DETAIL_SCROLL_STATE, detailScrollState);
+        }
         startActivity(intent);
     }
 
@@ -200,6 +205,18 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
         if (needsFullRestart) {
             settingsIntent.putExtra(SettingsActivity.EXTRA_REQUEST_FULL_RESTART, true);
         }
+        Bundle detailScrollState = captureCurrentScrollState();
+        if (detailScrollState != null) {
+            settingsIntent.putExtra(SettingsActivity.EXTRA_DETAIL_SCROLL_STATE, detailScrollState);
+        }
         startActivity(settingsIntent);
+    }
+
+    private Bundle captureCurrentScrollState() {
+        Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.settings);
+        if (fragment instanceof BaseSettingsFragment) {
+            return ((BaseSettingsFragment) fragment).saveListScrollState();
+        }
+        return null;
     }
 }

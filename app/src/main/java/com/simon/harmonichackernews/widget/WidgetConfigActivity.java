@@ -3,8 +3,11 @@ package com.simon.harmonichackernews.widget;
 import android.appwidget.AppWidgetManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.os.Bundle;
+import android.view.View;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButtonToggleGroup;
@@ -25,6 +28,7 @@ public class WidgetConfigActivity extends AppCompatActivity {
     private static final int DEFAULT_STORY_COUNT = STORY_COUNT_MEDIUM;
 
     private int appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
+    private ActivityWidgetConfigBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,8 +38,9 @@ public class WidgetConfigActivity extends AppCompatActivity {
         // Set canceled result initially — if user backs out, widget won't be added
         setResult(RESULT_CANCELED);
 
-        ActivityWidgetConfigBinding binding = ActivityWidgetConfigBinding.inflate(getLayoutInflater());
+        binding = ActivityWidgetConfigBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        applyResponsivePadding();
 
         // Get widget ID from intent
         Intent intent = getIntent();
@@ -94,6 +99,22 @@ public class WidgetConfigActivity extends AppCompatActivity {
             setResult(RESULT_OK, resultValue);
             finish();
         });
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        applyResponsivePadding();
+    }
+
+    private void applyResponsivePadding() {
+        int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
+        setHorizontalPadding(binding.widgetConfigContentContainer, sideMargin);
+        setHorizontalPadding(binding.widgetConfigButtonContainer, sideMargin);
+    }
+
+    private void setHorizontalPadding(View view, int sidePadding) {
+        view.setPadding(sidePadding, view.getPaddingTop(), sidePadding, view.getPaddingBottom());
     }
 
     public static String getFeedUrl(android.content.Context context, int appWidgetId) {

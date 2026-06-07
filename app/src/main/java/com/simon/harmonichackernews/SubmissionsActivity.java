@@ -240,11 +240,11 @@ public class SubmissionsActivity extends AppCompatActivity {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        if (Utils.isTablet(getResources())) {
-            int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
-            swipeRefreshLayout.setPadding(sideMargin, 0, sideMargin, 0);
-            appBarLayout.setPadding(sideMargin, 0, sideMargin, 0);
-        }
+        int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
+        swipeRefreshLayout.setPadding(sideMargin, 0, sideMargin, 0);
+        appBarLayout.setPadding(sideMargin, 0, sideMargin, 0);
+        applyHeaderPadding();
+        ViewCompat.requestApplyInsets(binding.submissionsRoot);
     }
 
     private void syncCompactPointsPreference() {
