@@ -7,7 +7,7 @@
     window:splitLayoutDirection="locale"
     window:splitMinWidthDp="700"
     window:splitMaxAspectRatioInPortrait="alwaysAllow"
-    window:finishPrimaryWithSecondary="always"
+    window:finishPrimaryWithSecondary="adjacent"
     window:finishSecondaryWithPrimary="always"
     window:clearTop="true">
     <SplitPairFilter
@@ -21,7 +21,8 @@
     window:splitLayoutDirection="locale"
     window:splitMinWidthDp="700"
     window:splitMaxAspectRatioInPortrait="alwaysAllow"
-    window:stickyPlaceholder="false">
+    window:stickyPlaceholder="false"
+    window:finishPrimaryWithPlaceholder="adjacent">
     <ActivityFilter
       window:activityName=".MainActivity"/>
   </SplitPlaceholderRule>

@@ -6,6 +6,7 @@ import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
@@ -19,6 +20,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.databinding.ActivityMainBinding;
+import com.simon.harmonichackernews.databinding.ActivityMainFoldableBinding;
 import com.simon.harmonichackernews.utils.Changelog;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -40,7 +42,8 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     int lastPosition = 0;
     public OnBackPressedCallback backPressedCallback;
     private boolean searchBackEnabled = false;
-    private ActivityMainBinding binding;
+    private View mainFragmentsContainer;
+    private View mainFragmentStoriesContainer;
 
     public int bottom = 0;
 
@@ -51,8 +54,17 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
         ThemeUtils.setupTheme(this);
 
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        if (shouldUseFoldableActivityEmbedding()) {
+            ActivityMainFoldableBinding binding = ActivityMainFoldableBinding.inflate(getLayoutInflater());
+            setContentView(binding.getRoot());
+            mainFragmentsContainer = binding.mainFragmentsContainer;
+            mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
+        } else {
+            ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
+            setContentView(binding.getRoot());
+            mainFragmentsContainer = binding.mainFragmentsContainer;
+            mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
+        }
 
         updateFragmentLayout();
 
@@ -212,13 +224,13 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         bundle.putInt(CommentsFragment.EXTRA_FORWARD, pos - lastPosition);
         bundle.putBoolean(CommentsFragment.EXTRA_SHOW_WEBSITE, showWebsite);
 
-        if (FoldableSplitInitializer.isFoldableSplitEnabled(this)) {
+        if (shouldUseFoldableActivityEmbedding()) {
             bundle.putBoolean(CommentsActivity.PREVENT_BACK, true);
         }
 
         lastPosition = pos;
 
-        if (Utils.isTablet(getResources())) {
+        if (!shouldUseFoldableActivityEmbedding() && Utils.isTablet(getResources())) {
             CommentsFragment fragment = new CommentsFragment();
             fragment.setArguments(bundle);
             FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
@@ -256,15 +268,17 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     private void updateFragmentLayout() {
-        if (Utils.isTablet(getResources()) && binding.mainFragmentsContainer instanceof LinearLayout) {
+        if (!shouldUseFoldableActivityEmbedding()
+                && Utils.isTablet(getResources())
+                && mainFragmentsContainer instanceof LinearLayout) {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     0,
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     getResources().getInteger(R.integer.stories_pane_weight));
-            binding.mainFragmentStoriesContainer.setLayoutParams(params);
+            mainFragmentStoriesContainer.setLayoutParams(params);
 
             int extraPadding = getResources().getDimensionPixelSize(R.dimen.extra_pane_padding);
-            binding.mainFragmentsContainer.setPadding(extraPadding, 0, 0, 0);
+            mainFragmentsContainer.setPadding(extraPadding, 0, 0, 0);
         }
     }
 
@@ -309,6 +323,10 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     private boolean shouldUseExpandedDialogHost() {
+        return shouldUseFoldableActivityEmbedding();
+    }
+
+    private boolean shouldUseFoldableActivityEmbedding() {
         return FoldableSplitInitializer.isFoldableSplitEnabled(this);
     }
 }
