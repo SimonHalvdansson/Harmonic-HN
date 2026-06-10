@@ -50,6 +50,11 @@ import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.chip.Chip;
+import com.google.android.material.datepicker.CalendarConstraints;
+import com.google.android.material.datepicker.CompositeDateValidator;
+import com.google.android.material.datepicker.DateValidatorPointBackward;
+import com.google.android.material.datepicker.DateValidatorPointForward;
+import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.search.SearchBar;
@@ -79,12 +84,17 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
+import java.util.TimeZone;
 
 import okhttp3.Response;
 
@@ -140,6 +150,10 @@ public class StoriesFragment extends Fragment {
     private LinearLayout searchEmptyContainer;
     private Button retryButton;
     private Button showCachedButton;
+    private LinearLayout frontPageDateControls;
+    private Button frontPagePreviousDayButton;
+    private Button frontPageDateButton;
+    private Button frontPageNextDayButton;
 
     private StoryRecyclerViewAdapter mainAdapter;
     private StoryRecyclerViewAdapter searchAdapter;
@@ -239,6 +253,11 @@ public class StoriesFragment extends Fragment {
     private boolean userItemListsDropdownVisible = false;
     private boolean userItemListInitialLoadInProgress = false;
     private int userItemListFilter = USER_ITEM_LIST_FILTER_BOTH;
+    private Calendar frontPageDayUtc;
+    @Nullable
+    private String scrapedFrontpageNextPageUrl;
+    private boolean scrapedFrontpageNextPageLoading = false;
+    private StoryType scrapedFrontpageStoryType = StoryType.UNKNOWN;
     private RecyclerView.ItemAnimator defaultMainStoryItemAnimator;
     private RecyclerView.ItemAnimator defaultSearchStoryItemAnimator;
     private RecyclerView.ItemAnimator defaultStoryItemAnimator;
@@ -301,6 +320,10 @@ public class StoriesFragment extends Fragment {
         lastUpdatedHeaderText = headerBinding.storiesHeaderLastUpdated;
         cacheProgressStatusText = headerBinding.storiesHeaderCacheStatus;
         cacheProgressIndicator = headerBinding.storiesHeaderCacheProgress;
+        frontPageDateControls = headerBinding.storiesHeaderFrontDateControls;
+        frontPagePreviousDayButton = headerBinding.storiesHeaderFrontPreviousDay;
+        frontPageDateButton = headerBinding.storiesHeaderFrontDate;
+        frontPageNextDayButton = headerBinding.storiesHeaderFrontNextDay;
         storyCacheController = new StoryCacheController(new StoryCacheController.Callbacks() {
             @Nullable
             @Override
@@ -471,7 +494,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private ArrayList<CharSequence> buildTypeAdapterList(Context ctx) {
-        return StoryType.buildAdapterLabels(getResources(), shouldShowUserItemLists(ctx));
+        return StoryType.buildAdapterLabels(getResources(), ctx, shouldShowUserItemLists(ctx));
     }
 
     private boolean shouldShowUserItemLists(@Nullable Context ctx) {
@@ -504,6 +527,7 @@ public class StoriesFragment extends Fragment {
         if (adapter.type != newType || typeChanged) {
             adapter.type = newType;
             updateAdapterCommentRows();
+            updateAdapterPaginationMode(adapter);
         }
 
         typeSpinner.setSelection(newType);
@@ -568,7 +592,7 @@ public class StoriesFragment extends Fragment {
                 prefetchLoadedPreviewImagesNearViewport(firstVisibleItem, lastVisibleItem);
 
                 // Only enable infinite scroll if pagination mode is OFF
-                if (!searching && !paginationMode && !currentTypeIsAlgolia()) {
+                if (!searching && adapter != null && !adapter.paginationMode && !currentTypeIsAlgolia()) {
                     loadStoriesThroughIndex(Math.min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories.size()) - 1, storyListGeneration);
                 }
             }
@@ -673,6 +697,9 @@ public class StoriesFragment extends Fragment {
             }
         };
         userItemFilterGroup.addOnButtonCheckedListener(userItemFilterCheckedListener);
+        frontPagePreviousDayButton.setOnClickListener(v -> shiftFrontPageDay(-1));
+        frontPageDateButton.setOnClickListener(v -> showFrontPageDatePicker());
+        frontPageNextDayButton.setOnClickListener(v -> shiftFrontPageDay(1));
 
         // Set up search
         searchEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -743,6 +770,7 @@ public class StoriesFragment extends Fragment {
                 if (i != adapter.type) {
                     adapter.type = i;
                     updateAdapterCommentRows();
+                    updateAdapterPaginationMode(adapter);
                     attemptStoryTypeRefresh();
                 }
             }
@@ -819,6 +847,8 @@ public class StoriesFragment extends Fragment {
         boolean userItemListType = favoritesType || upvotedType;
         boolean savedItemSourceHasItems = currentSavedItemSourceHasItems();
         userItemFilterGroup.setVisibility(!searching && currentTypeUsesSavedItemFilter() && savedItemSourceHasItems ? View.VISIBLE : View.GONE);
+        frontPageDateControls.setVisibility(!searching && currentTypeIsFront() ? View.VISIBLE : View.GONE);
+        updateFrontPageDateControls();
         if (noBookmarksImage != null && noBookmarksText != null) {
             noBookmarksImage.setImageResource(getEmptySavedListIcon(favoritesType, upvotedType));
             noBookmarksText.setText(getEmptySavedListText(favoritesType, upvotedType, savedItemSourceHasItems));
@@ -897,6 +927,117 @@ public class StoriesFragment extends Fragment {
             lastUpdatedHeaderText.setText("Last updated: "
                     + android.text.format.DateFormat.getTimeFormat(ctx).format(new java.util.Date(lastLoaded)));
         }
+    }
+
+    private Calendar getFrontPageDayUtc() {
+        if (frontPageDayUtc == null) {
+            frontPageDayUtc = getLatestFrontPageDayUtc();
+        }
+        return frontPageDayUtc;
+    }
+
+    private Calendar getLatestFrontPageDayUtc() {
+        Calendar latest = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        latest.add(Calendar.DAY_OF_MONTH, -1);
+        clearTime(latest);
+        return latest;
+    }
+
+    private Calendar getEarliestFrontPageDayUtc() {
+        Calendar earliest = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        earliest.set(Calendar.YEAR, 2007);
+        earliest.set(Calendar.MONTH, Calendar.FEBRUARY);
+        earliest.set(Calendar.DAY_OF_MONTH, 19);
+        clearTime(earliest);
+        return earliest;
+    }
+
+    private void clearTime(Calendar calendar) {
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+    }
+
+    private String getFrontPageDayParameter() {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        format.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return format.format(getFrontPageDayUtc().getTime());
+    }
+
+    private void updateFrontPageDateControls() {
+        if (frontPageDateButton == null || frontPageNextDayButton == null) {
+            return;
+        }
+
+        frontPageDateButton.setText(getFrontPageDayParameter());
+        if (frontPagePreviousDayButton != null) {
+            frontPagePreviousDayButton.setEnabled(getFrontPageDayUtc().after(getEarliestFrontPageDayUtc()));
+        }
+        frontPageNextDayButton.setEnabled(getFrontPageDayUtc().before(getLatestFrontPageDayUtc()));
+    }
+
+    private void shiftFrontPageDay(int days) {
+        Calendar day = (Calendar) getFrontPageDayUtc().clone();
+        day.add(Calendar.DAY_OF_MONTH, days);
+        Calendar latest = getLatestFrontPageDayUtc();
+        if (day.after(latest)) {
+            day = latest;
+        }
+        Calendar earliest = getEarliestFrontPageDayUtc();
+        if (day.before(earliest)) {
+            day = earliest;
+        }
+        clearTime(day);
+        frontPageDayUtc = day;
+        updateFrontPageDateControls();
+        if (currentTypeIsFront()) {
+            attemptStoryTypeRefresh();
+        }
+    }
+
+    private void showFrontPageDatePicker() {
+        if (getParentFragmentManager().isStateSaved()) {
+            return;
+        }
+
+        long latestDay = getLatestFrontPageDayUtc().getTimeInMillis();
+        long earliestDay = getEarliestFrontPageDayUtc().getTimeInMillis();
+        CalendarConstraints constraints = new CalendarConstraints.Builder()
+                .setStart(earliestDay)
+                .setEnd(latestDay)
+                .setValidator(CompositeDateValidator.allOf(Arrays.asList(
+                        DateValidatorPointForward.from(earliestDay),
+                        DateValidatorPointBackward.before(latestDay + 24L * 60L * 60L * 1000L))))
+                .build();
+        MaterialDatePicker<Long> picker = MaterialDatePicker.Builder.datePicker()
+                .setTitleText("Select front page day")
+                .setSelection(getFrontPageDayUtc().getTimeInMillis())
+                .setCalendarConstraints(constraints)
+                .build();
+        picker.addOnPositiveButtonClickListener(selection -> {
+            if (selection == null) {
+                return;
+            }
+
+            Calendar selectedDay = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            selectedDay.setTimeInMillis(selection);
+            clearTime(selectedDay);
+            Calendar latest = getLatestFrontPageDayUtc();
+            if (selectedDay.after(latest)) {
+                selectedDay = latest;
+            }
+            Calendar earliest = getEarliestFrontPageDayUtc();
+            if (selectedDay.before(earliest)) {
+                selectedDay = earliest;
+            }
+            frontPageDayUtc = selectedDay;
+            updateFrontPageDateControls();
+            if (currentTypeIsFront()) {
+                attemptStoryTypeRefresh();
+            }
+        });
+        picker.show(getParentFragmentManager(), "front_page_date_picker");
     }
 
     private void beginLastUpdatedHeaderTransitionIfNeeded(@Nullable Context ctx) {
@@ -1217,7 +1358,20 @@ public class StoriesFragment extends Fragment {
 
     private void resetPaginationState() {
         loadedTo = -1;
-        adapter.visibleStoryCount = paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
+        updateAdapterPaginationMode(adapter);
+        adapter.visibleStoryCount = adapter.paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
+    }
+
+    private boolean shouldUsePaginationForType(@Nullable StoryType storyType) {
+        return paginationMode || (storyType != null && storyType.isScrapedFrontpage());
+    }
+
+    private void updateAdapterPaginationMode(@Nullable StoryRecyclerViewAdapter targetAdapter) {
+        if (targetAdapter == null) {
+            return;
+        }
+
+        targetAdapter.paginationMode = shouldUsePaginationForType(getStoryType(targetAdapter.type));
     }
 
     private void resetAlgoliaResultLimit() {
@@ -1229,7 +1383,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private int getInitialLoadCount() {
-        return paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : 20;
+        return adapter != null && adapter.paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : 20;
     }
 
     private void loadStoriesThroughIndex(int targetIndex, int loadGeneration) {
@@ -1249,7 +1403,7 @@ public class StoriesFragment extends Fragment {
         }
 
         int storiesToLoad = getInitialLoadCount();
-        if (paginationMode) {
+        if (adapter != null && adapter.paginationMode) {
             storiesToLoad = adapter.visibleStoryCount;
         } else if (linearLayoutManager != null) {
             int lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
@@ -1525,7 +1679,7 @@ public class StoriesFragment extends Fragment {
         stories.addAll(newStories);
         adapter.showLoadMoreButton = showLoadMoreButton;
 
-        if (paginationMode) {
+        if (adapter != null && adapter.paginationMode) {
             int requestedVisibleCount = algoliaLoadMoreVisibleStoryCount > 0
                     ? algoliaLoadMoreVisibleStoryCount
                     : adapter.visibleStoryCount;
@@ -1804,6 +1958,8 @@ public class StoriesFragment extends Fragment {
 
         mainAdapter.type = previousMainType;
         searchAdapter.type = previousSearchType;
+        updateAdapterPaginationMode(mainAdapter);
+        updateAdapterPaginationMode(searchAdapter);
         mainAdapter.visibleStoryCount = previousMainVisibleStoryCount;
         searchAdapter.visibleStoryCount = previousSearchVisibleStoryCount;
         mainAdapter.showLoadMoreButton = previousMainShowLoadMoreButton;
@@ -1845,8 +2001,8 @@ public class StoriesFragment extends Fragment {
     }
 
     private void configureStoryAdapter(@NonNull StoryRecyclerViewAdapter configuredAdapter) {
-        configuredAdapter.paginationMode = paginationMode;
-        configuredAdapter.visibleStoryCount = paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
+        updateAdapterPaginationMode(configuredAdapter);
+        configuredAdapter.visibleStoryCount = configuredAdapter.paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
 
         configuredAdapter.setOnLinkClickListener(position -> {
             useStoryListForAdapter(configuredAdapter);
@@ -1854,7 +2010,8 @@ public class StoriesFragment extends Fragment {
                 return;
             }
 
-            if (alwaysOpenComments) {
+            Story story = stories.get(position);
+            if (alwaysOpenComments && !story.isFrontpageLink) {
                 clickedComments(position);
                 return;
             }
@@ -1866,8 +2023,14 @@ public class StoriesFragment extends Fragment {
                 return;
             }
 
-            Story story = stories.get(position);
             if (story.loaded) {
+                if (story.isFrontpageLink) {
+                    story.clicked = true;
+                    adapter.updateStoryClickedState(position);
+                    Utils.launchCustomTab(getContext(), story.url);
+                    return;
+                }
+
                 markStoryClicked(story);
                 adapter.updateStoryClickedState(position);
 
@@ -1903,7 +2066,7 @@ public class StoriesFragment extends Fragment {
         // Set up pagination "Load More" button click listener
         configuredAdapter.setOnLoadMoreClickListener(v -> {
             useStoryListForAdapter(configuredAdapter);
-            if (paginationMode && adapter.visibleStoryCount < stories.size()) {
+            if (adapter.paginationMode && adapter.visibleStoryCount < stories.size()) {
                 int newLoadedTo = Math.min(
                         loadedTo + StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE,
                         stories.size() - 1
@@ -1913,6 +2076,8 @@ public class StoriesFragment extends Fragment {
 
                 // Update adapter to show more items
                 adapter.loadNextPage();
+            } else if (adapter.showLoadMoreButton && currentTypeIsScrapedFrontpage()) {
+                loadMoreScrapedFrontpageStories(storyListGeneration);
             } else if (adapter.showLoadMoreButton) {
                 loadMoreAlgoliaResults();
             }
@@ -2188,7 +2353,7 @@ public class StoriesFragment extends Fragment {
         if (paginationMode != newPaginationMode) {
             int oldItemCount = adapter.getItemCount();
             paginationMode = newPaginationMode;
-            adapter.paginationMode = paginationMode;
+            updateAdapterPaginationMode(adapter);
             resetPaginationState();
 
             int newItemCount = adapter.getItemCount();
@@ -2451,6 +2616,10 @@ public class StoriesFragment extends Fragment {
         lastUpdatedHeaderText = null;
         cacheProgressStatusText = null;
         cacheProgressIndicator = null;
+        frontPageDateControls = null;
+        frontPagePreviousDayButton = null;
+        frontPageDateButton = null;
+        frontPageNextDayButton = null;
         userItemFilterGroup = null;
         loadingIndicator = null;
         loadingFailedLayout = null;
@@ -2490,6 +2659,13 @@ public class StoriesFragment extends Fragment {
 
         Story story = stories.get(position);
         if (story.loaded) {
+            if (story.isFrontpageLink) {
+                story.clicked = true;
+                adapter.updateStoryClickedState(position);
+                Utils.launchCustomTab(getContext(), story.url);
+                return;
+            }
+
             markStoryClicked(story);
             adapter.updateStoryClickedState(position);
 
@@ -2529,7 +2705,7 @@ public class StoriesFragment extends Fragment {
             loadedTo = Math.max(-1, loadedTo - 1);
         }
 
-        if (paginationMode) {
+        if (adapter != null && adapter.paginationMode) {
             adapter.notifyDataSetChanged();
         } else {
             adapter.notifyItemRemoved(index);
@@ -2739,9 +2915,16 @@ public class StoriesFragment extends Fragment {
         storyListGeneration++;
         loadingStoryIds.clear();
         resetPreviewImagePrefetchRamp();
+        resetScrapedFrontpagePaginationState();
         invalidateAlgoliaLoad();
         queue.cancelAll(requestTag);
         return storyListGeneration;
+    }
+
+    private void resetScrapedFrontpagePaginationState() {
+        scrapedFrontpageNextPageUrl = null;
+        scrapedFrontpageNextPageLoading = false;
+        scrapedFrontpageStoryType = StoryType.UNKNOWN;
     }
 
     private boolean isCurrentStoryListGeneration(int generation) {
@@ -2836,13 +3019,18 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
-        if (currentTypeIsActive()) {
-            loadActiveStories(refreshGeneration);
+        StoryType currentStoryType = getCurrentStoryType();
+        if (currentStoryType.isFrontpageLinkList()) {
+            loadFrontpageLinkRows(currentStoryType, refreshGeneration);
+            return;
+        }
+        if (currentStoryType.isScrapedFrontpage()) {
+            loadScrapedFrontpageStories(currentStoryType, refreshGeneration);
             return;
         }
 
         // if none of the above, do a normal loading
-        String storyListUrl = getCurrentStoryType().getHackerNewsUrl();
+        String storyListUrl = currentStoryType.getHackerNewsUrl();
         if (storyListUrl == null) {
             swipeRefreshLayout.setRefreshing(false);
             loadingFailed = true;
@@ -2896,7 +3084,7 @@ public class StoriesFragment extends Fragment {
         queue.add(stringRequest);
     }
 
-    private void loadActiveStories(int refreshGeneration) {
+    private void loadScrapedFrontpageStories(StoryType storyType, int refreshGeneration) {
         Context ctx = getContext();
         if (ctx == null) {
             swipeRefreshLayout.setRefreshing(false);
@@ -2906,12 +3094,19 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
-        UserActions.fetchActiveStoryIds(ctx, new UserActions.StoryIdsCallback() {
+        String frontDay = storyType.isFront() ? getFrontPageDayParameter() : null;
+        UserActions.fetchStoryListIds(
+                ctx,
+                storyType.getHackerNewsPath(),
+                storyType.getLabel().toLowerCase(Locale.US),
+                storyType.usesCommentRows(),
+                frontDay,
+                new UserActions.StoryListCallback() {
             @Override
-            public void onSuccess(List<Integer> itemIds) {
+            public void onSuccess(List<Integer> itemIds, List<Integer> commentIds, String nextPageUrl) {
                 if (!isAdded()
                         || adapter == null
-                        || !currentTypeIsActive()
+                        || getCurrentStoryType() != storyType
                         || !isCurrentStoryListGeneration(refreshGeneration)) {
                     return;
                 }
@@ -2920,9 +3115,14 @@ public class StoriesFragment extends Fragment {
                 loadingFailed = itemIds.isEmpty();
                 loadingFailedServerError = false;
                 showingCached = false;
+                scrapedFrontpageStoryType = storyType;
+                scrapedFrontpageNextPageUrl = nextPageUrl;
+                scrapedFrontpageNextPageLoading = false;
 
                 if (!loadingFailed) {
-                    replaceStories(createLoadingStoriesFromIds(itemIds));
+                    replaceStories(createLoadingStoriesFromIds(itemIds, new HashSet<>(commentIds)),
+                            false,
+                            !TextUtils.isEmpty(scrapedFrontpageNextPageUrl));
                 }
 
                 updateHeader();
@@ -2933,7 +3133,119 @@ public class StoriesFragment extends Fragment {
             public void onFailure(String summary, String response) {
                 if (!isAdded()
                         || adapter == null
-                        || !currentTypeIsActive()
+                        || getCurrentStoryType() != storyType
+                        || !isCurrentStoryListGeneration(refreshGeneration)) {
+                    return;
+                }
+
+                swipeRefreshLayout.setRefreshing(false);
+                loadingFailed = true;
+                loadingFailedServerError = false;
+                updateHeader();
+            }
+        });
+
+        updateHeader();
+    }
+
+    private void loadMoreScrapedFrontpageStories(int refreshGeneration) {
+        Context ctx = getContext();
+        StoryType storyType = getCurrentStoryType();
+        if (ctx == null
+                || adapter == null
+                || scrapedFrontpageNextPageLoading
+                || storyType != scrapedFrontpageStoryType
+                || TextUtils.isEmpty(scrapedFrontpageNextPageUrl)) {
+            return;
+        }
+
+        scrapedFrontpageNextPageLoading = true;
+        String nextPageUrl = scrapedFrontpageNextPageUrl;
+        UserActions.fetchStoryListPage(
+                ctx,
+                nextPageUrl,
+                storyType.getLabel().toLowerCase(Locale.US),
+                storyType.usesCommentRows(),
+                new UserActions.StoryListCallback() {
+                    @Override
+                    public void onSuccess(List<Integer> itemIds, List<Integer> commentIds, String nextPageUrl) {
+                        if (!isAdded()
+                                || adapter == null
+                                || getCurrentStoryType() != storyType
+                                || scrapedFrontpageStoryType != storyType
+                                || !isCurrentStoryListGeneration(refreshGeneration)) {
+                            return;
+                        }
+
+                        scrapedFrontpageNextPageLoading = false;
+                        scrapedFrontpageNextPageUrl = nextPageUrl;
+                        ArrayList<Story> newStories = createNewLoadingStoriesFromIds(itemIds, new HashSet<>(commentIds));
+                        stories.addAll(newStories);
+                        adapter.showLoadMoreButton = !TextUtils.isEmpty(scrapedFrontpageNextPageUrl);
+                        if (adapter.paginationMode && !newStories.isEmpty()) {
+                            adapter.visibleStoryCount = Math.min(adapter.visibleStoryCount + newStories.size(), stories.size());
+                        }
+                        adapter.notifyDataSetChanged();
+                        loadVisibleStories(refreshGeneration);
+                        updateHeader();
+                    }
+
+                    @Override
+                    public void onFailure(String summary, String response) {
+                        if (!isAdded()
+                                || adapter == null
+                                || getCurrentStoryType() != storyType
+                                || scrapedFrontpageStoryType != storyType
+                                || !isCurrentStoryListGeneration(refreshGeneration)) {
+                            return;
+                        }
+
+                        scrapedFrontpageNextPageLoading = false;
+                        adapter.showLoadMoreButton = true;
+                        adapter.notifyDataSetChanged();
+                        updateHeader();
+                    }
+                });
+    }
+
+    private void loadFrontpageLinkRows(StoryType storyType, int refreshGeneration) {
+        Context ctx = getContext();
+        if (ctx == null) {
+            swipeRefreshLayout.setRefreshing(false);
+            loadingFailed = true;
+            loadingFailedServerError = false;
+            updateHeader();
+            return;
+        }
+
+        UserActions.fetchHackerNewsListLinks(ctx, new UserActions.StoryRowsCallback() {
+            @Override
+            public void onSuccess(List<Story> linkRows) {
+                if (!isAdded()
+                        || adapter == null
+                        || getCurrentStoryType() != storyType
+                        || !isCurrentStoryListGeneration(refreshGeneration)) {
+                    return;
+                }
+
+                swipeRefreshLayout.setRefreshing(false);
+                loadingFailed = linkRows.isEmpty();
+                loadingFailedServerError = false;
+                showingCached = false;
+
+                if (!loadingFailed) {
+                    replaceStories(linkRows);
+                    loadedTo = stories.size() - 1;
+                }
+
+                updateHeader();
+            }
+
+            @Override
+            public void onFailure(String summary, String response) {
+                if (!isAdded()
+                        || adapter == null
+                        || getCurrentStoryType() != storyType
                         || !isCurrentStoryListGeneration(refreshGeneration)) {
                     return;
                 }
@@ -2949,6 +3261,26 @@ public class StoriesFragment extends Fragment {
     }
 
     private ArrayList<Story> createLoadingStoriesFromIds(List<Integer> itemIds) {
+        return createLoadingStoriesFromIds(itemIds, new HashSet<>());
+    }
+
+    private ArrayList<Story> createNewLoadingStoriesFromIds(List<Integer> itemIds, Set<Integer> commentIds) {
+        HashSet<Integer> existingStoryIds = new HashSet<>();
+        for (Story story : stories) {
+            existingStoryIds.add(story.id);
+        }
+
+        ArrayList<Integer> newItemIds = new ArrayList<>();
+        for (int id : itemIds) {
+            if (!existingStoryIds.contains(id)) {
+                newItemIds.add(id);
+            }
+        }
+
+        return createLoadingStoriesFromIds(newItemIds, commentIds);
+    }
+
+    private ArrayList<Story> createLoadingStoriesFromIds(List<Integer> itemIds, Set<Integer> commentIds) {
         ArrayList<Story> refreshedStories = new ArrayList<>();
         Context ctx = getContext();
 
@@ -2958,8 +3290,13 @@ public class StoriesFragment extends Fragment {
             }
 
             Story story = new Story("Loading...", id, false, HistoriesUtils.INSTANCE.isHistoryExist(id));
+            boolean isComment = commentIds.contains(id);
+            story.isComment = isComment;
             if (Utils.loadCachedStorySummary(ctx, story) && shouldFilterLoadedStory(story)) {
                 continue;
+            }
+            if (isComment) {
+                story.isComment = true;
             }
 
             refreshedStories.add(story);
@@ -3386,7 +3723,7 @@ public class StoriesFragment extends Fragment {
         int lastIndex = lastVisibleItem == RecyclerView.NO_POSITION
                 ? Math.min(getInitialLoadCount() - 1, stories.size() - 1)
                 : Math.min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories.size() - 1);
-        if (paginationMode) {
+        if (adapter != null && adapter.paginationMode) {
             lastIndex = Math.min(lastIndex, adapter.visibleStoryCount - 1);
         }
 
@@ -3512,7 +3849,7 @@ public class StoriesFragment extends Fragment {
 
         algoliaLoadMoreInProgress = true;
         saveAlgoliaLoadMoreScrollPosition();
-        if (paginationMode) {
+        if (adapter != null && adapter.paginationMode) {
             algoliaLoadMoreVisibleStoryCount = adapter.visibleStoryCount + StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE;
         } else {
             algoliaLoadMoreVisibleStoryCount = -1;
@@ -3893,6 +4230,14 @@ public class StoriesFragment extends Fragment {
         return getCurrentStoryType().isActive();
     }
 
+    private boolean currentTypeIsFront() {
+        return getCurrentStoryType().isFront();
+    }
+
+    private boolean currentTypeIsScrapedFrontpage() {
+        return getCurrentStoryType().isScrapedFrontpage();
+    }
+
     private boolean isBookmarksType(int type) {
         return getStoryType(type).isBookmarks();
     }
@@ -4001,8 +4346,9 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
-        targetAdapter.allowCommentRows = isBookmarksType(targetAdapter.type) || isUserItemListType(targetAdapter.type);
+        targetAdapter.allowCommentRows = getStoryType(targetAdapter.type).usesCommentRows();
         targetAdapter.disableClickedEffects = targetAdapter.allowCommentRows || isHistoryType(targetAdapter.type);
+        updateAdapterPaginationMode(targetAdapter);
     }
 
     private boolean shouldHideStoryAsJob(Story story) {
@@ -4128,6 +4474,9 @@ public class StoriesFragment extends Fragment {
         userItemFilterGroup.setVisibility(showMainHeader && shouldShowUserItemFilterGroupInMain()
                 ? View.VISIBLE
                 : View.GONE);
+        frontPageDateControls.setVisibility(showMainHeader && shouldShowFrontPageDateControlsInMain()
+                ? View.VISIBLE
+                : View.GONE);
     }
 
     private void setSearchBackSearchHeaderAlpha(float alpha) {
@@ -4142,6 +4491,7 @@ public class StoriesFragment extends Fragment {
         searchButton.setAlpha(alpha);
         moreButton.setAlpha(alpha);
         userItemFilterGroup.setAlpha(alpha);
+        frontPageDateControls.setAlpha(alpha);
     }
 
     private void resetSearchBackVisualAlphas() {
@@ -4169,11 +4519,13 @@ public class StoriesFragment extends Fragment {
         searchButton.animate().cancel();
         moreButton.animate().cancel();
         userItemFilterGroup.animate().cancel();
+        frontPageDateControls.animate().cancel();
 
         typeSpinner.setVisibility(View.VISIBLE);
         searchButton.setVisibility(View.VISIBLE);
         moreButton.setVisibility(View.VISIBLE);
         userItemFilterGroup.setVisibility(shouldShowUserItemFilterGroupInMain() ? View.VISIBLE : View.GONE);
+        frontPageDateControls.setVisibility(shouldShowFrontPageDateControlsInMain() ? View.VISIBLE : View.GONE);
 
         typeSpinner.animate()
                 .alpha(1f)
@@ -4200,10 +4552,20 @@ public class StoriesFragment extends Fragment {
                 .setDuration(duration)
                 .setInterpolator(interpolator)
                 .start();
+        frontPageDateControls.animate()
+                .alpha(1f)
+                .setStartDelay(0)
+                .setDuration(duration)
+                .setInterpolator(interpolator)
+                .start();
     }
 
     private boolean shouldShowUserItemFilterGroupInMain() {
         return currentTypeUsesSavedItemFilter() && currentSavedItemSourceHasItems();
+    }
+
+    private boolean shouldShowFrontPageDateControlsInMain() {
+        return currentTypeIsFront();
     }
 
     private float getSearchBackContentTranslation(float progress) {

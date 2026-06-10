@@ -350,6 +350,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentsIcon.setAlpha(useClickedEffects ? 0.6f : 1.0f);
             }
 
+            storyViewHolder.commentLayoutView.setVisibility(storyViewHolder.story.isFrontpageLink ? View.GONE : View.VISIBLE);
             applyStoryClickedState(storyViewHolder, storyViewHolder.story);
         } else if (holder instanceof CommentViewHolder) {
             final CommentViewHolder commentViewHolder = (CommentViewHolder) holder;

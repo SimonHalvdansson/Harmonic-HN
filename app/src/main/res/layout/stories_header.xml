@@ -159,6 +159,60 @@
 
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
+    <LinearLayout
+        android:id="@+id/stories_header_front_date_controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stories_header_front_previous_day"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:contentDescription="Previous front page day"
+            android:fontFamily="@font/product_sans_bold"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:textAllCaps="false"
+            app:icon="@drawable/ic_action_chevron_left"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stories_header_front_date"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:contentDescription="Select front page day"
+            android:fontFamily="@font/product_sans_bold"
+            android:singleLine="true"
+            android:textAllCaps="false"
+            app:icon="@drawable/ic_action_date" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stories_header_front_next_day"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:contentDescription="Next front page day"
+            android:fontFamily="@font/product_sans_bold"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:textAllCaps="false"
+            app:icon="@drawable/ic_action_chevron_right"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp" />
+
+    </LinearLayout>
+
     <HorizontalScrollView
         android:id="@+id/stories_header_search_options_scroll"
         android:layout_width="match_parent"

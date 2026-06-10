@@ -60,6 +60,7 @@ public class Story {
     public boolean isJob = false;
     public boolean loadingFailed = false;
     public boolean isComment = false;
+    public boolean isFrontpageLink = false;
     public String commentMasterTitle;
     public int commentMasterId;
     public String commentMasterUrl;

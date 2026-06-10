@@ -15,6 +15,7 @@ import androidx.core.util.Pair;
 import androidx.fragment.app.FragmentManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -25,9 +26,11 @@ import org.jsoup.nodes.Element;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -87,7 +90,24 @@ private static final String CAPTCHA_VALIDATION_TEXT = "Validation required. If t
 private static final String CAPTCHA_RESPONSE_PARAM = "g-recaptcha-response";
 private static final long MAX_RESPONSE_PREVIEW_BYTES = 1024 * 1024;
 private static final int MAX_USER_ITEM_LIST_PAGES = 50;
-private static final int MAX_STORY_LIST_PAGES = 50;
+private static final String[] HACKER_NEWS_LIST_PATHS = {
+        "front",
+        "pool",
+        "invited",
+        "highlights",
+        "shownew",
+        "asknew",
+        "best",
+        "bestcomments",
+        "active",
+        "noobstories",
+        "noobcomments",
+        "classic",
+        "leaders",
+        "topcolors",
+        "whoishiring",
+        "launches"
+};
 
     public static void voteWithDir(Context ctx, int id, FragmentManager fm, String dir) {
         voteWithDir(ctx, id, fm, dir, null, null);
@@ -215,32 +235,179 @@ private static final int MAX_STORY_LIST_PAGES = 50;
     }
 
     public static void fetchActiveStoryIds(Context ctx, StoryIdsCallback cb) {
+        fetchStoryListIds(ctx, ACTIVE_PATH, "active stories", false, null, new StoryListCallback() {
+            @Override
+            public void onSuccess(List<Integer> itemIds, List<Integer> commentIds, String nextPageUrl) {
+                cb.onSuccess(itemIds);
+            }
+
+            @Override
+            public void onFailure(String summary, String response) {
+                cb.onFailure(summary, response);
+            }
+        });
+    }
+
+    public static void fetchStoryListIds(Context ctx,
+                                         String path,
+                                         String listName,
+                                         boolean commentsPage,
+                                         String day,
+                                         StoryListCallback cb) {
+        if (TextUtils.isEmpty(path)) {
+            cb.onFailure("Couldn't fetch " + listName, "Missing Hacker News path");
+            return;
+        }
+
         Handler main = new Handler(ctx.getMainLooper());
         fetchStoryListPage(
                 NetworkComponent.getOkHttpClientInstance(),
-                buildStoryListUrl(ACTIVE_PATH),
-                new ArrayList<>(),
-                1,
-                "active stories",
+                buildStoryListUrl(path, day),
+                listName,
+                commentsPage,
+                main,
+                cb);
+    }
+
+    public static void fetchStoryListPage(Context ctx,
+                                          String url,
+                                          String listName,
+                                          boolean commentsPage,
+                                          StoryListCallback cb) {
+        if (TextUtils.isEmpty(url)) {
+            cb.onFailure("Couldn't fetch " + listName, "Missing Hacker News page URL");
+            return;
+        }
+
+        Handler main = new Handler(ctx.getMainLooper());
+        fetchStoryListPage(
+                NetworkComponent.getOkHttpClientInstance(),
+                url,
+                listName,
+                commentsPage,
                 main,
                 cb);
     }
 
     private static String buildStoryListUrl(String path) {
-        return Objects.requireNonNull(HttpUrl.parse(BASE_WEB_URL))
+        return buildStoryListUrl(path, null);
+    }
+
+    private static String buildStoryListUrl(String path, String day) {
+        HttpUrl.Builder builder = Objects.requireNonNull(HttpUrl.parse(BASE_WEB_URL))
                 .newBuilder()
-                .addPathSegment(path)
-                .build()
-                .toString();
+                .addPathSegment(path);
+        if (!TextUtils.isEmpty(day)) {
+            builder.addQueryParameter("day", day);
+        }
+        return builder.build().toString();
+    }
+
+    public static void fetchHackerNewsListLinks(Context ctx, StoryRowsCallback cb) {
+        Handler main = new Handler(ctx.getMainLooper());
+        Request request = new Request.Builder()
+                .url(buildStoryListUrl("lists"))
+                .build();
+
+        NetworkComponent.getOkHttpClientInstance().newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                main.post(() -> cb.onFailure("Couldn't fetch HN lists", e.getMessage()));
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) {
+                if (!response.isSuccessful()) {
+                    String failure = response.toString();
+                    response.close();
+                    main.post(() -> cb.onFailure("Couldn't fetch HN lists", failure));
+                    return;
+                }
+
+                try {
+                    String body = response.body() == null ? "" : response.body().string();
+                    Document document = Jsoup.parse(body, BASE_WEB_URL + "/");
+                    ArrayList<Story> linkRows = parseHackerNewsListLinks(document);
+                    main.post(() -> cb.onSuccess(linkRows));
+                } catch (Exception e) {
+                    main.post(() -> cb.onFailure("Couldn't parse HN lists", e.getMessage()));
+                }
+            }
+        });
+    }
+
+    private static ArrayList<Story> parseHackerNewsListLinks(Document document) {
+        ArrayList<Story> linkRows = new ArrayList<>();
+        Set<String> seenPaths = new HashSet<>();
+        for (Element link : document.select("a[href]")) {
+            String path = getHackerNewsListPath(link);
+            if (TextUtils.isEmpty(path)
+                    || !isKnownHackerNewsListPath(path)
+                    || seenPaths.contains(path)) {
+                continue;
+            }
+
+            seenPaths.add(path);
+            Story story = new Story(buildHackerNewsListTitle(link), getFrontpageLinkStoryId(path), true, false);
+            story.isFrontpageLink = true;
+            story.isLink = true;
+            story.url = link.absUrl("href");
+            story.by = "Hacker News";
+            story.time = (int) (System.currentTimeMillis() / 1000);
+            linkRows.add(story);
+        }
+        return linkRows;
+    }
+
+    private static String buildHackerNewsListTitle(Element link) {
+        String title = link.text().trim();
+        Element row = link.closest("tr");
+        if (row == null) {
+            return title;
+        }
+
+        String rowText = row.text().trim();
+        if (rowText.startsWith(title)) {
+            String description = rowText.substring(title.length()).trim();
+            if (!TextUtils.isEmpty(description)) {
+                return title + " - " + description;
+            }
+        }
+        return title;
+    }
+
+    private static String getHackerNewsListPath(Element link) {
+        HttpUrl url = HttpUrl.parse(link.absUrl("href"));
+        if (url == null || !"news.ycombinator.com".equals(url.host())) {
+            return null;
+        }
+
+        String path = url.encodedPath();
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        return path.contains("/") ? null : path;
+    }
+
+    private static boolean isKnownHackerNewsListPath(String path) {
+        for (String knownPath : HACKER_NEWS_LIST_PATHS) {
+            if (knownPath.equals(path)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static int getFrontpageLinkStoryId(String path) {
+        return -1 - (path.hashCode() & 0x7fffffff);
     }
 
     private static void fetchStoryListPage(OkHttpClient client,
                                            String url,
-                                           List<Integer> itemIds,
-                                           int page,
                                            String listName,
+                                           boolean commentsPage,
                                            Handler main,
-                                           StoryIdsCallback cb) {
+                                           StoryListCallback cb) {
         Request request = new Request.Builder()
                 .url(url)
                 .build();
@@ -261,17 +428,15 @@ private static final int MAX_STORY_LIST_PAGES = 50;
                 }
 
                 try {
+                    ArrayList<Integer> itemIds = new ArrayList<>();
+                    ArrayList<Integer> commentIds = new ArrayList<>();
                     String body = response.body() == null ? "" : response.body().string();
                     Document document = Jsoup.parse(body, BASE_WEB_URL + "/");
-                    addHackerNewsItemIds(document, itemIds);
+                    addHackerNewsItemIds(document, itemIds, commentIds, commentsPage);
 
                     Element moreLink = document.selectFirst("a.morelink[href]");
                     String nextPage = moreLink == null ? null : moreLink.absUrl("href");
-                    if (!TextUtils.isEmpty(nextPage) && page < MAX_STORY_LIST_PAGES) {
-                        fetchStoryListPage(client, nextPage, itemIds, page + 1, listName, main, cb);
-                    } else {
-                        main.post(() -> cb.onSuccess(itemIds));
-                    }
+                    main.post(() -> cb.onSuccess(itemIds, commentIds, nextPage));
                 } catch (Exception e) {
                     main.post(() -> cb.onFailure("Couldn't parse " + listName, e.getMessage()));
                 }
@@ -423,6 +588,13 @@ private static final int MAX_STORY_LIST_PAGES = 50;
     }
 
     private static void addHackerNewsItemIds(Document document, List<Integer> itemIds) {
+        addHackerNewsItemIds(document, itemIds, null, false);
+    }
+
+    private static void addHackerNewsItemIds(Document document,
+                                             List<Integer> itemIds,
+                                             List<Integer> commentIds,
+                                             boolean commentsPage) {
         for (Element item : document.select("tr.athing[id]")) {
             String idString = item.attr("id");
             if (!TextUtils.isDigitsOnly(idString)) {
@@ -430,10 +602,43 @@ private static final int MAX_STORY_LIST_PAGES = 50;
             }
 
             int id = Integer.parseInt(idString);
-            if (!itemIds.contains(id)) {
-                itemIds.add(id);
+            addHackerNewsItemId(itemIds, commentIds, id, commentsPage);
+        }
+
+        if (commentsPage) {
+            for (Element ageLink : document.select("span.comhead span.age a[href]")) {
+                int id = getHackerNewsItemIdFromHref(ageLink);
+                if (id > 0) {
+                    addHackerNewsItemId(itemIds, commentIds, id, true);
+                }
             }
         }
+    }
+
+    private static void addHackerNewsItemId(List<Integer> itemIds,
+                                            List<Integer> commentIds,
+                                            int id,
+                                            boolean isComment) {
+        if (!itemIds.contains(id)) {
+            itemIds.add(id);
+        }
+        if (isComment && commentIds != null && !commentIds.contains(id)) {
+            commentIds.add(id);
+        }
+    }
+
+    private static int getHackerNewsItemIdFromHref(Element link) {
+        HttpUrl url = HttpUrl.parse(link.absUrl("href"));
+        if (url == null || !ITEM_PATH.equals(url.encodedPath().replaceFirst("^/", ""))) {
+            return -1;
+        }
+
+        String idString = url.queryParameter(ITEM_PARAM_ID);
+        if (!TextUtils.isDigitsOnly(idString)) {
+            return -1;
+        }
+
+        return Integer.parseInt(idString);
     }
 
     private static void fetchFavoriteActionLink(Context ctx, int id, boolean favorite, ActionCallback cb) {
@@ -1025,6 +1230,16 @@ private static final int MAX_STORY_LIST_PAGES = 50;
 
     public interface StoryIdsCallback {
         void onSuccess(List<Integer> itemIds);
+        void onFailure(String summary, String response);
+    }
+
+    public interface StoryListCallback {
+        void onSuccess(List<Integer> itemIds, List<Integer> commentIds, String nextPageUrl);
+        void onFailure(String summary, String response);
+    }
+
+    public interface StoryRowsCallback {
+        void onSuccess(List<Story> stories);
         void onFailure(String summary, String response);
     }
 

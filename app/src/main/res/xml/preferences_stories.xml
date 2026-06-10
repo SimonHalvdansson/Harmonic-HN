@@ -123,6 +123,14 @@
             app:defaultValue="Top Stories"
             app:entryValues="@array/starting_page_options" />
 
+        <MultiSelectListPreference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_action_library_books"
+            app:title="Additional frontpages"
+            app:key="pref_additional_frontpages"
+            app:entries="@array/additional_frontpage_options"
+            app:entryValues="@array/additional_frontpage_options" />
+
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_always_open_comments"

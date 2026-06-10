@@ -58,6 +58,12 @@ public class SettingsUtils {
     public static final String PREF_ARCHIVE_REDIRECT_DOMAINS = "pref_archive_redirect_domains";
     public static final String PREF_STORIES_TO_CACHE = "pref_stories_to_cache";
     public static final String PREF_FAVICON_PROVIDER = "pref_favicon_provider";
+    public static final String PREF_ADDITIONAL_FRONTPAGES = "pref_additional_frontpages";
+    public static final String FRONT_PAGE_CLASSIC = "Classic";
+    public static final String FRONT_PAGE_BEST_COMMENTS = "Best Comments";
+    public static final String FRONT_PAGE_HIGHLIGHTS = "Highlights";
+    public static final String FRONT_PAGE_ACTIVE = "Active";
+    public static final String FRONT_PAGE_FRONT = "Front";
     public static final String PRELOAD_WEBVIEW_ALWAYS = "always";
     public static final String PRELOAD_WEBVIEW_ONLY_WIFI = "onlywifi";
     public static final String PRELOAD_WEBVIEW_NEVER = "never";
@@ -981,10 +987,78 @@ public class SettingsUtils {
     public static String getPreferredStoryType(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         String startingPage = prefs.getString("pref_default_story_type", "Top Stories");
-        if ("Bookmarks".equals(startingPage) || "History".equals(startingPage)) {
+        if ("Bookmarks".equals(startingPage)
+                || "History".equals(startingPage)
+                || (isAdditionalFrontpageLabel(startingPage) && !isAdditionalFrontpageEnabled(ctx, startingPage))) {
             return "Top Stories";
         }
         return startingPage;
+    }
+
+    public static String[] getAdditionalFrontpageLabels() {
+        return new String[] {
+                FRONT_PAGE_CLASSIC,
+                FRONT_PAGE_BEST_COMMENTS,
+                FRONT_PAGE_HIGHLIGHTS,
+                FRONT_PAGE_ACTIVE,
+                FRONT_PAGE_FRONT
+        };
+    }
+
+    public static boolean isAdditionalFrontpageLabel(String label) {
+        for (String frontpage : getAdditionalFrontpageLabels()) {
+            if (frontpage.equals(label)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static Set<String> getEnabledAdditionalFrontpages(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        Set<String> enabled = prefs.getStringSet(PREF_ADDITIONAL_FRONTPAGES, new HashSet<>());
+        return sanitizeAdditionalFrontpages(enabled);
+    }
+
+    public static boolean isAdditionalFrontpageEnabled(Context ctx, String label) {
+        return getEnabledAdditionalFrontpages(ctx).contains(label);
+    }
+
+    public static Set<String> sanitizeAdditionalFrontpages(Set<String> enabled) {
+        HashSet<String> sanitized = new HashSet<>();
+        if (enabled == null) {
+            return sanitized;
+        }
+
+        for (String frontpage : getAdditionalFrontpageLabels()) {
+            if (enabled.contains(frontpage)) {
+                sanitized.add(frontpage);
+            }
+        }
+        return sanitized;
+    }
+
+    public static String summarizeAdditionalFrontpages(Context ctx) {
+        return summarizeAdditionalFrontpages(getEnabledAdditionalFrontpages(ctx));
+    }
+
+    public static String summarizeAdditionalFrontpages(Set<String> enabled) {
+        Set<String> sanitized = sanitizeAdditionalFrontpages(enabled);
+        if (sanitized.isEmpty()) {
+            return "Off";
+        }
+
+        StringBuilder summary = new StringBuilder();
+        for (String frontpage : getAdditionalFrontpageLabels()) {
+            if (!sanitized.contains(frontpage)) {
+                continue;
+            }
+            if (summary.length() > 0) {
+                summary.append(", ");
+            }
+            summary.append(frontpage);
+        }
+        return summary.toString();
     }
 
     public static String getPreferredCommentSorting(Context ctx) {
