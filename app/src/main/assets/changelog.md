@@ -1,11 +1,16 @@
-﻿# Version 3.0
+﻿# Version 3.1
+- Added ability to show extra HN frontpages in Settings → Stories → Behavior
+- Added setting to reset all settings
+- Added ability to clear history from history screen
+
+# Version 3.0
 This version is the to-date most comprehensive redesign and quality of life release, consisting of more than 200 commits. If you don't like the design updated, you are able to revert all big changes in the settings but I encourage you to give them a try!
 
 There are many small changes which are not mentioned in these notes, but this is a highlight:
 - Added support for HN Favorites. You can convert all your bookmarks to favorites in Settings -> Data -> Bookmarks and also disable bookmarks from there.
 - Added an Upvoted story list.
 - Added support for the HN Active page.
-- Added story preview images. (De)activate in Settings -> Stories
+- Added story preview images. (De)activate in Settings → Stories
 - Redesigned comment details dialog, opened by long pressing a comment
 - Added ability to bookmark comments
 - Added new story display style: Card

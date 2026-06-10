@@ -842,6 +842,7 @@ public class StoriesFragment extends Fragment {
         searchOptionsScroll.setVisibility(searching ? View.VISIBLE : View.GONE);
 
         boolean bookmarksType = isBookmarksType(adapter.type);
+        boolean historyType = isHistoryType(adapter.type);
         boolean favoritesType = isFavoritesType(adapter.type);
         boolean upvotedType = isUpvotedType(adapter.type);
         boolean userItemListType = favoritesType || upvotedType;
@@ -850,8 +851,8 @@ public class StoriesFragment extends Fragment {
         frontPageDateControls.setVisibility(!searching && currentTypeIsFront() ? View.VISIBLE : View.GONE);
         updateFrontPageDateControls();
         if (noBookmarksImage != null && noBookmarksText != null) {
-            noBookmarksImage.setImageResource(getEmptySavedListIcon(favoritesType, upvotedType));
-            noBookmarksText.setText(getEmptySavedListText(favoritesType, upvotedType, savedItemSourceHasItems));
+            noBookmarksImage.setImageResource(getEmptySavedListIcon(historyType, favoritesType, upvotedType));
+            noBookmarksText.setText(getEmptySavedListText(historyType, favoritesType, upvotedType, savedItemSourceHasItems));
         }
 
         if (searching) {
@@ -872,7 +873,9 @@ public class StoriesFragment extends Fragment {
             boolean showEmptySavedList = stories.isEmpty()
                     && !loadingFailed
                     && !loadingFailedServerError
-                    && (bookmarksType || (userItemListType && !userItemListInitialLoadInProgress && !swipeRefreshLayout.isRefreshing()));
+                    && (bookmarksType
+                    || historyType
+                    || (userItemListType && !userItemListInitialLoadInProgress && !swipeRefreshLayout.isRefreshing()));
             noBookmarksLayout.setVisibility(showEmptySavedList ? View.VISIBLE : View.GONE);
             searchEmptyContainer.setVisibility(View.GONE);
 
@@ -880,6 +883,7 @@ public class StoriesFragment extends Fragment {
                     && !loadingFailed
                     && !loadingFailedServerError
                     && !bookmarksType
+                    && !historyType
                     && (!userItemListType || userItemListInitialLoadInProgress);
             loadingIndicator.setVisibility(showLoading ? View.VISIBLE : View.GONE);
         }
@@ -1050,7 +1054,10 @@ public class StoriesFragment extends Fragment {
         }
     }
 
-    private int getEmptySavedListIcon(boolean favoritesType, boolean upvotedType) {
+    private int getEmptySavedListIcon(boolean historyType, boolean favoritesType, boolean upvotedType) {
+        if (historyType) {
+            return R.drawable.ic_action_history;
+        }
         if (favoritesType) {
             return R.drawable.ic_action_star;
         }
@@ -1060,7 +1067,10 @@ public class StoriesFragment extends Fragment {
         return R.drawable.ic_action_bookmark_border;
     }
 
-    private String getEmptySavedListText(boolean favoritesType, boolean upvotedType, boolean savedItemSourceHasItems) {
+    private String getEmptySavedListText(boolean historyType, boolean favoritesType, boolean upvotedType, boolean savedItemSourceHasItems) {
+        if (historyType) {
+            return "No history";
+        }
         if (favoritesType) {
             if (!savedItemSourceHasItems) {
                 return "No favorites";
@@ -2871,6 +2881,12 @@ public class StoriesFragment extends Fragment {
                     Intent submitIntent = new Intent(getContext(), ComposeActivity.class);
                     submitIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_POST);
                     startActivity(submitIntent);
+                } else if (item.getItemId() == R.id.menu_clear_history) {
+                    HistoriesUtils.INSTANCE.clearHistories(requireContext());
+                    loadingFailed = false;
+                    loadingFailedServerError = false;
+                    clearStories();
+                    updateHeader();
                 }
                 return true;
             }
@@ -2887,6 +2903,7 @@ public class StoriesFragment extends Fragment {
         //first only show cache button if we're not already looking at the cache
         boolean cacheInProgress = storyCacheController != null && storyCacheController.isCachingStories();
         menu.findItem(R.id.menu_cache).setVisible(!showingCached && !cacheInProgress);
+        menu.findItem(R.id.menu_clear_history).setVisible(isHistoryType(adapter.type) && HistoriesUtils.INSTANCE.size() > 0);
         //also if we don't have internet, no need to show at all
         if (getContext() != null) {
             if (!Utils.isNetworkAvailable(getContext())) {
