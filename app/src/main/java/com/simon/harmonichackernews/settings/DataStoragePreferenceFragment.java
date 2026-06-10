@@ -1,7 +1,9 @@
 package com.simon.harmonichackernews.settings;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -11,6 +13,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.preference.Preference;
+import androidx.preference.PreferenceManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
@@ -26,6 +29,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 
 public class DataStoragePreferenceFragment extends BaseSettingsFragment {
+
+    private static final String PREF_RESET_ALL_SETTINGS = "pref_reset_all_settings";
 
     @Override
     protected String getToolbarTitle() {
@@ -169,6 +174,16 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
             return false;
         });
 
+        findPreference(PREF_RESET_ALL_SETTINGS).setOnPreferenceClickListener(preference -> {
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Reset all settings?")
+                    .setMessage("This restores app settings to their defaults. Bookmarks, history, favorites, user tags, account details and cached posts are not deleted.")
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Reset", (dialog, which) -> resetAllSettings())
+                    .show();
+            return true;
+        });
+
         findPreference("pref_open_hn_links_in_harmonic").setOnPreferenceClickListener(preference -> {
             new MaterialAlertDialogBuilder(requireContext())
                     .setMessage("Since Harmonic does not own the domain news.ycombinator.com, intercepting links needs to be enabled by the user manually.\n\nGo to \"Open by default\" → \"Add link\" in the linked app settings page.")
@@ -184,6 +199,27 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
 
         updateBookmarksPreferences();
         updateDataSummaries();
+    }
+
+    private void resetAllSettings() {
+        Context context = requireContext();
+
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .clear()
+                .commit();
+
+        SharedPreferences.Editor globalPrefsEditor = context
+                .getSharedPreferences(Utils.GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
+                .edit();
+        globalPrefsEditor.remove(Utils.KEY_NIGHTTIME_FROM_HOUR);
+        globalPrefsEditor.remove(Utils.KEY_NIGHTTIME_FROM_MINUTE);
+        globalPrefsEditor.remove(Utils.KEY_NIGHTTIME_TO_HOUR);
+        globalPrefsEditor.remove(Utils.KEY_NIGHTTIME_TO_MINUTE);
+        globalPrefsEditor.commit();
+
+        Utils.toast("Settings reset", context);
+        restartSettingsActivity();
     }
 
     @Override

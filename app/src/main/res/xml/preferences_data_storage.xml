@@ -69,6 +69,12 @@
             app:icon="@drawable/ic_action_cache"
             app:title="Stories to cache for offline" />
 
+        <Preference
+            app:singleLineTitle="false"
+            app:key="pref_reset_all_settings"
+            app:icon="@drawable/ic_action_refresh"
+            app:title="Reset all settings" />
+
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_show_changelog"
