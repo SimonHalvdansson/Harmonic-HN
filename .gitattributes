@@ -1,2 +1,32 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Normalize text files to LF in every working tree.
+* text=auto eol=lf
+
+# Windows command scripts should keep CRLF line endings.
+*.bat text eol=crlf
+
+# Android and project text formats.
+*.css text eol=lf
+*.gradle text eol=lf
+*.html text eol=lf
+*.java text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.kt text eol=lf
+*.md text eol=lf
+*.pro text eol=lf
+*.properties text eol=lf
+*.toml text eol=lf
+*.txt text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+
+# Binary assets and build artifacts.
+*.apk binary
+*.dm binary
+*.gif binary
+*.jar binary
+*.jpg binary
+*.png binary
+*.psd binary
+*.ttf binary
+*.webp binary
