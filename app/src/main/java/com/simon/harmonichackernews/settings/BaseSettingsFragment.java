@@ -71,10 +71,23 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
         }
 
         wrapper.addView(toolbar);
+        View headerView = onCreateHeaderView(inflater, wrapper, savedInstanceState);
+        if (headerView != null) {
+            wrapper.addView(headerView, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
         wrapper.addView(preferenceView, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         return wrapper;
+    }
+
+    protected @Nullable View onCreateHeaderView(
+            @NonNull LayoutInflater inflater,
+            @NonNull ViewGroup parent,
+            @Nullable Bundle savedInstanceState) {
+        return null;
     }
 
     @Override

@@ -4,7 +4,12 @@ import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.preference.ListPreference;
 import androidx.preference.MultiSelectListPreference;
 import androidx.preference.Preference;
@@ -18,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Set;
 
 public class StoriesPreferenceFragment extends BaseSettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
+    private StoryContentPreviewPreference previewView;
     private Preference grayOutClickedPreference;
     private Preference tintCardUsingPreviewPreference;
     private Preference compactPointsPreference;
@@ -31,12 +37,27 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
         return "Stories";
     }
 
+    @Nullable
+    @Override
+    protected View onCreateHeaderView(
+            @NonNull LayoutInflater inflater,
+            @NonNull ViewGroup parent,
+            @Nullable Bundle savedInstanceState) {
+        previewView = new StoryContentPreviewPreference(requireContext());
+        return previewView;
+    }
+
+    @Override
+    public void onDestroyView() {
+        previewView = null;
+        super.onDestroyView();
+    }
+
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.preferences_stories, rootKey);
 
         boolean compact = SettingsUtils.shouldUseCompactView(getContext());
-        StoryContentPreviewPreference previewPreference = findPreference("pref_story_content_preview");
         grayOutClickedPreference = findPreference(SettingsUtils.PREF_GRAY_OUT_CLICKED);
         tintCardUsingPreviewPreference = findPreference(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW);
         compactPointsPreference = findPreference(SettingsUtils.PREF_COMPACT_POINTS);
@@ -68,8 +89,8 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
         }
 
         findPreference("pref_compact_view").setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updateCompact((boolean) newValue);
+            if (previewView != null) {
+                previewView.updateCompact((boolean) newValue);
             }
             changePrefStatus(findPreference("pref_show_points"), !(boolean) newValue);
             updateCompactPointsPreference(!(boolean) newValue && SettingsUtils.shouldShowPoints(getContext()));
@@ -81,82 +102,82 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
         });
 
         findPreference("pref_story_preview_image_mode").setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updatePreviewImageMode((String) newValue);
+            if (previewView != null) {
+                previewView.updatePreviewImageMode((String) newValue);
             }
             return true;
         });
 
         findPreference(SettingsUtils.PREF_STORY_DISPLAY_STYLE).setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updateDisplayStyle((String) newValue);
+            if (previewView != null) {
+                previewView.updateDisplayStyle((String) newValue);
             }
             return true;
         });
 
         findPreference(SettingsUtils.PREF_STORY_TEXT_SIZE).setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updateTextSize((String) newValue);
+            if (previewView != null) {
+                previewView.updateTextSize((String) newValue);
             }
             return true;
         });
 
         findPreference("pref_thumbnails").setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updateThumbnails((boolean) newValue);
+            if (previewView != null) {
+                previewView.updateThumbnails((boolean) newValue);
             }
             changePrefStatus(faviconProviderPreference, (boolean) newValue);
             return true;
         });
 
         findPreference("pref_show_points").setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updatePoints((boolean) newValue);
+            if (previewView != null) {
+                previewView.updatePoints((boolean) newValue);
             }
             updateCompactPointsPreference((boolean) newValue && !SettingsUtils.shouldUseCompactView(getContext()));
             return true;
         });
 
         findPreference(SettingsUtils.PREF_COMPACT_POINTS).setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updateCompactPoints((boolean) newValue);
+            if (previewView != null) {
+                previewView.updateCompactPoints((boolean) newValue);
             }
             return true;
         });
 
         findPreference(SettingsUtils.PREF_INCLUDE_TOP_LEVEL_DOMAIN).setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updateIncludeTopLevelDomain((boolean) newValue);
+            if (previewView != null) {
+                previewView.updateIncludeTopLevelDomain((boolean) newValue);
             }
             refreshStoryWidgets();
             return true;
         });
 
         findPreference("pref_show_comments_count").setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updateCommentsCount((boolean) newValue);
+            if (previewView != null) {
+                previewView.updateCommentsCount((boolean) newValue);
             }
             return true;
         });
 
         findPreference("pref_show_index").setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updateShowIndex((boolean) newValue);
+            if (previewView != null) {
+                previewView.updateShowIndex((boolean) newValue);
             }
             refreshStoryWidgets();
             return true;
         });
 
         findPreference("pref_left_align").setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updateLeftAlign((boolean) newValue);
+            if (previewView != null) {
+                previewView.updateLeftAlign((boolean) newValue);
             }
             return true;
         });
 
         findPreference("pref_hotness").setOnPreferenceChangeListener((preference, newValue) -> {
-            if (previewPreference != null) {
-                previewPreference.updateHotness((String) newValue);
+            if (previewView != null) {
+                previewView.updateHotness((String) newValue);
             }
             return true;
         });

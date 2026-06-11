@@ -5,9 +5,6 @@
         app:title="Layout"
         android:layout="@layout/preference_category">
 
-        <com.simon.harmonichackernews.settings.StoryContentPreviewPreference
-            app:key="pref_story_content_preview" />
-
         <com.simon.harmonichackernews.settings.StoryPreviewImagePreference
             app:defaultValue="small"
             app:key="pref_story_preview_image_mode"
