@@ -22,6 +22,14 @@
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
+            app:key="pref_tint_card_using_preview"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_colors"
+            app:summary="Uses preview or favicon"
+            app:title="Tint" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
             app:key="pref_compact_view"
             app:summary="Hides points, domain and time"
             app:icon="@drawable/ic_action_compact"
@@ -69,14 +77,6 @@
             app:defaultValue="true"
             app:icon="@drawable/ic_action_index"
             app:title="Show story indices" />
-
-        <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_tint_card_using_preview"
-            app:defaultValue="true"
-            app:icon="@drawable/ic_action_colors"
-            app:summary="Uses preview or favicon"
-            app:title="Tint" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
