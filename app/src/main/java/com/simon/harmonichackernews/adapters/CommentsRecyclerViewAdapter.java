@@ -311,13 +311,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.pollLayout.setVisibility(GONE);
             }
 
-            if (!TextUtils.isEmpty(story.pdfTitle)) {
-                headerViewHolder.titleView.setText(getTitleWithBadge(ctx, story.pdfTitle, R.drawable.ic_action_pdf_large));
-            } else if (!TextUtils.isEmpty(story.videoTitle)) {
-                headerViewHolder.titleView.setText(getTitleWithBadge(ctx, story.videoTitle, R.drawable.ic_action_video_large));
-            } else {
-                headerViewHolder.titleView.setText(story.title);
-            }
+            bindHeaderTitle(headerViewHolder, ctx);
 
             if (story.loaded) {
                 headerViewHolder.metaVotes.setText(String.valueOf(story.score));
@@ -745,6 +739,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void bindHeaderTitle(HeaderViewHolder headerViewHolder, Context ctx) {
+        if (!story.loaded && !loadingFailed) {
+            headerViewHolder.titleView.setVisibility(GONE);
+            headerViewHolder.titleShimmer.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        headerViewHolder.titleShimmer.setVisibility(GONE);
+        headerViewHolder.titleView.setVisibility(story.loaded ? View.VISIBLE : GONE);
         if (!TextUtils.isEmpty(story.pdfTitle)) {
             headerViewHolder.titleView.setText(getTitleWithBadge(ctx, story.pdfTitle, R.drawable.ic_action_pdf_large));
         } else if (!TextUtils.isEmpty(story.videoTitle)) {
@@ -2400,6 +2402,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public class HeaderViewHolder extends RecyclerView.ViewHolder {
         public final View mView;
         public final TextView titleView;
+        public final LinearLayout titleShimmer;
         public final ImageView linkImage;
         public final LinearLayout metaContainer;
         public final TextView metaVotes;
@@ -2532,6 +2535,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             View view = binding.getRoot();
             mView = view;
             titleView = binding.commentsHeaderTitle;
+            titleShimmer = binding.commentsHeaderTitleShimmer;
             linkImage = binding.commentsHeaderLinkImage;
             metaContainer = binding.commentsHeaderMetaContainer;
             metaVotes = binding.commentsHeaderMetaVotes;

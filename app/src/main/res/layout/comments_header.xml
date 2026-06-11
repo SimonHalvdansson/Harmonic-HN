@@ -216,6 +216,38 @@
             tools:src="@drawable/web_preview"
             tools:visibility="visible" />
 
+        <com.facebook.shimmer.ShimmerFrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:shimmer_duration="2000"
+            app:shimmer_base_color="?attr/drawableColor"
+            app:shimmer_base_alpha="0.15"
+            app:shimmer_highlight_alpha="0.17">
+
+            <LinearLayout
+                android:id="@+id/comments_header_title_shimmer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp"
+                android:visibility="gone">
+
+                <View
+                    android:layout_width="260dp"
+                    android:layout_height="31dp"
+                    android:background="@drawable/smooth_rectangle_drawable" />
+
+                <View
+                    android:layout_width="190dp"
+                    android:layout_height="31dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/smooth_rectangle_drawable" />
+
+            </LinearLayout>
+
+        </com.facebook.shimmer.ShimmerFrameLayout>
+
         <TextView
             android:id="@+id/comments_header_title"
             android:layout_width="wrap_content"

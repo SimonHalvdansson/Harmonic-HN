@@ -1820,7 +1820,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         int oldCommentCount = getAllCommentsSource().size();
         boolean updateHeaderAfterLoad = false;
-        boolean fullHeaderRefreshAfterLoad = false;
 
         // This is what we get if the Algolia API has not indexed the post,
         // we should attempt to show the user an option to switch API:s in this
@@ -1838,15 +1837,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             JSONParser.AlgoliaCommentsResponse parsedResponse = JSONParser.parseAlgoliaCommentsResponse(response, story.kids, filteredUsers);
             applyParsedComments(parsedResponse.comments);
 
-            String oldStoryUrl = story.url;
-            boolean oldStoryIsLink = story.isLink;
-            boolean oldStoryIsComment = story.isComment;
             boolean storyChanged = parsedResponse.updateStoryInformation(story, forceHeaderRefresh, oldCommentCount);
             if (storyChanged || forceHeaderRefresh) {
                 updateHeaderAfterLoad = true;
-                fullHeaderRefreshAfterLoad = !TextUtils.equals(oldStoryUrl, story.url)
-                        || oldStoryIsLink != story.isLink
-                        || oldStoryIsComment != story.isComment;
             }
             maybeLoadPollOptions();
 
@@ -1889,9 +1882,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         adapter.commentsLoaded = true;
-        if (updateHeaderAfterLoad
-                && (fullHeaderRefreshAfterLoad || !adapter.updateBoundHeaderStoryViews())) {
-            adapter.notifyItemChanged(0);
+        if (updateHeaderAfterLoad) {
+            refreshHeaderAfterStoryLoad(cache);
         }
         updateNavigationVisibility();
         recyclerView.post(() -> {
@@ -1900,6 +1892,25 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
             scrollToTargetComment();
             restorePendingCommentActionOverlay();
+        });
+    }
+
+    private void refreshHeaderAfterStoryLoad(boolean animate) {
+        if (!isCommentsViewActive()) {
+            return;
+        }
+
+        if (!animate) {
+            if (!adapter.updateBoundHeaderStoryViews()) {
+                adapter.notifyItemChanged(0);
+            }
+            return;
+        }
+
+        recyclerView.post(() -> {
+            if (isCommentsViewActive()) {
+                adapter.notifyItemChanged(0);
+            }
         });
     }
 
