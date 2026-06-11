@@ -5,9 +5,6 @@
         app:title="Comments display"
         android:layout="@layout/preference_category">
 
-        <com.simon.harmonichackernews.settings.CommentContentPreviewPreference
-            app:key="pref_comment_content_preview" />
-
         <com.simon.harmonichackernews.settings.CommentDisplayStylePreference
             app:defaultValue="standard"
             app:key="pref_comment_display_style"

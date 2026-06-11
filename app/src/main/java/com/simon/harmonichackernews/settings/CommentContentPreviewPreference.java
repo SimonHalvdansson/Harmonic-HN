@@ -6,7 +6,6 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -20,8 +19,7 @@ import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
-import androidx.preference.Preference;
-import androidx.preference.PreferenceViewHolder;
+import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.databinding.CommentsItemBinding;
@@ -37,7 +35,7 @@ import com.simon.harmonichackernews.utils.Utils;
 
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 
-public class CommentContentPreviewPreference extends Preference implements SharedPreferences.OnSharedPreferenceChangeListener {
+public class CommentContentPreviewPreference extends FrameLayout implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final long TEXT_SIZE_ANIMATION_DURATION_MS = 120;
     private static final int MIN_STABLE_PREVIEW_WIDTH_DP = 240;
@@ -45,7 +43,6 @@ public class CommentContentPreviewPreference extends Preference implements Share
 
     private ViewGroup previewRoot;
     private ViewGroup previewItemContainer;
-    private View boundItemView;
     private HtmlTextView commentBody;
     private TextView commentBy;
     private TextView commentByTime;
@@ -66,24 +63,23 @@ public class CommentContentPreviewPreference extends Preference implements Share
 
     public CommentContentPreviewPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
-        setLayoutResource(R.layout.preference_comment_content_preview);
-        setSelectable(false);
+        View view = LayoutInflater.from(context).inflate(
+                R.layout.preference_comment_content_preview,
+                this,
+                false);
+        addView(view, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        bindPreviewLayout(view);
     }
 
     public CommentContentPreviewPreference(Context context) {
         this(context, null);
     }
 
-    @Override
-    public void onBindViewHolder(PreferenceViewHolder holder) {
-        super.onBindViewHolder(holder);
-
-        holder.itemView.setClickable(false);
-        holder.itemView.setFocusable(false);
-        holder.setIsRecyclable(false);
-
-        View itemView = holder.itemView;
-        boundItemView = itemView;
+    private void bindPreviewLayout(View itemView) {
+        itemView.setClickable(false);
+        itemView.setFocusable(false);
         PreferenceCommentContentPreviewBinding binding =
                 PreferenceCommentContentPreviewBinding.bind(itemView);
         previewRoot = binding.commentContentPreviewRoot;
@@ -113,22 +109,18 @@ public class CommentContentPreviewPreference extends Preference implements Share
     }
 
     @Override
-    public void onAttached() {
-        super.onAttached();
-        SharedPreferences preferences = getSharedPreferences();
-        if (preferences != null) {
-            preferences.registerOnSharedPreferenceChangeListener(this);
-        }
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        PreferenceManager.getDefaultSharedPreferences(getContext())
+                .registerOnSharedPreferenceChangeListener(this);
     }
 
     @Override
-    public void onDetached() {
-        SharedPreferences preferences = getSharedPreferences();
-        if (preferences != null) {
-            preferences.unregisterOnSharedPreferenceChangeListener(this);
-        }
+    protected void onDetachedFromWindow() {
+        PreferenceManager.getDefaultSharedPreferences(getContext())
+                .unregisterOnSharedPreferenceChangeListener(this);
         clearPreviewViews();
-        super.onDetached();
+        super.onDetachedFromWindow();
     }
 
     @Override
@@ -174,7 +166,6 @@ public class CommentContentPreviewPreference extends Preference implements Share
         }
         previewRoot = null;
         previewItemContainer = null;
-        boundItemView = null;
         commentBody = null;
         commentBy = null;
         commentByTime = null;
@@ -634,7 +625,7 @@ public class CommentContentPreviewPreference extends Preference implements Share
     }
 
     private void requestPreviewRemeasure() {
-        PreviewPreferenceViewUtils.requestPreviewRemeasure(previewItemContainer, previewRoot, boundItemView);
+        PreviewPreferenceViewUtils.requestPreviewRemeasure(previewItemContainer, previewRoot, this);
     }
 
     private void disablePreviewItemScrollbars() {

@@ -2,7 +2,12 @@ package com.simon.harmonichackernews.settings;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.preference.Preference;
 
 import com.simon.harmonichackernews.R;
@@ -21,11 +26,26 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
         return "Comments";
     }
 
+    @Nullable
+    @Override
+    protected View onCreateHeaderView(
+            @NonNull LayoutInflater inflater,
+            @NonNull ViewGroup parent,
+            @Nullable Bundle savedInstanceState) {
+        previewPreference = new CommentContentPreviewPreference(requireContext());
+        return previewPreference;
+    }
+
+    @Override
+    public void onDestroyView() {
+        previewPreference = null;
+        super.onDestroyView();
+    }
+
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.preferences_comments, rootKey);
 
-        previewPreference = findPreference("pref_comment_content_preview");
         threadDepthIndicatorsPreference = findPreference(SettingsUtils.PREF_COMMENT_DEPTH_INDICATORS);
         enableHeaderTintPreference = findPreference(SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_TINT);
         enableHeaderPreviewImagePreference = findPreference(SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE);

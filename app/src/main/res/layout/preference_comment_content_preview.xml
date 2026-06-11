@@ -9,17 +9,6 @@
     android:paddingEnd="8dp"
     android:paddingBottom="10dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="4dp"
-        android:fontFamily="@font/product_sans"
-        android:text="Preview"
-        android:textAllCaps="true"
-        android:textColor="?attr/textColorDisabled"
-        android:textSize="13dp"
-        android:textStyle="bold" />
-
     <FrameLayout
         android:id="@+id/comment_content_preview_item_container"
         android:layout_width="match_parent"
