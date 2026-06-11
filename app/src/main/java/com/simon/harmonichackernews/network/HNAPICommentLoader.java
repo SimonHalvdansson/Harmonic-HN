@@ -1,14 +1,18 @@
 package com.simon.harmonichackernews.network;
 
+import android.util.Log;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
+import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.simon.harmonichackernews.data.Comment;
 import org.json.JSONException;
 import java.util.Set;
 
 public class HNAPICommentLoader {
+    private static final String TAG = "HNAPICommentLoader";
+
     
     public interface CommentLoadListener {
         void onCommentLoaded(Comment comment);
@@ -34,24 +38,39 @@ public class HNAPICommentLoader {
             response -> {
                 try {
                     Comment comment = JSONParser.parseOfficialHNCommentResponse(response);
-                    if (comment != null && !filteredUsers.contains(comment.by.toLowerCase())) {
+                    if (comment != null && comment.by != null && !filteredUsers.contains(comment.by.toLowerCase())) {
                         comment.depth = depth;
                         listener.onCommentLoaded(comment);
                     } else {
+                        Log.w(TAG, "Skipping HN API comment, commentId=" + commentId
+                                + ", parsed=" + (comment != null)
+                                + ", hasAuthor=" + (comment != null && comment.by != null)
+                                + ", responseLength=" + (response == null ? 0 : response.length()));
                         listener.onCommentFailed(commentId);
                     }
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    Log.w(TAG, "Failed to parse HN API comment, commentId=" + commentId
+                            + ", responseLength=" + (response == null ? 0 : response.length()), e);
                     listener.onCommentFailed(commentId);
                 }
             },
             error -> {
-                error.printStackTrace();
+                Log.w(TAG, "HN API comment request failed, commentId=" + commentId + ": " + describeVolleyError(error), error);
                 listener.onCommentFailed(commentId);
             });
 
         request.setTag(requestTag);
         request.setRetryPolicy(new DefaultRetryPolicy(10000, 2, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         queue.add(request);
+    }
+
+    private static String describeVolleyError(VolleyError error) {
+        if (error == null) {
+            return "unknown VolleyError";
+        }
+        String status = error.networkResponse == null
+                ? "noNetworkResponse"
+                : "statusCode=" + error.networkResponse.statusCode;
+        return error.getClass().getSimpleName() + ", " + status + ", message=" + error.getMessage();
     }
 }

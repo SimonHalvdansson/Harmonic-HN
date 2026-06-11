@@ -20,6 +20,7 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.text.Html;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
@@ -111,6 +112,7 @@ import java.util.regex.Pattern;
 import okhttp3.Response;
 
 public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener, CommentsRecyclerViewAdapter.RequestSummaryCallback, CommentsRecyclerViewAdapter.RetryListener, CommentNavigationController.Host {
+    private static final String TAG = "CommentsFragment";
 
     public final static String EXTRA_TITLE = "com.simon.harmonichackernews.EXTRA_TITLE";
     public final static String EXTRA_PDF_TITLE = "com.simon.harmonichackernews.EXTRA_PDF_TITLE";
@@ -1582,8 +1584,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     @Override
     public void onRetry() {
         if (!isCommentsViewActive() || adapter.story == null) {
+            Log.w(TAG, "Retry ignored: commentsViewActive=" + isCommentsViewActive()
+                    + ", adapterPresent=" + (adapter != null)
+                    + ", storyPresent=" + (adapter != null && adapter.story != null));
             return;
         }
+        Log.d(TAG, "Retry requested for storyId=" + adapter.story.id);
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(true);
         }
@@ -1617,9 +1623,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private void loadStoryAndComments(final int id, final String oldCachedResponse) {
         Context context = getContext();
         if (context == null || queue == null || !isCommentsViewActive()) {
+            Log.w(TAG, "Skipping comments load for storyId=" + id
+                    + ": contextPresent=" + (context != null)
+                    + ", queuePresent=" + (queue != null)
+                    + ", commentsViewActive=" + isCommentsViewActive());
             return;
         }
 
+        Log.d(TAG, "Loading comments for storyId=" + id + ", hasCachedResponse=" + (oldCachedResponse != null));
         lastLoaded = System.currentTimeMillis();
         if (adapter != null) {
             adapter.lastRefreshed = lastLoaded;
@@ -1634,8 +1645,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onAlgoliaSuccess(String response) {
                 if (!isCommentsViewActive()) {
+                    Log.w(TAG, "Ignoring Algolia success because comments view is inactive for storyId=" + id);
                     return;
                 }
+                Log.d(TAG, "Algolia comments load succeeded for storyId=" + id
+                        + ", responseLength=" + (response == null ? 0 : response.length()));
                 if (TextUtils.isEmpty(oldCachedResponse) || !oldCachedResponse.equals(response)) {
                     handleJsonResponse(id, response, true, oldCachedResponse == null, false);
                 }
@@ -1645,8 +1659,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onAlgoliaFailed(boolean noInternet) {
                 if (!isCommentsViewActive()) {
+                    Log.w(TAG, "Ignoring Algolia failure because comments view is inactive for storyId=" + id);
                     return;
                 }
+                Log.w(TAG, "Algolia comments load failed for storyId=" + id + ", noInternet=" + noInternet);
                 adapter.loadingFailed = true;
                 adapter.loadingFailedServerError = !noInternet;
                 adapter.commentsLoaded = true;
@@ -1701,8 +1717,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onHNAPIFailed() {
                 if (!isCommentsViewActive()) {
+                    Log.w(TAG, "Ignoring HN API failure because comments view is inactive for storyId=" + id);
                     return;
                 }
+                Log.w(TAG, "HN API comments load failed for storyId=" + id);
                 adapter.loadingFailed = true;
                 adapter.loadingFailedServerError = false;
                 adapter.commentsLoaded = true;
@@ -1713,8 +1731,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onAllCommentsLoaded(List<Comment> loadedComments) {
                 if (!isCommentsViewActive()) {
+                    Log.w(TAG, "Ignoring loaded comments because comments view is inactive for storyId=" + id
+                            + ", loadedCount=" + (loadedComments == null ? 0 : loadedComments.size()));
                     return;
                 }
+                Log.d(TAG, "Loaded comments from fallback path for storyId=" + id
+                        + ", loadedCount=" + loadedComments.size());
                 // Add all comments at once in proper tree order
                 allComments.addAll(loadedComments);
                 updateDefaultCommentSortOrder(allComments);

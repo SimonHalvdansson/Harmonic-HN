@@ -9,6 +9,7 @@ import android.text.TextUtils;
 import android.transition.AutoTransition;
 import android.transition.TransitionManager;
 import android.transition.TransitionSet;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -46,6 +47,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
+import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButtonToggleGroup;
@@ -100,6 +102,7 @@ import java.util.TimeZone;
 import okhttp3.Response;
 
 public class StoriesFragment extends Fragment {
+    private static final String TAG = "StoriesFragment";
 
     private StoryClickListener storyClickListener;
     private FragmentStoriesBinding binding;
@@ -182,6 +185,7 @@ public class StoriesFragment extends Fragment {
     private boolean searching = false;
     private boolean loadingFailed = false;
     private boolean loadingFailedServerError = false;
+    private boolean loadingFailedRateLimited = false;
     private String lastSearch = "";
     private int algoliaRequestGeneration = 0;
     private int storyListGeneration = 0;
@@ -197,6 +201,7 @@ public class StoriesFragment extends Fragment {
     private boolean showingCachedBeforeSearch = false;
     private boolean loadingFailedBeforeSearch = false;
     private boolean loadingFailedServerErrorBeforeSearch = false;
+    private boolean loadingFailedRateLimitedBeforeSearch = false;
     private boolean showLoadMoreBeforeSearch = false;
     private int algoliaHitsPerPageBeforeSearch = StorySearchController.ALGOLIA_HITS_INCREMENT;
     private int lastAlgoliaTopStoriesStartTimeBeforeSearch = 0;
@@ -681,7 +686,13 @@ public class StoriesFragment extends Fragment {
         });
 
         // Set up retry button
-        retryButton.setOnClickListener(v -> attemptRefresh());
+        retryButton.setOnClickListener(v -> {
+            Log.d(TAG, "Retry button pressed for type=" + getCurrentStoryType().getLabel()
+                    + ", currentStories=" + (stories == null ? 0 : stories.size())
+                    + ", loadingFailed=" + loadingFailed
+                    + ", loadingFailedServerError=" + loadingFailedServerError);
+            attemptRefresh();
+        });
         showCachedButton.setOnClickListener(v -> showCachedStories());
 
         // Set up more button
@@ -903,7 +914,9 @@ public class StoriesFragment extends Fragment {
 
         loadingFailedLayout.setVisibility(loadingFailed ? View.VISIBLE : View.GONE);
         if (loadingFailed) {
-            if (!Utils.isNetworkAvailable(ctx)) {
+            if (loadingFailedRateLimited) {
+                loadingFailedText.setText("Rate limited");
+            } else if (!Utils.isNetworkAvailable(ctx)) {
                 loadingFailedText.setText("No internet connection");
             } else {
                 loadingFailedText.setText("Loading failed");
@@ -1851,6 +1864,7 @@ public class StoriesFragment extends Fragment {
         showingCachedBeforeSearch = showingCached;
         loadingFailedBeforeSearch = loadingFailed;
         loadingFailedServerErrorBeforeSearch = loadingFailedServerError;
+        loadingFailedRateLimitedBeforeSearch = loadingFailedRateLimited;
         showLoadMoreBeforeSearch = adapter.showLoadMoreButton;
         algoliaHitsPerPageBeforeSearch = algoliaHitsPerPage;
         lastAlgoliaTopStoriesStartTimeBeforeSearch = lastAlgoliaTopStoriesStartTime;
@@ -1891,6 +1905,7 @@ public class StoriesFragment extends Fragment {
         showingCached = showingCachedBeforeSearch;
         loadingFailed = loadingFailedBeforeSearch;
         loadingFailedServerError = loadingFailedServerErrorBeforeSearch;
+        loadingFailedRateLimited = loadingFailedRateLimitedBeforeSearch;
         adapter.showLoadMoreButton = showLoadMoreBeforeSearch;
         algoliaHitsPerPage = algoliaHitsPerPageBeforeSearch;
         lastAlgoliaTopStoriesStartTime = lastAlgoliaTopStoriesStartTimeBeforeSearch;
@@ -1915,6 +1930,7 @@ public class StoriesFragment extends Fragment {
         showingCached = showingCachedBeforeSearch;
         loadingFailed = loadingFailedBeforeSearch;
         loadingFailedServerError = loadingFailedServerErrorBeforeSearch;
+        loadingFailedRateLimited = loadingFailedRateLimitedBeforeSearch;
         adapter.showLoadMoreButton = showLoadMoreBeforeSearch;
         algoliaHitsPerPage = algoliaHitsPerPageBeforeSearch;
         lastAlgoliaTopStoriesStartTime = lastAlgoliaTopStoriesStartTimeBeforeSearch;
@@ -1927,6 +1943,7 @@ public class StoriesFragment extends Fragment {
         showingCachedBeforeSearch = false;
         loadingFailedBeforeSearch = false;
         loadingFailedServerErrorBeforeSearch = false;
+        loadingFailedRateLimitedBeforeSearch = false;
         showLoadMoreBeforeSearch = false;
         algoliaHitsPerPageBeforeSearch = StorySearchController.ALGOLIA_HITS_INCREMENT;
         lastAlgoliaTopStoriesStartTimeBeforeSearch = 0;
@@ -2902,6 +2919,7 @@ public class StoriesFragment extends Fragment {
                     HistoriesUtils.INSTANCE.clearHistories(requireContext());
                     loadingFailed = false;
                     loadingFailedServerError = false;
+                    loadingFailedRateLimited = false;
                     clearStories();
                     updateHeader();
                 }
@@ -2972,6 +2990,7 @@ public class StoriesFragment extends Fragment {
     private void attemptRefresh(boolean showSwipeRefreshIndicator, boolean showMainLoadingIndicator) {
         hideUpdateButton();
         if (searching) {
+            Log.d(TAG, "Refreshing active search, queryLength=" + (lastSearch == null ? 0 : lastSearch.length()));
             search(lastSearch);
             return;
         }
@@ -2980,11 +2999,17 @@ public class StoriesFragment extends Fragment {
 
         // cancel all ongoing
         int refreshGeneration = beginStoryListRefresh();
+        StoryType currentStoryType = getCurrentStoryType();
+        Log.d(TAG, "Starting refresh generation=" + refreshGeneration
+                + ", type=" + currentStoryType.getLabel()
+                + ", showSwipeRefreshIndicator=" + showSwipeRefreshIndicator
+                + ", showMainLoadingIndicator=" + showMainLoadingIndicator);
 
         boolean userItemListTypeForRefresh = isUserItemListType(adapter.type);
         if (showMainLoadingIndicator) {
             loadingFailed = false;
             loadingFailedServerError = false;
+            loadingFailedRateLimited = false;
             showingCached = false;
             userItemListInitialLoadInProgress = userItemListTypeForRefresh;
             replaceStories(new ArrayList<>(), true);
@@ -3053,7 +3078,6 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
-        StoryType currentStoryType = getCurrentStoryType();
         if (currentStoryType.isFrontpageLinkList()) {
             loadFrontpageLinkRows(currentStoryType, refreshGeneration);
             return;
@@ -3068,6 +3092,9 @@ public class StoriesFragment extends Fragment {
         if (storyListUrl == null) {
             swipeRefreshLayout.setRefreshing(false);
             loadingFailed = true;
+            loadingFailedRateLimited = false;
+            Log.w(TAG, "Story list refresh failed before request: missing URL for type=" + currentStoryType.getLabel()
+                    + ", generation=" + refreshGeneration);
             updateHeader();
             return;
         }
@@ -3075,6 +3102,9 @@ public class StoriesFragment extends Fragment {
         StringRequest stringRequest = new StringRequest(Request.Method.GET, storyListUrl,
                 response -> {
                     if (!isCurrentStoryListGeneration(refreshGeneration)) {
+                        Log.d(TAG, "Ignoring stale story list success for type=" + currentStoryType.getLabel()
+                                + ", generation=" + refreshGeneration
+                                + ", currentGeneration=" + storyListGeneration);
                         return;
                     }
                     swipeRefreshLayout.setRefreshing(false);
@@ -3093,6 +3123,7 @@ public class StoriesFragment extends Fragment {
                         if (loadingFailed) {
                             loadingFailed = false;
                             loadingFailedServerError = false;
+                            loadingFailedRateLimited = false;
                         }
 
                         updateHeader();
@@ -3100,16 +3131,27 @@ public class StoriesFragment extends Fragment {
                         loadInitialVisibleStories(refreshGeneration);
 
                     } catch (JSONException e) {
-                        e.printStackTrace();
+                        Log.w(TAG, "Failed to parse story list JSON for type=" + currentStoryType.getLabel()
+                                + ", generation=" + refreshGeneration
+                                + ", responseLength=" + (response == null ? 0 : response.length()), e);
                     } catch (NumberFormatException e) {
-                        e.printStackTrace();
+                        Log.w(TAG, "Failed to parse story id in list for type=" + currentStoryType.getLabel()
+                                + ", generation=" + refreshGeneration
+                                + ", responseLength=" + (response == null ? 0 : response.length()), e);
                     }
                 }, error -> {
             if (!isCurrentStoryListGeneration(refreshGeneration)) {
+                Log.d(TAG, "Ignoring stale story list failure for type=" + currentStoryType.getLabel()
+                        + ", generation=" + refreshGeneration
+                        + ", currentGeneration=" + storyListGeneration);
                 return;
             }
             swipeRefreshLayout.setRefreshing(false);
             loadingFailed = true;
+            loadingFailedRateLimited = isRateLimitedError(error);
+            Log.w(TAG, "Story list request failed for type=" + currentStoryType.getLabel()
+                    + ", generation=" + refreshGeneration
+                    + ", error=" + error);
             updateHeader();
         });
 
@@ -3124,11 +3166,33 @@ public class StoriesFragment extends Fragment {
             swipeRefreshLayout.setRefreshing(false);
             loadingFailed = true;
             loadingFailedServerError = false;
+            loadingFailedRateLimited = false;
+            Log.w(TAG, "Scraped frontpage refresh failed before request: missing context for type="
+                    + storyType.getLabel() + ", generation=" + refreshGeneration);
             updateHeader();
             return;
         }
 
         String frontDay = storyType.isFront() ? getFrontPageDayParameter() : null;
+        Log.d(TAG, "Fetching scraped frontpage type=" + storyType.getLabel()
+                + ", path=" + storyType.getHackerNewsPath()
+                + ", commentsPage=" + storyType.usesCommentRows()
+                + ", day=" + frontDay
+                + ", generation=" + refreshGeneration);
+        final boolean[] callbackReceived = {false};
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!callbackReceived[0]
+                    && isAdded()
+                    && adapter != null
+                    && getCurrentStoryType() == storyType
+                    && isCurrentStoryListGeneration(refreshGeneration)) {
+                Log.w(TAG, "Scraped frontpage request still pending for type=" + storyType.getLabel()
+                        + ", path=" + storyType.getHackerNewsPath()
+                        + ", generation=" + refreshGeneration
+                        + ", loadingFailed=" + loadingFailed
+                        + ", networkAvailable=" + Utils.isNetworkAvailable(getContext()));
+            }
+        }, 15000);
         UserActions.fetchStoryListIds(
                 ctx,
                 storyType.getHackerNewsPath(),
@@ -3138,20 +3202,34 @@ public class StoriesFragment extends Fragment {
                 new UserActions.StoryListCallback() {
             @Override
             public void onSuccess(List<Integer> itemIds, List<Integer> commentIds, String nextPageUrl) {
+                callbackReceived[0] = true;
                 if (!isAdded()
                         || adapter == null
                         || getCurrentStoryType() != storyType
                         || !isCurrentStoryListGeneration(refreshGeneration)) {
+                    Log.d(TAG, "Ignoring stale scraped frontpage success for type=" + storyType.getLabel()
+                            + ", generation=" + refreshGeneration
+                            + ", currentGeneration=" + storyListGeneration
+                            + ", isAdded=" + isAdded()
+                            + ", adapterPresent=" + (adapter != null)
+                            + ", currentType=" + getCurrentStoryType().getLabel());
                     return;
                 }
 
                 swipeRefreshLayout.setRefreshing(false);
                 loadingFailed = itemIds.isEmpty();
                 loadingFailedServerError = false;
+                loadingFailedRateLimited = false;
                 showingCached = false;
                 scrapedFrontpageStoryType = storyType;
                 scrapedFrontpageNextPageUrl = nextPageUrl;
                 scrapedFrontpageNextPageLoading = false;
+                Log.d(TAG, "Scraped frontpage success for type=" + storyType.getLabel()
+                        + ", generation=" + refreshGeneration
+                        + ", itemCount=" + itemIds.size()
+                        + ", commentIdCount=" + commentIds.size()
+                        + ", hasNextPage=" + !TextUtils.isEmpty(nextPageUrl)
+                        + ", loadingFailed=" + loadingFailed);
 
                 if (!loadingFailed) {
                     replaceStories(createLoadingStoriesFromIds(itemIds, new HashSet<>(commentIds)),
@@ -3165,16 +3243,31 @@ public class StoriesFragment extends Fragment {
 
             @Override
             public void onFailure(String summary, String response) {
+                callbackReceived[0] = true;
                 if (!isAdded()
                         || adapter == null
                         || getCurrentStoryType() != storyType
                         || !isCurrentStoryListGeneration(refreshGeneration)) {
+                    Log.d(TAG, "Ignoring stale scraped frontpage failure for type=" + storyType.getLabel()
+                            + ", generation=" + refreshGeneration
+                            + ", currentGeneration=" + storyListGeneration
+                            + ", isAdded=" + isAdded()
+                            + ", adapterPresent=" + (adapter != null)
+                            + ", currentType=" + getCurrentStoryType().getLabel()
+                            + ", summary=" + summary
+                            + ", response=" + response);
                     return;
                 }
 
                 swipeRefreshLayout.setRefreshing(false);
                 loadingFailed = true;
                 loadingFailedServerError = false;
+                loadingFailedRateLimited = isRateLimitedResponse(summary, response);
+                Log.w(TAG, "Scraped frontpage request failed for type=" + storyType.getLabel()
+                        + ", path=" + storyType.getHackerNewsPath()
+                        + ", generation=" + refreshGeneration
+                        + ", summary=" + summary
+                        + ", response=" + response);
                 updateHeader();
             }
         });
@@ -3248,6 +3341,7 @@ public class StoriesFragment extends Fragment {
             swipeRefreshLayout.setRefreshing(false);
             loadingFailed = true;
             loadingFailedServerError = false;
+            loadingFailedRateLimited = false;
             updateHeader();
             return;
         }
@@ -3265,6 +3359,7 @@ public class StoriesFragment extends Fragment {
                 swipeRefreshLayout.setRefreshing(false);
                 loadingFailed = linkRows.isEmpty();
                 loadingFailedServerError = false;
+                loadingFailedRateLimited = false;
                 showingCached = false;
 
                 if (!loadingFailed) {
@@ -3287,11 +3382,28 @@ public class StoriesFragment extends Fragment {
                 swipeRefreshLayout.setRefreshing(false);
                 loadingFailed = true;
                 loadingFailedServerError = false;
+                loadingFailedRateLimited = isRateLimitedResponse(summary, response);
                 updateHeader();
             }
         });
 
         updateHeader();
+    }
+
+    private boolean isRateLimitedError(@Nullable VolleyError error) {
+        return error != null
+                && error.networkResponse != null
+                && error.networkResponse.statusCode == 429;
+    }
+
+    private boolean isRateLimitedResponse(@Nullable String summary, @Nullable String response) {
+        return containsHttp429(summary) || containsHttp429(response);
+    }
+
+    private boolean containsHttp429(@Nullable String text) {
+        return text != null
+                && (text.contains("429")
+                || text.toLowerCase(Locale.US).contains("too many requests"));
     }
 
     private ArrayList<Story> createLoadingStoriesFromIds(List<Integer> itemIds) {
@@ -3395,6 +3507,7 @@ public class StoriesFragment extends Fragment {
         showingCached = false;
         loadingFailed = false;
         loadingFailedServerError = false;
+        loadingFailedRateLimited = false;
         userItemListInitialLoadInProgress = false;
 
         UserItemListRepository.Snapshot snapshot = UserItemListRepository.loadCachedSnapshot(getContext(), getCurrentUserItemListSource());
@@ -3416,6 +3529,7 @@ public class StoriesFragment extends Fragment {
             swipeRefreshLayout.setRefreshing(false);
             userItemListInitialLoadInProgress = false;
             loadingFailed = stories.isEmpty();
+            loadingFailedRateLimited = false;
             updateHeader();
             return;
         }
@@ -3451,6 +3565,7 @@ public class StoriesFragment extends Fragment {
                 userItemListInitialLoadInProgress = false;
                 loadingFailed = false;
                 loadingFailedServerError = false;
+                loadingFailedRateLimited = false;
                 swipeRefreshLayout.setRefreshing(false);
                 updateHeader();
             }
@@ -3467,6 +3582,7 @@ public class StoriesFragment extends Fragment {
                 swipeRefreshLayout.setRefreshing(false);
                 userItemListInitialLoadInProgress = false;
                 loadingFailed = stories.isEmpty();
+                loadingFailedRateLimited = isRateLimitedResponse(summary, response);
                 updateHeader();
                 Toast.makeText(requireContext(), summary, Toast.LENGTH_SHORT).show();
             }
@@ -3795,6 +3911,7 @@ public class StoriesFragment extends Fragment {
             swipeRefreshLayout.setRefreshing(false);
             loadingFailed = false;
             loadingFailedServerError = false;
+            loadingFailedRateLimited = false;
             useSearchStoryList();
             searchAdapter.type = mainAdapter.type;
             updateAdapterCommentRows();
@@ -3909,6 +4026,7 @@ public class StoriesFragment extends Fragment {
         activeAlgoliaUrl = null;
         loadingFailed = false;
         loadingFailedServerError = false;
+        loadingFailedRateLimited = false;
         showingCached = false;
         queue.cancelAll(requestTag);
         loadingStoryIds.clear();
@@ -4005,6 +4123,7 @@ public class StoriesFragment extends Fragment {
         swipeRefreshLayout.setRefreshing(false);
         loadingFailed = totalRequests > 0 && failedRequests == totalRequests;
         loadingFailedServerError = false;
+        loadingFailedRateLimited = false;
         replaceStories(finishedStories);
         loadedTo = stories.size() - 1;
         scheduleLoadedPreviewImagePrefetchNearViewport();
@@ -4026,6 +4145,7 @@ public class StoriesFragment extends Fragment {
         activeAlgoliaUrl = url;
         loadingFailed = false;
         loadingFailedServerError = false;
+        loadingFailedRateLimited = false;
         queue.cancelAll(requestTag);
 
         swipeRefreshLayout.setEnabled(!searching);
@@ -4066,6 +4186,7 @@ public class StoriesFragment extends Fragment {
 
                             loadingFailed = false;
                             loadingFailedServerError = false;
+                            loadingFailedRateLimited = false;
                             showingCached = false;
 
                             if (preservePaginationForLoadMore) {
@@ -4116,6 +4237,7 @@ public class StoriesFragment extends Fragment {
             if (error.networkResponse != null && error.networkResponse.statusCode == 404) {
                 loadingFailedServerError = true;
             }
+            loadingFailedRateLimited = isRateLimitedError(error);
 
             error.printStackTrace();
             swipeRefreshLayout.setRefreshing(false);
@@ -4633,6 +4755,7 @@ public class StoriesFragment extends Fragment {
         loadedTo = stories.size() - 1;
         loadingFailed = false;
         loadingFailedServerError = false;
+        loadingFailedRateLimited = false;
         updateHeader();
     }
 
