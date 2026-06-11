@@ -753,7 +753,7 @@ public class Utils {
         for (String entry : cached) {
             int id = getCachedStoryIndexEntryId(entry);
             long time = getCachedStoryIndexEntryTime(entry);
-            if (id > 0 && time >= limit && hasCachedStoryData(ctx, id)) {
+            if (id > 0 && time >= limit && loadCachedStoryForStoriesList(ctx, id) != null) {
                 return true;
             }
         }
@@ -784,16 +784,8 @@ public class Utils {
         Collections.sort(orderedIds, (a, b) -> Long.compare(a.first, b.first));
 
         for (Pair<Long, Integer> pair : orderedIds) {
-            Story story = new Story();
-            story.id = pair.second;
-            if (loadCachedStorySummary(ctx, story)) {
-                stories.add(story);
-                continue;
-            }
-
-            String fullStory = loadCachedStory(ctx, pair.second);
-            String summary = JSONParser.compactAlgoliaStoryResponse(fullStory, pair.second);
-            if (!TextUtils.isEmpty(summary) && JSONParser.updateStoryWithCachedStorySummary(story, summary)) {
+            Story story = loadCachedStoryForStoriesList(ctx, pair.second);
+            if (story != null) {
                 stories.add(story);
             }
         }
@@ -801,11 +793,21 @@ public class Utils {
         return stories;
     }
 
-    private static boolean hasCachedStoryData(Context ctx, int id) {
-        return getCachedStorySummaryFile(ctx, id).exists()
-                || getCachedStoryFullFile(ctx, id).exists()
-                || ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-                .contains(KEY_SHARED_PREFERENCES_CACHED_STORY + id);
+    private static Story loadCachedStoryForStoriesList(Context ctx, int id) {
+        Story story = new Story();
+        story.id = id;
+        boolean loaded = loadCachedStorySummary(ctx, story);
+        if (!loaded) {
+            String fullStory = loadCachedStory(ctx, id);
+            String summary = JSONParser.compactAlgoliaStoryResponse(fullStory, id);
+            loaded = !TextUtils.isEmpty(summary) && JSONParser.updateStoryWithCachedStorySummary(story, summary);
+        }
+
+        if (!loaded || story.isComment) {
+            return null;
+        }
+
+        return story;
     }
 
     public static ArrayList<Bookmark> loadBookmarks(Context ctx, boolean sorted) {
