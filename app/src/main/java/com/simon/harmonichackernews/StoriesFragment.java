@@ -71,6 +71,7 @@ import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
+import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryUpdate;
@@ -127,6 +128,8 @@ public class StoriesFragment extends Fragment {
     private SearchBar searchBar;
     private EditText searchEditText;
     private View searchOptionsScroll;
+    private int headerBasePaddingStart;
+    private int headerBasePaddingEnd;
     private Chip searchSortChip;
     private Chip searchDateChip;
     private Chip searchPointsChip;
@@ -301,6 +304,8 @@ public class StoriesFragment extends Fragment {
 
         // Bind header views
         headerContainer = headerBinding.storiesHeaderContainer;
+        headerBasePaddingStart = headerContainer.getPaddingStart();
+        headerBasePaddingEnd = headerContainer.getPaddingEnd();
         typeSpinner = headerBinding.storiesHeaderSpinner;
         spinnerContainer = headerBinding.storiesHeaderSpinnerContainer;
         searchContainer = headerBinding.storiesHeaderSearchContainer;
@@ -425,13 +430,13 @@ public class StoriesFragment extends Fragment {
 
                 // Apply bottom inset to RecyclerViews so last item isn't behind nav bar
                 mainRecyclerView.setPadding(
-                        mainRecyclerView.getPaddingLeft(),
+                        getSplitStoriesContentPaddingStart(),
                         mainRecyclerView.getPaddingTop(),
                         mainRecyclerView.getPaddingRight(),
                         insets.bottom
                 );
                 searchRecyclerView.setPadding(
-                        searchRecyclerView.getPaddingLeft(),
+                        getSplitStoriesContentPaddingStart(),
                         searchRecyclerView.getPaddingTop(),
                         searchRecyclerView.getPaddingRight(),
                         insets.bottom
@@ -800,8 +805,8 @@ public class StoriesFragment extends Fragment {
         if (!searchMode && shouldShowLastUpdatedHeader()) {
             bottomPad = Utils.pxFromDpInt(getResources(), compactHeader ? 4 : 8);
         }
-        int sidePaddingStart = headerContainer.getPaddingStart();
-        int sidePaddingEnd = headerContainer.getPaddingEnd();
+        int sidePaddingStart = headerBasePaddingStart + getSplitStoriesContentPaddingStart();
+        int sidePaddingEnd = headerBasePaddingEnd;
         headerContainer.setPaddingRelative(sidePaddingStart, topPad, sidePaddingEnd, bottomPad);
 
         if (searchOptionsScroll == null) return;
@@ -931,6 +936,18 @@ public class StoriesFragment extends Fragment {
             lastUpdatedHeaderText.setText("Last updated: "
                     + android.text.format.DateFormat.getTimeFormat(ctx).format(new java.util.Date(lastLoaded)));
         }
+    }
+
+    private int getSplitStoriesContentPaddingStart() {
+        Context ctx = getContext();
+        if (ctx == null
+                || !(getActivity() instanceof MainActivity)
+                || FoldableSplitInitializer.isFoldableSplitEnabled(ctx)
+                || !Utils.isTablet(getResources())) {
+            return 0;
+        }
+
+        return getResources().getDimensionPixelSize(R.dimen.extra_pane_padding);
     }
 
     private Calendar getFrontPageDayUtc() {

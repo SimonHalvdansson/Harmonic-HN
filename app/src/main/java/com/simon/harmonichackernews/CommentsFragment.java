@@ -590,7 +590,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
                 int leftPadding = Math.max(Math.max(cutoutInsets.left, systemInsets.left), contentPaddingLeft);
                 int rightPadding = Math.max(Math.max(cutoutInsets.right, systemInsets.right), contentPaddingRight);
-                bottomSheet.setPadding(leftPadding, 0, rightPadding, 0);
+                bottomSheet.setPadding(0, 0, 0, 0);
+                setCommentsRecyclerSidePadding(leftPadding, rightPadding);
 
                 View emptyView = binding.commentsEmpty;
                 emptyView.setPadding(leftPadding, emptyView.getPaddingTop(), rightPadding, emptyView.getPaddingBottom());
@@ -1104,6 +1105,25 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COMMENT_CARD, 300);
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COLLAPSED, 600);
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_HEADER, 1);
+    }
+
+    private void setCommentsRecyclerSidePadding(int leftPadding, int rightPadding) {
+        setRecyclerSidePadding(recyclerViewRegular, leftPadding, rightPadding);
+        setRecyclerSidePadding(recyclerViewSwipe, leftPadding, rightPadding);
+    }
+
+    private void setRecyclerSidePadding(@Nullable RecyclerView targetRecyclerView,
+                                        int leftPadding,
+                                        int rightPadding) {
+        if (targetRecyclerView == null) {
+            return;
+        }
+
+        targetRecyclerView.setPadding(
+                leftPadding,
+                targetRecyclerView.getPaddingTop(),
+                rightPadding,
+                targetRecyclerView.getPaddingBottom());
     }
 
 

@@ -277,8 +277,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                     getResources().getInteger(R.integer.stories_pane_weight));
             mainFragmentStoriesContainer.setLayoutParams(params);
 
-            int extraPadding = getResources().getDimensionPixelSize(R.dimen.extra_pane_padding);
-            mainFragmentsContainer.setPadding(extraPadding, 0, 0, 0);
+            mainFragmentsContainer.setPadding(0, 0, 0, 0);
         }
     }
 
