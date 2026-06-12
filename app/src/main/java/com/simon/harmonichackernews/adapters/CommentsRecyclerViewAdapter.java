@@ -128,6 +128,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean swapLongPressTap;
     public boolean cardStyle;
     public boolean collectReferenceLinks;
+    public boolean hasAccountDetails;
     private boolean readerModeAvailable = false;
     private boolean readerModeEnabled = false;
     private boolean commentsByOpFilterActive = false;
@@ -211,6 +212,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                         boolean shouldSwapLongPressTap,
                                         boolean shouldUseCardStyle,
                                         boolean shouldCollectReferenceLinks,
+                                        boolean hasAccountDetailsParam,
                                         CommentsRecyclerViewAdapter.RequestSummaryCallback requestSummaryCallback) {
         integratedWebview = useIntegratedWebview;
         bottomSheet = sheet;
@@ -235,6 +237,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         swapLongPressTap = shouldSwapLongPressTap;
         cardStyle = shouldUseCardStyle;
         collectReferenceLinks = shouldCollectReferenceLinks;
+        hasAccountDetails = hasAccountDetailsParam;
         summaryCallback = requestSummaryCallback;
     }
 
@@ -426,8 +429,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
             headerViewHolder.opFilterContainer.setVisibility(commentsByOpFilterActive ? VISIBLE : GONE);
             headerViewHolder.bookmarkButtonParent.setVisibility(bookmarksEnabled ? VISIBLE : GONE);
-            headerViewHolder.commentButtonParent.setVisibility(Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time) ? GONE : View.VISIBLE);
-            headerViewHolder.commentButton.setContentDescription(story.isComment ? "Reply to comment" : "Reply to post");
+            bindHeaderAccountActionVisibility(headerViewHolder);
 
             headerViewHolder.loadingFailed.setVisibility(loadingFailed ? VISIBLE : GONE);
             if (loadingFailed) {
@@ -733,9 +735,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
         headerViewHolder.summarizeButtonParent.setVisibility(story.isLink && Utils.canProvideSummary(ctx) ? View.VISIBLE : View.GONE);
         headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
-        headerViewHolder.commentButtonParent.setVisibility(Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time) ? GONE : View.VISIBLE);
-        headerViewHolder.commentButton.setContentDescription(story.isComment ? "Reply to comment" : "Reply to post");
+        bindHeaderAccountActionVisibility(headerViewHolder);
         bindHeaderTint(headerViewHolder);
+    }
+
+    private void bindHeaderAccountActionVisibility(HeaderViewHolder headerViewHolder) {
+        boolean canReply = hasAccountDetails && !Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time);
+        headerViewHolder.commentButtonParent.setVisibility(canReply ? VISIBLE : GONE);
+        headerViewHolder.voteButtonParent.setVisibility(hasAccountDetails ? VISIBLE : GONE);
+        headerViewHolder.favoriteButtonParent.setVisibility(hasAccountDetails ? VISIBLE : GONE);
+        headerViewHolder.commentButton.setContentDescription(story.isComment ? "Reply to comment" : "Reply to post");
     }
 
     private void bindHeaderTitle(HeaderViewHolder headerViewHolder, Context ctx) {
@@ -2450,6 +2459,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout userButtonParent;
         public final RelativeLayout moreButtonParent;
         public final RelativeLayout commentButtonParent;
+        public final RelativeLayout voteButtonParent;
         public final RelativeLayout favoriteButtonParent;
         public final RelativeLayout bookmarkButtonParent;
         public final View divider;
@@ -2581,6 +2591,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             userButtonParent = binding.commentsHeaderButtonUserParent;
             moreButtonParent = binding.commentsHeaderButtonMoreParent;
             commentButtonParent = binding.commentsHeaderButtonCommentParent;
+            voteButtonParent = (RelativeLayout) voteButton.getParent();
             favoriteButtonParent = binding.commentsHeaderButtonFavoriteParent;
             bookmarkButtonParent = binding.commentsHeaderButtonBookmarkParent;
             divider = binding.commentsHeaderDivider;

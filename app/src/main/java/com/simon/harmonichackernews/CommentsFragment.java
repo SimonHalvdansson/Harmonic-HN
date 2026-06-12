@@ -836,6 +836,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 SettingsUtils.shouldSwapCommentLongPressTap(getContext()),
                 SettingsUtils.shouldUseCardCommentDisplayStyle(getContext()),
                 SettingsUtils.shouldCollectLinksInComments(getContext()),
+                AccountUtils.hasAccountDetails(getContext()),
                 this);
         adapter.lastRefreshed = lastLoaded;
         adapter.setCommentsByOpFilterActive(commentsByOpFilterActive);
@@ -1249,6 +1250,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 || (lastLoaded != 0 && (System.currentTimeMillis() - lastLoaded) > 1000 * 60 * 60 && !Utils.timeInSecondsMoreThanTwoHoursAgo(story.time));
         if (adapter != null) {
             adapter.lastRefreshed = lastLoaded;
+            boolean hasAccountDetails = AccountUtils.hasAccountDetails(getContext());
+            if (adapter.hasAccountDetails != hasAccountDetails) {
+                adapter.hasAccountDetails = hasAccountDetails;
+                adapter.notifyItemChanged(0);
+            }
             if (adapter.showUpdate != shouldShowUpdate) {
                 adapter.showUpdate = shouldShowUpdate;
                 if (shouldShowUpdate) {
