@@ -74,6 +74,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     private String displayStyleOverride;
     private int previewImageAnimationToken;
     private int metaAnimationToken;
+    private int commentCountAnimationToken;
     private boolean storyContainerChangingTransitionSuspended;
     private boolean storyContainerChangingTransitionWasEnabled;
     private final View.OnLayoutChangeListener previewContainerLayoutChangeListener =
@@ -1694,8 +1695,9 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             return;
         }
 
-        String targetText = showCommentsCount ? "18" : "";
+        String targetText = showCommentsCount ? PREVIEW_STORY_COMMENTS : "";
         int targetVisibility = compact || !showCommentsCount ? View.GONE : View.VISIBLE;
+        int animationToken = ++commentCountAnimationToken;
         cancelViewAnimation(currentComments);
 
         if (!animate) {
@@ -1706,10 +1708,10 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         }
 
         if (currentComments.getVisibility() != targetVisibility) {
-            currentComments.setText(targetText);
             currentComments.setScaleX(1f);
             currentComments.setScaleY(1f);
             if (targetVisibility == View.VISIBLE) {
+                currentComments.setText(targetText);
                 currentComments.setAlpha(0f);
                 setVisibilityWithChangingOnly(currentComments, View.VISIBLE);
                 currentComments.animate()
@@ -1720,7 +1722,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                         .setListener(new AnimatorListenerAdapter() {
                             @Override
                             public void onAnimationEnd(Animator animation) {
-                                if (comments != currentComments) {
+                                if (animationToken != commentCountAnimationToken || comments != currentComments) {
                                     return;
                                 }
                                 currentComments.animate().setListener(null);
@@ -1730,7 +1732,24 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                         .start();
             } else {
                 currentComments.setAlpha(1f);
-                setVisibilityWithChangingOnly(currentComments, View.GONE);
+                currentComments.animate()
+                        .alpha(0f)
+                        .setDuration(PREVIEW_TEXT_FADE_DURATION_MS)
+                        .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                        .setListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(Animator animation) {
+                                if (animationToken != commentCountAnimationToken || comments != currentComments) {
+                                    return;
+                                }
+                                currentComments.animate().setListener(null);
+                                currentComments.setText(targetText);
+                                setVisibilityWithChangingOnly(currentComments, View.GONE);
+                                currentComments.setAlpha(1f);
+                                syncPreviewContainerHeight(getCurrentPreviewImageMode(), true);
+                            }
+                        })
+                        .start();
             }
             return;
         }
@@ -1751,7 +1770,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 .setDuration(PREVIEW_TEXT_FADE_DURATION_MS / 2)
                 .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
                 .withEndAction(() -> {
-                    if (comments != currentComments) {
+                    if (animationToken != commentCountAnimationToken || comments != currentComments) {
                         return;
                     }
                     currentComments.setText(targetText);
