@@ -52,6 +52,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     private View metaContainer;
     private View storyLinkLayout;
     private View commentLayout;
+    private View storyRow;
     private ImageView favicon;
     private ImageView commentsIcon;
     private ImageView smallPreviewImage;
@@ -223,6 +224,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         metaContainer = null;
         storyLinkLayout = null;
         commentLayout = null;
+        storyRow = null;
         favicon = null;
         commentsIcon = null;
         smallPreviewImage = null;
@@ -410,6 +412,9 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             commentLayout.setClickable(false);
             commentLayout.setFocusable(false);
             commentLayout.setContentDescription("Preview comment button");
+            if (commentLayout.getParent() instanceof View) {
+                storyRow = (View) commentLayout.getParent();
+            }
             if (commentLayout instanceof ViewGroup) {
                 setPreviewLayoutTransition((ViewGroup) commentLayout);
             }
@@ -641,17 +646,26 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         boolean compactVisibilityChanged =
                 metaContainer != null && metaContainer.getVisibility() != targetMetaVisibility
                         || comments != null && comments.getVisibility() != targetCommentsVisibility;
+        boolean animateCompactVisibilityChange = animate && compactVisibilityChanged;
+        boolean animateCompactShow = animateCompactVisibilityChange && !compact;
+        boolean animateCompactHide = animateCompactVisibilityChange && compact;
 
-        updateMetaContainer(targetMetaVisibility == View.VISIBLE, animate);
+        updateMetaContainer(targetMetaVisibility == View.VISIBLE, animate, animateCompactVisibilityChange);
         updateFavicon(showThumbnails, animate);
 
         updateStoryIndex(showIndex, animate);
         updateStoryCardBackground(previewImageMode, animate);
         updatePointsText(showPoints, compactPoints, includeTopLevelDomain, animate && !compactVisibilityChanged);
-        updateCommentCount(showCommentsCount, compact, animate);
+        updateCommentCount(showCommentsCount, compact, animate, animateCompactVisibilityChange);
         updateHotnessIcon(hotness, animate);
         if (syncHeight) {
-            syncPreviewContainerHeight(previewImageMode, animate);
+            if (!animateCompactHide) {
+                syncPreviewContainerHeight(
+                        previewImageMode,
+                        animate,
+                        animateCompactShow,
+                        animateCompactShow ? this::fadeInCompactTextAfterHeightAnimation : null);
+            }
         }
         if (updateImages) {
             updatePreviewImage(previewImageMode, animate);
@@ -677,9 +691,21 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     }
 
     private void syncPreviewContainerHeight(String previewImageMode, boolean animate) {
+        syncPreviewContainerHeight(previewImageMode, animate, false);
+    }
+
+    private void syncPreviewContainerHeight(String previewImageMode, boolean animate, boolean animateStoryRowHeight) {
+        syncPreviewContainerHeight(previewImageMode, animate, animateStoryRowHeight, null);
+    }
+
+    private void syncPreviewContainerHeight(
+            String previewImageMode,
+            boolean animate,
+            boolean animateStoryRowHeight,
+            Runnable endAction) {
         PreviewHeights heights = calculatePreviewHeights(previewImageMode);
         if (heights.isValid()) {
-            applyPreviewHeights(heights, animate);
+            applyPreviewHeights(heights, animate, animateStoryRowHeight, endAction);
         }
     }
 
@@ -772,17 +798,36 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     }
 
     private void applyPreviewHeights(PreviewHeights heights, boolean animate) {
+        applyPreviewHeights(heights, animate, false);
+    }
+
+    private void applyPreviewHeights(PreviewHeights heights, boolean animate, boolean animateStoryRowHeight) {
+        applyPreviewHeights(heights, animate, animateStoryRowHeight, null);
+    }
+
+    private void applyPreviewHeights(
+            PreviewHeights heights,
+            boolean animate,
+            boolean animateStoryRowHeight,
+            Runnable endAction) {
         if (previewItemContainer == null || previewItemContainer.getChildCount() == 0 || previewRoot == null || !heights.isValid()) {
+            if (endAction != null) {
+                endAction.run();
+            }
             return;
         }
 
         if (animate && ViewCompat.isLaidOut(previewItemContainer)) {
-            animatePreviewHeights(heights);
+            animatePreviewHeights(heights, animateStoryRowHeight, endAction);
             return;
         }
 
         cancelPreviewHeightAnimator();
+        clearStoryRowHeight();
         setPreviewHeights(heights);
+        if (endAction != null) {
+            endAction.run();
+        }
     }
 
     private void setPreviewHeights(PreviewHeights heights) {
@@ -807,7 +852,21 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     }
 
     private void animatePreviewHeights(PreviewHeights targetHeights) {
+        animatePreviewHeights(targetHeights, false);
+    }
+
+    private void animatePreviewHeights(PreviewHeights targetHeights, boolean animateStoryRowHeight) {
+        animatePreviewHeights(targetHeights, animateStoryRowHeight, null);
+    }
+
+    private void animatePreviewHeights(
+            PreviewHeights targetHeights,
+            boolean animateStoryRowHeight,
+            Runnable endAction) {
         if (previewItemContainer == null || previewRoot == null || !targetHeights.isValid()) {
+            if (endAction != null) {
+                endAction.run();
+            }
             return;
         }
 
@@ -826,23 +885,43 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         if (startSelfHeight <= 0) {
             startSelfHeight = targetHeights.rootHeight;
         }
+        View rowForHeightAnimation = animateStoryRowHeight ? storyRow : null;
+        int startStoryRowHeight = rowForHeightAnimation != null
+                ? getCurrentHeightForAnimation(rowForHeightAnimation, 0)
+                : 0;
+        int targetStoryRowHeight = startStoryRowHeight + targetHeights.contentHeight - startContentHeight;
+        if (rowForHeightAnimation == null || startStoryRowHeight <= 0 || targetStoryRowHeight <= 0) {
+            rowForHeightAnimation = null;
+        }
 
         if (startContainerHeight == targetHeights.containerHeight
                 && startRootHeight == targetHeights.rootHeight
                 && startSelfHeight == targetHeights.rootHeight) {
+            clearStoryRowHeight();
             setPreviewHeights(targetHeights);
+            if (endAction != null) {
+                endAction.run();
+            }
             return;
         }
 
         cancelPreviewHeightAnimator();
         int finalStartRootHeight = startRootHeight;
         int finalStartSelfHeight = startSelfHeight;
+        View finalRowForHeightAnimation = rowForHeightAnimation;
+        int finalStartStoryRowHeight = startStoryRowHeight;
+        int finalTargetStoryRowHeight = targetStoryRowHeight;
         previewHeightAnimator = ValueAnimator.ofFloat(0f, 1f);
         previewHeightAnimator.setDuration(PREVIEW_ANIMATION_DURATION_MS);
         previewHeightAnimator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
         int finalStartContentHeight = startContentHeight;
         previewHeightAnimator.addUpdateListener(animation -> {
             float progress = (float) animation.getAnimatedValue();
+            if (finalRowForHeightAnimation != null) {
+                setStoryRowHeight(
+                        finalRowForHeightAnimation,
+                        lerp(finalStartStoryRowHeight, finalTargetStoryRowHeight, progress));
+            }
             PreviewHeights frameHeights = new PreviewHeights(
                     lerp(finalStartContentHeight, targetHeights.contentHeight, progress),
                     lerp(startContainerHeight, targetHeights.containerHeight, progress),
@@ -858,9 +937,33 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 }
                 previewHeightAnimator = null;
                 setPreviewHeights(targetHeights);
+                if (endAction != null) {
+                    endAction.run();
+                } else {
+                    clearStoryRowHeight();
+                }
             }
         });
         previewHeightAnimator.start();
+    }
+
+    private void setStoryRowHeight(View row, int height) {
+        if (row == null || height <= 0) {
+            return;
+        }
+
+        ViewGroup.LayoutParams layoutParams = row.getLayoutParams();
+        if (layoutParams != null && layoutParams.height != height) {
+            layoutParams.height = height;
+            row.setLayoutParams(layoutParams);
+        }
+        row.setMinimumHeight(height);
+    }
+
+    private void clearStoryRowHeight() {
+        if (storyRow != null) {
+            PreviewPreferenceViewUtils.setWrapContentHeight(storyRow);
+        }
     }
 
     private int getCurrentHeightForAnimation(View view, int fallbackHeight) {
@@ -881,6 +984,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
 
     private void clearPreviewHeights() {
         cancelPreviewHeightAnimator();
+        clearStoryRowHeight();
         if (previewItemContainer != null) {
             if (previewItemContainer.getChildCount() > 0) {
                 PreviewPreferenceViewUtils.setWrapContentHeight(previewItemContainer.getChildAt(0));
@@ -1069,7 +1173,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 animate);
     }
 
-    private void updateMetaContainer(boolean showMeta, boolean animate) {
+    private void updateMetaContainer(boolean showMeta, boolean animate, boolean compactVisibilityChange) {
         if (metaContainer == null) {
             return;
         }
@@ -1078,6 +1182,11 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             int animationToken = ++metaAnimationToken;
             cancelViewAnimation(metaContainer);
             metaContainer.setAlpha(0f);
+            if (compactVisibilityChange) {
+                setVisibilityWithoutLayoutTransition(metaContainer, View.VISIBLE);
+                requestPreviewRemeasure();
+                return;
+            }
             setVisibilityWithChangingOnly(metaContainer, View.VISIBLE);
             metaContainer.animate()
                     .alpha(1f)
@@ -1103,6 +1212,27 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         if (!showMeta && animate && metaContainer.getVisibility() == View.VISIBLE) {
             cancelViewAnimation(metaContainer);
             metaContainer.setAlpha(1f);
+            if (compactVisibilityChange) {
+                int animationToken = metaAnimationToken;
+                metaContainer.animate()
+                        .alpha(0f)
+                        .setDuration(PREVIEW_TEXT_FADE_DURATION_MS)
+                        .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                        .setListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(Animator animation) {
+                                if (animationToken != metaAnimationToken || metaContainer == null) {
+                                    return;
+                                }
+                                metaContainer.animate().setListener(null);
+                                setVisibilityWithoutLayoutTransition(metaContainer, View.GONE);
+                                metaContainer.setAlpha(1f);
+                                syncCompactHideHeightIfReady();
+                            }
+                        })
+                        .start();
+                return;
+            }
             setVisibilityWithChangingOnly(metaContainer, View.GONE);
             return;
         }
@@ -1115,6 +1245,87 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         }
 
         updateVisibilityWithLayoutTransition(favicon, showThumbnails, animate);
+    }
+
+    private void syncCompactHideHeightIfReady() {
+        if (metaContainer != null && metaContainer.getVisibility() == View.VISIBLE) {
+            return;
+        }
+        if (comments != null && comments.getVisibility() == View.VISIBLE) {
+            return;
+        }
+
+        syncPreviewContainerHeight(getCurrentPreviewImageMode(), true, true);
+    }
+
+    private void fadeInCompactTextAfterHeightAnimation() {
+        int metaToken = metaAnimationToken;
+        int commentToken = commentCountAnimationToken;
+        fadeInMetaContainerAfterCompactHeight();
+        fadeInCommentCountAfterCompactHeight();
+        postDelayed(() -> {
+            if (metaToken == metaAnimationToken && commentToken == commentCountAnimationToken) {
+                clearStoryRowHeight();
+            }
+        }, PREVIEW_TEXT_FADE_DURATION_MS);
+    }
+
+    private void fadeInMetaContainerAfterCompactHeight() {
+        View currentMetaContainer = metaContainer;
+        if (currentMetaContainer == null
+                || currentMetaContainer.getVisibility() != View.VISIBLE
+                || currentMetaContainer.getAlpha() >= 1f) {
+            return;
+        }
+
+        int animationToken = metaAnimationToken;
+        currentMetaContainer.animate().setListener(null);
+        currentMetaContainer.animate().cancel();
+        currentMetaContainer.animate()
+                .alpha(1f)
+                .setStartDelay(0)
+                .setDuration(PREVIEW_TEXT_FADE_DURATION_MS)
+                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        if (animationToken != metaAnimationToken || metaContainer != currentMetaContainer) {
+                            return;
+                        }
+                        currentMetaContainer.animate().setListener(null);
+                        currentMetaContainer.setAlpha(1f);
+                    }
+                })
+                .start();
+    }
+
+    private void fadeInCommentCountAfterCompactHeight() {
+        TextView currentComments = comments;
+        if (currentComments == null
+                || currentComments.getVisibility() != View.VISIBLE
+                || currentComments.getAlpha() >= 1f) {
+            return;
+        }
+
+        int animationToken = commentCountAnimationToken;
+        currentComments.animate().setListener(null);
+        currentComments.animate().cancel();
+        currentComments.animate()
+                .alpha(1f)
+                .setStartDelay(0)
+                .setDuration(PREVIEW_TEXT_FADE_DURATION_MS)
+                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        if (animationToken != commentCountAnimationToken || comments != currentComments) {
+                            return;
+                        }
+                        currentComments.animate().setListener(null);
+                        currentComments.setAlpha(1f);
+                    }
+                })
+                .start();
     }
 
     private void updateStoryIndex(boolean showIndex, boolean animate) {
@@ -1689,7 +1900,11 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 MaterialColors.getColor(view, com.google.android.material.R.attr.colorSurface, Color.TRANSPARENT));
     }
 
-    private void updateCommentCount(boolean showCommentsCount, boolean compact, boolean animate) {
+    private void updateCommentCount(
+            boolean showCommentsCount,
+            boolean compact,
+            boolean animate,
+            boolean compactVisibilityChange) {
         TextView currentComments = comments;
         if (currentComments == null) {
             return;
@@ -1713,6 +1928,11 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             if (targetVisibility == View.VISIBLE) {
                 currentComments.setText(targetText);
                 currentComments.setAlpha(0f);
+                if (compactVisibilityChange) {
+                    setVisibilityWithoutLayoutTransition(currentComments, View.VISIBLE);
+                    requestPreviewRemeasure();
+                    return;
+                }
                 setVisibilityWithChangingOnly(currentComments, View.VISIBLE);
                 currentComments.animate()
                         .alpha(1f)
@@ -1744,9 +1964,17 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                                 }
                                 currentComments.animate().setListener(null);
                                 currentComments.setText(targetText);
-                                setVisibilityWithChangingOnly(currentComments, View.GONE);
+                                if (compactVisibilityChange) {
+                                    setVisibilityWithoutLayoutTransition(currentComments, View.GONE);
+                                } else {
+                                    setVisibilityWithChangingOnly(currentComments, View.GONE);
+                                }
                                 currentComments.setAlpha(1f);
-                                syncPreviewContainerHeight(getCurrentPreviewImageMode(), true);
+                                if (compactVisibilityChange) {
+                                    syncCompactHideHeightIfReady();
+                                } else {
+                                    syncPreviewContainerHeight(getCurrentPreviewImageMode(), true);
+                                }
                             }
                         })
                         .start();
