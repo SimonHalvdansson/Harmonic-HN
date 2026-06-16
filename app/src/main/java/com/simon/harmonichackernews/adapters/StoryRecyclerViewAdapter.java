@@ -91,6 +91,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final long CARD_TINT_ANIMATION_DURATION_MS = 180;
     private static final int FAVICON_TINT_SIZE_DP = 64;
     private static final String PAYLOAD_CLICKED_STATE = "clicked_state";
+    private static final String PAYLOAD_STORY_INDEX = "story_index";
 
     public boolean showPoints;
     public boolean compactPoints;
@@ -200,14 +201,25 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NotNull final RecyclerView.ViewHolder holder, int position, @NotNull List<Object> payloads) {
-        if (holder instanceof StoryViewHolder
-                && payloads.size() == 1
-                && PAYLOAD_CLICKED_STATE.equals(payloads.get(0))) {
+        if (holder instanceof StoryViewHolder && !payloads.isEmpty()) {
             StoryViewHolder storyViewHolder = (StoryViewHolder) holder;
             Story story = stories.get(position);
             storyViewHolder.story = story;
-            applyStoryClickedState(storyViewHolder, story, true);
-            return;
+            boolean handled = false;
+
+            if (payloads.contains(PAYLOAD_STORY_INDEX)) {
+                bindStoryIndex(storyViewHolder, position, story);
+                handled = true;
+            }
+
+            if (payloads.contains(PAYLOAD_CLICKED_STATE)) {
+                applyStoryClickedState(storyViewHolder, story, true);
+                handled = true;
+            }
+
+            if (handled) {
+                return;
+            }
         }
 
         onBindViewHolder(holder, position);
@@ -239,26 +251,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             applyStoryCardBackground(storyViewHolder, storyViewHolder.story, false);
             setPreviewImageAlpha(storyViewHolder, useClickedEffects);
 
-            if (showIndex) {
-                int displayIndex = position + 1;
-                storyViewHolder.indexTextView.setText(displayIndex + ".");
-                storyViewHolder.indexTextView.setContentDescription("Story " + displayIndex);
-
-                if (useClickedEffects) {
-                    storyViewHolder.indexTextView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorDisabled));
-                } else {
-                    storyViewHolder.indexTextView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorNormal));
-                }
-
-                if (displayIndex < 100) {
-                    storyViewHolder.indexTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
-                } else {
-                    storyViewHolder.indexTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-                }
-                storyViewHolder.indexTextView.setPadding(0, 0, 0, 0);
-            }
-
-            storyViewHolder.indexTextView.setVisibility(showIndex ? View.VISIBLE : View.GONE);
+            bindStoryIndex(storyViewHolder, position, storyViewHolder.story);
 
             if (storyViewHolder.story.loaded || storyViewHolder.story.loadingFailed) {
                 setStoryTitleText(storyViewHolder, storyViewHolder.story, useClickedEffects);
@@ -374,6 +367,31 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
     }
 
+    @SuppressLint("SetTextI18n")
+    private void bindStoryIndex(StoryViewHolder storyViewHolder, int position, Story story) {
+        if (showIndex) {
+            Context ctx = storyViewHolder.itemView.getContext();
+            int displayIndex = position + 1;
+            storyViewHolder.indexTextView.setText(displayIndex + ".");
+            storyViewHolder.indexTextView.setContentDescription("Story " + displayIndex);
+
+            if (shouldUseClickedEffects(story)) {
+                storyViewHolder.indexTextView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorDisabled));
+            } else {
+                storyViewHolder.indexTextView.setTextColor(Utils.getColorViaAttr(ctx, R.attr.storyColorNormal));
+            }
+
+            if (displayIndex < 100) {
+                storyViewHolder.indexTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+            } else {
+                storyViewHolder.indexTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+            }
+            storyViewHolder.indexTextView.setPadding(0, 0, 0, 0);
+        }
+
+        storyViewHolder.indexTextView.setVisibility(showIndex ? View.VISIBLE : View.GONE);
+    }
+
     @Override
     public void onViewRecycled(@NotNull RecyclerView.ViewHolder holder) {
         if (holder instanceof StoryViewHolder) {
@@ -414,6 +432,36 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         notifyItemChanged(position, PAYLOAD_CLICKED_STATE);
+    }
+
+    public void updateStoryIndicesFromPosition(int position) {
+        if (!showIndex) {
+            return;
+        }
+
+        int visibleItemCount = getVisibleItemCount();
+        if (position < 0 || position >= visibleItemCount) {
+            return;
+        }
+
+        updateVisibleStoryIndicesFromPosition(position, visibleItemCount);
+        notifyItemRangeChanged(position, visibleItemCount - position, PAYLOAD_STORY_INDEX);
+    }
+
+    private void updateVisibleStoryIndicesFromPosition(int position, int visibleItemCount) {
+        if (recyclerView == null) {
+            return;
+        }
+
+        for (int i = position; i < visibleItemCount; i++) {
+            RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(i);
+            if (holder instanceof StoryViewHolder) {
+                StoryViewHolder storyViewHolder = (StoryViewHolder) holder;
+                Story story = stories.get(i);
+                storyViewHolder.story = story;
+                bindStoryIndex(storyViewHolder, i, story);
+            }
+        }
     }
 
     private boolean applyVisibleStoryClickedState(int position) {

@@ -1,6 +1,7 @@
 ﻿# Version 3.1
 - Added ability to show extra HN frontpages in Settings → Stories → Behavior
 - Added setting to reset all settings
+- Fixed behavior of 'Hide clicked posts'
 - Added ability to clear history from history screen
 
 # Version 3.0

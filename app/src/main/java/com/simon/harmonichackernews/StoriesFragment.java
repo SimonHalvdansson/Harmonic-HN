@@ -2532,6 +2532,10 @@ public class StoriesFragment extends Fragment {
         }
 
         if (hideClicked) {
+            if (removeClickedStoriesFromCurrentList()) {
+                return;
+            }
+
             attemptRefresh();
             return;
         }
@@ -2548,6 +2552,25 @@ public class StoriesFragment extends Fragment {
         if (clickedStateChanged) {
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
+    }
+
+    private boolean removeClickedStoriesFromCurrentList() {
+        boolean removedStories = false;
+
+        for (int i = stories.size() - 1; i >= 0; i--) {
+            Story story = stories.get(i);
+            if (HistoriesUtils.INSTANCE.isHistoryExist(story.id)) {
+                removeStoryAt(i, storyListGeneration, false);
+                removedStories = true;
+            }
+        }
+
+        if (removedStories) {
+            loadVisibleStories(storyListGeneration);
+            updateHeader();
+        }
+
+        return removedStories;
     }
 
     @Override
@@ -2753,6 +2776,9 @@ public class StoriesFragment extends Fragment {
             adapter.notifyDataSetChanged();
         } else {
             adapter.notifyItemRemoved(index);
+            if (adapter != null) {
+                adapter.updateStoryIndicesFromPosition(index);
+            }
         }
 
         if (loadVisibleReplacement) {
