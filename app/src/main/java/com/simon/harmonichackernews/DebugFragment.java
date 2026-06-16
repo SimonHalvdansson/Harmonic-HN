@@ -3,9 +3,11 @@ package com.simon.harmonichackernews;
 import android.os.Build;
 import android.os.Bundle;
 import android.content.res.Configuration;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -66,6 +68,14 @@ public class DebugFragment extends Fragment {
         binding.debugNitterVideoTest.setOnClickListener(v -> openDebugNitterVideoTest());
         binding.debugWelcome.setOnClickListener(v -> openDebugWelcome());
         binding.debugNotifications.setOnClickListener(v -> openDebugNotifications());
+        binding.debugOpenHnId.setOnClickListener(v -> openHnId(binding));
+        binding.debugHnIdInput.setOnEditorActionListener((textView, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_GO) {
+                openHnId(binding);
+                return true;
+            }
+            return false;
+        });
     }
 
     private void applyInsets(ActivityDebugBinding binding, boolean isSettingsTwoPane) {
@@ -127,5 +137,30 @@ public class DebugFragment extends Fragment {
 
     private void openDebugNotifications() {
         DebugNotificationsDialogFragment.show(getParentFragmentManager());
+    }
+
+    private void openHnId(@NonNull ActivityDebugBinding binding) {
+        CharSequence input = binding.debugHnIdInput.getText();
+        String hnId = input != null ? input.toString().trim() : "";
+        if (TextUtils.isEmpty(hnId) || !TextUtils.isDigitsOnly(hnId)) {
+            binding.debugHnIdInputLayout.setError("Enter a numeric HN ID");
+            return;
+        }
+
+        int id;
+        try {
+            id = Integer.parseInt(hnId);
+        } catch (NumberFormatException e) {
+            binding.debugHnIdInputLayout.setError("HN ID is too large");
+            return;
+        }
+
+        if (id <= 0) {
+            binding.debugHnIdInputLayout.setError("Enter a positive HN ID");
+            return;
+        }
+
+        binding.debugHnIdInputLayout.setError(null);
+        Utils.openCommentsActivity(id, -1, requireContext());
     }
 }
