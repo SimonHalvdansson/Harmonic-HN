@@ -9,9 +9,12 @@ import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,6 +22,10 @@ public final class CollectedReferenceLinks {
 
     private static final Pattern REFERENCE_MARKER_PATTERN =
             Pattern.compile("\\G\\s*(?:\\[(\\d{1,3})\\]\\s*(?::|\\.|-|\\u2013|\\u2014)?|(\\d{1,3})\\s*:)\\s*");
+    private static final Set<String> COMMON_BARE_DOMAIN_TLDS = new HashSet<>(Arrays.asList(
+            "app", "biz", "blog", "cloud", "com", "dev", "edu", "fm", "gov", "info",
+            "io", "mil", "net", "news", "org", "site", "tech", "tv", "wiki", "xyz"
+    ));
 
     private CollectedReferenceLinks() {
     }
@@ -591,7 +598,28 @@ public final class CollectedReferenceLinks {
             return false;
         }
         String lower = value.toLowerCase(Locale.US);
-        return lower.matches("[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}(:\\d+)?(/\\S*)?");
+        if (!lower.matches("[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}(:\\d+)?(/\\S*)?")) {
+            return false;
+        }
+
+        String host = lower;
+        int slash = host.indexOf('/');
+        if (slash >= 0) {
+            host = host.substring(0, slash);
+        }
+        int colon = host.indexOf(':');
+        if (colon >= 0) {
+            host = host.substring(0, colon);
+        }
+        String[] labels = host.split("\\.");
+        if (labels.length < 2) {
+            return false;
+        }
+
+        // Bare domains are a convenience feature. Keep this conservative so dotted identifiers
+        // such as browser.ml.enable do not get promoted into collected reference links.
+        String tld = labels[labels.length - 1];
+        return tld.length() == 2 || COMMON_BARE_DOMAIN_TLDS.contains(tld);
     }
 
     private static class CollectedNode {
