@@ -173,7 +173,7 @@ public class StoriesFragment extends Fragment {
     private Set<Integer> userItemListCommentIds = new HashSet<>();
     private RequestQueue queue;
     private final Object requestTag = new Object();
-    private final Set<Integer> loadingStoryIds = new HashSet<>();
+    private final Map<Integer, Long> loadingStoryStartTimes = new HashMap<>();
     private LinearLayoutManager mainLinearLayoutManager;
     private LinearLayoutManager searchLinearLayoutManager;
     private LinearLayoutManager linearLayoutManager;
@@ -214,6 +214,7 @@ public class StoriesFragment extends Fragment {
     private int loadedTo = -1;
     private boolean paginationMode = false;
     private static final int STORY_VISIBLE_PREFETCH_THRESHOLD = 17;
+    private static final long STORY_LOAD_STALE_TIMEOUT_MS = 30_000L;
     private static final int PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE = 10;
     private static final long PREVIEW_IMAGE_PREFETCH_RAMP_DELAY_MS = 450L;
     private int algoliaHitsPerPage = StorySearchController.ALGOLIA_HITS_INCREMENT;
@@ -603,7 +604,9 @@ public class StoriesFragment extends Fragment {
 
                 // Only enable infinite scroll if pagination mode is OFF
                 if (!searching && adapter != null && !adapter.paginationMode && !currentTypeIsAlgolia()) {
-                    loadStoriesThroughIndex(Math.min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories.size()) - 1, storyListGeneration);
+                    int targetIndex = Math.min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories.size()) - 1;
+                    loadStoriesThroughIndex(targetIndex, storyListGeneration);
+                    retryUnsettledStoriesThroughIndex(targetIndex, storyListGeneration);
                 }
             }
         };
@@ -1437,6 +1440,23 @@ public class StoriesFragment extends Fragment {
         }
     }
 
+    private void retryUnsettledStoriesThroughIndex(int targetIndex, int loadGeneration) {
+        if (!isCurrentStoryListGeneration(loadGeneration) || targetIndex < 0 || stories.isEmpty()) {
+            return;
+        }
+
+        int cappedTargetIndex = Math.min(targetIndex, stories.size() - 1);
+        for (int i = 0; i <= cappedTargetIndex; i++) {
+            Story story = stories.get(i);
+            if (story != null
+                    && !story.loaded
+                    && !story.loadingFailed
+                    && !isStoryLoadInProgress(story)) {
+                loadStory(story, 0, loadGeneration);
+            }
+        }
+    }
+
     private int getVisibleLoadTargetIndex() {
         if (stories.isEmpty()) {
             return -1;
@@ -1456,7 +1476,9 @@ public class StoriesFragment extends Fragment {
     }
 
     private void loadVisibleStories(int loadGeneration) {
-        loadStoriesThroughIndex(getVisibleLoadTargetIndex(), loadGeneration);
+        int targetIndex = getVisibleLoadTargetIndex();
+        loadStoriesThroughIndex(targetIndex, loadGeneration);
+        retryUnsettledStoriesThroughIndex(targetIndex, loadGeneration);
     }
 
     private void clearStories() {
@@ -2117,6 +2139,7 @@ public class StoriesFragment extends Fragment {
                 );
 
                 loadStoriesThroughIndex(newLoadedTo, storyListGeneration);
+                retryUnsettledStoriesThroughIndex(newLoadedTo, storyListGeneration);
 
                 // Update adapter to show more items
                 adapter.loadNextPage();
@@ -2625,7 +2648,7 @@ public class StoriesFragment extends Fragment {
 
         if (queue != null) {
             storyListGeneration++;
-            loadingStoryIds.clear();
+            clearLoadingStoryState();
             resetPreviewImagePrefetchRamp();
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
@@ -2767,7 +2790,7 @@ public class StoriesFragment extends Fragment {
         }
 
         Story removedStory = stories.remove(index);
-        loadingStoryIds.remove(removedStory.id);
+        clearStoryLoadState(removedStory);
         if (index <= loadedTo) {
             loadedTo = Math.max(-1, loadedTo - 1);
         }
@@ -2826,6 +2849,62 @@ public class StoriesFragment extends Fragment {
         return shouldHideStoryAsJob(story);
     }
 
+    private boolean isStoryLoadInProgress(Story story) {
+        if (story == null) {
+            return false;
+        }
+
+        Long startedAt = loadingStoryStartTimes.get(story.id);
+        if (startedAt == null) {
+            return false;
+        }
+
+        if (System.currentTimeMillis() - startedAt > STORY_LOAD_STALE_TIMEOUT_MS) {
+            loadingStoryStartTimes.remove(story.id);
+            return false;
+        }
+
+        return true;
+    }
+
+    private long markStoryLoadStarted(Story story) {
+        long startedAt = System.currentTimeMillis();
+        if (story != null) {
+            loadingStoryStartTimes.put(story.id, startedAt);
+        }
+        return startedAt;
+    }
+
+    private void clearStoryLoadState(Story story) {
+        if (story != null) {
+            loadingStoryStartTimes.remove(story.id);
+        }
+    }
+
+    private void clearStoryLoadState(Story story, long startedAt) {
+        if (story == null) {
+            return;
+        }
+
+        Long currentStartedAt = loadingStoryStartTimes.get(story.id);
+        if (currentStartedAt != null && currentStartedAt.longValue() == startedAt) {
+            loadingStoryStartTimes.remove(story.id);
+        }
+    }
+
+    private boolean isCurrentStoryLoad(Story story, long startedAt) {
+        if (story == null) {
+            return false;
+        }
+
+        Long currentStartedAt = loadingStoryStartTimes.get(story.id);
+        return currentStartedAt != null && currentStartedAt.longValue() == startedAt;
+    }
+
+    private void clearLoadingStoryState() {
+        loadingStoryStartTimes.clear();
+    }
+
     private void loadStory(Story story, final int attempt) {
         loadStory(story, attempt, storyListGeneration);
     }
@@ -2843,20 +2922,23 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
-        if (attempt >= 3 || loadingStoryIds.contains(story.id)) {
+        if (attempt >= 3 || isStoryLoadInProgress(story)) {
             return;
         }
 
-        loadingStoryIds.add(story.id);
+        final long startedAt = markStoryLoadStarted(story);
 
         String url = "https://hacker-news.firebaseio.com/v0/item/" + story.id + ".json";
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 response -> {
+                    if (!isCurrentStoryLoad(story, startedAt)) {
+                        return;
+                    }
+                    clearStoryLoadState(story, startedAt);
                     if (!isCurrentStoryListGeneration(loadGeneration)) {
                         return;
                     }
-                    loadingStoryIds.remove(story.id);
                     int index = stories.indexOf(story);
                     if (index < 0) {
                         return;
@@ -2898,10 +2980,16 @@ public class StoriesFragment extends Fragment {
                         }
                     }
                 }, error -> {
+            if (!isCurrentStoryLoad(story, startedAt)) {
+                return;
+            }
+            clearStoryLoadState(story, startedAt);
             if (!isCurrentStoryListGeneration(loadGeneration)) {
                 return;
             }
-            loadingStoryIds.remove(story.id);
+            if (story.loaded) {
+                return;
+            }
             error.printStackTrace();
             story.loadingFailed = true;
             updatePreviewImagePrefetchRampCompletion();
@@ -2991,7 +3079,7 @@ public class StoriesFragment extends Fragment {
 
     private int beginStoryListRefresh() {
         storyListGeneration++;
-        loadingStoryIds.clear();
+        clearLoadingStoryState();
         resetPreviewImagePrefetchRamp();
         resetScrapedFrontpagePaginationState();
         invalidateAlgoliaLoad();
@@ -3670,7 +3758,7 @@ public class StoriesFragment extends Fragment {
         }
 
         queue.cancelAll(requestTag);
-        loadingStoryIds.clear();
+        clearLoadingStoryState();
         userItemListStories.clear();
         userItemListStories.addAll(refreshedStories);
         userItemListCommentIds = new HashSet<>(commentIds);
@@ -3717,6 +3805,7 @@ public class StoriesFragment extends Fragment {
         int targetIndex = Math.min(getInitialLoadCount(), stories.size()) - 1;
         beginPreviewImagePrefetchRamp(targetIndex);
         loadStoriesThroughIndex(targetIndex, loadGeneration);
+        retryUnsettledStoriesThroughIndex(targetIndex, loadGeneration);
     }
 
     private void beginPreviewImagePrefetchRamp(int targetIndex) {
@@ -3930,7 +4019,7 @@ public class StoriesFragment extends Fragment {
 
             // cancel all ongoing
             storyListGeneration++;
-            loadingStoryIds.clear();
+            clearLoadingStoryState();
             resetPreviewImagePrefetchRamp();
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
@@ -3951,7 +4040,7 @@ public class StoriesFragment extends Fragment {
             loadPendingBeforeSearch = false;
 
             storyListGeneration++;
-            loadingStoryIds.clear();
+            clearLoadingStoryState();
             resetPreviewImagePrefetchRamp();
             invalidateAlgoliaLoad();
             queue.cancelAll(requestTag);
@@ -4044,7 +4133,7 @@ public class StoriesFragment extends Fragment {
 
     private void loadOnlyClickedSearch(String query) {
         storyListGeneration++;
-        loadingStoryIds.clear();
+        clearLoadingStoryState();
         resetPreviewImagePrefetchRamp();
         invalidateAlgoliaLoad();
         final int requestGeneration = algoliaRequestGeneration;
@@ -4055,7 +4144,7 @@ public class StoriesFragment extends Fragment {
         loadingFailedRateLimited = false;
         showingCached = false;
         queue.cancelAll(requestTag);
-        loadingStoryIds.clear();
+        clearLoadingStoryState();
 
         if (!stories.isEmpty()) {
             clearStories();
