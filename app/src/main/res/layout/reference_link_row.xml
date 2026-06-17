@@ -20,7 +20,7 @@
         android:layout_width="17dp"
         android:layout_height="17dp"
         android:layout_marginRight="8dp"
-        android:src="@drawable/ic_action_web"
+        android:src="@drawable/ic_public"
         android:contentDescription="@null"
         android:importantForAccessibility="no" />
 

@@ -2012,7 +2012,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private void bindStoryBookmarkButton(ImageButton button, boolean bookmarked) {
         setHeaderActionButtonIcon(
                 button,
-                bookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border,
+                bookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark,
                 bookmarked ? "Remove bookmark" : "Bookmark");
         resetHeaderActionButtonVisual(button);
         button.setEnabled(true);
@@ -2035,7 +2035,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         animateHeaderActionIconChange(
                 button,
-                bookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border,
+                bookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark,
                 bookmarked ? "Remove bookmark" : "Bookmark");
     }
 
@@ -2111,7 +2111,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private void showHeaderVoteButton(ImageButton button, boolean upvoted, boolean animate) {
         showHeaderActionButton(
                 button,
-                upvoted ? R.drawable.ic_action_thumbs_up : R.drawable.ic_action_thumbs_up_outline,
+                upvoted ? R.drawable.ic_thumb_up_filled : R.drawable.ic_thumb_up,
                 upvoted ? "Remove vote" : "Vote",
                 animate);
     }
@@ -2147,7 +2147,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private void showHeaderFavoriteButton(ImageButton button, boolean favorited, boolean animate) {
         showHeaderActionButton(
                 button,
-                favorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star,
+                favorited ? R.drawable.ic_star_filled : R.drawable.ic_star,
                 favorited ? "Remove favorite" : "Favorite",
                 animate);
     }

@@ -1093,15 +1093,15 @@ public class StoriesFragment extends Fragment {
 
     private int getEmptySavedListIcon(boolean historyType, boolean favoritesType, boolean upvotedType) {
         if (historyType) {
-            return R.drawable.ic_action_history;
+            return R.drawable.ic_history;
         }
         if (favoritesType) {
-            return R.drawable.ic_action_star;
+            return R.drawable.ic_star;
         }
         if (upvotedType) {
-            return R.drawable.ic_action_thumbs_up;
+            return R.drawable.ic_thumb_up_filled;
         }
-        return R.drawable.ic_action_bookmark_border;
+        return R.drawable.ic_bookmark;
     }
 
     private String getEmptySavedListText(boolean historyType, boolean favoritesType, boolean upvotedType, boolean savedItemSourceHasItems) {
@@ -2223,7 +2223,7 @@ public class StoriesFragment extends Fragment {
                     });
                 }
 
-                popupMenu.getMenu().add(oldFavorited ? "Remove favorite" : "Favorite").setIcon(oldFavorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                popupMenu.getMenu().add(oldFavorited ? "Remove favorite" : "Favorite").setIcon(oldFavorited ? R.drawable.ic_star_filled : R.drawable.ic_star).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(@NonNull MenuItem item) {
                         if (!AccountUtils.hasAccountDetails(ctx)) {

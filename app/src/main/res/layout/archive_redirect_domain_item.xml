@@ -29,7 +29,7 @@
         android:layout_height="44dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:padding="10dp"
-        android:src="@drawable/ic_action_cancel"
+        android:src="@drawable/ic_close"
         app:tint="?attr/drawableColor" />
 
 </LinearLayout>

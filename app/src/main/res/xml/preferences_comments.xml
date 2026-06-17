@@ -19,19 +19,19 @@
             app:singleLineTitle="false"
             app:key="pref_collect_links_in_comments"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_link"
+            app:icon="@drawable/ic_link"
             app:title="Collect links in comments" />
 
         <Preference
             app:singleLineTitle="false"
             app:key="pref_comment_depth_indicators"
-            app:icon="@drawable/ic_action_colors"
+            app:icon="@drawable/ic_palette"
             app:title="Thread depth indicators" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_top_level_thread_indicators"
-            app:icon="@drawable/ic_action_align_left"
+            app:icon="@drawable/ic_format_align_left"
             app:defaultValue="false"
             app:summary="Makes it easier to separate top level comments"
             app:title="Show top level thread indicators" />
@@ -40,14 +40,14 @@
             app:singleLineTitle="false"
             app:key="pref_comments_scrollbar"
             app:defaultValue="false"
-            app:icon="@drawable/ic_action_swipe_vertical"
+            app:icon="@drawable/ic_swipe_vertical"
             app:title="Show scrollbar" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_comments_animation"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_animation"
+            app:icon="@drawable/ic_animation"
             app:title="Animate comment expand/collapse" />
 
     </PreferenceCategory>
@@ -60,14 +60,14 @@
             app:singleLineTitle="false"
             app:key="pref_enable_comments_header_tint"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_colors"
+            app:icon="@drawable/ic_palette"
             app:title="Enable header tint" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_enable_comments_header_preview_image"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_web"
+            app:icon="@drawable/ic_public"
             app:title="Enable story preview" />
 
     </PreferenceCategory>
@@ -79,14 +79,14 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_collapse_parent"
-            app:icon="@drawable/ic_action_comment"
+            app:icon="@drawable/ic_comment"
             app:title="Hide text of collapsed comments" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             android:defaultValue="false"
             app:key="pref_collapse_top_level"
-            app:icon="@drawable/ic_action_minimize"
+            app:icon="@drawable/ic_minimize"
             app:title="Auto-collapse top level comments" />
 
         <SwitchPreferenceCompat
@@ -95,19 +95,19 @@
             app:defaultValue="false"
             app:summaryOn="Current: Tap for options"
             app:summaryOff="Current: Tap to hide/expand"
-            app:icon="@drawable/ic_action_touch"
+            app:icon="@drawable/ic_touch_app"
             app:title="Swap tap/long press behavior" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_comments_disable_swipeback"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_swipe"
+            app:icon="@drawable/ic_swipe"
             app:title="Disable swipe back from comments" />
 
         <ListPreference
             app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_filter"
+            app:icon="@drawable/ic_filter_list"
             app:title="Comment sorting"
             app:key="pref_comment_sorting"
             app:useSimpleSummaryProvider="true"
@@ -118,7 +118,7 @@
         <ListPreference
             app:singleLineTitle="false"
             app:key="pref_comments_provider"
-            app:icon="@drawable/ic_action_api"
+            app:icon="@drawable/ic_api"
             app:title="Comments provider"
             app:useSimpleSummaryProvider="true"
             app:entries="@array/comments_provider_entries"
@@ -134,7 +134,7 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_scroll_navigation"
-            app:icon="@drawable/ic_action_explore"
+            app:icon="@drawable/ic_explore"
             app:title="Show navigation buttons"
             app:summary="Navigate between top level comments"
             app:defaultValue="false" />
@@ -143,7 +143,7 @@
             app:singleLineTitle="false"
             app:key="pref_comments_volume_navigation"
             app:defaultValue="disabled"
-            app:icon="@drawable/ic_action_swipe_vertical"
+            app:icon="@drawable/ic_swipe_vertical"
             app:title="Volume buttons for navigation"
             app:entries="@array/comments_volume_navigation_entries"
             app:entryValues="@array/comments_volume_navigation_values"

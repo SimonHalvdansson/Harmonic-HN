@@ -65,7 +65,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     private boolean leftAligned;
     private boolean cardStyle;
     private boolean tintCardUsingPreview;
-    private int commentsIconResId = R.drawable.ic_action_comment;
+    private int commentsIconResId = R.drawable.ic_comment;
     private ValueAnimator cardTintAnimator;
     private ValueAnimator cardAppearanceAnimator;
     private ValueAnimator previewHeightAnimator;
@@ -423,7 +423,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             favicon.setImageResource(R.drawable.quanta);
         }
         if (commentsIcon != null) {
-            commentsIconResId = R.drawable.ic_action_comment;
+            commentsIconResId = R.drawable.ic_comment;
             commentsIcon.setImageResource(commentsIconResId);
             commentsIcon.setAlpha(1f);
             commentsIcon.setScaleX(1f);
@@ -2017,7 +2017,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             return;
         }
 
-        int targetIconResId = hotness > 0 ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment;
+        int targetIconResId = hotness > 0 ? R.drawable.ic_whatshot : R.drawable.ic_comment;
         currentCommentsIcon.animate().cancel();
 
         if (targetIconResId == commentsIconResId) {

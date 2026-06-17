@@ -62,7 +62,7 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
         boolean twoPane = callback != null && callback.isTwoPane();
 
         if (!twoPane && showNavigationIcon()) {
-            toolbar.setNavigationIcon(R.drawable.ic_action_back);
+            toolbar.setNavigationIcon(R.drawable.ic_arrow_back);
             toolbar.setNavigationOnClickListener(v -> {
                 if (getActivity() != null) {
                     getActivity().getOnBackPressedDispatcher().onBackPressed();

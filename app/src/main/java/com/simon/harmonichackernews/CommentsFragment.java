@@ -2700,19 +2700,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             iconActions.add(new CommentActionItem(
                     COMMENT_ACTION_BOOKMARK,
                     oldBookmarked ? "Remove bookmark" : "Bookmark",
-                    oldBookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border));
+                    oldBookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark));
         }
         if (hasAccount) {
             boolean favoriteLoading = commentActionFavoriteLoadingIds.contains(comment.id);
             iconActions.add(new CommentActionItem(
                     COMMENT_ACTION_FAVORITE,
                     favoriteLoading ? (oldFavorited ? "Removing favorite" : "Adding favorite") : (oldFavorited ? "Remove favorite" : "Favorite"),
-                    oldFavorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star,
+                    oldFavorited ? R.drawable.ic_star_filled : R.drawable.ic_star,
                     favoriteLoading));
         }
 
-        iconActions.add(new CommentActionItem(COMMENT_ACTION_COPY, "Copy text", R.drawable.ic_action_copy));
-        iconActions.add(new CommentActionItem(COMMENT_ACTION_SHARE, "Share link", R.drawable.ic_action_share));
+        iconActions.add(new CommentActionItem(COMMENT_ACTION_COPY, "Copy text", R.drawable.ic_content_copy));
+        iconActions.add(new CommentActionItem(COMMENT_ACTION_SHARE, "Share link", R.drawable.ic_share));
         addCommentActionIconRow(actionsContainer, iconActions, comment, oldBookmarked, oldFavorited);
 
         if (hasAccount && !Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)) {
@@ -2755,13 +2755,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int getCommentActionVoteIconRes(int action, boolean upvoted, boolean downvoted) {
         switch (action) {
             case COMMENT_ACTION_UPVOTE:
-                return upvoted ? R.drawable.ic_action_thumbs_up : R.drawable.ic_action_thumbs_up_outline;
+                return upvoted ? R.drawable.ic_thumb_up_filled : R.drawable.ic_thumb_up;
 
             case COMMENT_ACTION_DOWNVOTE:
-                return downvoted ? R.drawable.ic_action_thumb_down : R.drawable.ic_action_thumb_down_outline;
+                return downvoted ? R.drawable.ic_thumb_down_filled : R.drawable.ic_thumb_down;
 
             case COMMENT_ACTION_UNVOTE:
-                return R.drawable.ic_action_thumbs_unvote;
+                return R.drawable.ic_thumbs_up_down_unvote;
 
             default:
                 return 0;
@@ -2886,7 +2886,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         button.setText("Reply");
         button.setAllCaps(false);
         button.setSingleLine(true);
-        button.setIconResource(R.drawable.ic_action_reply);
+        button.setIconResource(R.drawable.ic_reply);
         button.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
         button.setIconPadding(Utils.pxFromDpInt(getResources(), 8));
         int replyBackgroundColor = MaterialColors.getColor(
@@ -3246,7 +3246,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                                                    Comment comment,
                                                    boolean bookmarked,
                                                    boolean oldFavorited) {
-        int iconRes = bookmarked ? R.drawable.ic_action_bookmark_filled : R.drawable.ic_action_bookmark_border;
+        int iconRes = bookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark;
         String label = bookmarked ? "Remove bookmark" : "Bookmark";
         animateCommentActionIconChange(button, iconRes, label, () ->
                 button.setOnClickListener(v -> performCommentAction(
@@ -3287,7 +3287,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         CommentActionItem actionItem = new CommentActionItem(
                 COMMENT_ACTION_FAVORITE,
                 favorited ? "Remove favorite" : "Favorite",
-                favorited ? R.drawable.ic_action_star_filled : R.drawable.ic_action_star);
+                favorited ? R.drawable.ic_star_filled : R.drawable.ic_star);
         View outgoing = favoriteSlot.getChildCount() > 0 ? favoriteSlot.getChildAt(0) : null;
         if (animate && outgoing != null) {
             animateCommentActionViewOut(outgoing, () ->

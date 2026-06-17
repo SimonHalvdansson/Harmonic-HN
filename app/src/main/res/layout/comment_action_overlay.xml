@@ -71,7 +71,7 @@
                         android:paddingRight="18dp"
                         android:textAllCaps="false"
                         android:textColor="@android:color/white"
-                        app:icon="@drawable/ic_action_user"
+                        app:icon="@drawable/ic_account_circle"
                         app:iconGravity="textStart"
                         app:iconPadding="8dp"
                         app:iconTint="@android:color/white"

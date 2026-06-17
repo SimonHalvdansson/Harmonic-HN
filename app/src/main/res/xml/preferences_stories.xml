@@ -24,7 +24,7 @@
             app:singleLineTitle="false"
             app:key="pref_tint_card_using_preview"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_colors"
+            app:icon="@drawable/ic_palette"
             app:summary="Uses preview or favicon"
             app:title="Tint" />
 
@@ -32,21 +32,21 @@
             app:singleLineTitle="false"
             app:key="pref_compact_view"
             app:summary="Hides points, domain and time"
-            app:icon="@drawable/ic_action_compact"
+            app:icon="@drawable/ic_view_agenda"
             app:title="Compact stories" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:defaultValue="true"
             app:key="pref_thumbnails"
-            app:icon="@drawable/ic_action_web"
+            app:icon="@drawable/ic_public"
             app:title="Show story thumbnails" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_show_points"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_thumbs"
+            app:icon="@drawable/ic_thumbs_up_down"
             app:title="Show story points" />
 
         <SwitchPreferenceCompat
@@ -54,35 +54,35 @@
             app:key="pref_compact_points"
             app:defaultValue="false"
             app:dependency="pref_show_points"
-            app:icon="@drawable/ic_action_thumbs_up"
+            app:icon="@drawable/ic_thumb_up"
             app:title="Compact points" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_include_top_level_domain"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_web"
+            app:icon="@drawable/ic_public"
             app:title="Include top level domain" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_show_comments_count"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_comment"
+            app:icon="@drawable/ic_comment"
             app:title="Show comment count" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_show_index"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_index"
+            app:icon="@drawable/ic_format_list_numbered"
             app:title="Show story indices" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_left_align"
             app:defaultValue="false"
-            app:icon="@drawable/ic_action_hand"
+            app:icon="@drawable/ic_pan_tool"
             app:title="Left align comments button" />
 
         <SwitchPreferenceCompat
@@ -96,7 +96,7 @@
 
         <ListPreference
             app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_whatshot"
+            app:icon="@drawable/ic_whatshot"
             app:title="Highlight hot stories"
             app:key="pref_hotness"
             app:useSimpleSummaryProvider="true"
@@ -112,7 +112,7 @@
 
         <ListPreference
             app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_bookmark_border"
+            app:icon="@drawable/ic_bookmark"
             app:title="Starting page"
             app:key="pref_default_story_type"
             app:useSimpleSummaryProvider="true"
@@ -122,7 +122,7 @@
 
         <MultiSelectListPreference
             app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_library_books"
+            app:icon="@drawable/ic_library_books"
             app:title="Additional frontpages"
             app:key="pref_additional_frontpages"
             app:entries="@array/additional_frontpage_options"
@@ -131,7 +131,7 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_always_open_comments"
-            app:icon="@drawable/ic_action_skip"
+            app:icon="@drawable/ic_keyboard_double_arrow_right"
             app:defaultValue="false"
             app:summary="Clicking a story takes you directly to the comments view"
             app:title="Always open comments" />
@@ -141,26 +141,26 @@
             app:key="pref_pagination_mode"
             app:defaultValue="false"
             app:summary="Load 30 stories at a time"
-            app:icon="@drawable/ic_action_swipe_vertical"
+            app:icon="@drawable/ic_swipe_vertical"
             app:title="Use pagination" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_hide_clicked"
             app:defaultValue="false"
-            app:icon="@drawable/ic_action_hide"
+            app:icon="@drawable/ic_visibility_off"
             app:title="Hide clicked posts" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_gray_out_clicked"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_eye"
+            app:icon="@drawable/ic_visibility"
             app:title="Gray out clicked posts" />
 
         <Preference
             app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_web"
+            app:icon="@drawable/ic_public"
             app:title="Favicon provider"
             app:key="pref_favicon_provider" />
 

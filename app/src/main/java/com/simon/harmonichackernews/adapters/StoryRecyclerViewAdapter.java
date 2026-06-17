@@ -303,7 +303,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 bindPreviewImage(storyViewHolder, storyViewHolder.story);
                 bindStoryCardTintFallback(storyViewHolder, storyViewHolder.story);
 
-                storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_action_whatshot : R.drawable.ic_action_comment);
+                storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_whatshot : R.drawable.ic_comment);
 
                 applyStoryTextSizes(storyViewHolder);
 
@@ -327,7 +327,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentLayoutView.setEnabled(!storyViewHolder.story.loadingFailed);
                 storyViewHolder.commentLayoutView.setClickable(!storyViewHolder.story.loadingFailed);
             } else {
-                storyViewHolder.commentsIcon.setImageResource(R.drawable.ic_action_comment);
+                storyViewHolder.commentsIcon.setImageResource(R.drawable.ic_comment);
                 storyViewHolder.titleShimmer.setVisibility(View.VISIBLE);
                 storyViewHolder.metaShimmer.setVisibility(compactView ? View.GONE : View.VISIBLE);
                 storyViewHolder.titleView.setVisibility(View.GONE);

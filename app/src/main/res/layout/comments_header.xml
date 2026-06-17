@@ -59,7 +59,7 @@
 
                 <ImageView
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_refresh"
+                    android:background="@drawable/ic_refresh"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_width="27dp"
@@ -88,7 +88,7 @@
 
                 <ImageView
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_arrow_up"
+                    android:background="@drawable/ic_arrow_upward"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_width="27dp"
@@ -117,7 +117,7 @@
 
                 <ImageView
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_web"
+                    android:background="@drawable/ic_public"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_width="27dp"
@@ -149,7 +149,7 @@
                 <ImageView
                     android:id="@+id/comments_sheet_reader_icon"
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_reader_mode"
+                    android:background="@drawable/ic_chrome_reader_mode"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_width="27dp"
@@ -178,7 +178,7 @@
 
                 <ImageView
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_invert"
+                    android:background="@drawable/ic_invert_colors"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_width="27dp"
@@ -281,7 +281,7 @@
                 android:clipToOutline="true"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_action_web" />
+                android:src="@drawable/ic_public" />
 
             <TextView
                 android:id="@+id/comments_header_url"
@@ -423,7 +423,7 @@
                     android:layout_height="14dp"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_action_thumbs_up" />
+                    android:src="@drawable/ic_thumb_up" />
 
                 <TextView
                     android:id="@+id/comments_header_meta_votes"
@@ -440,7 +440,7 @@
                     android:layout_height="14dp"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_action_comment" />
+                    android:src="@drawable/ic_comment" />
 
                 <TextView
                     android:id="@+id/comments_header_meta_comments"
@@ -457,7 +457,7 @@
                     android:layout_height="14dp"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_action_time" />
+                    android:src="@drawable/ic_schedule" />
 
                 <TextView
                     android:id="@+id/comments_header_meta_time"
@@ -474,7 +474,7 @@
                     android:layout_height="14dp"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_action_user" />
+                    android:src="@drawable/ic_account_circle" />
 
                 <TextView
                     android:id="@+id/comments_header_meta_by"
@@ -498,7 +498,7 @@
                 android:layout_height="28dp"
                 android:contentDescription="@null"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_action_link" />
+                android:src="@drawable/ic_link" />
 
         </LinearLayout>
 
@@ -611,7 +611,7 @@
                 android:contentDescription="User"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_action_user" />
+                android:src="@drawable/ic_account_circle" />
 
         </RelativeLayout>
 
@@ -628,7 +628,7 @@
                 android:contentDescription="Comment"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_action_comment" />
+                android:src="@drawable/ic_comment" />
 
         </RelativeLayout>
 
@@ -644,7 +644,7 @@
                 android:contentDescription="Vote"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_action_thumbs_up_outline" />
+                android:src="@drawable/ic_thumb_up" />
 
         </RelativeLayout>
 
@@ -661,7 +661,7 @@
                 android:contentDescription="Favorite"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_action_star" />
+                android:src="@drawable/ic_star" />
 
         </RelativeLayout>
 
@@ -678,7 +678,7 @@
                 android:contentDescription="Bookmark"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_action_bookmark_border" />
+                android:src="@drawable/ic_bookmark" />
 
         </RelativeLayout>
 
@@ -695,7 +695,7 @@
                 android:contentDescription="Summarize"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_action_summarize" />
+                android:src="@drawable/ic_auto_awesome" />
 
         </RelativeLayout>
 
@@ -711,7 +711,7 @@
                 android:contentDescription="Share"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_action_share" />
+                android:src="@drawable/ic_share" />
 
         </RelativeLayout>
 
@@ -728,7 +728,7 @@
                 android:contentDescription="More options"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_action_more" />
+                android:src="@drawable/ic_more_vert" />
 
         </RelativeLayout>
 
@@ -759,7 +759,7 @@
                     android:layout_width="27dp"
                     android:layout_height="27dp"
                     android:layout_centerHorizontal="true"
-                    android:src="@drawable/ic_action_user" />
+                    android:src="@drawable/ic_account_circle" />
 
             </RelativeLayout>
 
@@ -786,7 +786,7 @@
                 <ImageView
                     android:id="@+id/comment_button_comment"
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_comment"
+                    android:background="@drawable/ic_comment"
                     android:layout_width="27dp"
                     android:layout_height="27dp"/>
 
@@ -827,7 +827,7 @@
                 <ImageView
                     android:id="@+id/comment_button_vote"
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_thumbs_up_outline"
+                    android:background="@drawable/ic_thumb_up"
                     android:layout_width="27dp"
                     android:layout_height="27dp"/>
 
@@ -869,7 +869,7 @@
                 <ImageView
                     android:id="@+id/comment_button_bookmark"
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_bookmark_border"
+                    android:background="@drawable/ic_bookmark"
                     android:layout_width="27dp"
                     android:layout_height="27dp"/>
 
@@ -910,7 +910,7 @@
                 <ImageView
                     android:id="@+id/comment_button_share"
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_share"
+                    android:background="@drawable/ic_share"
                     android:layout_width="27dp"
                     android:layout_height="27dp"/>
 
@@ -952,7 +952,7 @@
                 <ImageView
                     android:id="@+id/comment_button_more"
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_action_more"
+                    android:background="@drawable/ic_more_vert"
                     android:layout_width="27dp"
                     android:layout_height="27dp"/>
 
@@ -1068,7 +1068,7 @@
             android:textAllCaps="false"
             android:textColor="#fff"
             android:textStyle="bold"
-            app:icon="@drawable/ic_action_refresh"
+            app:icon="@drawable/ic_refresh"
             app:iconTint="#fff"
             app:strokeColor="?attr/overlayButtonOutlineColor"
             app:strokeWidth="1dp" />
@@ -1084,7 +1084,7 @@
         android:layout_height="wrap_content">
 
         <ImageView
-            android:src="@drawable/ic_action_no_internet"
+            android:src="@drawable/ic_cloud_off"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             android:layout_width="match_parent"
@@ -1127,7 +1127,7 @@
             android:layout_height="56dp"
             android:layout_marginTop="4dp"
             style="@style/Widget.Material3Expressive.Button.ElevatedButton"
-            app:icon="@drawable/ic_action_refresh"
+            app:icon="@drawable/ic_refresh"
             android:textColor="?attr/colorOnSecondary"
             app:iconTint="?attr/colorOnSecondary"
             android:backgroundTint="?attr/colorSecondary"
@@ -1140,7 +1140,7 @@
             android:layout_width="wrap_content"
             android:layout_height="56dp"
             style="@style/Widget.Material3.Button.ElevatedButton"
-            app:icon="@drawable/ic_action_external_browser"
+            app:icon="@drawable/ic_open_in_browser"
             android:textColor="?attr/colorOnSecondary"
             app:iconTint="?attr/colorOnSecondary"
             android:backgroundTint="?attr/colorSecondary"
@@ -1156,7 +1156,7 @@
         android:orientation="vertical">
 
         <ImageView
-            android:src="@drawable/ic_action_comment"
+            android:src="@drawable/ic_comment"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             android:layout_width="match_parent"

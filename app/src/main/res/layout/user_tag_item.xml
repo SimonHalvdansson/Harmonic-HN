@@ -16,7 +16,7 @@
         android:layout_height="24dp"
         android:layout_marginRight="16dp"
         android:importantForAccessibility="no"
-        android:src="@drawable/ic_action_user"
+        android:src="@drawable/ic_account_circle"
         app:tint="?attr/drawableColor" />
 
     <TextView
@@ -39,7 +39,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="Edit tag"
         android:padding="12dp"
-        android:src="@drawable/ic_action_edit"
+        android:src="@drawable/ic_edit"
         app:tint="?attr/drawableColor" />
 
     <ImageButton
@@ -49,7 +49,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="Delete tag"
         android:padding="12dp"
-        android:src="@drawable/ic_action_cancel"
+        android:src="@drawable/ic_close"
         app:tint="?attr/drawableColor" />
 
 </LinearLayout>

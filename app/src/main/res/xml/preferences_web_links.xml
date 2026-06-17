@@ -10,7 +10,7 @@
             app:key="pref_webview"
             app:defaultValue="true"
             app:summary="Opens websites in the app which has a hit on performance"
-            app:icon="@drawable/ic_action_browser"
+            app:icon="@drawable/ic_web_asset"
             app:title="Integrated WebView" />
 
         <SwitchPreferenceCompat
@@ -19,12 +19,12 @@
             app:key="pref_close_webview_on_back"
             app:defaultValue="false"
             app:summary="Back navigation closes integrated WebView"
-            app:icon="@drawable/ic_action_back"
+            app:icon="@drawable/ic_arrow_back"
             app:title="Go back to comments" />
 
         <com.simon.harmonichackernews.settings.PreloadWebViewPreference
             app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_cache"
+            app:icon="@drawable/ic_cached"
             app:title="Preload websites"
             app:key="pref_preload_webview"
             app:defaultValue="never" />
@@ -34,7 +34,7 @@
             app:singleLineTitle="false"
             app:key="pref_webview_match_theme"
             app:defaultValue="false"
-            app:icon="@drawable/ic_action_invert"
+            app:icon="@drawable/ic_invert_colors"
             app:title="Match WebView dark mode to theme" />
 
         <SwitchPreferenceCompat
@@ -43,7 +43,7 @@
             app:key="pref_webview_adblock"
             app:defaultValue="false"
             app:summary="May cause some sites to stop working and has a small performance penalty"
-            app:icon="@drawable/ic_action_block"
+            app:icon="@drawable/ic_block"
             app:title="Block WebView ads" />
 
     </PreferenceCategory>
@@ -57,7 +57,7 @@
             app:singleLineTitle="false"
             app:key="pref_webview_reader_mode_enabled"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_reader_mode"
+            app:icon="@drawable/ic_chrome_reader_mode"
             app:title="Enable reader mode" />
 
         <SwitchPreferenceCompat
@@ -65,14 +65,14 @@
             app:singleLineTitle="false"
             app:key="pref_webview_reader_mode_default"
             app:defaultValue="false"
-            app:icon="@drawable/ic_action_reader_mode"
+            app:icon="@drawable/ic_chrome_reader_mode"
             app:title="Reader mode on by default" />
 
         <Preference
             app:dependency="pref_webview_reader_mode_enabled"
             app:singleLineTitle="false"
             app:key="pref_webview_reader_mode_font"
-            app:icon="@drawable/ic_action_font"
+            app:icon="@drawable/ic_font_download"
             app:title="Font" />
 
         <com.simon.harmonichackernews.settings.ReaderModeFontSizePreference
@@ -94,19 +94,19 @@
             app:defaultValue="false"
             app:title="Use external browser"
             app:summary="In place of custom tabs"
-            app:icon="@drawable/ic_action_external_browser" />
+            app:icon="@drawable/ic_open_in_browser" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_redirect_nitter"
             app:defaultValue="false"
-            app:icon="@drawable/ic_action_redirect"
+            app:icon="@drawable/ic_shuffle"
             app:title="Redirect Twitter/X to Nitter" />
 
         <Preference
             app:singleLineTitle="false"
             app:key="pref_archive_redirect_domains"
-            app:icon="@drawable/ic_action_redirect"
+            app:icon="@drawable/ic_shuffle"
             app:title="Redirect to archive version" />
 
     </PreferenceCategory>

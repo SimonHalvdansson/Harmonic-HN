@@ -64,7 +64,7 @@
         android:paddingLeft="32dp"
         android:paddingRight="32dp"
         android:textColor="#fff"
-        app:icon="@drawable/ic_action_refresh"
+        app:icon="@drawable/ic_refresh"
         app:iconTint="#fff"
         app:strokeColor="?attr/overlayButtonOutlineColor"
         app:strokeWidth="1dp"

@@ -321,7 +321,7 @@ public class ComposeActivity extends AppCompatActivity {
             UserActions.submit(postTitle, postText, postUrl, view.getContext(), new UserActions.ActionCallback() {
                 @Override
                 public void onSuccess(Response response) {
-                    submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
+                    submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_send));
                     submitButton.setEnabled(true);
                     Toast.makeText(view.getContext(), "Post submitted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
                     finish();
@@ -361,7 +361,7 @@ public class ComposeActivity extends AppCompatActivity {
             UserActions.comment(String.valueOf(id), commentText, view.getContext(), new UserActions.ActionCallback() {
                 @Override
                 public void onSuccess(Response response) {
-                    submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
+                    submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_send));
                     submitButton.setEnabled(true);
                     Toast.makeText(view.getContext(), "Comment posted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
                     finish();
@@ -395,7 +395,7 @@ public class ComposeActivity extends AppCompatActivity {
     }
 
     private void resetSubmitButton(MaterialButton submitButton) {
-        submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_action_send));
+        submitButton.setIcon(AppCompatResources.getDrawable(getApplicationContext(), R.drawable.ic_send));
         updateEnabledStatuses();
     }
 }

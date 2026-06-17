@@ -84,7 +84,7 @@
 
                 <ImageButton
                     android:id="@+id/stories_header_search_button"
-                    android:src="@drawable/ic_action_search"
+                    android:src="@drawable/ic_search"
                     android:contentDescription="Search"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:layout_width="match_parent"
@@ -93,7 +93,7 @@
                 <ImageButton
                     android:id="@+id/stories_header_close_search_button"
                     android:visibility="gone"
-                    android:src="@drawable/ic_action_cancel"
+                    android:src="@drawable/ic_close"
                     android:contentDescription="Close search"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:layout_width="match_parent"
@@ -104,7 +104,7 @@
             <ImageButton
                 android:id="@+id/stories_header_more"
                 android:layout_marginEnd="-12dp"
-                android:src="@drawable/ic_action_more"
+                android:src="@drawable/ic_more_vert"
                 android:contentDescription="More options"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:layout_width="48dp"
@@ -178,7 +178,7 @@
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
             android:textAllCaps="false"
-            app:icon="@drawable/ic_action_chevron_left"
+            app:icon="@drawable/ic_chevron_left"
             app:iconGravity="textStart"
             app:iconPadding="0dp" />
 
@@ -194,7 +194,7 @@
             android:fontFamily="@font/product_sans_bold"
             android:singleLine="true"
             android:textAllCaps="false"
-            app:icon="@drawable/ic_action_date" />
+            app:icon="@drawable/ic_calendar_today" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/stories_header_front_next_day"
@@ -207,7 +207,7 @@
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
             android:textAllCaps="false"
-            app:icon="@drawable/ic_action_chevron_right"
+            app:icon="@drawable/ic_chevron_right"
             app:iconGravity="textStart"
             app:iconPadding="0dp" />
 
@@ -272,7 +272,7 @@
                 android:checkable="true"
                 android:clickable="true"
                 android:focusable="true"
-                app:checkedIcon="@drawable/ic_baseline_check_24"
+                app:checkedIcon="@drawable/ic_check_control_normal"
                 app:checkedIconVisible="true" />
 
         </com.google.android.material.chip.ChipGroup>
@@ -349,7 +349,7 @@
         android:orientation="vertical">
 
         <ImageView
-            android:src="@drawable/ic_action_search"
+            android:src="@drawable/ic_search"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             android:layout_width="match_parent"
@@ -379,7 +379,7 @@
 
         <ImageView
             android:id="@+id/stories_header_no_bookmarks_icon"
-            android:src="@drawable/ic_action_bookmark_border"
+            android:src="@drawable/ic_bookmark"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             android:layout_width="match_parent"
@@ -409,7 +409,7 @@
         android:layout_height="wrap_content">
 
         <ImageView
-            android:src="@drawable/ic_action_no_internet"
+            android:src="@drawable/ic_cloud_off"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             android:layout_width="match_parent"
@@ -450,7 +450,7 @@
             android:layout_width="wrap_content"
             android:layout_height="56dp"
             style="@style/Widget.Material3Expressive.Button.ElevatedButton"
-            app:icon="@drawable/ic_action_refresh"
+            app:icon="@drawable/ic_refresh"
             android:textColor="?attr/colorOnSecondary"
             app:iconTint="?attr/colorOnSecondary"
             android:backgroundTint="?attr/colorSecondary"
@@ -464,7 +464,7 @@
             android:layout_width="wrap_content"
             android:layout_height="56dp"
             style="@style/Widget.Material3Expressive.Button.ElevatedButton"
-            app:icon="@drawable/ic_action_library_books"
+            app:icon="@drawable/ic_library_books"
             android:textColor="?attr/colorOnSecondary"
             app:iconTint="?attr/colorOnSecondary"
             android:backgroundTint="?attr/colorSecondary"

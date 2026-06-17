@@ -53,7 +53,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:drawableStart="@drawable/ic_action_refresh"
+            android:drawableStart="@drawable/ic_refresh"
             android:drawablePadding="14dp"
             android:fontFamily="@font/product_sans"
             android:text="Always show tap to refresh"
@@ -69,7 +69,7 @@
             android:text="Link to post"
             android:textColor="?attr/storyColorNormal"
             android:textSize="14sp"
-            app:icon="@drawable/ic_action_ballot"
+            app:icon="@drawable/ic_ballot"
             app:iconTint="?attr/storyColorNormal" />
 
         <com.google.android.material.button.MaterialButton
@@ -81,7 +81,7 @@
             android:text="Reference links post"
             android:textColor="?attr/storyColorNormal"
             android:textSize="14sp"
-            app:icon="@drawable/ic_action_link"
+            app:icon="@drawable/ic_link"
             app:iconTint="?attr/storyColorNormal" />
 
         <com.google.android.material.button.MaterialButton
@@ -93,7 +93,7 @@
             android:text="HN poll"
             android:textColor="?attr/storyColorNormal"
             android:textSize="14sp"
-            app:icon="@drawable/ic_action_comment"
+            app:icon="@drawable/ic_comment"
             app:iconTint="?attr/storyColorNormal" />
 
         <com.google.android.material.button.MaterialButton
@@ -105,7 +105,7 @@
             android:text="Post with internal HN link"
             android:textColor="?attr/storyColorNormal"
             android:textSize="14sp"
-            app:icon="@drawable/ic_action_link"
+            app:icon="@drawable/ic_link"
             app:iconTint="?attr/storyColorNormal" />
 
         <com.google.android.material.button.MaterialButton
@@ -129,7 +129,7 @@
             android:text="Welcome Dialog"
             android:textColor="?attr/storyColorNormal"
             android:textSize="14sp"
-            app:icon="@drawable/ic_action_explore"
+            app:icon="@drawable/ic_explore"
             app:iconTint="?attr/storyColorNormal" />
 
         <com.google.android.material.button.MaterialButton
@@ -141,7 +141,7 @@
             android:text="Debug notifications"
             android:textColor="?attr/storyColorNormal"
             android:textSize="14sp"
-            app:icon="@drawable/ic_action_notifications"
+            app:icon="@drawable/ic_notifications"
             app:iconTint="?attr/storyColorNormal" />
 
         <LinearLayout
@@ -183,7 +183,7 @@
                 android:fontFamily="@font/product_sans_bold"
                 android:textColor="?attr/storyColorNormal"
                 android:textSize="14sp"
-                app:icon="@drawable/ic_action_chevron_right"
+                app:icon="@drawable/ic_chevron_right"
                 app:iconGravity="textStart"
                 app:iconPadding="0dp"
                 app:iconTint="?attr/storyColorNormal" />

@@ -59,7 +59,7 @@
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:contentDescription="Add domain"
-                app:icon="@drawable/ic_action_add"
+                app:icon="@drawable/ic_add"
                 app:iconGravity="textStart"
                 app:iconPadding="0dp" />
 

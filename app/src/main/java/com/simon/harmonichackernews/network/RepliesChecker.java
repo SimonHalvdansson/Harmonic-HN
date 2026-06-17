@@ -391,7 +391,7 @@ public class RepliesChecker {
             }
 
             NotificationCompat.Builder summaryBuilder = new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_action_comment)
+                    .setSmallIcon(R.drawable.ic_comment)
                     .setLargeIcon(BitmapFactory.decodeResource(ctx.getResources(), R.mipmap.ic_launcher))
                     .setContentTitle(replies.size() + " new replies")
                     .setContentText("New Hacker News replies")
@@ -423,7 +423,7 @@ public class RepliesChecker {
 
     private static NotificationCompat.Builder buildReplyNotification(Context ctx, Reply reply, boolean grouped) {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_action_comment)
+                .setSmallIcon(R.drawable.ic_comment)
                 .setLargeIcon(BitmapFactory.decodeResource(ctx.getResources(), R.mipmap.ic_launcher))
                 .setContentTitle("New reply from " + reply.by)
                 .setContentText(reply.text)

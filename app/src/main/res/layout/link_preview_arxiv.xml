@@ -23,7 +23,7 @@
 
         <ImageView
             android:layout_marginRight="4dp"
-            android:src="@drawable/ic_action_date"
+            android:src="@drawable/ic_calendar_today"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             android:layout_width="20dp"
@@ -47,7 +47,7 @@
         <ImageView
             android:layout_marginRight="4dp"
             android:id="@+id/comments_header_arxiv_by_icon"
-            android:src="@drawable/ic_action_group"
+            android:src="@drawable/ic_groups"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             android:layout_width="20dp"
@@ -70,7 +70,7 @@
 
         <ImageView
             android:layout_marginRight="4dp"
-            android:src="@drawable/ic_action_library_books"
+            android:src="@drawable/ic_library_books"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             android:layout_width="20dp"
@@ -97,6 +97,6 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         style="@style/Widget.Material3Expressive.Button.IconButton"
-        app:icon="@drawable/ic_action_download" />
+        app:icon="@drawable/ic_file_download" />
 
 </LinearLayout>

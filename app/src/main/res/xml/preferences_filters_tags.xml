@@ -9,21 +9,21 @@
             app:singleLineTitle="false"
             app:title="Filter stories"
             app:key="pref_filter"
-            app:icon="@drawable/ic_action_filter"
+            app:icon="@drawable/ic_filter_list"
             app:summary="Hide stories based on words in title" />
 
         <Preference
             app:singleLineTitle="false"
             app:title="Filter stories by domain"
             app:key="pref_filter_domains"
-            app:icon="@drawable/ic_action_block"
+            app:icon="@drawable/ic_block"
             app:summary="Hide stories based on domain name" />
 
         <Preference
             app:singleLineTitle="false"
             app:title="Blocked users"
             app:key="pref_filter_users"
-            app:icon="@drawable/ic_action_block"
+            app:icon="@drawable/ic_block"
             app:summary="Hide comments by the specified users" />
 
         <SwitchPreferenceCompat

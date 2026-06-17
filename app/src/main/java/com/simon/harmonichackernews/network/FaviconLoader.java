@@ -25,7 +25,7 @@ public class FaviconLoader {
         try {
             String host = Utils.getDomainName(url);
             int faviconSize = Utils.pxFromDpInt(ctx.getResources(), 17);
-            Drawable webDrawable = Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_action_web));
+            Drawable webDrawable = Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_public));
             applyFaviconThumbnailShape(into);
 
             ImageRequest request = new ImageRequest.Builder(ctx)

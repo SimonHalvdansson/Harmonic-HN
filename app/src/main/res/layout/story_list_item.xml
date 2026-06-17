@@ -118,7 +118,7 @@
                     android:id="@+id/story_meta_favicon"
                     android:background="@drawable/favicon_thumbnail_background"
                     android:clipToOutline="true"
-                    android:src="@drawable/ic_action_web"
+                    android:src="@drawable/ic_public"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_marginRight="4dp"
@@ -173,7 +173,7 @@
             android:layout_marginRight="12dp"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
-            android:src="@drawable/ic_action_comment"   />
+            android:src="@drawable/ic_comment"   />
 
         <TextView
             android:text="18"

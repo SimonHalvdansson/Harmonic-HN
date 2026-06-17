@@ -10,27 +10,27 @@
             app:key="pref_bookmarks_enabled"
             app:defaultValue="true"
             app:title="Enable bookmarks"
-            app:icon="@drawable/ic_action_bookmark_border" />
+            app:icon="@drawable/ic_bookmark" />
 
         <Preference
             app:singleLineTitle="false"
             app:key="pref_add_bookmarks_to_favorites"
             app:title="Add all bookmarks to favorites"
-            app:icon="@drawable/ic_action_star" />
+            app:icon="@drawable/ic_star" />
 
         <Preference
             app:singleLineTitle="false"
             app:key="pref_export_bookmarks"
             app:title="Export bookmarks"
             app:summary="Save newline separated txt file with IDs"
-            app:icon="@drawable/ic_action_bookmark_border" />
+            app:icon="@drawable/ic_bookmark" />
 
         <Preference
             app:singleLineTitle="false"
             app:key="pref_import_bookmarks"
             app:title="Import bookmarks"
             app:summary="Overwrites current bookmarks"
-            app:icon="@drawable/ic_action_bookmark_filled" />
+            app:icon="@drawable/ic_bookmark_filled" />
 
     </PreferenceCategory>
 
@@ -42,13 +42,13 @@
             app:singleLineTitle="false"
             app:key="pref_clear_clicked_stories"
             app:title="Clear clicked stories"
-            app:icon="@drawable/ic_action_clear" />
+            app:icon="@drawable/ic_close" />
 
         <Preference
             app:singleLineTitle="false"
             app:key="pref_clear_post_cache"
             app:title="Clear post cache"
-            app:icon="@drawable/ic_action_cache" />
+            app:icon="@drawable/ic_cached" />
 
     </PreferenceCategory>
 
@@ -59,27 +59,27 @@
         <Preference
             app:singleLineTitle="false"
             app:key="pref_open_hn_links_in_harmonic"
-            app:icon="@drawable/ic_action_browser"
+            app:icon="@drawable/ic_web_asset"
             app:title="Open Hacker News links in Harmonic" />
 
         <com.simon.harmonichackernews.settings.StoriesToCachePreference
             app:singleLineTitle="false"
             app:key="pref_stories_to_cache"
             app:defaultValue="20"
-            app:icon="@drawable/ic_action_cache"
+            app:icon="@drawable/ic_cached"
             app:title="Stories to cache for offline" />
 
         <Preference
             app:singleLineTitle="false"
             app:key="pref_reset_all_settings"
-            app:icon="@drawable/ic_action_refresh"
+            app:icon="@drawable/ic_refresh"
             app:title="Reset all settings" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_show_changelog"
             app:defaultValue="true"
-            app:icon="@drawable/ic_action_update"
+            app:icon="@drawable/ic_system_update_alt"
             app:title="Show update changelogs" />
 
     </PreferenceCategory>

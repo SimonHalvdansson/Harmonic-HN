@@ -42,7 +42,7 @@
                 android:layout_height="56dp"
                 app:iconPadding="8dp"
                 style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
-                app:icon="@drawable/ic_action_refresh"
+                app:icon="@drawable/ic_refresh"
                 android:id="@+id/user_retry"
                 android:textColor="?attr/colorOnSecondary"
                 app:iconTint="?attr/colorOnSecondary"
@@ -99,7 +99,7 @@
                 android:textSize="14sp"
                 android:layout_marginTop="8dp"
                 style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
-                app:icon="@drawable/ic_action_forum"
+                app:icon="@drawable/ic_forum"
                 app:iconTint="?attr/storyColorNormal"
                 android:id="@+id/user_submissions_button"
                 android:fontFamily="@font/product_sans_bold"
@@ -119,7 +119,7 @@
                 android:textColor="?attr/storyColorNormal"
                 android:textSize="14sp"
                 android:visibility="gone"
-                app:icon="@drawable/ic_action_notifications"
+                app:icon="@drawable/ic_notifications"
                 app:iconTint="?attr/storyColorNormal"
                 tools:visibility="visible" />
 
@@ -156,7 +156,7 @@
 
             <Button
                 android:fontFamily="@font/product_sans_bold"
-                app:icon="@drawable/ic_action_tag"
+                app:icon="@drawable/ic_sell"
                 android:minWidth="10dp"
                 android:layout_marginTop="8dp"
                 android:id="@+id/user_tag_button"
@@ -168,7 +168,7 @@
 
             <Button
                 android:fontFamily="@font/product_sans_bold"
-                app:icon="@drawable/ic_action_block"
+                app:icon="@drawable/ic_block"
                 android:minWidth="10dp"
                 android:id="@+id/user_block_button"
                 style="@style/Widget.Material3Expressive.Button.TextButton"
@@ -179,7 +179,7 @@
 
             <Button
                 android:fontFamily="@font/product_sans_bold"
-                app:icon="@drawable/ic_action_report"
+                app:icon="@drawable/ic_flag"
                 android:id="@+id/user_report_button"
                 style="@style/Widget.Material3Expressive.Button.TextButton"
                 android:layout_width="wrap_content"

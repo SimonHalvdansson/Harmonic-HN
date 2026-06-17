@@ -147,7 +147,7 @@ public class ThreadDepthIndicatorsDialogFragment extends AppCompatDialogFragment
             MaterialButton button = entry.getValue();
             button.setChecked(selected);
             if (selected) {
-                button.setIconResource(R.drawable.ic_action_check);
+                button.setIconResource(R.drawable.ic_check);
             } else {
                 button.setIcon(null);
             }

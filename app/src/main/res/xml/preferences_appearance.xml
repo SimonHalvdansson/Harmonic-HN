@@ -7,7 +7,7 @@
 
         <Preference
             app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_style"
+            app:icon="@drawable/ic_style"
             app:title="Theme"
             app:key="pref_theme"
             app:summary="Material You (auto)" />
@@ -16,18 +16,18 @@
             app:singleLineTitle="false"
             app:key="pref_special_nighttime"
             app:defaultValue="false"
-            app:icon="@drawable/ic_action_night"
+            app:icon="@drawable/ic_nights_stay"
             app:title="Special nighttime theme" />
 
         <Preference
             app:singleLineTitle="false"
             app:key="pref_theme_timed_range"
-            app:icon="@drawable/ic_action_time"
+            app:icon="@drawable/ic_schedule"
             app:title="Timed range" />
 
         <Preference
             app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_dark_mode"
+            app:icon="@drawable/ic_dark_mode"
             app:title="Nighttime theme"
             app:key="pref_theme_nighttime"
             app:summary="Dark" />
@@ -40,14 +40,14 @@
 
         <Preference
             app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_font"
+            app:icon="@drawable/ic_font_download"
             app:title="Title and comment font"
             app:key="pref_font"
             app:summary="Product sans (default)" />
 
         <Preference
             app:singleLineTitle="false"
-            app:icon="@drawable/ic_action_colors"
+            app:icon="@drawable/ic_palette"
             app:title="Palette tint"
             app:key="pref_palette_tint_mode"
             app:summary="Default" />
@@ -57,7 +57,7 @@
             app:singleLineTitle="false"
             app:key="pref_transparent_status_bar"
             app:defaultValue="false"
-            app:icon="@drawable/ic_action_visibility"
+            app:icon="@drawable/ic_visibility"
             app:title="Transparent status bar" />
 
         <SwitchPreferenceCompat
@@ -65,7 +65,7 @@
             app:key="pref_compact_header"
             app:defaultValue="false"
             app:summary="Smaller margins for 'Top stories' header"
-            app:icon="@drawable/ic_action_horizontal_split"
+            app:icon="@drawable/ic_horizontal_split"
             app:title="Compact header" />
 
     </PreferenceCategory>

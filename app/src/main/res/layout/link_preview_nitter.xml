@@ -76,7 +76,7 @@
                 android:layout_height="wrap_content">
 
                 <ImageView
-                    android:src="@drawable/ic_action_date"
+                    android:src="@drawable/ic_calendar_today"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_width="14dp"
@@ -94,7 +94,7 @@
 
                 <ImageView
                     android:id="@+id/comments_header_nitter_reply_image"
-                    android:src="@drawable/ic_action_reply"
+                    android:src="@drawable/ic_reply"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_width="15dp"
@@ -137,7 +137,7 @@
 
                 <ImageView
                     android:id="@+id/comments_header_nitter_likes_image"
-                    android:src="@drawable/ic_action_thumbs_up"
+                    android:src="@drawable/ic_thumb_up_filled"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_width="12dp"

@@ -103,11 +103,11 @@ final class LinkPreviewHeaderBinder {
         holder.arxivDate.setContentDescription("Published: " + story.arxivInfo.formatDate());
         holder.arxivSubjects.setContentDescription("Subjects: " + story.arxivInfo.formatSubjects());
 
-        int byIconResource = R.drawable.ic_action_group;
+        int byIconResource = R.drawable.ic_groups;
         if (story.arxivInfo.authors.length == 1) {
-            byIconResource = R.drawable.ic_action_person;
+            byIconResource = R.drawable.ic_person;
         } else if (story.arxivInfo.authors.length == 2) {
-            byIconResource = R.drawable.ic_action_pair;
+            byIconResource = R.drawable.ic_group;
         }
         holder.arxivByIcon.setImageResource(byIconResource);
     }
