@@ -2788,7 +2788,7 @@ public class StoriesFragment extends Fragment {
         HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
     }
 
-    private boolean hasLoadedStory() {
+    private boolean hasMarkableStory() {
         if (stories == null) {
             return false;
         }
@@ -2801,7 +2801,13 @@ public class StoriesFragment extends Fragment {
     }
 
     private boolean isMarkableStory(Story story) {
-        return story != null && story.loaded && !story.isComment && story.id > 0;
+        // A story is markable as long as it has a real HN id and is not a
+        // comment row. We intentionally do NOT require story.loaded: on the
+        // standard feeds the list is pre-populated with placeholder rows whose
+        // JSON has not been fetched yet, and "Mark all as read" should cover
+        // the whole loaded feed, not just the rows the user happened to scroll
+        // far enough to fetch.
+        return story != null && !story.isComment && story.id > 0;
     }
 
     private void markAllStoriesRead() {
@@ -2809,13 +2815,21 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
+        List<Integer> newlyReadIds = new ArrayList<>();
         boolean changed = false;
         for (Story story : stories) {
             if (isMarkableStory(story) && !story.clicked) {
                 story.clicked = true;
-                HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
+                newlyReadIds.add(story.id);
                 changed = true;
             }
+        }
+
+        if (!newlyReadIds.isEmpty()) {
+            // Persist every id in a single write instead of one
+            // load/sort/serialize cycle per story (HistoriesUtils.addHistories
+            // de-dupes against existing entries).
+            HistoriesUtils.INSTANCE.addHistories(requireContext(), newlyReadIds);
         }
 
         if (changed && adapter != null) {
@@ -3093,7 +3107,7 @@ public class StoriesFragment extends Fragment {
         //first only show cache button if we're not already looking at the cache
         boolean cacheInProgress = storyCacheController != null && storyCacheController.isCachingStories();
         menu.findItem(R.id.menu_cache).setVisible(!showingCached && !cacheInProgress);
-        menu.findItem(R.id.menu_mark_all_read).setVisible(!isHistoryType(adapter.type) && hasLoadedStory());
+        menu.findItem(R.id.menu_mark_all_read).setVisible(!isHistoryType(adapter.type) && hasMarkableStory());
         menu.findItem(R.id.menu_clear_history).setVisible(isHistoryType(adapter.type) && HistoriesUtils.INSTANCE.size() > 0);
         //also if we don't have internet, no need to show at all
         if (getContext() != null) {
