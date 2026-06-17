@@ -137,7 +137,7 @@
 
                 <ImageView
                     android:id="@+id/comments_header_nitter_likes_image"
-                    android:src="@drawable/ic_thumb_up_filled"
+                    android:src="@drawable/ic_thumb_up"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_width="12dp"
