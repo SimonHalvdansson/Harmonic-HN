@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 5) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 6) {
         return;
     }
 
@@ -506,6 +506,15 @@
             "#harmonic-reader-article p,#harmonic-reader-article li{font-size:" + bodyFontSize + "px!important;line-height:1.68!important;color:" + theme.textColor + "!important;}",
             "#harmonic-reader-article span,#harmonic-reader-article strong,#harmonic-reader-article em,#harmonic-reader-article small{color:inherit!important;}",
             "#harmonic-reader-article p{margin:0 0 1.05em!important;}",
+            "#harmonic-reader-article ul,#harmonic-reader-article ol{display:block!important;margin:0 0 1.05em!important;padding-left:1.4em!important;list-style-position:outside!important;color:" + theme.textColor + "!important;}",
+            "#harmonic-reader-article ul{list-style-type:disc!important;}",
+            "#harmonic-reader-article ol{list-style-type:decimal!important;}",
+            "#harmonic-reader-article li{display:list-item!important;margin:.35em 0!important;padding-left:.15em!important;}",
+            "#harmonic-reader-article li::marker{color:" + theme.textColor + "!important;}",
+            "#harmonic-reader-article li p{margin:.35em 0!important;}",
+            "#harmonic-reader-article li>ul,#harmonic-reader-article li>ol{margin:.45em 0 .45em!important;padding-left:1.25em!important;}",
+            "#harmonic-reader-article li>ul{list-style-type:circle!important;}",
+            "#harmonic-reader-article li>ol{list-style-type:lower-alpha!important;}",
             "#harmonic-reader-article h2,#harmonic-reader-article h3,#harmonic-reader-article h4,#harmonic-reader-article h5,#harmonic-reader-article h6{font-family:" + theme.headingFontFamily + "!important;line-height:1.25!important;margin:1.65em 0 .6em!important;background:transparent!important;color:" + theme.headingColor + "!important;}",
             "#harmonic-reader-article a{color:" + theme.linkColor + "!important;text-decoration:underline!important;text-decoration-thickness:1px!important;text-underline-offset:3px!important;}",
             "#harmonic-reader-article img,#harmonic-reader-article video{display:block;height:auto!important;margin:1.2em auto!important;border-radius:4px!important;}",
@@ -696,7 +705,7 @@
     }
 
     window.HarmonicReaderMode = {
-        version: 5,
+        version: 6,
         setTheme: setTheme,
         isAvailable: isAvailable,
         enable: enable,
