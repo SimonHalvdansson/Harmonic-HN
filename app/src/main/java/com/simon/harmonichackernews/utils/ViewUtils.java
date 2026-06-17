@@ -25,15 +25,23 @@ public class ViewUtils {
      * {@code default + status bar} when status bar is transparent.
      */
     public static void setUpSwipeRefreshWithStatusBarOffset(SwipeRefreshLayout layout) {
+        setUpSwipeRefreshWithStatusBarOffset(layout, 0);
+    }
+
+    public static void setUpSwipeRefreshWithStatusBarOffset(SwipeRefreshLayout layout, int progressViewOffset) {
+        setUpSwipeRefreshWithStatusBarOffset(layout, progressViewOffset, progressViewOffset);
+    }
+
+    public static void setUpSwipeRefreshWithStatusBarOffset(SwipeRefreshLayout layout, int startOffset, int endOffset) {
         int start = layout.getProgressViewStartOffset();
         int end = layout.getProgressViewEndOffset();
 
         ViewCompat.setOnApplyWindowInsetsListener(layout, (v, insets) -> {
             int top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
             if (SettingsUtils.shouldUseTransparentStatusBar(layout.getContext())) {
-                layout.setProgressViewOffset(false, start, end + top);
+                layout.setProgressViewOffset(false, start + startOffset, end + top + endOffset);
             } else {
-                layout.setProgressViewOffset(false, start + top, end + top);
+                layout.setProgressViewOffset(false, start + top + startOffset, end + top + endOffset);
             }
             return insets;
         });

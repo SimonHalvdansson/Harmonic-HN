@@ -103,6 +103,8 @@ import okhttp3.Response;
 
 public class StoriesFragment extends Fragment {
     private static final String TAG = "StoriesFragment";
+    private static final int SWIPE_REFRESH_PROGRESS_START_OFFSET_DP = -32;
+    private static final int SWIPE_REFRESH_PROGRESS_END_OFFSET_DP = -64;
 
     private StoryClickListener storyClickListener;
     private FragmentStoriesBinding binding;
@@ -376,7 +378,9 @@ public class StoriesFragment extends Fragment {
         swipeRefreshLayout.setOnRefreshListener(() -> attemptRefresh(true));
         swipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
                 recyclerView != null && recyclerView.canScrollVertically(-1));
-        ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
+        ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout,
+                Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_PROGRESS_START_OFFSET_DP),
+                Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_PROGRESS_END_OFFSET_DP));
 
         mainLinearLayoutManager = createStoryLayoutManager();
         searchLinearLayoutManager = createStoryLayoutManager();
