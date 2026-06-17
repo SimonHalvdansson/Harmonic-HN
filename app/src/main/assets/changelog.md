@@ -1,6 +1,8 @@
 ﻿# Version 3.1
 - Added ability to show extra HN frontpages in Settings → Stories → Behavior
 - Added setting to reset all settings
+- Updated icons to rounded Material symbols
+- Updated dropdown header font size for smaller screens
 - Fixed behavior of 'Hide clicked posts'
 - Added ability to clear history from history screen
 

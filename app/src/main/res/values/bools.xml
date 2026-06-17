@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <bool name="extra_compact_stories_dropdown_selected_text">true</bool>
     <bool name="compact_stories_dropdown_selected_text">true</bool>
 </resources>

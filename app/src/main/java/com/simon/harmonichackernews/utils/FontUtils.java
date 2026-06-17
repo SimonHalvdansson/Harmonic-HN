@@ -12,7 +12,8 @@ import com.simon.harmonichackernews.R;
 public class FontUtils {
 
     private static final float GOOGLE_SANS_FLEX_ROUNDED_SIZE_ADJUSTMENT = -0.5f;
-    private static final float COMPACT_STORIES_DROPDOWN_SELECTED_SCALE = 0.8f;
+    private static final float EXTRA_COMPACT_STORIES_DROPDOWN_SELECTED_SCALE = 0.8f;
+    private static final float COMPACT_STORIES_DROPDOWN_SELECTED_SCALE = 0.9f;
     private static final FontSizes STORY_TITLE_SIZES = new FontSizes(17.5f, 16, 18, 15, 16, 16, 17, 17.5f);
     private static final FontSizes STORY_META_SIZES = new FontSizes(13, 13f, 13, 12, 12, 12, 13, 13);
     private static final FontSizes STORY_COMMENT_COUNT_SIZES = new FontSizes(14, 13.5f, 13, 13, 14, 14, 14, 14);
@@ -127,7 +128,9 @@ public class FontUtils {
 
     public static void setStoriesDropdownSelectedTypeface(TextView textView) {
         FontSizes sizes = STORIES_DROPDOWN_SELECTED_SIZES;
-        if (textView.getResources().getBoolean(R.bool.compact_stories_dropdown_selected_text)) {
+        if (textView.getResources().getBoolean(R.bool.extra_compact_stories_dropdown_selected_text)) {
+            sizes = sizes.times(EXTRA_COMPACT_STORIES_DROPDOWN_SELECTED_SCALE);
+        } else if (textView.getResources().getBoolean(R.bool.compact_stories_dropdown_selected_text)) {
             sizes = sizes.times(COMPACT_STORIES_DROPDOWN_SELECTED_SCALE);
         }
         setTypeface(textView, true, sizes, TypedValue.COMPLEX_UNIT_DIP);
