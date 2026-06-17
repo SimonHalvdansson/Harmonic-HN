@@ -7,7 +7,6 @@ import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -16,6 +15,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatDialogFragment;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.simon.harmonichackernews.databinding.LoginDialogBinding;
 import com.google.android.material.textfield.TextInputEditText;
 import com.simon.harmonichackernews.network.UserActions;
@@ -49,7 +49,7 @@ public class LoginDialogFragment extends AppCompatDialogFragment {
         LinearLayout infoContainer = binding.loginDialogInfoContainer;
         LinearLayout loadingContainer = binding.loginDialogLoadingContainer;
         TextView errorText = binding.loginDialogError;
-        ProgressBar progressBar = binding.loginDialogProgress;
+        LoadingIndicator progressBar = binding.loginDialogProgress;
 
         usernameInput.addTextChangedListener(new ViewUtils.SimpleTextWatcher() {
             @Override

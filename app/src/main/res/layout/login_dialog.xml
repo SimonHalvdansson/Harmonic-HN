@@ -130,11 +130,11 @@
             android:orientation="horizontal"
             android:visibility="gone">
 
-            <ProgressBar
+            <com.google.android.material.loadingindicator.LoadingIndicator
                 android:id="@+id/login_dialog_progress"
-                style="?android:attr/progressBarStyleSmall"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
+                app:indicatorSize="24dp"
                 android:indeterminate="true" />
 
             <TextView
