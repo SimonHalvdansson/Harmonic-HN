@@ -2832,9 +2832,21 @@ public class StoriesFragment extends Fragment {
             HistoriesUtils.INSTANCE.addHistories(requireContext(), newlyReadIds);
         }
 
-        if (changed && adapter != null) {
-            adapter.notifyDataSetChanged();
+        if (!changed || adapter == null) {
+            return;
         }
+
+        // When the user hides clicked posts, the now-read rows must leave the
+        // current list immediately, matching the existing clicked-sync path
+        // (refreshClickedState) rather than lingering until the next refresh.
+        if (hideClicked && !isHistoryType(adapter.type)) {
+            if (!removeClickedStoriesFromCurrentList()) {
+                attemptRefresh();
+            }
+            return;
+        }
+
+        adapter.notifyDataSetChanged();
     }
 
     private void removeStoryAt(int index, int loadGeneration, boolean loadVisibleReplacement) {
