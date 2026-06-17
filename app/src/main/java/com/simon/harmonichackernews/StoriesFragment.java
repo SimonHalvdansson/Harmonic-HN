@@ -2788,6 +2788,41 @@ public class StoriesFragment extends Fragment {
         HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
     }
 
+    private boolean hasLoadedStory() {
+        if (stories == null) {
+            return false;
+        }
+        for (Story story : stories) {
+            if (isMarkableStory(story)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isMarkableStory(Story story) {
+        return story != null && story.loaded && !story.isComment && story.id > 0;
+    }
+
+    private void markAllStoriesRead() {
+        if (stories == null) {
+            return;
+        }
+
+        boolean changed = false;
+        for (Story story : stories) {
+            if (isMarkableStory(story) && !story.clicked) {
+                story.clicked = true;
+                HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
+                changed = true;
+            }
+        }
+
+        if (changed && adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
+    }
+
     private void removeStoryAt(int index, int loadGeneration, boolean loadVisibleReplacement) {
         if (index < 0 || index >= stories.size()) {
             return;
@@ -3033,6 +3068,8 @@ public class StoriesFragment extends Fragment {
                     Intent submitIntent = new Intent(getContext(), ComposeActivity.class);
                     submitIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_POST);
                     startActivity(submitIntent);
+                } else if (item.getItemId() == R.id.menu_mark_all_read) {
+                    markAllStoriesRead();
                 } else if (item.getItemId() == R.id.menu_clear_history) {
                     HistoriesUtils.INSTANCE.clearHistories(requireContext());
                     loadingFailed = false;
@@ -3056,6 +3093,7 @@ public class StoriesFragment extends Fragment {
         //first only show cache button if we're not already looking at the cache
         boolean cacheInProgress = storyCacheController != null && storyCacheController.isCachingStories();
         menu.findItem(R.id.menu_cache).setVisible(!showingCached && !cacheInProgress);
+        menu.findItem(R.id.menu_mark_all_read).setVisible(!isHistoryType(adapter.type) && hasLoadedStory());
         menu.findItem(R.id.menu_clear_history).setVisible(isHistoryType(adapter.type) && HistoriesUtils.INSTANCE.size() > 0);
         //also if we don't have internet, no need to show at all
         if (getContext() != null) {
