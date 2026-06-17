@@ -105,6 +105,7 @@ public class StoriesFragment extends Fragment {
     private static final String TAG = "StoriesFragment";
     private static final int SWIPE_REFRESH_PROGRESS_START_OFFSET_DP = -32;
     private static final int SWIPE_REFRESH_PROGRESS_END_OFFSET_DP = -64;
+    private static final int UPDATE_FAB_LOAD_MORE_CLEARANCE_DP = 8;
 
     private StoryClickListener storyClickListener;
     private FragmentStoriesBinding binding;
@@ -124,6 +125,7 @@ public class StoriesFragment extends Fragment {
     private StoryUpdate.StoryUpdateListener storyUpdateListener;
     private final StorySearchController searchController = new StorySearchController();
     private StoryCacheController storyCacheController;
+    private int systemBottomInset = 0;
 
     // Header views
     private LinearLayout headerContainer;
@@ -438,19 +440,8 @@ public class StoriesFragment extends Fragment {
 
                 applyHeaderPadding(getContext());
 
-                // Apply bottom inset to RecyclerViews so last item isn't behind nav bar
-                mainRecyclerView.setPadding(
-                        getSplitStoriesContentPaddingStart(),
-                        mainRecyclerView.getPaddingTop(),
-                        mainRecyclerView.getPaddingRight(),
-                        insets.bottom
-                );
-                searchRecyclerView.setPadding(
-                        getSplitStoriesContentPaddingStart(),
-                        searchRecyclerView.getPaddingTop(),
-                        searchRecyclerView.getPaddingRight(),
-                        insets.bottom
-                );
+                systemBottomInset = insets.bottom;
+                applyStoriesRecyclerPadding();
 
                 return windowInsets;
             }
@@ -968,6 +959,48 @@ public class StoriesFragment extends Fragment {
         }
 
         return getResources().getDimensionPixelSize(R.dimen.extra_pane_padding);
+    }
+
+    private void applyStoriesRecyclerPadding() {
+        int bottomPadding = systemBottomInset;
+        if (updateButtonShowing && updateFab != null) {
+            int updateFabHeight = updateFab.getHeight();
+            ViewGroup.LayoutParams layoutParams = updateFab.getLayoutParams();
+            if (updateFabHeight <= 0 && layoutParams != null && layoutParams.height > 0) {
+                updateFabHeight = layoutParams.height;
+            }
+            if (updateFabHeight <= 0) {
+                updateFabHeight = Utils.pxFromDpInt(getResources(), 56);
+            }
+
+            int updateFabBottomMargin = 0;
+            if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
+                updateFabBottomMargin = ((ViewGroup.MarginLayoutParams) layoutParams).bottomMargin;
+            }
+
+            bottomPadding = Math.max(
+                    bottomPadding,
+                    updateFabBottomMargin
+                            + updateFabHeight
+                            + Utils.pxFromDpInt(getResources(), UPDATE_FAB_LOAD_MORE_CLEARANCE_DP)
+            );
+        }
+
+        applyStoriesRecyclerPadding(mainRecyclerView, bottomPadding);
+        applyStoriesRecyclerPadding(searchRecyclerView, bottomPadding);
+    }
+
+    private void applyStoriesRecyclerPadding(@Nullable RecyclerView storiesRecyclerView, int bottomPadding) {
+        if (storiesRecyclerView == null) {
+            return;
+        }
+
+        storiesRecyclerView.setPadding(
+                getSplitStoriesContentPaddingStart(),
+                storiesRecyclerView.getPaddingTop(),
+                storiesRecyclerView.getPaddingRight(),
+                bottomPadding
+        );
     }
 
     private Calendar getFrontPageDayUtc() {
@@ -4888,6 +4921,7 @@ public class StoriesFragment extends Fragment {
         if (updateFab != null && updateFab.getVisibility() == View.VISIBLE) {
             updateFab.hide();
         }
+        applyStoriesRecyclerPadding();
     }
 
     private void showUpdateButton() {
@@ -4900,6 +4934,7 @@ public class StoriesFragment extends Fragment {
         if (updateFab != null && updateFab.getVisibility() != View.VISIBLE) {
             updateFab.show();
         }
+        applyStoriesRecyclerPadding();
     }
 
     private void openComments(Story story, int pos, boolean showWebsite) {
