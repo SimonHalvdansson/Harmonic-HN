@@ -2,11 +2,13 @@ package com.simon.harmonichackernews.settings;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.widget.TextView;
 
 import androidx.preference.Preference;
 import androidx.preference.PreferenceViewHolder;
 
 import com.google.android.material.slider.Slider;
+import com.simon.harmonichackernews.R;
 
 import java.util.Locale;
 
@@ -30,14 +32,17 @@ abstract class TextSizePreference extends Preference {
         holder.itemView.setFocusable(false);
 
         Slider slider = getSlider(holder);
+        TextView valueText = (TextView) holder.findViewById(R.id.text_size_value);
         float textSize = getPersistedTextSize();
         int offset = getTextSizeOffset(textSize);
 
         slider.clearOnChangeListeners();
         slider.setLabelFormatter(sliderValue -> formatOffset(Math.round(sliderValue)));
         slider.setValue(offset);
+        updateValueText(valueText, offset);
         slider.addOnChangeListener((changedSlider, sliderValue, fromUser) -> {
             int roundedOffset = Math.round(sliderValue);
+            updateValueText(valueText, roundedOffset);
             if (!fromUser) {
                 return;
             }
@@ -49,7 +54,9 @@ abstract class TextSizePreference extends Preference {
             }
 
             if (!callChangeListener(stringValue)) {
-                changedSlider.setValue(getTextSizeOffset(getPersistedTextSize()));
+                int persistedOffset = getTextSizeOffset(getPersistedTextSize());
+                changedSlider.setValue(persistedOffset);
+                updateValueText(valueText, persistedOffset);
                 return;
             }
 
@@ -79,10 +86,16 @@ abstract class TextSizePreference extends Preference {
     }
 
     private String formatOffset(int offset) {
-        if (offset > 0) {
+        if (offset >= 0) {
             return "+" + offset;
         }
         return String.valueOf(offset);
+    }
+
+    private void updateValueText(TextView valueText, int offset) {
+        if (valueText != null) {
+            valueText.setText(formatOffset(offset));
+        }
     }
 
     private String formatTextSize(float textSize) {
