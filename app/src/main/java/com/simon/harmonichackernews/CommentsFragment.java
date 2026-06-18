@@ -274,7 +274,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         story = new Story();
 
         Bundle bundle = getArguments();
-        if (bundle != null && bundle.getString(EXTRA_TITLE) != null && bundle.getString(EXTRA_BY) != null) {
+        if (hasStoryHeaderArguments(bundle)) {
             story.title = bundle.getString(EXTRA_TITLE);
             story.pdfTitle = bundle.getString(EXTRA_PDF_TITLE, null);
             story.videoTitle = bundle.getString(EXTRA_VIDEO_TITLE, null);
@@ -306,7 +306,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             story.commentMasterId = bundle.getInt(EXTRA_COMMENT_MASTER_ID, 0);
             story.commentMasterTitle = bundle.getString(EXTRA_COMMENT_MASTER_TITLE);
             story.commentMasterUrl = bundle.getString(EXTRA_COMMENT_MASTER_URL);
-            story.loaded = true;
+            story.loaded = story.by != null;
 
             if (Utils.isTablet(getResources())) {
                 int forward = bundle.getInt(EXTRA_FORWARD, 0);
@@ -353,6 +353,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             }
         }
+    }
+
+    private boolean hasStoryHeaderArguments(@Nullable Bundle bundle) {
+        return bundle != null
+                && bundle.getInt(EXTRA_ID, -1) > 0
+                && bundle.getString(EXTRA_TITLE) != null;
     }
 
     private boolean loadStoryFromHackerNewsUri(Uri uri) {

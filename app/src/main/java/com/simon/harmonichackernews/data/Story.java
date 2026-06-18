@@ -64,6 +64,11 @@ public class Story {
     public String commentMasterTitle;
     public int commentMasterId;
     public String commentMasterUrl;
+    public String commentMasterBy;
+    public int commentMasterScore;
+    public int commentMasterTime;
+    public int commentMasterDescendants;
+    public boolean commentMasterLoaded;
     public int parentId;  // Direct parent ID (for comments)
     public String summary;
 
@@ -136,6 +141,33 @@ public class Story {
         bundle.putString(CommentsFragment.EXTRA_COMMENT_MASTER_URL, commentMasterUrl);
 
         return bundle;
+    }
+
+    public Story toCommentMasterStory() {
+        int targetId = commentMasterId > 0 ? commentMasterId : parentId;
+        if (targetId <= 0) {
+            return null;
+        }
+
+        Story masterStory = new Story();
+        masterStory.id = targetId;
+        masterStory.title = hasText(commentMasterTitle) ? commentMasterTitle : title;
+        boolean hasMasterUrl = hasText(commentMasterUrl);
+        masterStory.url = hasMasterUrl
+                ? commentMasterUrl
+                : "https://news.ycombinator.com/item?id=" + targetId;
+        masterStory.isLink = hasMasterUrl
+                && !masterStory.url.startsWith("https://news.ycombinator.com/item?id=");
+        masterStory.by = commentMasterBy;
+        masterStory.score = commentMasterScore;
+        masterStory.time = commentMasterTime;
+        masterStory.descendants = commentMasterDescendants;
+        masterStory.loaded = commentMasterLoaded && hasText(commentMasterBy);
+        return masterStory;
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isEmpty();
     }
 
     public boolean hasExtraInfo() {

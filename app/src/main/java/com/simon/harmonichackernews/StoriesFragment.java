@@ -2806,12 +2806,44 @@ public class StoriesFragment extends Fragment {
         }
 
         Story story = stories.get(position);
-        int targetId = story.commentMasterId > 0 ? story.commentMasterId : story.parentId;
-        if (targetId > 0) {
-            Utils.openCommentsActivity(targetId, -1, requireContext());
+        Story masterStory = story.toCommentMasterStory();
+        if (masterStory != null) {
+            openCommentMasterStory(story, masterStory, position);
         } else {
             clickedComments(position);
         }
+    }
+
+    private void openCommentMasterStory(Story sourceStory, Story masterStory, int position) {
+        if (masterStory.loaded) {
+            openComments(masterStory, position, false);
+            return;
+        }
+
+        String url = "https://hacker-news.firebaseio.com/v0/item/" + masterStory.id + ".json";
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                response -> {
+                    if (!isAdded() || adapter == null) {
+                        return;
+                    }
+
+                    try {
+                        JSONParser.updateCommentMasterStoryWithHNJson(sourceStory, response);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                    int index = stories.indexOf(sourceStory);
+                    if (index >= 0) {
+                        adapter.notifyItemChanged(index);
+                    }
+
+                    Story refreshedMasterStory = sourceStory.toCommentMasterStory();
+                    openComments(refreshedMasterStory != null ? refreshedMasterStory : masterStory, position, false);
+                }, error -> openComments(masterStory, position, false));
+
+        stringRequest.setTag(requestTag);
+        queue.add(stringRequest);
     }
 
     private void markStoryClicked(Story story) {
@@ -3629,12 +3661,8 @@ public class StoriesFragment extends Fragment {
                             return;
                         }
 
-                        story.commentMasterId = parent.optInt("id", parentId);
-                        story.commentMasterTitle = parent.optString("title", "Hacker News thread");
-                        if (parent.has("url")) {
-                            story.commentMasterUrl = parent.optString("url");
-                        } else {
-                            story.commentMasterUrl = "https://news.ycombinator.com/item?id=" + story.commentMasterId;
+                        if (!JSONParser.updateCommentMasterStoryWithHNJson(story, response)) {
+                            return;
                         }
 
                         int index = stories.indexOf(story);

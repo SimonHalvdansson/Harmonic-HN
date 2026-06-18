@@ -26,6 +26,7 @@ import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.databinding.ActivitySubmissionsBinding;
 import com.simon.harmonichackernews.network.BackgroundJSONParser;
+import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -174,18 +175,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         adapter.setOnCommentStoryClickListener(new StoryRecyclerViewAdapter.ClickListener() {
             @Override
             public void onItemClick(int position) {
-                Story story = submissions.get(position);
-
-                Intent intent = new Intent(getApplicationContext(), CommentsActivity.class);
-                intent.putExtra(CommentsFragment.EXTRA_ID, story.commentMasterId);
-                intent.putExtra(CommentsFragment.EXTRA_TITLE, story.commentMasterTitle);
-                intent.putExtra(CommentsFragment.EXTRA_URL, story.commentMasterUrl);
-
-                startActivity(intent);
-
-                if (!SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext()) && !Utils.isTablet(getResources())) {
-                    overridePendingTransition(R.anim.activity_in_animation, 0);
-                }
+                openCommentMasterStory(submissions.get(position));
             }
         });
 
@@ -425,6 +415,40 @@ public class SubmissionsActivity extends AppCompatActivity {
             return story.isComment;
         }
         return true;
+    }
+
+    private void openCommentMasterStory(Story story) {
+        Story masterStory = story.toCommentMasterStory();
+        if (masterStory == null) {
+            openComments(story, false);
+            return;
+        }
+
+        if (masterStory.loaded) {
+            openComments(masterStory, false);
+            return;
+        }
+
+        String url = "https://hacker-news.firebaseio.com/v0/item/" + masterStory.id + ".json";
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                response -> {
+                    try {
+                        JSONParser.updateCommentMasterStoryWithHNJson(story, response);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                    int index = submissions.indexOf(story);
+                    if (index >= 0) {
+                        adapter.notifyItemChanged(index);
+                    }
+
+                    Story refreshedMasterStory = story.toCommentMasterStory();
+                    openComments(refreshedMasterStory != null ? refreshedMasterStory : masterStory, false);
+                }, error -> openComments(masterStory, false));
+
+        stringRequest.setTag(requestTag);
+        queue.add(stringRequest);
     }
 
     private void openComments(Story story, boolean showWebsite) {

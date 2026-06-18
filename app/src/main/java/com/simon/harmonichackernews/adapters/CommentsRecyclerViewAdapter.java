@@ -748,14 +748,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void bindHeaderTitle(HeaderViewHolder headerViewHolder, Context ctx) {
-        if (!story.loaded && !loadingFailed) {
+        boolean hasTitle = !TextUtils.isEmpty(story.title);
+        if (!story.loaded && !loadingFailed && !hasTitle) {
             headerViewHolder.titleView.setVisibility(GONE);
             headerViewHolder.titleShimmer.setVisibility(View.VISIBLE);
             return;
         }
 
         headerViewHolder.titleShimmer.setVisibility(GONE);
-        headerViewHolder.titleView.setVisibility(story.loaded ? View.VISIBLE : GONE);
+        headerViewHolder.titleView.setVisibility(story.loaded || hasTitle ? View.VISIBLE : GONE);
         if (!TextUtils.isEmpty(story.pdfTitle)) {
             headerViewHolder.titleView.setText(getTitleWithBadge(ctx, story.pdfTitle, R.drawable.ic_action_pdf_large));
         } else if (!TextUtils.isEmpty(story.videoTitle)) {

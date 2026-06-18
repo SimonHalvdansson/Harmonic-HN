@@ -179,6 +179,36 @@ public class JSONParser {
         return true;
     }
 
+    public static boolean updateCommentMasterStoryWithHNJson(Story story, String response) throws JSONException {
+        if (story == null || TextUtils.isEmpty(response) || JSON_NULL_LITERAL.equals(response)) {
+            return false;
+        }
+
+        JSONObject jsonObject = new JSONObject(response);
+        if (hasOnlyTwoTopLevelFields(jsonObject) || "comment".equals(jsonObject.optString("type", ""))) {
+            return false;
+        }
+
+        int id = jsonObject.optInt("id", 0);
+        if (id <= 0) {
+            return false;
+        }
+
+        story.commentMasterId = id;
+        story.commentMasterTitle = jsonObject.optString("title", story.commentMasterTitle);
+        story.commentMasterBy = jsonObject.optString("by", story.commentMasterBy);
+        story.commentMasterScore = jsonObject.optInt("score", story.commentMasterScore);
+        story.commentMasterTime = jsonObject.optInt("time", story.commentMasterTime);
+        story.commentMasterDescendants = jsonObject.optInt("descendants", story.commentMasterDescendants);
+        if (jsonObject.has("url")) {
+            story.commentMasterUrl = jsonObject.getString("url");
+        } else {
+            story.commentMasterUrl = "https://news.ycombinator.com/item?id=" + id;
+        }
+        story.commentMasterLoaded = true;
+        return true;
+    }
+
     public static boolean updateStoryWithHNCommentJson(JSONObject jsonObject, Story story) throws JSONException {
         if (jsonObject.has("deleted") && jsonObject.getBoolean("deleted")) {
             return false;
