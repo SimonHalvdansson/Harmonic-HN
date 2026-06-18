@@ -1440,6 +1440,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private boolean shouldUseHeaderFaviconTint(Story story) {
         return shouldTintHeader()
                 && story != null
+                && showThumbnail
                 && story.loaded
                 && !story.loadingFailed
                 && !story.isComment

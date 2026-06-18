@@ -1337,6 +1337,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private boolean shouldUseFaviconTint(Story story) {
         return shouldTintStoryCards()
                 && story != null
+                && thumbnails
                 && story.loaded
                 && !story.loadingFailed
                 && !story.isComment
