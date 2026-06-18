@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="settings_segment_original_padding_start" type="id" />
+    <item name="settings_segment_original_padding_top" type="id" />
+    <item name="settings_segment_original_padding_end" type="id" />
+    <item name="settings_segment_original_padding_bottom" type="id" />
+</resources>

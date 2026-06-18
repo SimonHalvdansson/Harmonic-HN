@@ -4,6 +4,7 @@
 - Updated icons to rounded Material symbols
 - Updated dropdown header font size for smaller screens
 - Fixed behavior of 'Hide clicked posts'
+- Updated settings to use segmented lists
 - Added ability to clear history from history screen
 
 # Version 3.0

@@ -109,6 +109,12 @@
     <color name="settings_header_selected_light">#EAE6D2</color>
     <color name="settings_header_selected_white">#E1E3E5</color>
     <color name="settings_header_selected_black">#151619</color>
+    <color name="settings_segment_dark">#2B2E3A</color>
+    <color name="settings_segment_amoled">#000000</color>
+    <color name="settings_segment_gray">#202124</color>
+    <color name="settings_segment_light">#F0EEDC</color>
+    <color name="settings_segment_hacker_news">#F2EEDF</color>
+    <color name="settings_segment_white">#F2F4F7</color>
 
     <color name="material_you_thread_depth_1">@color/material_you_600</color>
     <color name="material_you_thread_depth_2">@color/material_you_secondary60</color>

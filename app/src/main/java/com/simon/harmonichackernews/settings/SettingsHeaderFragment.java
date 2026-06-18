@@ -135,8 +135,8 @@ public class SettingsHeaderFragment extends BaseSettingsFragment {
         for (int i = 0; i < listView.getChildCount(); i++) {
             View child = listView.getChildAt(i);
             int position = listView.getChildAdapterPosition(child);
-            child.setBackgroundResource(R.drawable.settings_header_item_background);
             child.setActivated(position == selectedIndex);
+            styleSegmentedListChild(child);
         }
     }
 }

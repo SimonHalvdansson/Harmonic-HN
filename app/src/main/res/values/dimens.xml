@@ -13,6 +13,13 @@
     <dimen name="comments_header_action_padding">0dp</dimen>
     <dimen name="comment_card_shadow_padding">4dp</dimen>
     <dimen name="widget_corner_radius">16dp</dimen>
+    <dimen name="settings_list_segment_horizontal_margin">16dp</dimen>
+    <dimen name="settings_list_segment_top_margin">8dp</dimen>
+    <dimen name="settings_list_first_segment_top_margin">24dp</dimen>
+    <dimen name="settings_list_segment_bottom_margin">12dp</dimen>
+    <dimen name="settings_list_segment_internal_gap">1dp</dimen>
+    <dimen name="settings_list_segment_corner_radius">28dp</dimen>
+    <dimen name="settings_list_segment_vertical_padding_extra">2dp</dimen>
 
     <integer name="stories_pane_weight">4</integer>
 
