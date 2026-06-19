@@ -26,6 +26,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
     private EditTextPreference baseUrlPreference;
     private EditTextPreference apiKeyPreference;
     private EditTextPreference modelPreference;
+    private EditTextPreference systemPromptPreference;
     private ListPreference presetPreference;
     private AiSummaryModePreference modePreference;
 
@@ -43,6 +44,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         baseUrlPreference = findPreference("pref_ai_summary_base_url");
         apiKeyPreference = findPreference("pref_ai_summary_api_key");
         modelPreference = findPreference("pref_ai_summary_model");
+        systemPromptPreference = findPreference("pref_ai_summary_system_prompt");
 
         if (modePreference != null) {
             modePreference.setOnPreferenceChangeListener((preference, newValue) -> {
@@ -96,6 +98,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         updateBaseUrlSummary();
         updateApiKeySummary();
         updateModelSummary();
+        updateSystemPromptSummary();
     }
 
     @Override
@@ -115,6 +118,8 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
             updateModelSummary();
         } else if ("pref_ai_summary_mode".equals(key)) {
             updateCloudOptionsVisibility(sharedPreferences.getString(key, AiSummaryModePreference.MODE_CLOUD));
+        } else if ("pref_ai_summary_system_prompt".equals(key)) {
+            updateSystemPromptSummary();
         }
     }
 
@@ -169,6 +174,18 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
                 apiKeyPreference.setSummary("Not set");
             } else {
                 apiKeyPreference.setSummary(key.substring(0, Math.min(8, key.length())) + "...");
+            }
+        }
+    }
+
+    private void updateSystemPromptSummary() {
+        if (systemPromptPreference != null && getContext() != null) {
+            String prompt = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                    .getString("pref_ai_summary_system_prompt", "");
+            if (prompt.length() > 60) {
+                systemPromptPreference.setSummary(prompt.substring(0, 60) + "...");
+            } else {
+                systemPromptPreference.setSummary(prompt);
             }
         }
     }
