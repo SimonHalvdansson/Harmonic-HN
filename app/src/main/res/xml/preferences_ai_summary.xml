@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        app:title="AI Summarization"
+        android:layout="@layout/preference_category">
+
+        <ListPreference
+            app:title="API Preset"
+            app:key="pref_ai_summary_preset"
+            app:entries="@array/ai_summary_presets"
+            app:entryValues="@array/ai_summary_preset_values"
+            app:defaultValue="custom"
+            app:singleLineTitle="false" />
+
+        <EditTextPreference
+            app:title="Base URL"
+            app:key="pref_ai_summary_base_url"
+            app:defaultValue="https://api.openai.com/v1"
+            app:singleLineTitle="false" />
+
+        <EditTextPreference
+            app:title="API Key"
+            app:key="pref_ai_summary_api_key"
+            app:singleLineTitle="false" />
+
+        <ListPreference
+            app:title="Model"
+            app:key="pref_ai_summary_model"
+            app:entries="@array/ai_summary_models"
+            app:entryValues="@array/ai_summary_model_values"
+            app:singleLineTitle="false" />
+
+        <SwitchPreferenceCompat
+            app:title="Enable Gemini Nano (On-Device)"
+            app:key="pref_ai_summary_nano_enabled"
+            app:defaultValue="false"
+            app:singleLineTitle="false" />
+            
+    </PreferenceCategory>
+</PreferenceScreen>

@@ -48,3 +48,21 @@
     </string-array>
 
 </resources>
+    <string-array name="ai_summary_presets">
+        <item>Custom</item>
+        <item>OpenAI</item>
+        <item>Anthropic</item>
+        <item>OpenRouter</item>
+    </string-array>
+    <string-array name="ai_summary_preset_values">
+        <item>custom</item>
+        <item>openai</item>
+        <item>anthropic</item>
+        <item>openrouter</item>
+    </string-array>
+    <string-array name="ai_summary_models">
+        <item>Loading...</item>
+    </string-array>
+    <string-array name="ai_summary_model_values">
+        <item>loading</item>
+    </string-array>
