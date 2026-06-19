@@ -6,6 +6,9 @@
         app:title="AI Summarization"
         android:layout="@layout/preference_category">
 
+        <com.simon.harmonichackernews.settings.AiSummaryModePreference
+            app:title="Summarization Mode" />
+
         <ListPreference
             app:title="API Preset"
             app:key="pref_ai_summary_preset"
@@ -25,18 +28,11 @@
             app:key="pref_ai_summary_api_key"
             app:singleLineTitle="false" />
 
-        <ListPreference
+        <EditTextPreference
             app:title="Model"
             app:key="pref_ai_summary_model"
-            app:entries="@array/ai_summary_models"
-            app:entryValues="@array/ai_summary_model_values"
+            app:defaultValue="gpt-3.5-turbo"
             app:singleLineTitle="false" />
 
-        <SwitchPreferenceCompat
-            app:title="Enable Gemini Nano (On-Device)"
-            app:key="pref_ai_summary_nano_enabled"
-            app:defaultValue="false"
-            app:singleLineTitle="false" />
-            
     </PreferenceCategory>
 </PreferenceScreen>

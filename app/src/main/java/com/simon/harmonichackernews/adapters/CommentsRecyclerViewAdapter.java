@@ -73,6 +73,7 @@ import com.simon.harmonichackernews.utils.TextSizeImageSpan;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
+import io.noties.markwon.Markwon;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.jetbrains.annotations.NotNull;
@@ -377,11 +378,34 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
             headerViewHolder.summaryContentContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
-            headerViewHolder.summary.setText(story.summary);
-            headerViewHolder.summary.setText("• Introduces algebraic effects: resumable “exceptions” that serve as a single primitive for custom control flow.\n" +
-                    "• Shows how to build generators, coroutines, async/await, exception handling, and schedulers purely as libraries.\n" +
-                    "• Demonstrates modeling services (databases, logging, randomness, allocation) as effects you can swap or mock via handlers.\n" +
-                    "• Highlights cleaner APIs through implicit state/context threading and enforced purity/security (can IO, can Print) enabling deterministic replay/debugging.");
+            if (!TextUtils.isEmpty(story.summary)) {
+                Object tag = headerViewHolder.summaryToggle.getTag();
+                boolean expanded = tag instanceof Boolean && (Boolean) tag;
+
+                int maxLines = expanded ? Integer.MAX_VALUE : 10;
+                headerViewHolder.summary.setMaxLines(maxLines);
+
+                Markwon.create(ctx).setMarkdown(headerViewHolder.summary, story.summary);
+
+                headerViewHolder.summary.post(() -> {
+                    int lineCount = headerViewHolder.summary.getLineCount();
+                    int adjustedMax = expanded ? Integer.MAX_VALUE : 10;
+                    if (lineCount > adjustedMax || (expanded && lineCount > 10)) {
+                        headerViewHolder.summaryToggle.setVisibility(View.VISIBLE);
+                        headerViewHolder.summaryToggle.setText(expanded ? "Show less" : "Read more");
+                    } else {
+                        headerViewHolder.summaryToggle.setVisibility(View.GONE);
+                    }
+                });
+
+                headerViewHolder.summaryToggle.setOnClickListener(v -> {
+                    Object currentTag = headerViewHolder.summaryToggle.getTag();
+                    boolean wasExpanded = currentTag instanceof Boolean && (Boolean) currentTag;
+                    headerViewHolder.summaryToggle.setTag(!wasExpanded);
+                    headerViewHolder.summary.setMaxLines(wasExpanded ? 10 : Integer.MAX_VALUE);
+                    headerViewHolder.summaryToggle.setText(wasExpanded ? "Read more" : "Show less");
+                });
+            }
 
             headerViewHolder.summarizeButton.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -398,7 +422,20 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
                             headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
                             headerViewHolder.summaryContentContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
-                            headerViewHolder.summary.setText(story.summary);
+                            if (!TextUtils.isEmpty(story.summary)) {
+                                headerViewHolder.summaryToggle.setTag(false);
+                                headerViewHolder.summary.setMaxLines(10);
+                                Markwon.create(ctx).setMarkdown(headerViewHolder.summary, story.summary);
+                                headerViewHolder.summary.post(() -> {
+                                    int lineCount = headerViewHolder.summary.getLineCount();
+                                    if (lineCount > 10) {
+                                        headerViewHolder.summaryToggle.setVisibility(View.VISIBLE);
+                                        headerViewHolder.summaryToggle.setText("Read more");
+                                    } else {
+                                        headerViewHolder.summaryToggle.setVisibility(View.GONE);
+                                    }
+                                });
+                            }
                         }
                     });
                 }
@@ -2456,6 +2493,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout summaryContentContainer;
         public final LinearLayout summaryLoadingContainer;
         public final TextView summary;
+        public final TextView summaryToggle;
         public final TextView summaryTitle;
         public final ImageButton moreButton;
         public final RelativeLayout userButtonParent;
@@ -2588,6 +2626,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             summaryContentContainer = binding.commentsHeaderSummaryContentContainer;
             summaryLoadingContainer = binding.commentsHeaderSummaryLoading;
             summary = binding.commentsHeaderSummary;
+            summaryToggle = binding.commentsHeaderSummaryToggle;
             summaryTitle = binding.commentsHeaderSummaryTitle;
             moreButton = binding.commentsHeaderButtonMore;
             userButtonParent = binding.commentsHeaderButtonUserParent;

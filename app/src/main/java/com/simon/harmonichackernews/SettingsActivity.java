@@ -17,6 +17,7 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 
 import com.simon.harmonichackernews.databinding.ActivitySettingsBinding;
+import com.simon.harmonichackernews.settings.AiSummaryPreferenceFragment;
 import com.simon.harmonichackernews.settings.AppearancePreferenceFragment;
 import com.simon.harmonichackernews.settings.BaseSettingsFragment;
 import com.simon.harmonichackernews.settings.CommentsPreferenceFragment;
@@ -57,6 +58,7 @@ public class SettingsActivity extends AppCompatActivity implements
         FRAGMENT_TO_KEY.put(CommentsPreferenceFragment.class.getName(), "pref_header_comments");
         FRAGMENT_TO_KEY.put(FiltersTagsPreferenceFragment.class.getName(), "pref_header_filters_tags");
         FRAGMENT_TO_KEY.put(DataStoragePreferenceFragment.class.getName(), "pref_header_data_storage");
+        FRAGMENT_TO_KEY.put(AiSummaryPreferenceFragment.class.getName(), "pref_header_ai_summary");
         FRAGMENT_TO_KEY.put(DebugFragment.class.getName(), SettingsHeaderFragment.DEBUG_KEY);
         FRAGMENT_TO_KEY.put(AboutFragment.class.getName(), SettingsHeaderFragment.ABOUT_KEY);
     }

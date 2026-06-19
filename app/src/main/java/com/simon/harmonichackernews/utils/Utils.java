@@ -1579,8 +1579,17 @@ public class Utils {
         context.startActivity(intent);
     }
 
-    public static boolean canProvideSummary(Context ctx) {
+    public static boolean isGeminiNanoSupported() {
         return false;
+    }
+
+    public static boolean canProvideSummary(Context ctx) {
+        String mode = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_mode", "cloud");
+        if ("local".equals(mode)) {
+            return isGeminiNanoSupported();
+        }
+        String apiKey = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_api_key", "");
+        return !apiKey.isEmpty();
     }
 
     public static boolean isNetworkAvailable(Context context) {

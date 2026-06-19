@@ -47,7 +47,6 @@
         <item>Last 24 hours</item>
     </string-array>
 
-</resources>
     <string-array name="ai_summary_presets">
         <item>Custom</item>
         <item>OpenAI</item>
@@ -66,3 +65,5 @@
     <string-array name="ai_summary_model_values">
         <item>loading</item>
     </string-array>
+
+</resources>
