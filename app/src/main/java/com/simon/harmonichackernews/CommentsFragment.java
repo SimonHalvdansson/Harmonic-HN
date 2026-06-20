@@ -49,6 +49,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.insets.GradientProtection;
 import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -102,6 +103,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
@@ -218,6 +220,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean showWebsite = false;
     private boolean integratedWebview = true;
     private boolean prefIntegratedWebview = true;
+    private boolean prefTranslucentStatusBar = false;
     private String preloadWebview = "never";
     private int preloadWebviewMinimumBattery = SettingsUtils.DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY;
     private boolean matchWebviewTheme = true;
@@ -416,6 +419,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         prefIntegratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
         loadInitialStorySummaryFromCache();
+
+        prefTranslucentStatusBar = SettingsUtils.shouldCommentsUseTranslucentStatusBar(getContext());
 
         integratedWebview = prefIntegratedWebview && story.isLink;
         preloadWebview = SettingsUtils.shouldPreloadWebView(getContext());
@@ -1005,6 +1010,27 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
+                // Set translucent status bar onScroll
+                if (prefTranslucentStatusBar) {
+                    LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+                    RecyclerView.Adapter adapter = recyclerView.getAdapter();
+
+                    if (layoutManager != null && adapter != null && adapter.getItemCount() > 0) {
+                        int firstItemType = adapter.getItemViewType(0);
+                        if (firstItemType == CommentsRecyclerViewAdapter.TYPE_HEADER) {
+                            int firstCompletelyVisible = layoutManager.findFirstCompletelyVisibleItemPosition();
+                            int firstVisible = layoutManager.findFirstVisibleItemPosition();
+
+                            if (firstCompletelyVisible == 0) {
+                                setTranslucentStatusBar(false);
+                            }
+                            else if (firstVisible > 0 && firstVisible != RecyclerView.NO_POSITION) {
+                                setTranslucentStatusBar(prefTranslucentStatusBar);
+                            }
+                        }
+                    }
+                }
+
                 if (integratedWebview) {
                     // Shouldn't be neccessary but once I was stuck in comments and couldn't swipe up.
                     // This just updates a flag so there's no performance impact
@@ -1276,6 +1302,24 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         saveScreenHeight();
         refreshCommentActionOverlayForConfiguration();
+    }
+
+    private void setTranslucentStatusBar(boolean translucentStatusBar) {
+        if (translucentStatusBar) {
+            TypedValue typedValue = new TypedValue();
+            requireContext().getTheme().resolveAttribute(android.R.attr.colorBackground, typedValue, true);
+            int paneBackgroundColor = typedValue.data;
+            binding.listProtection.setProtections(
+                    Collections.singletonList(
+                            new GradientProtection(
+                                    WindowInsetsCompat.Side.TOP,
+                                    paneBackgroundColor
+                            )
+                    )
+            );
+        } else {
+            binding.listProtection.setProtections(Collections.emptyList());
+        }
     }
 
     private void refreshCommentActionOverlayForConfiguration() {
