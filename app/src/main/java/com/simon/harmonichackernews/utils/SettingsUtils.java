@@ -685,7 +685,7 @@ public class SettingsUtils {
     }
 
     public static boolean shouldCommentsUseTranslucentStatusBar(Context ctx) {
-        return getBooleanPref("pref_comments_translucent_status_bar", false, ctx);
+        return getBooleanPref(PREF_COMMENTS_TRANSLUCENT_STATUS_BAR, false, ctx);
     }
 
     public static String getPreferredStoryDisplayStyle(Context ctx) {
