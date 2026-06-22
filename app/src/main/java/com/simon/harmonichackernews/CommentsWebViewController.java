@@ -165,6 +165,8 @@ class CommentsWebViewController {
     private WebChromeClient.CustomViewCallback customViewCallback;
     @Nullable
     private PdfAndroidJavascriptBridge pdfAndroidJavascriptBridge;
+    @Nullable
+    private String currentPdfFilePath;
     private boolean retryingFailedWebViewUrl = false;
     private boolean readerModeAvailable = false;
     private boolean readerModeEnabled = false;
@@ -1207,14 +1209,29 @@ class CommentsWebViewController {
             url = archiveRedirectUrl;
         }
 
+        if (PDF_LOADER_URL.equals(url)) {
+            pdfFilePath = !TextUtils.isEmpty(pdfFilePath) ? pdfFilePath : currentPdfFilePath;
+            if (TextUtils.isEmpty(pdfFilePath)) {
+                retryingFailedWebViewUrl = false;
+                if (swipeRefreshLayout != null) {
+                    swipeRefreshLayout.setRefreshing(false);
+                }
+                return;
+            }
+        }
+
         if (!isErrorPageUrl(url)) {
             showingErrorPage = false;
             showingCachedArticlePage = false;
             setReaderModeEnabled(false);
             readerModeDisabledForCurrentPage = false;
             lastRequestedWebViewUrl = url;
+            if (!PDF_LOADER_URL.equals(url)) {
+                currentPdfFilePath = null;
+            }
         }
         if (PDF_LOADER_URL.equals(url)) {
+            currentPdfFilePath = pdfFilePath;
             setReaderModeUnavailableNow();
             clearPdfAndroidJavascriptBridge();
             pdfAndroidJavascriptBridge = new PdfAndroidJavascriptBridge(pdfFilePath, new PdfAndroidJavascriptBridge.Callbacks() {
@@ -1424,6 +1441,7 @@ class CommentsWebViewController {
 
     private void destroy(boolean rendererProcessGone) {
         cancelProgressAnimator();
+        currentPdfFilePath = null;
         webViewLoadGeneration++;
         webViewLoadInProgress = false;
         webViewLoadUiSettled = true;
@@ -1533,6 +1551,7 @@ class CommentsWebViewController {
         customView = null;
         customViewCallback = null;
         pdfAndroidJavascriptBridge = null;
+        currentPdfFilePath = null;
     }
 
     private class MyWebViewClient extends WebViewClient {
@@ -1748,7 +1767,7 @@ class CommentsWebViewController {
         private final @Nullable Callbacks mCallback;
         private final Handler mHandler;
 
-        PdfAndroidJavascriptBridge(String filePath, @Nullable Callbacks callback) {
+        PdfAndroidJavascriptBridge(@NonNull String filePath, @Nullable Callbacks callback) {
             mFile = new File(filePath);
             mCallback = callback;
             mHandler = new Handler(Looper.getMainLooper());
