@@ -47,10 +47,10 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     public CommentSearchAdapter(List<Comment> comments,
                                 boolean shouldUseCardStyle,
                                 float prefTextSize) {
-        this.comments = comments;
+        this.comments = comments == null ? new ArrayList<>() : new ArrayList<>(comments);
         cardStyle = shouldUseCardStyle;
         preferredTextSize = prefTextSize;
-        visibleComments.addAll(comments);
+        visibleComments.addAll(this.comments);
         setHasStableIds(true);
     }
 
