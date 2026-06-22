@@ -3894,24 +3894,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 .getString("pref_ai_summary_mode", "cloud");
 
         if ("local".equals(mode)) {
-            new Thread(() -> {
-                try {
-                    String text = SummaryManager.extractMainContent(story.url);
-                    if (text.length() > 3000) {
-                        text = text.substring(0, 3000) + "\n\n…";
-                    }
-                    String finalText = text;
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        story.summary = finalText;
-                        onDone.run();
-                    });
-                } catch (Exception e) {
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        story.summary = "Failed to extract article: " + e.getMessage();
-                        onDone.run();
-                    });
+            SummaryManager.summarizeArticleWithGeminiNano(requireContext(), story.url, new SummaryManager.SummaryCallback() {
+                @Override
+                public void onSuccess(String summary) {
+                    story.summary = summary;
+                    onDone.run();
                 }
-            }).start();
+
+                @Override
+                public void onFailure(String error) {
+                    story.summary = "Failed to generate local summary: " + error;
+                    onDone.run();
+                }
+            });
         } else {
             SummaryManager.summarizeArticle(requireContext(), queue, story.url, new SummaryManager.SummaryCallback() {
                 @Override

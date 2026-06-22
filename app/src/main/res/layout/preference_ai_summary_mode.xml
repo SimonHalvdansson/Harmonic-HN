@@ -35,7 +35,7 @@
             android:fontFamily="@font/product_sans_bold"
             android:textAllCaps="false"
             app:icon="@drawable/ic_phone_android"
-            android:text="Local (Gemini Nano)" />
+            android:text="Local" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/ai_summary_mode_cloud"

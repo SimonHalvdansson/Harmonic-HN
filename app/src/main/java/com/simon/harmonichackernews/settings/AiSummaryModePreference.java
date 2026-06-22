@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.settings;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.View;
 import android.widget.TextView;
@@ -14,12 +15,13 @@ import androidx.preference.PreferenceViewHolder;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.simon.harmonichackernews.R;
-import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.network.SummaryManager;
 
 public class AiSummaryModePreference extends Preference {
 
     public static final String MODE_LOCAL = "local";
     public static final String MODE_CLOUD = "cloud";
+    private int availabilityCheckGeneration = 0;
 
     public AiSummaryModePreference(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -42,27 +44,24 @@ public class AiSummaryModePreference extends Preference {
         MaterialButton localButton = holder.itemView.findViewById(R.id.ai_summary_mode_local);
         TextView statusText = holder.itemView.findViewById(R.id.ai_summary_mode_status);
 
-        boolean nanoSupported = Utils.isGeminiNanoSupported();
-        localButton.setEnabled(nanoSupported);
-
-        if (!nanoSupported) {
-            statusText.setVisibility(View.VISIBLE);
-            statusText.setText("Gemini Nano not available on this device");
-        } else {
-            statusText.setVisibility(View.GONE);
-        }
-
         String currentMode = PreferenceManager.getDefaultSharedPreferences(getContext())
                 .getString("pref_ai_summary_mode", MODE_CLOUD);
+        boolean canAttemptLocal = SummaryManager.canAttemptLocalSummarization();
 
         group.clearOnButtonCheckedListeners();
 
-        int checkedId = MODE_LOCAL.equals(currentMode) && nanoSupported
+        localButton.setEnabled(false);
+        statusText.setVisibility(View.VISIBLE);
+        statusText.setText(canAttemptLocal
+                ? "Checking Gemini Nano availability..."
+                : "Gemini Nano requires Android 8.0 or newer");
+
+        int checkedId = MODE_LOCAL.equals(currentMode) && canAttemptLocal
                 ? R.id.ai_summary_mode_local
                 : R.id.ai_summary_mode_cloud;
         group.check(checkedId);
 
-        if (!nanoSupported && MODE_LOCAL.equals(currentMode)) {
+        if (!canAttemptLocal && MODE_LOCAL.equals(currentMode)) {
             new Handler(Looper.getMainLooper()).post(() ->
                 PreferenceManager.getDefaultSharedPreferences(getContext())
                         .edit()
@@ -71,6 +70,39 @@ public class AiSummaryModePreference extends Preference {
             );
         }
 
+        addModeChangeListener(group);
+
+        if (canAttemptLocal) {
+            int generation = ++availabilityCheckGeneration;
+            SummaryManager.checkLocalSummaryAvailability(getContext(), (available, statusMessage) -> {
+                if (generation != availabilityCheckGeneration) {
+                    return;
+                }
+
+                localButton.setEnabled(available);
+                statusText.setVisibility(TextUtils.isEmpty(statusMessage) ? View.GONE : View.VISIBLE);
+                statusText.setText(statusMessage);
+
+                String updatedMode = PreferenceManager.getDefaultSharedPreferences(getContext())
+                        .getString("pref_ai_summary_mode", MODE_CLOUD);
+
+                group.clearOnButtonCheckedListeners();
+                group.check(MODE_LOCAL.equals(updatedMode) && available
+                        ? R.id.ai_summary_mode_local
+                        : R.id.ai_summary_mode_cloud);
+                addModeChangeListener(group);
+
+                if (!available && MODE_LOCAL.equals(updatedMode)) {
+                    PreferenceManager.getDefaultSharedPreferences(getContext())
+                            .edit()
+                            .putString("pref_ai_summary_mode", MODE_CLOUD)
+                            .apply();
+                }
+            });
+        }
+    }
+
+    private void addModeChangeListener(MaterialButtonToggleGroup group) {
         group.addOnButtonCheckedListener((buttonGroup, checkedId1, isChecked) -> {
             if (!isChecked) return;
 
