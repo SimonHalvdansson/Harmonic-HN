@@ -3889,6 +3889,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             onDone.run();
             return;
         }
+        if (!Utils.isAiSummaryEnabled(requireContext())) {
+            onDone.run();
+            return;
+        }
 
         String mode = PreferenceManager.getDefaultSharedPreferences(requireContext())
                 .getString("pref_ai_summary_mode", "cloud");
