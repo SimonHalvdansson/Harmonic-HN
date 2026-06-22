@@ -4,7 +4,6 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import androidx.preference.EditTextPreference;
-import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceManager;
 
@@ -12,22 +11,12 @@ import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.SummaryManager;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
 
-    private static final Map<String, String> PRESET_URLS = new HashMap<String, String>() {{
-        put("openai", "https://api.openai.com/v1");
-        put("anthropic", "https://api.anthropic.com/v1");
-        put("openrouter", "https://openrouter.ai/api/v1");
-    }};
-
-    private EditTextPreference baseUrlPreference;
+    private Preference baseUrlPreference;
     private EditTextPreference apiKeyPreference;
     private EditTextPreference modelPreference;
     private EditTextPreference systemPromptPreference;
-    private ListPreference presetPreference;
     private AiSummaryModePreference modePreference;
 
     @Override
@@ -40,7 +29,6 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         setPreferencesFromResource(R.xml.preferences_ai_summary, rootKey);
 
         modePreference = findPreference("pref_ai_summary_mode");
-        presetPreference = findPreference("pref_ai_summary_preset");
         baseUrlPreference = findPreference("pref_ai_summary_base_url");
         apiKeyPreference = findPreference("pref_ai_summary_api_key");
         modelPreference = findPreference("pref_ai_summary_model");
@@ -53,25 +41,9 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
             });
         }
 
-        if (presetPreference != null) {
-            presetPreference.setOnPreferenceChangeListener((preference, newValue) -> {
-                String preset = (String) newValue;
-                if (!"custom".equals(preset) && PRESET_URLS.containsKey(preset)) {
-                    PreferenceManager.getDefaultSharedPreferences(requireContext())
-                            .edit()
-                            .putString("pref_ai_summary_base_url", PRESET_URLS.get(preset))
-                            .apply();
-                }
-                updateBaseUrlSummary();
-                return true;
-            });
-        }
-
         if (baseUrlPreference != null) {
-            baseUrlPreference.setOnPreferenceChangeListener((preference, newValue) -> {
-                if (presetPreference != null) {
-                    presetPreference.setValue("custom");
-                }
+            baseUrlPreference.setOnPreferenceClickListener(preference -> {
+                AiSummaryBaseUrlDialogFragment.show(getParentFragmentManager());
                 return true;
             });
         }
@@ -125,7 +97,6 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
 
     private void updateCloudOptionsVisibility(String mode) {
         boolean isCloud = AiSummaryModePreference.MODE_CLOUD.equals(mode);
-        if (presetPreference != null) changePrefStatus(presetPreference, isCloud);
         if (baseUrlPreference != null) changePrefStatus(baseUrlPreference, isCloud);
         if (apiKeyPreference != null) changePrefStatus(apiKeyPreference, isCloud);
         if (modelPreference != null) changePrefStatus(modelPreference, isCloud);
@@ -162,7 +133,6 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
             String url = PreferenceManager.getDefaultSharedPreferences(requireContext())
                     .getString("pref_ai_summary_base_url", "https://api.openai.com/v1");
             baseUrlPreference.setSummary(url);
-            baseUrlPreference.setText(url);
         }
     }
 

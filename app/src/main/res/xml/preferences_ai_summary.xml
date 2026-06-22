@@ -9,18 +9,9 @@
         <com.simon.harmonichackernews.settings.AiSummaryModePreference
             app:title="Summarization Mode" />
 
-        <ListPreference
-            app:title="API Preset"
-            app:key="pref_ai_summary_preset"
-            app:entries="@array/ai_summary_presets"
-            app:entryValues="@array/ai_summary_preset_values"
-            app:defaultValue="custom"
-            app:singleLineTitle="false" />
-
-        <EditTextPreference
+        <Preference
             app:title="Base URL"
             app:key="pref_ai_summary_base_url"
-            app:defaultValue="https://api.openai.com/v1"
             app:singleLineTitle="false" />
 
         <EditTextPreference
