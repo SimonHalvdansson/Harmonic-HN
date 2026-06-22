@@ -46,7 +46,7 @@
             android:checkable="true"
             android:fontFamily="@font/product_sans_bold"
             android:textAllCaps="false"
-            app:icon="@drawable/ic_auto_awesome"
+            app:icon="@drawable/ic_cloud"
             android:text="Cloud" />
 
     </com.google.android.material.button.MaterialButtonToggleGroup>
