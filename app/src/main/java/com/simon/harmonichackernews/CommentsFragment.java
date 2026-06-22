@@ -2351,6 +2351,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         Intent intent = new Intent(getContext(), ComposeActivity.class);
         intent.putExtra(ComposeActivity.EXTRA_ID, adapter.story.id);
         intent.putExtra(ComposeActivity.EXTRA_PARENT_TEXT, adapter.story.title);
+        intent.putExtra(ComposeActivity.EXTRA_POST_TITLE, adapter.story.title);
         intent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_TOP_COMMENT);
         startActivity(intent);
     }
@@ -3025,6 +3026,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 Intent replyIntent = new Intent(ctx, ComposeActivity.class);
                 replyIntent.putExtra(ComposeActivity.EXTRA_ID, comment.id);
                 replyIntent.putExtra(ComposeActivity.EXTRA_PARENT_TEXT, comment.text);
+                replyIntent.putExtra(ComposeActivity.EXTRA_POST_TITLE, adapter.story.title);
                 replyIntent.putExtra(ComposeActivity.EXTRA_USER, comment.by);
                 replyIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_COMMENT_REPLY);
                 ctx.startActivity(replyIntent);
