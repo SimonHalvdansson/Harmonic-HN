@@ -35,7 +35,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
 
     @Override
     protected String getToolbarTitle() {
-        return "AI Summarization";
+        return "AI summarization";
     }
 
     @Override

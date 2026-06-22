@@ -38,7 +38,7 @@
 
     <Preference
         app:key="pref_header_ai_summary"
-        app:title="AI Summarization"
+        app:title="AI summarization"
         app:summary="API keys, models"
         app:icon="@drawable/ic_auto_awesome"
         app:fragment="com.simon.harmonichackernews.settings.AiSummaryPreferenceFragment" />
