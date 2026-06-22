@@ -149,6 +149,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private boolean storyFavoriteLoadingTarget = false;
     private boolean storyVoteLoading = false;
     private boolean storyVoteLoadingTarget = false;
+    private boolean storySummaryLoading = false;
     private float headerSlideOffset = 1f;
     @Nullable
     private HeaderViewHolder boundHeaderViewHolder;
@@ -372,74 +373,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 FaviconLoader.loadFavicon(story.url, headerViewHolder.favicon, ctx, faviconProvider);
             }
 
-            headerViewHolder.summarizeButtonParent.setVisibility(story.isLink && Utils.canProvideSummary(ctx) ? View.VISIBLE : View.GONE);
-
-            headerViewHolder.summaryContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : VISIBLE);
-
-            headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
-            headerViewHolder.summaryContentContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
-            if (!TextUtils.isEmpty(story.summary)) {
-                Object tag = headerViewHolder.summaryToggle.getTag();
-                boolean expanded = tag instanceof Boolean && (Boolean) tag;
-
-                int maxLines = expanded ? Integer.MAX_VALUE : 10;
-                headerViewHolder.summary.setMaxLines(maxLines);
-
-                Markwon.create(ctx).setMarkdown(headerViewHolder.summary, story.summary);
-
-                headerViewHolder.summary.post(() -> {
-                    int lineCount = headerViewHolder.summary.getLineCount();
-                    int adjustedMax = expanded ? Integer.MAX_VALUE : 10;
-                    if (lineCount > adjustedMax || (expanded && lineCount > 10)) {
-                        headerViewHolder.summaryToggle.setVisibility(View.VISIBLE);
-                        headerViewHolder.summaryToggle.setText(expanded ? "Show less" : "Read more");
-                    } else {
-                        headerViewHolder.summaryToggle.setVisibility(View.GONE);
-                    }
-                });
-
-                headerViewHolder.summaryToggle.setOnClickListener(v -> {
-                    Object currentTag = headerViewHolder.summaryToggle.getTag();
-                    boolean wasExpanded = currentTag instanceof Boolean && (Boolean) currentTag;
-                    headerViewHolder.summaryToggle.setTag(!wasExpanded);
-                    headerViewHolder.summary.setMaxLines(wasExpanded ? 10 : Integer.MAX_VALUE);
-                    headerViewHolder.summaryToggle.setText(wasExpanded ? "Read more" : "Show less");
-                });
-            }
-
-            headerViewHolder.summarizeButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    headerViewHolder.summaryContainer.setVisibility(View.VISIBLE);
-
-                    headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
-                    headerViewHolder.summaryContentContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
-
-                    summaryCallback.onRequest(new Runnable() {
-                        @Override
-                        public void run() {
-                            notifyItemChanged(0);
-
-                            headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
-                            headerViewHolder.summaryContentContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
-                            if (!TextUtils.isEmpty(story.summary)) {
-                                headerViewHolder.summaryToggle.setTag(false);
-                                headerViewHolder.summary.setMaxLines(10);
-                                Markwon.create(ctx).setMarkdown(headerViewHolder.summary, story.summary);
-                                headerViewHolder.summary.post(() -> {
-                                    int lineCount = headerViewHolder.summary.getLineCount();
-                                    if (lineCount > 10) {
-                                        headerViewHolder.summaryToggle.setVisibility(View.VISIBLE);
-                                        headerViewHolder.summaryToggle.setText("Read more");
-                                    } else {
-                                        headerViewHolder.summaryToggle.setVisibility(View.GONE);
-                                    }
-                                });
-                            }
-                        }
-                    });
-                }
-            });
+            bindHeaderSummary(headerViewHolder, ctx);
 
             boolean isUpvoted = Utils.isUpvoted(ctx, story.id, story.isComment);
             if (storyVoteLoading) {
@@ -770,10 +704,50 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (showThumbnail && !TextUtils.isEmpty(story.url)) {
             FaviconLoader.loadFavicon(story.url, headerViewHolder.favicon, ctx, faviconProvider);
         }
-        headerViewHolder.summarizeButtonParent.setVisibility(story.isLink && Utils.canProvideSummary(ctx) ? View.VISIBLE : View.GONE);
+        bindHeaderSummary(headerViewHolder, ctx);
         headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
         bindHeaderAccountActionVisibility(headerViewHolder);
         bindHeaderTint(headerViewHolder);
+    }
+
+    private void bindHeaderSummary(HeaderViewHolder headerViewHolder, Context ctx) {
+        boolean canSummarize = story.isLink && Utils.canProvideSummary(ctx);
+        headerViewHolder.summarizeButtonParent.setVisibility(canSummarize ? VISIBLE : GONE);
+
+        boolean hasSummary = !TextUtils.isEmpty(story.summary);
+        headerViewHolder.summaryContainer.setVisibility(hasSummary ? VISIBLE : GONE);
+        headerViewHolder.summaryContentContainer.setVisibility(hasSummary ? VISIBLE : GONE);
+        headerViewHolder.summary.setMaxLines(Integer.MAX_VALUE);
+        headerViewHolder.summary.setEllipsize(null);
+        if (hasSummary) {
+            Markwon.create(ctx).setMarkdown(headerViewHolder.summary, story.summary);
+        } else {
+            headerViewHolder.summary.setText(null);
+        }
+
+        if (storySummaryLoading) {
+            showHeaderSummaryLoading(headerViewHolder.summarizeButton, false);
+        } else {
+            showHeaderSummaryButton(headerViewHolder.summarizeButton, false);
+        }
+
+        headerViewHolder.summarizeButton.setOnClickListener(v -> {
+            if (storySummaryLoading) {
+                return;
+            }
+
+            storySummaryLoading = true;
+            showHeaderSummaryLoading(headerViewHolder.summarizeButton, true);
+            summaryCallback.onRequest(() -> {
+                storySummaryLoading = false;
+                notifyItemChanged(0);
+
+                ImageButton button = resolveStorySummaryButton(v);
+                if (button != null) {
+                    showHeaderSummaryButton(button, true);
+                }
+            });
+        });
     }
 
     private void bindHeaderAccountActionVisibility(HeaderViewHolder headerViewHolder) {
@@ -2142,6 +2116,20 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         return null;
     }
 
+    @Nullable
+    private ImageButton resolveStorySummaryButton(@Nullable View actionView) {
+        if (actionView instanceof ImageButton
+                && actionView.getId() == R.id.comments_header_button_summarize
+                && ViewCompat.isAttachedToWindow(actionView)) {
+            return (ImageButton) actionView;
+        }
+        if (boundHeaderViewHolder != null
+                && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.summarizeButton)) {
+            return boundHeaderViewHolder.summarizeButton;
+        }
+        return null;
+    }
+
     private void showHeaderVoteLoading(ImageButton button, boolean upvoted, boolean animate) {
         String label = upvoted ? "Upvoting" : "Removing vote";
         showHeaderActionLoading(button, label, animate);
@@ -2158,6 +2146,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private void showHeaderFavoriteLoading(ImageButton button, boolean favorite, boolean animate) {
         String label = favorite ? "Adding favorite" : "Removing favorite";
         showHeaderActionLoading(button, label, animate);
+    }
+
+    private void showHeaderSummaryLoading(ImageButton button, boolean animate) {
+        showHeaderActionLoading(button, "Summarizing", animate);
+    }
+
+    private void showHeaderSummaryButton(ImageButton button, boolean animate) {
+        showHeaderActionButton(button, R.drawable.ic_auto_awesome, "Summarize", animate);
     }
 
     private void showHeaderActionLoading(ImageButton button, String label, boolean animate) {
@@ -2491,9 +2487,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout summarizeButtonParent;
         public final LinearLayout summaryContainer;
         public final LinearLayout summaryContentContainer;
-        public final LinearLayout summaryLoadingContainer;
         public final TextView summary;
-        public final TextView summaryToggle;
         public final TextView summaryTitle;
         public final ImageButton moreButton;
         public final RelativeLayout userButtonParent;
@@ -2624,9 +2618,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             summarizeButton = binding.commentsHeaderButtonSummarize;
             summaryContainer = binding.commentsHeaderSummaryContainer;
             summaryContentContainer = binding.commentsHeaderSummaryContentContainer;
-            summaryLoadingContainer = binding.commentsHeaderSummaryLoading;
             summary = binding.commentsHeaderSummary;
-            summaryToggle = binding.commentsHeaderSummaryToggle;
             summaryTitle = binding.commentsHeaderSummaryTitle;
             moreButton = binding.commentsHeaderButtonMore;
             userButtonParent = binding.commentsHeaderButtonUserParent;
