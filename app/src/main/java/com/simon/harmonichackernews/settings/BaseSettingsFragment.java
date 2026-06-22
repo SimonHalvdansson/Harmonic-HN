@@ -11,6 +11,7 @@ import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -38,6 +39,8 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
     private static final int NO_POSITION = RecyclerView.NO_POSITION;
 
     private RecyclerView.Adapter<?> segmentedListAdapter;
+    private RecyclerView segmentedListRefreshView;
+    private ViewTreeObserver.OnPreDrawListener segmentedListRefreshListener;
     private final RecyclerView.AdapterDataObserver segmentedListObserver =
             new RecyclerView.AdapterDataObserver() {
                 @Override
@@ -143,6 +146,7 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
 
     @Override
     public void onDestroyView() {
+        cancelSegmentedListRefresh();
         unregisterSegmentedListObserver();
         super.onDestroyView();
     }
@@ -174,14 +178,40 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
         }
 
         RecyclerView listView = getListView();
-        listView.post(() -> {
-            if (getView() == null) {
-                return;
+        cancelSegmentedListRefresh();
+        segmentedListRefreshView = listView;
+        segmentedListRefreshListener = new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                cancelSegmentedListRefresh();
+                styleVisibleSegmentedListRows();
+                return true;
             }
-            for (int i = 0; i < listView.getChildCount(); i++) {
-                styleSegmentedListChild(listView.getChildAt(i));
+        };
+        listView.getViewTreeObserver().addOnPreDrawListener(segmentedListRefreshListener);
+        listView.invalidate();
+    }
+
+    private void cancelSegmentedListRefresh() {
+        if (segmentedListRefreshView != null && segmentedListRefreshListener != null) {
+            ViewTreeObserver observer = segmentedListRefreshView.getViewTreeObserver();
+            if (observer.isAlive()) {
+                observer.removeOnPreDrawListener(segmentedListRefreshListener);
             }
-        });
+        }
+        segmentedListRefreshView = null;
+        segmentedListRefreshListener = null;
+    }
+
+    private void styleVisibleSegmentedListRows() {
+        if (getView() == null) {
+            return;
+        }
+
+        RecyclerView listView = getListView();
+        for (int i = 0; i < listView.getChildCount(); i++) {
+            styleSegmentedListChild(listView.getChildAt(i));
+        }
     }
 
     protected void styleSegmentedListChild(@NonNull View child) {
