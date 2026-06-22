@@ -32,6 +32,7 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -2616,8 +2617,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 return;
             }
 
-            if (animate && isUsableTransitionView(sourceView)) {
+            if (animate && isUsableCommentActionTransition(overlayHost, sourceView, commentActionCard)) {
                 MaterialContainerTransform transform = createCommentActionTransform(
+                        overlayHost,
                         sourceView,
                         commentActionCard,
                         MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
@@ -3494,13 +3496,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
     }
 
-    private MaterialContainerTransform createCommentActionTransform(View startView, View endView, int direction) {
+    private MaterialContainerTransform createCommentActionTransform(ViewGroup drawingView, View startView, View endView, int direction) {
         MaterialContainerTransform transform = new MaterialContainerTransform();
         transform.setStartView(startView);
         transform.setEndView(endView);
         transform.setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS);
         transform.setScrimColor(Color.TRANSPARENT);
-        transform.setDrawingViewId(android.R.id.content);
+        transform.setDrawingViewId(ensureCommentActionDrawingViewId(drawingView));
         transform.setTransitionDirection(direction);
         transform.setFadeMode(MaterialContainerTransform.FADE_MODE_THROUGH);
         transform.setFitMode(MaterialContainerTransform.FIT_MODE_AUTO);
@@ -3593,8 +3595,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         syncOnBackPressedCallbackEnabledState();
 
-        if (animate && overlayHost != null && commentActionCard != null && isUsableTransitionView(endView)) {
+        if (animate && overlayHost != null && commentActionCard != null && isUsableCommentActionTransition(overlayHost, commentActionCard, endView)) {
             MaterialContainerTransform transform = createCommentActionTransform(
+                    overlayHost,
                     commentActionCard,
                     endView,
                     MaterialContainerTransform.TRANSITION_DIRECTION_RETURN);
@@ -3836,6 +3839,33 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     private boolean isUsableTransitionView(@Nullable View view) {
         return view != null && ViewCompat.isAttachedToWindow(view) && view.getWidth() > 0 && view.getHeight() > 0;
+    }
+
+    private boolean isUsableCommentActionTransition(@Nullable ViewGroup drawingView, @Nullable View startView, @Nullable View endView) {
+        return isUsableTransitionView(drawingView)
+                && isUsableTransitionView(startView)
+                && isUsableTransitionView(endView)
+                && isDescendantOf(startView, drawingView)
+                && isDescendantOf(endView, drawingView);
+    }
+
+    private int ensureCommentActionDrawingViewId(@NonNull ViewGroup drawingView) {
+        if (drawingView.getId() == View.NO_ID) {
+            drawingView.setId(View.generateViewId());
+        }
+        return drawingView.getId();
+    }
+
+    private boolean isDescendantOf(@Nullable View view, @NonNull ViewGroup ancestor) {
+        View current = view;
+        while (current != null) {
+            if (current == ancestor) {
+                return true;
+            }
+            ViewParent parent = current.getParent();
+            current = parent instanceof View ? (View) parent : null;
+        }
+        return false;
     }
 
     private static class CommentActionItem {
