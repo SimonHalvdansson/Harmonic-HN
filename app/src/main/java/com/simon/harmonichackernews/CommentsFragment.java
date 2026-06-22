@@ -1079,7 +1079,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onSlide(@NonNull View view, float slideOffset) {
-                updateCommentsScrollbarVisibility(BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_EXPANDED
+                updateCommentsScrollbarVisibility(BottomSheetBehavior.from(view).getState() == BottomSheetBehavior.STATE_EXPANDED
                         && slideOffset >= 0.9999f);
                 // Updating padding (of recyclerview) doesn't work because it causes incorrect scroll position for recycler.
                 // Updating scroll together with padding causes severe lags and other problems.
