@@ -14,6 +14,7 @@ import androidx.activity.BackEventCompat;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -67,6 +68,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         }
 
         updateFragmentLayout();
+        removeUnavailableCommentsPaneFragment();
 
         boolean shouldShowWelcomeDialog = Utils.shouldShowWelcomeDialog(this);
         boolean justUpdated = Utils.justUpdated(this);
@@ -230,7 +232,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
         lastPosition = pos;
 
-        if (!shouldUseFoldableActivityEmbedding() && Utils.isTablet(getResources())) {
+        if (shouldOpenCommentsInMainPane()) {
             CommentsFragment fragment = new CommentsFragment();
             fragment.setArguments(bundle);
             FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
@@ -268,9 +270,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     private void updateFragmentLayout() {
-        if (!shouldUseFoldableActivityEmbedding()
-                && Utils.isTablet(getResources())
-                && mainFragmentsContainer instanceof LinearLayout) {
+        if (shouldOpenCommentsInMainPane() && mainFragmentsContainer instanceof LinearLayout) {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     0,
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -278,6 +278,27 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
             mainFragmentStoriesContainer.setLayoutParams(params);
 
             mainFragmentsContainer.setPadding(0, 0, 0, 0);
+        }
+    }
+
+    private boolean shouldOpenCommentsInMainPane() {
+        return !shouldUseFoldableActivityEmbedding()
+                && Utils.isTablet(getResources())
+                && findViewById(R.id.main_fragment_comments_container) != null;
+    }
+
+    private void removeUnavailableCommentsPaneFragment() {
+        if (shouldOpenCommentsInMainPane()) {
+            return;
+        }
+
+        Fragment fragment = getSupportFragmentManager()
+                .findFragmentById(R.id.main_fragment_comments_container);
+        if (fragment != null) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .remove(fragment)
+                    .commitNowAllowingStateLoss();
         }
     }
 
