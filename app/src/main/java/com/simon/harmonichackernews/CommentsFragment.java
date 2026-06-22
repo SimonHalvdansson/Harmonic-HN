@@ -214,6 +214,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int commentsBottomInset = 0;
     private int scrollNavigationBaseBottomMargin = 0;
     private int searchScrollTopFabBaseBottomMargin = 0;
+    private boolean rootInsetsApplied = false;
+    private boolean recyclerInsetsApplied = false;
     private LinearProgressIndicator progressIndicator;
     private LinearLayout bottomSheet;
     private View headerSpacer;
@@ -403,6 +405,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         binding = FragmentCommentsBinding.bind(view);
+        rootInsetsApplied = false;
+        recyclerInsetsApplied = false;
+        topInset = 0;
 
         if (savedInstanceState != null) {
             pendingCommentActionCommentId = savedInstanceState.getInt(STATE_COMMENT_ACTION_COMMENT_ID, NO_COMMENT_ACTION_COMMENT_ID);
@@ -588,7 +593,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
                 Insets systemInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                rootInsetsApplied = true;
+                topInset = systemInsets.top;
                 updateBottomSheetMargin(systemInsets.bottom);
+                updateHeaderSpacerForCurrentSheetOffset();
 
                 Insets cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
                 int contentPaddingLeft = 0;
@@ -744,6 +752,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         preDrawListener = new ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
+                if (!rootInsetsApplied || !recyclerInsetsApplied) {
+                    ViewCompat.requestApplyInsets(view);
+                    if (recyclerView != null) {
+                        ViewCompat.requestApplyInsets(recyclerView);
+                    }
+                    return false;
+                }
+
                 view.getViewTreeObserver().removeOnPreDrawListener(this);
                 preDrawListener = null;
                 startPostponedEnterTransition();
@@ -1101,9 +1117,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                recyclerInsetsApplied = true;
                 topInset = insets.top;
 
-                updateHeaderSpacer(BottomSheetBehavior.from(bottomSheet).calculateSlideOffset());
+                updateHeaderSpacerForCurrentSheetOffset();
 
                 int paddingBottom = insets.bottom + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard);
                 recyclerView.setPadding(recyclerView.getPaddingLeft(), recyclerView.getPaddingTop(), recyclerView.getPaddingRight(), paddingBottom);
@@ -1113,6 +1130,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
         ViewUtils.requestApplyInsetsWhenAttached(recyclerView);
 
+        updateHeaderSpacerForCurrentSheetOffset();
         recyclerView.setAdapter(adapter);
         recyclerView.post(this::updateHeaderSpacerForCurrentSheetOffset);
 
@@ -1377,7 +1395,23 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
 
-        updateHeaderSpacer(BottomSheetBehavior.from(bottomSheet).calculateSlideOffset());
+        updateHeaderSpacer(getCurrentBottomSheetSlideOffsetForHeader());
+    }
+
+    private float getCurrentBottomSheetSlideOffsetForHeader() {
+        if (bottomSheet == null) {
+            return 1f;
+        }
+
+        BottomSheetBehavior<LinearLayout> behavior = BottomSheetBehavior.from(bottomSheet);
+        int state = behavior.getState();
+        if (state == BottomSheetBehavior.STATE_COLLAPSED) {
+            return 0f;
+        }
+        if (state == BottomSheetBehavior.STATE_EXPANDED) {
+            return 1f;
+        }
+        return behavior.calculateSlideOffset();
     }
 
     private void updateHeaderSpacer(float slideOffset) {
