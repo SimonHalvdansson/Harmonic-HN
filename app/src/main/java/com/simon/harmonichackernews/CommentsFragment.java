@@ -9,6 +9,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -17,6 +18,8 @@ import android.graphics.PointF;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.text.Html;
 import android.text.TextUtils;
@@ -39,6 +42,7 @@ import android.widget.Toast;
 
 import androidx.activity.BackEventCompat;
 import androidx.activity.OnBackPressedCallback;
+import androidx.preference.PreferenceManager;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.TooltipCompat;
@@ -86,6 +90,7 @@ import com.simon.harmonichackernews.network.AlgoliaFallbackManager;
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
+import com.simon.harmonichackernews.network.SummaryManager;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.CommentSorter;
@@ -3880,7 +3885,47 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onRequest(Runnable onDone) {
-        webViewController.requestSummary(onDone);
+        if (story == null || TextUtils.isEmpty(story.url)) {
+            onDone.run();
+            return;
+        }
+        if (!Utils.isAiSummaryEnabled(requireContext())) {
+            onDone.run();
+            return;
+        }
+
+        String mode = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                .getString("pref_ai_summary_mode", "cloud");
+
+        if ("local".equals(mode)) {
+            SummaryManager.summarizeArticleWithGeminiNano(requireContext(), story.url, new SummaryManager.SummaryCallback() {
+                @Override
+                public void onSuccess(String summary) {
+                    story.summary = summary;
+                    onDone.run();
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    story.summary = "Failed to generate local summary: " + error;
+                    onDone.run();
+                }
+            });
+        } else {
+            SummaryManager.summarizeArticle(requireContext(), queue, story.url, new SummaryManager.SummaryCallback() {
+                @Override
+                public void onSuccess(String summary) {
+                    story.summary = summary;
+                    onDone.run();
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    story.summary = "Failed to generate summary: " + error;
+                    onDone.run();
+                }
+            });
+        }
     }
 
 

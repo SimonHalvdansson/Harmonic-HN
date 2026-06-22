@@ -37,6 +37,13 @@
         app:fragment="com.simon.harmonichackernews.settings.FiltersTagsPreferenceFragment" />
 
     <Preference
+        app:key="pref_header_ai_summary"
+        app:title="AI Summarization"
+        app:summary="API keys, models"
+        app:icon="@drawable/ic_auto_awesome"
+        app:fragment="com.simon.harmonichackernews.settings.AiSummaryPreferenceFragment" />
+
+    <Preference
         app:key="pref_header_data_storage"
         app:title="Data"
         app:summary="Bookmarks, history, other"
