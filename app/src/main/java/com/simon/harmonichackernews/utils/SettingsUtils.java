@@ -681,7 +681,7 @@ public class SettingsUtils {
     }
 
     public static boolean shouldUseTranslucentStatusBar(Context ctx) {
-        return getBooleanPref(PREF_TRANSLUCENT_STATUS_BAR, false, ctx);
+        return getBooleanPref(PREF_TRANSLUCENT_STATUS_BAR, true, ctx);
     }
 
     public static String getPreferredStoryDisplayStyle(Context ctx) {

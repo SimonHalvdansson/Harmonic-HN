@@ -63,9 +63,9 @@
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_translucent_status_bar"
-            app:defaultValue="false"
-            app:icon="@drawable/ic_action_translucent"
-            app:summary="Adds a subtle fade behind transparent status bars"
+            app:defaultValue="true"
+            app:icon="@drawable/ic_transition_fade"
+            app:summary="Background protection for readability"
             app:title="Translucent status bar" />
 
         <SwitchPreferenceCompat
