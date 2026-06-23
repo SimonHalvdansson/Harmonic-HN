@@ -2215,6 +2215,7 @@ public class StoriesFragment extends Fragment {
                 boolean oldClicked = story.clicked;
                 boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
                 boolean oldBookmarked = bookmarksEnabled && Utils.isBookmarked(ctx, story.id);
+                boolean hasAccountDetails = AccountUtils.hasAccountDetails(ctx);
                 boolean oldFavorited = Utils.isFavorited(ctx, story.id);
                 History h = HistoriesUtils.INSTANCE.getHistorybyId(story.id);
 
@@ -2268,54 +2269,51 @@ public class StoriesFragment extends Fragment {
                     });
                 }
 
-                popupMenu.getMenu().add(oldFavorited ? "Remove favorite" : "Favorite").setIcon(oldFavorited ? R.drawable.ic_star_filled : R.drawable.ic_star).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                    @Override
-                    public boolean onMenuItemClick(@NonNull MenuItem item) {
-                        if (!AccountUtils.hasAccountDetails(ctx)) {
-                            AccountUtils.showLoginPrompt(getParentFragmentManager());
+                if (hasAccountDetails) {
+                    popupMenu.getMenu().add(oldFavorited ? "Remove favorite" : "Favorite").setIcon(oldFavorited ? R.drawable.ic_star_filled : R.drawable.ic_star).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                        @Override
+                        public boolean onMenuItemClick(@NonNull MenuItem item) {
+                            boolean newFavorited = !oldFavorited;
+                            int optimisticIndex = stories.indexOf(story);
+                            Utils.setFavorite(ctx, story.id, newFavorited);
+                            if (optimisticIndex >= 0) {
+                                if (oldFavorited && isFavoritesType(adapter.type)) {
+                                    removeStoryAt(optimisticIndex, storyListGeneration, true);
+                                    updateHeader();
+                                } else {
+                                    adapter.notifyItemChanged(optimisticIndex);
+                                }
+                            }
+
+                            UserActions.setFavorite(ctx, story.id, !oldFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
+                                @Override
+                                public void onSuccess(Response response) {
+                                }
+
+                                @Override
+                                public void onFailure(String summary, String response) {
+                                    Utils.setFavorite(ctx, story.id, oldFavorited);
+                                    int currentIndex = stories.indexOf(story);
+                                    if (oldFavorited && isFavoritesType(adapter.type) && currentIndex == -1) {
+                                        int restoreIndex = optimisticIndex >= 0 ? Math.min(optimisticIndex, stories.size()) : 0;
+                                        stories.add(restoreIndex, story);
+                                        adapter.notifyItemInserted(restoreIndex);
+                                        updateHeader();
+                                    } else if (currentIndex >= 0) {
+                                        adapter.notifyItemChanged(currentIndex);
+                                    }
+                                    if (newFavorited) {
+                                        Toast.makeText(ctx, "Couldn't add favorite", Toast.LENGTH_SHORT).show();
+                                    } else {
+                                        UserActions.showFailureDetailDialog(ctx, summary, response);
+                                        Toast.makeText(ctx, "Couldn't update favorite", Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+                            });
                             return true;
                         }
-
-                        boolean newFavorited = !oldFavorited;
-                        int optimisticIndex = stories.indexOf(story);
-                        Utils.setFavorite(ctx, story.id, newFavorited);
-                        if (optimisticIndex >= 0) {
-                            if (oldFavorited && isFavoritesType(adapter.type)) {
-                                removeStoryAt(optimisticIndex, storyListGeneration, true);
-                                updateHeader();
-                            } else {
-                                adapter.notifyItemChanged(optimisticIndex);
-                            }
-                        }
-
-                        UserActions.setFavorite(ctx, story.id, !oldFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
-                            @Override
-                            public void onSuccess(Response response) {
-                            }
-
-                            @Override
-                            public void onFailure(String summary, String response) {
-                                Utils.setFavorite(ctx, story.id, oldFavorited);
-                                int currentIndex = stories.indexOf(story);
-                                if (oldFavorited && isFavoritesType(adapter.type) && currentIndex == -1) {
-                                    int restoreIndex = optimisticIndex >= 0 ? Math.min(optimisticIndex, stories.size()) : 0;
-                                    stories.add(restoreIndex, story);
-                                    adapter.notifyItemInserted(restoreIndex);
-                                    updateHeader();
-                                } else if (currentIndex >= 0) {
-                                    adapter.notifyItemChanged(currentIndex);
-                                }
-                                if (newFavorited) {
-                                    Toast.makeText(ctx, "Couldn't add favorite", Toast.LENGTH_SHORT).show();
-                                } else {
-                                    UserActions.showFailureDetailDialog(ctx, summary, response);
-                                    Toast.makeText(ctx, "Couldn't update favorite", Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                        });
-                        return true;
-                    }
-                });
+                    });
+                }
 
                 try {
                     // Reflection code to force show the popup at x,y position

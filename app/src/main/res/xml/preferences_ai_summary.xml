@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <SwitchPreferenceCompat
+        app:title="Enable"
+        app:key="pref_ai_summary_enabled"
+        app:icon="@drawable/ic_auto_awesome"
+        app:singleLineTitle="false" />
+
+    <com.simon.harmonichackernews.settings.AiSummaryModePreference
+        app:key="pref_ai_summary_mode"
+        app:title="Summarization mode" />
+
+    <Preference
+        app:title="Base URL"
+        app:key="pref_ai_summary_base_url"
+        app:icon="@drawable/ic_link"
+        app:singleLineTitle="false" />
+
+    <Preference
+        app:title="API Key"
+        app:key="pref_ai_summary_api_key"
+        app:icon="@drawable/ic_key"
+        app:singleLineTitle="false" />
+
+    <Preference
+        app:title="Model"
+        app:key="pref_ai_summary_model"
+        app:icon="@drawable/ic_hard_drive"
+        app:singleLineTitle="false" />
+
+    <com.simon.harmonichackernews.settings.AiSummarySystemPromptPreference
+        app:title="System prompt"
+        app:key="pref_ai_summary_system_prompt"
+        app:icon="@drawable/ic_subject"
+        app:singleLineTitle="false" />
+</PreferenceScreen>

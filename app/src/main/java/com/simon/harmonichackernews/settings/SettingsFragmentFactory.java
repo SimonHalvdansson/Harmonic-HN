@@ -38,6 +38,8 @@ public final class SettingsFragmentFactory {
                 return new FiltersTagsPreferenceFragment();
             case "com.simon.harmonichackernews.settings.DataStoragePreferenceFragment":
                 return new DataStoragePreferenceFragment();
+            case "com.simon.harmonichackernews.settings.AiSummaryPreferenceFragment":
+                return new AiSummaryPreferenceFragment();
             default:
                 try {
                     return fragmentManager.getFragmentFactory()

@@ -5,38 +5,53 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipChildren="true"
+    android:clipToPadding="true"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <TextView
-        android:id="@+id/compose_top_comment"
-        android:paddingTop="16dp"
-        android:paddingBottom="10dp"
-        android:textSize="20sp"
-        android:textColor="?attr/storyColorNormal"
-        android:textStyle="bold"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/product_sans_bold"
-        tools:text="Commenting on &quot;Firefox was never enough&quot;" />
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/compose_top_app_bar"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:background="@android:color/transparent"
+        android:minHeight="72dp"
+        app:navigationContentDescription="Close"
+        app:navigationIcon="@drawable/ic_close"
+        app:navigationIconTint="?attr/storyColorNormal"
+        app:subtitleTextColor="?attr/secondaryTextColor"
+        app:titleCentered="false"
+        app:titleTextColor="?attr/storyColorNormal"
+        tools:subtitle="Firefox was never enough"
+        tools:title="Posting reply" />
 
     <ScrollView
         android:id="@+id/compose_replying_scrollview"
+        android:clipChildren="true"
+        android:clipToPadding="true"
+        android:fadingEdgeLength="20dp"
+        android:fillViewport="false"
+        android:overScrollMode="ifContentScrolls"
+        android:requiresFadingEdge="vertical"
+        android:scrollbarStyle="outsideOverlay"
+        android:scrollbars="vertical"
         android:layout_width="match_parent"
         android:layout_height="180dp">
 
         <LinearLayout
             android:orientation="vertical"
+            android:clipChildren="true"
+            android:clipToPadding="true"
             android:layout_width="match_parent"
-            android:paddingBottom="10dp"
+            android:paddingBottom="6dp"
             android:layout_height="wrap_content">
 
             <TextView
                 android:layout_marginLeft="16dp"
                 android:layout_marginRight="16dp"
-                android:layout_marginTop="16dp"
-                android:elevation="12dp"
+                android:layout_marginTop="6dp"
+                android:elevation="10dp"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:paddingTop="8dp"
                 android:paddingBottom="8dp"
                 android:paddingLeft="14dp"
@@ -54,11 +69,11 @@
                 android:id="@+id/compose_replying_text"
                 android:paddingLeft="16dp"
                 android:paddingRight="16dp"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="10dp"
                 android:textSize="16sp"
                 android:textColor="?attr/storyColorNormal"
                 android:fontFamily="@font/product_sans"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 tools:text="Lorem impus dolor sit amet." />
 
@@ -66,20 +81,12 @@
 
     </ScrollView>
 
-    <View
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_marginBottom="10dp"
-        android:background="#445"
-        android:layout_width="match_parent"
-        android:layout_height="1dp" />
-
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/compose_title_container"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:visibility="gone"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:layout_marginLeft="16dp"
         android:layout_marginRight="16dp"
         android:layout_width="match_parent"
@@ -92,13 +99,13 @@
             android:inputType="textCapSentences"
             android:imeOptions="normal"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"    />
+            android:layout_height="wrap_content" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/compose_url_container"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:visibility="gone"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
@@ -113,13 +120,13 @@
             android:autofillHints="url"
             android:imeOptions="normal"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"    />
+            android:layout_height="wrap_content" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/compose_text_container"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:visibility="gone"
         android:layout_marginTop="16dp"
         android:layout_marginLeft="16dp"
@@ -137,86 +144,203 @@
             android:inputType="textCapSentences|textMultiLine"
             android:scrollbars="vertical"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"    />
+            android:layout_height="match_parent" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
-    <TextView
-        android:id="@+id/compose_submit_info"
-        android:visibility="gone"
-        android:padding="16dp"
-        android:textSize="13sp"
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/compose_comment_container"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/product_sans_bold"
-        android:text="Leave url blank to submit a question for discussion. If there is no url, text will appear at the top of the thread. If there is a url, text is optional."
-        />
-
-    <androidx.appcompat.widget.AppCompatEditText
-        android:paddingLeft="16dp"
-        android:imeOptions="normal"
-        android:textSize="16sp"
-        android:paddingRight="16dp"
-        android:id="@+id/compose_edittext"
-        android:hint="Type here..."
-        android:background="@null"
-        android:fontFamily="@font/product_sans"
-        android:gravity="top"
-        android:inputType="textCapSentences|textMultiLine"
-        android:layout_width="match_parent"
+        android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_height="0dp"    />
+        android:layout_marginLeft="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginRight="16dp"
+        android:gravity="top"
+        android:hint="Comment">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/compose_edittext"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fontFamily="@font/product_sans"
+            android:gravity="top"
+            android:imeOptions="normal"
+            android:inputType="textCapSentences|textMultiLine"
+            android:scrollbars="vertical"
+            android:textSize="16sp" />
+
+    </com.google.android.material.textfield.TextInputLayout>
 
     <LinearLayout
         android:id="@+id/compose_bottom_container"
         android:orientation="vertical"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <View
-            android:layout_marginLeft="16dp"
-            android:layout_marginRight="16dp"
-            android:layout_marginBottom="8dp"
-            android:layout_marginTop="8dp"
-            android:background="#445"
+        <LinearLayout
+            android:id="@+id/compose_bottom_toolbar_row"
             android:layout_width="match_parent"
-            android:layout_height="1dp" />
-
-        <RelativeLayout
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:gravity="center"
+            android:orientation="horizontal"
             android:paddingLeft="16dp"
+            android:paddingTop="10dp"
             android:paddingRight="16dp"
-            android:paddingBottom="8dp"
+            android:paddingBottom="12dp">
+
+            <com.google.android.material.floatingtoolbar.FloatingToolbarLayout
+                android:id="@+id/compose_bottom_toolbar"
+                android:layout_width="wrap_content"
+                android:layout_height="64dp"
+                android:focusable="false"
+                android:focusableInTouchMode="false"
+                android:elevation="4dp"
+                android:minHeight="64dp"
+                app:backgroundTint="?attr/settingsSegmentColor"
+                app:marginBottomSystemWindowInsets="false"
+                app:marginLeftSystemWindowInsets="false"
+                app:marginRightSystemWindowInsets="false"
+                app:marginTopSystemWindowInsets="false">
+
+                <LinearLayout
+                    android:id="@+id/compose_formatting_actions"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/compose_format_italic"
+                        style="@style/Widget.Material3.FloatingToolbar.IconButton"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:contentDescription="Italic"
+                        android:focusable="false"
+                        android:focusableInTouchMode="false"
+                        android:insetLeft="0dp"
+                        android:insetTop="0dp"
+                        android:insetRight="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="48dp"
+                        android:minHeight="48dp"
+                        android:padding="0dp"
+                        android:text=""
+                        app:backgroundTint="@android:color/transparent"
+                        app:icon="@drawable/ic_format_italic"
+                        app:iconGravity="textStart"
+                        app:iconTint="?attr/drawableColor"
+                        app:iconPadding="0dp"
+                        app:iconSize="24dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/compose_format_code"
+                        style="@style/Widget.Material3.FloatingToolbar.IconButton"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:contentDescription="Code block"
+                        android:focusable="false"
+                        android:focusableInTouchMode="false"
+                        android:insetLeft="0dp"
+                        android:insetTop="0dp"
+                        android:insetRight="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="48dp"
+                        android:minHeight="48dp"
+                        android:padding="0dp"
+                        android:text=""
+                        app:backgroundTint="@android:color/transparent"
+                        app:icon="@drawable/ic_code_blocks"
+                        app:iconGravity="textStart"
+                        app:iconTint="?attr/drawableColor"
+                        app:iconPadding="0dp"
+                        app:iconSize="24dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/compose_formatting_info"
+                        style="@style/Widget.Material3.FloatingToolbar.IconButton"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:contentDescription="Information"
+                        android:focusable="false"
+                        android:focusableInTouchMode="false"
+                        android:insetLeft="0dp"
+                        android:insetTop="0dp"
+                        android:insetRight="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="48dp"
+                        android:minHeight="48dp"
+                        android:padding="0dp"
+                        android:text=""
+                        app:backgroundTint="@android:color/transparent"
+                        app:icon="@drawable/ic_info"
+                        app:iconGravity="textStart"
+                        app:iconTint="?attr/drawableColor"
+                        app:iconPadding="0dp"
+                        app:iconSize="24dp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.floatingtoolbar.FloatingToolbarLayout>
+
+            <FrameLayout
+                android:id="@+id/compose_submit_slot"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:layout_gravity="start|center_vertical"
+                android:layout_marginLeft="12dp"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/compose_submit"
+                    style="?attr/floatingActionButtonPrimaryStyle"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Submit"
+                    android:elevation="4dp"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:scaleType="center"
+                    app:fabCustomSize="60dp"
+                    app:backgroundTint="@color/compose_submit_background"
+                    app:maxImageSize="30dp"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceHarmonicComposeFab"
+                    app:srcCompat="@drawable/ic_send"
+                    app:tint="@color/compose_submit_content" />
+
+                <com.google.android.material.loadingindicator.LoadingIndicator
+                    android:id="@+id/compose_submit_loading"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:layout_gravity="center"
+                    android:alpha="0"
+                    android:contentDescription="Submitting"
+                    android:indeterminate="true"
+                    android:visibility="gone"
+                    app:indicatorSize="34dp" />
+
+            </FrameLayout>
+
+        </LinearLayout>
+
+        <View
+            android:id="@+id/compose_bottom_inset_spacer"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <Button
-                android:textSize="14dp"
-                android:fontFamily="@font/product_sans_bold"
-                android:onClick="infoClick"
-                android:layout_width="wrap_content"
-                android:layout_height="56dp"
-                android:textColor="?attr/storyColorNormal"
-                android:layout_toLeftOf="@id/compose_submit"
-                android:layout_marginRight="14dp"
-                style="?attr/materialButtonOutlinedStyle"
-                android:text="Formatting"/>
-
-            <Button
-                android:textSize="14dp"
-                app:iconPadding="8dp"
-                android:fontFamily="@font/product_sans_bold"
-                android:id="@+id/compose_submit"
-                style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
-                app:icon="@drawable/ic_send"
-                app:iconTint="@color/story_color_selector"
-                android:textColor="@color/story_color_selector"
-                android:layout_width="wrap_content"
-                android:layout_height="56dp"
-                android:layout_alignParentRight="true"
-                android:onClick="submit"
-                android:text="Submit" />
-
-        </RelativeLayout>
+            android:layout_height="0dp"
+            android:importantForAccessibility="no" />
 
     </LinearLayout>
 

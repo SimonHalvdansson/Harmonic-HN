@@ -30,6 +30,7 @@ import com.simon.harmonichackernews.databinding.CommentsSearchDialogBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
@@ -49,15 +50,6 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
     private CommentSelectedListener listener;
     private TextWatcher searchWatcher;
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        if (getArguments() != null) {
-            comments = (List<Comment>) getArguments().getSerializable(EXTRA_SEARCHABLE_COMMENTS);
-        }
-    }
-
     public CommentsSearchDialogFragment() {
     }
 
@@ -67,6 +59,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
 
     @NonNull
     @Override
+    @SuppressWarnings("unchecked")
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         super.onCreateDialog(savedInstanceState);
 
@@ -82,9 +75,14 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
         recyclerView = binding.commentsSearchRecyclerview;
         matchesText = binding.commentsSearchMatches;
 
+        List<Comment> searchableComments = null;
         if (getArguments() != null) {
-            comments = (List<Comment>) getArguments().getSerializable(EXTRA_SEARCHABLE_COMMENTS);
-            comments = comments.subList(1, comments.size());
+            searchableComments = (List<Comment>) getArguments().getSerializable(EXTRA_SEARCHABLE_COMMENTS);
+        }
+        if (searchableComments == null || searchableComments.size() <= 1) {
+            comments = new ArrayList<>();
+        } else {
+            comments = new ArrayList<>(searchableComments.subList(1, searchableComments.size()));
         }
 
         updateMatches(null);

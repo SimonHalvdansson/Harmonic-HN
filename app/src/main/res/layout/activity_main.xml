@@ -11,5 +11,10 @@
         android:layout_height="match_parent"
         android:name="com.simon.harmonichackernews.StoriesFragment" />
 
-</FrameLayout>
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/main_fragment_comments_container"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
+</FrameLayout>

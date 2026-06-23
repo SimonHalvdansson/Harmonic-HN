@@ -31,6 +31,7 @@ import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
+import com.simon.harmonichackernews.network.SummaryManager;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import androidx.core.util.Pair;
 
@@ -1580,7 +1581,25 @@ public class Utils {
     }
 
     public static boolean canProvideSummary(Context ctx) {
-        return false;
+        if (!isAiSummaryEnabled(ctx)) {
+            return false;
+        }
+        String mode = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_mode", "cloud");
+        if ("local".equals(mode)) {
+            return SummaryManager.canAttemptLocalSummarization();
+        }
+        String apiKey = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_api_key", "");
+        return !apiKey.isEmpty();
+    }
+
+    public static boolean isAiSummaryEnabled(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return prefs.getBoolean("pref_ai_summary_enabled", isAiSummaryEnabledByDefault(ctx, prefs));
+    }
+
+    private static boolean isAiSummaryEnabledByDefault(Context ctx, SharedPreferences prefs) {
+        return SummaryManager.canAttemptLocalSummarization()
+                || !prefs.getString("pref_ai_summary_api_key", "").isEmpty();
     }
 
     public static boolean isNetworkAvailable(Context context) {

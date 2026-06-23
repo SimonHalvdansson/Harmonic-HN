@@ -1,5 +1,7 @@
 ﻿# Version 3.1
 - Added ability to show extra HN frontpages in Settings → Stories → Behavior
+- Added optional non-automatic AI summarization or posts (configure in Settings → AI summarization)
+- Redesigned the submit and new comment screens to be more Material 3
 - Added setting to reset all settings
 - Updated icons to rounded Material symbols
 - Updated dropdown header font size for smaller screens

@@ -90,6 +90,7 @@ dependencies {
     implementation(libs.shimmer)
     implementation(libs.coil)
     implementation(libs.jsoup)
+    implementation(libs.mlkit.genai.summarization)
 
     implementation(libs.markwon.core)
     implementation(libs.markwon.ext.latex)

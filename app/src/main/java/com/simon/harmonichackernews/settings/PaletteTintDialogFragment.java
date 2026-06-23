@@ -195,7 +195,7 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
 
         TextView meta = new TextView(context);
         meta.setText(sample.meta);
-        meta.setTextColor(MaterialColors.getColor(card, R.attr.secondaryTextColor, Color.LTGRAY));
+        meta.setTextColor(MaterialColors.getColor(card, R.attr.textColorDefault, Color.LTGRAY));
         meta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         meta.setSingleLine(true);
         meta.setEllipsize(TextUtils.TruncateAt.END);

@@ -73,6 +73,7 @@ import com.simon.harmonichackernews.utils.TextSizeImageSpan;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
+import io.noties.markwon.Markwon;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.jetbrains.annotations.NotNull;
@@ -148,6 +149,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private boolean storyFavoriteLoadingTarget = false;
     private boolean storyVoteLoading = false;
     private boolean storyVoteLoadingTarget = false;
+    private boolean storySummaryLoading = false;
     private float headerSlideOffset = 1f;
     @Nullable
     private HeaderViewHolder boundHeaderViewHolder;
@@ -371,38 +373,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 FaviconLoader.loadFavicon(story.url, headerViewHolder.favicon, ctx, faviconProvider);
             }
 
-            headerViewHolder.summarizeButtonParent.setVisibility(story.isLink && Utils.canProvideSummary(ctx) ? View.VISIBLE : View.GONE);
-
-            headerViewHolder.summaryContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : VISIBLE);
-
-            headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
-            headerViewHolder.summaryContentContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
-            headerViewHolder.summary.setText(story.summary);
-            headerViewHolder.summary.setText("• Introduces algebraic effects: resumable “exceptions” that serve as a single primitive for custom control flow.\n" +
-                    "• Shows how to build generators, coroutines, async/await, exception handling, and schedulers purely as libraries.\n" +
-                    "• Demonstrates modeling services (databases, logging, randomness, allocation) as effects you can swap or mock via handlers.\n" +
-                    "• Highlights cleaner APIs through implicit state/context threading and enforced purity/security (can IO, can Print) enabling deterministic replay/debugging.");
-
-            headerViewHolder.summarizeButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    headerViewHolder.summaryContainer.setVisibility(View.VISIBLE);
-
-                    headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
-                    headerViewHolder.summaryContentContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
-
-                    summaryCallback.onRequest(new Runnable() {
-                        @Override
-                        public void run() {
-                            notifyItemChanged(0);
-
-                            headerViewHolder.summaryLoadingContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.VISIBLE : View.GONE);
-                            headerViewHolder.summaryContentContainer.setVisibility(TextUtils.isEmpty(story.summary) ? View.GONE : View.VISIBLE);
-                            headerViewHolder.summary.setText(story.summary);
-                        }
-                    });
-                }
-            });
+            bindHeaderSummary(headerViewHolder, ctx);
 
             boolean isUpvoted = Utils.isUpvoted(ctx, story.id, story.isComment);
             if (storyVoteLoading) {
@@ -428,7 +399,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
             headerViewHolder.opFilterContainer.setVisibility(commentsByOpFilterActive ? VISIBLE : GONE);
-            headerViewHolder.bookmarkButtonParent.setVisibility(bookmarksEnabled ? VISIBLE : GONE);
+            headerViewHolder.bookmarkButtonParent.setVisibility(bookmarksEnabled && !hasAccountDetails ? VISIBLE : GONE);
             bindHeaderAccountActionVisibility(headerViewHolder);
 
             headerViewHolder.loadingFailed.setVisibility(loadingFailed ? VISIBLE : GONE);
@@ -733,10 +704,50 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (showThumbnail && !TextUtils.isEmpty(story.url)) {
             FaviconLoader.loadFavicon(story.url, headerViewHolder.favicon, ctx, faviconProvider);
         }
-        headerViewHolder.summarizeButtonParent.setVisibility(story.isLink && Utils.canProvideSummary(ctx) ? View.VISIBLE : View.GONE);
+        bindHeaderSummary(headerViewHolder, ctx);
         headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
         bindHeaderAccountActionVisibility(headerViewHolder);
         bindHeaderTint(headerViewHolder);
+    }
+
+    private void bindHeaderSummary(HeaderViewHolder headerViewHolder, Context ctx) {
+        boolean canSummarize = story.isLink && Utils.canProvideSummary(ctx);
+        headerViewHolder.summarizeButtonParent.setVisibility(canSummarize ? VISIBLE : GONE);
+
+        boolean hasSummary = !TextUtils.isEmpty(story.summary);
+        headerViewHolder.summaryContainer.setVisibility(hasSummary ? VISIBLE : GONE);
+        headerViewHolder.summaryContentContainer.setVisibility(hasSummary ? VISIBLE : GONE);
+        headerViewHolder.summary.setMaxLines(Integer.MAX_VALUE);
+        headerViewHolder.summary.setEllipsize(null);
+        if (hasSummary) {
+            Markwon.create(ctx).setMarkdown(headerViewHolder.summary, story.summary);
+        } else {
+            headerViewHolder.summary.setText(null);
+        }
+
+        if (storySummaryLoading) {
+            showHeaderSummaryLoading(headerViewHolder.summarizeButton, false);
+        } else {
+            showHeaderSummaryButton(headerViewHolder.summarizeButton, false);
+        }
+
+        headerViewHolder.summarizeButton.setOnClickListener(v -> {
+            if (storySummaryLoading) {
+                return;
+            }
+
+            storySummaryLoading = true;
+            showHeaderSummaryLoading(headerViewHolder.summarizeButton, true);
+            summaryCallback.onRequest(() -> {
+                storySummaryLoading = false;
+                notifyItemChanged(0);
+
+                ImageButton button = resolveStorySummaryButton(v);
+                if (button != null) {
+                    showHeaderSummaryButton(button, true);
+                }
+            });
+        });
     }
 
     private void bindHeaderAccountActionVisibility(HeaderViewHolder headerViewHolder) {
@@ -2105,6 +2116,20 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         return null;
     }
 
+    @Nullable
+    private ImageButton resolveStorySummaryButton(@Nullable View actionView) {
+        if (actionView instanceof ImageButton
+                && actionView.getId() == R.id.comments_header_button_summarize
+                && ViewCompat.isAttachedToWindow(actionView)) {
+            return (ImageButton) actionView;
+        }
+        if (boundHeaderViewHolder != null
+                && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.summarizeButton)) {
+            return boundHeaderViewHolder.summarizeButton;
+        }
+        return null;
+    }
+
     private void showHeaderVoteLoading(ImageButton button, boolean upvoted, boolean animate) {
         String label = upvoted ? "Upvoting" : "Removing vote";
         showHeaderActionLoading(button, label, animate);
@@ -2121,6 +2146,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private void showHeaderFavoriteLoading(ImageButton button, boolean favorite, boolean animate) {
         String label = favorite ? "Adding favorite" : "Removing favorite";
         showHeaderActionLoading(button, label, animate);
+    }
+
+    private void showHeaderSummaryLoading(ImageButton button, boolean animate) {
+        showHeaderActionLoading(button, "Summarizing", animate);
+    }
+
+    private void showHeaderSummaryButton(ImageButton button, boolean animate) {
+        showHeaderActionButton(button, R.drawable.ic_auto_awesome, "Summarize", animate);
     }
 
     private void showHeaderActionLoading(ImageButton button, String label, boolean animate) {
@@ -2454,7 +2487,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout summarizeButtonParent;
         public final LinearLayout summaryContainer;
         public final LinearLayout summaryContentContainer;
-        public final LinearLayout summaryLoadingContainer;
         public final TextView summary;
         public final TextView summaryTitle;
         public final ImageButton moreButton;
@@ -2586,7 +2618,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             summarizeButton = binding.commentsHeaderButtonSummarize;
             summaryContainer = binding.commentsHeaderSummaryContainer;
             summaryContentContainer = binding.commentsHeaderSummaryContentContainer;
-            summaryLoadingContainer = binding.commentsHeaderSummaryLoading;
             summary = binding.commentsHeaderSummary;
             summaryTitle = binding.commentsHeaderSummaryTitle;
             moreButton = binding.commentsHeaderButtonMore;

@@ -9,6 +9,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -17,6 +18,8 @@ import android.graphics.PointF;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.text.Html;
 import android.text.TextUtils;
@@ -29,6 +32,7 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -39,6 +43,7 @@ import android.widget.Toast;
 
 import androidx.activity.BackEventCompat;
 import androidx.activity.OnBackPressedCallback;
+import androidx.preference.PreferenceManager;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.TooltipCompat;
@@ -87,6 +92,7 @@ import com.simon.harmonichackernews.network.AlgoliaFallbackManager;
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
+import com.simon.harmonichackernews.network.SummaryManager;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.CommentSorter;
@@ -211,6 +217,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int commentsBottomInset = 0;
     private int scrollNavigationBaseBottomMargin = 0;
     private int searchScrollTopFabBaseBottomMargin = 0;
+    private boolean rootInsetsApplied = false;
+    private boolean recyclerInsetsApplied = false;
     private LinearProgressIndicator progressIndicator;
     private LinearLayout bottomSheet;
     private View headerSpacer;
@@ -406,6 +414,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         binding = FragmentCommentsBinding.bind(view);
+        rootInsetsApplied = false;
+        recyclerInsetsApplied = false;
+        topInset = 0;
 
         if (savedInstanceState != null) {
             pendingCommentActionCommentId = savedInstanceState.getInt(STATE_COMMENT_ACTION_COMMENT_ID, NO_COMMENT_ACTION_COMMENT_ID);
@@ -597,7 +608,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
                 Insets systemInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                rootInsetsApplied = true;
+                topInset = systemInsets.top;
                 updateBottomSheetMargin(systemInsets.bottom);
+                updateHeaderSpacerForCurrentSheetOffset();
 
                 Insets cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
                 int contentPaddingLeft = 0;
@@ -753,6 +767,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         preDrawListener = new ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
+                if (!rootInsetsApplied || !recyclerInsetsApplied) {
+                    ViewCompat.requestApplyInsets(view);
+                    if (recyclerView != null) {
+                        ViewCompat.requestApplyInsets(recyclerView);
+                    }
+                    return false;
+                }
+
                 view.getViewTreeObserver().removeOnPreDrawListener(this);
                 preDrawListener = null;
                 startPostponedEnterTransition();
@@ -1173,7 +1195,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onSlide(@NonNull View view, float slideOffset) {
-                updateCommentsScrollbarVisibility(BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_EXPANDED
+                updateCommentsScrollbarVisibility(BottomSheetBehavior.from(view).getState() == BottomSheetBehavior.STATE_EXPANDED
                         && slideOffset >= 0.9999f);
                 // Updating padding (of recyclerview) doesn't work because it causes incorrect scroll position for recycler.
                 // Updating scroll together with padding causes severe lags and other problems.
@@ -1194,9 +1216,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
                 Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                recyclerInsetsApplied = true;
                 topInset = insets.top;
 
-                updateHeaderSpacer(BottomSheetBehavior.from(bottomSheet).calculateSlideOffset());
+                updateHeaderSpacerForCurrentSheetOffset();
                 updateCommentsStatusBarAppearance();
 
                 int paddingBottom = insets.bottom + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard);
@@ -1207,6 +1230,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
         ViewUtils.requestApplyInsetsWhenAttached(recyclerView);
 
+        updateHeaderSpacerForCurrentSheetOffset();
         recyclerView.setAdapter(adapter);
         recyclerView.post(this::updateHeaderSpacerForCurrentSheetOffset);
         recyclerView.post(this::updateCommentsStatusBarAppearance);
@@ -1473,7 +1497,23 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
 
-        updateHeaderSpacer(BottomSheetBehavior.from(bottomSheet).calculateSlideOffset());
+        updateHeaderSpacer(getCurrentBottomSheetSlideOffsetForHeader());
+    }
+
+    private float getCurrentBottomSheetSlideOffsetForHeader() {
+        if (bottomSheet == null) {
+            return 1f;
+        }
+
+        BottomSheetBehavior<LinearLayout> behavior = BottomSheetBehavior.from(bottomSheet);
+        int state = behavior.getState();
+        if (state == BottomSheetBehavior.STATE_COLLAPSED) {
+            return 0f;
+        }
+        if (state == BottomSheetBehavior.STATE_EXPANDED) {
+            return 1f;
+        }
+        return behavior.calculateSlideOffset();
     }
 
     private void updateHeaderSpacer(float slideOffset) {
@@ -2250,6 +2290,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void clickMore(View view) {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+
         PopupMenu popup = new PopupMenu(requireActivity(), view);
 
         popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
@@ -2270,6 +2315,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 } else if (id == R.id.menu_adblock) {
                     adBlockDisabledForSession = true;
                     webViewController.disableAdBlockAndReload();
+                } else if (id == R.id.menu_bookmark) {
+                    toggleStoryBookmark();
                 } else if (id == R.id.menu_archive) {
                     view.post(() -> showArchiveServiceMenu(view));
                 } else if (id == R.id.menu_search_comments) {
@@ -2316,6 +2363,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         MenuInflater inflater = popup.getMenuInflater();
         inflater.inflate(R.menu.comments_more_menu, popup.getMenu());
 
+        boolean hasAccountDetails = AccountUtils.hasAccountDetails(ctx);
+        boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
+        MenuItem bookmarkItem = popup.getMenu().findItem(R.id.menu_bookmark);
+        bookmarkItem.setVisible(hasAccountDetails && bookmarksEnabled);
+        if (bookmarksEnabled && story != null) {
+            boolean bookmarked = Utils.isBookmarked(ctx, story.id);
+            bookmarkItem.setTitle(bookmarked ? "Remove bookmark" : "Bookmark");
+        }
+
         for (int i = 0; i < popup.getMenu().size(); i++) {
             MenuItem item = popup.getMenu().getItem(i);
 
@@ -2349,6 +2405,24 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         popup.show();
+    }
+
+    private void toggleStoryBookmark() {
+        Context ctx = getContext();
+        if (ctx == null || story == null) {
+            return;
+        }
+
+        boolean bookmarked = !Utils.isBookmarked(ctx, story.id);
+        if (bookmarked) {
+            Utils.addBookmark(ctx, story.id);
+        } else {
+            Utils.removeBookmark(ctx, story.id);
+        }
+
+        if (adapter != null) {
+            adapter.notifyItemChanged(0);
+        }
     }
 
     private void showArchiveServiceMenu(View anchor) {
@@ -2453,6 +2527,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         Intent intent = new Intent(getContext(), ComposeActivity.class);
         intent.putExtra(ComposeActivity.EXTRA_ID, adapter.story.id);
         intent.putExtra(ComposeActivity.EXTRA_PARENT_TEXT, adapter.story.title);
+        intent.putExtra(ComposeActivity.EXTRA_POST_TITLE, adapter.story.title);
         intent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_TOP_COMMENT);
         startActivity(intent);
     }
@@ -2719,8 +2794,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 return;
             }
 
-            if (animate && isUsableTransitionView(sourceView)) {
+            if (animate && isUsableCommentActionTransition(overlayHost, sourceView, commentActionCard)) {
                 MaterialContainerTransform transform = createCommentActionTransform(
+                        overlayHost,
                         sourceView,
                         commentActionCard,
                         MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
@@ -3126,6 +3202,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 Intent replyIntent = new Intent(ctx, ComposeActivity.class);
                 replyIntent.putExtra(ComposeActivity.EXTRA_ID, comment.id);
                 replyIntent.putExtra(ComposeActivity.EXTRA_PARENT_TEXT, comment.text);
+                replyIntent.putExtra(ComposeActivity.EXTRA_POST_TITLE, adapter.story.title);
                 replyIntent.putExtra(ComposeActivity.EXTRA_USER, comment.by);
                 replyIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_COMMENT_REPLY);
                 ctx.startActivity(replyIntent);
@@ -3597,13 +3674,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
     }
 
-    private MaterialContainerTransform createCommentActionTransform(View startView, View endView, int direction) {
+    private MaterialContainerTransform createCommentActionTransform(ViewGroup drawingView, View startView, View endView, int direction) {
         MaterialContainerTransform transform = new MaterialContainerTransform();
         transform.setStartView(startView);
         transform.setEndView(endView);
         transform.setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS);
         transform.setScrimColor(Color.TRANSPARENT);
-        transform.setDrawingViewId(android.R.id.content);
+        transform.setDrawingViewId(ensureCommentActionDrawingViewId(drawingView));
         transform.setTransitionDirection(direction);
         transform.setFadeMode(MaterialContainerTransform.FADE_MODE_THROUGH);
         transform.setFitMode(MaterialContainerTransform.FIT_MODE_AUTO);
@@ -3696,8 +3773,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         syncOnBackPressedCallbackEnabledState();
 
-        if (animate && overlayHost != null && commentActionCard != null && isUsableTransitionView(endView)) {
+        if (animate && overlayHost != null && commentActionCard != null && isUsableCommentActionTransition(overlayHost, commentActionCard, endView)) {
             MaterialContainerTransform transform = createCommentActionTransform(
+                    overlayHost,
                     commentActionCard,
                     endView,
                     MaterialContainerTransform.TRANSITION_DIRECTION_RETURN);
@@ -3942,6 +4020,33 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         return view != null && ViewCompat.isAttachedToWindow(view) && view.getWidth() > 0 && view.getHeight() > 0;
     }
 
+    private boolean isUsableCommentActionTransition(@Nullable ViewGroup drawingView, @Nullable View startView, @Nullable View endView) {
+        return isUsableTransitionView(drawingView)
+                && isUsableTransitionView(startView)
+                && isUsableTransitionView(endView)
+                && isDescendantOf(startView, drawingView)
+                && isDescendantOf(endView, drawingView);
+    }
+
+    private int ensureCommentActionDrawingViewId(@NonNull ViewGroup drawingView) {
+        if (drawingView.getId() == View.NO_ID) {
+            drawingView.setId(View.generateViewId());
+        }
+        return drawingView.getId();
+    }
+
+    private boolean isDescendantOf(@Nullable View view, @NonNull ViewGroup ancestor) {
+        View current = view;
+        while (current != null) {
+            if (current == ancestor) {
+                return true;
+            }
+            ViewParent parent = current.getParent();
+            current = parent instanceof View ? (View) parent : null;
+        }
+        return false;
+    }
+
     private static class CommentActionItem {
         final int action;
         final String label;
@@ -3989,7 +4094,47 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onRequest(Runnable onDone) {
-        webViewController.requestSummary(onDone);
+        if (story == null || TextUtils.isEmpty(story.url)) {
+            onDone.run();
+            return;
+        }
+        if (!Utils.isAiSummaryEnabled(requireContext())) {
+            onDone.run();
+            return;
+        }
+
+        String mode = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                .getString("pref_ai_summary_mode", "cloud");
+
+        if ("local".equals(mode)) {
+            SummaryManager.summarizeArticleWithGeminiNano(requireContext(), story.url, new SummaryManager.SummaryCallback() {
+                @Override
+                public void onSuccess(String summary) {
+                    story.summary = summary;
+                    onDone.run();
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    story.summary = "Failed to generate local summary: " + error;
+                    onDone.run();
+                }
+            });
+        } else {
+            SummaryManager.summarizeArticle(requireContext(), queue, story.url, new SummaryManager.SummaryCallback() {
+                @Override
+                public void onSuccess(String summary) {
+                    story.summary = summary;
+                    onDone.run();
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    story.summary = "Failed to generate summary: " + error;
+                    onDone.run();
+                }
+            });
+        }
     }
 
 

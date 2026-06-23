@@ -113,7 +113,11 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
             return;
         }
 
-        changePrefStatus(enableHeaderTintPreference, SettingsUtils.shouldTintCardUsingPreview(requireContext()));
+        boolean storyTintEnabled = SettingsUtils.shouldTintCardUsingPreview(requireContext());
+        changePrefStatus(enableHeaderTintPreference, storyTintEnabled);
+        if (enableHeaderTintPreference != null) {
+            enableHeaderTintPreference.setSummary(storyTintEnabled ? "" : "Disabled because story tint is off");
+        }
         changePrefStatus(
                 enableHeaderPreviewImagePreference,
                 !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(SettingsUtils.getPreferredStoryPreviewImageMode(requireContext())));

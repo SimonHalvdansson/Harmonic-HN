@@ -38,6 +38,8 @@ import org.sufficientlysecure.htmltextview.HtmlTextView;
 public class CommentContentPreviewPreference extends FrameLayout implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final long TEXT_SIZE_ANIMATION_DURATION_MS = 120;
+    private static final long DISPLAY_STYLE_ANIMATION_DURATION_MS = 180;
+    private static final int DISPLAY_STYLE_TRANSLATION_DP = 8;
     private static final int MIN_STABLE_PREVIEW_WIDTH_DP = 240;
     private static final String PREVIEW_COMMENT_BODY = "This reminds me of the old systems where the boring path was often the most durable one. The less hidden state there is, the easier it is to reason about. [0]<p>[0] <a href=\"https://example.com/reference\" rel=\"nofollow\">https://example.com/reference</a>";
 
@@ -52,6 +54,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
     private LinearLayout referenceLinksContainer;
     private boolean cardStyle;
     private String displayStyleOverride;
+    private ValueAnimator displayStyleAnimator;
     private ValueAnimator textSizeAnimator;
     private float textSizeTargetSp = -1;
     private final View.OnLayoutChangeListener previewContainerLayoutChangeListener =
@@ -160,6 +163,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
     }
 
     private void clearPreviewViews() {
+        cancelDisplayStyleAnimator();
         cancelTextSizeAnimator();
         if (previewItemContainer != null) {
             previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
@@ -184,11 +188,120 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             return;
         }
 
+        if (shouldAnimateDisplayStyleChange()) {
+            animateDisplayStyleChange(useCardStyle);
+            return;
+        }
+
+        cancelDisplayStyleAnimator();
         cardStyle = useCardStyle;
         inflatePreviewItem();
         updatePreview();
         syncReservedPreviewHeight();
         requestPreviewRemeasure();
+    }
+
+    private boolean shouldAnimateDisplayStyleChange() {
+        if (previewItemContainer == null || previewRoot == null || previewItemContainer.getChildCount() == 0) {
+            return false;
+        }
+        int containerWidth = getStablePreviewContentWidth();
+        return ViewCompat.isLaidOut(previewItemContainer) && isStablePreviewWidth(containerWidth);
+    }
+
+    private void animateDisplayStyleChange(boolean useCardStyle) {
+        if (previewItemContainer == null || previewRoot == null || previewItemContainer.getChildCount() == 0) {
+            cardStyle = useCardStyle;
+            inflatePreviewItem();
+            updatePreview();
+            syncReservedPreviewHeight();
+            requestPreviewRemeasure();
+            return;
+        }
+
+        cancelDisplayStyleAnimator();
+        if (previewItemContainer.getChildCount() > 1) {
+            previewItemContainer.removeAllViews();
+            inflatePreviewItem();
+            updatePreview();
+        }
+
+        int containerWidth = getStablePreviewContentWidth();
+        if (!isStablePreviewWidth(containerWidth)) {
+            cardStyle = useCardStyle;
+            inflatePreviewItem();
+            updatePreview();
+            syncReservedPreviewHeight();
+            requestPreviewRemeasure();
+            return;
+        }
+
+        View oldItemView = previewItemContainer.getChildAt(0);
+        int startContainerHeight = getCurrentHeightForAnimation(
+                previewItemContainer,
+                measureCurrentPreviewItemHeight(containerWidth)
+                        + previewItemContainer.getPaddingTop()
+                        + previewItemContainer.getPaddingBottom());
+        int startRootHeight = Math.max(previewRoot.getHeight(), previewRoot.getMinimumHeight());
+        if (startRootHeight <= 0) {
+            startRootHeight = startContainerHeight + previewRoot.getPaddingTop() + previewRoot.getPaddingBottom();
+        }
+        int startSelfHeight = Math.max(getHeight(), getMinimumHeight());
+        if (startSelfHeight <= 0) {
+            startSelfHeight = startRootHeight;
+        }
+
+        cardStyle = useCardStyle;
+        PreviewCommentItemBinding binding = inflatePreviewCommentItemBinding();
+        View newItemView = binding.root;
+        previewItemContainer.addView(newItemView, createPreviewItemLayoutParams());
+        bindPreviewItem(binding);
+        updatePreview(false);
+
+        int targetContentHeight = measureCurrentPreviewItemHeight(containerWidth);
+        int targetContainerHeight = targetContentHeight
+                + previewItemContainer.getPaddingTop()
+                + previewItemContainer.getPaddingBottom();
+        int targetRootHeight = targetContainerHeight + previewRoot.getPaddingTop() + previewRoot.getPaddingBottom();
+
+        int translation = Utils.pxFromDpInt(getResources(), DISPLAY_STYLE_TRANSLATION_DP);
+        newItemView.setAlpha(0f);
+        newItemView.setTranslationY(translation);
+        oldItemView.setAlpha(1f);
+        oldItemView.setTranslationY(0f);
+        setPreviewContainerHeight(startContainerHeight, startRootHeight, startSelfHeight);
+
+        displayStyleAnimator = ValueAnimator.ofFloat(0f, 1f);
+        displayStyleAnimator.setDuration(DISPLAY_STYLE_ANIMATION_DURATION_MS);
+        displayStyleAnimator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        int finalStartRootHeight = startRootHeight;
+        int finalStartSelfHeight = startSelfHeight;
+        displayStyleAnimator.addUpdateListener(animation -> {
+            float progress = (float) animation.getAnimatedValue();
+            oldItemView.setAlpha(1f - progress);
+            oldItemView.setTranslationY(-translation * progress);
+            newItemView.setAlpha(progress);
+            newItemView.setTranslationY(translation * (1f - progress));
+            setPreviewContainerHeight(
+                    lerp(startContainerHeight, targetContainerHeight, progress),
+                    lerp(finalStartRootHeight, targetRootHeight, progress),
+                    lerp(finalStartSelfHeight, targetRootHeight, progress));
+        });
+        displayStyleAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (displayStyleAnimator != animation) {
+                    return;
+                }
+                displayStyleAnimator = null;
+                newItemView.setAlpha(1f);
+                newItemView.setTranslationY(0f);
+                previewItemContainer.removeView(oldItemView);
+                syncReservedPreviewHeight();
+                requestPreviewRemeasure();
+            }
+        });
+        displayStyleAnimator.start();
     }
 
     @SuppressLint("SetTextI18n")
@@ -200,9 +313,13 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         cancelTextSizeAnimator();
         previewItemContainer.removeAllViews();
         PreviewCommentItemBinding binding = inflatePreviewCommentItemBinding();
-        View itemView = binding.root;
-        previewItemContainer.addView(itemView, createPreviewItemLayoutParams());
+        previewItemContainer.addView(binding.root, createPreviewItemLayoutParams());
+        bindPreviewItem(binding);
+        disablePreviewItemScrollbars();
+    }
 
+    private void bindPreviewItem(PreviewCommentItemBinding binding) {
+        View itemView = binding.root;
         commentBody = binding.commentBody;
         commentBy = binding.commentBy;
         commentByTime = binding.commentByTime;
@@ -235,13 +352,16 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             commentHiddenText.setVisibility(View.GONE);
         }
         bindPreviewCommentContent(commentBody, referenceLinksContainer);
-        disablePreviewItemScrollbars();
     }
 
     private void updatePreview() {
+        updatePreview(true);
+    }
+
+    private void updatePreview(boolean syncHeight) {
         bindPreviewCommentContent(commentBody, referenceLinksContainer);
         disablePreviewItemScrollbars();
-        applyTextSize(SettingsUtils.getPreferredCommentTextSize(getContext()), false);
+        applyTextSize(SettingsUtils.getPreferredCommentTextSize(getContext()), false, syncHeight);
         updateDepthIndicator();
     }
 
@@ -317,6 +437,10 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
     }
 
     private void applyTextSize(float textSize, boolean animate) {
+        applyTextSize(textSize, animate, true);
+    }
+
+    private void applyTextSize(float textSize, boolean animate, boolean syncHeight) {
         float clampedTextSize = SettingsUtils.clampCommentTextSize(textSize);
         ensureSelectedFontLoaded();
         applyCommentMetaTypefaces(commentBy, commentByTime, commentHiddenText, commentHiddenCount);
@@ -341,8 +465,10 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         HtmlTextView targetBody = commentBody;
         if (!animate || !ViewCompat.isLaidOut(targetBody)) {
             targetBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, adjustedTextSize);
-            syncReservedPreviewHeight();
-            requestPreviewRemeasure();
+            if (syncHeight) {
+                syncReservedPreviewHeight();
+                requestPreviewRemeasure();
+            }
             return;
         }
 
@@ -350,8 +476,10 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         float currentTextSizeSp = targetBody.getTextSize() / scaledDensity;
         if (Math.abs(currentTextSizeSp - adjustedTextSize) < 0.01f) {
             targetBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, adjustedTextSize);
-            syncReservedPreviewHeight();
-            requestPreviewRemeasure();
+            if (syncHeight) {
+                syncReservedPreviewHeight();
+                requestPreviewRemeasure();
+            }
             return;
         }
 
@@ -366,7 +494,9 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             }
             float animatedTextSize = (float) animation.getAnimatedValue();
             targetBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, animatedTextSize);
-            syncReservedPreviewHeight();
+            if (syncHeight) {
+                syncReservedPreviewHeight();
+            }
         });
         textSizeAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
@@ -377,6 +507,17 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             }
         });
         textSizeAnimator.start();
+    }
+
+    private void cancelDisplayStyleAnimator() {
+        if (displayStyleAnimator == null) {
+            return;
+        }
+
+        displayStyleAnimator.removeAllUpdateListeners();
+        displayStyleAnimator.removeAllListeners();
+        displayStyleAnimator.cancel();
+        displayStyleAnimator = null;
     }
 
     private void cancelTextSizeAnimator() {
@@ -524,8 +665,20 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         int reservedHeight = reservedContentHeight
                 + previewItemContainer.getPaddingTop()
                 + previewItemContainer.getPaddingBottom();
-        PreviewPreferenceViewUtils.setExactHeight(previewItemContainer, reservedHeight);
+        int rootHeight = previewRoot == null
+                ? reservedHeight
+                : reservedHeight + previewRoot.getPaddingTop() + previewRoot.getPaddingBottom();
+        setPreviewContainerHeight(reservedHeight, rootHeight, rootHeight);
         requestPreviewRemeasure();
+    }
+
+    private int getStablePreviewContentWidth() {
+        if (previewItemContainer == null) {
+            return 0;
+        }
+        return previewItemContainer.getWidth()
+                - previewItemContainer.getPaddingLeft()
+                - previewItemContainer.getPaddingRight();
     }
 
     private boolean isStablePreviewWidth(int containerWidth) {
@@ -564,6 +717,38 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             PreviewPreferenceViewUtils.setWrapContentHeight(previewItemContainer.getChildAt(0));
         }
         PreviewPreferenceViewUtils.setWrapContentHeight(previewItemContainer);
+        if (previewRoot != null) {
+            previewRoot.setMinimumHeight(0);
+        }
+        setMinimumHeight(0);
+    }
+
+    private void setPreviewContainerHeight(int containerHeight, int rootHeight, int selfHeight) {
+        PreviewPreferenceViewUtils.setExactHeight(previewItemContainer, containerHeight);
+        if (previewRoot != null) {
+            previewRoot.setMinimumHeight(rootHeight);
+        }
+        setMinimumHeight(selfHeight);
+        requestPreviewRemeasure();
+    }
+
+    private int getCurrentHeightForAnimation(View view, int fallbackHeight) {
+        if (view == null) {
+            return fallbackHeight;
+        }
+        int currentHeight = view.getHeight();
+        if (currentHeight > 0) {
+            return currentHeight;
+        }
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+        if (layoutParams != null && layoutParams.height > 0) {
+            return layoutParams.height;
+        }
+        return fallbackHeight;
+    }
+
+    private int lerp(int start, int end, float progress) {
+        return Math.round(start + (end - start) * progress);
     }
 
     private PreviewCommentItemBinding inflatePreviewCommentItemBinding() {
