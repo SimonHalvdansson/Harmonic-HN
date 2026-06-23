@@ -1150,8 +1150,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static int getDefaultStoryCardBackgroundColor(View view) {
         return MaterialColors.getColor(
                 view,
-                com.google.android.material.R.attr.colorSurfaceContainerHigh,
-                Color.TRANSPARENT);
+                R.attr.storyCardBackgroundColor,
+                MaterialColors.getColor(
+                        view,
+                        com.google.android.material.R.attr.colorSurfaceContainerHigh,
+                        Color.TRANSPARENT));
     }
 
     private static int getDefaultStoryCardBackgroundColor(@Nullable Context context) {
@@ -1161,8 +1164,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         return MaterialColors.getColor(
                 context,
-                com.google.android.material.R.attr.colorSurfaceContainerHigh,
-                Color.TRANSPARENT);
+                R.attr.storyCardBackgroundColor,
+                MaterialColors.getColor(
+                        context,
+                        com.google.android.material.R.attr.colorSurfaceContainerHigh,
+                        Color.TRANSPARENT));
     }
 
     private void updatePreviewImageTintColor(Context context, Story story, Drawable drawable) {

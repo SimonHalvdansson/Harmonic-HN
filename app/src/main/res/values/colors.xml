@@ -19,6 +19,8 @@
     <color name="background">#222431</color>
     <color name="darkerBackground">#14191E</color>
     <color name="grayBackground">#292A2E</color>
+    <color name="darkStoryCardBackground">#2B2E3A</color>
+    <color name="grayStoryCardBackground">#34353A</color>
     <color name="lightBackground">#F6F6EF</color>
     <color name="whiteBackground">#FFFFFF</color>
 
