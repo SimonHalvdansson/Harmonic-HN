@@ -571,7 +571,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
 
                 boolean webViewVisible = BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
-                if (willExpandBottomSheetOnBack()) {
+                if (webViewVisible && webViewController.isReaderModeEnabled()) {
+                    webViewController.disableReaderMode();
+                    return;
+                } else if (willExpandBottomSheetOnBack()) {
                     // If the webView can't go back but the back handler is enabled,
                     // it means that the closeWebViewOnBack == true
                     BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
@@ -800,9 +803,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             backPressedCallback.setEnabled(true);
             return;
         }
+        boolean webViewVisible = webViewController != null && webViewController.hasWebView() &&
+                BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
+        if (webViewVisible && webViewController.isReaderModeEnabled()) {
+            backPressedCallback.setEnabled(true);
+            return;
+        }
         if (closeWebViewOnBack) {
-            backPressedCallback.setEnabled(webViewController != null && webViewController.hasWebView() &&
-                    BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED);
+            backPressedCallback.setEnabled(webViewVisible);
         } else {
             backPressedCallback.setEnabled(webViewController != null && webViewController.canGoBack());
         }

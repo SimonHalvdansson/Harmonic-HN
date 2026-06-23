@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 6) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 8) {
         return;
     }
 
@@ -8,6 +8,7 @@
     var TRANSITION_KEY = "__harmonicReaderModeTransition";
     var MIN_ARTICLE_TEXT_LENGTH = 250;
     var TRANSITION_DURATION_MS = 180;
+    var TRANSITION_FALLBACK_MS = TRANSITION_DURATION_MS + 320;
     var TRANSITION_TRANSLATE_Y = "12px";
     var DEFAULT_LIGHT_READER_THEME = {
         isLight: true,
@@ -569,6 +570,18 @@
     function animateOut(element, after) {
         var transitionId = nextTransitionId();
         var styles = captureTransitionStyles(element);
+        var completed = false;
+        function complete() {
+            if (completed) {
+                return;
+            }
+            completed = true;
+            if (!isCurrentTransition(transitionId)) {
+                restoreTransitionStyles(element, styles);
+                return;
+            }
+            after(transitionId);
+        }
         setTransitionStyle(element, "1", "0");
         requestAnimationFrame(function() {
             requestAnimationFrame(function() {
@@ -577,19 +590,30 @@
                     return;
                 }
                 setTransitionStyle(element, "0", TRANSITION_TRANSLATE_Y);
-                setTimeout(function() {
-                    if (!isCurrentTransition(transitionId)) {
-                        return;
-                    }
-                    after(transitionId);
-                }, TRANSITION_DURATION_MS);
+                setTimeout(complete, TRANSITION_DURATION_MS);
             });
         });
+        setTimeout(complete, TRANSITION_FALLBACK_MS);
         return transitionId;
     }
 
     function animateIn(element, transitionId, after) {
         var styles = captureTransitionStyles(element);
+        var completed = false;
+        function complete() {
+            if (completed) {
+                return;
+            }
+            completed = true;
+            if (!isCurrentTransition(transitionId)) {
+                restoreTransitionStyles(element, styles);
+                return;
+            }
+            restoreTransitionStyles(element, styles);
+            if (after) {
+                after();
+            }
+        }
         setTransitionStyle(element, "0", TRANSITION_TRANSLATE_Y);
         requestAnimationFrame(function() {
             requestAnimationFrame(function() {
@@ -598,14 +622,10 @@
                     return;
                 }
                 setTransitionStyle(element, "1", "0");
-                setTimeout(function() {
-                    restoreTransitionStyles(element, styles);
-                    if (after) {
-                        after();
-                    }
-                }, TRANSITION_DURATION_MS);
+                setTimeout(complete, TRANSITION_DURATION_MS);
             });
         });
+        setTimeout(complete, TRANSITION_FALLBACK_MS);
     }
 
     function enable() {
@@ -705,7 +725,7 @@
     }
 
     window.HarmonicReaderMode = {
-        version: 6,
+        version: 8,
         setTheme: setTheme,
         isAvailable: isAvailable,
         enable: enable,

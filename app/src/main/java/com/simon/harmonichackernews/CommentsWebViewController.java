@@ -389,6 +389,14 @@ class CommentsWebViewController {
         applyReaderMode(enableReaderMode);
     }
 
+    void disableReaderMode() {
+        if (!readerModeEnabled) {
+            return;
+        }
+        readerModeDisabledForCurrentPage = true;
+        applyReaderMode(false);
+    }
+
     private void applyReaderMode(boolean enable) {
         applyReaderMode(enable, true);
     }
@@ -603,6 +611,7 @@ class CommentsWebViewController {
 
         readerModeEnabled = enabled;
         callbacks.onReaderModeChanged(enabled);
+        callbacks.syncOnBackPressedCallbackEnabledState();
     }
 
     @Nullable
