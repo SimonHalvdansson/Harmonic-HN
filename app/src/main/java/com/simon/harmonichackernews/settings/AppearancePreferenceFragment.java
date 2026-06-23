@@ -110,6 +110,11 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
             return true;
         });
 
+        findPreference(SettingsUtils.PREF_TRANSLUCENT_STATUS_BAR).setOnPreferenceChangeListener((preference, newValue) -> {
+            restartSettingsActivity();
+            return true;
+        });
+
         findPreference("pref_theme_timed_range").setOnPreferenceClickListener(preference -> {
             int[] nighttimeHours = Utils.getNighttimeHours(getContext());
 

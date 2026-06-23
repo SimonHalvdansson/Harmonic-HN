@@ -45,11 +45,11 @@ import androidx.appcompat.widget.TooltipCompat;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.graphics.Insets;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.core.view.insets.GradientProtection;
 import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -93,6 +93,7 @@ import com.simon.harmonichackernews.utils.CommentSorter;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ShareUtils;
+import com.simon.harmonichackernews.utils.StatusBarProtectionUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
@@ -103,7 +104,6 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
@@ -201,6 +201,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private RecyclerView recyclerViewRegular;
     private LinearLayoutManager layoutManager;
     private RecyclerView.OnScrollListener recyclerViewScrollListener;
+    private View.OnLayoutChangeListener recyclerViewLayoutChangeListener;
     private BottomSheetBehavior.BottomSheetCallback recyclerBottomSheetCallback;
     private ViewTreeObserver.OnPreDrawListener preDrawListener;
     private RecyclerView.SmoothScroller smoothScroller;
@@ -220,7 +221,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean showWebsite = false;
     private boolean integratedWebview = true;
     private boolean prefIntegratedWebview = true;
-    private boolean prefTranslucentStatusBar = false;
+    private boolean translucentStatusBarEnabled = false;
     private String preloadWebview = "never";
     private int preloadWebviewMinimumBattery = SettingsUtils.DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY;
     private boolean matchWebviewTheme = true;
@@ -249,6 +250,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean commentActionPredictiveBackActive = false;
     private int originalStatusBarColor = Color.TRANSPARENT;
     private boolean originalStatusBarColorCaptured = false;
+    private int commentsPaneStatusBarColor = Color.TRANSPARENT;
+    private int commentsHeaderStatusBarColor = Color.TRANSPARENT;
+    private boolean appliedStatusBarProtectionKnown = false;
+    private boolean appliedStatusBarProtectionEnabled = false;
+    private int appliedStatusBarProtectionColor = Color.TRANSPARENT;
     private final Set<Integer> commentActionFavoriteLoadingIds = new HashSet<>();
     private final Map<Integer, Integer> commentActionVoteLoadingActions = new HashMap<>();
     private final Set<Integer> commentActionDownvotedIds = new HashSet<>();
@@ -420,7 +426,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         prefIntegratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
         loadInitialStorySummaryFromCache();
 
-        prefTranslucentStatusBar = SettingsUtils.shouldCommentsUseTranslucentStatusBar(getContext());
+        commentsPaneStatusBarColor = StatusBarProtectionUtils.getPaneBackgroundColor(requireContext());
+        commentsHeaderStatusBarColor = commentsPaneStatusBarColor;
+        translucentStatusBarEnabled = SettingsUtils.shouldUseTranslucentStatusBar(requireContext());
+        appliedStatusBarProtectionKnown = false;
+        updateCommentsStatusBarAppearance();
 
         integratedWebview = prefIntegratedWebview && story.isLink;
         preloadWebview = SettingsUtils.shouldPreloadWebView(getContext());
@@ -798,10 +808,88 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void updateHeaderStatusBarColor(int color) {
+        commentsHeaderStatusBarColor = color;
+        updateCommentsStatusBarAppearance();
+    }
+
+    private void syncCommentsStatusBarProtectionPreference() {
+        if (!isAdded()) {
+            return;
+        }
+        commentsPaneStatusBarColor = StatusBarProtectionUtils.getPaneBackgroundColor(requireContext());
+        translucentStatusBarEnabled = SettingsUtils.shouldUseTranslucentStatusBar(requireContext());
+        updateCommentsStatusBarAppearance();
+    }
+
+    private void updateCommentsStatusBarAppearance() {
+        if (binding == null || getContext() == null) {
+            return;
+        }
+
+        boolean showStatusBarProtection = shouldShowCommentsStatusBarProtection();
+        boolean statusBarProtectionEnabled = translucentStatusBarEnabled && showStatusBarProtection;
+        int statusBarColor = showStatusBarProtection ? getCurrentCommentsStatusBarColor() : commentsPaneStatusBarColor;
+        if (!appliedStatusBarProtectionKnown
+                || appliedStatusBarProtectionEnabled != statusBarProtectionEnabled
+                || (statusBarProtectionEnabled && appliedStatusBarProtectionColor != statusBarColor)) {
+            StatusBarProtectionUtils.setTopProtection(
+                    binding.listProtection,
+                    statusBarProtectionEnabled,
+                    statusBarColor);
+            appliedStatusBarProtectionKnown = true;
+            appliedStatusBarProtectionEnabled = statusBarProtectionEnabled;
+            appliedStatusBarProtectionColor = statusBarProtectionEnabled ? statusBarColor : Color.TRANSPARENT;
+        }
+
         if (getActivity() == null) {
             return;
         }
-        requireActivity().getWindow().setStatusBarColor(color);
+        int windowStatusBarColor = SettingsUtils.shouldUseTransparentStatusBar(requireContext())
+                ? Color.TRANSPARENT
+                : statusBarColor;
+        if (requireActivity().getWindow().getStatusBarColor() != windowStatusBarColor) {
+            requireActivity().getWindow().setStatusBarColor(windowStatusBarColor);
+        }
+    }
+
+    private boolean shouldShowCommentsStatusBarProtection() {
+        if (bottomSheet == null) {
+            return false;
+        }
+
+        BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(bottomSheet);
+        return behavior.getState() == BottomSheetBehavior.STATE_EXPANDED
+                && behavior.calculateSlideOffset() >= 0.9999f;
+    }
+
+    private int getCurrentCommentsStatusBarColor() {
+        float headerCoverage = getHeaderStatusBarCoverage();
+        return ColorUtils.blendARGB(commentsPaneStatusBarColor, commentsHeaderStatusBarColor, headerCoverage);
+    }
+
+    private float getHeaderStatusBarCoverage() {
+        if (recyclerView == null || topInset <= 0) {
+            return 0f;
+        }
+
+        RecyclerView.ViewHolder headerHolder = recyclerView.findViewHolderForAdapterPosition(0);
+        if (!(headerHolder instanceof CommentsRecyclerViewAdapter.HeaderViewHolder)) {
+            return 0f;
+        }
+
+        View headerView = headerHolder.itemView;
+        int[] rootLocation = new int[2];
+        int[] headerLocation = new int[2];
+        binding.listProtection.getLocationOnScreen(rootLocation);
+        headerView.getLocationOnScreen(headerLocation);
+
+        int headerTop = headerLocation[1] - rootLocation[1];
+        int headerBottom = headerTop + headerView.getHeight();
+        int overlap = Math.min(headerBottom, topInset) - Math.max(headerTop, 0);
+        if (overlap <= 0) {
+            return 0f;
+        }
+        return Math.min(1f, overlap / (float) topInset);
     }
 
     private void setSheetButtonsContentAlpha(float alpha) {
@@ -1010,26 +1098,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
-                // Set translucent status bar onScroll
-                if (prefTranslucentStatusBar) {
-                    LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-                    RecyclerView.Adapter adapter = recyclerView.getAdapter();
-
-                    if (layoutManager != null && adapter != null && adapter.getItemCount() > 0) {
-                        int firstItemType = adapter.getItemViewType(0);
-                        if (firstItemType == CommentsRecyclerViewAdapter.TYPE_HEADER) {
-                            int firstCompletelyVisible = layoutManager.findFirstCompletelyVisibleItemPosition();
-                            int firstVisible = layoutManager.findFirstVisibleItemPosition();
-
-                            if (firstCompletelyVisible == 0) {
-                                setTranslucentStatusBar(false);
-                            }
-                            else if (firstVisible > 0 && firstVisible != RecyclerView.NO_POSITION) {
-                                setTranslucentStatusBar(prefTranslucentStatusBar);
-                            }
-                        }
-                    }
-                }
+                updateCommentsStatusBarAppearance();
 
                 if (integratedWebview) {
                     // Shouldn't be neccessary but once I was stuck in comments and couldn't swipe up.
@@ -1059,6 +1128,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         };
         recyclerView.addOnScrollListener(recyclerViewScrollListener);
+        recyclerViewLayoutChangeListener = (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
+                updateCommentsStatusBarAppearance();
+        recyclerView.addOnLayoutChangeListener(recyclerViewLayoutChangeListener);
         smoothScroller = new LinearSmoothScroller(requireContext()) {
             public PointF computeScrollVectorForPosition(int targetPosition) {
                 return layoutManager.computeScrollVectorForPosition(targetPosition);
@@ -1096,6 +1168,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void onStateChanged(@NonNull View view, int newState) {
                 syncOnBackPressedCallbackEnabledState();
                 updateCommentsScrollbarVisibility(newState == BottomSheetBehavior.STATE_EXPANDED);
+                updateCommentsStatusBarAppearance();
             }
 
             @Override
@@ -1124,6 +1197,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 topInset = insets.top;
 
                 updateHeaderSpacer(BottomSheetBehavior.from(bottomSheet).calculateSlideOffset());
+                updateCommentsStatusBarAppearance();
 
                 int paddingBottom = insets.bottom + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard);
                 recyclerView.setPadding(recyclerView.getPaddingLeft(), recyclerView.getPaddingTop(), recyclerView.getPaddingRight(), paddingBottom);
@@ -1135,6 +1209,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         recyclerView.setAdapter(adapter);
         recyclerView.post(this::updateHeaderSpacerForCurrentSheetOffset);
+        recyclerView.post(this::updateCommentsStatusBarAppearance);
 
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COMMENT, 300);
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COMMENT_CARD, 300);
@@ -1302,24 +1377,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         saveScreenHeight();
         refreshCommentActionOverlayForConfiguration();
-    }
-
-    private void setTranslucentStatusBar(boolean translucentStatusBar) {
-        if (translucentStatusBar) {
-            TypedValue typedValue = new TypedValue();
-            requireContext().getTheme().resolveAttribute(android.R.attr.colorBackground, typedValue, true);
-            int paneBackgroundColor = typedValue.data;
-            binding.listProtection.setProtections(
-                    Collections.singletonList(
-                            new GradientProtection(
-                                    WindowInsetsCompat.Side.TOP,
-                                    paneBackgroundColor
-                            )
-                    )
-            );
-        } else {
-            binding.listProtection.setProtections(Collections.emptyList());
-        }
+        syncCommentsStatusBarProtectionPreference();
     }
 
     private void refreshCommentActionOverlayForConfiguration() {
@@ -1426,6 +1484,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         float sanitizedSlideOffset = Float.isNaN(slideOffset) ? 1f : Math.max(0f, Math.min(1f, slideOffset));
         int spacerHeight = Math.round(topInset * sanitizedSlideOffset);
         adapter.spacerHeight = spacerHeight;
+        updateCommentsStatusBarAppearance();
 
         loadHeaderSpacer();
         if (headerSpacer == null) {
@@ -1567,6 +1626,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (recyclerViewScrollListener != null) {
                 recyclerView.removeOnScrollListener(recyclerViewScrollListener);
             }
+            if (recyclerViewLayoutChangeListener != null) {
+                recyclerView.removeOnLayoutChangeListener(recyclerViewLayoutChangeListener);
+            }
             ViewCompat.setOnApplyWindowInsetsListener(recyclerView, null);
             recyclerView.stopScroll();
             recyclerView.setAdapter(null);
@@ -1618,6 +1680,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerViewRegular = null;
         layoutManager = null;
         recyclerViewScrollListener = null;
+        recyclerViewLayoutChangeListener = null;
         recyclerBottomSheetCallback = null;
         smoothScroller = null;
         commentNavigationController = null;
@@ -1626,6 +1689,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         progressIndicator = null;
         bottomSheet = null;
         headerSpacer = null;
+        appliedStatusBarProtectionKnown = false;
         commentActionOverlayBinding = null;
         if (webViewController != null) {
             webViewController.clearViewReferences();
@@ -3710,6 +3774,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.disableCommentATagClick = false;
         }
         syncOnBackPressedCallbackEnabledState();
+        updateCommentsStatusBarAppearance();
     }
 
     private void startCommentActionPredictiveBack(@NonNull BackEventCompat backEvent) {

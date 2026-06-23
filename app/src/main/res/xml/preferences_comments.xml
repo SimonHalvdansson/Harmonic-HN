@@ -70,13 +70,6 @@
             app:icon="@drawable/ic_public"
             app:title="Enable story preview" />
 
-        <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_comments_translucent_status_bar"
-            app:defaultValue="false"
-            app:icon="@drawable/ic_action_translucent"
-            app:title="Translucent status bar" />
-
     </PreferenceCategory>
 
     <PreferenceCategory

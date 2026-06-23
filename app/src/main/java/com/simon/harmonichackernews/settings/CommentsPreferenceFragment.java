@@ -71,10 +71,6 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
             return true;
         });
 
-        findPreference(SettingsUtils.PREF_COMMENTS_TRANSLUCENT_STATUS_BAR).setOnPreferenceChangeListener((preference, newValue) -> {
-            return true;
-        });
-
         updateHeaderDisplayPreferenceStatus();
     }
 

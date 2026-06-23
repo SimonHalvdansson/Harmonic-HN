@@ -158,13 +158,6 @@
             app:icon="@drawable/ic_visibility"
             app:title="Gray out clicked posts" />
 
-        <SwitchPreferenceCompat
-            app:singleLineTitle="false"
-            app:key="pref_stories_translucent_status_bar"
-            app:defaultValue="false"
-            app:icon="@drawable/ic_action_translucent"
-            app:title="Translucent status bar" />
-
         <Preference
             app:singleLineTitle="false"
             app:icon="@drawable/ic_public"

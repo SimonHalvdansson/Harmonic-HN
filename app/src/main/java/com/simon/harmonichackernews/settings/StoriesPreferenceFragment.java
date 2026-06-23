@@ -175,10 +175,6 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
             return true;
         });
 
-        findPreference("pref_stories_translucent_status_bar").setOnPreferenceChangeListener((preference, newValue) -> {
-            return true;
-        });
-
         findPreference("pref_hotness").setOnPreferenceChangeListener((preference, newValue) -> {
             if (previewView != null) {
                 previewView.updateHotness((String) newValue);

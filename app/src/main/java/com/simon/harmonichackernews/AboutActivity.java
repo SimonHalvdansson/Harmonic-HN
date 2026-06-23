@@ -6,9 +6,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 
 import com.simon.harmonichackernews.databinding.ActivitySettingsDetailBinding;
+import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.StatusBarProtectionUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
 public class AboutActivity extends AppCompatActivity {
+
+    private ActivitySettingsDetailBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -16,8 +20,9 @@ public class AboutActivity extends AppCompatActivity {
 
         ThemeUtils.setupTheme(this, false);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
-        ActivitySettingsDetailBinding binding = ActivitySettingsDetailBinding.inflate(getLayoutInflater());
+        binding = ActivitySettingsDetailBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        applyStatusBarProtection();
 
         if (savedInstanceState == null) {
             getSupportFragmentManager()
@@ -25,5 +30,18 @@ public class AboutActivity extends AppCompatActivity {
                     .replace(R.id.settings, new AboutFragment())
                     .commit();
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        applyStatusBarProtection();
+    }
+
+    private void applyStatusBarProtection() {
+        StatusBarProtectionUtils.setTopProtection(
+                binding.settingsStatusBarProtection,
+                SettingsUtils.shouldUseTranslucentStatusBar(this),
+                StatusBarProtectionUtils.getPaneBackgroundColor(this));
     }
 }

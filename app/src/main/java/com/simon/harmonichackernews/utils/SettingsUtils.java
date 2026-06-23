@@ -40,12 +40,12 @@ public class SettingsUtils {
     public static final String PREF_COMPACT_POINTS = "pref_compact_points";
     public static final String PREF_INCLUDE_TOP_LEVEL_DOMAIN = "pref_include_top_level_domain";
     public static final String PREF_COMMENT_DISPLAY_STYLE = "pref_comment_display_style";
-    public static final String PREF_COMMENTS_TRANSLUCENT_STATUS_BAR = "pref_comments_translucent_status_bar";
     public static final String PREF_COMMENT_TEXT_SIZE = "pref_comment_text_size";
     public static final String PREF_ENABLE_COMMENTS_HEADER_TINT = "pref_enable_comments_header_tint";
     public static final String PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE = "pref_enable_comments_header_preview_image";
     public static final String PREF_COLLECT_LINKS_IN_COMMENTS = "pref_collect_links_in_comments";
     public static final String PREF_FONT = "pref_font";
+    public static final String PREF_TRANSLUCENT_STATUS_BAR = "pref_translucent_status_bar";
     public static final String PREF_BOOKMARKS_ENABLED = "pref_bookmarks_enabled";
     public static final String PREF_GRAY_OUT_CLICKED = "pref_gray_out_clicked";
     public static final String PREF_HIDE_CLICKED = "pref_hide_clicked";
@@ -680,12 +680,8 @@ public class SettingsUtils {
         return getBooleanPref("pref_left_align", false, ctx);
     }
 
-    public static boolean shouldStoriesUseTranslucentStatusBar(Context ctx) {
-        return getBooleanPref("pref_stories_translucent_status_bar", false, ctx);
-    }
-
-    public static boolean shouldCommentsUseTranslucentStatusBar(Context ctx) {
-        return getBooleanPref(PREF_COMMENTS_TRANSLUCENT_STATUS_BAR, false, ctx);
+    public static boolean shouldUseTranslucentStatusBar(Context ctx) {
+        return getBooleanPref(PREF_TRANSLUCENT_STATUS_BAR, false, ctx);
     }
 
     public static String getPreferredStoryDisplayStyle(Context ctx) {

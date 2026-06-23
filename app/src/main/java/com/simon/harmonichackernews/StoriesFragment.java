@@ -10,7 +10,6 @@ import android.transition.AutoTransition;
 import android.transition.TransitionManager;
 import android.transition.TransitionSet;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -40,7 +39,6 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.core.view.insets.GradientProtection;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -78,6 +76,7 @@ import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.StatusBarProtectionUtils;
 import com.simon.harmonichackernews.utils.StoryUpdate;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.UtilsKt;
@@ -90,7 +89,6 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -299,6 +297,7 @@ public class StoriesFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         binding = FragmentStoriesBinding.bind(view);
         headerBinding = binding.storiesHeaderContainer;
+        applyStatusBarProtection();
 
         mainRecyclerView = binding.storiesRecyclerview;
         searchRecyclerView = binding.storiesSearchRecyclerview;
@@ -2040,22 +2039,14 @@ public class StoriesFragment extends Fragment {
         updateAdapterCommentRows();
     }
 
-    private void setTranslucentStatusBar(boolean translucentStatusBar) {
-        if (translucentStatusBar) {
-            TypedValue typedValue = new TypedValue();
-            requireContext().getTheme().resolveAttribute(android.R.attr.colorBackground, typedValue, true);
-            int paneBackgroundColor = typedValue.data;
-            binding.listProtection.setProtections(
-                    Collections.singletonList(
-                            new GradientProtection(
-                                    WindowInsetsCompat.Side.TOP,
-                                    paneBackgroundColor
-                            )
-                    )
-            );
-        } else {
-            binding.listProtection.setProtections(Collections.emptyList());
+    private void applyStatusBarProtection() {
+        if (binding == null || getContext() == null) {
+            return;
         }
+        StatusBarProtectionUtils.setTopProtection(
+                binding.listProtection,
+                SettingsUtils.shouldUseTranslucentStatusBar(requireContext()),
+                StatusBarProtectionUtils.getPaneBackgroundColor(requireContext()));
     }
 
     private void rebuildStoryAdapters() {
@@ -2447,7 +2438,7 @@ public class StoriesFragment extends Fragment {
             rebuildStoryAdapters();
         }
 
-        setTranslucentStatusBar(SettingsUtils.shouldStoriesUseTranslucentStatusBar(getContext()));
+        applyStatusBarProtection();
 
         if (adapter.cardStyle != SettingsUtils.shouldUseCardStoryDisplayStyle(getContext())) {
             adapter.cardStyle = !adapter.cardStyle;
