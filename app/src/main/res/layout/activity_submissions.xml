@@ -47,6 +47,42 @@
 
         </androidx.swiperefreshlayout.widget.MaterialExpressiveSwipeRefreshLayout>
 
+        <LinearLayout
+            android:id="@+id/submissions_empty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:gravity="top|center_horizontal"
+            android:orientation="vertical"
+            android:paddingLeft="@dimen/single_view_side_margin"
+            android:paddingTop="56dp"
+            android:paddingRight="@dimen/single_view_side_margin"
+            android:visibility="gone"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_subject" />
+
+            <TextView
+                android:id="@+id/submissions_empty_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/product_sans"
+                android:gravity="center"
+                android:paddingTop="4dp"
+                android:paddingBottom="36dp"
+                android:text="No submissions"
+                android:textColor="?attr/textColorHighlighted"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
         <com.google.android.material.loadingindicator.LoadingIndicator
             android:id="@+id/submissions_initial_loading"
             android:layout_width="wrap_content"

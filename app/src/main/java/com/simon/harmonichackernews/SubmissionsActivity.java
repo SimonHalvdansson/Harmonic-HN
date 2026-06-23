@@ -65,6 +65,7 @@ public class SubmissionsActivity extends AppCompatActivity {
     private ActivitySubmissionsBinding binding;
     private boolean initialLoadFinished = false;
     private boolean submissionsLoading = false;
+    private boolean submissionsLoadedSuccessfully = false;
     private int submissionsRequestGeneration = 0;
     private int submissionsHitsPerPage = ALGOLIA_HITS_INCREMENT;
     private boolean submissionsCanLoadMore = false;
@@ -415,6 +416,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         }
 
         filterGroup.setVisibility(allSubmissions.isEmpty() ? View.GONE : View.VISIBLE);
+        updateEmptyView();
     }
 
     private boolean shouldShowStoryForSubmissionFilter(Story story) {
@@ -484,6 +486,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         boolean showInitialLoading = !initialLoadFinished;
         swipeRefreshLayout.setRefreshing(!showInitialLoading && resetResultLimit);
         initialLoadingIndicator.setVisibility(showInitialLoading ? View.VISIBLE : View.GONE);
+        updateEmptyView();
         String url = Uri.parse("https://hn.algolia.com/api/v1/search_by_date")
                 .buildUpon()
                 .appendQueryParameter("tags", "author_" + getIntent().getStringExtra(KEY_USER))
@@ -505,6 +508,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                             finishLoading(requestGeneration);
 
                             submissionsCanLoadMore = parsedStories.size() >= submissionsHitsPerPage;
+                            submissionsLoadedSuccessfully = true;
                             allSubmissions.clear();
                             allSubmissions.addAll(parsedStories);
                             applySubmissionFilter();
@@ -546,5 +550,35 @@ public class SubmissionsActivity extends AppCompatActivity {
         initialLoadFinished = true;
         swipeRefreshLayout.setRefreshing(false);
         initialLoadingIndicator.setVisibility(View.GONE);
+        updateEmptyView();
+    }
+
+    private void updateEmptyView() {
+        if (adapter == null) {
+            return;
+        }
+
+        boolean showEmpty = submissionsLoadedSuccessfully
+                && !submissionsLoading
+                && adapter.getItemCount() == 0;
+
+        if (showEmpty) {
+            binding.submissionsEmptyText.setText(getEmptyViewText());
+        }
+
+        binding.submissionsEmpty.setVisibility(showEmpty ? View.VISIBLE : View.GONE);
+    }
+
+    private String getEmptyViewText() {
+        if (allSubmissions.isEmpty()) {
+            return "No submissions";
+        }
+        if (submissionFilter == SUBMISSION_FILTER_STORIES) {
+            return "No stories";
+        }
+        if (submissionFilter == SUBMISSION_FILTER_COMMENTS) {
+            return "No comments";
+        }
+        return "No submissions";
     }
 }
