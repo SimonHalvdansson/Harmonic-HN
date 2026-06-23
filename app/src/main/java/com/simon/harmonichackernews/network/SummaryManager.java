@@ -5,6 +5,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
+import android.util.Log;
 
 import androidx.preference.PreferenceManager;
 
@@ -118,14 +119,14 @@ public class SummaryManager {
                 postLocalAvailability(callback, isLocalFeatureUsable(featureStatus),
                         getLocalFeatureStatusMessage(featureStatus));
             } catch (ExecutionException e) {
-                postLocalAvailability(callback, false,
-                        "Gemini Nano availability check failed: " + getThrowableMessage(e.getCause()));
+                Log.w(TAG, "Gemini Nano availability check failed", e.getCause());
+                postLocalAvailability(callback, false, getLocalAvailabilityFailureMessage());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 postLocalAvailability(callback, false, "Gemini Nano availability check was interrupted");
             } catch (Exception e) {
-                postLocalAvailability(callback, false,
-                        "Gemini Nano availability check failed: " + getThrowableMessage(e));
+                Log.w(TAG, "Gemini Nano availability check failed", e);
+                postLocalAvailability(callback, false, getLocalAvailabilityFailureMessage());
             } finally {
                 if (summarizer != null) {
                     summarizer.close();
@@ -275,6 +276,10 @@ public class SummaryManager {
         } else {
             return "Gemini Nano not available on this device";
         }
+    }
+
+    private static String getLocalAvailabilityFailureMessage() {
+        return "Gemini Nano not available on this device";
     }
 
     private static String getThrowableMessage(Throwable throwable) {
