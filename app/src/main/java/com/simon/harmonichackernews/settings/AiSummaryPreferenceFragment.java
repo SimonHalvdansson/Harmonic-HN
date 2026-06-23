@@ -10,7 +10,7 @@ import androidx.preference.PreferenceManager;
 import androidx.preference.SwitchPreferenceCompat;
 
 import com.simon.harmonichackernews.R;
-import com.simon.harmonichackernews.network.NetworkComponent;
+import com.simon.harmonichackernews.network.AiSummaryProviders;
 import com.simon.harmonichackernews.network.SummaryManager;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -22,8 +22,8 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
     private static final String PREF_API_KEY = "pref_ai_summary_api_key";
     private static final String PREF_MODEL = "pref_ai_summary_model";
     private static final String PREF_SYSTEM_PROMPT = "pref_ai_summary_system_prompt";
-    private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
-    private static final String DEFAULT_MODEL = "gpt-3.5-turbo";
+    private static final String DEFAULT_BASE_URL = AiSummaryProviders.OPENAI.baseUrl;
+    private static final String DEFAULT_MODEL = AiSummaryProviders.OPENAI.defaultModel;
     private static final String DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant that is an expert on summarizing articles into an information-dense, concise and brief bullet-point list. Focus on key takeaways and most important/note-worthy points in the article. Keep the summary under 500 characters where possible. Respond in markdown format. Respond with only the summarized content - nothing else before or after.";
 
     private SwitchPreferenceCompat enablePreference;
@@ -104,7 +104,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
                         PREF_MODEL,
                         "Model",
                         "Model",
-                        DEFAULT_MODEL,
+                        getDefaultModelForCurrentProvider(),
                         InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS,
                         1,
                         1,
@@ -141,6 +141,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         super.onResume();
         PreferenceManager.getDefaultSharedPreferences(requireContext())
                 .registerOnSharedPreferenceChangeListener(this);
+        normalizeModelForCurrentProvider();
         String mode = PreferenceManager.getDefaultSharedPreferences(requireContext())
                 .getString(PREF_MODE, AiSummaryModePreference.MODE_CLOUD);
         updateDependentPreferenceStates(Utils.isAiSummaryEnabled(requireContext()), mode);
@@ -168,10 +169,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
             updateBaseUrlSummary();
         } else if (PREF_API_KEY.equals(key)) {
             updateApiKeySummary();
-            String apiKey = sharedPreferences.getString(PREF_API_KEY, "");
-            if (!TextUtils.isEmpty(apiKey) && getContext() != null) {
-                suggestModel();
-            }
+            ensureProviderDefaultModel();
         } else if (PREF_MODEL.equals(key)) {
             updateModelSummary();
         } else if (PREF_MODE.equals(key)) {
@@ -206,30 +204,21 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         if (systemPromptPreference != null) changePrefStatus(systemPromptPreference, cloudSettingsEnabled);
     }
 
-    private void suggestModel() {
-        SummaryManager.fetchModels(requireContext(), NetworkComponent.getRequestQueueInstance(requireContext()),
-                new SummaryManager.SummaryCallback() {
-                    @Override
-                    public void onSuccess(String models) {
-                        if (getContext() == null || modelPreference == null) return;
-                        String[] modelArray = models.split(",");
-                        if (modelArray.length > 0) {
-                            String currentModel = PreferenceManager.getDefaultSharedPreferences(requireContext())
-                                    .getString(PREF_MODEL, "");
-                            if (currentModel.isEmpty() || DEFAULT_MODEL.equals(currentModel)) {
-                                PreferenceManager.getDefaultSharedPreferences(requireContext())
-                                        .edit()
-                                        .putString(PREF_MODEL, modelArray[0])
-                                        .apply();
-                                updateModelSummary();
-                            }
-                        }
-                    }
+    private void ensureProviderDefaultModel() {
+        if (getContext() == null) {
+            return;
+        }
 
-                    @Override
-                    public void onFailure(String error) {
-                    }
-                });
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        String currentModel = prefs.getString(PREF_MODEL, "");
+        if (!TextUtils.isEmpty(currentModel)) {
+            return;
+        }
+
+        prefs.edit()
+                .putString(PREF_MODEL, getDefaultModelForCurrentProvider())
+                .apply();
+        updateModelSummary();
     }
 
     private void updateBaseUrlSummary() {
@@ -263,12 +252,38 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
     private void updateModelSummary() {
         if (modelPreference != null && getContext() != null) {
             String model = PreferenceManager.getDefaultSharedPreferences(requireContext())
-                    .getString(PREF_MODEL, DEFAULT_MODEL);
+                    .getString(PREF_MODEL, getDefaultModelForCurrentProvider());
             if (!model.isEmpty()) {
                 modelPreference.setSummary(model);
             } else {
                 modelPreference.setSummary("Not set");
             }
+        }
+    }
+
+    private String getDefaultModelForCurrentProvider() {
+        if (getContext() == null) {
+            return DEFAULT_MODEL;
+        }
+
+        String baseUrl = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                .getString(PREF_BASE_URL, DEFAULT_BASE_URL);
+        return AiSummaryProviders.getDefaultModelForBaseUrl(baseUrl);
+    }
+
+    private void normalizeModelForCurrentProvider() {
+        if (getContext() == null) {
+            return;
+        }
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        String baseUrl = prefs.getString(PREF_BASE_URL, DEFAULT_BASE_URL);
+        String model = prefs.getString(PREF_MODEL, "");
+        String normalizedModel = AiSummaryProviders.getModelForRequest(baseUrl, model);
+        if (!TextUtils.isEmpty(model) && !model.equals(normalizedModel)) {
+            prefs.edit()
+                    .putString(PREF_MODEL, normalizedModel)
+                    .apply();
         }
     }
 }

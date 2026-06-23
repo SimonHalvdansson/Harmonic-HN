@@ -4111,12 +4111,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 @Override
                 public void onSuccess(String summary) {
                     story.summary = summary;
+                    story.summaryGeneratedSuccessfully = true;
                     onDone.run();
                 }
 
                 @Override
                 public void onFailure(String error) {
                     story.summary = "Failed to generate local summary: " + error;
+                    story.summaryGeneratedSuccessfully = false;
                     onDone.run();
                 }
             });
@@ -4125,12 +4127,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 @Override
                 public void onSuccess(String summary) {
                     story.summary = summary;
+                    story.summaryGeneratedSuccessfully = true;
                     onDone.run();
                 }
 
                 @Override
                 public void onFailure(String error) {
                     story.summary = "Failed to generate summary: " + error;
+                    story.summaryGeneratedSuccessfully = false;
                     onDone.run();
                 }
             });

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:clipToPadding="false">
@@ -11,6 +12,30 @@
         android:paddingLeft="24dp"
         android:paddingRight="24dp"
         android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/ai_summary_model_options_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/product_sans_bold"
+            android:paddingTop="4dp"
+            android:text="Options"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/ai_summary_model_options"
+            style="@style/Widget.Material3.ChipGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:singleLine="false"
+            android:visibility="gone"
+            app:chipSpacingHorizontal="8dp"
+            app:chipSpacingVertical="0dp"
+            app:selectionRequired="false"
+            app:singleSelection="true" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/ai_summary_text_input_layout"

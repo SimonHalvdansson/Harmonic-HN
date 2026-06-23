@@ -6,7 +6,10 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.TypedValue;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 
 import androidx.annotation.NonNull;
@@ -15,14 +18,20 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatDialogFragment;
 import androidx.preference.PreferenceManager;
 
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.databinding.AiSummaryTextDialogBinding;
+import com.simon.harmonichackernews.network.AiSummaryProviders;
 
 public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
 
     private static final String TAG = "ai_summary_text_dialog";
+    private static final String PREF_BASE_URL = "pref_ai_summary_base_url";
+    private static final String PREF_MODEL = "pref_ai_summary_model";
     private static final String ARG_KEY = "key";
     private static final String ARG_TITLE = "title";
     private static final String ARG_HINT = "hint";
@@ -38,6 +47,9 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
 
     private TextInputLayout inputLayout;
     private TextInputEditText inputEditText;
+    private ChipGroup modelOptionsGroup;
+    private TextWatcher modelTextWatcher;
+    private boolean updatingModelOptionSelection;
 
     public static void show(
             androidx.fragment.app.FragmentManager fm,
@@ -79,6 +91,7 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
 
         inputLayout = binding.aiSummaryTextInputLayout;
         inputEditText = binding.aiSummaryTextInput;
+        modelOptionsGroup = binding.aiSummaryModelOptions;
 
         String title = args.getString(ARG_TITLE, "");
         String hint = args.getString(ARG_HINT, title);
@@ -102,6 +115,7 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
                 ? savedInstanceState.getString(STATE_VALUE, "")
                 : getSavedValue(context, args.getString(ARG_KEY), defaultValue);
         setInputText(currentValue);
+        configureModelOptions(binding, currentValue);
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(context)
                 .setTitle(title)
@@ -138,6 +152,14 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
 
     @Override
     public void onDestroyView() {
+        if (inputEditText != null && modelTextWatcher != null) {
+            inputEditText.removeTextChangedListener(modelTextWatcher);
+        }
+        if (modelOptionsGroup != null) {
+            modelOptionsGroup.setOnCheckedStateChangeListener(null);
+        }
+        modelOptionsGroup = null;
+        modelTextWatcher = null;
         inputLayout = null;
         inputEditText = null;
         super.onDestroyView();
@@ -161,6 +183,100 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
     private void setInputText(String value) {
         inputEditText.setText(value);
         inputEditText.setSelection(inputEditText.length());
+    }
+
+    private void configureModelOptions(AiSummaryTextDialogBinding binding, String currentValue) {
+        if (!PREF_MODEL.equals(requireArguments().getString(ARG_KEY))) {
+            binding.aiSummaryModelOptionsLabel.setVisibility(View.GONE);
+            binding.aiSummaryModelOptions.setVisibility(View.GONE);
+            return;
+        }
+
+        AiSummaryProviders.Provider provider = getCurrentProvider();
+        if (provider == null || provider.models.length == 0) {
+            binding.aiSummaryModelOptionsLabel.setVisibility(View.GONE);
+            binding.aiSummaryModelOptions.setVisibility(View.GONE);
+            return;
+        }
+
+        binding.aiSummaryModelOptionsLabel.setText(provider.label + " options");
+        binding.aiSummaryModelOptionsLabel.setVisibility(View.VISIBLE);
+        binding.aiSummaryModelOptions.setVisibility(View.VISIBLE);
+        binding.aiSummaryModelOptions.removeAllViews();
+
+        for (AiSummaryProviders.Model model : provider.models) {
+            Chip chip = new Chip(requireContext());
+            chip.setId(View.generateViewId());
+            chip.setText(model.label);
+            chip.setTag(model.id);
+            chip.setCheckable(true);
+            chip.setClickable(true);
+            chip.setFocusable(true);
+            chip.setCheckedIconResource(R.drawable.ic_check_control_normal);
+            chip.setCheckedIconVisible(true);
+            chip.setChecked(model.id.equals(currentValue));
+            binding.aiSummaryModelOptions.addView(chip);
+        }
+
+        binding.aiSummaryModelOptions.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (updatingModelOptionSelection || checkedIds.isEmpty()) {
+                return;
+            }
+            View checkedView = group.findViewById(checkedIds.get(0));
+            if (checkedView != null && checkedView.getTag() instanceof String) {
+                inputLayout.setError(null);
+                setInputText((String) checkedView.getTag());
+            }
+        });
+
+        modelTextWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateSelectedModelOption(String.valueOf(s));
+            }
+        };
+        inputEditText.addTextChangedListener(modelTextWatcher);
+        updateSelectedModelOption(currentValue);
+    }
+
+    private void updateSelectedModelOption(String modelId) {
+        if (modelOptionsGroup == null) {
+            return;
+        }
+
+        String normalizedModelId = modelId == null ? "" : modelId.trim();
+        updatingModelOptionSelection = true;
+        int matchingChipId = View.NO_ID;
+        for (int i = 0; i < modelOptionsGroup.getChildCount(); i++) {
+            View child = modelOptionsGroup.getChildAt(i);
+            if (child.getTag() instanceof String
+                    && ((String) child.getTag()).equals(normalizedModelId)) {
+                matchingChipId = child.getId();
+                break;
+            }
+        }
+
+        if (matchingChipId == View.NO_ID) {
+            modelOptionsGroup.clearCheck();
+        } else {
+            modelOptionsGroup.check(matchingChipId);
+        }
+        updatingModelOptionSelection = false;
+    }
+
+    @Nullable
+    private AiSummaryProviders.Provider getCurrentProvider() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        String baseUrl = prefs.getString(PREF_BASE_URL, AiSummaryProviders.getDefaultBaseUrl());
+        return AiSummaryProviders.getProviderForBaseUrl(baseUrl);
     }
 
     private String getInputText() {

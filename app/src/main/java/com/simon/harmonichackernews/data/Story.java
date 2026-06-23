@@ -71,6 +71,7 @@ public class Story {
     public boolean commentMasterLoaded;
     public int parentId;  // Direct parent ID (for comments)
     public String summary;
+    public transient boolean summaryGeneratedSuccessfully;
 
     public Story() {}
 

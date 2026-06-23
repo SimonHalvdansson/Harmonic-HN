@@ -711,7 +711,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void bindHeaderSummary(HeaderViewHolder headerViewHolder, Context ctx) {
-        boolean canSummarize = story.isLink && Utils.canProvideSummary(ctx);
+        boolean canSummarize = story.isLink
+                && Utils.canProvideSummary(ctx)
+                && !story.summaryGeneratedSuccessfully;
         headerViewHolder.summarizeButtonParent.setVisibility(canSummarize ? VISIBLE : GONE);
 
         boolean hasSummary = !TextUtils.isEmpty(story.summary);
@@ -741,6 +743,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             summaryCallback.onRequest(() -> {
                 storySummaryLoading = false;
                 notifyItemChanged(0);
+                if (story.summaryGeneratedSuccessfully) {
+                    headerViewHolder.summarizeButtonParent.setVisibility(GONE);
+                    return;
+                }
 
                 ImageButton button = resolveStorySummaryButton(v);
                 if (button != null) {
@@ -748,6 +754,20 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 }
             });
         });
+    }
+
+    private void configureSummaryTitleIcon(TextView title) {
+        Drawable icon = ContextCompat.getDrawable(title.getContext(), R.drawable.ic_auto_awesome);
+        if (icon == null) {
+            return;
+        }
+
+        int iconSize = Utils.pxFromDpInt(title.getResources(), 14);
+        icon = icon.mutate();
+        icon.setBounds(0, 0, iconSize, iconSize);
+        icon.setTint(title.getCurrentTextColor());
+        title.setCompoundDrawablePadding(Utils.pxFromDpInt(title.getResources(), 4));
+        title.setCompoundDrawables(icon, null, null, null);
     }
 
     private void bindHeaderAccountActionVisibility(HeaderViewHolder headerViewHolder) {
@@ -2620,6 +2640,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             summaryContentContainer = binding.commentsHeaderSummaryContentContainer;
             summary = binding.commentsHeaderSummary;
             summaryTitle = binding.commentsHeaderSummaryTitle;
+            configureSummaryTitleIcon(summaryTitle);
             moreButton = binding.commentsHeaderButtonMore;
             userButtonParent = binding.commentsHeaderButtonUserParent;
             moreButtonParent = binding.commentsHeaderButtonMoreParent;

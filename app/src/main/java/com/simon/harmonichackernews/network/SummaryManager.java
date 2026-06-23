@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 
 import androidx.preference.PreferenceManager;
 
@@ -38,6 +39,8 @@ public class SummaryManager {
     private static final String TAG = "SummaryManager";
     private static final int LOCAL_SUMMARY_MIN_CHARS = 400;
     private static final int LOCAL_SUMMARY_MAX_WORDS = 3000;
+    private static final int CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 1000;
+    private static final String DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant that is an expert on summarizing articles into an information-dense, concise and brief bullet-point list. Focus on key takeaways and most important/note-worthy points in the article. Keep the summary under 500 characters where possible. Respond in markdown format. Respond with only the summarized content - nothing else before or after.";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
     public interface SummaryCallback {
@@ -50,9 +53,9 @@ public class SummaryManager {
     }
 
     public static void fetchModels(Context ctx, RequestQueue queue, SummaryCallback callback) {
-        String baseUrl = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_base_url", "https://api.openai.com/v1");
+        String baseUrl = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_base_url", AiSummaryProviders.getDefaultBaseUrl());
         String apiKey = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_api_key", "");
-        String url = baseUrl + "/models";
+        String url = joinUrl(baseUrl, "models");
 
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
             response -> {
@@ -283,15 +286,31 @@ public class SummaryManager {
 
     private static void summarizeWithLLM(Context ctx, RequestQueue queue, String text, SummaryCallback callback) {
         String apiKey = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_api_key", "");
-        String baseUrl = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_base_url", "https://api.openai.com/v1");
-        String model = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_model", "gpt-3.5-turbo");
+        String baseUrl = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_base_url", AiSummaryProviders.getDefaultBaseUrl());
+        String model = AiSummaryProviders.getModelForRequest(baseUrl,
+                PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_model", AiSummaryProviders.getDefaultModelForBaseUrl(baseUrl)));
 
         if (apiKey.isEmpty()) {
             postFailure(callback, "API Key missing");
             return;
         }
 
-        String url = baseUrl + "/chat/completions";
+        String prompt = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_system_prompt", DEFAULT_SYSTEM_PROMPT);
+        if (AiSummaryProviders.isAnthropicBaseUrl(baseUrl)) {
+            summarizeWithAnthropic(queue, baseUrl, apiKey, model, prompt, text, callback);
+        } else {
+            summarizeWithChatCompletions(queue, baseUrl, apiKey, model, prompt, text, callback);
+        }
+    }
+
+    private static void summarizeWithChatCompletions(RequestQueue queue,
+                                                     String baseUrl,
+                                                     String apiKey,
+                                                     String model,
+                                                     String prompt,
+                                                     String text,
+                                                     SummaryCallback callback) {
+        String url = joinUrl(baseUrl, "chat/completions");
 
         JSONObject payload = new JSONObject();
         try {
@@ -300,8 +319,6 @@ public class SummaryManager {
 
             JSONObject systemMsg = new JSONObject();
             systemMsg.put("role", "system");
-            String defaultPrompt = "You are a helpful assistant that is an expert on summarizing articles into an information-dense, concise and brief bullet-point list. Focus on key takeaways and most important/note-worthy points in the article. Keep the summary under 500 characters where possible. Respond in markdown format. Respond with only the summarized content - nothing else before or after.";
-            String prompt = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_system_prompt", defaultPrompt);
             systemMsg.put("content", prompt);
 
             JSONObject userMsg = new JSONObject();
@@ -326,18 +343,7 @@ public class SummaryManager {
                 }
             },
             error -> {
-                String finalErrorMsg = error.getMessage() != null ? error.getMessage() : "Unknown error";
-                if (error.networkResponse != null && error.networkResponse.data != null) {
-                    try {
-                        String body = new String(error.networkResponse.data, "UTF-8");
-                        JSONObject errorJson = new JSONObject(body);
-                        if (errorJson.has("error")) {
-                            finalErrorMsg = errorJson.getJSONObject("error").optString("message", finalErrorMsg);
-                        }
-                    } catch (Exception ignored) {}
-                }
-                String errorForCallback = finalErrorMsg;
-                postFailure(callback, "API error: " + errorForCallback);
+                postFailure(callback, "API error: " + getApiErrorMessage(error));
             }
         ) {
             @Override
@@ -349,6 +355,100 @@ public class SummaryManager {
         };
         request.setRetryPolicy(new DefaultRetryPolicy(120000, 0, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         queue.add(request);
+    }
+
+    private static void summarizeWithAnthropic(RequestQueue queue,
+                                               String baseUrl,
+                                               String apiKey,
+                                               String model,
+                                               String prompt,
+                                               String text,
+                                               SummaryCallback callback) {
+        String url = joinUrl(baseUrl, "messages");
+
+        JSONObject payload = new JSONObject();
+        try {
+            payload.put("model", model);
+            payload.put("max_tokens", CLOUD_SUMMARY_MAX_OUTPUT_TOKENS);
+            payload.put("system", prompt);
+
+            JSONArray messages = new JSONArray();
+            JSONObject userMsg = new JSONObject();
+            userMsg.put("role", "user");
+            userMsg.put("content", text);
+            messages.put(userMsg);
+            payload.put("messages", messages);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, payload,
+            response -> {
+                String summary = parseAnthropicSummary(response);
+                if (TextUtils.isEmpty(summary)) {
+                    postFailure(callback, "API response error");
+                } else {
+                    postSuccess(callback, summary);
+                }
+            },
+            error -> postFailure(callback, "API error: " + getApiErrorMessage(error))
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("x-api-key", apiKey);
+                headers.put("anthropic-version", "2023-06-01");
+                return headers;
+            }
+        };
+        request.setRetryPolicy(new DefaultRetryPolicy(120000, 0, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        queue.add(request);
+    }
+
+    private static String parseAnthropicSummary(JSONObject response) {
+        JSONArray content = response.optJSONArray("content");
+        if (content == null) {
+            return null;
+        }
+
+        StringBuilder summary = new StringBuilder();
+        for (int i = 0; i < content.length(); i++) {
+            JSONObject block = content.optJSONObject(i);
+            if (block == null) {
+                continue;
+            }
+            String text = block.optString("text", "");
+            if (!text.isEmpty()) {
+                if (summary.length() > 0) {
+                    summary.append("\n");
+                }
+                summary.append(text);
+            }
+        }
+        return summary.toString();
+    }
+
+    private static String getApiErrorMessage(com.android.volley.VolleyError error) {
+        String finalErrorMsg = error.getMessage() != null ? error.getMessage() : "Unknown error";
+        if (error.networkResponse != null && error.networkResponse.data != null) {
+            try {
+                String body = new String(error.networkResponse.data, "UTF-8");
+                JSONObject errorJson = new JSONObject(body);
+                if (errorJson.has("error")) {
+                    Object errorObject = errorJson.get("error");
+                    if (errorObject instanceof JSONObject) {
+                        finalErrorMsg = ((JSONObject) errorObject).optString("message", finalErrorMsg);
+                    } else if (errorObject instanceof String) {
+                        finalErrorMsg = (String) errorObject;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        return finalErrorMsg;
+    }
+
+    private static String joinUrl(String baseUrl, String path) {
+        return AiSummaryProviders.normalizeUrl(baseUrl) + "/" + path;
     }
 
     private static void postSuccess(SummaryCallback callback, String summary) {

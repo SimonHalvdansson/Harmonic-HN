@@ -21,17 +21,18 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.databinding.AiSummaryBaseUrlDialogBinding;
+import com.simon.harmonichackernews.network.AiSummaryProviders;
 
 public class AiSummaryBaseUrlDialogFragment extends AppCompatDialogFragment {
 
     private static final String TAG = "ai_summary_base_url_dialog";
     private static final String STATE_URL = "url";
-    private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
 
     private static final Preset[] PRESETS = new Preset[]{
-            new Preset(R.id.ai_summary_base_url_openai, "https://api.openai.com/v1"),
-            new Preset(R.id.ai_summary_base_url_anthropic, "https://api.anthropic.com/v1"),
-            new Preset(R.id.ai_summary_base_url_openrouter, "https://openrouter.ai/api/v1")
+            new Preset(R.id.ai_summary_base_url_openai, AiSummaryProviders.OPENAI),
+            new Preset(R.id.ai_summary_base_url_anthropic, AiSummaryProviders.ANTHROPIC),
+            new Preset(R.id.ai_summary_base_url_openrouter, AiSummaryProviders.OPENROUTER),
+            new Preset(R.id.ai_summary_base_url_google, AiSummaryProviders.GOOGLE)
     };
 
     private ChipGroup presetGroup;
@@ -151,10 +152,16 @@ public class AiSummaryBaseUrlDialogFragment extends AppCompatDialogFragment {
             return;
         }
 
-        PreferenceManager.getDefaultSharedPreferences(requireContext())
-                .edit()
-                .putString("pref_ai_summary_base_url", url)
-                .apply();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        AiSummaryProviders.Provider oldProvider = AiSummaryProviders.getProviderForBaseUrl(
+                prefs.getString("pref_ai_summary_base_url", AiSummaryProviders.getDefaultBaseUrl()));
+        AiSummaryProviders.Provider newProvider = AiSummaryProviders.getProviderForBaseUrl(url);
+        SharedPreferences.Editor editor = prefs.edit()
+                .putString("pref_ai_summary_base_url", url);
+        if (newProvider != null && (oldProvider == null || !newProvider.id.equals(oldProvider.id))) {
+            editor.putString("pref_ai_summary_model", newProvider.defaultModel);
+        }
+        editor.apply();
         dismiss();
     }
 
@@ -185,13 +192,13 @@ public class AiSummaryBaseUrlDialogFragment extends AppCompatDialogFragment {
 
     private static String getSavedBaseUrl(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        return prefs.getString("pref_ai_summary_base_url", DEFAULT_BASE_URL);
+        return prefs.getString("pref_ai_summary_base_url", AiSummaryProviders.getDefaultBaseUrl());
     }
 
     private static int getPresetId(String url) {
-        String normalizedUrl = normalizeUrl(url);
+        String normalizedUrl = AiSummaryProviders.normalizeUrl(url);
         for (Preset preset : PRESETS) {
-            if (normalizeUrl(preset.url).equals(normalizedUrl)) {
+            if (AiSummaryProviders.normalizeUrl(preset.provider.baseUrl).equals(normalizedUrl)) {
                 return preset.chipId;
             }
         }
@@ -202,27 +209,19 @@ public class AiSummaryBaseUrlDialogFragment extends AppCompatDialogFragment {
     private static String getPresetUrl(int chipId) {
         for (Preset preset : PRESETS) {
             if (preset.chipId == chipId) {
-                return preset.url;
+                return preset.provider.baseUrl;
             }
         }
         return null;
     }
 
-    private static String normalizeUrl(String url) {
-        String normalized = url == null ? "" : url.trim();
-        while (normalized.endsWith("/") && normalized.length() > 1) {
-            normalized = normalized.substring(0, normalized.length() - 1);
-        }
-        return normalized;
-    }
-
     private static class Preset {
         final int chipId;
-        final String url;
+        final AiSummaryProviders.Provider provider;
 
-        Preset(int chipId, String url) {
+        Preset(int chipId, AiSummaryProviders.Provider provider) {
             this.chipId = chipId;
-            this.url = url;
+            this.provider = provider;
         }
     }
 
