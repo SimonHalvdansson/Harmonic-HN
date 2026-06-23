@@ -524,7 +524,10 @@ public class ComposeActivity extends AppCompatActivity {
         submitEnabledBackgroundColor = MaterialColors.getColor(submitButton, androidx.appcompat.R.attr.colorAccent);
         submitEnabledContentColor = MaterialColors.getColor(submitButton, com.google.android.material.R.attr.colorOnPrimary);
 
-        submitDisabledBackgroundColor = blendColors(submitEnabledBackgroundColor, android.graphics.Color.WHITE, 0.72f);
+        int disabledBackgroundTarget = ThemeUtils.isDarkMode(this)
+                ? android.graphics.Color.BLACK
+                : android.graphics.Color.WHITE;
+        submitDisabledBackgroundColor = blendColors(submitEnabledBackgroundColor, disabledBackgroundTarget, 0.72f);
         submitDisabledContentColor = submitEnabledBackgroundColor;
 
         currentSubmitBackgroundColor = submitDisabledBackgroundColor;
