@@ -30,6 +30,7 @@ import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.StatusBarProtectionUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
@@ -78,6 +79,7 @@ public class SubmissionsActivity extends AppCompatActivity {
 
         binding = ActivitySubmissionsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        applyStatusBarProtection();
         swipeRefreshLayout = binding.submissionsSwiperefreshlayout;
         initialLoadingIndicator = binding.submissionsInitialLoading;
         appBarLayout = binding.submissionsAppbar;
@@ -221,6 +223,7 @@ public class SubmissionsActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        applyStatusBarProtection();
         syncCompactPointsPreference();
         syncPaletteTintPreference();
         syncFontPreference();
@@ -253,6 +256,13 @@ public class SubmissionsActivity extends AppCompatActivity {
             adapter.includeTopLevelDomain = includeTopLevelDomain;
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
+    }
+
+    private void applyStatusBarProtection() {
+        StatusBarProtectionUtils.setTopProtection(
+                binding.submissionsStatusBarProtection,
+                SettingsUtils.shouldUseTranslucentStatusBar(this),
+                StatusBarProtectionUtils.getPaneBackgroundColor(this));
     }
 
     private void syncPaletteTintPreference() {

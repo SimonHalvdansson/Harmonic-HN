@@ -76,6 +76,7 @@ import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.StatusBarProtectionUtils;
 import com.simon.harmonichackernews.utils.StoryUpdate;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.UtilsKt;
@@ -296,6 +297,7 @@ public class StoriesFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         binding = FragmentStoriesBinding.bind(view);
         headerBinding = binding.storiesHeaderContainer;
+        applyStatusBarProtection();
 
         mainRecyclerView = binding.storiesRecyclerview;
         searchRecyclerView = binding.storiesSearchRecyclerview;
@@ -2037,6 +2039,16 @@ public class StoriesFragment extends Fragment {
         updateAdapterCommentRows();
     }
 
+    private void applyStatusBarProtection() {
+        if (binding == null || getContext() == null) {
+            return;
+        }
+        StatusBarProtectionUtils.setTopProtection(
+                binding.listProtection,
+                SettingsUtils.shouldUseTranslucentStatusBar(requireContext()),
+                StatusBarProtectionUtils.getPaneBackgroundColor(requireContext()));
+    }
+
     private void rebuildStoryAdapters() {
         int previousMainType = mainAdapter != null ? mainAdapter.type : getPreferredTypeIndex();
         int previousSearchType = searchAdapter != null ? searchAdapter.type : previousMainType;
@@ -2423,6 +2435,8 @@ public class StoriesFragment extends Fragment {
             adapter.leftAlign = !adapter.leftAlign;
             rebuildStoryAdapters();
         }
+
+        applyStatusBarProtection();
 
         if (adapter.cardStyle != SettingsUtils.shouldUseCardStoryDisplayStyle(getContext())) {
             adapter.cardStyle = !adapter.cardStyle;

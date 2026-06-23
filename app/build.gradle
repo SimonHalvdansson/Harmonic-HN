@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.cardview)
+    implementation(libs.androidx.core)
     implementation(libs.androidx.fragment)
     implementation(libs.androidx.palette)
     implementation(libs.androidx.preference)
