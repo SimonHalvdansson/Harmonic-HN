@@ -2182,6 +2182,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public void clickMore(View view) {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+
         PopupMenu popup = new PopupMenu(requireActivity(), view);
 
         popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
@@ -2202,6 +2207,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 } else if (id == R.id.menu_adblock) {
                     adBlockDisabledForSession = true;
                     webViewController.disableAdBlockAndReload();
+                } else if (id == R.id.menu_bookmark) {
+                    toggleStoryBookmark();
                 } else if (id == R.id.menu_archive) {
                     view.post(() -> showArchiveServiceMenu(view));
                 } else if (id == R.id.menu_search_comments) {
@@ -2248,6 +2255,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         MenuInflater inflater = popup.getMenuInflater();
         inflater.inflate(R.menu.comments_more_menu, popup.getMenu());
 
+        boolean hasAccountDetails = AccountUtils.hasAccountDetails(ctx);
+        boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
+        MenuItem bookmarkItem = popup.getMenu().findItem(R.id.menu_bookmark);
+        bookmarkItem.setVisible(hasAccountDetails && bookmarksEnabled);
+        if (bookmarksEnabled && story != null) {
+            boolean bookmarked = Utils.isBookmarked(ctx, story.id);
+            bookmarkItem.setTitle(bookmarked ? "Remove bookmark" : "Bookmark");
+        }
+
         for (int i = 0; i < popup.getMenu().size(); i++) {
             MenuItem item = popup.getMenu().getItem(i);
 
@@ -2281,6 +2297,24 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         popup.show();
+    }
+
+    private void toggleStoryBookmark() {
+        Context ctx = getContext();
+        if (ctx == null || story == null) {
+            return;
+        }
+
+        boolean bookmarked = !Utils.isBookmarked(ctx, story.id);
+        if (bookmarked) {
+            Utils.addBookmark(ctx, story.id);
+        } else {
+            Utils.removeBookmark(ctx, story.id);
+        }
+
+        if (adapter != null) {
+            adapter.notifyItemChanged(0);
+        }
     }
 
     private void showArchiveServiceMenu(View anchor) {

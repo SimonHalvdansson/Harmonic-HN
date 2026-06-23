@@ -17,6 +17,10 @@
         android:id="@+id/menu_adblock"
         android:title="Disable AdBlock" />
 
+    <item
+        android:id="@+id/menu_bookmark"
+        android:title="Bookmark" />
+
     <item android:id="@+id/menu_search_comments"
         android:title="Search comments"/>
 

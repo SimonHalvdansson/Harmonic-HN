@@ -399,7 +399,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
             headerViewHolder.opFilterContainer.setVisibility(commentsByOpFilterActive ? VISIBLE : GONE);
-            headerViewHolder.bookmarkButtonParent.setVisibility(bookmarksEnabled ? VISIBLE : GONE);
+            headerViewHolder.bookmarkButtonParent.setVisibility(bookmarksEnabled && !hasAccountDetails ? VISIBLE : GONE);
             bindHeaderAccountActionVisibility(headerViewHolder);
 
             headerViewHolder.loadingFailed.setVisibility(loadingFailed ? VISIBLE : GONE);
