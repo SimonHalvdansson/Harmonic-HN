@@ -33,15 +33,26 @@ public class ViewUtils {
     }
 
     public static void setUpSwipeRefreshWithStatusBarOffset(SwipeRefreshLayout layout, int startOffset, int endOffset) {
+        setUpSwipeRefreshWithStatusBarOffset(layout, startOffset, endOffset, 0);
+    }
+
+    public static void setUpSwipeRefreshWithStatusBarOffset(
+            SwipeRefreshLayout layout, int startOffset, int endOffset, int slingshotDistanceOffset) {
         int start = layout.getProgressViewStartOffset();
         int end = layout.getProgressViewEndOffset();
 
         ViewCompat.setOnApplyWindowInsetsListener(layout, (v, insets) -> {
             int top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
+            int adjustedStart;
+            int adjustedEnd = end + top + endOffset;
             if (SettingsUtils.shouldUseTransparentStatusBar(layout.getContext())) {
-                layout.setProgressViewOffset(false, start + startOffset, end + top + endOffset);
+                adjustedStart = start + startOffset;
             } else {
-                layout.setProgressViewOffset(false, start + top + startOffset, end + top + endOffset);
+                adjustedStart = start + top + startOffset;
+            }
+            layout.setProgressViewOffset(false, adjustedStart, adjustedEnd);
+            if (slingshotDistanceOffset != 0) {
+                layout.setSlingshotDistance(adjustedEnd - adjustedStart + slingshotDistanceOffset);
             }
             return insets;
         });

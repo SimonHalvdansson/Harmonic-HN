@@ -106,6 +106,7 @@ public class StoriesFragment extends Fragment {
     private static final String TAG = "StoriesFragment";
     private static final int SWIPE_REFRESH_PROGRESS_START_OFFSET_DP = -32;
     private static final int SWIPE_REFRESH_PROGRESS_END_OFFSET_DP = -64;
+    private static final int SWIPE_REFRESH_SLINGSHOT_DISTANCE_OFFSET_DP = -20;
     private static final int UPDATE_FAB_LOAD_MORE_CLEARANCE_DP = 8;
 
     private StoryClickListener storyClickListener;
@@ -384,7 +385,8 @@ public class StoriesFragment extends Fragment {
                 recyclerView != null && recyclerView.canScrollVertically(-1));
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout,
                 Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_PROGRESS_START_OFFSET_DP),
-                Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_PROGRESS_END_OFFSET_DP));
+                Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_PROGRESS_END_OFFSET_DP),
+                Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_SLINGSHOT_DISTANCE_OFFSET_DP));
 
         mainLinearLayoutManager = createStoryLayoutManager();
         searchLinearLayoutManager = createStoryLayoutManager();

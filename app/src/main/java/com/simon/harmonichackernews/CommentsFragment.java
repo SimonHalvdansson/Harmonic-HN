@@ -193,6 +193,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static int MENU_ARCHIVE_ORG_ITEM_ID = 301;
     private final static int MENU_ARCHIVE_IS_ITEM_ID = 302;
     private final static int MENU_ARCHIVE_TODAY_ITEM_ID = 303;
+    private static final int SWIPE_REFRESH_PROGRESS_START_OFFSET_DP = -32;
+    private static final int SWIPE_REFRESH_PROGRESS_END_OFFSET_DP = -32;
 
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
@@ -600,7 +602,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), backPressedCallback);
 
         swipeRefreshLayout.setOnRefreshListener(this::onRetry);
-        ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
+        ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout,
+                Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_PROGRESS_START_OFFSET_DP),
+                Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_PROGRESS_END_OFFSET_DP));
 
         // This is how much the bottom sheet sticks up by default and also decides height of WebView
         // We want to watch for navigation bar height changes (tablets on Android 12L can cause
