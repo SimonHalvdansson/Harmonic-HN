@@ -2865,6 +2865,67 @@ public class StoriesFragment extends Fragment {
         HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
     }
 
+    private boolean hasMarkableStory() {
+        if (stories == null) {
+            return false;
+        }
+        for (Story story : stories) {
+            if (isMarkableStory(story)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isMarkableStory(Story story) {
+        // A story is markable as long as it has a real HN id and is not a
+        // comment row. We intentionally do NOT require story.loaded: on the
+        // standard feeds the list is pre-populated with placeholder rows whose
+        // JSON has not been fetched yet, and "Mark all as read" should cover
+        // the whole loaded feed, not just the rows the user happened to scroll
+        // far enough to fetch.
+        return story != null && !story.isComment && story.id > 0;
+    }
+
+    private void markAllStoriesRead() {
+        if (stories == null) {
+            return;
+        }
+
+        List<Integer> newlyReadIds = new ArrayList<>();
+        boolean changed = false;
+        for (Story story : stories) {
+            if (isMarkableStory(story) && !story.clicked) {
+                story.clicked = true;
+                newlyReadIds.add(story.id);
+                changed = true;
+            }
+        }
+
+        if (!newlyReadIds.isEmpty()) {
+            // Persist every id in a single write instead of one
+            // load/sort/serialize cycle per story (HistoriesUtils.addHistories
+            // de-dupes against existing entries).
+            HistoriesUtils.INSTANCE.addHistories(requireContext(), newlyReadIds);
+        }
+
+        if (!changed || adapter == null) {
+            return;
+        }
+
+        // When the user hides clicked posts, the now-read rows must leave the
+        // current list immediately, matching the existing clicked-sync path
+        // (refreshClickedState) rather than lingering until the next refresh.
+        if (hideClicked && !isHistoryType(adapter.type)) {
+            if (!removeClickedStoriesFromCurrentList()) {
+                attemptRefresh();
+            }
+            return;
+        }
+
+        adapter.notifyDataSetChanged();
+    }
+
     private void removeStoryAt(int index, int loadGeneration, boolean loadVisibleReplacement) {
         if (index < 0 || index >= stories.size()) {
             return;
@@ -3110,6 +3171,8 @@ public class StoriesFragment extends Fragment {
                     Intent submitIntent = new Intent(getContext(), ComposeActivity.class);
                     submitIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_POST);
                     startActivity(submitIntent);
+                } else if (item.getItemId() == R.id.menu_mark_all_read) {
+                    markAllStoriesRead();
                 } else if (item.getItemId() == R.id.menu_clear_history) {
                     HistoriesUtils.INSTANCE.clearHistories(requireContext());
                     loadingFailed = false;
@@ -3133,6 +3196,7 @@ public class StoriesFragment extends Fragment {
         //first only show cache button if we're not already looking at the cache
         boolean cacheInProgress = storyCacheController != null && storyCacheController.isCachingStories();
         menu.findItem(R.id.menu_cache).setVisible(!showingCached && !cacheInProgress);
+        menu.findItem(R.id.menu_mark_all_read).setVisible(!isHistoryType(adapter.type) && hasMarkableStory());
         menu.findItem(R.id.menu_clear_history).setVisible(isHistoryType(adapter.type) && HistoriesUtils.INSTANCE.size() > 0);
         //also if we don't have internet, no need to show at all
         if (getContext() != null) {

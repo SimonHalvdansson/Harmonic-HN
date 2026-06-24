@@ -65,6 +65,19 @@ object UtilsKt {
         saveHistories(ctx, histories)
     }
 
+    fun addHistories(ctx: Context, ids: Collection<Int>) {
+        if (ids.isEmpty()) {
+            return
+        }
+        val histories: MutableList<History> = loadHistories(ctx, false)
+        val now = System.currentTimeMillis()
+        for (id in ids) {
+            histories.add(History(id, now))
+        }
+        histories.sortByDescending { it.created }
+        saveHistories(ctx, histories)
+    }
+
     fun removeHistory(ctx: Context, id: Int) {
         val bookmarks: MutableList<History> = loadHistories(ctx, false)
 

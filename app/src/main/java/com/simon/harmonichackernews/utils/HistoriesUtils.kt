@@ -27,6 +27,19 @@ object HistoriesUtils {
         }
     }
 
+    fun addHistories(context: Context, ids: Collection<Int>) {
+        val newIds = ids.filter { isHistoryExist(it).not() }.distinct()
+        if (newIds.isEmpty()) {
+            return
+        }
+        val now = System.currentTimeMillis()
+        for (id in newIds) {
+            histories.add(History(id, now))
+        }
+        UtilsKt.addHistories(context, newIds)
+        changeVersion++
+    }
+
     fun getHistorybyId(id: Int): History? {
         return histories.find { it.id == id }
     }
