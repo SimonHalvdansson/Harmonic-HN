@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.settings;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.widget.TextView;
 
 import androidx.preference.Preference;
 import androidx.preference.PreferenceViewHolder;
@@ -31,24 +32,32 @@ public class ReaderModeFontSizePreference extends Preference {
         holder.itemView.setFocusable(false);
 
         Slider slider = PreferenceReaderModeFontSizeBinding.bind(holder.itemView).readerModeFontSizeSlider;
+        TextView valueText = (TextView) holder.findViewById(R.id.text_size_value);
+        int persistedFontSize = SettingsUtils.clampReaderModeFontSize(getPersistedInt(SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE));
+
         slider.clearOnChangeListeners();
         slider.setValueFrom(SettingsUtils.MIN_READER_MODE_FONT_SIZE);
         slider.setValueTo(SettingsUtils.MAX_READER_MODE_FONT_SIZE);
         slider.setStepSize(1);
         slider.setLabelFormatter(value -> formatFontSize(Math.round(value)));
-        slider.setValue(SettingsUtils.clampReaderModeFontSize(getPersistedInt(SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE)));
+        slider.setValue(persistedFontSize);
+        updateValueText(valueText, persistedFontSize);
         slider.addOnChangeListener((changedSlider, value, fromUser) -> {
             if (!fromUser) {
+                updateValueText(valueText, Math.round(value));
                 return;
             }
 
             int fontSize = SettingsUtils.clampReaderModeFontSize(Math.round(value));
+            updateValueText(valueText, fontSize);
             if (fontSize == getPersistedInt(SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE)) {
                 return;
             }
 
             if (!callChangeListener(fontSize)) {
-                changedSlider.setValue(SettingsUtils.clampReaderModeFontSize(getPersistedInt(SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE)));
+                int persistedSize = SettingsUtils.clampReaderModeFontSize(getPersistedInt(SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE));
+                changedSlider.setValue(persistedSize);
+                updateValueText(valueText, persistedSize);
                 return;
             }
 
@@ -57,6 +66,16 @@ public class ReaderModeFontSizePreference extends Preference {
     }
 
     private String formatFontSize(int fontSize) {
-        return fontSize + " px";
+        String label = fontSize + "px";
+        if (fontSize == SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE) {
+            return label + " (default)";
+        }
+        return label;
+    }
+
+    private void updateValueText(TextView valueText, int fontSize) {
+        if (valueText != null) {
+            valueText.setText(formatFontSize(fontSize));
+        }
     }
 }

@@ -63,13 +63,13 @@ public class AddBookmarksToFavoritesDialogFragment extends DialogFragment {
         progressIndicator.setMax(Math.max(bookmarkIds.length, 1));
         updateProgress();
 
-        Dialog dialog = new MaterialAlertDialogBuilder(requireContext())
+        Dialog alertDialog = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Adding favorites")
                 .setView(binding.getRoot())
                 .setNegativeButton("Cancel", (dialog, which) -> cancelled = true)
                 .create();
-        dialog.setCanceledOnTouchOutside(false);
-        return dialog;
+        alertDialog.setCanceledOnTouchOutside(false);
+        return alertDialog;
     }
 
     @Override
