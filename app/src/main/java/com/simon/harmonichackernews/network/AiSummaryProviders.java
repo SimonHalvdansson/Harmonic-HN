@@ -39,13 +39,9 @@ public class AiSummaryProviders {
             new Model[]{
                     new Model("GPT 5.4 Nano", "openai/gpt-5.4-nano"),
                     new Model("GPT 5.4 Mini", "openai/gpt-5.4-mini"),
-                    new Model("GPT 5.5", "openai/gpt-5.5"),
                     new Model("Claude Haiku 4.5", "anthropic/claude-haiku-4.5"),
-                    new Model("Claude Sonnet 4.6", "anthropic/claude-sonnet-4.6"),
                     new Model("Gemini 3.1 Flash Lite", "google/gemini-3.1-flash-lite"),
-                    new Model("Gemini 3.5 Flash", "google/gemini-3.5-flash"),
                     new Model("DeepSeek V4 Flash", "deepseek/deepseek-v4-flash"),
-                    new Model("DeepSeek R1", "deepseek/deepseek-r1"),
                     new Model("Qwen3.5 Flash", "qwen/qwen3.5-flash-02-23"),
                     new Model("Qwen3.7 Plus", "qwen/qwen3.7-plus"),
                     new Model("Step 3.7 Flash", "stepfun/step-3.7-flash"),
