@@ -1,13 +1,15 @@
 ﻿# Version 3.1
 - Added ability to show extra HN frontpages in Settings → Stories → Behavior
-- Added optional non-automatic AI summarization or posts (configure in Settings → AI summarization)
+- Added optional non-automatic AI summarization of posts (configure in Settings → AI summarization, thanks uukelele!)
 - Redesigned the submit and new comment screens to be more Material 3
+- Added translucent status bar (thanks Hao Lu!)
+- Updated settings UI with segmented lists
 - Added setting to reset all settings
 - Updated icons to rounded Material symbols
 - Updated dropdown header font size for smaller screens
 - Fixed behavior of 'Hide clicked posts'
-- Updated settings to use segmented lists
 - Added ability to clear history from history screen
+- 
 
 # Version 3.0
 This version is the to-date most comprehensive redesign and quality of life release, consisting of more than 200 commits. If you don't like the design updated, you are able to revert all big changes in the settings but I encourage you to give them a try!
