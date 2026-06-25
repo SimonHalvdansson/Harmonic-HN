@@ -1254,15 +1254,23 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void setCommentsRecyclerSidePadding(int leftPadding, int rightPadding) {
-        setRecyclerSidePadding(recyclerViewRegular, leftPadding, rightPadding);
-        setRecyclerSidePadding(recyclerViewSwipe, leftPadding, rightPadding);
+        boolean regularChanged = setRecyclerSidePadding(recyclerViewRegular, leftPadding, rightPadding);
+        boolean swipeChanged = setRecyclerSidePadding(recyclerViewSwipe, leftPadding, rightPadding);
+        if ((regularChanged || swipeChanged) && adapter != null) {
+            adapter.notifyItemChanged(0);
+        }
     }
 
-    private void setRecyclerSidePadding(@Nullable RecyclerView targetRecyclerView,
+    private boolean setRecyclerSidePadding(@Nullable RecyclerView targetRecyclerView,
                                         int leftPadding,
                                         int rightPadding) {
         if (targetRecyclerView == null) {
-            return;
+            return false;
+        }
+
+        if (targetRecyclerView.getPaddingLeft() == leftPadding
+                && targetRecyclerView.getPaddingRight() == rightPadding) {
+            return false;
         }
 
         targetRecyclerView.setPadding(
@@ -1270,6 +1278,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 targetRecyclerView.getPaddingTop(),
                 rightPadding,
                 targetRecyclerView.getPaddingBottom());
+        return true;
     }
 
 

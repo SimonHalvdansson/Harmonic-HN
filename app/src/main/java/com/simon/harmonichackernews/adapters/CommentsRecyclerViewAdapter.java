@@ -24,6 +24,7 @@ import android.text.style.ReplacementSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -365,6 +366,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             int actionContainerPadding = Math.round(headerViewHolder.actionsContainer.getResources().getDimension(R.dimen.comments_header_action_padding));
             headerViewHolder.actionsContainer.setPadding(actionContainerPadding, 0, actionContainerPadding, 0);
+            applyHeaderEndBleed(headerViewHolder);
 
             headerViewHolder.favicon.setVisibility(showThumbnail ? View.VISIBLE : GONE);
             headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
@@ -1207,6 +1209,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         int targetColor = getHeaderTintColor(story, normalColor, previewTintBaseColor);
         int color = ColorUtils.blendARGB(normalColor, targetColor, headerSlideOffset);
         int visibleColor = ColorUtils.blendARGB(normalColor, targetColor, getEffectiveHeaderTintProgress());
+        boolean hasTint = hasHeaderTint(story, previewTintBaseColor);
+        applyHeaderEndBleed(headerViewHolder);
         headerViewHolder.itemView.setBackgroundColor(normalColor);
         headerViewHolder.spacer.setBackgroundColor(visibleColor);
         headerViewHolder.sheetHandleContainer.setBackgroundColor(visibleColor);
@@ -1217,7 +1221,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (headerBackgroundColorListener != null) {
             headerBackgroundColorListener.onHeaderBackgroundColorChanged(visibleColor);
         }
-        applyHeaderBottomTransition(headerViewHolder, normalColor, visibleColor, previewTintBaseColor);
+        applyHeaderBottomTransition(headerViewHolder, normalColor, visibleColor, hasTint);
     }
 
     private int getHeaderTintColor(Story story, int normalColor, int previewTintBaseColor) {
@@ -1236,8 +1240,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             HeaderViewHolder headerViewHolder,
             int normalColor,
             int headerColor,
-            int previewTintBaseColor) {
-        boolean showTintFade = hasHeaderTint(story, previewTintBaseColor);
+            boolean showTintFade) {
         headerViewHolder.divider.setVisibility(showTintFade ? GONE : VISIBLE);
         headerViewHolder.tintFade.setVisibility(showTintFade ? VISIBLE : GONE);
         if (!showTintFade) {
@@ -1249,6 +1252,18 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{headerColor, normalColor});
         headerViewHolder.tintFade.setBackground(fade);
+    }
+
+    private void applyHeaderEndBleed(HeaderViewHolder headerViewHolder) {
+        headerViewHolder.setHeaderEndBleed(getRecyclerViewEndPadding(headerViewHolder.itemView));
+    }
+
+    private int getRecyclerViewEndPadding(View itemView) {
+        ViewParent parent = itemView.getParent();
+        if (parent instanceof RecyclerView) {
+            return ((RecyclerView) parent).getPaddingRight();
+        }
+        return 0;
     }
 
     private int getNormalHeaderBackgroundColor(View view) {
@@ -2592,6 +2607,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout pollLayout;
         public final LinearLayout headerView;
         public final int headerBasePaddingTop;
+        private final Map<View, Integer> baseRightPaddings = new HashMap<>();
         private ValueAnimator refreshPromptHeightAnimator;
 
         public HeaderViewHolder(CommentsHeaderBinding binding) {
@@ -2858,6 +2874,61 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 sheetButtonsContainer.setVisibility(GONE);
                 binding.commentsSheetHandle.setVisibility(GONE);
             }
+        }
+
+        private void setHeaderEndBleed(int endBleed) {
+            int safeEndBleed = Math.max(0, endBleed);
+            setItemViewWidthForEndBleed(safeEndBleed);
+            setEndPaddingForBleed(sheetHandleContainer, safeEndBleed);
+            setEndPaddingForBleed(sheetButtonsContainer, safeEndBleed);
+            setEndPaddingForBleed(headerView, safeEndBleed);
+            setEndPaddingForBleed(summaryContainer, safeEndBleed);
+            setEndPaddingForBleed(actionsContainer, safeEndBleed);
+        }
+
+        private void setItemViewWidthForEndBleed(int endBleed) {
+            int targetWidth = ViewGroup.LayoutParams.MATCH_PARENT;
+            if (endBleed > 0) {
+                ViewParent parent = itemView.getParent();
+                if (parent instanceof RecyclerView) {
+                    RecyclerView recyclerView = (RecyclerView) parent;
+                    int parentWidth = recyclerView.getWidth();
+                    int leftPadding = recyclerView.getPaddingLeft();
+                    if (parentWidth > leftPadding) {
+                        targetWidth = parentWidth - leftPadding;
+                    }
+                }
+            }
+
+            ViewGroup.LayoutParams layoutParams = itemView.getLayoutParams();
+            if (layoutParams != null && layoutParams.width != targetWidth) {
+                layoutParams.width = targetWidth;
+                itemView.setLayoutParams(layoutParams);
+            }
+        }
+
+        private void setEndPaddingForBleed(View view, int endBleed) {
+            if (view == null) {
+                return;
+            }
+
+            int targetRightPadding = getBaseRightPadding(view) + endBleed;
+            if (view.getPaddingRight() != targetRightPadding) {
+                view.setPadding(
+                        view.getPaddingLeft(),
+                        view.getPaddingTop(),
+                        targetRightPadding,
+                        view.getPaddingBottom());
+            }
+        }
+
+        private int getBaseRightPadding(View view) {
+            Integer baseRightPadding = baseRightPaddings.get(view);
+            if (baseRightPadding == null) {
+                baseRightPadding = view.getPaddingRight();
+                baseRightPaddings.put(view, baseRightPadding);
+            }
+            return baseRightPadding;
         }
 
         private void setSheetButtonsContentAlpha(float alpha) {
