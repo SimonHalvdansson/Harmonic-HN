@@ -14,6 +14,9 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 
 public class ReaderModeFontSizePreference extends Preference {
 
+    private static final float ENABLED_ALPHA = 1f;
+    private static final float DISABLED_ALPHA = 0.38f;
+
     public ReaderModeFontSizePreference(Context context, AttributeSet attrs) {
         super(context, attrs);
         setLayoutResource(R.layout.preference_reader_mode_font_size);
@@ -32,8 +35,11 @@ public class ReaderModeFontSizePreference extends Preference {
         holder.itemView.setFocusable(false);
 
         Slider slider = PreferenceReaderModeFontSizeBinding.bind(holder.itemView).readerModeFontSizeSlider;
+        TextView title = (TextView) holder.findViewById(android.R.id.title);
         TextView valueText = (TextView) holder.findViewById(R.id.text_size_value);
         int persistedFontSize = SettingsUtils.clampReaderModeFontSize(getPersistedInt(SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE));
+        updateTextEnabledState(title);
+        updateTextEnabledState(valueText);
 
         slider.clearOnChangeListeners();
         slider.setValueFrom(SettingsUtils.MIN_READER_MODE_FONT_SIZE);
@@ -76,6 +82,13 @@ public class ReaderModeFontSizePreference extends Preference {
     private void updateValueText(TextView valueText, int fontSize) {
         if (valueText != null) {
             valueText.setText(formatFontSize(fontSize));
+        }
+    }
+
+    private void updateTextEnabledState(TextView textView) {
+        if (textView != null) {
+            textView.setEnabled(isEnabled());
+            textView.setAlpha(isEnabled() ? ENABLED_ALPHA : DISABLED_ALPHA);
         }
     }
 }
