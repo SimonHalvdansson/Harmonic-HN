@@ -4,7 +4,7 @@
     <integer name="stories_pane_weight">4</integer>
     <dimen name="extra_pane_padding">0dp</dimen>
     <dimen name="settings_extra_pane_padding">12dp</dimen>
-    <dimen name="margin_between_panes">6dp</dimen>
+    <dimen name="margin_between_panes">0dp</dimen>
     <dimen name="comments_header_action_padding">9dp</dimen>
 
     <dimen name="comments_header_top_padding">32dp</dimen>
