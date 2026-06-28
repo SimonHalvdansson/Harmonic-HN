@@ -2,37 +2,26 @@ package com.simon.harmonichackernews;
 
 import static androidx.webkit.WebViewFeature.isFeatureSupported;
 
-import android.annotation.SuppressLint;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.PointF;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
-import android.text.Html;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.TypedValue;
-import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -46,7 +35,6 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.preference.PreferenceManager;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.TooltipCompat;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
@@ -55,29 +43,19 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import androidx.transition.Transition;
-import androidx.transition.TransitionListenerAdapter;
-import androidx.transition.TransitionManager;
 import androidx.webkit.WebViewFeature;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.color.MaterialColors;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
-import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
-import com.google.android.material.shape.ShapeAppearanceModel;
-import com.google.android.material.transition.MaterialContainerTransform;
 import com.google.android.material.transition.MaterialFadeThrough;
 import com.google.android.material.transition.MaterialSharedAxis;
 import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
@@ -85,7 +63,6 @@ import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
-import com.simon.harmonichackernews.databinding.CommentActionOverlayBinding;
 import com.simon.harmonichackernews.databinding.FragmentCommentsBinding;
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController;
 import com.simon.harmonichackernews.network.AlgoliaFallbackManager;
@@ -96,7 +73,6 @@ import com.simon.harmonichackernews.network.SummaryManager;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.CommentSorter;
-import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ShareUtils;
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils;
@@ -104,7 +80,6 @@ import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
 
-import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -161,32 +136,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static Pattern POLL_TITLE_PATTERN = Pattern.compile("\\bpoll\\b", Pattern.CASE_INSENSITIVE);
 
     private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
-    private final static int COMMENT_ACTION_VIEW_USER = 0;
-    private final static int COMMENT_ACTION_SHARE = 1;
-    private final static int COMMENT_ACTION_COPY = 2;
-    private final static int COMMENT_ACTION_BOOKMARK = 4;
-    private final static int COMMENT_ACTION_FAVORITE = 5;
-    private final static int COMMENT_ACTION_UPVOTE = 6;
-    private final static int COMMENT_ACTION_UNVOTE = 7;
-    private final static int COMMENT_ACTION_DOWNVOTE = 8;
-    private final static int COMMENT_ACTION_REPLY = 9;
-    private final static int NO_COMMENT_ACTION_COMMENT_ID = -1;
-    private final static int NO_COMMENT_ACTION_VOTE_LOADING = -1;
-    private final static int COMMENT_ACTION_TEXT_MAX_HEIGHT_DP = 300;
-    private final static int COMMENT_ACTION_TRANSFORM_DURATION_MS = 280;
-    private final static float COMMENT_ACTION_TRANSFORM_START_PROGRESS = 0f;
-    private final static float COMMENT_ACTION_TRANSFORM_END_PROGRESS = 1f;
-    private final static int COMMENT_ACTION_STANDARD_SOURCE_CORNER_RADIUS_DP = 0;
-    private final static int COMMENT_ACTION_CARD_SOURCE_CORNER_RADIUS_DP = 8;
-    private final static int COMMENT_ACTION_CARD_CORNER_RADIUS_DP = 28;
-    private final static int COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_X_DP = 56;
-    private final static int COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_Y_DP = 18;
-    private final static float COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCALE = 0.9f;
-    private final static float COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCRIM_ALPHA = 0.45f;
-    private final static int COMMENT_ACTION_ICON_SWAP_OUT_DURATION_MS = 90;
-    private final static int COMMENT_ACTION_ICON_SWAP_IN_DURATION_MS = 150;
-    private final static float COMMENT_ACTION_ICON_SWAP_MIN_SCALE = 0.72f;
-    private final static int COMMENT_ACTION_FAVORITE_LOADING_SIZE_DP = 28;
     private final static int MENU_COMMENT_SORT_GROUP_ID = 100;
     private final static int MENU_COMMENT_SORT_ITEM_ID_BASE = 200;
     private final static int MENU_ARCHIVE_SERVICE_GROUP_ID = 300;
@@ -214,6 +163,102 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private ViewTreeObserver.OnPreDrawListener preDrawListener;
     private RecyclerView.SmoothScroller smoothScroller;
     private CommentNavigationController commentNavigationController;
+    private final CommentActionOverlayController commentActionOverlayController = new CommentActionOverlayController(new CommentActionOverlayController.Host() {
+        @Nullable
+        @Override
+        public Context getCommentActionContext() {
+            return CommentsFragment.this.getContext();
+        }
+
+        @NonNull
+        @Override
+        public Context requireCommentActionContext() {
+            return CommentsFragment.this.requireContext();
+        }
+
+        @NonNull
+        @Override
+        public androidx.fragment.app.FragmentManager getCommentActionActivityFragmentManager() {
+            return CommentsFragment.this.requireActivity().getSupportFragmentManager();
+        }
+
+        @NonNull
+        @Override
+        public androidx.fragment.app.FragmentManager getCommentActionParentFragmentManager() {
+            return CommentsFragment.this.getParentFragmentManager();
+        }
+
+        @Nullable
+        @Override
+        public Story getCommentActionStory() {
+            return story;
+        }
+
+        @Nullable
+        @Override
+        public String getCommentActionReplyPostTitle() {
+            return adapter != null && adapter.story != null ? adapter.story.title : null;
+        }
+
+        @Override
+        public boolean isCommentActionHostAdded() {
+            return CommentsFragment.this.isAdded();
+        }
+
+        @Override
+        public boolean shouldUseCommentActionCardStyle(Context ctx) {
+            return adapter != null
+                    ? adapter.cardStyle
+                    : SettingsUtils.shouldUseCardCommentDisplayStyle(ctx);
+        }
+
+        @Nullable
+        @Override
+        public ViewGroup getCommentActionOverlayHost() {
+            return CommentsFragment.this.getCommentActionOverlayHost();
+        }
+
+        @Nullable
+        @Override
+        public View findCommentActionSourceView(int commentId) {
+            return CommentsFragment.this.findCommentView(commentId);
+        }
+
+        @Nullable
+        @Override
+        public Comment findCommentActionComment(int commentId) {
+            return CommentsFragment.this.findCommentById(commentId);
+        }
+
+        @Override
+        public void stopCommentActionListScroll() {
+            if (recyclerView != null) {
+                recyclerView.stopScroll();
+            }
+        }
+
+        @Override
+        public void setCommentActionLinksDisabled(boolean disabled) {
+            if (adapter != null) {
+                adapter.disableCommentATagClick = disabled;
+            }
+        }
+
+        @Override
+        public void syncCommentActionBackState() {
+            syncOnBackPressedCallbackEnabledState();
+        }
+
+        @Override
+        public void onCommentActionOverlayRemoved() {
+            updateCommentsStatusBarAppearance();
+        }
+
+        @Override
+        public void updateCommentActionUserTags(String changedUser) {
+            updateUserTags(changedUser);
+        }
+    });
     private View scrollNavigation;
     private ExtendedFloatingActionButton searchScrollTopFab;
     private int commentsBottomInset = 0;
@@ -250,14 +295,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int SCREEN_HEIGHT_IN_PIXELS = 100;
     private int scrollToCommentId = -1;
     private boolean commentsByOpFilterActive = false;
-    private FrameLayout commentActionOverlay;
-    private CommentActionOverlayBinding commentActionOverlayBinding;
-    private MaterialCardView commentActionCard;
-    private View commentActionSourceView;
-    private int commentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
-    private int pendingCommentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
-    private boolean commentActionOverlayDismissing = false;
-    private boolean commentActionPredictiveBackActive = false;
     private int originalStatusBarColor = Color.TRANSPARENT;
     private boolean originalStatusBarColorCaptured = false;
     private int commentsPaneStatusBarColor = Color.TRANSPARENT;
@@ -265,9 +302,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean appliedStatusBarProtectionKnown = false;
     private boolean appliedStatusBarProtectionEnabled = false;
     private int appliedStatusBarProtectionColor = Color.TRANSPARENT;
-    private final Set<Integer> commentActionFavoriteLoadingIds = new HashSet<>();
-    private final Map<Integer, Integer> commentActionVoteLoadingActions = new HashMap<>();
-    private final Set<Integer> commentActionDownvotedIds = new HashSet<>();
     private String currentCommentSorting;
 
     // Clean fallback management
@@ -421,7 +455,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         topInset = 0;
 
         if (savedInstanceState != null) {
-            pendingCommentActionCommentId = savedInstanceState.getInt(STATE_COMMENT_ACTION_COMMENT_ID, NO_COMMENT_ACTION_COMMENT_ID);
+            commentActionOverlayController.setPendingCommentId(savedInstanceState.getInt(
+                    STATE_COMMENT_ACTION_COMMENT_ID,
+                    CommentActionOverlayController.NO_COMMENT_ID));
             adBlockDisabledForSession = savedInstanceState.getBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, false);
             currentCommentSorting = savedInstanceState.getString(STATE_COMMENT_SORTING);
         }
@@ -504,8 +540,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackCancelled() {
-                if (commentActionOverlay != null) {
-                    cancelCommentActionPredictiveBack();
+                if (commentActionOverlayController.isShowing()) {
+                    commentActionOverlayController.cancelPredictiveBack();
                     return;
                 }
 
@@ -522,8 +558,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
-                if (commentActionOverlay != null) {
-                    updateCommentActionPredictiveBack(backEvent);
+                if (commentActionOverlayController.isShowing()) {
+                    commentActionOverlayController.updatePredictiveBack(backEvent);
                     return;
                 }
 
@@ -540,8 +576,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
-                if (commentActionOverlay != null) {
-                    startCommentActionPredictiveBack(backEvent);
+                if (commentActionOverlayController.isShowing()) {
+                    commentActionOverlayController.startPredictiveBack(backEvent);
                     return;
                 }
 
@@ -558,12 +594,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackPressed() {
-                if (commentActionOverlay != null) {
-                    if (commentActionPredictiveBackActive) {
-                        commitCommentActionPredictiveBack();
+                if (commentActionOverlayController.isShowing()) {
+                    if (commentActionOverlayController.isPredictiveBackActive()) {
+                        commentActionOverlayController.commitPredictiveBack();
                         return;
                     }
-                    dismissCommentActionOverlay(true);
+                    commentActionOverlayController.dismiss(true);
                     return;
                 }
 
@@ -799,7 +835,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (backPressedCallback == null) {
             return;
         }
-        if (commentActionOverlay != null) {
+        if (commentActionOverlayController.isShowing()) {
             backPressedCallback.setEnabled(true);
             return;
         }
@@ -1426,34 +1462,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void refreshCommentActionOverlayForConfiguration() {
-        if (commentActionOverlay == null || commentActionCard == null || commentActionOverlayBinding == null) {
-            return;
-        }
-
-        commentActionOverlay.post(() -> {
-            if (commentActionOverlay == null || commentActionCard == null || commentActionOverlayBinding == null) {
-                return;
-            }
-
-            configureCommentActionCardWidth(commentActionCard);
-            NestedScrollView cardScroll = commentActionOverlayBinding.commentActionCardScroll;
-            if (cardScroll != null) {
-                ViewGroup.LayoutParams params = cardScroll.getLayoutParams();
-                params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-                cardScroll.setLayoutParams(params);
-            }
-
-            NestedScrollView textScroll = commentActionOverlayBinding.commentActionTextScroll;
-            HtmlTextView commentText = commentActionOverlayBinding.commentActionText;
-            if (textScroll != null && commentText != null) {
-                ViewGroup.LayoutParams params = textScroll.getLayoutParams();
-                params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-                textScroll.setLayoutParams(params);
-                resizeCommentActionTextBox(textScroll, commentText);
-            } else {
-                resizeCommentActionDialogScroll();
-            }
-        });
+        commentActionOverlayController.refreshForConfiguration();
     }
 
     @Override
@@ -1486,10 +1495,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        int visibleCommentActionId = commentActionOverlay != null
-                ? commentActionCommentId
-                : pendingCommentActionCommentId;
-        if (visibleCommentActionId != NO_COMMENT_ACTION_COMMENT_ID) {
+        int visibleCommentActionId = commentActionOverlayController.getRestorableCommentId();
+        if (visibleCommentActionId != CommentActionOverlayController.NO_COMMENT_ID) {
             outState.putInt(STATE_COMMENT_ACTION_COMMENT_ID, visibleCommentActionId);
         }
         if (adBlockDisabledForSession) {
@@ -1650,7 +1657,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onDestroyView() {
-        removeCommentActionOverlayNow();
+        commentActionOverlayController.removeNow();
         if (commentNavigationController != null) {
             commentNavigationController.clear();
         }
@@ -1751,7 +1758,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         bottomSheet = null;
         headerSpacer = null;
         appliedStatusBarProtectionKnown = false;
-        commentActionOverlayBinding = null;
         if (webViewController != null) {
             webViewController.clearViewReferences();
             webViewController = null;
@@ -1932,7 +1938,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         return;
                     }
                     scrollToTargetComment();
-                    restorePendingCommentActionOverlay();
+                    commentActionOverlayController.restorePending();
                 });
             }
         });
@@ -2114,7 +2120,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 return;
             }
             scrollToTargetComment();
-            restorePendingCommentActionOverlay();
+            commentActionOverlayController.restorePending();
         });
     }
 
@@ -2754,1213 +2760,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onItemClick(Comment comment, int pos, View view) {
-        showCommentActionOverlay(comment, view, true);
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private void showCommentActionOverlay(Comment comment, @Nullable View sourceView, boolean animate) {
-        Context ctx = getContext();
-        ViewGroup overlayHost = getCommentActionOverlayHost();
-        if (ctx == null || overlayHost == null || comment == null) {
-            return;
-        }
-
-        removeCommentActionOverlayNow();
-
-        commentActionCommentId = comment.id;
-        commentActionSourceView = sourceView;
-        commentActionOverlayDismissing = false;
-
-        if (adapter != null) {
-            adapter.disableCommentATagClick = true;
-        }
-
-        commentActionOverlayBinding = CommentActionOverlayBinding.inflate(LayoutInflater.from(ctx), overlayHost, false);
-        commentActionOverlay = commentActionOverlayBinding.getRoot();
-        overlayHost.addView(commentActionOverlay, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-        cancelCurrentCommentListTouch(overlayHost);
-
-        View scrim = commentActionOverlayBinding.commentActionScrim;
-        View content = commentActionOverlayBinding.commentActionContent;
-        commentActionCard = commentActionOverlayBinding.commentActionCard;
-        commentActionCard.setCardBackgroundColor(getCommentActionCardBackgroundColor(ctx));
-        commentActionCard.setStrokeWidth(0);
-        commentActionCard.setStrokeColor(Color.TRANSPARENT);
-
-        configureCommentActionOverlayInsets(content);
-        configureCommentActionCardWidth(commentActionCard);
-        bindCommentActionOverlay(comment);
-
-        scrim.setOnClickListener(v -> dismissCommentActionOverlay(true));
-        content.setOnClickListener(v -> dismissCommentActionOverlay(true));
-        commentActionCard.setOnTouchListener((v, event) -> true);
-
-        syncOnBackPressedCallbackEnabledState();
-
-        commentActionOverlay.post(() -> {
-            if (commentActionOverlay == null || commentActionCard == null) {
-                return;
-            }
-
-            if (animate && isUsableCommentActionTransition(overlayHost, sourceView, commentActionCard)) {
-                MaterialContainerTransform transform = createCommentActionTransform(
-                        overlayHost,
-                        sourceView,
-                        commentActionCard,
-                        MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
-                transform.addTarget(commentActionCard);
-                TransitionManager.beginDelayedTransition(overlayHost, transform);
-                scrim.animate().alpha(1f).setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS).start();
-                setCommentActionSourceVisible(sourceView, false);
-                commentActionCard.setVisibility(View.VISIBLE);
-            } else {
-                scrim.setAlpha(1f);
-                setCommentActionSourceVisible(sourceView, false);
-                commentActionCard.setVisibility(View.VISIBLE);
-            }
-        });
-    }
-
-    private void cancelCurrentCommentListTouch(ViewGroup overlayHost) {
-        long eventTime = SystemClock.uptimeMillis();
-        MotionEvent cancelEvent = MotionEvent.obtain(
-                eventTime,
-                eventTime,
-                MotionEvent.ACTION_CANCEL,
-                0f,
-                0f,
-                0);
-        overlayHost.dispatchTouchEvent(cancelEvent);
-        cancelEvent.recycle();
-
-        if (recyclerView != null) {
-            recyclerView.stopScroll();
-        }
-    }
-
-    private void bindCommentActionOverlay(Comment comment) {
-        Context ctx = requireContext();
-
-        boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
-        boolean oldBookmarked = bookmarksEnabled && Utils.isBookmarked(ctx, comment.id);
-        boolean oldFavorited = Utils.isFavorited(ctx, comment.id);
-
-        MaterialButton userButton = commentActionOverlayBinding.commentActionUser;
-        String userLabel = TextUtils.isEmpty(comment.by) ? "Unknown user" : comment.by;
-        if (story != null && TextUtils.equals(story.by, comment.by)) {
-            userLabel += " (OP)";
-        }
-        userButton.setText(userLabel);
-        userButton.setAllCaps(false);
-        userButton.setContentDescription("View user " + (TextUtils.isEmpty(comment.by) ? "profile" : comment.by));
-        TooltipCompat.setTooltipText(userButton, "View user");
-        userButton.setOnClickListener(v ->
-                performCommentAction(COMMENT_ACTION_VIEW_USER, comment, oldBookmarked, oldFavorited));
-
-        HtmlTextView commentText = commentActionOverlayBinding.commentActionText;
-        String text = Utils.expandShortenedAnchorText(comment.text == null ? "" : comment.text);
-        commentText.setHtml(text);
-        commentText.setTextIsSelectable(true);
-        commentText.setOnClickATagListener((widget, spannedText, href) -> {
-            Utils.openLinkMaybeHN(widget.getContext(), href);
-            return true;
-        });
-        FontUtils.setCommentTextTypeface(commentText, SettingsUtils.getPreferredCommentTextSize(ctx));
-
-        NestedScrollView textScroll = commentActionOverlayBinding.commentActionTextScroll;
-        resizeCommentActionTextBox(textScroll, commentText);
-
-        LinearLayout actionsContainer = commentActionOverlayBinding.commentActionActions;
-        bindCommentActionButtons(actionsContainer, ctx, comment, bookmarksEnabled, oldBookmarked, oldFavorited);
-    }
-
-    private void bindCommentActionButtons(LinearLayout actionsContainer,
-                                          Context ctx,
-                                          Comment comment,
-                                          boolean bookmarksEnabled,
-                                          boolean oldBookmarked,
-                                          boolean oldFavorited) {
-        actionsContainer.removeAllViews();
-
-        boolean hasAccount = AccountUtils.hasAccountDetails(ctx);
-
-        ArrayList<CommentActionItem> iconActions = new ArrayList<>();
-        if (hasAccount) {
-            boolean upvoted = Utils.isUpvoted(ctx, comment.id, true);
-            boolean downvoted = !upvoted && commentActionDownvotedIds.contains(comment.id);
-            int voteLoadingAction = getCommentActionVoteLoadingAction(comment.id);
-            iconActions.add(createCommentActionVoteItem(COMMENT_ACTION_UPVOTE, upvoted, downvoted, voteLoadingAction));
-            iconActions.add(createCommentActionVoteItem(COMMENT_ACTION_DOWNVOTE, upvoted, downvoted, voteLoadingAction));
-            iconActions.add(createCommentActionVoteItem(COMMENT_ACTION_UNVOTE, upvoted, downvoted, voteLoadingAction));
-        }
-
-        if (bookmarksEnabled) {
-            iconActions.add(new CommentActionItem(
-                    COMMENT_ACTION_BOOKMARK,
-                    oldBookmarked ? "Remove bookmark" : "Bookmark",
-                    oldBookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark));
-        }
-        if (hasAccount) {
-            boolean favoriteLoading = commentActionFavoriteLoadingIds.contains(comment.id);
-            iconActions.add(new CommentActionItem(
-                    COMMENT_ACTION_FAVORITE,
-                    favoriteLoading ? (oldFavorited ? "Removing favorite" : "Adding favorite") : (oldFavorited ? "Remove favorite" : "Favorite"),
-                    oldFavorited ? R.drawable.ic_star_filled : R.drawable.ic_star,
-                    favoriteLoading));
-        }
-
-        iconActions.add(new CommentActionItem(COMMENT_ACTION_COPY, "Copy text", R.drawable.ic_content_copy));
-        iconActions.add(new CommentActionItem(COMMENT_ACTION_SHARE, "Share link", R.drawable.ic_share));
-        addCommentActionIconRow(actionsContainer, iconActions, comment, oldBookmarked, oldFavorited);
-
-        if (hasAccount && !Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)) {
-            addCommentActionReplyButton(actionsContainer, comment, oldBookmarked, oldFavorited);
-        }
-    }
-
-    private CommentActionItem createCommentActionVoteItem(int action,
-                                                          boolean upvoted,
-                                                          boolean downvoted,
-                                                          int loadingAction) {
-        boolean loading = loadingAction == action;
-        return new CommentActionItem(
-                action,
-                getCommentActionVoteLabel(action, upvoted, downvoted, loading),
-                getCommentActionVoteIconRes(action, upvoted, downvoted),
-                loading,
-                !isCommentActionVote(loadingAction));
-    }
-
-    private String getCommentActionVoteLabel(int action,
-                                             boolean upvoted,
-                                             boolean downvoted,
-                                             boolean loading) {
-        switch (action) {
-            case COMMENT_ACTION_UPVOTE:
-                return loading ? "Upvoting" : (upvoted ? "Upvoted" : "Vote up");
-
-            case COMMENT_ACTION_DOWNVOTE:
-                return loading ? "Downvoting" : (downvoted ? "Downvoted" : "Vote down");
-
-            case COMMENT_ACTION_UNVOTE:
-                return loading ? "Removing vote" : "Unvote";
-
-            default:
-                return "";
-        }
-    }
-
-    private int getCommentActionVoteIconRes(int action, boolean upvoted, boolean downvoted) {
-        switch (action) {
-            case COMMENT_ACTION_UPVOTE:
-                return upvoted ? R.drawable.ic_thumb_up_filled : R.drawable.ic_thumb_up;
-
-            case COMMENT_ACTION_DOWNVOTE:
-                return downvoted ? R.drawable.ic_thumb_down_filled : R.drawable.ic_thumb_down;
-
-            case COMMENT_ACTION_UNVOTE:
-                return R.drawable.ic_thumbs_up_down_unvote;
-
-            default:
-                return 0;
-        }
-    }
-
-    private int getCommentActionVoteLoadingAction(int commentId) {
-        Integer loadingAction = commentActionVoteLoadingActions.get(commentId);
-        return loadingAction == null ? NO_COMMENT_ACTION_VOTE_LOADING : loadingAction;
-    }
-
-    private boolean isCommentActionVote(int action) {
-        return action == COMMENT_ACTION_UPVOTE
-                || action == COMMENT_ACTION_DOWNVOTE
-                || action == COMMENT_ACTION_UNVOTE;
-    }
-
-    private void addCommentActionIconRow(LinearLayout actionsContainer,
-                                         List<CommentActionItem> actionItems,
-                                         Comment comment,
-                                         boolean oldBookmarked,
-                                         boolean oldFavorited) {
-        if (actionItems.isEmpty()) {
-            return;
-        }
-
-        LinearLayout row = new LinearLayout(actionsContainer.getContext());
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(android.view.Gravity.CENTER);
-        row.setBaselineAligned(false);
-
-        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        if (actionsContainer.getChildCount() > 0) {
-            rowParams.topMargin = Utils.pxFromDpInt(getResources(), 4);
-        }
-        actionsContainer.addView(row, rowParams);
-
-        for (CommentActionItem actionItem : actionItems) {
-            FrameLayout buttonSlot = new FrameLayout(row.getContext());
-            buttonSlot.setTag(actionItem.action);
-            buttonSlot.setClipChildren(false);
-            buttonSlot.setClipToPadding(false);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    0,
-                    Utils.pxFromDpInt(getResources(), 48),
-                    1f);
-            params.leftMargin = Utils.pxFromDpInt(getResources(), 1);
-            params.rightMargin = Utils.pxFromDpInt(getResources(), 1);
-            row.addView(buttonSlot, params);
-            if (actionItem.loading) {
-                showCommentActionLoadingIndicator(buttonSlot, actionItem.label, false);
-            } else {
-                setCommentActionIconButton(buttonSlot, actionItem, comment, oldBookmarked, oldFavorited, false);
-            }
-        }
-    }
-
-    private void setCommentActionIconButton(FrameLayout buttonSlot,
-                                            CommentActionItem actionItem,
-                                            Comment comment,
-                                            boolean oldBookmarked,
-                                            boolean oldFavorited,
-                                            boolean animate) {
-        buttonSlot.removeAllViews();
-        ImageButton button = createCommentActionIconButton(buttonSlot.getContext(), actionItem);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT);
-        buttonSlot.addView(button, params);
-        button.setOnClickListener(v -> performCommentAction(actionItem.action, comment, oldBookmarked, oldFavorited, button));
-        button.setEnabled(actionItem.enabled);
-        if (animate) {
-            animateCommentActionViewIn(button, null);
-        }
-    }
-
-    private ImageButton createCommentActionIconButton(Context ctx, CommentActionItem actionItem) {
-        ImageButton button = new ImageButton(ctx);
-        button.setImageResource(actionItem.iconRes);
-        button.setTag(actionItem.iconRes);
-        button.setImageTintList(ColorStateList.valueOf(MaterialColors.getColor(button, R.attr.storyColorNormal)));
-        button.setBackgroundResource(resolveSelectableItemBackgroundBorderless(ctx));
-        button.setContentDescription(actionItem.label);
-        button.setPadding(
-                Utils.pxFromDpInt(getResources(), 8),
-                Utils.pxFromDpInt(getResources(), 10),
-                Utils.pxFromDpInt(getResources(), 8),
-                Utils.pxFromDpInt(getResources(), 10));
-        button.setScaleType(ImageView.ScaleType.CENTER);
-        TooltipCompat.setTooltipText(button, actionItem.label);
-        return button;
-    }
-
-    private void showCommentActionLoadingIndicator(FrameLayout buttonSlot, String label, boolean animate) {
-        buttonSlot.removeAllViews();
-        LoadingIndicator loadingIndicator = new LoadingIndicator(buttonSlot.getContext());
-        int indicatorSize = Utils.pxFromDpInt(getResources(), COMMENT_ACTION_FAVORITE_LOADING_SIZE_DP);
-        loadingIndicator.setIndicatorSize(indicatorSize);
-        loadingIndicator.setContentDescription(label);
-        loadingIndicator.setClickable(false);
-        loadingIndicator.setFocusable(false);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                indicatorSize,
-                indicatorSize,
-                android.view.Gravity.CENTER);
-        buttonSlot.addView(loadingIndicator, params);
-        if (animate) {
-            animateCommentActionViewIn(loadingIndicator, null);
-        }
-    }
-
-    private void addCommentActionReplyButton(LinearLayout actionsContainer,
-                                             Comment comment,
-                                             boolean oldBookmarked,
-                                             boolean oldFavorited) {
-        Context buttonContext = new ContextThemeWrapper(
-                actionsContainer.getContext(),
-                com.google.android.material.R.style.Widget_Material3Expressive_Button_ElevatedButton);
-        MaterialButton button = new MaterialButton(buttonContext);
-        button.setText("Reply");
-        button.setAllCaps(false);
-        button.setSingleLine(true);
-        button.setIconResource(R.drawable.ic_reply);
-        button.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
-        button.setIconPadding(Utils.pxFromDpInt(getResources(), 8));
-        int replyBackgroundColor = MaterialColors.getColor(
-                button,
-                R.attr.overlayButtonColor);
-        button.setTextColor(Color.WHITE);
-        button.setIconTint(ColorStateList.valueOf(Color.WHITE));
-        button.setBackgroundTintList(ColorStateList.valueOf(replyBackgroundColor));
-        button.setContentDescription("Reply");
-        button.setOnClickListener(v -> performCommentAction(COMMENT_ACTION_REPLY, comment, oldBookmarked, oldFavorited));
-
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                Utils.pxFromDpInt(getResources(), 56));
-        params.topMargin = Utils.pxFromDpInt(getResources(), 10);
-        actionsContainer.addView(button, params);
-    }
-
-    private int resolveSelectableItemBackgroundBorderless(Context ctx) {
-        TypedValue typedValue = new TypedValue();
-        ctx.getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, typedValue, true);
-        return typedValue.resourceId;
-    }
-
-    private void performCommentAction(int action, Comment comment, boolean oldBookmarked, boolean oldFavorited) {
-        performCommentAction(action, comment, oldBookmarked, oldFavorited, null);
-    }
-
-    private void performCommentAction(int action, Comment comment, boolean oldBookmarked, boolean oldFavorited, @Nullable View actionView) {
-        if (!isAdded()) {
-            return;
-        }
-
-        Context ctx = requireContext();
-        switch (action) {
-            case COMMENT_ACTION_VIEW_USER:
-                UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), comment.by, new UserDialogFragment.UserDialogCallback() {
-                    @Override
-                    public void onResult(boolean accepted) {
-                        if (accepted) {
-                            updateUserTags(comment.by);
-                        }
-                    }
-                });
-                break;
-
-            case COMMENT_ACTION_SHARE:
-                ctx.startActivity(ShareUtils.getShareIntent(comment.id));
-                break;
-
-            case COMMENT_ACTION_COPY:
-                ClipboardManager clipboard = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData clip = ClipData.newPlainText("Hacker News comment", Html.fromHtml(comment.text == null ? "" : comment.text));
-                clipboard.setPrimaryClip(clip);
-
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    Toast.makeText(ctx, "Text copied to clipboard", Toast.LENGTH_SHORT).show();
-                }
-                break;
-
-            case COMMENT_ACTION_BOOKMARK:
-                boolean newBookmarked = !oldBookmarked;
-                if (oldBookmarked) {
-                    Utils.removeBookmark(ctx, comment.id);
-                } else {
-                    Utils.addBookmark(ctx, comment.id);
-                }
-                if (actionView instanceof ImageButton) {
-                    updateCommentActionBookmarkButton((ImageButton) actionView, comment, newBookmarked, oldFavorited);
-                } else if (commentActionOverlay != null) {
-                    bindCommentActionOverlay(comment);
-                }
-                break;
-
-            case COMMENT_ACTION_FAVORITE:
-                if (!AccountUtils.hasAccountDetails(ctx)) {
-                    AccountUtils.showLoginPrompt(getParentFragmentManager());
-                    break;
-                }
-
-                boolean newFavorited = !oldFavorited;
-                FrameLayout favoriteSlot = getCommentActionButtonSlot(actionView);
-                commentActionFavoriteLoadingIds.add(comment.id);
-                if (favoriteSlot != null && actionView instanceof ImageButton) {
-                    showCommentActionFavoriteLoading(favoriteSlot, (ImageButton) actionView, newFavorited);
-                } else if (commentActionOverlay != null) {
-                    bindCommentActionOverlay(comment);
-                }
-                UserActions.setFavorite(ctx, comment.id, newFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
-                    @Override
-                    public void onSuccess(Response response) {
-                        commentActionFavoriteLoadingIds.remove(comment.id);
-                        showCommentActionFavoriteButton(favoriteSlot, comment, true);
-                    }
-
-                    @Override
-                    public void onFailure(String summary, String response) {
-                        Utils.setFavorite(ctx, comment.id, oldFavorited);
-                        commentActionFavoriteLoadingIds.remove(comment.id);
-                        showCommentActionFavoriteButton(favoriteSlot, comment, true);
-                        UserActions.showFailureDetailDialog(ctx, summary, response);
-                        Toast.makeText(ctx, "Couldn't update favorite", Toast.LENGTH_SHORT).show();
-                    }
-                });
-                break;
-
-            case COMMENT_ACTION_UPVOTE:
-            case COMMENT_ACTION_DOWNVOTE:
-            case COMMENT_ACTION_UNVOTE:
-                performCommentActionVote(action, comment, actionView);
-                break;
-
-            case COMMENT_ACTION_REPLY:
-                if (!AccountUtils.hasAccountDetails(ctx)) {
-                    AccountUtils.showLoginPrompt(getParentFragmentManager());
-                    return;
-                }
-                if (Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)) {
-                    Toast.makeText(ctx, "This comment is too old to reply to", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                Intent replyIntent = new Intent(ctx, ComposeActivity.class);
-                replyIntent.putExtra(ComposeActivity.EXTRA_ID, comment.id);
-                replyIntent.putExtra(ComposeActivity.EXTRA_PARENT_TEXT, comment.text);
-                replyIntent.putExtra(ComposeActivity.EXTRA_POST_TITLE, adapter.story.title);
-                replyIntent.putExtra(ComposeActivity.EXTRA_USER, comment.by);
-                replyIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_COMMENT_REPLY);
-                ctx.startActivity(replyIntent);
-                break;
-        }
-    }
-
-    private void performCommentActionVote(int action, Comment comment, @Nullable View actionView) {
-        if (!isAdded()) {
-            return;
-        }
-
-        Context ctx = requireContext();
-        if (!AccountUtils.hasAccountDetails(ctx)) {
-            AccountUtils.showLoginPrompt(getParentFragmentManager());
-            return;
-        }
-        if (isCommentActionVote(getCommentActionVoteLoadingAction(comment.id))) {
-            return;
-        }
-
-        boolean wasUpvoted = Utils.isUpvoted(ctx, comment.id, true);
-        boolean wasDownvoted = !wasUpvoted && commentActionDownvotedIds.contains(comment.id);
-        FrameLayout voteSlot = getCommentActionButtonSlot(actionView);
-        ImageButton button = actionView instanceof ImageButton ? (ImageButton) actionView : null;
-
-        commentActionVoteLoadingActions.put(comment.id, action);
-        if (voteSlot != null && button != null) {
-            showCommentActionVoteLoading(voteSlot, button, action);
-        } else if (commentActionOverlay != null) {
-            bindCommentActionOverlay(comment);
-        }
-
-        UserActions.ActionCallback cb = new UserActions.ActionCallback() {
-            @Override
-            public void onSuccess(Response response) {
-                applyCommentActionVoteState(ctx, comment.id, action == COMMENT_ACTION_UPVOTE, action == COMMENT_ACTION_DOWNVOTE);
-                commentActionVoteLoadingActions.remove(comment.id);
-                showCommentActionVoteButton(voteSlot, comment, action, true);
-            }
-
-            @Override
-            public void onFailure(String summary, String response) {
-                applyCommentActionVoteState(ctx, comment.id, wasUpvoted, wasDownvoted);
-                commentActionVoteLoadingActions.remove(comment.id);
-                showCommentActionVoteButton(voteSlot, comment, action, true);
-            }
-        };
-
-        switch (action) {
-            case COMMENT_ACTION_UPVOTE:
-                UserActions.upvote(ctx, comment.id, getParentFragmentManager(), cb);
-                break;
-
-            case COMMENT_ACTION_DOWNVOTE:
-                UserActions.downvote(ctx, comment.id, getParentFragmentManager(), cb);
-                break;
-
-            case COMMENT_ACTION_UNVOTE:
-                UserActions.unvote(ctx, comment.id, getParentFragmentManager(), cb);
-                break;
-        }
-    }
-
-    private void applyCommentActionVoteState(Context ctx, int commentId, boolean upvoted, boolean downvoted) {
-        Utils.setUpvoted(ctx, commentId, true, upvoted);
-        if (downvoted && !upvoted) {
-            commentActionDownvotedIds.add(commentId);
-        } else {
-            commentActionDownvotedIds.remove(commentId);
-        }
-    }
-
-    private void showCommentActionVoteLoading(FrameLayout voteSlot, ImageButton button, int action) {
-        String label = getCommentActionVoteLabel(action, false, false, true);
-        setCommentActionVoteButtonsEnabled(false);
-        button.setContentDescription(label);
-        TooltipCompat.setTooltipText(button, label);
-        animateCommentActionViewOut(button, () -> showCommentActionLoadingIndicator(voteSlot, label, true));
-    }
-
-    private void showCommentActionVoteButton(@Nullable FrameLayout voteSlot,
-                                             Comment comment,
-                                             int action,
-                                             boolean animate) {
-        if (!isAdded() || commentActionCommentId != comment.id) {
-            return;
-        }
-
-        Context ctx = requireContext();
-        boolean bookmarked = SettingsUtils.shouldUseBookmarks(ctx) && Utils.isBookmarked(ctx, comment.id);
-        boolean favorited = Utils.isFavorited(ctx, comment.id);
-        boolean upvoted = Utils.isUpvoted(ctx, comment.id, true);
-        boolean downvoted = !upvoted && commentActionDownvotedIds.contains(comment.id);
-        if (voteSlot == null || !ViewCompat.isAttachedToWindow(voteSlot)) {
-            if (commentActionOverlay != null) {
-                bindCommentActionOverlay(comment);
-            }
-            return;
-        }
-
-        CommentActionItem actionItem = new CommentActionItem(
-                action,
-                getCommentActionVoteLabel(action, upvoted, downvoted, false),
-                getCommentActionVoteIconRes(action, upvoted, downvoted),
-                false,
-                false);
-        View outgoing = voteSlot.getChildCount() > 0 ? voteSlot.getChildAt(0) : null;
-        Runnable showVoteButton = () -> {
-            setCommentActionIconButton(voteSlot, actionItem, comment, bookmarked, favorited, false);
-            View incoming = voteSlot.getChildCount() > 0 ? voteSlot.getChildAt(0) : null;
-            Runnable afterLoading = () -> {
-                setCommentActionVoteButtonsEnabled(true);
-                updateCommentActionVoteButtons(comment, bookmarked, favorited, action, upvoted, downvoted, animate);
-            };
-            if (animate && incoming != null) {
-                animateCommentActionViewIn(incoming, afterLoading);
-            } else {
-                afterLoading.run();
-            }
-        };
-
-        if (animate && outgoing != null) {
-            animateCommentActionViewOut(outgoing, showVoteButton);
-        } else {
-            showVoteButton.run();
-        }
-    }
-
-    private void updateCommentActionVoteButtons(Comment comment,
-                                                boolean bookmarked,
-                                                boolean favorited,
-                                                int completedAction,
-                                                boolean upvoted,
-                                                boolean downvoted,
-                                                boolean animate) {
-        updateCommentActionVoteButton(comment, bookmarked, favorited, COMMENT_ACTION_UPVOTE, completedAction, upvoted, downvoted, animate);
-        updateCommentActionVoteButton(comment, bookmarked, favorited, COMMENT_ACTION_DOWNVOTE, completedAction, upvoted, downvoted, animate);
-        updateCommentActionVoteButton(comment, bookmarked, favorited, COMMENT_ACTION_UNVOTE, completedAction, upvoted, downvoted, animate);
-    }
-
-    private void updateCommentActionVoteButton(Comment comment,
-                                               boolean bookmarked,
-                                               boolean favorited,
-                                               int action,
-                                               int completedAction,
-                                               boolean upvoted,
-                                               boolean downvoted,
-                                               boolean animate) {
-        FrameLayout voteSlot = findCommentActionButtonSlot(action);
-        if (voteSlot == null || voteSlot.getChildCount() == 0 || !(voteSlot.getChildAt(0) instanceof ImageButton)) {
-            return;
-        }
-
-        ImageButton button = (ImageButton) voteSlot.getChildAt(0);
-        int iconRes = getCommentActionVoteIconRes(action, upvoted, downvoted);
-        String label = getCommentActionVoteLabel(action, upvoted, downvoted, false);
-        Runnable updateListener = () -> button.setOnClickListener(v ->
-                performCommentAction(action, comment, bookmarked, favorited, button));
-
-        button.setEnabled(true);
-        if (action == completedAction || isCommentActionButtonShowingIcon(button, iconRes)) {
-            button.setImageResource(iconRes);
-            button.setTag(iconRes);
-            button.setContentDescription(label);
-            TooltipCompat.setTooltipText(button, label);
-            updateListener.run();
-            return;
-        }
-
-        if (animate) {
-            animateCommentActionIconChange(button, iconRes, label, updateListener);
-        } else {
-            button.setImageResource(iconRes);
-            button.setTag(iconRes);
-            button.setContentDescription(label);
-            TooltipCompat.setTooltipText(button, label);
-            updateListener.run();
-        }
-    }
-
-    private boolean isCommentActionButtonShowingIcon(ImageButton button, int iconRes) {
-        Object tag = button.getTag();
-        return tag instanceof Integer && (Integer) tag == iconRes;
-    }
-
-    private void setCommentActionVoteButtonsEnabled(boolean enabled) {
-        setCommentActionVoteButtonEnabled(COMMENT_ACTION_UPVOTE, enabled);
-        setCommentActionVoteButtonEnabled(COMMENT_ACTION_DOWNVOTE, enabled);
-        setCommentActionVoteButtonEnabled(COMMENT_ACTION_UNVOTE, enabled);
-    }
-
-    private void setCommentActionVoteButtonEnabled(int action, boolean enabled) {
-        FrameLayout voteSlot = findCommentActionButtonSlot(action);
-        if (voteSlot == null || voteSlot.getChildCount() == 0) {
-            return;
-        }
-
-        View child = voteSlot.getChildAt(0);
-        if (child instanceof ImageButton) {
-            child.setEnabled(enabled);
-        }
-    }
-
-    @Nullable
-    private FrameLayout findCommentActionButtonSlot(int action) {
-        if (commentActionOverlayBinding == null) {
-            return null;
-        }
-
-        return findCommentActionButtonSlot(commentActionOverlayBinding.commentActionActions, action);
-    }
-
-    @Nullable
-    private FrameLayout findCommentActionButtonSlot(ViewGroup parent, int action) {
-        for (int i = 0; i < parent.getChildCount(); i++) {
-            View child = parent.getChildAt(i);
-            if (child instanceof FrameLayout && child.getTag() instanceof Integer && (Integer) child.getTag() == action) {
-                return (FrameLayout) child;
-            }
-            if (child instanceof ViewGroup) {
-                FrameLayout slot = findCommentActionButtonSlot((ViewGroup) child, action);
-                if (slot != null) {
-                    return slot;
-                }
-            }
-        }
-        return null;
-    }
-
-    private void updateCommentActionBookmarkButton(ImageButton button,
-                                                   Comment comment,
-                                                   boolean bookmarked,
-                                                   boolean oldFavorited) {
-        int iconRes = bookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark;
-        String label = bookmarked ? "Remove bookmark" : "Bookmark";
-        animateCommentActionIconChange(button, iconRes, label, () ->
-                button.setOnClickListener(v -> performCommentAction(
-                        COMMENT_ACTION_BOOKMARK,
-                        comment,
-                        bookmarked,
-                        oldFavorited,
-                        button)));
-    }
-
-    private void showCommentActionFavoriteLoading(FrameLayout favoriteSlot,
-                                                  ImageButton button,
-                                                  boolean favorite) {
-        String label = favorite ? "Adding favorite" : "Removing favorite";
-        button.setEnabled(false);
-        button.setContentDescription(label);
-        TooltipCompat.setTooltipText(button, label);
-        animateCommentActionViewOut(button, () -> showCommentActionLoadingIndicator(favoriteSlot, label, true));
-    }
-
-    private void showCommentActionFavoriteButton(@Nullable FrameLayout favoriteSlot,
-                                                 Comment comment,
-                                                 boolean animate) {
-        if (!isAdded() || commentActionCommentId != comment.id) {
-            return;
-        }
-
-        Context ctx = requireContext();
-        boolean bookmarked = SettingsUtils.shouldUseBookmarks(ctx) && Utils.isBookmarked(ctx, comment.id);
-        boolean favorited = Utils.isFavorited(ctx, comment.id);
-        if (favoriteSlot == null || !ViewCompat.isAttachedToWindow(favoriteSlot)) {
-            if (commentActionOverlay != null) {
-                bindCommentActionOverlay(comment);
-            }
-            return;
-        }
-
-        CommentActionItem actionItem = new CommentActionItem(
-                COMMENT_ACTION_FAVORITE,
-                favorited ? "Remove favorite" : "Favorite",
-                favorited ? R.drawable.ic_star_filled : R.drawable.ic_star);
-        View outgoing = favoriteSlot.getChildCount() > 0 ? favoriteSlot.getChildAt(0) : null;
-        if (animate && outgoing != null) {
-            animateCommentActionViewOut(outgoing, () ->
-                    setCommentActionIconButton(favoriteSlot, actionItem, comment, bookmarked, favorited, true));
-        } else {
-            setCommentActionIconButton(favoriteSlot, actionItem, comment, bookmarked, favorited, animate);
-        }
-    }
-
-    @Nullable
-    private FrameLayout getCommentActionButtonSlot(@Nullable View actionView) {
-        if (actionView != null && actionView.getParent() instanceof FrameLayout) {
-            return (FrameLayout) actionView.getParent();
-        }
-        return null;
-    }
-
-    private void animateCommentActionIconChange(ImageButton button,
-                                                int iconRes,
-                                                String label,
-                                                @Nullable Runnable afterIconSet) {
-        button.setEnabled(false);
-        animateCommentActionViewOut(button, () -> {
-            button.setImageResource(iconRes);
-            button.setTag(iconRes);
-            button.setContentDescription(label);
-            TooltipCompat.setTooltipText(button, label);
-            if (afterIconSet != null) {
-                afterIconSet.run();
-            }
-            animateCommentActionViewIn(button, () -> button.setEnabled(true));
-        });
-    }
-
-    private void animateCommentActionViewOut(View view, Runnable afterOut) {
-        view.animate().cancel();
-        if (!ViewCompat.isAttachedToWindow(view)) {
-            view.setAlpha(0f);
-            view.setScaleX(COMMENT_ACTION_ICON_SWAP_MIN_SCALE);
-            view.setScaleY(COMMENT_ACTION_ICON_SWAP_MIN_SCALE);
-            afterOut.run();
-            return;
-        }
-
-        view.animate()
-                .alpha(0f)
-                .scaleX(COMMENT_ACTION_ICON_SWAP_MIN_SCALE)
-                .scaleY(COMMENT_ACTION_ICON_SWAP_MIN_SCALE)
-                .setDuration(COMMENT_ACTION_ICON_SWAP_OUT_DURATION_MS)
-                .setListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        view.animate().setListener(null);
-                        afterOut.run();
-                    }
-                })
-                .start();
-    }
-
-    private void animateCommentActionViewIn(View view, @Nullable Runnable afterIn) {
-        view.animate().cancel();
-        view.setAlpha(0f);
-        view.setScaleX(COMMENT_ACTION_ICON_SWAP_MIN_SCALE);
-        view.setScaleY(COMMENT_ACTION_ICON_SWAP_MIN_SCALE);
-        if (!ViewCompat.isAttachedToWindow(view)) {
-            view.setAlpha(1f);
-            view.setScaleX(1f);
-            view.setScaleY(1f);
-            if (afterIn != null) {
-                afterIn.run();
-            }
-            return;
-        }
-
-        view.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(COMMENT_ACTION_ICON_SWAP_IN_DURATION_MS)
-                .setListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        view.animate().setListener(null);
-                        if (afterIn != null) {
-                            afterIn.run();
-                        }
-                    }
-                })
-                .start();
-    }
-
-    private void configureCommentActionOverlayInsets(View content) {
-        int baseLeft = content.getPaddingLeft();
-        int baseTop = content.getPaddingTop();
-        int baseRight = content.getPaddingRight();
-        int baseBottom = content.getPaddingBottom();
-
-        ViewCompat.setOnApplyWindowInsetsListener(content, new OnApplyWindowInsetsListener() {
-            @NonNull
-            @Override
-            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
-                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
-                v.setPadding(
-                        baseLeft + insets.left,
-                        baseTop + insets.top,
-                        baseRight + insets.right,
-                        baseBottom + insets.bottom);
-                return windowInsets;
-            }
-        });
-        ViewUtils.requestApplyInsetsWhenAttached(content);
-    }
-
-    private void configureCommentActionCardWidth(MaterialCardView card) {
-        int maxCardWidth = Utils.pxFromDpInt(getResources(), Utils.isTablet(getResources()) ? 640 : 520);
-        int horizontalPadding = Utils.pxFromDpInt(getResources(), 40);
-        int hostWidth = getResources().getDisplayMetrics().widthPixels;
-        if (card.getParent() instanceof View) {
-            int parentWidth = ((View) card.getParent()).getWidth();
-            if (parentWidth > 0) {
-                hostWidth = parentWidth;
-            }
-        }
-        int availableWidth = Math.max(Utils.pxFromDpInt(getResources(), 280),
-                hostWidth - horizontalPadding);
-
-        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) card.getLayoutParams();
-        params.width = Math.min(maxCardWidth, availableWidth);
-        card.setLayoutParams(params);
-    }
-
-    private void resizeCommentActionDialogScroll() {
-        if (commentActionOverlayBinding == null) {
-            return;
-        }
-
-        NestedScrollView cardScroll = commentActionOverlayBinding.commentActionCardScroll;
-        View content = commentActionOverlayBinding.commentActionContent;
-        if (cardScroll == null || content == null) {
-            return;
-        }
-
-        cardScroll.post(() -> {
-            if (commentActionOverlayBinding == null) {
-                return;
-            }
-
-            int availableHeight = content.getHeight() - content.getPaddingTop() - content.getPaddingBottom();
-            if (availableHeight <= 0 || cardScroll.getChildCount() == 0) {
-                return;
-            }
-
-            int minHeight = Utils.pxFromDpInt(getResources(), 160);
-            int maxHeight = Math.max(minHeight, availableHeight);
-            View child = cardScroll.getChildAt(0);
-            int contentHeight = child.getHeight() + cardScroll.getPaddingTop() + cardScroll.getPaddingBottom();
-            if (contentHeight <= 0) {
-                return;
-            }
-
-            boolean needsScrolling = contentHeight > maxHeight;
-            ViewGroup.LayoutParams params = cardScroll.getLayoutParams();
-            params.height = needsScrolling ? maxHeight : ViewGroup.LayoutParams.WRAP_CONTENT;
-            cardScroll.setLayoutParams(params);
-            cardScroll.setVerticalFadingEdgeEnabled(needsScrolling);
-            cardScroll.setOverScrollMode(needsScrolling ? View.OVER_SCROLL_IF_CONTENT_SCROLLS : View.OVER_SCROLL_NEVER);
-        });
-    }
-
-    private void resizeCommentActionTextBox(NestedScrollView textScroll, HtmlTextView commentText) {
-        textScroll.post(() -> {
-            if (commentActionOverlay == null) {
-                return;
-            }
-
-            int maxHeight = Utils.pxFromDpInt(getResources(), COMMENT_ACTION_TEXT_MAX_HEIGHT_DP);
-            int contentHeight = commentText.getHeight();
-            if (contentHeight <= 0) {
-                return;
-            }
-
-            int paddedContentHeight = contentHeight + textScroll.getPaddingTop() + textScroll.getPaddingBottom();
-            boolean needsScrolling = paddedContentHeight > maxHeight;
-
-            ViewGroup.LayoutParams params = textScroll.getLayoutParams();
-            params.height = needsScrolling ? maxHeight : paddedContentHeight;
-            textScroll.setLayoutParams(params);
-            textScroll.setVerticalScrollBarEnabled(needsScrolling);
-            textScroll.setScrollbarFadingEnabled(true);
-            textScroll.setVerticalFadingEdgeEnabled(needsScrolling);
-            textScroll.setOverScrollMode(needsScrolling ? View.OVER_SCROLL_IF_CONTENT_SCROLLS : View.OVER_SCROLL_NEVER);
-            resizeCommentActionDialogScroll();
-        });
-    }
-
-    private MaterialContainerTransform createCommentActionTransform(ViewGroup drawingView, View startView, View endView, int direction) {
-        MaterialContainerTransform transform = new MaterialContainerTransform();
-        transform.setStartView(startView);
-        transform.setEndView(endView);
-        transform.setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS);
-        transform.setScrimColor(Color.TRANSPARENT);
-        transform.setDrawingViewId(ensureCommentActionDrawingViewId(drawingView));
-        transform.setTransitionDirection(direction);
-        transform.setFadeMode(MaterialContainerTransform.FADE_MODE_THROUGH);
-        transform.setFitMode(MaterialContainerTransform.FIT_MODE_AUTO);
-        transform.setStartShapeAppearanceModel(createCommentActionShape(startView));
-        transform.setEndShapeAppearanceModel(createCommentActionShape(endView));
-        transform.setScaleMaskProgressThresholds(createCommentActionProgressThresholds());
-        transform.setShapeMaskProgressThresholds(createCommentActionProgressThresholds());
-        transform.setElevationShadowEnabled(true);
-        transform.setStartContainerColor(getCommentActionContainerColor(startView));
-        transform.setEndContainerColor(getCommentActionContainerColor(endView));
-        transform.setStartElevation(getCommentActionContainerElevation(startView));
-        transform.setEndElevation(getCommentActionContainerElevation(endView));
-
-        return transform;
-    }
-
-    private MaterialContainerTransform.ProgressThresholds createCommentActionProgressThresholds() {
-        return new MaterialContainerTransform.ProgressThresholds(
-                COMMENT_ACTION_TRANSFORM_START_PROGRESS,
-                COMMENT_ACTION_TRANSFORM_END_PROGRESS);
-    }
-
-    private ShapeAppearanceModel createCommentActionShape(View view) {
-        int cornerRadiusDp;
-        if (view == commentActionCard) {
-            cornerRadiusDp = COMMENT_ACTION_CARD_CORNER_RADIUS_DP;
-        } else if (view instanceof MaterialCardView) {
-            cornerRadiusDp = COMMENT_ACTION_CARD_SOURCE_CORNER_RADIUS_DP;
-        } else {
-            cornerRadiusDp = COMMENT_ACTION_STANDARD_SOURCE_CORNER_RADIUS_DP;
-        }
-        return ShapeAppearanceModel.builder()
-                .setAllCornerSizes(Utils.pxFromDpInt(getResources(), cornerRadiusDp))
-                .build();
-    }
-
-    private int getCommentActionContainerColor(View view) {
-        if (view instanceof MaterialCardView) {
-            return ((MaterialCardView) view).getCardBackgroundColor().getDefaultColor();
-        }
-        return getCommentActionCardBackgroundColor(view.getContext());
-    }
-
-    private int getCommentActionCardBackgroundColor(Context ctx) {
-        boolean useCardStyle = adapter != null
-                ? adapter.cardStyle
-                : SettingsUtils.shouldUseCardCommentDisplayStyle(ctx);
-        if (useCardStyle) {
-            return MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorSurfaceContainerHigh, Color.TRANSPARENT);
-        }
-        return ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx));
-    }
-
-    private float getCommentActionContainerElevation(View view) {
-        if (view instanceof MaterialCardView) {
-            return ((MaterialCardView) view).getCardElevation();
-        }
-        return view.getElevation();
-    }
-
-    private void dismissCommentActionOverlay(boolean animate) {
-        dismissCommentActionOverlay(animate, null);
-    }
-
-    private void dismissCommentActionOverlay(boolean animate, @Nullable Runnable afterDismiss) {
-        if (commentActionOverlay == null) {
-            if (afterDismiss != null) {
-                afterDismiss.run();
-            }
-            return;
-        }
-        if (commentActionOverlayDismissing) {
-            return;
-        }
-        if (commentActionOverlayBinding == null || commentActionCard == null) {
-            finishCommentActionOverlayDismiss(afterDismiss);
-            return;
-        }
-
-        commentActionOverlayDismissing = true;
-        commentActionPredictiveBackActive = false;
-        ViewGroup overlayHost = getCommentActionOverlayHost();
-        View scrim = commentActionOverlayBinding.commentActionScrim;
-        View endView = resolveCommentActionSourceView(commentActionCommentId);
-
-        pendingCommentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
-        commentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
-        if (adapter != null) {
-            adapter.disableCommentATagClick = false;
-        }
-        syncOnBackPressedCallbackEnabledState();
-
-        if (animate && overlayHost != null && commentActionCard != null && isUsableCommentActionTransition(overlayHost, commentActionCard, endView)) {
-            MaterialContainerTransform transform = createCommentActionTransform(
-                    overlayHost,
-                    commentActionCard,
-                    endView,
-                    MaterialContainerTransform.TRANSITION_DIRECTION_RETURN);
-            transform.addTarget(endView);
-            transform.addListener(new TransitionListenerAdapter() {
-                private boolean finished;
-
-                @Override
-                public void onTransitionEnd(@NonNull Transition transition) {
-                    finish();
-                }
-
-                @Override
-                public void onTransitionCancel(@NonNull Transition transition) {
-                    finish();
-                }
-
-                private void finish() {
-                    if (finished) {
-                        return;
-                    }
-                    finished = true;
-                    finishCommentActionOverlayDismiss(afterDismiss);
-                }
-            });
-            TransitionManager.beginDelayedTransition(overlayHost, transform);
-            scrim.animate().alpha(0f).setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS).start();
-            setCommentActionSourceVisible(endView, true);
-            commentActionCard.setVisibility(View.INVISIBLE);
-        } else {
-            commentActionCard.animate()
-                    .alpha(0f)
-                    .scaleX(0.96f)
-                    .scaleY(0.96f)
-                    .setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS)
-                    .setListener(new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationEnd(Animator animation) {
-                            finishCommentActionOverlayDismiss(afterDismiss);
-                        }
-                    });
-            scrim.animate().alpha(0f).setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS).start();
-        }
-    }
-
-    private void finishCommentActionOverlayDismiss(@Nullable Runnable afterDismiss) {
-        removeCommentActionOverlayNow();
-        if (afterDismiss != null) {
-            afterDismiss.run();
-        }
-    }
-
-    private void removeCommentActionOverlayNow() {
-        if (commentActionOverlay == null) {
-            return;
-        }
-
-        View content = commentActionOverlayBinding != null ? commentActionOverlayBinding.commentActionContent : null;
-        if (content != null) {
-            ViewCompat.setOnApplyWindowInsetsListener(content, null);
-        }
-        setCommentActionSourceVisible(commentActionSourceView, true);
-        if (commentActionOverlay.getParent() instanceof ViewGroup) {
-            ((ViewGroup) commentActionOverlay.getParent()).removeView(commentActionOverlay);
-        }
-
-        commentActionOverlay = null;
-        commentActionOverlayBinding = null;
-        commentActionCard = null;
-        commentActionSourceView = null;
-        commentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
-        commentActionOverlayDismissing = false;
-        if (adapter != null) {
-            adapter.disableCommentATagClick = false;
-        }
-        syncOnBackPressedCallbackEnabledState();
-        updateCommentsStatusBarAppearance();
-    }
-
-    private void startCommentActionPredictiveBack(@NonNull BackEventCompat backEvent) {
-        if (commentActionCard == null || commentActionOverlayBinding == null || commentActionOverlayDismissing) {
-            return;
-        }
-
-        commentActionPredictiveBackActive = true;
-        commentActionCard.animate().cancel();
-        View scrim = commentActionOverlayBinding.commentActionScrim;
-        if (scrim != null) {
-            scrim.animate().cancel();
-        }
-        updateCommentActionPredictiveBack(backEvent);
-    }
-
-    private void updateCommentActionPredictiveBack(@NonNull BackEventCompat backEvent) {
-        if (commentActionCard == null || commentActionOverlayBinding == null || commentActionOverlayDismissing) {
-            return;
-        }
-
-        commentActionPredictiveBackActive = true;
-        float progress = Math.max(0f, Math.min(1f, backEvent.getProgress()));
-        float easedProgress = 1f - ((1f - progress) * (1f - progress));
-        float scale = 1f - ((1f - COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCALE) * easedProgress);
-        float edgeDirection = backEvent.getSwipeEdge() == BackEventCompat.EDGE_RIGHT ? -1f : 1f;
-
-        commentActionCard.setPivotX(edgeDirection > 0f ? 0f : commentActionCard.getWidth());
-        commentActionCard.setPivotY(backEvent.getTouchY() > 0f
-                ? Math.max(0f, Math.min(commentActionCard.getHeight(), backEvent.getTouchY() - commentActionCard.getTop()))
-                : commentActionCard.getHeight() / 2f);
-        commentActionCard.setScaleX(scale);
-        commentActionCard.setScaleY(scale);
-        commentActionCard.setTranslationX(edgeDirection
-                * Utils.pxFromDpInt(getResources(), COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_X_DP)
-                * easedProgress);
-        commentActionCard.setTranslationY(Utils.pxFromDpInt(getResources(), COMMENT_ACTION_PREDICTIVE_BACK_TRANSLATION_Y_DP)
-                * easedProgress);
-
-        View scrim = commentActionOverlayBinding.commentActionScrim;
-        if (scrim != null) {
-            scrim.setAlpha(1f - ((1f - COMMENT_ACTION_PREDICTIVE_BACK_MIN_SCRIM_ALPHA) * easedProgress));
-        }
-    }
-
-    private void cancelCommentActionPredictiveBack() {
-        if (commentActionCard == null || commentActionOverlayBinding == null || !commentActionPredictiveBackActive) {
-            return;
-        }
-
-        commentActionPredictiveBackActive = false;
-        commentActionCard.animate()
-                .translationX(0f)
-                .translationY(0f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS)
-                .setListener(null)
-                .start();
-
-        View scrim = commentActionOverlayBinding.commentActionScrim;
-        if (scrim != null) {
-            scrim.animate()
-                    .alpha(1f)
-                    .setDuration(COMMENT_ACTION_TRANSFORM_DURATION_MS)
-                    .start();
-        }
-    }
-
-    private void commitCommentActionPredictiveBack() {
-        if (commentActionOverlay == null || commentActionCard == null || commentActionOverlayBinding == null || commentActionOverlayDismissing) {
-            return;
-        }
-
-        commentActionPredictiveBackActive = false;
-        commentActionCard.animate().cancel();
-        dismissCommentActionOverlay(true);
-    }
-
-    private void setCommentActionSourceVisible(@Nullable View sourceView, boolean visible) {
-        if (isUsableTransitionView(sourceView)) {
-            sourceView.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
-        }
-    }
-
-    private void restorePendingCommentActionOverlay() {
-        if (pendingCommentActionCommentId == NO_COMMENT_ACTION_COMMENT_ID || commentActionOverlay != null) {
-            return;
-        }
-
-        Comment comment = findCommentById(pendingCommentActionCommentId);
-        if (comment == null) {
-            return;
-        }
-
-        int restoredCommentId = pendingCommentActionCommentId;
-        pendingCommentActionCommentId = NO_COMMENT_ACTION_COMMENT_ID;
-        showCommentActionOverlay(comment, findCommentView(restoredCommentId), false);
+        commentActionOverlayController.show(comment, view, true);
     }
 
     @Nullable
@@ -3976,14 +2776,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         View fragmentView = getView();
         return fragmentView instanceof ViewGroup ? (ViewGroup) fragmentView : null;
-    }
-
-    @Nullable
-    private View resolveCommentActionSourceView(int commentId) {
-        if (isUsableTransitionView(commentActionSourceView)) {
-            return commentActionSourceView;
-        }
-        return findCommentView(commentId);
     }
 
     @Nullable
@@ -4024,61 +2816,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         }
         return null;
-    }
-
-    private boolean isUsableTransitionView(@Nullable View view) {
-        return view != null && ViewCompat.isAttachedToWindow(view) && view.getWidth() > 0 && view.getHeight() > 0;
-    }
-
-    private boolean isUsableCommentActionTransition(@Nullable ViewGroup drawingView, @Nullable View startView, @Nullable View endView) {
-        return isUsableTransitionView(drawingView)
-                && isUsableTransitionView(startView)
-                && isUsableTransitionView(endView)
-                && isDescendantOf(startView, drawingView)
-                && isDescendantOf(endView, drawingView);
-    }
-
-    private int ensureCommentActionDrawingViewId(@NonNull ViewGroup drawingView) {
-        if (drawingView.getId() == View.NO_ID) {
-            drawingView.setId(View.generateViewId());
-        }
-        return drawingView.getId();
-    }
-
-    private boolean isDescendantOf(@Nullable View view, @NonNull ViewGroup ancestor) {
-        View current = view;
-        while (current != null) {
-            if (current == ancestor) {
-                return true;
-            }
-            ViewParent parent = current.getParent();
-            current = parent instanceof View ? (View) parent : null;
-        }
-        return false;
-    }
-
-    private static class CommentActionItem {
-        final int action;
-        final String label;
-        final int iconRes;
-        final boolean loading;
-        final boolean enabled;
-
-        CommentActionItem(int action, String label, int iconRes) {
-            this(action, label, iconRes, false);
-        }
-
-        CommentActionItem(int action, String label, int iconRes, boolean loading) {
-            this(action, label, iconRes, loading, true);
-        }
-
-        CommentActionItem(int action, String label, int iconRes, boolean loading, boolean enabled) {
-            this.action = action;
-            this.label = label;
-            this.iconRes = iconRes;
-            this.loading = loading;
-            this.enabled = enabled;
-        }
     }
 
     private void updateUserTags(String changedUser) {
