@@ -256,7 +256,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
             boolean topLevelOnly = SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL.equals(volumeNavigationMode);
             CommentsFragment fragment = (CommentsFragment) getSupportFragmentManager()
                     .findFragmentById(R.id.main_fragment_comments_container);
-            if (fragment != null && fragment.isAdded()) {
+            if (fragment != null && fragment.isAdded() && fragment.isBottomSheetFullyExpanded()) {
                 if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
                     fragment.navigateToNextComment(topLevelOnly, true);
                     return true;

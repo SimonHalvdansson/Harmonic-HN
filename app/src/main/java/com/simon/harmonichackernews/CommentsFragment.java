@@ -923,6 +923,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private boolean shouldShowCommentsStatusBarProtection() {
+        return isBottomSheetFullyExpanded();
+    }
+
+    public boolean isBottomSheetFullyExpanded() {
         if (bottomSheet == null) {
             return false;
         }

@@ -163,16 +163,14 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         String volumeNavigationMode = SettingsUtils.getCommentsVolumeNavigationMode(getApplicationContext());
         if (!SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED.equals(volumeNavigationMode)) {
             boolean topLevelOnly = SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL.equals(volumeNavigationMode);
-            if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-                if (commentsFragment != null) {
+            if (commentsFragment != null && commentsFragment.isBottomSheetFullyExpanded()) {
+                if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
                     commentsFragment.navigateToNextComment(topLevelOnly, true);
-                }
-                return true;
-            } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-                if (commentsFragment != null) {
+                    return true;
+                } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
                     commentsFragment.navigateToPreviousComment(topLevelOnly, true);
+                    return true;
                 }
-                return true;
             }
         }
         return super.onKeyDown(keyCode, event);
