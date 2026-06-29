@@ -3651,7 +3651,10 @@ public class StoriesFragment extends Fragment {
     }
 
     private void loadCommentMaster(Story story, int parentId, int attempt, int loadGeneration) {
-        if (parentId <= 0 || attempt >= 8 || story.commentMasterId > 0 || !isCurrentStoryListGeneration(loadGeneration)) {
+        if (parentId <= 0
+                || attempt >= 8
+                || (story.commentMasterId > 0 && !TextUtils.isEmpty(story.commentMasterTitle))
+                || !isCurrentStoryListGeneration(loadGeneration)) {
             return;
         }
 

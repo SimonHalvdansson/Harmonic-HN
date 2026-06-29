@@ -87,6 +87,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final int TYPE_COMMENT_CARD = 8;
     private static final float CLICKED_PREVIEW_IMAGE_ALPHA = 0.6f;
     private static final long PREVIEW_IMAGE_FADE_IN_DURATION_MS = 160;
+    private static final long COMMENT_HEADER_RESOLVE_FADE_DURATION_MS = 160;
     private static final long CLICKED_STATE_ANIMATION_DURATION_MS = 180;
     private static final long CARD_TINT_ANIMATION_DURATION_MS = 180;
     private static final int FAVICON_TINT_SIZE_DP = 64;
@@ -350,8 +351,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             Story story = stories.get(position);
 
-            String masterTitle = TextUtils.isEmpty(story.commentMasterTitle) ? "Hacker News thread" : story.commentMasterTitle;
-            commentViewHolder.headerText.setText("On \"" + masterTitle + "\"");
+            bindCommentRowHeader(commentViewHolder, story);
             commentViewHolder.headerTime.setText(Utils.getTimeAgo(story.time));
             commentViewHolder.storyButton.setEnabled(story.commentMasterId > 0 || story.parentId > 0);
             bindCommentRowText(commentViewHolder, story);
@@ -400,6 +400,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyViewHolder.cancelClickedStateAnimator();
             resetPreviewImages(storyViewHolder);
             resetStoryCardBackground(storyViewHolder);
+        } else if (holder instanceof CommentViewHolder) {
+            ((CommentViewHolder) holder).resetHeaderState();
         }
         super.onViewRecycled(holder);
     }
@@ -1491,8 +1493,63 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
     }
 
+    private void bindCommentRowHeader(CommentViewHolder commentViewHolder, Story story) {
+        if (TextUtils.isEmpty(story.commentMasterTitle)) {
+            commentViewHolder.cancelHeaderAnimation();
+            commentViewHolder.headerText.setText(null);
+            commentViewHolder.headerText.setAlpha(1.0f);
+            commentViewHolder.headerText.setVisibility(View.GONE);
+            commentViewHolder.headerLoading.setAlpha(1.0f);
+            commentViewHolder.headerLoading.setVisibility(View.VISIBLE);
+            commentViewHolder.headerLoading.setContentDescription("On post title loading");
+            commentViewHolder.headerBoundStoryId = story.id;
+            commentViewHolder.headerShowingLoading = true;
+            return;
+        }
+
+        boolean animateResolvedTitle = commentViewHolder.headerBoundStoryId == story.id
+                && commentViewHolder.headerShowingLoading
+                && isVisibleOnScreen(commentViewHolder.itemView);
+
+        commentViewHolder.cancelHeaderAnimation();
+        commentViewHolder.headerText.setText("On \"" + story.commentMasterTitle + "\"");
+        commentViewHolder.headerLoading.setContentDescription(null);
+
+        if (animateResolvedTitle) {
+            commentViewHolder.headerText.setAlpha(0.0f);
+            commentViewHolder.headerText.setVisibility(View.VISIBLE);
+            commentViewHolder.headerLoading.setAlpha(1.0f);
+            commentViewHolder.headerLoading.setVisibility(View.VISIBLE);
+            commentViewHolder.headerText.animate()
+                    .alpha(1.0f)
+                    .setDuration(COMMENT_HEADER_RESOLVE_FADE_DURATION_MS)
+                    .start();
+            commentViewHolder.headerLoading.animate()
+                    .alpha(0.0f)
+                    .setDuration(COMMENT_HEADER_RESOLVE_FADE_DURATION_MS)
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            commentViewHolder.headerLoading.setVisibility(View.GONE);
+                            commentViewHolder.headerLoading.setAlpha(1.0f);
+                            commentViewHolder.headerLoading.animate().setListener(null);
+                        }
+                    })
+                    .start();
+        } else {
+            commentViewHolder.headerText.setAlpha(1.0f);
+            commentViewHolder.headerText.setVisibility(View.VISIBLE);
+            commentViewHolder.headerLoading.setAlpha(1.0f);
+            commentViewHolder.headerLoading.setVisibility(View.GONE);
+        }
+
+        commentViewHolder.headerBoundStoryId = story.id;
+        commentViewHolder.headerShowingLoading = false;
+    }
+
     private void applyCommentRowTypefaces(CommentViewHolder commentViewHolder) {
         FontUtils.setTypefaceForFont(commentViewHolder.headerText, font, true, 13);
+        FontUtils.setTypefaceForFont(commentViewHolder.headerLoadingPrefix, font, true, 13);
         FontUtils.setTypefaceForFont(commentViewHolder.headerTime, font, true, 12);
         FontUtils.setCommentTextTypefaceForFont(commentViewHolder.bodyText, font, commentTextSize);
     }
@@ -1782,11 +1839,15 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public class CommentViewHolder extends RecyclerView.ViewHolder {
 
         public final TextView headerText;
+        public final LinearLayout headerLoading;
+        public final TextView headerLoadingPrefix;
         public final TextView headerTime;
         public final HtmlTextView bodyText;
         public final Button storyButton;
         public final Button repliesButton;
         public final View scrim;
+        private int headerBoundStoryId = -1;
+        private boolean headerShowingLoading = false;
 
 
         public CommentViewHolder(SubmissionsCommentBinding binding) {
@@ -1800,6 +1861,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         private CommentViewHolder(View view, SubmissionsCommentBinding binding, boolean cardStyle) {
             super(view);
             headerText = binding.submissionsCommentHeader;
+            headerLoading = binding.submissionsCommentHeaderLoading;
+            headerLoadingPrefix = binding.submissionsCommentHeaderLoadingPrefix;
             headerTime = binding.submissionsCommentTime;
             bodyText = binding.submissionsCommentBody;
             storyButton = binding.submissionsCommentButtonStory;
@@ -1846,6 +1909,22 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     }
                 }
             });
+        }
+
+        void cancelHeaderAnimation() {
+            headerText.animate().cancel();
+            headerLoading.animate().cancel();
+            headerLoading.animate().setListener(null);
+        }
+
+        void resetHeaderState() {
+            cancelHeaderAnimation();
+            headerBoundStoryId = -1;
+            headerShowingLoading = false;
+            headerText.setAlpha(1.0f);
+            headerLoading.setAlpha(1.0f);
+            headerLoading.setVisibility(View.GONE);
+            headerLoading.setContentDescription(null);
         }
     }
 

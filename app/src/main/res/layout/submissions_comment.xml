@@ -21,16 +21,64 @@
         android:orientation="horizontal"
         android:paddingBottom="4dp">
 
-        <TextView
-            android:id="@+id/submissions_comment_header"
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:fontFamily="@font/product_sans"
-            android:textColor="?attr/textColorDisabled"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            tools:text="On 'We found and fixed' a rare race condition in our sessions handling'" />
+            android:clipChildren="false"
+            android:clipToPadding="false">
+
+            <TextView
+                android:id="@+id/submissions_comment_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/product_sans"
+                android:textColor="?attr/textColorDisabled"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="On 'We found and fixed' a rare race condition in our sessions handling'" />
+
+            <LinearLayout
+                android:id="@+id/submissions_comment_header_loading"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:baselineAligned="false"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/submissions_comment_header_loading_prefix"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/product_sans"
+                    android:text="On"
+                    android:textColor="?attr/textColorDisabled"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <com.facebook.shimmer.ShimmerFrameLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:importantForAccessibility="no"
+                    app:shimmer_base_alpha="0.15"
+                    app:shimmer_base_color="?attr/drawableColor"
+                    app:shimmer_duration="2000"
+                    app:shimmer_highlight_alpha="0.17">
+
+                    <View
+                        android:layout_width="150dp"
+                        android:layout_height="17dp"
+                        android:background="@drawable/smooth_rectangle_drawable" />
+
+                </com.facebook.shimmer.ShimmerFrameLayout>
+
+            </LinearLayout>
+
+        </FrameLayout>
 
         <TextView
             android:id="@+id/submissions_comment_time"
