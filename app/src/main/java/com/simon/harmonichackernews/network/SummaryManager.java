@@ -89,15 +89,15 @@ public class SummaryManager {
     public static void summarizeArticle(Context ctx, RequestQueue queue, String articleUrl, SummaryCallback callback) {
         new Thread(() -> {
             try {
-                String content = extractMainContent(articleUrl);
-                if (content.length() > 15000) {
-                    content = content.substring(0, 15000);
-                }
-                summarizeWithLLM(ctx, queue, content, callback);
+                summarizeText(ctx, queue, extractMainContent(articleUrl), callback);
             } catch (Exception e) {
                 postFailure(callback, "Extraction failed: " + getThrowableMessage(e));
             }
         }).start();
+    }
+
+    public static void summarizeText(Context ctx, RequestQueue queue, String text, SummaryCallback callback) {
+        summarizeWithLLM(ctx, queue, prepareCloudSummaryInput(text), callback);
     }
 
     public static boolean canAttemptLocalSummarization() {
@@ -143,28 +143,8 @@ public class SummaryManager {
 
         Context appContext = ctx.getApplicationContext();
         new Thread(() -> {
-            Summarizer summarizer = null;
-            boolean summarizerReleased = false;
             try {
-                String content = prepareLocalSummaryInput(extractMainContent(articleUrl));
-                if (content.length() < LOCAL_SUMMARY_MIN_CHARS) {
-                    postFailure(callback, "Article is too short for Gemini Nano summarization");
-                    return;
-                }
-
-                summarizer = Summarization.getClient(createLocalSummarizerOptions(appContext));
-                int featureStatus = summarizer.checkFeatureStatus().get();
-                if (featureStatus == FeatureStatus.UNAVAILABLE) {
-                    postFailure(callback, "Gemini Nano summarization is not available on this device");
-                } else if (featureStatus == FeatureStatus.DOWNLOADABLE) {
-                    downloadLocalFeatureAndSummarize(content, summarizer, callback);
-                    summarizerReleased = true;
-                } else if (featureStatus == FeatureStatus.DOWNLOADING || featureStatus == FeatureStatus.AVAILABLE) {
-                    runLocalInference(content, summarizer, callback);
-                    summarizerReleased = true;
-                } else {
-                    postFailure(callback, "Gemini Nano summarization is not available on this device");
-                }
+                summarizePreparedLocalText(appContext, prepareLocalSummaryInput(extractMainContent(articleUrl)), callback);
             } catch (ExecutionException e) {
                 postFailure(callback, "Gemini Nano failed: " + getThrowableMessage(e.getCause()));
             } catch (InterruptedException e) {
@@ -172,10 +152,27 @@ public class SummaryManager {
                 postFailure(callback, "Gemini Nano summarization was interrupted");
             } catch (Exception e) {
                 postFailure(callback, "Gemini Nano failed: " + getThrowableMessage(e));
-            } finally {
-                if (summarizer != null && !summarizerReleased) {
-                    summarizer.close();
-                }
+            }
+        }).start();
+    }
+
+    public static void summarizeTextWithGeminiNano(Context ctx, String text, SummaryCallback callback) {
+        if (!canAttemptLocalSummarization()) {
+            postFailure(callback, "Gemini Nano requires Android 8.0 or newer");
+            return;
+        }
+
+        Context appContext = ctx.getApplicationContext();
+        new Thread(() -> {
+            try {
+                summarizePreparedLocalText(appContext, prepareLocalSummaryInput(text), callback);
+            } catch (ExecutionException e) {
+                postFailure(callback, "Gemini Nano failed: " + getThrowableMessage(e.getCause()));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                postFailure(callback, "Gemini Nano summarization was interrupted");
+            } catch (Exception e) {
+                postFailure(callback, "Gemini Nano failed: " + getThrowableMessage(e));
             }
         }).start();
     }
@@ -195,6 +192,36 @@ public class SummaryManager {
                 .setOutputType(SummarizerOptions.OutputType.THREE_BULLETS)
                 .setLanguage(SummarizerOptions.Language.ENGLISH)
                 .build();
+    }
+
+    private static void summarizePreparedLocalText(Context appContext, String content, SummaryCallback callback)
+            throws ExecutionException, InterruptedException {
+        Summarizer summarizer = null;
+        boolean summarizerReleased = false;
+        try {
+            if (content.length() < LOCAL_SUMMARY_MIN_CHARS) {
+                postFailure(callback, "Article is too short for Gemini Nano summarization");
+                return;
+            }
+
+            summarizer = Summarization.getClient(createLocalSummarizerOptions(appContext));
+            int featureStatus = summarizer.checkFeatureStatus().get();
+            if (featureStatus == FeatureStatus.UNAVAILABLE) {
+                postFailure(callback, "Gemini Nano summarization is not available on this device");
+            } else if (featureStatus == FeatureStatus.DOWNLOADABLE) {
+                downloadLocalFeatureAndSummarize(content, summarizer, callback);
+                summarizerReleased = true;
+            } else if (featureStatus == FeatureStatus.DOWNLOADING || featureStatus == FeatureStatus.AVAILABLE) {
+                runLocalInference(content, summarizer, callback);
+                summarizerReleased = true;
+            } else {
+                postFailure(callback, "Gemini Nano summarization is not available on this device");
+            }
+        } finally {
+            if (summarizer != null && !summarizerReleased) {
+                summarizer.close();
+            }
+        }
     }
 
     private static void downloadLocalFeatureAndSummarize(String text, Summarizer summarizer, SummaryCallback callback) {
@@ -258,6 +285,14 @@ public class SummaryManager {
             truncated.append(words[i]);
         }
         return truncated.toString();
+    }
+
+    private static String prepareCloudSummaryInput(String text) {
+        String normalized = text == null ? "" : text.trim();
+        if (normalized.length() > 15000) {
+            return normalized.substring(0, 15000);
+        }
+        return normalized;
     }
 
     private static boolean isLocalFeatureUsable(int featureStatus) {

@@ -63,6 +63,9 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
@@ -104,6 +107,10 @@ class CommentsWebViewController {
         void onReaderModeChanged(boolean enabled);
 
         void onReaderModeAvailabilityChanged(boolean available);
+    }
+
+    interface PageTextCallback {
+        void onResult(@Nullable String text);
     }
 
     private final CommentsFragment fragment;
@@ -232,6 +239,26 @@ class CommentsWebViewController {
 
     boolean hasWebView() {
         return webView != null;
+    }
+
+    void getLoadedPageText(@NonNull PageTextCallback callback) {
+        WebView targetWebView = webView;
+        if (!canReadLoadedPageText(targetWebView)) {
+            callback.onResult(null);
+            return;
+        }
+
+        int generation = webViewLoadGeneration;
+        targetWebView.evaluateJavascript(
+                "(function() { return document.body ? (document.body.innerText || '') : ''; })();",
+                result -> {
+                    if (generation != webViewLoadGeneration || !canReadLoadedPageText(targetWebView)) {
+                        callback.onResult(null);
+                        return;
+                    }
+                    callback.onResult(decodeJavascriptString(result));
+                }
+        );
     }
 
     boolean canGoBack() {
@@ -1368,8 +1395,30 @@ class CommentsWebViewController {
         pendingSummaryOnDone = null;
         targetWebView.evaluateJavascript(
                 "(function() { return document.body ? (document.body.innerText || '') : ''; })();",
-                result -> finishPendingSummary(generation, result != null ? result.replaceAll("^\"|\"$", "") : "", onDone)
+                result -> finishPendingSummary(generation, decodeJavascriptString(result), onDone)
         );
+    }
+
+    private boolean canReadLoadedPageText(@Nullable WebView targetWebView) {
+        return targetWebView != null
+                && targetWebView == webView
+                && startedLoading
+                && !webViewLoadInProgress
+                && targetWebView.getProgress() >= 100
+                && !showingErrorPage
+                && !TextUtils.isEmpty(targetWebView.getUrl())
+                && !isErrorPageUrl(targetWebView.getUrl());
+    }
+
+    private static String decodeJavascriptString(@Nullable String result) {
+        if (result == null || "null".equals(result)) {
+            return "";
+        }
+        try {
+            return new JSONArray("[" + result + "]").optString(0, "");
+        } catch (JSONException e) {
+            return result.replaceAll("^\"|\"$", "");
+        }
     }
 
     private void finishPendingSummary(int generation, String summary, @Nullable Runnable completedCallback) {

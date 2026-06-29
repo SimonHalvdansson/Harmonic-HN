@@ -2855,11 +2855,22 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
 
-        String mode = PreferenceManager.getDefaultSharedPreferences(requireContext())
+        Context context = requireContext();
+        String mode = PreferenceManager.getDefaultSharedPreferences(context)
                 .getString("pref_ai_summary_mode", "cloud");
 
+        if (webViewController != null) {
+            webViewController.getLoadedPageText(text -> summarizeStory(context, mode, text, onDone));
+            return;
+        }
+
+        summarizeStory(context, mode, null, onDone);
+    }
+
+    private void summarizeStory(Context context, String mode, @Nullable String articleText, Runnable onDone) {
+        boolean hasArticleText = !TextUtils.isEmpty(articleText);
         if ("local".equals(mode)) {
-            SummaryManager.summarizeArticleWithGeminiNano(requireContext(), story.url, new SummaryManager.SummaryCallback() {
+            SummaryManager.SummaryCallback callback = new SummaryManager.SummaryCallback() {
                 @Override
                 public void onSuccess(String summary) {
                     story.summary = summary;
@@ -2873,9 +2884,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     story.summaryGeneratedSuccessfully = false;
                     onDone.run();
                 }
-            });
+            };
+            if (hasArticleText) {
+                SummaryManager.summarizeTextWithGeminiNano(context, articleText, callback);
+            } else {
+                SummaryManager.summarizeArticleWithGeminiNano(context, story.url, callback);
+            }
         } else {
-            SummaryManager.summarizeArticle(requireContext(), queue, story.url, new SummaryManager.SummaryCallback() {
+            SummaryManager.SummaryCallback callback = new SummaryManager.SummaryCallback() {
                 @Override
                 public void onSuccess(String summary) {
                     story.summary = summary;
@@ -2889,7 +2905,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     story.summaryGeneratedSuccessfully = false;
                     onDone.run();
                 }
-            });
+            };
+            if (hasArticleText) {
+                SummaryManager.summarizeText(context, queue, articleText, callback);
+            } else {
+                SummaryManager.summarizeArticle(context, queue, story.url, callback);
+            }
         }
     }
 
