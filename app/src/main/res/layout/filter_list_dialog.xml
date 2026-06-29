@@ -35,6 +35,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/product_sans"
                     android:imeOptions="actionDone"
+                    android:importantForAutofill="no"
                     android:inputType="text"
                     android:singleLine="true"
                     android:textColor="?attr/storyColorNormal"
