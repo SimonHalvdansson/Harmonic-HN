@@ -163,7 +163,8 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
         } else if (SettingsUtils.PREF_PALETTE_TINT_MODE.equals(key)
                 || SettingsUtils.PREF_PALETTE_TINT_STRENGTH.equals(key)
                 || SettingsUtils.PREF_PALETTE_TINT_COLORFULNESS.equals(key)
-                || SettingsUtils.PREF_PALETTE_TINT_TONE.equals(key)) {
+                || SettingsUtils.PREF_PALETTE_TINT_TONE.equals(key)
+                || SettingsUtils.PREF_TINT_CARD_USING_PREVIEW.equals(key)) {
             updatePaletteTintSummary();
         } else if (SettingsUtils.PREF_THEME.equals(key)) {
             updateThemeSummary();
@@ -213,7 +214,11 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
 
     private void updatePaletteTintSummary() {
         if (paletteTintPreference != null && getContext() != null) {
-            paletteTintPreference.setSummary(SettingsUtils.getPreferredPaletteTintSummary(requireContext()));
+            boolean storyTintEnabled = SettingsUtils.shouldTintCardUsingPreview(requireContext());
+            changePrefStatus(paletteTintPreference, storyTintEnabled);
+            paletteTintPreference.setSummary(storyTintEnabled
+                    ? SettingsUtils.getPreferredPaletteTintSummary(requireContext())
+                    : "Enable in Stories settings");
         }
     }
 
