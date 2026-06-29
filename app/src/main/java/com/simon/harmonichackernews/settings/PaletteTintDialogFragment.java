@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings;
 
+import android.animation.ValueAnimator;
 import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
@@ -76,6 +77,7 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
     private TextView strengthValue;
     private TextView colorfulnessValue;
     private TextView toneValue;
+    private ValueAnimator resetSliderAnimator;
     private boolean updatingSliderValues;
 
     @NonNull
@@ -127,6 +129,7 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
         strengthValue = null;
         colorfulnessValue = null;
         toneValue = null;
+        cancelResetSliderAnimator();
         super.onDestroyView();
     }
 
@@ -160,9 +163,7 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
         card.setCardElevation(0f);
         card.setMaxCardElevation(0f);
         card.setUseCompatPadding(false);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            card.setStateListAnimator(null);
-        }
+        card.setStateListAnimator(null);
         card.setClickable(false);
 
         LinearLayout content = new LinearLayout(context);
@@ -283,6 +284,9 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
         strengthSlider.setLabelFormatter(value -> formatPercent(Math.round(value)));
         strengthSlider.setValue(tintStrength);
         strengthSlider.addOnChangeListener((slider, value, fromUser) -> {
+            if (fromUser) {
+                cancelResetSliderAnimator();
+            }
             tintStrength = SettingsUtils.clampPaletteTintStrength(Math.round(value));
             updateSliderLabels();
             if (!updatingSliderValues) {
@@ -304,6 +308,9 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
         colorfulnessSlider.setLabelFormatter(value -> formatPercent(Math.round(value)));
         colorfulnessSlider.setValue(tintColorfulness);
         colorfulnessSlider.addOnChangeListener((slider, value, fromUser) -> {
+            if (fromUser) {
+                cancelResetSliderAnimator();
+            }
             tintColorfulness = SettingsUtils.clampPaletteTintColorfulness(Math.round(value));
             updateSliderLabels();
             if (!updatingSliderValues) {
@@ -325,6 +332,9 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
         toneSlider.setLabelFormatter(value -> formatTone(Math.round(value)));
         toneSlider.setValue(tintTone);
         toneSlider.addOnChangeListener((slider, value, fromUser) -> {
+            if (fromUser) {
+                cancelResetSliderAnimator();
+            }
             tintTone = SettingsUtils.clampPaletteTintTone(Math.round(value));
             updateSliderLabels();
             if (!updatingSliderValues) {
@@ -391,6 +401,13 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
     }
 
     private void updateSliderValues() {
+        updateSliderValues(true);
+    }
+
+    private void updateSliderValues(boolean cancelAnimation) {
+        if (cancelAnimation) {
+            cancelResetSliderAnimator();
+        }
         updatingSliderValues = true;
         if (strengthSlider != null) {
             strengthSlider.setValue(tintStrength);
@@ -403,6 +420,58 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
         }
         updateSliderLabels();
         updatingSliderValues = false;
+    }
+
+    private void updateSliderValuesWithoutCancellingAnimation() {
+        updateSliderValues(false);
+    }
+
+    private void animateSliderValues(
+            int startStrength,
+            int startColorfulness,
+            int startTone,
+            int targetStrength,
+            int targetColorfulness,
+            int targetTone) {
+        cancelResetSliderAnimator();
+        if (strengthSlider == null || colorfulnessSlider == null || toneSlider == null) {
+            updateSliderValues();
+            updatePreviewCards();
+            return;
+        }
+
+        resetSliderAnimator = ValueAnimator.ofFloat(0f, 1f);
+        resetSliderAnimator.setDuration(200);
+        resetSliderAnimator.addUpdateListener(animation -> {
+            float progress = (float) animation.getAnimatedValue();
+            tintStrength = SettingsUtils.clampPaletteTintStrength(interpolateSteppedSliderValue(
+                    startStrength,
+                    targetStrength,
+                    progress,
+                    5));
+            tintColorfulness = SettingsUtils.clampPaletteTintColorfulness(interpolateSteppedSliderValue(
+                    startColorfulness,
+                    targetColorfulness,
+                    progress,
+                    5));
+            tintTone = SettingsUtils.clampPaletteTintTone(Math.round(
+                    startTone + (targetTone - startTone) * progress));
+            updateSliderValuesWithoutCancellingAnimation();
+            updatePreviewCards();
+        });
+        resetSliderAnimator.start();
+    }
+
+    private int interpolateSteppedSliderValue(int startValue, int targetValue, float progress, int stepSize) {
+        int value = Math.round(startValue + (targetValue - startValue) * progress);
+        return Math.round((float) value / stepSize) * stepSize;
+    }
+
+    private void cancelResetSliderAnimator() {
+        if (resetSliderAnimator != null) {
+            resetSliderAnimator.cancel();
+            resetSliderAnimator = null;
+        }
     }
 
     private void updateSliderLabels() {
@@ -435,14 +504,22 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
     }
 
     private void resetToDefault() {
+        int startStrength = tintStrength;
+        int startColorfulness = tintColorfulness;
+        int startTone = tintTone;
         selectedMode = SettingsUtils.PALETTE_TINT_DEFAULT;
         tintStrength = SettingsUtils.DEFAULT_PALETTE_TINT_STRENGTH;
         tintColorfulness = SettingsUtils.DEFAULT_PALETTE_TINT_COLORFULNESS;
         tintTone = SettingsUtils.DEFAULT_PALETTE_TINT_TONE;
         SettingsUtils.clearPreferredPaletteTintMode(requireContext());
         updateSelection();
-        updateSliderValues();
-        updatePreviewCards();
+        animateSliderValues(
+                startStrength,
+                startColorfulness,
+                startTone,
+                tintStrength,
+                tintColorfulness,
+                tintTone);
     }
 
     private void persistPaletteTintSettings() {
@@ -485,9 +562,7 @@ public class PaletteTintDialogFragment extends AppCompatDialogFragment {
                                     tintStrength,
                                     tintColorfulness,
                                     tintTone));
-                } catch (RuntimeException ignored) {
-                    targetColor = baseColor;
-                }
+                } catch (RuntimeException ignored) {}
             }
             previewCard.card.setCardBackgroundColor(targetColor);
         }
