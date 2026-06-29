@@ -2304,6 +2304,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (!adapter.story.isLink) {
             popup.getMenu().findItem(R.id.menu_link).setVisible(false);
             popup.getMenu().findItem(R.id.menu_link_title).setVisible(false);
+            popup.getMenu().findItem(R.id.menu_link_title_and_hacker_news_link_title).setVisible(false);
         }
 
         popup.show();
