@@ -7,6 +7,7 @@ import android.content.Context;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.simon.harmonichackernews.R;
@@ -15,6 +16,7 @@ import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import coil.Coil;
 import coil.request.ImageRequest;
@@ -23,6 +25,9 @@ import io.noties.markwon.ext.latex.JLatexMathPlugin;
 import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin;
 
 final class LinkPreviewHeaderBinder {
+
+    private static final Pattern SINGLE_DOLLAR_LATEX_PATTERN =
+            Pattern.compile("(?s)(?<!\\$)\\$(?![\\s$])(.+?)(?<![\\s$])\\$(?!\\$)");
 
     private LinkPreviewHeaderBinder() {
     }
@@ -60,7 +65,7 @@ final class LinkPreviewHeaderBinder {
         }
 
         if (story.stackExchangeInfo != null) {
-            bindStackExchangePreview(holder, story);
+            bindStackExchangePreview(ctx, holder, story);
         }
 
         if (story.wikiInfo != null) {
@@ -79,22 +84,7 @@ final class LinkPreviewHeaderBinder {
 
         FontUtils.setTypeface(holder.arxivAbstract, false, 14);
 
-        Markwon markwon = Markwon.builder(ctx)
-                .usePlugin(MarkwonInlineParserPlugin.create())
-                .usePlugin(JLatexMathPlugin.create(holder.arxivAbstract.getTextSize(), builder -> builder.inlinesEnabled(true)))
-                .build();
-
-        String abstractText = story.arxivInfo.arxivAbstract
-                .replace("\\(", "$$")
-                .replace("\\)", "$$")
-                .replace("\\[", "$$")
-                .replace("\\]", "$$")
-                .replaceAll("(?<!\\$)\\$(?!\\$)", Matcher.quoteReplacement("$$"))
-                .replaceAll("\\\\textbf\\{(.*?)\\}", "**$1**")
-                .replaceAll("\\\\textit\\{(.*?)\\}", "*$1*")
-                .replaceAll("\\\\emph\\{(.*?)\\}", "*$1*");
-
-        markwon.setMarkdown(holder.arxivAbstract, abstractText);
+        setLatexMarkdown(ctx, holder.arxivAbstract, story.arxivInfo.arxivAbstract);
 
         holder.arxivBy.setText(story.arxivInfo.concatNames());
         holder.arxivDate.setText(story.arxivInfo.formatDate());
@@ -153,12 +143,12 @@ final class LinkPreviewHeaderBinder {
         holder.gitLabDescription.setVisibility(TextUtils.isEmpty(story.gitLabInfo.description) ? GONE : VISIBLE);
     }
 
-    private static void bindStackExchangePreview(CommentsRecyclerViewAdapter.HeaderViewHolder holder, Story story) {
+    private static void bindStackExchangePreview(Context ctx, CommentsRecyclerViewAdapter.HeaderViewHolder holder, Story story) {
         holder.stackExchangeContainer.setVisibility(View.VISIBLE);
         holder.infoHeader.setVisibility(VISIBLE);
         holder.infoHeader.setText("STACK EXCHANGE:");
-        holder.stackExchangeTitle.setText(story.stackExchangeInfo.title);
-        holder.stackExchangeBy.setText(story.stackExchangeInfo.formatBy());
+        setStackExchangeText(ctx, holder.stackExchangeTitle, story.stackExchangeInfo.title);
+        setStackExchangeText(ctx, holder.stackExchangeBy, story.stackExchangeInfo.formatBy());
         holder.stackExchangeScore.setText(story.stackExchangeInfo.formatScore());
         holder.stackExchangeAnswers.setText(story.stackExchangeInfo.formatAnswerCount());
         holder.stackExchangeViews.setText(story.stackExchangeInfo.formatViewCount());
@@ -166,6 +156,47 @@ final class LinkPreviewHeaderBinder {
         holder.stackExchangeAuthor.setText(story.stackExchangeInfo.formatAuthor());
         holder.stackExchangeTags.setText(story.stackExchangeInfo.formatTags());
         holder.stackExchangeTagsContainer.setVisibility(TextUtils.isEmpty(story.stackExchangeInfo.formatTags()) ? GONE : View.VISIBLE);
+    }
+
+    private static void setStackExchangeText(Context ctx, TextView textView, String text) {
+        if (containsLatex(text)) {
+            setLatexMarkdown(ctx, textView, text);
+        } else {
+            textView.setText(text);
+        }
+    }
+
+    private static boolean containsLatex(String text) {
+        return !TextUtils.isEmpty(text)
+                && (text.contains("\\(")
+                || text.contains("\\[")
+                || text.contains("$$")
+                || SINGLE_DOLLAR_LATEX_PATTERN.matcher(text).find());
+    }
+
+    private static void setLatexMarkdown(Context ctx, TextView textView, String text) {
+        Markwon markwon = Markwon.builder(ctx)
+                .usePlugin(MarkwonInlineParserPlugin.create())
+                .usePlugin(JLatexMathPlugin.create(textView.getTextSize(), builder -> builder.inlinesEnabled(true)))
+                .build();
+
+        markwon.setMarkdown(textView, normalizeLatexMarkdown(text));
+    }
+
+    private static String normalizeLatexMarkdown(String text) {
+        if (text == null) {
+            return "";
+        }
+
+        return text
+                .replace("\\(", "$$")
+                .replace("\\)", "$$")
+                .replace("\\[", "$$")
+                .replace("\\]", "$$")
+                .replaceAll("(?<!\\$)\\$(?!\\$)", Matcher.quoteReplacement("$$"))
+                .replaceAll("\\\\textbf\\{(.*?)\\}", "**$1**")
+                .replaceAll("\\\\textit\\{(.*?)\\}", "*$1*")
+                .replaceAll("\\\\emph\\{(.*?)\\}", "*$1*");
     }
 
     private static void bindWikipediaPreview(CommentsRecyclerViewAdapter.HeaderViewHolder holder, Story story) {
