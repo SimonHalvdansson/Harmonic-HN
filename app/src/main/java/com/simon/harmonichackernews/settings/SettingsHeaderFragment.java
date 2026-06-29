@@ -49,7 +49,6 @@ public class SettingsHeaderFragment extends BaseSettingsFragment {
 
         Preference aboutPref = findPreference(ABOUT_KEY);
         if (aboutPref != null) {
-            aboutPref.setSummary("Version " + BuildConfig.VERSION_NAME);
             aboutPref.setOnPreferenceClickListener(preference -> {
                 if (getActivity() instanceof SettingsActivity) {
                     ((SettingsActivity) getActivity()).showAbout();

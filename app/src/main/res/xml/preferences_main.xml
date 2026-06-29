@@ -4,56 +4,48 @@
     <Preference
         app:key="pref_header_appearance"
         app:title="Appearance"
-        app:summary="Theme, visual, text"
         app:icon="@drawable/ic_style"
         app:fragment="com.simon.harmonichackernews.settings.AppearancePreferenceFragment" />
 
     <Preference
         app:key="pref_header_stories"
         app:title="Stories"
-        app:summary="Layout, behavior"
         app:icon="@drawable/ic_newspaper"
         app:fragment="com.simon.harmonichackernews.settings.StoriesPreferenceFragment" />
 
     <Preference
         app:key="pref_header_comments"
         app:title="Comments"
-        app:summary="Display, interaction, navigation"
         app:icon="@drawable/ic_comment"
         app:fragment="com.simon.harmonichackernews.settings.CommentsPreferenceFragment" />
 
     <Preference
         app:key="pref_header_web_links"
         app:title="Web and links"
-        app:summary="WebView, browser, link previews"
         app:icon="@drawable/ic_web_asset"
         app:fragment="com.simon.harmonichackernews.settings.WebLinksPreferenceFragment" />
 
     <Preference
         app:key="pref_header_filters_tags"
         app:title="Filters and tags"
-        app:summary="Filters, tags"
         app:icon="@drawable/ic_filter_list"
         app:fragment="com.simon.harmonichackernews.settings.FiltersTagsPreferenceFragment" />
 
     <Preference
         app:key="pref_header_ai_summary"
         app:title="AI summarization"
-        app:summary="API keys, models"
         app:icon="@drawable/ic_auto_awesome"
         app:fragment="com.simon.harmonichackernews.settings.AiSummaryPreferenceFragment" />
 
     <Preference
         app:key="pref_header_data_storage"
         app:title="Data"
-        app:summary="Bookmarks, history, other"
         app:icon="@drawable/ic_library_books"
         app:fragment="com.simon.harmonichackernews.settings.DataStoragePreferenceFragment" />
 
     <Preference
         app:key="pref_debug"
         app:title="Debug"
-        app:summary="Test links, internal tools"
         app:icon="@drawable/ic_api" />
 
     <Preference
