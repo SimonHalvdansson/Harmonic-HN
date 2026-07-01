@@ -16,7 +16,7 @@ jobs:
       RELEASE_ALIGNED_APK: app/build/outputs/apk/release/app-release-aligned.apk
       RELEASE_SIGNED_APK: app/build/outputs/apk/release/app-release.apk
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
