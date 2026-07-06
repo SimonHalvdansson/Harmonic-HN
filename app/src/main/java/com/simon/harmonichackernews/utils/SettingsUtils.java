@@ -127,6 +127,7 @@ public class SettingsUtils {
     public static boolean isDarkTheme(String theme) {
         return "material_dark".equals(theme)
                 || "dark".equals(theme)
+                || "hacker".equals(theme)
                 || "amoled".equals(theme)
                 || "gray".equals(theme);
     }
@@ -471,6 +472,10 @@ public class SettingsUtils {
     }
 
     public static String getPreferredFont(Context ctx) {
+        if ("hacker".equals(ThemeUtils.getPreferredTheme(ctx))) {
+            return "jetbrainsmono";
+        }
+
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return sanitizeFont(prefs.getString(PREF_FONT, "googlesansflexrounded"));
     }

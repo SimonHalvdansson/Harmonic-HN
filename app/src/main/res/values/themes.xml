@@ -120,6 +120,59 @@
         <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
     </style>
 
+    <style name="AppThemeHacker" parent="AppThemeAmoledDark">
+        <item name="storyColorNormal">@color/hackerTextColor</item>
+        <item name="storyColorDisabled">@color/hackerTextColorDisabled</item>
+        <item name="textColorHighlighted">@color/hackerTextColor</item>
+        <item name="textColorDefault">@color/hackerTextColor</item>
+        <item name="textColorDisabled">@color/hackerTextColorDisabled</item>
+        <item name="commentDividerColor">@color/hackerDividerColor</item>
+        <item name="drawableColor">@color/hackerTextColor</item>
+        <item name="opCommentColor">@color/hackerTextColor</item>
+        <item name="selfCommentColor">@color/hackerTextColor</item>
+        <item name="commentCountIndicatorColor">@color/hackerAccent</item>
+        <item name="secondaryTextColor">@color/hackerTextColorDisabled</item>
+        <item name="overlayButtonColor">@color/hackerBackground</item>
+        <item name="overlayButtonOutlineColor">@color/hackerDividerColor</item>
+        <item name="submissionsCommentTimeBackgroundColor">@color/hackerBackground</item>
+        <item name="submissionsCommentTimeOutlineColor">@color/hackerDividerColor</item>
+
+        <item name="colorPrimary">@color/hackerAccent</item>
+        <item name="colorPrimaryDark">@color/hackerAccent</item>
+        <item name="colorAccent">@color/hackerAccent</item>
+        <item name="colorSecondary">@color/hackerAccent</item>
+        <item name="colorTertiary">@color/hackerAccent</item>
+        <item name="colorOnPrimary">@color/hackerBackground</item>
+        <item name="colorOnSecondary">@color/hackerBackground</item>
+        <item name="colorPrimaryContainer">@color/hackerAccentContainer</item>
+        <item name="colorOnPrimaryContainer">@color/hackerTextColor</item>
+        <item name="colorSecondaryContainer">@color/hackerAccentContainer</item>
+        <item name="colorOnSecondaryContainer">@color/hackerTextColor</item>
+        <item name="colorSurface">@color/hackerBackground</item>
+        <item name="colorOnSurface">@color/hackerTextColor</item>
+        <item name="colorOnSurfaceVariant">@color/hackerTextColorDisabled</item>
+        <item name="colorOnBackground">@color/hackerTextColor</item>
+        <item name="colorOutline">@color/hackerDividerColor</item>
+        <item name="colorOutlineVariant">@color/hackerDividerColor</item>
+        <item name="colorSurfaceContainerHigh">@color/hackerSurfaceContainer</item>
+        <item name="storyCardBackgroundColor">@color/hackerSurfaceContainer</item>
+        <item name="settingsHeaderSelectedColor">@color/hackerSurfaceContainerSelected</item>
+        <item name="settingsSegmentColor">@color/settings_segment_hacker</item>
+        <item name="popupMenuBackground">@drawable/popup_hacker_background</item>
+        <item name="colorControlHighlight">#3300FF00</item>
+        <item name="android:textViewStyle">@style/JetBrainsMonoTextViewStyle</item>
+
+        <item name="android:windowBackground">@color/hackerBackground</item>
+        <item name="android:colorBackground">@color/hackerBackground</item>
+        <item name="android:statusBarColor">@color/hackerBackground</item>
+        <item name="android:textColorHighlight">@color/hackerTextSelectionHighlight</item>
+        <item name="android:textColorPrimary">@color/hackerTextColor</item>
+        <item name="android:textColorSecondary">@color/hackerTextColorDisabled</item>
+        <item name="android:textColorTertiary">@color/hackerTextColorDisabled</item>
+        <item name="android:textColorLink">@color/hackerAccent</item>
+        <item name="android:fontFamily">@font/jetbrains_mono</item>
+    </style>
+
     <style name="AppThemeGray" parent="AppTheme">
         <item name="android:windowBackground">@color/grayBackground</item>
         <item name="android:colorBackground">@color/grayBackground</item>
@@ -267,6 +320,11 @@
     </style>
 
     <style name="ThemeSwipeBackNoActionBarAmoledDark" parent="AppThemeAmoledDark">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+    <style name="ThemeSwipeBackNoActionBarHacker" parent="AppThemeHacker">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
     </style>

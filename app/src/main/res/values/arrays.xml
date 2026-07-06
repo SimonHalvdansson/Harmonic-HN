@@ -24,6 +24,7 @@
         <item>Dark/Light (auto)</item>
         <item>Light</item>
         <item>Dark</item>
+        <item>Hacker</item>
         <item>HN</item>
         <item>Black/White (auto)</item>
         <item>Black</item>
@@ -38,6 +39,7 @@
         <item>darklight_daynight</item>
         <item>light</item>
         <item>dark</item>
+        <item>hacker</item>
         <item>hacker_news</item>
         <item>amoledwhite_daynight</item>
         <item>amoled</item>

@@ -61,6 +61,16 @@
     <color name="hackerNewsOpCommentColor">#AF3B00</color>
     <color name="hackerNewsSelfCommentColor">#356858</color>
 
+    <color name="hackerBackground">#000000</color>
+    <color name="hackerSurfaceContainer">#000000</color>
+    <color name="hackerSurfaceContainerSelected">#001A00</color>
+    <color name="hackerAccent">#00FF00</color>
+    <color name="hackerAccentContainer">#003300</color>
+    <color name="hackerTextColor">#00FF00</color>
+    <color name="hackerTextColorDisabled">#9900FF00</color>
+    <color name="hackerDividerColor">#6600FF00</color>
+    <color name="hackerTextSelectionHighlight">#6600FF00</color>
+
     <color name="commentIndentIndicatorColor1">#FF959E</color>
     <color name="commentIndentIndicatorColor2">#3f51b5</color>
     <color name="commentIndentIndicatorColor3">#ff0266</color>
@@ -114,6 +124,7 @@
     <color name="settings_segment_dark">#2B2E3A</color>
     <color name="settings_segment_amoled">#000000</color>
     <color name="settings_segment_gray">#202124</color>
+    <color name="settings_segment_hacker">#000000</color>
     <color name="settings_segment_light">#F0EEDC</color>
     <color name="settings_segment_hacker_news">#F2EEDF</color>
     <color name="settings_segment_white">#F2F4F7</color>

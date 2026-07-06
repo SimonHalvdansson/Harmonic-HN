@@ -30,6 +30,10 @@
         <item name="android:fontFamily">@font/product_sans</item>
     </style>
 
+    <style name="JetBrainsMonoTextViewStyle" parent="@style/Widget.MaterialComponents.TextView">
+        <item name="android:fontFamily">@font/jetbrains_mono</item>
+    </style>
+
     <style name="MaterialSwitchPreferenceCompat" parent="@style/Preference.SwitchPreferenceCompat.Material">
         <item name="widgetLayout">@layout/view_preference_switch</item>
     </style>

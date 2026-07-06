@@ -64,6 +64,7 @@ public class ThemeSelectionDialogFragment extends AppCompatDialogFragment {
             new ThemeOption("darklight_daynight", "Dark/Light (auto)", "Classic Harmonic colors, automatic", true, false),
             new ThemeOption("light", "Light", "Warm classic light palette", false, false),
             new ThemeOption("dark", "Dark", "Classic dark palette", false, true),
+            new ThemeOption("hacker", "Hacker", "Black with green text and accents", false, true),
             new ThemeOption("hacker_news", "HN", "Hacker News orange and paper tones", false, false),
             new ThemeOption("amoledwhite_daynight", "Black/White (auto)", "Pure contrast, automatic", true, false),
             new ThemeOption("amoled", "Black", "OLED-friendly black", false, true),
@@ -525,6 +526,8 @@ public class ThemeSelectionDialogFragment extends AppCompatDialogFragment {
                 return materialDarkPalette(context);
             case "gray":
                 return grayPalette(context);
+            case "hacker":
+                return hackerPalette(context);
             case "amoled":
                 return blackPalette(context);
             case "light":
@@ -581,6 +584,16 @@ public class ThemeSelectionDialogFragment extends AppCompatDialogFragment {
                 color(context, R.color.colorPrimary),
                 color(context, R.color.darkStoryColorNormal),
                 color(context, R.color.darkTextColorDefault),
+                true);
+    }
+
+    private ThemePalette hackerPalette(Context context) {
+        return new ThemePalette(
+                color(context, R.color.hackerBackground),
+                color(context, R.color.hackerSurfaceContainer),
+                color(context, R.color.hackerAccent),
+                color(context, R.color.hackerTextColor),
+                color(context, R.color.hackerTextColorDisabled),
                 true);
     }
 

@@ -74,6 +74,9 @@ public class ThemeUtils {
             case "amoled":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarAmoledDark : R.style.AppThemeAmoledDark);
                 break;
+            case "hacker":
+                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarHacker : R.style.AppThemeHacker);
+                break;
             case "gray":
                 activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarGray : R.style.AppThemeGray);
                 break;
@@ -125,7 +128,7 @@ public class ThemeUtils {
 
     public static boolean isDarkMode(Context ctx, String theme) {
         List<String> dynamicThemes = Arrays.asList("material_daynight", "darklight_daynight", "amoledwhite_daynight");
-        List<String> darkThemes = Arrays.asList("amoled", "dark", "gray", "material_dark");
+        List<String> darkThemes = Arrays.asList("amoled", "dark", "gray", "hacker", "material_dark");
 
         if (dynamicThemes.contains(theme)) {
             return uiModeNight(ctx);
@@ -152,6 +155,8 @@ public class ThemeUtils {
         switch (theme) {
             case "amoled":
                 return android.R.color.black;
+            case "hacker":
+                return R.color.hackerBackground;
             case "gray":
                 return R.color.grayBackground;
             case "light":
