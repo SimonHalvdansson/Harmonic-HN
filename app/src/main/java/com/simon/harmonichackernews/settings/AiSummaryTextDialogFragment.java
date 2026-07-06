@@ -4,6 +4,9 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.content.res.ColorStateList;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.text.Editable;
@@ -11,6 +14,9 @@ import android.text.TextWatcher;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,11 +27,24 @@ import androidx.preference.PreferenceManager;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.databinding.AiSummaryTextDialogBinding;
 import com.simon.harmonichackernews.network.AiSummaryProviders;
+import com.simon.harmonichackernews.network.NetworkComponent;
+
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.util.Locale;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.HttpUrl;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
 
@@ -50,6 +69,12 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
     private ChipGroup modelOptionsGroup;
     private TextWatcher modelTextWatcher;
     private boolean updatingModelOptionSelection;
+    private Button modelPricesButton;
+    private LinearLayout modelPricesLoadingContainer;
+    private LoadingIndicator modelPricesProgress;
+    private TextView modelPricesStatus;
+    private ColorStateList modelPricesStatusDefaultTextColor;
+    private Call modelPriceCall;
 
     public static void show(
             androidx.fragment.app.FragmentManager fm,
@@ -92,6 +117,11 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
         inputLayout = binding.aiSummaryTextInputLayout;
         inputEditText = binding.aiSummaryTextInput;
         modelOptionsGroup = binding.aiSummaryModelOptions;
+        modelPricesButton = binding.aiSummaryModelPricesButton;
+        modelPricesLoadingContainer = binding.aiSummaryModelPricesLoadingContainer;
+        modelPricesProgress = binding.aiSummaryModelPricesProgress;
+        modelPricesStatus = binding.aiSummaryModelPricesStatus;
+        modelPricesStatusDefaultTextColor = modelPricesStatus.getTextColors();
 
         String title = args.getString(ARG_TITLE, "");
         String hint = args.getString(ARG_HINT, title);
@@ -116,6 +146,7 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
                 : getSavedValue(context, args.getString(ARG_KEY), defaultValue);
         setInputText(currentValue);
         configureModelOptions(binding, currentValue);
+        configureModelPrices();
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(context)
                 .setTitle(title)
@@ -155,11 +186,20 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
         if (inputEditText != null && modelTextWatcher != null) {
             inputEditText.removeTextChangedListener(modelTextWatcher);
         }
+        if (modelPriceCall != null) {
+            modelPriceCall.cancel();
+            modelPriceCall = null;
+        }
         if (modelOptionsGroup != null) {
             modelOptionsGroup.setOnCheckedStateChangeListener(null);
         }
         modelOptionsGroup = null;
         modelTextWatcher = null;
+        modelPricesButton = null;
+        modelPricesLoadingContainer = null;
+        modelPricesProgress = null;
+        modelPricesStatus = null;
+        modelPricesStatusDefaultTextColor = null;
         inputLayout = null;
         inputEditText = null;
         super.onDestroyView();
@@ -247,6 +287,18 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
         updateSelectedModelOption(currentValue);
     }
 
+    private void configureModelPrices() {
+        if (!shouldShowModelPrices()) {
+            modelPricesButton.setVisibility(View.GONE);
+            modelPricesLoadingContainer.setVisibility(View.GONE);
+            modelPricesStatus.setVisibility(View.GONE);
+            return;
+        }
+
+        modelPricesButton.setVisibility(View.VISIBLE);
+        modelPricesButton.setOnClickListener(view -> checkOpenRouterModelPrices());
+    }
+
     private void updateSelectedModelOption(String modelId) {
         if (modelOptionsGroup == null) {
             return;
@@ -270,6 +322,186 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
             modelOptionsGroup.check(matchingChipId);
         }
         updatingModelOptionSelection = false;
+    }
+
+    private boolean shouldShowModelPrices() {
+        return PREF_MODEL.equals(requireArguments().getString(ARG_KEY))
+                && isOpenRouterProvider(getCurrentProvider());
+    }
+
+    private void checkOpenRouterModelPrices() {
+        String modelId = getInputText();
+        if (TextUtils.isEmpty(modelId)) {
+            inputLayout.setError(null);
+            setModelPricesError("Enter a model ID like openai/gpt-4.");
+            return;
+        }
+
+        String requestUrl = buildOpenRouterModelUrl(modelId);
+        if (TextUtils.isEmpty(requestUrl)) {
+            inputLayout.setError(null);
+            setModelPricesError("Enter an OpenRouter model ID like openai/gpt-4.");
+            return;
+        }
+
+        inputLayout.setError(null);
+        setModelPricesLoading();
+
+        Request request = new Request.Builder()
+                .url(requestUrl)
+                .build();
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+        modelPriceCall = NetworkComponent.getOkHttpClientInstance().newCall(request);
+        modelPriceCall.enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                if (call.isCanceled()) {
+                    return;
+                }
+                mainHandler.post(() -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    setModelPricesError(e.getMessage());
+                });
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try (Response closeableResponse = response) {
+                    if (!closeableResponse.isSuccessful() || closeableResponse.body() == null) {
+                        String message = "HTTP " + closeableResponse.code();
+                        mainHandler.post(() -> {
+                            if (!isAdded()) {
+                                return;
+                            }
+                            setModelPricesError(message);
+                        });
+                        return;
+                    }
+
+                    String responseBody = closeableResponse.body().string();
+                    String message = formatOpenRouterModelPrices(responseBody);
+                    mainHandler.post(() -> {
+                        if (!isAdded()) {
+                            return;
+                        }
+                        setModelPricesResult(message);
+                    });
+                } catch (Exception e) {
+                    mainHandler.post(() -> {
+                        if (!isAdded()) {
+                            return;
+                        }
+                        setModelPricesError(e.getMessage());
+                    });
+                }
+            }
+        });
+    }
+
+    private void setModelPricesLoading() {
+        modelPricesButton.setEnabled(false);
+        inputEditText.setEnabled(false);
+        modelPricesStatus.setVisibility(View.GONE);
+        modelPricesLoadingContainer.setVisibility(View.VISIBLE);
+        modelPricesProgress.setVisibility(View.VISIBLE);
+    }
+
+    private void setModelPricesIdle() {
+        modelPricesButton.setEnabled(true);
+        inputEditText.setEnabled(true);
+        modelPricesLoadingContainer.setVisibility(View.GONE);
+        modelPricesProgress.setVisibility(View.GONE);
+        modelPriceCall = null;
+    }
+
+    private void setModelPricesResult(String message) {
+        setModelPricesIdle();
+        modelPricesStatus.setTextColor(modelPricesStatusDefaultTextColor);
+        modelPricesStatus.setText(message);
+        modelPricesStatus.setVisibility(View.VISIBLE);
+    }
+
+    private void setModelPricesError(@Nullable String message) {
+        setModelPricesIdle();
+        TypedValue errorColor = new TypedValue();
+        requireContext().getTheme().resolveAttribute(android.R.attr.colorError, errorColor, true);
+        modelPricesStatus.setTextColor(errorColor.data);
+        modelPricesStatus.setText(TextUtils.isEmpty(message)
+                ? "Couldn't check prices. OpenRouter did not return pricing."
+                : "Couldn't check prices. " + message);
+        modelPricesStatus.setVisibility(View.VISIBLE);
+    }
+
+    @Nullable
+    private String buildOpenRouterModelUrl(String modelId) {
+        int separator = modelId.indexOf('/');
+        if (separator <= 0 || separator >= modelId.length() - 1) {
+            return null;
+        }
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        String baseUrl = AiSummaryProviders.normalizeUrl(
+                prefs.getString(PREF_BASE_URL, AiSummaryProviders.getDefaultBaseUrl()));
+        HttpUrl parsedBaseUrl = HttpUrl.parse(baseUrl);
+        if (parsedBaseUrl == null) {
+            return null;
+        }
+
+        return parsedBaseUrl.newBuilder()
+                .addPathSegment("model")
+                .addPathSegment(modelId.substring(0, separator))
+                .addPathSegment(modelId.substring(separator + 1))
+                .build()
+                .toString();
+    }
+
+    private String formatOpenRouterModelPrices(String responseBody) throws Exception {
+        JSONObject data = new JSONObject(responseBody).getJSONObject("data");
+        JSONObject pricing = data.getJSONObject("pricing");
+        String promptPrice = formatPricePerMillionTokens(pricing.optString("prompt", ""));
+        String completionPrice = formatPricePerMillionTokens(pricing.optString("completion", ""));
+        String requestPrice = formatPricePerRequest(pricing.optString("request", ""));
+
+        StringBuilder message = new StringBuilder();
+        message.append("Prompt: ").append(promptPrice).append(" / 1M tokens\n")
+                .append("Completion: ").append(completionPrice).append(" / 1M tokens");
+        if (!TextUtils.isEmpty(requestPrice)) {
+            message.append("\nRequest: ").append(requestPrice).append(" / request");
+        }
+        return message.toString();
+    }
+
+    private static String formatPricePerMillionTokens(String pricePerToken) {
+        double price = parseDouble(pricePerToken);
+        if (price == 0d) {
+            return "$0";
+        }
+        return String.format(Locale.US, "$%.2f", price * 1_000_000d);
+    }
+
+    private static String formatPricePerRequest(String pricePerRequest) {
+        if (TextUtils.isEmpty(pricePerRequest)) {
+            return "";
+        }
+        double price = parseDouble(pricePerRequest);
+        if (price == 0d) {
+            return "$0";
+        }
+        return String.format(Locale.US, "$%.6f", price);
+    }
+
+    private static double parseDouble(String value) {
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            return 0d;
+        }
+    }
+
+    private static boolean isOpenRouterProvider(@Nullable AiSummaryProviders.Provider provider) {
+        return provider != null && AiSummaryProviders.PROVIDER_OPENROUTER.equals(provider.id);
     }
 
     @Nullable

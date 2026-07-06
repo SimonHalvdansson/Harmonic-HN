@@ -8,6 +8,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:animateLayoutChanges="true"
         android:orientation="vertical"
         android:paddingLeft="24dp"
         android:paddingRight="24dp"
@@ -54,6 +55,53 @@
                 android:textSize="16sp" />
 
         </com.google.android.material.textfield.TextInputLayout>
+
+        <Button
+            android:id="@+id/ai_summary_model_prices_button"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Check prices"
+            android:visibility="gone"
+            app:icon="@drawable/ic_attach_money"
+            app:iconPadding="8dp" />
+
+        <LinearLayout
+            android:id="@+id/ai_summary_model_prices_loading_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.google.android.material.loadingindicator.LoadingIndicator
+                android:id="@+id/ai_summary_model_prices_progress"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:indeterminate="true"
+                app:indicatorSize="24dp" />
+
+            <TextView
+                android:id="@+id/ai_summary_model_prices_loading_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="12dp"
+                android:text="Checking prices..."
+                android:textColor="?attr/storyColorNormal"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/ai_summary_model_prices_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="14sp"
+            android:visibility="gone" />
 
     </LinearLayout>
 </ScrollView>
