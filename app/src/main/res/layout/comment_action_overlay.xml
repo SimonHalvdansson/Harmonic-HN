@@ -113,7 +113,298 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
-                        android:orientation="vertical" />
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/comment_action_icon_row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:baselineAligned="false"
+                            android:gravity="center"
+                            android:orientation="horizontal">
+
+                            <FrameLayout
+                                android:id="@+id/comment_action_upvote_slot"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_marginLeft="1dp"
+                                android:layout_marginRight="1dp"
+                                android:layout_weight="1"
+                                android:clipChildren="false"
+                                android:clipToPadding="false"
+                                android:visibility="gone"
+                                tools:visibility="visible">
+
+                                <ImageButton
+                                    android:id="@+id/comment_action_upvote"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="?selectableItemBackgroundBorderless"
+                                    android:contentDescription="Vote up"
+                                    android:paddingLeft="8dp"
+                                    android:paddingTop="10dp"
+                                    android:paddingRight="8dp"
+                                    android:paddingBottom="10dp"
+                                    android:scaleType="center"
+                                    android:src="@drawable/ic_thumb_up"
+                                    app:tint="?attr/storyColorNormal" />
+
+                                <com.google.android.material.loadingindicator.LoadingIndicator
+                                    android:id="@+id/comment_action_upvote_loading"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_gravity="center"
+                                    android:clickable="false"
+                                    android:focusable="false"
+                                    android:indeterminate="true"
+                                    android:visibility="gone"
+                                    app:indicatorSize="28dp" />
+                            </FrameLayout>
+
+                            <FrameLayout
+                                android:id="@+id/comment_action_downvote_slot"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_marginLeft="1dp"
+                                android:layout_marginRight="1dp"
+                                android:layout_weight="1"
+                                android:clipChildren="false"
+                                android:clipToPadding="false"
+                                android:visibility="gone"
+                                tools:visibility="visible">
+
+                                <ImageButton
+                                    android:id="@+id/comment_action_downvote"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="?selectableItemBackgroundBorderless"
+                                    android:contentDescription="Vote down"
+                                    android:paddingLeft="8dp"
+                                    android:paddingTop="10dp"
+                                    android:paddingRight="8dp"
+                                    android:paddingBottom="10dp"
+                                    android:scaleType="center"
+                                    android:src="@drawable/ic_thumb_down"
+                                    app:tint="?attr/storyColorNormal" />
+
+                                <com.google.android.material.loadingindicator.LoadingIndicator
+                                    android:id="@+id/comment_action_downvote_loading"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_gravity="center"
+                                    android:clickable="false"
+                                    android:focusable="false"
+                                    android:indeterminate="true"
+                                    android:visibility="gone"
+                                    app:indicatorSize="28dp" />
+                            </FrameLayout>
+
+                            <FrameLayout
+                                android:id="@+id/comment_action_unvote_slot"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_marginLeft="1dp"
+                                android:layout_marginRight="1dp"
+                                android:layout_weight="1"
+                                android:clipChildren="false"
+                                android:clipToPadding="false"
+                                android:visibility="gone"
+                                tools:visibility="visible">
+
+                                <ImageButton
+                                    android:id="@+id/comment_action_unvote"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="?selectableItemBackgroundBorderless"
+                                    android:contentDescription="Unvote"
+                                    android:paddingLeft="8dp"
+                                    android:paddingTop="10dp"
+                                    android:paddingRight="8dp"
+                                    android:paddingBottom="10dp"
+                                    android:scaleType="center"
+                                    android:src="@drawable/ic_thumbs_up_down_unvote"
+                                    app:tint="?attr/storyColorNormal" />
+
+                                <com.google.android.material.loadingindicator.LoadingIndicator
+                                    android:id="@+id/comment_action_unvote_loading"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_gravity="center"
+                                    android:clickable="false"
+                                    android:focusable="false"
+                                    android:indeterminate="true"
+                                    android:visibility="gone"
+                                    app:indicatorSize="28dp" />
+                            </FrameLayout>
+
+                            <FrameLayout
+                                android:id="@+id/comment_action_bookmark_slot"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_marginLeft="1dp"
+                                android:layout_marginRight="1dp"
+                                android:layout_weight="1"
+                                android:clipChildren="false"
+                                android:clipToPadding="false"
+                                android:visibility="gone"
+                                tools:visibility="visible">
+
+                                <ImageButton
+                                    android:id="@+id/comment_action_bookmark"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="?selectableItemBackgroundBorderless"
+                                    android:contentDescription="Bookmark"
+                                    android:paddingLeft="8dp"
+                                    android:paddingTop="10dp"
+                                    android:paddingRight="8dp"
+                                    android:paddingBottom="10dp"
+                                    android:scaleType="center"
+                                    android:src="@drawable/ic_bookmark"
+                                    app:tint="?attr/storyColorNormal" />
+
+                                <com.google.android.material.loadingindicator.LoadingIndicator
+                                    android:id="@+id/comment_action_bookmark_loading"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_gravity="center"
+                                    android:clickable="false"
+                                    android:focusable="false"
+                                    android:indeterminate="true"
+                                    android:visibility="gone"
+                                    app:indicatorSize="28dp" />
+                            </FrameLayout>
+
+                            <FrameLayout
+                                android:id="@+id/comment_action_favorite_slot"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_marginLeft="1dp"
+                                android:layout_marginRight="1dp"
+                                android:layout_weight="1"
+                                android:clipChildren="false"
+                                android:clipToPadding="false"
+                                android:visibility="gone"
+                                tools:visibility="visible">
+
+                                <ImageButton
+                                    android:id="@+id/comment_action_favorite"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="?selectableItemBackgroundBorderless"
+                                    android:contentDescription="Favorite"
+                                    android:paddingLeft="8dp"
+                                    android:paddingTop="10dp"
+                                    android:paddingRight="8dp"
+                                    android:paddingBottom="10dp"
+                                    android:scaleType="center"
+                                    android:src="@drawable/ic_star"
+                                    app:tint="?attr/storyColorNormal" />
+
+                                <com.google.android.material.loadingindicator.LoadingIndicator
+                                    android:id="@+id/comment_action_favorite_loading"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_gravity="center"
+                                    android:clickable="false"
+                                    android:focusable="false"
+                                    android:indeterminate="true"
+                                    android:visibility="gone"
+                                    app:indicatorSize="28dp" />
+                            </FrameLayout>
+
+                            <FrameLayout
+                                android:id="@+id/comment_action_copy_slot"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_marginLeft="1dp"
+                                android:layout_marginRight="1dp"
+                                android:layout_weight="1"
+                                android:clipChildren="false"
+                                android:clipToPadding="false">
+
+                                <ImageButton
+                                    android:id="@+id/comment_action_copy"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="?selectableItemBackgroundBorderless"
+                                    android:contentDescription="Copy text"
+                                    android:paddingLeft="8dp"
+                                    android:paddingTop="10dp"
+                                    android:paddingRight="8dp"
+                                    android:paddingBottom="10dp"
+                                    android:scaleType="center"
+                                    android:src="@drawable/ic_content_copy"
+                                    app:tint="?attr/storyColorNormal" />
+
+                                <com.google.android.material.loadingindicator.LoadingIndicator
+                                    android:id="@+id/comment_action_copy_loading"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_gravity="center"
+                                    android:clickable="false"
+                                    android:focusable="false"
+                                    android:indeterminate="true"
+                                    android:visibility="gone"
+                                    app:indicatorSize="28dp" />
+                            </FrameLayout>
+
+                            <FrameLayout
+                                android:id="@+id/comment_action_share_slot"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_marginLeft="1dp"
+                                android:layout_marginRight="1dp"
+                                android:layout_weight="1"
+                                android:clipChildren="false"
+                                android:clipToPadding="false">
+
+                                <ImageButton
+                                    android:id="@+id/comment_action_share"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="?selectableItemBackgroundBorderless"
+                                    android:contentDescription="Share link"
+                                    android:paddingLeft="8dp"
+                                    android:paddingTop="10dp"
+                                    android:paddingRight="8dp"
+                                    android:paddingBottom="10dp"
+                                    android:scaleType="center"
+                                    android:src="@drawable/ic_share"
+                                    app:tint="?attr/storyColorNormal" />
+
+                                <com.google.android.material.loadingindicator.LoadingIndicator
+                                    android:id="@+id/comment_action_share_loading"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_gravity="center"
+                                    android:clickable="false"
+                                    android:focusable="false"
+                                    android:indeterminate="true"
+                                    android:visibility="gone"
+                                    app:indicatorSize="28dp" />
+                            </FrameLayout>
+                        </LinearLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/comment_action_reply"
+                            style="@style/Widget.Material3Expressive.Button.ElevatedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="56dp"
+                            android:layout_marginTop="10dp"
+                            android:backgroundTint="?attr/overlayButtonColor"
+                            android:contentDescription="Reply"
+                            android:singleLine="true"
+                            android:text="Reply"
+                            android:textAllCaps="false"
+                            android:textColor="@android:color/white"
+                            android:visibility="gone"
+                            app:icon="@drawable/ic_reply"
+                            app:iconGravity="textStart"
+                            app:iconPadding="8dp"
+                            app:iconTint="@android:color/white"
+                            tools:visibility="visible" />
+                    </LinearLayout>
                 </LinearLayout>
             </androidx.core.widget.NestedScrollView>
         </com.google.android.material.card.MaterialCardView>

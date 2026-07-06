@@ -13,8 +13,6 @@ import android.os.Build;
 import android.os.SystemClock;
 import android.text.Html;
 import android.text.TextUtils;
-import android.util.TypedValue;
-import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -22,8 +20,6 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.activity.BackEventCompat;
@@ -61,10 +57,8 @@ import com.simon.harmonichackernews.utils.ViewUtils;
 
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -140,7 +134,6 @@ final class CommentActionOverlayController {
     private static final int ICON_SWAP_OUT_DURATION_MS = 90;
     private static final int ICON_SWAP_IN_DURATION_MS = 150;
     private static final float ICON_SWAP_MIN_SCALE = 0.72f;
-    private static final int FAVORITE_LOADING_SIZE_DP = 28;
 
     private final Host host;
     private final Set<Integer> favoriteLoadingIds = new HashSet<>();
@@ -318,51 +311,66 @@ final class CommentActionOverlayController {
         NestedScrollView textScroll = binding.commentActionTextScroll;
         resizeTextBox(textScroll, commentText);
 
-        LinearLayout actionsContainer = binding.commentActionActions;
-        bindButtons(actionsContainer, ctx, comment, bookmarksEnabled, oldBookmarked, oldFavorited);
+        bindButtons(ctx, comment, bookmarksEnabled, oldBookmarked, oldFavorited);
     }
 
-    private void bindButtons(LinearLayout actionsContainer,
-                             Context ctx,
+    private void bindButtons(Context ctx,
                              Comment comment,
                              boolean bookmarksEnabled,
                              boolean oldBookmarked,
                              boolean oldFavorited) {
-        actionsContainer.removeAllViews();
-
         boolean hasAccount = AccountUtils.hasAccountDetails(ctx);
 
-        ArrayList<ActionItem> iconActions = new ArrayList<>();
         if (hasAccount) {
             boolean upvoted = Utils.isUpvoted(ctx, comment.id, true);
             boolean downvoted = !upvoted && downvotedIds.contains(comment.id);
             int voteLoadingAction = getVoteLoadingAction(comment.id);
-            iconActions.add(createVoteItem(ACTION_UPVOTE, upvoted, downvoted, voteLoadingAction));
-            iconActions.add(createVoteItem(ACTION_DOWNVOTE, upvoted, downvoted, voteLoadingAction));
-            iconActions.add(createVoteItem(ACTION_UNVOTE, upvoted, downvoted, voteLoadingAction));
+            bindActionSlot(binding.commentActionUpvoteSlot, createVoteItem(ACTION_UPVOTE, upvoted, downvoted, voteLoadingAction),
+                    comment, oldBookmarked, oldFavorited);
+            bindActionSlot(binding.commentActionDownvoteSlot, createVoteItem(ACTION_DOWNVOTE, upvoted, downvoted, voteLoadingAction),
+                    comment, oldBookmarked, oldFavorited);
+            bindActionSlot(binding.commentActionUnvoteSlot, createVoteItem(ACTION_UNVOTE, upvoted, downvoted, voteLoadingAction),
+                    comment, oldBookmarked, oldFavorited);
+        } else {
+            hideActionSlot(binding.commentActionUpvoteSlot);
+            hideActionSlot(binding.commentActionDownvoteSlot);
+            hideActionSlot(binding.commentActionUnvoteSlot);
         }
 
         if (bookmarksEnabled) {
-            iconActions.add(new ActionItem(
+            bindActionSlot(binding.commentActionBookmarkSlot, new ActionItem(
                     ACTION_BOOKMARK,
                     oldBookmarked ? "Remove bookmark" : "Bookmark",
-                    oldBookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark));
+                    oldBookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark),
+                    comment, oldBookmarked, oldFavorited);
+        } else {
+            hideActionSlot(binding.commentActionBookmarkSlot);
         }
         if (hasAccount) {
             boolean favoriteLoading = favoriteLoadingIds.contains(comment.id);
-            iconActions.add(new ActionItem(
+            bindActionSlot(binding.commentActionFavoriteSlot, new ActionItem(
                     ACTION_FAVORITE,
                     favoriteLoading ? (oldFavorited ? "Removing favorite" : "Adding favorite") : (oldFavorited ? "Remove favorite" : "Favorite"),
                     oldFavorited ? R.drawable.ic_star_filled : R.drawable.ic_star,
-                    favoriteLoading));
+                    favoriteLoading),
+                    comment, oldBookmarked, oldFavorited);
+        } else {
+            hideActionSlot(binding.commentActionFavoriteSlot);
         }
 
-        iconActions.add(new ActionItem(ACTION_COPY, "Copy text", R.drawable.ic_content_copy));
-        iconActions.add(new ActionItem(ACTION_SHARE, "Share link", R.drawable.ic_share));
-        addIconRow(actionsContainer, iconActions, comment, oldBookmarked, oldFavorited);
+        bindActionSlot(binding.commentActionCopySlot, new ActionItem(ACTION_COPY, "Copy text", R.drawable.ic_content_copy),
+                comment, oldBookmarked, oldFavorited);
+        bindActionSlot(binding.commentActionShareSlot, new ActionItem(ACTION_SHARE, "Share link", R.drawable.ic_share),
+                comment, oldBookmarked, oldFavorited);
 
-        if (hasAccount && !Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)) {
-            addReplyButton(actionsContainer, comment, oldBookmarked, oldFavorited);
+        MaterialButton replyButton = binding.commentActionReply;
+        boolean canReply = hasAccount && !Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time);
+        replyButton.setVisibility(canReply ? View.VISIBLE : View.GONE);
+        if (canReply) {
+            TooltipCompat.setTooltipText(replyButton, "Reply");
+            replyButton.setOnClickListener(v -> performAction(ACTION_REPLY, comment, oldBookmarked, oldFavorited));
+        } else {
+            replyButton.setOnClickListener(null);
         }
     }
 
@@ -425,45 +433,33 @@ final class CommentActionOverlayController {
                 || action == ACTION_UNVOTE;
     }
 
-    private void addIconRow(LinearLayout actionsContainer,
-                            List<ActionItem> actionItems,
-                            Comment comment,
-                            boolean oldBookmarked,
-                            boolean oldFavorited) {
-        if (actionItems.isEmpty()) {
-            return;
+    private void bindActionSlot(FrameLayout buttonSlot,
+                                ActionItem actionItem,
+                                Comment comment,
+                                boolean oldBookmarked,
+                                boolean oldFavorited) {
+        buttonSlot.setVisibility(View.VISIBLE);
+        buttonSlot.setTag(actionItem.action);
+        if (actionItem.loading) {
+            showLoadingIndicator(buttonSlot, actionItem.label, false);
+        } else {
+            setIconButton(buttonSlot, actionItem, comment, oldBookmarked, oldFavorited, false);
         }
+    }
 
-        LinearLayout row = new LinearLayout(actionsContainer.getContext());
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(android.view.Gravity.CENTER);
-        row.setBaselineAligned(false);
-
-        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        if (actionsContainer.getChildCount() > 0) {
-            rowParams.topMargin = Utils.pxFromDpInt(host.requireCommentActionContext().getResources(), 4);
+    private void hideActionSlot(FrameLayout buttonSlot) {
+        buttonSlot.setTag(null);
+        buttonSlot.setVisibility(View.GONE);
+        ImageButton button = getSlotButton(buttonSlot);
+        LoadingIndicator loadingIndicator = getSlotLoadingIndicator(buttonSlot);
+        if (button != null) {
+            button.setOnClickListener(null);
+            button.setVisibility(View.VISIBLE);
+            resetViewState(button);
         }
-        actionsContainer.addView(row, rowParams);
-
-        for (ActionItem actionItem : actionItems) {
-            FrameLayout buttonSlot = new FrameLayout(row.getContext());
-            buttonSlot.setTag(actionItem.action);
-            buttonSlot.setClipChildren(false);
-            buttonSlot.setClipToPadding(false);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    0,
-                    Utils.pxFromDpInt(host.requireCommentActionContext().getResources(), 48),
-                    1f);
-            params.leftMargin = Utils.pxFromDpInt(host.requireCommentActionContext().getResources(), 1);
-            params.rightMargin = Utils.pxFromDpInt(host.requireCommentActionContext().getResources(), 1);
-            row.addView(buttonSlot, params);
-            if (actionItem.loading) {
-                showLoadingIndicator(buttonSlot, actionItem.label, false);
-            } else {
-                setIconButton(buttonSlot, actionItem, comment, oldBookmarked, oldFavorited, false);
-            }
+        if (loadingIndicator != null) {
+            loadingIndicator.setVisibility(View.GONE);
+            resetViewState(loadingIndicator);
         }
     }
 
@@ -473,88 +469,47 @@ final class CommentActionOverlayController {
                                boolean oldBookmarked,
                                boolean oldFavorited,
                                boolean animate) {
-        buttonSlot.removeAllViews();
-        ImageButton button = createIconButton(buttonSlot.getContext(), actionItem);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT);
-        buttonSlot.addView(button, params);
+        ImageButton button = getSlotButton(buttonSlot);
+        LoadingIndicator loadingIndicator = getSlotLoadingIndicator(buttonSlot);
+        if (button == null) {
+            return;
+        }
+        if (loadingIndicator != null) {
+            loadingIndicator.setVisibility(View.GONE);
+            resetViewState(loadingIndicator);
+        }
+        button.setVisibility(View.VISIBLE);
         button.setOnClickListener(v -> performAction(actionItem.action, comment, oldBookmarked, oldFavorited, button));
         button.setEnabled(actionItem.enabled);
-        if (animate) {
-            animateViewIn(button, null);
-        }
-    }
-
-    private ImageButton createIconButton(Context ctx, ActionItem actionItem) {
-        ImageButton button = new ImageButton(ctx);
         button.setImageResource(actionItem.iconRes);
         button.setTag(actionItem.iconRes);
         button.setImageTintList(ColorStateList.valueOf(MaterialColors.getColor(button, R.attr.storyColorNormal)));
-        button.setBackgroundResource(resolveSelectableItemBackgroundBorderless(ctx));
         button.setContentDescription(actionItem.label);
-        button.setPadding(
-                Utils.pxFromDpInt(ctx.getResources(), 8),
-                Utils.pxFromDpInt(ctx.getResources(), 10),
-                Utils.pxFromDpInt(ctx.getResources(), 8),
-                Utils.pxFromDpInt(ctx.getResources(), 10));
-        button.setScaleType(ImageView.ScaleType.CENTER);
         TooltipCompat.setTooltipText(button, actionItem.label);
-        return button;
-    }
-
-    private void showLoadingIndicator(FrameLayout buttonSlot, String label, boolean animate) {
-        buttonSlot.removeAllViews();
-        LoadingIndicator loadingIndicator = new LoadingIndicator(buttonSlot.getContext());
-        int indicatorSize = Utils.pxFromDpInt(buttonSlot.getResources(), FAVORITE_LOADING_SIZE_DP);
-        loadingIndicator.setIndicatorSize(indicatorSize);
-        loadingIndicator.setContentDescription(label);
-        loadingIndicator.setClickable(false);
-        loadingIndicator.setFocusable(false);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                indicatorSize,
-                indicatorSize,
-                android.view.Gravity.CENTER);
-        buttonSlot.addView(loadingIndicator, params);
         if (animate) {
-            animateViewIn(loadingIndicator, null);
+            animateViewIn(button, null);
+        } else {
+            resetViewState(button);
         }
     }
 
-    private void addReplyButton(LinearLayout actionsContainer,
-                                Comment comment,
-                                boolean oldBookmarked,
-                                boolean oldFavorited) {
-        Context buttonContext = new ContextThemeWrapper(
-                actionsContainer.getContext(),
-                com.google.android.material.R.style.Widget_Material3Expressive_Button_ElevatedButton);
-        MaterialButton button = new MaterialButton(buttonContext);
-        button.setText("Reply");
-        button.setAllCaps(false);
-        button.setSingleLine(true);
-        button.setIconResource(R.drawable.ic_reply);
-        button.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
-        button.setIconPadding(Utils.pxFromDpInt(button.getResources(), 8));
-        int replyBackgroundColor = MaterialColors.getColor(
-                button,
-                R.attr.overlayButtonColor);
-        button.setTextColor(Color.WHITE);
-        button.setIconTint(ColorStateList.valueOf(Color.WHITE));
-        button.setBackgroundTintList(ColorStateList.valueOf(replyBackgroundColor));
-        button.setContentDescription("Reply");
-        button.setOnClickListener(v -> performAction(ACTION_REPLY, comment, oldBookmarked, oldFavorited));
-
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                Utils.pxFromDpInt(button.getResources(), 56));
-        params.topMargin = Utils.pxFromDpInt(button.getResources(), 10);
-        actionsContainer.addView(button, params);
-    }
-
-    private int resolveSelectableItemBackgroundBorderless(Context ctx) {
-        TypedValue typedValue = new TypedValue();
-        ctx.getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, typedValue, true);
-        return typedValue.resourceId;
+    private void showLoadingIndicator(FrameLayout buttonSlot, String label, boolean animate) {
+        ImageButton button = getSlotButton(buttonSlot);
+        LoadingIndicator loadingIndicator = getSlotLoadingIndicator(buttonSlot);
+        if (loadingIndicator == null) {
+            return;
+        }
+        if (button != null) {
+            button.setVisibility(View.GONE);
+            resetViewState(button);
+        }
+        loadingIndicator.setContentDescription(label);
+        loadingIndicator.setVisibility(View.VISIBLE);
+        if (animate) {
+            animateViewIn(loadingIndicator, null);
+        } else {
+            resetViewState(loadingIndicator);
+        }
     }
 
     private void performAction(int action, Comment comment, boolean oldBookmarked, boolean oldFavorited) {
@@ -763,10 +718,10 @@ final class CommentActionOverlayController {
                 getVoteIconRes(action, upvoted, downvoted),
                 false,
                 false);
-        View outgoing = voteSlot.getChildCount() > 0 ? voteSlot.getChildAt(0) : null;
+        View outgoing = getVisibleSlotChild(voteSlot);
         Runnable showVoteButton = () -> {
             setIconButton(voteSlot, actionItem, comment, bookmarked, favorited, false);
-            View incoming = voteSlot.getChildCount() > 0 ? voteSlot.getChildAt(0) : null;
+            View incoming = getVisibleSlotChild(voteSlot);
             Runnable afterLoading = () -> {
                 setVoteButtonsEnabled(true);
                 updateVoteButtons(comment, bookmarked, favorited, action, upvoted, downvoted, animate);
@@ -806,11 +761,11 @@ final class CommentActionOverlayController {
                                   boolean downvoted,
                                   boolean animate) {
         FrameLayout voteSlot = findButtonSlot(action);
-        if (voteSlot == null || voteSlot.getChildCount() == 0 || !(voteSlot.getChildAt(0) instanceof ImageButton)) {
+        ImageButton button = getSlotButton(voteSlot);
+        if (voteSlot == null || voteSlot.getVisibility() != View.VISIBLE || button == null) {
             return;
         }
 
-        ImageButton button = (ImageButton) voteSlot.getChildAt(0);
         int iconRes = getVoteIconRes(action, upvoted, downvoted);
         String label = getVoteLabel(action, upvoted, downvoted, false);
         Runnable updateListener = () -> button.setOnClickListener(v ->
@@ -850,14 +805,12 @@ final class CommentActionOverlayController {
 
     private void setVoteButtonEnabled(int action, boolean enabled) {
         FrameLayout voteSlot = findButtonSlot(action);
-        if (voteSlot == null || voteSlot.getChildCount() == 0) {
+        ImageButton button = getSlotButton(voteSlot);
+        if (voteSlot == null || voteSlot.getVisibility() != View.VISIBLE || button == null) {
             return;
         }
 
-        View child = voteSlot.getChildAt(0);
-        if (child instanceof ImageButton) {
-            child.setEnabled(enabled);
-        }
+        button.setEnabled(enabled);
     }
 
     @Nullable
@@ -932,7 +885,7 @@ final class CommentActionOverlayController {
                 ACTION_FAVORITE,
                 favorited ? "Remove favorite" : "Favorite",
                 favorited ? R.drawable.ic_star_filled : R.drawable.ic_star);
-        View outgoing = favoriteSlot.getChildCount() > 0 ? favoriteSlot.getChildAt(0) : null;
+        View outgoing = getVisibleSlotChild(favoriteSlot);
         if (animate && outgoing != null) {
             animateViewOut(outgoing, () ->
                     setIconButton(favoriteSlot, actionItem, comment, bookmarked, favorited, true));
@@ -947,6 +900,56 @@ final class CommentActionOverlayController {
             return (FrameLayout) actionView.getParent();
         }
         return null;
+    }
+
+    @Nullable
+    private ImageButton getSlotButton(@Nullable FrameLayout buttonSlot) {
+        if (buttonSlot == null) {
+            return null;
+        }
+        for (int i = 0; i < buttonSlot.getChildCount(); i++) {
+            View child = buttonSlot.getChildAt(i);
+            if (child instanceof ImageButton) {
+                return (ImageButton) child;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private LoadingIndicator getSlotLoadingIndicator(@Nullable FrameLayout buttonSlot) {
+        if (buttonSlot == null) {
+            return null;
+        }
+        for (int i = 0; i < buttonSlot.getChildCount(); i++) {
+            View child = buttonSlot.getChildAt(i);
+            if (child instanceof LoadingIndicator) {
+                return (LoadingIndicator) child;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private View getVisibleSlotChild(@Nullable FrameLayout buttonSlot) {
+        if (buttonSlot == null) {
+            return null;
+        }
+        for (int i = 0; i < buttonSlot.getChildCount(); i++) {
+            View child = buttonSlot.getChildAt(i);
+            if (child.getVisibility() == View.VISIBLE) {
+                return child;
+            }
+        }
+        return null;
+    }
+
+    private void resetViewState(View view) {
+        view.animate().cancel();
+        view.animate().setListener(null);
+        view.setAlpha(1f);
+        view.setScaleX(1f);
+        view.setScaleY(1f);
     }
 
     private void animateIconChange(ImageButton button,
