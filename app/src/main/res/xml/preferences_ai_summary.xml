@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <SwitchPreferenceCompat
-        app:title="Enable"
+    <com.simon.harmonichackernews.settings.AiSummaryEnabledPreference
         app:key="pref_ai_summary_enabled"
-        app:icon="@drawable/ic_auto_awesome"
+        android:layout="@layout/preference_ai_summary_enabled"
+        app:title="Enabled"
         app:singleLineTitle="false" />
+
+    <PreferenceCategory
+        android:layout="@layout/preference_segment_break" />
 
     <com.simon.harmonichackernews.settings.AiSummaryModePreference
         app:key="pref_ai_summary_mode"
