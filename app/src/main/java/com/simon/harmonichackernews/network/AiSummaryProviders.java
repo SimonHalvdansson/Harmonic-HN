@@ -71,7 +71,7 @@ public class AiSummaryProviders {
     }
 
     public static Provider getDefaultProvider() {
-        return OPENAI;
+        return OPENROUTER;
     }
 
     public static String getDefaultBaseUrl() {

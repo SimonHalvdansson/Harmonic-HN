@@ -22,8 +22,8 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
     private static final String PREF_API_KEY = "pref_ai_summary_api_key";
     private static final String PREF_MODEL = "pref_ai_summary_model";
     private static final String PREF_SYSTEM_PROMPT = "pref_ai_summary_system_prompt";
-    private static final String DEFAULT_BASE_URL = AiSummaryProviders.OPENAI.baseUrl;
-    private static final String DEFAULT_MODEL = AiSummaryProviders.OPENAI.defaultModel;
+    private static final String DEFAULT_BASE_URL = AiSummaryProviders.getDefaultBaseUrl();
+    private static final String DEFAULT_MODEL = AiSummaryProviders.getDefaultModel();
     private static final String DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant that is an expert on summarizing articles into an information-dense, concise and brief bullet-point list. Focus on key takeaways and most important/note-worthy points in the article. Keep the summary under 500 characters where possible. Respond in markdown format. Respond with only the summarized content - nothing else before or after.";
 
     private SwitchPreferenceCompat enablePreference;
