@@ -1852,36 +1852,6 @@ public class StoriesFragment extends Fragment {
         return true;
     }
 
-    private void displayStorySnapshot(List<Story> snapshot,
-                                      int snapshotLoadedTo,
-                                      int snapshotVisibleStoryCount,
-                                      boolean snapshotShowingCached,
-                                      boolean snapshotLoadingFailed,
-                                      boolean snapshotLoadingFailedServerError,
-                                      boolean snapshotShowLoadMoreButton,
-                                      boolean notifyDataSetChanged) {
-        int oldItemCount = adapter.getItemCount();
-        stories.clear();
-        if (!notifyDataSetChanged && oldItemCount > 0) {
-            adapter.notifyItemRangeRemoved(0, oldItemCount);
-        }
-
-        stories.addAll(snapshot);
-        loadedTo = snapshotLoadedTo;
-        adapter.visibleStoryCount = snapshotVisibleStoryCount;
-        showingCached = snapshotShowingCached;
-        loadingFailed = snapshotLoadingFailed;
-        loadingFailedServerError = snapshotLoadingFailedServerError;
-        adapter.showLoadMoreButton = snapshotShowLoadMoreButton;
-
-        int newItemCount = adapter.getItemCount();
-        if (notifyDataSetChanged) {
-            adapter.notifyDataSetChanged();
-        } else if (newItemCount > 0) {
-            adapter.notifyItemRangeInserted(0, newItemCount);
-        }
-    }
-
     private int getFirstVisibleStoryPosition() {
         if (linearLayoutManager == null) {
             return RecyclerView.NO_POSITION;
@@ -2878,11 +2848,9 @@ public class StoriesFragment extends Fragment {
 
         if (adapter != null && adapter.paginationMode) {
             adapter.notifyDataSetChanged();
-        } else {
+        } else if (adapter != null) {
             adapter.notifyItemRemoved(index);
-            if (adapter != null) {
-                adapter.updateStoryIndicesFromPosition(index);
-            }
+            adapter.updateStoryIndicesFromPosition(index);
         }
 
         if (loadVisibleReplacement) {
@@ -2968,7 +2936,7 @@ public class StoriesFragment extends Fragment {
         }
 
         Long currentStartedAt = loadingStoryStartTimes.get(story.id);
-        if (currentStartedAt != null && currentStartedAt.longValue() == startedAt) {
+        if (currentStartedAt != null && currentStartedAt == startedAt) {
             loadingStoryStartTimes.remove(story.id);
         }
     }
@@ -2979,7 +2947,7 @@ public class StoriesFragment extends Fragment {
         }
 
         Long currentStartedAt = loadingStoryStartTimes.get(story.id);
-        return currentStartedAt != null && currentStartedAt.longValue() == startedAt;
+        return currentStartedAt != null && currentStartedAt == startedAt;
     }
 
     private void clearLoadingStoryState() {
@@ -3056,9 +3024,7 @@ public class StoriesFragment extends Fragment {
                         Utils.log("Failed to load story with id: " + story.id);
                         story.loadingFailed = true;
                         updatePreviewImagePrefetchRampCompletion();
-                        if (index >= 0) {
-                            adapter.notifyItemChanged(index);
-                        }
+                        adapter.notifyItemChanged(index);
                     }
                 }, error -> {
             if (!isCurrentStoryLoad(story, startedAt)) {
@@ -4068,7 +4034,7 @@ public class StoriesFragment extends Fragment {
         int lastIndex = lastVisibleItem == RecyclerView.NO_POSITION
                 ? Math.min(getInitialLoadCount() - 1, stories.size() - 1)
                 : Math.min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories.size() - 1);
-        if (adapter != null && adapter.paginationMode) {
+        if (adapter.paginationMode) {
             lastIndex = Math.min(lastIndex, adapter.visibleStoryCount - 1);
         }
 
