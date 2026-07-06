@@ -22,7 +22,7 @@
             app:singleLineTitle="false"
             app:key="pref_export_bookmarks"
             app:title="Export bookmarks"
-            app:summary="Save newline separated txt file with IDs"
+            app:summary="Save newline separated .txt file with IDs"
             app:icon="@drawable/ic_bookmark" />
 
         <Preference
