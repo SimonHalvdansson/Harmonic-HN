@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,13 +17,17 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.databinding.ActivityAboutBinding;
 import com.simon.harmonichackernews.settings.SettingsCallback;
 import com.simon.harmonichackernews.utils.Changelog;
 import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.utils.ViewUtils;
 
 public class AboutFragment extends Fragment {
+
+    private ActivityAboutBinding binding;
 
     public AboutFragment() {
     }
@@ -30,14 +35,42 @@ public class AboutFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return ActivityAboutBinding.inflate(inflater, container, false).getRoot();
+        binding = ActivityAboutBinding.inflate(inflater, container, false);
+
+        LinearLayout wrapper = new LinearLayout(requireContext());
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+        wrapper.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        setUpWrapperInsets(wrapper);
+
+        MaterialToolbar toolbar = new MaterialToolbar(requireContext(), null,
+                androidx.appcompat.R.attr.toolbarStyle);
+        toolbar.setTitle("About");
+        toolbar.setTitleCentered(false);
+        ViewCompat.setAccessibilityHeading(toolbar, true);
+
+        boolean isSettingsTwoPane = getActivity() instanceof SettingsCallback
+                && ((SettingsCallback) getActivity()).isTwoPane();
+        if (!isSettingsTwoPane) {
+            toolbar.setNavigationIcon(R.drawable.ic_arrow_back);
+            toolbar.setNavigationOnClickListener(v -> {
+                if (getActivity() != null) {
+                    getActivity().getOnBackPressedDispatcher().onBackPressed();
+                }
+            });
+        }
+
+        wrapper.addView(toolbar);
+        wrapper.addView(binding.getRoot(), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        return wrapper;
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        ActivityAboutBinding binding = ActivityAboutBinding.bind(view);
         ViewCompat.setAccessibilityHeading(binding.aboutTitle, true);
         ViewCompat.setAccessibilityHeading(binding.aboutLicensesHeader, true);
 
@@ -55,6 +88,28 @@ public class AboutFragment extends Fragment {
         binding.aboutPrivacy.setOnClickListener(v -> openPrivacy());
     }
 
+    @Override
+    public void onDestroyView() {
+        binding = null;
+        super.onDestroyView();
+    }
+
+    private void setUpWrapperInsets(@NonNull LinearLayout wrapper) {
+        ViewCompat.setOnApplyWindowInsetsListener(wrapper, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+
+            v.setPadding(
+                    Math.max(systemBars.left, cutout.left),
+                    systemBars.top,
+                    Math.max(systemBars.right, cutout.right),
+                    0);
+
+            return insets;
+        });
+        ViewUtils.requestApplyInsetsWhenAttached(wrapper);
+    }
+
     private void applyInsets(ActivityAboutBinding binding, boolean isSettingsTwoPane) {
         final View root = binding.getRoot();
         final View container = binding.aboutContainer;
@@ -64,15 +119,14 @@ public class AboutFragment extends Fragment {
         ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
-            Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
             int sidePadding = isSettingsTwoPane
                     ? 0
                     : getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
 
             container.setPadding(
-                    sidePadding + Math.max(bars.left, cutout.left),
-                    padTop + bars.top,
-                    sidePadding + Math.max(bars.right, cutout.right),
+                    sidePadding,
+                    padTop,
+                    sidePadding,
                     padBot + Math.max(bars.bottom, ime.bottom)
             );
             return insets;
