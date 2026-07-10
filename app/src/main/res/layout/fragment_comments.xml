@@ -120,6 +120,48 @@
                     android:scrollbars="vertical"
                     tools:listitem="@layout/comments_item" />
 
+                <FrameLayout
+                    android:id="@+id/comments_horizontal_inset_left"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="left"
+                    android:importantForAccessibility="no"
+                    android:visibility="gone">
+
+                    <View
+                        android:id="@+id/comments_horizontal_inset_left_tint"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+
+                    <View
+                        android:id="@+id/comments_horizontal_inset_left_fade"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/comments_horizontal_inset_right"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="right"
+                    android:importantForAccessibility="no"
+                    android:visibility="gone">
+
+                    <View
+                        android:id="@+id/comments_horizontal_inset_right_tint"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+
+                    <View
+                        android:id="@+id/comments_horizontal_inset_right_fade"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+
+                </FrameLayout>
+
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/comments_scroll_navigation"
                     android:layout_width="wrap_content"
