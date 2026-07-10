@@ -34,7 +34,7 @@
             android:singleLine="false"
             android:visibility="gone"
             app:chipSpacingHorizontal="8dp"
-            app:chipSpacingVertical="0dp"
+            app:chipSpacingVertical="-1dp"
             app:selectionRequired="false"
             app:singleSelection="true" />
 
@@ -62,37 +62,68 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="Check prices"
+            android:text="Check price"
             android:visibility="gone"
             app:icon="@drawable/ic_attach_money"
             app:iconPadding="8dp" />
 
-        <LinearLayout
-            android:id="@+id/ai_summary_model_prices_loading_container"
-            android:layout_width="wrap_content"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/ai_summary_model_prices_result"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:visibility="gone">
+            android:visibility="gone"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
 
-            <com.google.android.material.loadingindicator.LoadingIndicator
-                android:id="@+id/ai_summary_model_prices_progress"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:indeterminate="true"
-                app:indicatorSize="24dp" />
-
-            <TextView
-                android:id="@+id/ai_summary_model_prices_loading_text"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="12dp"
-                android:text="Checking prices..."
-                android:textColor="?attr/storyColorNormal"
-                android:textSize="14sp" />
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
 
-        </LinearLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/product_sans_bold"
+                    android:letterSpacing="0.08"
+                    android:text="IN / OUT PRICE"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="11sp" />
+
+                <LinearLayout
+                    android:id="@+id/ai_summary_model_prices_content"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:baselineAligned="true"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/ai_summary_model_prices_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/product_sans_bold"
+                        android:textColor="?attr/storyColorNormal"
+                        android:textSize="20sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="6dp"
+                        android:fontFamily="@font/product_sans"
+                        android:text="per 1M"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
 
         <TextView
             android:id="@+id/ai_summary_model_prices_status"

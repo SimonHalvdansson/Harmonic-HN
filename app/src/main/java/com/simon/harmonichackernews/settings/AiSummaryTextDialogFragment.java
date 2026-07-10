@@ -6,7 +6,6 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.content.res.ColorStateList;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.text.Editable;
@@ -15,7 +14,6 @@ import android.util.TypedValue;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -27,7 +25,6 @@ import androidx.preference.PreferenceManager;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.simon.harmonichackernews.R;
@@ -68,13 +65,15 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
     private TextInputEditText inputEditText;
     private ChipGroup modelOptionsGroup;
     private TextWatcher modelTextWatcher;
+    private TextWatcher modelPricesTextWatcher;
     private boolean updatingModelOptionSelection;
     private Button modelPricesButton;
-    private LinearLayout modelPricesLoadingContainer;
-    private LoadingIndicator modelPricesProgress;
+    private View modelPricesResult;
+    private View modelPricesContent;
+    private TextView modelPricesValue;
     private TextView modelPricesStatus;
-    private ColorStateList modelPricesStatusDefaultTextColor;
     private Call modelPriceCall;
+    private String lastPricedModelId;
 
     public static void show(
             androidx.fragment.app.FragmentManager fm,
@@ -118,10 +117,10 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
         inputEditText = binding.aiSummaryTextInput;
         modelOptionsGroup = binding.aiSummaryModelOptions;
         modelPricesButton = binding.aiSummaryModelPricesButton;
-        modelPricesLoadingContainer = binding.aiSummaryModelPricesLoadingContainer;
-        modelPricesProgress = binding.aiSummaryModelPricesProgress;
+        modelPricesResult = binding.aiSummaryModelPricesResult;
+        modelPricesContent = binding.aiSummaryModelPricesContent;
+        modelPricesValue = binding.aiSummaryModelPricesValue;
         modelPricesStatus = binding.aiSummaryModelPricesStatus;
-        modelPricesStatusDefaultTextColor = modelPricesStatus.getTextColors();
 
         String title = args.getString(ARG_TITLE, "");
         String hint = args.getString(ARG_HINT, title);
@@ -144,6 +143,7 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
         String currentValue = savedInstanceState != null
                 ? savedInstanceState.getString(STATE_VALUE, "")
                 : getSavedValue(context, args.getString(ARG_KEY), defaultValue);
+        lastPricedModelId = currentValue.trim();
         setInputText(currentValue);
         configureModelOptions(binding, currentValue);
         configureModelPrices();
@@ -171,6 +171,10 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
             }
             inputEditText.requestFocus();
             inputEditText.setSelection(inputEditText.length());
+            if (shouldShowModelPrices()
+                    && buildOpenRouterModelUrl(getInputText()) != null) {
+                checkOpenRouterModelPrices();
+            }
         });
         return dialog;
     }
@@ -186,6 +190,12 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
         if (inputEditText != null && modelTextWatcher != null) {
             inputEditText.removeTextChangedListener(modelTextWatcher);
         }
+        if (inputEditText != null && modelPricesTextWatcher != null) {
+            inputEditText.removeTextChangedListener(modelPricesTextWatcher);
+        }
+        if (modelPricesContent != null) {
+            modelPricesContent.animate().cancel();
+        }
         if (modelPriceCall != null) {
             modelPriceCall.cancel();
             modelPriceCall = null;
@@ -195,11 +205,13 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
         }
         modelOptionsGroup = null;
         modelTextWatcher = null;
+        modelPricesTextWatcher = null;
         modelPricesButton = null;
-        modelPricesLoadingContainer = null;
-        modelPricesProgress = null;
+        modelPricesResult = null;
+        modelPricesContent = null;
+        modelPricesValue = null;
         modelPricesStatus = null;
-        modelPricesStatusDefaultTextColor = null;
+        lastPricedModelId = null;
         inputLayout = null;
         inputEditText = null;
         super.onDestroyView();
@@ -255,19 +267,19 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
             chip.setCheckedIconResource(R.drawable.ic_check_control_normal);
             chip.setCheckedIconVisible(true);
             chip.setChecked(model.id.equals(currentValue));
+            chip.setOnClickListener(view -> {
+                if (updatingModelOptionSelection) {
+                    return;
+                }
+                inputLayout.setError(null);
+                if (model.id.equals(getInputText())) {
+                    checkOpenRouterModelPrices();
+                } else {
+                    setInputText(model.id);
+                }
+            });
             binding.aiSummaryModelOptions.addView(chip);
         }
-
-        binding.aiSummaryModelOptions.setOnCheckedStateChangeListener((group, checkedIds) -> {
-            if (updatingModelOptionSelection || checkedIds.isEmpty()) {
-                return;
-            }
-            View checkedView = group.findViewById(checkedIds.get(0));
-            if (checkedView != null && checkedView.getTag() instanceof String) {
-                inputLayout.setError(null);
-                setInputText((String) checkedView.getTag());
-            }
-        });
 
         modelTextWatcher = new TextWatcher() {
             @Override
@@ -280,7 +292,9 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
 
             @Override
             public void afterTextChanged(Editable s) {
-                updateSelectedModelOption(String.valueOf(s));
+                if (updateSelectedModelOption(String.valueOf(s))) {
+                    checkOpenRouterModelPrices();
+                }
             }
         };
         inputEditText.addTextChangedListener(modelTextWatcher);
@@ -290,18 +304,45 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
     private void configureModelPrices() {
         if (!shouldShowModelPrices()) {
             modelPricesButton.setVisibility(View.GONE);
-            modelPricesLoadingContainer.setVisibility(View.GONE);
+            modelPricesResult.setVisibility(View.GONE);
             modelPricesStatus.setVisibility(View.GONE);
             return;
         }
 
-        modelPricesButton.setVisibility(View.VISIBLE);
+        modelPricesButton.setVisibility(View.GONE);
         modelPricesButton.setOnClickListener(view -> checkOpenRouterModelPrices());
+        modelPricesTextWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateModelPricesButtonVisibility();
+                if (!String.valueOf(s).trim().equals(lastPricedModelId)) {
+                    modelPricesStatus.setVisibility(View.GONE);
+                }
+            }
+        };
+        inputEditText.addTextChangedListener(modelPricesTextWatcher);
     }
 
-    private void updateSelectedModelOption(String modelId) {
-        if (modelOptionsGroup == null) {
+    private void updateModelPricesButtonVisibility() {
+        if (modelPricesButton == null || !shouldShowModelPrices()) {
             return;
+        }
+        boolean modelChanged = modelPriceCall == null
+                && !getInputText().equals(lastPricedModelId);
+        modelPricesButton.setVisibility(modelChanged ? View.VISIBLE : View.GONE);
+    }
+
+    private boolean updateSelectedModelOption(String modelId) {
+        if (modelOptionsGroup == null) {
+            return false;
         }
 
         String normalizedModelId = modelId == null ? "" : modelId.trim();
@@ -322,6 +363,7 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
             modelOptionsGroup.check(matchingChipId);
         }
         updatingModelOptionSelection = false;
+        return matchingChipId != View.NO_ID;
     }
 
     private boolean shouldShowModelPrices() {
@@ -345,6 +387,9 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
         }
 
         inputLayout.setError(null);
+        if (modelPriceCall != null) {
+            modelPriceCall.cancel();
+        }
         setModelPricesLoading();
 
         Request request = new Request.Builder()
@@ -359,7 +404,7 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
                     return;
                 }
                 mainHandler.post(() -> {
-                    if (!isAdded()) {
+                    if (!isAdded() || call != modelPriceCall) {
                         return;
                     }
                     setModelPricesError(e.getMessage());
@@ -372,7 +417,7 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
                     if (!closeableResponse.isSuccessful() || closeableResponse.body() == null) {
                         String message = "HTTP " + closeableResponse.code();
                         mainHandler.post(() -> {
-                            if (!isAdded()) {
+                            if (!isAdded() || call != modelPriceCall) {
                                 return;
                             }
                             setModelPricesError(message);
@@ -383,14 +428,14 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
                     String responseBody = closeableResponse.body().string();
                     String message = formatOpenRouterModelPrices(responseBody);
                     mainHandler.post(() -> {
-                        if (!isAdded()) {
+                        if (!isAdded() || call != modelPriceCall) {
                             return;
                         }
                         setModelPricesResult(message);
                     });
                 } catch (Exception e) {
                     mainHandler.post(() -> {
-                        if (!isAdded()) {
+                        if (!isAdded() || call != modelPriceCall) {
                             return;
                         }
                         setModelPricesError(e.getMessage());
@@ -402,29 +447,45 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
 
     private void setModelPricesLoading() {
         modelPricesButton.setEnabled(false);
+        modelPricesButton.setVisibility(View.GONE);
         inputEditText.setEnabled(false);
+        if (!TextUtils.isEmpty(modelPricesValue.getText())) {
+            modelPricesResult.setVisibility(View.VISIBLE);
+            modelPricesContent.animate()
+                    .alpha(0f)
+                    .setDuration(120L)
+                    .start();
+        }
         modelPricesStatus.setVisibility(View.GONE);
-        modelPricesLoadingContainer.setVisibility(View.VISIBLE);
-        modelPricesProgress.setVisibility(View.VISIBLE);
     }
 
     private void setModelPricesIdle() {
         modelPricesButton.setEnabled(true);
         inputEditText.setEnabled(true);
-        modelPricesLoadingContainer.setVisibility(View.GONE);
-        modelPricesProgress.setVisibility(View.GONE);
         modelPriceCall = null;
     }
 
     private void setModelPricesResult(String message) {
         setModelPricesIdle();
-        modelPricesStatus.setTextColor(modelPricesStatusDefaultTextColor);
-        modelPricesStatus.setText(message);
-        modelPricesStatus.setVisibility(View.VISIBLE);
+        lastPricedModelId = getInputText();
+        modelPricesContent.animate().cancel();
+        modelPricesValue.setText(message);
+        modelPricesContent.setAlpha(0f);
+        modelPricesResult.setVisibility(View.VISIBLE);
+        modelPricesStatus.setVisibility(View.GONE);
+        modelPricesContent.animate()
+                .alpha(1f)
+                .setDuration(160L)
+                .start();
+        updateModelPricesButtonVisibility();
     }
 
     private void setModelPricesError(@Nullable String message) {
         setModelPricesIdle();
+        lastPricedModelId = null;
+        modelPricesContent.animate().cancel();
+        modelPricesContent.setAlpha(1f);
+        modelPricesResult.setVisibility(View.GONE);
         TypedValue errorColor = new TypedValue();
         requireContext().getTheme().resolveAttribute(android.R.attr.colorError, errorColor, true);
         modelPricesStatus.setTextColor(errorColor.data);
@@ -432,6 +493,7 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
                 ? "Couldn't check prices. OpenRouter did not return pricing."
                 : "Couldn't check prices. " + message);
         modelPricesStatus.setVisibility(View.VISIBLE);
+        updateModelPricesButtonVisibility();
     }
 
     @Nullable
@@ -462,15 +524,7 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
         JSONObject pricing = data.getJSONObject("pricing");
         String promptPrice = formatPricePerMillionTokens(pricing.optString("prompt", ""));
         String completionPrice = formatPricePerMillionTokens(pricing.optString("completion", ""));
-        String requestPrice = formatPricePerRequest(pricing.optString("request", ""));
-
-        StringBuilder message = new StringBuilder();
-        message.append("Prompt: ").append(promptPrice).append(" / 1M tokens\n")
-                .append("Completion: ").append(completionPrice).append(" / 1M tokens");
-        if (!TextUtils.isEmpty(requestPrice)) {
-            message.append("\nRequest: ").append(requestPrice).append(" / request");
-        }
-        return message.toString();
+        return promptPrice + " / " + completionPrice;
     }
 
     private static String formatPricePerMillionTokens(String pricePerToken) {
@@ -479,17 +533,6 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
             return "$0";
         }
         return String.format(Locale.US, "$%.2f", price * 1_000_000d);
-    }
-
-    private static String formatPricePerRequest(String pricePerRequest) {
-        if (TextUtils.isEmpty(pricePerRequest)) {
-            return "";
-        }
-        double price = parseDouble(pricePerRequest);
-        if (price == 0d) {
-            return "$0";
-        }
-        return String.format(Locale.US, "$%.6f", price);
     }
 
     private static double parseDouble(String value) {
