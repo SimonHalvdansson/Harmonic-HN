@@ -5,6 +5,7 @@ import android.os.Bundle;
 
 import androidx.preference.Preference;
 import androidx.preference.PreferenceManager;
+import androidx.preference.SwitchPreferenceCompat;
 
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -51,10 +52,13 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
 
         updateWebViewDependentPreferenceStatus(integratedWebview, readerModeEnabled);
 
-        boolean redirectNitter = SettingsUtils.shouldRedirectNitter(getContext());
-
-        findPreference("pref_link_preview_x").setSummary(redirectNitter ? "" : "Requires Nitter redirect to be active");
-        changePrefStatus(findPreference("pref_link_preview_x"), redirectNitter);
+        SwitchPreferenceCompat redirectNitterPreference = findPreference("pref_redirect_nitter");
+        findPreference("pref_link_preview_x").setOnPreferenceChangeListener((preference, newValue) -> {
+            if ((boolean) newValue && !SettingsUtils.shouldRedirectNitter(requireContext())) {
+                redirectNitterPreference.setChecked(true);
+            }
+            return true;
+        });
 
         findPreference("pref_webview").setOnPreferenceChangeListener((preference, newValue) -> {
             boolean webViewEnabled = (boolean) newValue;
@@ -68,11 +72,6 @@ public class WebLinksPreferenceFragment extends BaseSettingsFragment implements 
             return true;
         });
 
-        findPreference("pref_redirect_nitter").setOnPreferenceChangeListener((preference, newValue) -> {
-            changePrefStatus(findPreference("pref_link_preview_x"), (boolean) newValue);
-            findPreference("pref_link_preview_x").setSummary((boolean) newValue ? "" : "Requires Nitter redirect to be active");
-            return true;
-        });
     }
 
     @Override
