@@ -51,20 +51,8 @@
 
         </LinearLayout>
 
-        <com.google.android.material.loadingindicator.LoadingIndicator
-            tools:visibility="gone"
-            android:id="@+id/user_loading"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="20dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="60dp"
-            android:minWidth="60dp" />
-
         <LinearLayout
             android:id="@+id/user_container"
-            android:visibility="gone"
-            tools:visibility="visible"
             android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
@@ -76,24 +64,71 @@
                 android:textSize="28sp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="intrepidher"/>
+                tools:text="intrepidher"/>
 
-            <TextView
-                android:id="@+id/user_meta"
-                android:fontFamily="@font/product_sans_bold"
-                android:layout_width="wrap_content"
+            <com.facebook.shimmer.ShimmerFrameLayout
+                android:id="@+id/user_loading"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="4dp"
-                android:textColor="?attr/textColorDefault"
-                android:text="466 karma since Oct 18, 2019"/>
+                android:importantForAccessibility="noHideDescendants"
+                app:shimmer_base_alpha="0.15"
+                app:shimmer_base_color="?attr/drawableColor"
+                app:shimmer_duration="2000"
+                app:shimmer_highlight_alpha="0.17">
 
-            <org.sufficientlysecure.htmltextview.HtmlTextView
-                android:id="@+id/user_about"
-                android:textColor="?attr/textColorDefault"
-                tools:text="Electrical engineer"
-                android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="196dp"
+                        android:layout_height="16dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/smooth_rectangle_drawable" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="16dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/smooth_rectangle_drawable" />
+
+                    <View
+                        android:layout_width="220dp"
+                        android:layout_height="16dp"
+                        android:layout_marginTop="5dp"
+                        android:background="@drawable/smooth_rectangle_drawable" />
+
+                </LinearLayout>
+
+            </com.facebook.shimmer.ShimmerFrameLayout>
+
+            <LinearLayout
+                android:id="@+id/user_details"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/product_sans" />
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:id="@+id/user_meta"
+                    android:fontFamily="@font/product_sans_bold"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:textColor="?attr/textColorDefault"
+                    tools:text="466 karma since Oct 18, 2019"/>
+
+                <org.sufficientlysecure.htmltextview.HtmlTextView
+                    android:id="@+id/user_about"
+                    android:textColor="?attr/textColorDefault"
+                    tools:text="Electrical engineer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/product_sans" />
+
+            </LinearLayout>
 
             <Button
                 android:textSize="14sp"
@@ -106,7 +141,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:textColor="?attr/storyColorNormal"
-                tools:text="Submissions" />
+                android:text="Submissions" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/user_notifications_button"

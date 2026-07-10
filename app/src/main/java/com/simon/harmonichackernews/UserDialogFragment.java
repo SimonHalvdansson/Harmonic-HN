@@ -35,9 +35,9 @@ import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
+import com.facebook.shimmer.ShimmerFrameLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.simon.harmonichackernews.databinding.UserDialogBinding;
 import com.simon.harmonichackernews.network.NetworkComponent;
@@ -75,9 +75,10 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     private TextView notificationsExplanation;
     private LinearProgressIndicator notificationsLoading;
     private TextView notificationsStatus;
-    private LoadingIndicator loadingProgress;
+    private ShimmerFrameLayout loadingProgress;
     private LinearLayout errorLayout;
     private LinearLayout container;
+    private LinearLayout detailsContainer;
     private RequestQueue queue;
     private final Object requestTag = new Object();
     private UserDialogCallback setTagCallback;
@@ -136,11 +137,13 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         errorLayout = binding.userError;
         Button retryButton = binding.userRetry;
         container = binding.userContainer;
+        detailsContainer = binding.userDetails;
 
         Bundle bundle = getArguments();
         final String userName = (bundle != null && !TextUtils.isEmpty(bundle.getString(EXTRA_USER_NAME))) ? bundle.getString(EXTRA_USER_NAME) : null;
 
         if (userName != null) {
+            nameTextview.setText(userName);
             // lets create a request and fill in the data when we have it
             String url = "https://hacker-news.firebaseio.com/v0/user/" + userName + ".json";
 
@@ -297,10 +300,14 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     public void onDestroyView() {
         if (loadingProgress != null) {
             loadingProgress.animate().cancel();
+            loadingProgress.stopShimmer();
         }
 
         if (container != null) {
             container.animate().cancel();
+        }
+        if (detailsContainer != null) {
+            detailsContainer.animate().cancel();
         }
         if (queue != null) {
             queue.cancelAll(requestTag);
@@ -336,6 +343,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
         loadingProgress = null;
         errorLayout = null;
         container = null;
+        detailsContainer = null;
 
         super.onDestroyView();
     }
@@ -367,7 +375,8 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                 && notificationsStatus != null
                 && loadingProgress != null
                 && errorLayout != null
-                && container != null;
+                && container != null
+                && detailsContainer != null;
     }
 
     private void setupNotificationButton(String userName) {
@@ -464,6 +473,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
                         }
 
                         if (loadingProgress != null) {
+                            loadingProgress.stopShimmer();
                             loadingProgress.setVisibility(GONE);
                             loadingProgress.setAlpha(1f);
                             loadingProgress.setScaleX(1f);
@@ -486,21 +496,18 @@ public class UserDialogFragment extends AppCompatDialogFragment {
             errorLayout.setVisibility(GONE);
         }
 
-        if (container == null) {
+        if (container == null || detailsContainer == null) {
             return;
         }
 
-        container.animate().cancel();
         container.setVisibility(View.VISIBLE);
-        container.setAlpha(0f);
-        container.setTranslationY(Utils.pxFromDpInt(container.getResources(), 8));
-        container.setScaleX(0.98f);
-        container.setScaleY(0.98f);
-        container.animate()
+        detailsContainer.animate().cancel();
+        detailsContainer.setVisibility(View.VISIBLE);
+        detailsContainer.setAlpha(0f);
+        detailsContainer.setTranslationY(Utils.pxFromDpInt(detailsContainer.getResources(), 4));
+        detailsContainer.animate()
                 .alpha(1f)
                 .translationY(0f)
-                .scaleX(1f)
-                .scaleY(1f)
                 .setDuration(USER_CONTENT_ENTER_DURATION_MS)
                 .setInterpolator(EMPHASIZED_DECELERATE)
                 .start();
@@ -509,6 +516,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     private void showErrorState() {
         if (loadingProgress != null) {
             loadingProgress.animate().cancel();
+            loadingProgress.stopShimmer();
             loadingProgress.setVisibility(GONE);
             loadingProgress.setAlpha(1f);
             loadingProgress.setScaleX(1f);
@@ -522,6 +530,13 @@ public class UserDialogFragment extends AppCompatDialogFragment {
             container.setTranslationY(0f);
             container.setScaleX(1f);
             container.setScaleY(1f);
+        }
+
+        if (detailsContainer != null) {
+            detailsContainer.animate().cancel();
+            detailsContainer.setVisibility(GONE);
+            detailsContainer.setAlpha(1f);
+            detailsContainer.setTranslationY(0f);
         }
 
         if (errorLayout != null) {
