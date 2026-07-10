@@ -1123,6 +1123,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         clickMore(clickedView);
                         break;
 
+                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_COMMENTS_REFRESH:
+                        onRetry();
+                        break;
+
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_REFRESH:
                         if (webViewController.isShowingOfflineOrCachedPage() && webViewController.hasLastFailedUrl()) {
                             webViewController.retryLastFailedUrl();

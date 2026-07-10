@@ -685,6 +685,24 @@
         </RelativeLayout>
 
         <RelativeLayout
+            android:id="@+id/comments_header_button_refresh_parent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/comments_header_button_refresh"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_centerHorizontal="true"
+                android:background="?selectableItemBackgroundBorderless"
+                android:contentDescription="Refresh"
+                android:src="@drawable/ic_refresh" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
             android:id="@+id/comments_header_button_more_parent"
             android:layout_width="0dp"
             android:layout_height="wrap_content"

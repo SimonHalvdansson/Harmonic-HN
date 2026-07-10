@@ -191,6 +191,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public final static int FLAG_ACTION_CLICK_INVERT = -5;
     public final static int FLAG_ACTION_CLICK_RESET_OP_FILTER = -6;
     public final static int FLAG_ACTION_CLICK_READER = -7;
+    public final static int FLAG_ACTION_CLICK_COMMENTS_REFRESH = -8;
 
     public CommentsRecyclerViewAdapter(boolean useIntegratedWebview,
                                        LinearLayout sheet,
@@ -777,6 +778,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         headerViewHolder.commentButtonParent.setVisibility(canReply ? VISIBLE : GONE);
         headerViewHolder.voteButtonParent.setVisibility(hasAccountDetails ? VISIBLE : GONE);
         headerViewHolder.favoriteButtonParent.setVisibility(hasAccountDetails ? VISIBLE : GONE);
+        headerViewHolder.refreshButtonParent.setVisibility(hasAccountDetails ? GONE : VISIBLE);
         headerViewHolder.commentButton.setContentDescription(story.isComment ? "Reply to comment" : "Reply to post");
     }
 
@@ -2518,6 +2520,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final ImageButton favoriteButton;
         public final ImageButton bookmarkButton;
         public final ImageButton shareButton;
+        public final ImageButton headerRefreshButton;
         public final ImageButton summarizeButton;
         public final RelativeLayout summarizeButtonParent;
         public final LinearLayout summaryContainer;
@@ -2527,6 +2530,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final ImageButton moreButton;
         public final RelativeLayout userButtonParent;
         public final RelativeLayout moreButtonParent;
+        public final RelativeLayout refreshButtonParent;
         public final RelativeLayout commentButtonParent;
         public final RelativeLayout voteButtonParent;
         public final RelativeLayout favoriteButtonParent;
@@ -2650,6 +2654,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             favoriteButton = binding.commentsHeaderButtonFavorite;
             bookmarkButton = binding.commentsHeaderButtonBookmark;
             shareButton = binding.commentsHeaderButtonShare;
+            headerRefreshButton = binding.commentsHeaderButtonRefresh;
             summarizeButtonParent = binding.commentsHeaderButtonSummarizeParent;
             summarizeButton = binding.commentsHeaderButtonSummarize;
             summaryContainer = binding.commentsHeaderSummaryContainer;
@@ -2660,6 +2665,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             moreButton = binding.commentsHeaderButtonMore;
             userButtonParent = binding.commentsHeaderButtonUserParent;
             moreButtonParent = binding.commentsHeaderButtonMoreParent;
+            refreshButtonParent = binding.commentsHeaderButtonRefreshParent;
             commentButtonParent = binding.commentsHeaderButtonCommentParent;
             voteButtonParent = (RelativeLayout) voteButton.getParent();
             favoriteButtonParent = binding.commentsHeaderButtonFavoriteParent;
@@ -2757,6 +2763,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             voteButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_VOTE, v));
             favoriteButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_FAVORITE, v));
             shareButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_SHARE, v));
+            headerRefreshButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_COMMENTS_REFRESH, v));
             moreButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_MORE, v));
             sheetRefreshButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_REFRESH, view));
             sheetExpandButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_EXPAND, view));
@@ -2776,6 +2783,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             TooltipCompat.setTooltipText(bookmarkButton, "Bookmark");
             TooltipCompat.setTooltipText(summarizeButton, "Summarize");
             TooltipCompat.setTooltipText(shareButton, "Share");
+            TooltipCompat.setTooltipText(headerRefreshButton, "Refresh");
             TooltipCompat.setTooltipText(moreButton, "More");
             ViewCompat.setAccessibilityHeading(titleView, true);
             ViewCompat.setAccessibilityHeading(infoHeader, true);
