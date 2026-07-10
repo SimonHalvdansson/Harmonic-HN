@@ -2,165 +2,83 @@ package com.simon.harmonichackernews;
 
 import android.os.Build;
 import android.os.Bundle;
-import android.content.res.Configuration;
-import android.text.TextUtils;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.fragment.app.Fragment;
-import androidx.preference.PreferenceManager;
+import androidx.preference.Preference;
 
-import com.simon.harmonichackernews.databinding.ActivityDebugBinding;
-import com.simon.harmonichackernews.settings.SettingsCallback;
-import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.settings.BaseSettingsFragment;
+import com.simon.harmonichackernews.settings.DebugHnIdPreference;
 import com.simon.harmonichackernews.utils.Utils;
 
 import java.util.Locale;
 
-public class DebugFragment extends Fragment {
+public class DebugFragment extends BaseSettingsFragment {
 
-    public DebugFragment() {
+    private static final String PREF_BUILD_INFO = "pref_debug_build_info";
+    private static final String PREF_LINK_POST = "pref_debug_link_post";
+    private static final String PREF_REFERENCE_LINKS_POST = "pref_debug_reference_links_post";
+    private static final String PREF_POLL = "pref_debug_poll";
+    private static final String PREF_INTERNAL_HN_LINK = "pref_debug_internal_hn_link";
+    private static final String PREF_NITTER_VIDEO = "pref_debug_nitter_video";
+    private static final String PREF_WELCOME_DIALOG = "pref_debug_welcome_dialog";
+    private static final String PREF_NOTIFICATIONS = "pref_debug_notifications";
+    private static final String PREF_OPEN_HN_ID = "pref_debug_open_hn_id";
+
+    @Override
+    protected String getToolbarTitle() {
+        return "Debug";
     }
 
-    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return ActivityDebugBinding.inflate(inflater, container, false).getRoot();
-    }
+    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+        setPreferencesFromResource(R.xml.preferences_debug, rootKey);
 
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+        Preference buildInfo = findPreference(PREF_BUILD_INFO);
+        if (buildInfo != null) {
+            buildInfo.setSummary(String.format(Locale.US,
+                    "Version %s · Build %d · %s\nAndroid %s (API %d)",
+                    BuildConfig.VERSION_NAME,
+                    BuildConfig.VERSION_CODE,
+                    BuildConfig.BUILD_TYPE,
+                    Build.VERSION.RELEASE,
+                    Build.VERSION.SDK_INT));
+        }
 
-        ActivityDebugBinding binding = ActivityDebugBinding.bind(view);
-        ViewCompat.setAccessibilityHeading(binding.debugTitle, true);
+        setLinkPreference(PREF_LINK_POST, "https://news.ycombinator.com/item?id=47938725");
+        setLinkPreference(PREF_REFERENCE_LINKS_POST, "https://news.ycombinator.com/item?id=48352939");
+        setLinkPreference(PREF_POLL, "https://news.ycombinator.com/item?id=39572682");
+        setLinkPreference(PREF_INTERNAL_HN_LINK, "https://news.ycombinator.com/item?id=30676384");
+        setLinkPreference(PREF_NITTER_VIDEO, "https://news.ycombinator.com/item?id=48012735");
 
-        boolean isSettingsTwoPane = getActivity() instanceof SettingsCallback
-                && ((SettingsCallback) getActivity()).isTwoPane();
-        applyInsets(binding, isSettingsTwoPane);
-
-        binding.debugBuild.setText(String.format(Locale.US,
-                "Version %s - Build %d - %s\nAndroid %s (API %d)",
-                BuildConfig.VERSION_NAME,
-                BuildConfig.VERSION_CODE,
-                BuildConfig.BUILD_TYPE,
-                Build.VERSION.RELEASE,
-                Build.VERSION.SDK_INT));
-
-        binding.debugAlwaysShowTapToRefresh.setChecked(SettingsUtils.shouldAlwaysShowTapToRefresh(requireContext()));
-        binding.debugAlwaysShowTapToRefresh.setOnCheckedChangeListener((buttonView, isChecked) ->
-                PreferenceManager.getDefaultSharedPreferences(requireContext())
-                        .edit()
-                        .putBoolean(SettingsUtils.PREF_ALWAYS_SHOW_TAP_TO_REFRESH, isChecked)
-                        .apply());
-
-        binding.debugLink.setOnClickListener(v -> openDebugLink());
-        binding.debugCollectedLinks.setOnClickListener(v -> openDebugCollectedLinks());
-        binding.debugPoll.setOnClickListener(v -> openDebugPoll());
-        binding.debugInternalHnLink.setOnClickListener(v -> openDebugInternalHnLink());
-        binding.debugNitterVideoTest.setOnClickListener(v -> openDebugNitterVideoTest());
-        binding.debugWelcome.setOnClickListener(v -> openDebugWelcome());
-        binding.debugNotifications.setOnClickListener(v -> openDebugNotifications());
-        binding.debugOpenHnId.setOnClickListener(v -> openHnId(binding));
-        binding.debugHnIdInput.setOnEditorActionListener((textView, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_GO) {
-                openHnId(binding);
+        Preference welcomeDialog = findPreference(PREF_WELCOME_DIALOG);
+        if (welcomeDialog != null) {
+            welcomeDialog.setOnPreferenceClickListener(preference -> {
+                WelcomeDialogFragment.show(getParentFragmentManager(), false);
                 return true;
-            }
-            return false;
-        });
-    }
+            });
+        }
 
-    private void applyInsets(ActivityDebugBinding binding, boolean isSettingsTwoPane) {
-        final View root = binding.getRoot();
-        final View container = binding.debugContainer;
-        final int padTop = container.getPaddingTop();
-        final int padBot = container.getPaddingBottom();
+        Preference notifications = findPreference(PREF_NOTIFICATIONS);
+        if (notifications != null) {
+            notifications.setOnPreferenceClickListener(preference -> {
+                DebugNotificationsDialogFragment.show(getParentFragmentManager());
+                return true;
+            });
+        }
 
-        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
-            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
-            Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
-            int sidePadding = isSettingsTwoPane
-                    ? 0
-                    : getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
-
-            container.setPadding(
-                    sidePadding + Math.max(bars.left, cutout.left),
-                    padTop + bars.top,
-                    sidePadding + Math.max(bars.right, cutout.right),
-                    padBot + Math.max(bars.bottom, ime.bottom)
-            );
-            return insets;
-        });
-        ViewCompat.requestApplyInsets(root);
-    }
-
-    @Override
-    public void onConfigurationChanged(@NonNull Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        if (getView() != null) {
-            ViewCompat.requestApplyInsets(getView());
+        DebugHnIdPreference hnIdPreference = findPreference(PREF_OPEN_HN_ID);
+        if (hnIdPreference != null) {
+            hnIdPreference.setOnOpenIdListener(id ->
+                    Utils.openCommentsActivity(id, -1, requireContext()));
         }
     }
 
-    private void openDebugLink() {
-        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=47938725");
-    }
-
-    private void openDebugCollectedLinks() {
-        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=48352939");
-    }
-
-    private void openDebugPoll() {
-        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=39572682");
-    }
-
-    private void openDebugInternalHnLink() {
-        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=30676384");
-    }
-
-    private void openDebugNitterVideoTest() {
-        Utils.openLinkMaybeHN(requireActivity(), "https://news.ycombinator.com/item?id=48012735");
-    }
-
-    private void openDebugWelcome() {
-        WelcomeDialogFragment.show(getParentFragmentManager(), false);
-    }
-
-    private void openDebugNotifications() {
-        DebugNotificationsDialogFragment.show(getParentFragmentManager());
-    }
-
-    private void openHnId(@NonNull ActivityDebugBinding binding) {
-        CharSequence input = binding.debugHnIdInput.getText();
-        String hnId = input != null ? input.toString().trim() : "";
-        if (TextUtils.isEmpty(hnId) || !TextUtils.isDigitsOnly(hnId)) {
-            binding.debugHnIdInputLayout.setError("Enter a numeric HN ID");
-            return;
+    private void setLinkPreference(String key, String url) {
+        Preference preference = findPreference(key);
+        if (preference != null) {
+            preference.setOnPreferenceClickListener(clickedPreference -> {
+                Utils.openLinkMaybeHN(requireActivity(), url);
+                return true;
+            });
         }
-
-        int id;
-        try {
-            id = Integer.parseInt(hnId);
-        } catch (NumberFormatException e) {
-            binding.debugHnIdInputLayout.setError("HN ID is too large");
-            return;
-        }
-
-        if (id <= 0) {
-            binding.debugHnIdInputLayout.setError("Enter a positive HN ID");
-            return;
-        }
-
-        binding.debugHnIdInputLayout.setError(null);
-        Utils.openCommentsActivity(id, -1, requireContext());
     }
 }
