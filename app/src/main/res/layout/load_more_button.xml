@@ -7,15 +7,31 @@
     android:padding="16dp"
     android:gravity="center">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/load_more_button"
-        android:fontFamily="@font/product_sans_bold"
+    <FrameLayout
         android:layout_width="wrap_content"
-        android:layout_height="56dp"
-        android:text="Load more"
-        android:textAllCaps="false"
-        style="@style/Widget.Material3Expressive.Button.OutlinedButton"
-        app:icon="@drawable/ic_add"
-        app:iconGravity="textStart" />
+        android:layout_height="56dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/load_more_button"
+            style="@style/Widget.Material3Expressive.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:fontFamily="@font/product_sans_bold"
+            android:text="@string/load_more"
+            android:textAllCaps="false"
+            app:icon="@drawable/ic_add"
+            app:iconGravity="textStart" />
+
+        <com.google.android.material.loadingindicator.LoadingIndicator
+            android:id="@+id/load_more_progress"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:contentDescription="@string/loading_more_stories"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:indicatorSize="32dp" />
+
+    </FrameLayout>
 
 </LinearLayout>

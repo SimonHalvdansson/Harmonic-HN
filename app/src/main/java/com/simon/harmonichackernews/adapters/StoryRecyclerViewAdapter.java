@@ -2,7 +2,9 @@ package com.simon.harmonichackernews.adapters;
 
 import android.animation.ArgbEvaluator;
 import android.animation.Animator;
+import android.animation.AnimatorSet;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -18,6 +20,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.PathInterpolator;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -93,6 +96,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final int FAVICON_TINT_SIZE_DP = 64;
     private static final String PAYLOAD_CLICKED_STATE = "clicked_state";
     private static final String PAYLOAD_STORY_INDEX = "story_index";
+    private static final String PAYLOAD_LOAD_MORE_STATE = "load_more_state";
+    private static final long LOAD_MORE_FADE_OUT_DURATION_MS = 90;
+    private static final long LOAD_MORE_FADE_IN_DURATION_MS = 140;
+    private static final PathInterpolator LOAD_MORE_TRANSITION_INTERPOLATOR =
+            new PathInterpolator(0.2f, 0f, 0f, 1f);
 
     public boolean showPoints;
     public boolean compactPoints;
@@ -119,6 +127,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     public boolean paginationMode = false;
     public boolean showLoadMoreButton = false;
+    private boolean loadMoreLoading = false;
     public static final int PAGINATION_PAGE_SIZE = 30;
     public int visibleStoryCount = 30;
     private final Map<Story, StoryPreviewImageLoader.PreviewImageRequest> previewImageUrlRequests = new IdentityHashMap<>();
@@ -202,6 +211,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NotNull final RecyclerView.ViewHolder holder, int position, @NotNull List<Object> payloads) {
+        if (holder instanceof LoadMoreViewHolder && payloads.contains(PAYLOAD_LOAD_MORE_STATE)) {
+            bindLoadMoreHolder((LoadMoreViewHolder) holder, true);
+            return;
+        }
+
         if (holder instanceof StoryViewHolder && !payloads.isEmpty()) {
             StoryViewHolder storyViewHolder = (StoryViewHolder) holder;
             Story story = stories.get(position);
@@ -232,8 +246,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         if (holder instanceof LoadMoreViewHolder) {
             LoadMoreViewHolder loadMoreHolder = (LoadMoreViewHolder) holder;
 
+            bindLoadMoreHolder(loadMoreHolder, false);
             loadMoreHolder.loadMoreButton.setOnClickListener(v -> {
-                if (loadMoreClickListener != null) {
+                if (!loadMoreLoading && loadMoreClickListener != null) {
                     loadMoreClickListener.onClick(v);
                 }
             });
@@ -365,6 +380,15 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             });
 
         }
+    }
+
+    private void bindLoadMoreHolder(@NotNull LoadMoreViewHolder holder, boolean animate) {
+        if (!animate || holder.showingLoading == null || holder.showingLoading == loadMoreLoading) {
+            holder.applyLoadingState(loadMoreLoading);
+            return;
+        }
+
+        holder.animateLoadingState(loadMoreLoading);
     }
 
     @SuppressLint("SetTextI18n")
@@ -1606,7 +1630,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private boolean hasLoadMoreButton() {
-        return showLoadMoreButton || (paginationMode && visibleStoryCount < stories.size());
+        return loadMoreLoading || showLoadMoreButton || (paginationMode && visibleStoryCount < stories.size());
     }
 
     private boolean isLoadMorePosition(int position) {
@@ -1952,6 +1976,24 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         loadMoreClickListener = listener;
     }
 
+    public void setLoadMoreLoading(boolean loading) {
+        if (loadMoreLoading == loading) {
+            return;
+        }
+
+        boolean hadLoadMoreButton = hasLoadMoreButton();
+        int loadMorePosition = getVisibleItemCount();
+        loadMoreLoading = loading;
+        boolean hasLoadMoreButton = hasLoadMoreButton();
+        if (hadLoadMoreButton && hasLoadMoreButton) {
+            notifyItemChanged(loadMorePosition, PAYLOAD_LOAD_MORE_STATE);
+        } else if (hadLoadMoreButton) {
+            notifyItemRemoved(loadMorePosition);
+        } else if (hasLoadMoreButton) {
+            notifyItemInserted(loadMorePosition);
+        }
+    }
+
     public interface ClickListener {
         void onItemClick(int position);
     }
@@ -1962,10 +2004,87 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     public static class LoadMoreViewHolder extends RecyclerView.ViewHolder {
         public Button loadMoreButton;
+        public View loadMoreProgress;
+        @Nullable
+        private Boolean showingLoading;
+        @Nullable
+        private AnimatorSet stateAnimator;
 
         public LoadMoreViewHolder(LoadMoreButtonBinding binding) {
             super(binding.getRoot());
             loadMoreButton = binding.loadMoreButton;
+            loadMoreProgress = binding.loadMoreProgress;
+        }
+
+        private void applyLoadingState(boolean loading) {
+            if (stateAnimator != null) {
+                stateAnimator.cancel();
+                stateAnimator = null;
+            }
+
+            showingLoading = loading;
+            loadMoreButton.setEnabled(!loading);
+            setTransitionViewState(loadMoreButton, !loading, 1f, 1f);
+            setTransitionViewState(loadMoreProgress, loading, 1f, 1f);
+        }
+
+        private void animateLoadingState(boolean loading) {
+            if (stateAnimator != null) {
+                stateAnimator.cancel();
+            }
+
+            showingLoading = loading;
+            loadMoreButton.setEnabled(false);
+            View outgoing = loading ? loadMoreButton : loadMoreProgress;
+            View incoming = loading ? loadMoreProgress : loadMoreButton;
+
+            setTransitionViewState(outgoing, true, 1f, 1f);
+            setTransitionViewState(incoming, true, 0f, 0.8f);
+
+            AnimatorSet fadeOut = new AnimatorSet();
+            fadeOut.playTogether(
+                    ObjectAnimator.ofFloat(outgoing, View.ALPHA, 1f, 0f),
+                    ObjectAnimator.ofFloat(outgoing, View.SCALE_X, 1f, 0.9f),
+                    ObjectAnimator.ofFloat(outgoing, View.SCALE_Y, 1f, 0.9f)
+            );
+            fadeOut.setDuration(LOAD_MORE_FADE_OUT_DURATION_MS);
+            fadeOut.setInterpolator(LOAD_MORE_TRANSITION_INTERPOLATOR);
+
+            AnimatorSet fadeIn = new AnimatorSet();
+            fadeIn.playTogether(
+                    ObjectAnimator.ofFloat(incoming, View.ALPHA, 0f, 1f),
+                    ObjectAnimator.ofFloat(incoming, View.SCALE_X, 0.8f, 1f),
+                    ObjectAnimator.ofFloat(incoming, View.SCALE_Y, 0.8f, 1f)
+            );
+            fadeIn.setDuration(LOAD_MORE_FADE_IN_DURATION_MS);
+            fadeIn.setInterpolator(LOAD_MORE_TRANSITION_INTERPOLATOR);
+
+            stateAnimator = new AnimatorSet();
+            stateAnimator.playSequentially(fadeOut, fadeIn);
+            stateAnimator.addListener(new AnimatorListenerAdapter() {
+                private boolean cancelled;
+
+                @Override
+                public void onAnimationCancel(Animator animation) {
+                    cancelled = true;
+                }
+
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    if (!cancelled) {
+                        stateAnimator = null;
+                        applyLoadingState(loading);
+                    }
+                }
+            });
+            stateAnimator.start();
+        }
+
+        private static void setTransitionViewState(View view, boolean visible, float alpha, float scale) {
+            view.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
+            view.setAlpha(alpha);
+            view.setScaleX(scale);
+            view.setScaleY(scale);
         }
     }
 
