@@ -892,13 +892,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void updateCommentsStatusBarAppearance() {
+        updateCommentsStatusBarAppearance(getCurrentCommentsStatusBarColor());
+    }
+
+    private void updateCommentsStatusBarAppearance(int commentsStatusBarColor) {
         if (binding == null || getContext() == null) {
             return;
         }
 
         boolean showStatusBarProtection = shouldShowCommentsStatusBarProtection();
         boolean statusBarProtectionEnabled = translucentStatusBarEnabled && showStatusBarProtection;
-        int statusBarColor = showStatusBarProtection ? getCurrentCommentsStatusBarColor() : commentsPaneStatusBarColor;
+        int statusBarColor = showStatusBarProtection ? commentsStatusBarColor : commentsPaneStatusBarColor;
         if (!appliedStatusBarProtectionKnown
                 || appliedStatusBarProtectionEnabled != statusBarProtectionEnabled
                 || (statusBarProtectionEnabled && appliedStatusBarProtectionColor != statusBarColor)) {
@@ -1597,12 +1601,44 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void restoreScrollProgress(CommentsScrollProgress scrollProgress) {
-        for (Comment c : comments) {
+        boolean restoredAwayFromHeader = false;
+        for (int i = 0; i < comments.size(); i++) {
+            Comment c = comments.get(i);
             if (c.id == scrollProgress.topCommentId) {
-                layoutManager.scrollToPositionWithOffset(comments.indexOf(c), scrollProgress.topCommentOffset);
+                layoutManager.scrollToPositionWithOffset(i, scrollProgress.topCommentOffset);
+                if (i > 0) {
+                    restoredAwayFromHeader = true;
+                    updateCommentsStatusBarAppearance(commentsPaneStatusBarColor);
+                }
             }
             c.expanded = !scrollProgress.collapsedIDs.contains(c.id);
         }
+        if (restoredAwayFromHeader) {
+            updateCommentsStatusBarAppearanceAfterScrollRestore();
+        }
+    }
+
+    private void updateCommentsStatusBarAppearanceAfterScrollRestore() {
+        RecyclerView currentRecyclerView = recyclerView;
+        if (currentRecyclerView == null) {
+            return;
+        }
+
+        currentRecyclerView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                if (recyclerView != currentRecyclerView) {
+                    currentRecyclerView.getViewTreeObserver().removeOnPreDrawListener(this);
+                    return true;
+                }
+
+                updateCommentsStatusBarAppearance();
+                if (getHeaderStatusBarCoverage() == 0f) {
+                    currentRecyclerView.getViewTreeObserver().removeOnPreDrawListener(this);
+                }
+                return true;
+            }
+        });
     }
 
     private void scrollToTargetComment() {
