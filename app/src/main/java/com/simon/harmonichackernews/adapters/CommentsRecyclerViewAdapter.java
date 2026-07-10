@@ -1208,10 +1208,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         int normalColor = getNormalHeaderBackgroundColor(headerViewHolder.itemView);
         int previewTintBaseColor = getPreviewTintBaseColor(headerViewHolder.itemView);
-        int targetColor = getHeaderTintColor(story, normalColor, previewTintBaseColor);
+        int targetColor = getHeaderTintColor(
+                story,
+                normalColor,
+                previewTintBaseColor,
+                getDefaultHeaderTintColor(headerViewHolder.itemView));
         int color = ColorUtils.blendARGB(normalColor, targetColor, headerSlideOffset);
         int visibleColor = ColorUtils.blendARGB(normalColor, targetColor, getEffectiveHeaderTintProgress());
-        boolean hasTint = hasHeaderTint(story, previewTintBaseColor);
+        boolean hasTint = shouldTintHeader();
         applyHeaderEndBleed(headerViewHolder);
         headerViewHolder.itemView.setBackgroundColor(normalColor);
         headerViewHolder.spacer.setBackgroundColor(visibleColor);
@@ -1226,7 +1230,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         applyHeaderBottomTransition(headerViewHolder, normalColor, visibleColor, hasTint);
     }
 
-    private int getHeaderTintColor(Story story, int normalColor, int previewTintBaseColor) {
+    private int getHeaderTintColor(
+            Story story,
+            int normalColor,
+            int previewTintBaseColor,
+            int defaultTintColor) {
         if (shouldUseHeaderPreviewTint(story, previewTintBaseColor)) {
             return story.previewImageTintColor;
         }
@@ -1235,7 +1243,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 && isFaviconTintColorCurrent(story, previewTintBaseColor)) {
             return story.faviconTintColor;
         }
-        return normalColor;
+        return shouldTintHeader()
+                ? defaultTintColor
+                : normalColor;
+    }
+
+    private int getDefaultHeaderTintColor(View view) {
+        return MaterialColors.getColor(
+                view,
+                R.attr.storyCardBackgroundColor,
+                getPreviewTintBaseColor(view));
     }
 
     private void applyHeaderBottomTransition(
@@ -1477,13 +1494,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 && showHeaderPreviewImage
                 && !story.previewImageLoadFailed
                 && PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(story, baseColor, paletteTintMode);
-    }
-
-    private boolean hasHeaderTint(Story story, int baseColor) {
-        return shouldUseHeaderPreviewTint(story, baseColor)
-                || (shouldUseHeaderFaviconTint(story)
-                && story.faviconTintColorLoaded
-                && isFaviconTintColorCurrent(story, baseColor));
     }
 
     private boolean shouldUseHeaderFaviconTint(Story story) {
