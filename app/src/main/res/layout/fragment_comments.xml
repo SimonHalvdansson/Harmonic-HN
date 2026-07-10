@@ -89,7 +89,7 @@
             android:elevation="16dp"
             android:orientation="vertical"
             app:behavior_hideable="false"
-            app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+            app:layout_behavior="com.simon.harmonichackernews.SystemGestureSafeBottomSheetBehavior">
 
             <FrameLayout
                 android:layout_width="match_parent"
