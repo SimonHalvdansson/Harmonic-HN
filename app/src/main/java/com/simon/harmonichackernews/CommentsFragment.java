@@ -2573,10 +2573,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         } else {
             Utils.removeBookmark(ctx, story.id);
         }
-
-        if (adapter != null) {
-            adapter.notifyItemChanged(0);
-        }
     }
 
     private void showArchiveServiceMenu(View anchor) {
