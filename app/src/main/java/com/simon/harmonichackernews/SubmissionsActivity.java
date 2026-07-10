@@ -262,7 +262,6 @@ public class SubmissionsActivity extends AppCompatActivity {
     private void applyStatusBarProtection() {
         StatusBarProtectionUtils.setTopProtection(
                 binding.submissionsStatusBarProtection,
-                SettingsUtils.shouldUseTranslucentStatusBar(this),
                 StatusBarProtectionUtils.getPaneBackgroundColor(this));
     }
 

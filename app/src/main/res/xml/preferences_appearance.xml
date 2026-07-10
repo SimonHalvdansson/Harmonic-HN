@@ -62,14 +62,6 @@
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
-            app:key="pref_translucent_status_bar"
-            app:defaultValue="true"
-            app:icon="@drawable/ic_transition_fade"
-            app:summary="Background protection for readability"
-            app:title="Translucent status bar" />
-
-        <SwitchPreferenceCompat
-            app:singleLineTitle="false"
             app:key="pref_compact_header"
             app:defaultValue="false"
             app:summary="Smaller margins for 'Top stories' header"

@@ -29,6 +29,11 @@ public final class StatusBarProtectionUtils {
     }
 
     public static void setTopProtection(@Nullable ProtectionLayout layout,
+                                        @ColorInt int color) {
+        setTopProtection(layout, true, color);
+    }
+
+    public static void setTopProtection(@Nullable ProtectionLayout layout,
                                         boolean enabled,
                                         @ColorInt int color) {
         if (layout == null) {

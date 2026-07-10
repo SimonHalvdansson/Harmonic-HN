@@ -45,7 +45,6 @@ public class SettingsUtils {
     public static final String PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE = "pref_enable_comments_header_preview_image";
     public static final String PREF_COLLECT_LINKS_IN_COMMENTS = "pref_collect_links_in_comments";
     public static final String PREF_FONT = "pref_font";
-    public static final String PREF_TRANSLUCENT_STATUS_BAR = "pref_translucent_status_bar";
     public static final String PREF_BOOKMARKS_ENABLED = "pref_bookmarks_enabled";
     public static final String PREF_GRAY_OUT_CLICKED = "pref_gray_out_clicked";
     public static final String PREF_HIDE_CLICKED = "pref_hide_clicked";
@@ -690,10 +689,6 @@ public class SettingsUtils {
 
     public static boolean shouldUseLeftAlign(Context ctx) {
         return getBooleanPref("pref_left_align", false, ctx);
-    }
-
-    public static boolean shouldUseTranslucentStatusBar(Context ctx) {
-        return getBooleanPref(PREF_TRANSLUCENT_STATUS_BAR, true, ctx);
     }
 
     public static String getPreferredStoryDisplayStyle(Context ctx) {

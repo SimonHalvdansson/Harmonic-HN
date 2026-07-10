@@ -277,7 +277,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean showWebsite = false;
     private boolean integratedWebview = true;
     private boolean prefIntegratedWebview = true;
-    private boolean translucentStatusBarEnabled = false;
     private String preloadWebview = "never";
     private int preloadWebviewMinimumBattery = SettingsUtils.DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY;
     private boolean matchWebviewTheme = true;
@@ -484,7 +483,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         commentsPaneStatusBarColor = StatusBarProtectionUtils.getPaneBackgroundColor(requireContext());
         commentsHeaderStatusBarColor = commentsPaneStatusBarColor;
-        translucentStatusBarEnabled = SettingsUtils.shouldUseTranslucentStatusBar(requireContext());
         appliedStatusBarProtectionKnown = false;
         updateCommentsStatusBarAppearance();
 
@@ -892,12 +890,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         updateCommentsStatusBarAppearance();
     }
 
-    private void syncCommentsStatusBarProtectionPreference() {
+    private void syncCommentsStatusBarProtection() {
         if (!isAdded()) {
             return;
         }
         commentsPaneStatusBarColor = StatusBarProtectionUtils.getPaneBackgroundColor(requireContext());
-        translucentStatusBarEnabled = SettingsUtils.shouldUseTranslucentStatusBar(requireContext());
         updateCommentsStatusBarAppearance();
     }
 
@@ -911,7 +908,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         boolean showStatusBarProtection = shouldShowCommentsStatusBarProtection();
-        boolean statusBarProtectionEnabled = translucentStatusBarEnabled && showStatusBarProtection;
+        boolean statusBarProtectionEnabled = showStatusBarProtection;
         int statusBarColor = showStatusBarProtection ? commentsStatusBarColor : commentsPaneStatusBarColor;
         if (!appliedStatusBarProtectionKnown
                 || appliedStatusBarProtectionEnabled != statusBarProtectionEnabled
@@ -1566,7 +1563,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         saveScreenHeight();
         refreshCommentActionOverlayForConfiguration();
-        syncCommentsStatusBarProtectionPreference();
+        syncCommentsStatusBarProtection();
     }
 
     private void refreshCommentActionOverlayForConfiguration() {

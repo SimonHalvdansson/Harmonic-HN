@@ -6,7 +6,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 
 import com.simon.harmonichackernews.databinding.ActivitySettingsDetailBinding;
-import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
@@ -41,7 +40,6 @@ public class DebugActivity extends AppCompatActivity {
     private void applyStatusBarProtection() {
         StatusBarProtectionUtils.setTopProtection(
                 binding.settingsStatusBarProtection,
-                SettingsUtils.shouldUseTranslucentStatusBar(this),
                 StatusBarProtectionUtils.getPaneBackgroundColor(this));
     }
 }

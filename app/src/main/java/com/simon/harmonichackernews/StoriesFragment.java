@@ -2061,7 +2061,6 @@ public class StoriesFragment extends Fragment {
         }
         StatusBarProtectionUtils.setTopProtection(
                 binding.listProtection,
-                SettingsUtils.shouldUseTranslucentStatusBar(requireContext()),
                 StatusBarProtectionUtils.getPaneBackgroundColor(requireContext()));
     }
 
