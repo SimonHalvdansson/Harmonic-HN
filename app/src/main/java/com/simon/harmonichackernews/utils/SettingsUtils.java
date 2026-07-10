@@ -599,6 +599,13 @@ public class SettingsUtils {
         return sanitizeStoriesToCache(prefs.getInt(PREF_STORIES_TO_CACHE, DEFAULT_STORIES_TO_CACHE));
     }
 
+    public static void setStoriesToCache(Context ctx, int value) {
+        PreferenceManager.getDefaultSharedPreferences(ctx)
+                .edit()
+                .putInt(PREF_STORIES_TO_CACHE, sanitizeStoriesToCache(value))
+                .apply();
+    }
+
     public static boolean hasEnoughBatteryForWebViewPreload(Context ctx, int minimumBattery) {
         int clampedMinimumBattery = clampPercent(minimumBattery);
         if (clampedMinimumBattery <= DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY) {

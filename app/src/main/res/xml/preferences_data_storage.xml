@@ -62,13 +62,6 @@
             app:icon="@drawable/ic_web_asset"
             app:title="Open Hacker News links in Harmonic" />
 
-        <com.simon.harmonichackernews.settings.StoriesToCachePreference
-            app:singleLineTitle="false"
-            app:key="pref_stories_to_cache"
-            app:defaultValue="20"
-            app:icon="@drawable/ic_cached"
-            app:title="Stories to cache for offline" />
-
         <Preference
             app:singleLineTitle="false"
             app:key="pref_reset_all_settings"

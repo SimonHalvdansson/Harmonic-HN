@@ -369,6 +369,14 @@ public class StoriesFragment extends Fragment {
             }
         });
         storyCacheController.bindViews(cacheProgressIndicator, cacheProgressStatusText);
+        getParentFragmentManager().setFragmentResultListener(
+                CacheStoriesDialogFragment.RESULT_KEY,
+                getViewLifecycleOwner(),
+                (requestKey, result) -> {
+                    if (storyCacheController != null) {
+                        storyCacheController.cacheStories();
+                    }
+                });
         userItemFilterGroup = headerBinding.storiesHeaderUserItemFilterGroup;
         loadingIndicator = headerBinding.storiesHeaderLoadingIndicator;
         loadingFailedLayout = headerBinding.storiesHeaderLoadingFailed;
@@ -3118,9 +3126,7 @@ public class StoriesFragment extends Fragment {
                 } else if (item.getItemId() == R.id.menu_profile) {
                     UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), AccountUtils.getAccountUsername(requireActivity()));
                 } else if (item.getItemId() == R.id.menu_cache) {
-                    if (storyCacheController != null) {
-                        storyCacheController.cacheStories();
-                    }
+                    CacheStoriesDialogFragment.show(getParentFragmentManager());
                 } else if (item.getItemId() == R.id.menu_submit) {
                     Intent submitIntent = new Intent(getContext(), ComposeActivity.class);
                     submitIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_POST);

@@ -15,7 +15,7 @@
 
     <item
         android:id="@+id/menu_cache"
-        android:title="Cache stories" />
+        android:title="@string/cache_stories_title" />
 
     <item
         android:id="@+id/menu_clear_history"
