@@ -1044,6 +1044,8 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             return;
         }
 
+        applyStoryLinkPaddingForCommentAlignment(targetStoryLinkLayout, leftAlign);
+
         ViewGroup row = (ViewGroup) targetCommentLayout.getParent();
         int commentIndex = row.indexOfChild(targetCommentLayout);
         int storyIndex = row.indexOfChild(targetStoryLinkLayout);
@@ -1091,6 +1093,30 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                     .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
                     .start();
         });
+    }
+
+    private void applyStoryLinkPaddingForCommentAlignment(View storyLinkLayout, boolean leftAlign) {
+        int linkStartPadding = leftAlign ? 0 : dpToPx(6);
+        int linkEndPadding = leftAlign ? dpToPx(12) : 0;
+        storyLinkLayout.setPaddingRelative(
+                linkStartPadding,
+                storyLinkLayout.getPaddingTop(),
+                linkEndPadding,
+                storyLinkLayout.getPaddingBottom());
+
+        View titleContainer = storyLinkLayout.findViewById(R.id.story_title);
+        if (titleContainer != null && titleContainer.getParent() instanceof View) {
+            View parent = (View) titleContainer.getParent();
+            parent.setPaddingRelative(
+                    dpToPx(leftAlign ? 4 : 10),
+                    parent.getPaddingTop(),
+                    parent.getPaddingEnd(),
+                    parent.getPaddingBottom());
+        }
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     private static class PreviewStoryItemBinding {
