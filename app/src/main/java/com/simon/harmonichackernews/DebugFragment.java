@@ -9,11 +9,12 @@ import com.simon.harmonichackernews.settings.BaseSettingsFragment;
 import com.simon.harmonichackernews.settings.DebugHnIdPreference;
 import com.simon.harmonichackernews.utils.Utils;
 
-import java.util.Locale;
-
 public class DebugFragment extends BaseSettingsFragment {
 
-    private static final String PREF_BUILD_INFO = "pref_debug_build_info";
+    private static final String PREF_APP_VERSION = "pref_debug_app_version";
+    private static final String PREF_APP_BUILD = "pref_debug_app_build";
+    private static final String PREF_BUILD_VERSION = "pref_debug_build_version";
+    private static final String PREF_ANDROID_VERSION = "pref_debug_android_version";
     private static final String PREF_LINK_POST = "pref_debug_link_post";
     private static final String PREF_REFERENCE_LINKS_POST = "pref_debug_reference_links_post";
     private static final String PREF_POLL = "pref_debug_poll";
@@ -32,16 +33,11 @@ public class DebugFragment extends BaseSettingsFragment {
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.preferences_debug, rootKey);
 
-        Preference buildInfo = findPreference(PREF_BUILD_INFO);
-        if (buildInfo != null) {
-            buildInfo.setSummary(String.format(Locale.US,
-                    "Version %s · Build %d · %s\nAndroid %s (API %d)",
-                    BuildConfig.VERSION_NAME,
-                    BuildConfig.VERSION_CODE,
-                    BuildConfig.BUILD_TYPE,
-                    Build.VERSION.RELEASE,
-                    Build.VERSION.SDK_INT));
-        }
+        setSummary(PREF_APP_VERSION, BuildConfig.VERSION_NAME);
+        setSummary(PREF_APP_BUILD, String.valueOf(BuildConfig.VERSION_CODE));
+        setSummary(PREF_BUILD_VERSION, BuildConfig.BUILD_TYPE);
+        setSummary(PREF_ANDROID_VERSION,
+                Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
 
         setLinkPreference(PREF_LINK_POST, "https://news.ycombinator.com/item?id=47938725");
         setLinkPreference(PREF_REFERENCE_LINKS_POST, "https://news.ycombinator.com/item?id=48352939");
@@ -79,6 +75,13 @@ public class DebugFragment extends BaseSettingsFragment {
                 Utils.openLinkMaybeHN(requireActivity(), url);
                 return true;
             });
+        }
+    }
+
+    private void setSummary(String key, String summary) {
+        Preference preference = findPreference(key);
+        if (preference != null) {
+            preference.setSummary(summary);
         }
     }
 }

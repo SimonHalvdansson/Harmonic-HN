@@ -3,21 +3,19 @@
 
     <PreferenceCategory
         android:layout="@layout/preference_category"
-        app:title="Developer options">
+        app:title="Debug tools">
 
         <SwitchPreferenceCompat
             app:defaultValue="false"
             app:icon="@drawable/ic_refresh"
             app:key="pref_always_show_tap_to_refresh"
             app:singleLineTitle="false"
-            app:summary="Keep the manual refresh action visible after loading"
             app:title="Always show tap to refresh" />
 
         <com.simon.harmonichackernews.settings.DebugHnIdPreference
             app:icon="@drawable/ic_open_in_new"
             app:key="pref_debug_open_hn_id"
             app:singleLineTitle="false"
-            app:summary="Enter a story or comment ID below"
             app:title="Open HN item by ID" />
 
     </PreferenceCategory>
@@ -30,35 +28,30 @@
             app:icon="@drawable/ic_ballot"
             app:key="pref_debug_link_post"
             app:singleLineTitle="false"
-            app:summary="Post with an external link"
             app:title="Link post" />
 
         <Preference
             app:icon="@drawable/ic_link"
             app:key="pref_debug_reference_links_post"
             app:singleLineTitle="false"
-            app:summary="Post with collected reference links"
             app:title="Reference links post" />
 
         <Preference
             app:icon="@drawable/ic_comment"
             app:key="pref_debug_poll"
             app:singleLineTitle="false"
-            app:summary="Post containing a Hacker News poll"
             app:title="Poll" />
 
         <Preference
             app:icon="@drawable/ic_link"
             app:key="pref_debug_internal_hn_link"
             app:singleLineTitle="false"
-            app:summary="Post containing a link to another HN item"
             app:title="Internal HN link" />
 
         <Preference
             app:icon="@drawable/ic_link_preview_x"
             app:key="pref_debug_nitter_video"
             app:singleLineTitle="false"
-            app:summary="Post with an X video resolved through Nitter"
             app:title="Nitter video" />
 
     </PreferenceCategory>
@@ -71,28 +64,47 @@
             app:icon="@drawable/ic_explore"
             app:key="pref_debug_welcome_dialog"
             app:singleLineTitle="false"
-            app:summary="Preview the first-run welcome experience"
             app:title="Welcome dialog" />
 
         <Preference
             app:icon="@drawable/ic_notifications"
             app:key="pref_debug_notifications"
             app:singleLineTitle="false"
-            app:summary="Test reply checks and notification controls"
             app:title="Debug notifications" />
 
     </PreferenceCategory>
 
     <PreferenceCategory
         android:layout="@layout/preference_category"
-        app:title="App &amp; device">
+        app:title="Environment">
 
         <Preference
-            app:icon="@drawable/ic_phone_android"
-            app:key="pref_debug_build_info"
+            app:icon="@drawable/ic_deployed_code"
+            app:key="pref_debug_app_version"
             app:selectable="false"
             app:singleLineTitle="false"
-            app:title="Build information" />
+            app:title="App version" />
+
+        <Preference
+            app:icon="@drawable/ic_tag"
+            app:key="pref_debug_app_build"
+            app:selectable="false"
+            app:singleLineTitle="false"
+            app:title="App build" />
+
+        <Preference
+            app:icon="@drawable/ic_build"
+            app:key="pref_debug_build_version"
+            app:selectable="false"
+            app:singleLineTitle="false"
+            app:title="Build version" />
+
+        <Preference
+            app:icon="@drawable/ic_android"
+            app:key="pref_debug_android_version"
+            app:selectable="false"
+            app:singleLineTitle="false"
+            app:title="Android version" />
 
     </PreferenceCategory>
 

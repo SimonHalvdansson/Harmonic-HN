@@ -85,6 +85,7 @@
             android:layout_height="56dp"
             android:layout_gravity="top"
             android:layout_marginStart="8dp"
+            android:translationY="1dp"
             android:contentDescription="Open HN ID"
             app:icon="@drawable/ic_chevron_right"
             app:iconGravity="textStart"
