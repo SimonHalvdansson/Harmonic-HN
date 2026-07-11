@@ -59,6 +59,7 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.transition.MaterialFadeThrough;
 import com.google.android.material.transition.MaterialSharedAxis;
+import com.simon.harmonichackernews.adapters.CommentDisplaySettings;
 import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
@@ -1083,31 +1084,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void initializeRecyclerView() {
-        adapter = new CommentsRecyclerViewAdapter(
+        adapter = createCommentDisplaySettings().createAdapter(
                 integratedWebview,
                 bottomSheet,
                 requireActivity().getSupportFragmentManager(),
                 comments,
                 story,
-                SettingsUtils.shouldCollapseParent(getContext()),
-                SettingsUtils.shouldShowThumbnails(getContext()),
-                SettingsUtils.shouldShowCommentsHeaderPreviewImage(getContext()),
-                SettingsUtils.shouldTintCommentsHeader(getContext()),
-                SettingsUtils.getPreferredPaletteTintConfigKey(getContext()),
                 username,
-                SettingsUtils.getPreferredCommentTextSize(getContext()),
-                SettingsUtils.getPreferredCommentDepthIndicatorMode(getContext()),
-                SettingsUtils.shouldShowNavigationButtons(getContext()),
-                SettingsUtils.getPreferredFont(getContext()),
-                isFeatureSupported(WebViewFeature.FORCE_DARK) || WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING),
-                SettingsUtils.shouldShowTopLevelDepthIndicator(getContext()),
-                ThemeUtils.getPreferredTheme(getContext()),
-                Utils.isTablet(getResources()),
-                SettingsUtils.getPreferredFaviconProvider(getContext()),
-                SettingsUtils.shouldSwapCommentLongPressTap(getContext()),
-                SettingsUtils.shouldUseCardCommentDisplayStyle(getContext()),
-                SettingsUtils.shouldCollectLinksInComments(getContext()),
-                AccountUtils.hasAccountDetails(getContext()),
                 this);
         adapter.lastRefreshed = lastLoaded;
         adapter.setCommentsByOpFilterActive(commentsByOpFilterActive);
@@ -1423,6 +1406,20 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         return true;
     }
 
+    private CommentDisplaySettings createCommentDisplaySettings() {
+        Context context = requireContext();
+        return CommentDisplaySettings.from(
+                context,
+                shouldShowInvertAction(),
+                Utils.isTablet(getResources()),
+                AccountUtils.hasAccountDetails(context));
+    }
+
+    private boolean shouldShowInvertAction() {
+        return isFeatureSupported(WebViewFeature.FORCE_DARK)
+                || WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING);
+    }
+
 
     @Override
     public void onStart() {
@@ -1446,80 +1443,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 updateComments = true;
             }
 
-            if (adapter.collapseParent != SettingsUtils.shouldCollapseParent(ctx)) {
-                adapter.collapseParent = !adapter.collapseParent;
-                updateComments = true;
-            }
+            CommentDisplaySettings.UpdateResult displayUpdate = createCommentDisplaySettings().applyToAdapter(adapter);
+            updateHeader |= displayUpdate.updateHeader;
+            updateComments |= displayUpdate.updateComments;
 
-            if (adapter.showThumbnail != SettingsUtils.shouldShowThumbnails(ctx)) {
-                adapter.showThumbnail = !adapter.showThumbnail;
-                updateHeader = true;
-            }
-
-            boolean showHeaderPreviewImage = SettingsUtils.shouldShowCommentsHeaderPreviewImage(ctx);
-            if (adapter.showHeaderPreviewImage != showHeaderPreviewImage) {
-                adapter.showHeaderPreviewImage = showHeaderPreviewImage;
-                updateHeader = true;
-            }
-
-            boolean tintHeader = SettingsUtils.shouldTintCommentsHeader(ctx);
-            if (adapter.tintHeader != tintHeader) {
-                adapter.tintHeader = tintHeader;
-                updateHeader = true;
-            }
-
-            String paletteTintMode = SettingsUtils.getPreferredPaletteTintConfigKey(ctx);
-            if (!paletteTintMode.equals(adapter.paletteTintMode)) {
-                adapter.paletteTintMode = paletteTintMode;
-                updateHeader = true;
-            }
-
-            float preferredCommentTextSize = SettingsUtils.getPreferredCommentTextSize(ctx);
-            if (Float.compare(adapter.preferredTextSize, preferredCommentTextSize) != 0) {
-                adapter.preferredTextSize = preferredCommentTextSize;
-                updateHeader = true;
-                updateComments = true;
-            }
-
-            if (!adapter.commentDepthIndicatorMode.equals(SettingsUtils.getPreferredCommentDepthIndicatorMode(ctx))) {
-                adapter.commentDepthIndicatorMode = SettingsUtils.getPreferredCommentDepthIndicatorMode(ctx);
-                updateComments = true;
-            }
-
-            if (!adapter.font.equals(SettingsUtils.getPreferredFont(ctx))) {
-                adapter.font = SettingsUtils.getPreferredFont(ctx);
-                updateHeader = true;
-                updateComments = true;
-            }
-
-            if (adapter.showTopLevelDepthIndicator != SettingsUtils.shouldShowTopLevelDepthIndicator(ctx)) {
-                adapter.showTopLevelDepthIndicator = SettingsUtils.shouldShowTopLevelDepthIndicator(ctx);
-                updateComments = true;
-            }
-
-            if (adapter.swapLongPressTap != SettingsUtils.shouldSwapCommentLongPressTap(ctx)) {
-                adapter.swapLongPressTap = SettingsUtils.shouldSwapCommentLongPressTap(ctx);
-            }
-
-            if (adapter.cardStyle != SettingsUtils.shouldUseCardCommentDisplayStyle(ctx)) {
-                adapter.cardStyle = SettingsUtils.shouldUseCardCommentDisplayStyle(ctx);
-                updateComments = true;
-            }
-
-            if (adapter.collectReferenceLinks != SettingsUtils.shouldCollectLinksInComments(ctx)) {
-                adapter.collectReferenceLinks = SettingsUtils.shouldCollectLinksInComments(ctx);
-                updateHeader = true;
-                updateComments = true;
-            }
-
-            if (!adapter.theme.equals(ThemeUtils.getPreferredTheme(ctx))) {
-                adapter.theme = ThemeUtils.getPreferredTheme(ctx);
-                updateHeader = true;
-                updateComments = true;
-
-                // darkThemeActive might change because the system changed from day to night mode.
-                // In that case, we'll need to update the sheet and webview background color since
-                // that will have changed too.
+            if (displayUpdate.themeChanged) {
+                // The system theme may have changed, so keep the sheet and webview backgrounds in sync.
                 if (bottomSheet != null) {
                     bottomSheet.setBackgroundColor(ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx)));
                 }

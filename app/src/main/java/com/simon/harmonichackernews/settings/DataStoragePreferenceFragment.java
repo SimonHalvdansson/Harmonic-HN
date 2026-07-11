@@ -23,7 +23,6 @@ import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
-import com.simon.harmonichackernews.utils.UtilsKt;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -275,7 +274,7 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
     }
 
     private int getClickedStoryCount() {
-        return UtilsKt.INSTANCE.loadHistories(requireContext(), false).size();
+        return HistoriesUtils.INSTANCE.loadHistories(requireContext(), false).size();
     }
 
 }

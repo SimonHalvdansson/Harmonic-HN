@@ -9,6 +9,7 @@ import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 import java.util.List;
+import java.util.Objects;
 
 public class StoryDisplaySettings {
     public final boolean showPoints;
@@ -97,6 +98,31 @@ public class StoryDisplaySettings {
     }
 
     @NonNull
+    public StoryDisplaySettings withShowIndex(boolean showIndex) {
+        return new StoryDisplaySettings(
+                showPoints,
+                compactPoints,
+                includeTopLevelDomain,
+                showCommentsCount,
+                compactView,
+                thumbnails,
+                previewImageMode,
+                storyTextSize,
+                showIndex,
+                compactHeader,
+                leftAlign,
+                cardStyle,
+                tintCardUsingPreview,
+                paletteTintMode,
+                grayOutClicked,
+                hotness,
+                faviconProvider,
+                font,
+                commentTextSize
+        );
+    }
+
+    @NonNull
     public StoryRecyclerViewAdapter createAdapter(@NonNull List<Story> stories,
                                                   @Nullable String submissionsUserName,
                                                   int wantedType) {
@@ -125,26 +151,105 @@ public class StoryDisplaySettings {
         );
     }
 
-    public void applyTo(@NonNull StoryRecyclerViewAdapter adapter) {
-        adapter.showPoints = showPoints;
-        adapter.compactPoints = compactPoints;
-        adapter.includeTopLevelDomain = includeTopLevelDomain;
-        adapter.showCommentsCount = showCommentsCount;
-        adapter.compactView = compactView;
-        adapter.thumbnails = thumbnails;
-        adapter.previewImageMode = previewImageMode;
-        adapter.storyTextSize = storyTextSize;
-        adapter.showIndex = showIndex;
-        adapter.compactHeader = compactHeader;
-        adapter.leftAlign = leftAlign;
-        adapter.cardStyle = cardStyle;
-        adapter.tintCardUsingPreview = tintCardUsingPreview;
-        adapter.paletteTintMode = paletteTintMode;
-        adapter.grayOutClicked = grayOutClicked;
-        adapter.hotness = hotness;
-        adapter.faviconProvider = faviconProvider;
-        adapter.font = font;
-        adapter.commentTextSize = commentTextSize;
+    @NonNull
+    public UpdateResult applyToAdapter(@NonNull StoryRecyclerViewAdapter adapter) {
+        boolean itemsChanged = false;
+        boolean requiresRebuild = false;
+        boolean previewImageModeChanged = false;
+        boolean fontChanged = false;
+        boolean compactHeaderChanged = false;
+
+        if (adapter.showPoints != showPoints) {
+            adapter.showPoints = showPoints;
+            itemsChanged = true;
+        }
+        if (adapter.compactPoints != compactPoints) {
+            adapter.compactPoints = compactPoints;
+            itemsChanged = true;
+        }
+        if (adapter.includeTopLevelDomain != includeTopLevelDomain) {
+            adapter.includeTopLevelDomain = includeTopLevelDomain;
+            itemsChanged = true;
+        }
+        if (adapter.showCommentsCount != showCommentsCount) {
+            adapter.showCommentsCount = showCommentsCount;
+            itemsChanged = true;
+        }
+        if (adapter.compactView != compactView) {
+            adapter.compactView = compactView;
+            itemsChanged = true;
+        }
+        if (adapter.thumbnails != thumbnails) {
+            adapter.thumbnails = thumbnails;
+            itemsChanged = true;
+        }
+        if (!Objects.equals(adapter.previewImageMode, previewImageMode)) {
+            adapter.previewImageMode = previewImageMode;
+            previewImageModeChanged = true;
+            itemsChanged = true;
+        }
+        if (Float.compare(adapter.storyTextSize, storyTextSize) != 0) {
+            adapter.storyTextSize = storyTextSize;
+            itemsChanged = true;
+        }
+        if (Float.compare(adapter.commentTextSize, commentTextSize) != 0) {
+            adapter.commentTextSize = commentTextSize;
+            itemsChanged = true;
+        }
+        if (adapter.showIndex != showIndex) {
+            adapter.showIndex = showIndex;
+            itemsChanged = true;
+        }
+        if (adapter.leftAlign != leftAlign) {
+            adapter.leftAlign = leftAlign;
+            requiresRebuild = true;
+        }
+        if (adapter.cardStyle != cardStyle) {
+            adapter.cardStyle = cardStyle;
+            requiresRebuild = true;
+        }
+        if (adapter.tintCardUsingPreview != tintCardUsingPreview) {
+            boolean storyCardShellChanged = !adapter.cardStyle;
+            adapter.tintCardUsingPreview = tintCardUsingPreview;
+            if (storyCardShellChanged) {
+                requiresRebuild = true;
+            } else {
+                itemsChanged = true;
+            }
+        }
+        if (!Objects.equals(adapter.paletteTintMode, paletteTintMode)) {
+            adapter.paletteTintMode = paletteTintMode;
+            itemsChanged = true;
+        }
+        if (adapter.grayOutClicked != grayOutClicked) {
+            adapter.grayOutClicked = grayOutClicked;
+            itemsChanged = true;
+        }
+        if (!Objects.equals(adapter.font, font)) {
+            adapter.font = font;
+            fontChanged = true;
+            itemsChanged = true;
+        }
+        if (adapter.compactHeader != compactHeader) {
+            adapter.compactHeader = compactHeader;
+            compactHeaderChanged = true;
+        }
+        if (adapter.hotness != hotness) {
+            adapter.hotness = hotness;
+            itemsChanged = true;
+        }
+        if (!Objects.equals(adapter.faviconProvider, faviconProvider)) {
+            adapter.faviconProvider = faviconProvider;
+            itemsChanged = true;
+        }
+
+        return new UpdateResult(
+                itemsChanged,
+                requiresRebuild,
+                previewImageModeChanged,
+                fontChanged,
+                compactHeaderChanged
+        );
     }
 
     public static void copyAdapterSettings(@NonNull StoryRecyclerViewAdapter sourceAdapter,
@@ -168,5 +273,25 @@ public class StoryDisplaySettings {
         targetAdapter.faviconProvider = sourceAdapter.faviconProvider;
         targetAdapter.font = sourceAdapter.font;
         targetAdapter.commentTextSize = sourceAdapter.commentTextSize;
+    }
+
+    public static class UpdateResult {
+        public final boolean itemsChanged;
+        public final boolean requiresRebuild;
+        public final boolean previewImageModeChanged;
+        public final boolean fontChanged;
+        public final boolean compactHeaderChanged;
+
+        private UpdateResult(boolean itemsChanged,
+                             boolean requiresRebuild,
+                             boolean previewImageModeChanged,
+                             boolean fontChanged,
+                             boolean compactHeaderChanged) {
+            this.itemsChanged = itemsChanged;
+            this.requiresRebuild = requiresRebuild;
+            this.previewImageModeChanged = previewImageModeChanged;
+            this.fontChanged = fontChanged;
+            this.compactHeaderChanged = compactHeaderChanged;
+        }
     }
 }

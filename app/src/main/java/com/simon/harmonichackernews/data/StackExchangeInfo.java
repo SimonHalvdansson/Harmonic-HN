@@ -14,24 +14,15 @@ public class StackExchangeInfo {
     public boolean hasAcceptedAnswer;
 
     public String formatScore() {
-        if (score == 1) {
-            return "1 point";
-        }
-        return kFormat(score) + " points";
+        return LinkPreviewFormatUtils.formatCount(score, "point", "points");
     }
 
     public String formatAnswerCount() {
-        if (answerCount == 1) {
-            return "1 answer";
-        }
-        return kFormat(answerCount) + " answers";
+        return LinkPreviewFormatUtils.formatCount(answerCount, "answer", "answers");
     }
 
     public String formatViewCount() {
-        if (viewCount == 1) {
-            return "1 view";
-        }
-        return kFormat(viewCount) + " views";
+        return LinkPreviewFormatUtils.formatCount(viewCount, "view", "views");
     }
 
     public String formatAnswerState() {
@@ -79,19 +70,5 @@ public class StackExchangeInfo {
         }
 
         return author;
-    }
-
-    private String kFormat(int number) {
-        if (number < 1000) {
-            return String.valueOf(number);
-        } else {
-            double rounded = Math.round((double) number / 100) * 100;
-            String result = String.format("%.1fk", rounded / 1000);
-
-            if (result.endsWith(".0k")) {
-                return result.substring(0, result.length() - 3) + "k";
-            }
-            return result;
-        }
     }
 }

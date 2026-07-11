@@ -23,6 +23,7 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.simon.harmonichackernews.adapters.StoryDisplaySettings;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.databinding.ActivitySubmissionsBinding;
@@ -132,28 +133,9 @@ public class SubmissionsActivity extends AppCompatActivity {
         linearLayoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(linearLayoutManager);
 
-        adapter = new StoryRecyclerViewAdapter(submissions,
-                SettingsUtils.shouldShowPoints(this),
-                SettingsUtils.shouldUseCompactPoints(this),
-                SettingsUtils.shouldIncludeTopLevelDomain(this),
-                SettingsUtils.shouldShowCommentsCount(this),
-                SettingsUtils.shouldUseCompactView(this),
-                SettingsUtils.shouldShowThumbnails(this),
-                SettingsUtils.getPreferredStoryPreviewImageMode(this),
-                SettingsUtils.getPreferredStoryTextSize(this),
-                false,
-                SettingsUtils.shouldUseCompactHeader(this),
-                SettingsUtils.shouldUseLeftAlign(this),
-                SettingsUtils.shouldUseCardStoryDisplayStyle(this),
-                SettingsUtils.shouldTintCardUsingPreview(this),
-                SettingsUtils.getPreferredPaletteTintConfigKey(this),
-                SettingsUtils.shouldGrayOutClicked(this),
-                SettingsUtils.getPreferredHotness(this),
-                SettingsUtils.getPreferredFaviconProvider(this),
-                SettingsUtils.getPreferredFont(this),
-                SettingsUtils.getPreferredCommentTextSize(this),
-                userName,
-                -1);
+        adapter = StoryDisplaySettings.from(this)
+                .withShowIndex(false)
+                .createAdapter(submissions, userName, -1);
 
         adapter.setOnCommentClickListener(new StoryRecyclerViewAdapter.ClickListener() {
             @Override
@@ -313,10 +295,7 @@ public class SubmissionsActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         applyStatusBarProtection();
-        syncCompactPointsPreference();
-        syncPaletteTintPreference();
-        syncFontPreference();
-        syncCommentDisplayPreferences();
+        syncStoryDisplayPreferences();
     }
 
     @Override
@@ -329,45 +308,16 @@ public class SubmissionsActivity extends AppCompatActivity {
         ViewCompat.requestApplyInsets(binding.submissionsRoot);
     }
 
-    private void syncCompactPointsPreference() {
-        if (adapter == null) {
-            return;
-        }
-
-        boolean compactPoints = SettingsUtils.shouldUseCompactPoints(this);
-        if (adapter.compactPoints != compactPoints) {
-            adapter.compactPoints = compactPoints;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-
-        boolean includeTopLevelDomain = SettingsUtils.shouldIncludeTopLevelDomain(this);
-        if (adapter.includeTopLevelDomain != includeTopLevelDomain) {
-            adapter.includeTopLevelDomain = includeTopLevelDomain;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-    }
-
     private void applyStatusBarProtection() {
         StatusBarProtectionUtils.setTopProtection(
                 binding.submissionsStatusBarProtection,
                 StatusBarProtectionUtils.getPaneBackgroundColor(this));
     }
 
-    private void syncPaletteTintPreference() {
-        if (adapter == null) {
-            return;
-        }
-
-        String paletteTintMode = SettingsUtils.getPreferredPaletteTintConfigKey(this);
-        if (!paletteTintMode.equals(adapter.paletteTintMode)) {
-            adapter.paletteTintMode = paletteTintMode;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-    }
-
-    private void syncFontPreference() {
-        String preferredFont = SettingsUtils.getPreferredFont(this);
-        if (FontUtils.font == null || !FontUtils.font.equals(preferredFont)) {
+    private void syncStoryDisplayPreferences() {
+        StoryDisplaySettings displaySettings = StoryDisplaySettings.from(this).withShowIndex(false);
+        boolean fontCacheChanged = FontUtils.font == null || !FontUtils.font.equals(displaySettings.font);
+        if (fontCacheChanged) {
             FontUtils.init(this);
         }
         applyPreferredHeaderTypeface();
@@ -376,25 +326,14 @@ public class SubmissionsActivity extends AppCompatActivity {
             return;
         }
 
-        if (!preferredFont.equals(adapter.font)) {
-            adapter.font = preferredFont;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-    }
-
-    private void syncCommentDisplayPreferences() {
-        if (adapter == null) {
-            return;
+        StoryDisplaySettings.UpdateResult displayUpdate = displaySettings.applyToAdapter(adapter);
+        if (displayUpdate.compactHeaderChanged) {
+            applyHeaderPadding();
         }
 
-        boolean changed = false;
-        float commentTextSize = SettingsUtils.getPreferredCommentTextSize(this);
-        if (Float.compare(adapter.commentTextSize, commentTextSize) != 0) {
-            adapter.commentTextSize = SettingsUtils.clampCommentTextSize(commentTextSize);
-            changed = true;
-        }
-
-        if (changed) {
+        if (displayUpdate.requiresRebuild) {
+            adapter.notifyDataSetChanged();
+        } else if ((displayUpdate.itemsChanged || fontCacheChanged) && adapter.getItemCount() > 0) {
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
     }

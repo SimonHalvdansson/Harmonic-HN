@@ -80,7 +80,6 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils;
 import com.simon.harmonichackernews.utils.StoryUpdate;
 import com.simon.harmonichackernews.utils.Utils;
-import com.simon.harmonichackernews.utils.UtilsKt;
 import com.simon.harmonichackernews.utils.ViewUtils;
 
 import org.jetbrains.annotations.NotNull;
@@ -2676,95 +2675,32 @@ public class StoriesFragment extends Fragment {
             hideUpdateButton();
         }
 
-        if (adapter.showPoints != SettingsUtils.shouldShowPoints(getContext())) {
-            adapter.showPoints = !adapter.showPoints;
+        StoryDisplaySettings displaySettings = StoryDisplaySettings.from(requireContext());
+        boolean fontCacheChanged = TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(displaySettings.font);
+        if (fontCacheChanged) {
+            FontUtils.init(getContext());
+        }
+        StoryDisplaySettings.UpdateResult displayUpdate = displaySettings.applyToAdapter(adapter);
+
+        if (displayUpdate.requiresRebuild) {
+            rebuildStoryAdapters();
+        } else if ((displayUpdate.itemsChanged || fontCacheChanged) && adapter.getItemCount() > 0) {
             adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
-        boolean compactPoints = SettingsUtils.shouldUseCompactPoints(getContext());
-        if (adapter.compactPoints != compactPoints) {
-            adapter.compactPoints = compactPoints;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-
-        boolean includeTopLevelDomain = SettingsUtils.shouldIncludeTopLevelDomain(getContext());
-        if (adapter.includeTopLevelDomain != includeTopLevelDomain) {
-            adapter.includeTopLevelDomain = includeTopLevelDomain;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-
-        if (adapter.showCommentsCount != SettingsUtils.shouldShowCommentsCount(getContext())) {
-            adapter.showCommentsCount = !adapter.showCommentsCount;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-
-        if (adapter.compactView != SettingsUtils.shouldUseCompactView(getContext())) {
-            adapter.compactView = !adapter.compactView;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-
-        if (adapter.thumbnails != SettingsUtils.shouldShowThumbnails(getContext())) {
-            adapter.thumbnails = !adapter.thumbnails;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-
-        String previewImageMode = SettingsUtils.getPreferredStoryPreviewImageMode(getContext());
-        if (!adapter.previewImageMode.equals(previewImageMode)) {
-            adapter.previewImageMode = previewImageMode;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        if (displayUpdate.previewImageModeChanged) {
             scheduleLoadedPreviewImagePrefetchNearViewport();
         }
 
-        float storyTextSize = SettingsUtils.getPreferredStoryTextSize(getContext());
-        if (Float.compare(adapter.storyTextSize, storyTextSize) != 0) {
-            adapter.storyTextSize = storyTextSize;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        if (displayUpdate.compactHeaderChanged) {
+            updateHeader();
         }
 
-        float commentTextSize = SettingsUtils.getPreferredCommentTextSize(getContext());
-        if (Float.compare(adapter.commentTextSize, commentTextSize) != 0) {
-            adapter.commentTextSize = SettingsUtils.clampCommentTextSize(commentTextSize);
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-
-        if (adapter.showIndex != SettingsUtils.shouldShowIndex(getContext())) {
-            adapter.showIndex = !adapter.showIndex;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-
-        if (adapter.leftAlign != SettingsUtils.shouldUseLeftAlign(getContext())) {
-            adapter.leftAlign = !adapter.leftAlign;
-            rebuildStoryAdapters();
+        if ((displayUpdate.fontChanged || fontCacheChanged) && typeSpinnerAdapter != null) {
+            typeSpinnerAdapter.notifyDataSetChanged();
         }
 
         applyStatusBarProtection();
-
-        if (adapter.cardStyle != SettingsUtils.shouldUseCardStoryDisplayStyle(getContext())) {
-            adapter.cardStyle = !adapter.cardStyle;
-            rebuildStoryAdapters();
-        }
-
-        boolean tintCardUsingPreview = SettingsUtils.shouldTintCardUsingPreview(getContext());
-        if (adapter.tintCardUsingPreview != tintCardUsingPreview) {
-            boolean storyCardShellChanged = !adapter.cardStyle;
-            adapter.tintCardUsingPreview = tintCardUsingPreview;
-            if (storyCardShellChanged) {
-                rebuildStoryAdapters();
-            } else {
-                adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-            }
-        }
-
-        String paletteTintMode = SettingsUtils.getPreferredPaletteTintConfigKey(getContext());
-        if (!paletteTintMode.equals(adapter.paletteTintMode)) {
-            adapter.paletteTintMode = paletteTintMode;
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-
-        if (adapter.grayOutClicked != SettingsUtils.shouldGrayOutClicked(getContext())) {
-            adapter.grayOutClicked = SettingsUtils.shouldGrayOutClicked(getContext());
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
 
         boolean newPaginationMode = SettingsUtils.shouldUsePaginationMode(getContext());
         if (paginationMode != newPaginationMode) {
@@ -2787,40 +2723,9 @@ public class StoriesFragment extends Fragment {
             }
         }
 
-        String preferredFont = SettingsUtils.getPreferredFont(getContext());
-        boolean fontChanged = !preferredFont.equals(adapter.font);
-        boolean fontCacheChanged = TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(preferredFont);
-        if (fontChanged || fontCacheChanged) {
-            adapter.font = preferredFont;
-            if (fontCacheChanged) {
-                FontUtils.init(getContext());
-            }
-            if (adapter.getItemCount() > 0) {
-                adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-            }
-            if (typeSpinnerAdapter != null) {
-                typeSpinnerAdapter.notifyDataSetChanged();
-            }
-        }
-
-        if (adapter.compactHeader != SettingsUtils.shouldUseCompactHeader(getContext())) {
-            adapter.compactHeader = SettingsUtils.shouldUseCompactHeader(getContext());
-            updateHeader();
-        }
-
-        if (adapter.hotness != SettingsUtils.getPreferredHotness(getContext())) {
-            adapter.hotness = SettingsUtils.getPreferredHotness(getContext());
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
-        }
-
         if (hideJobs != newHideJobs) {
             hideJobs = newHideJobs;
             attemptRefresh();
-        }
-
-        if (adapter.faviconProvider != SettingsUtils.getPreferredFaviconProvider(getContext())) {
-            adapter.faviconProvider = SettingsUtils.getPreferredFaviconProvider(getContext());
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         }
 
         syncInactiveStoryAdapterDisplaySettings();
@@ -3568,7 +3473,7 @@ public class StoriesFragment extends Fragment {
         } else if (isHistoryType(adapter.type)) {
             ArrayList<Story> refreshedStories = new ArrayList<>();
             showingCached = false;
-            List<History> histories = UtilsKt.INSTANCE.loadHistories(requireContext(), true);
+            List<History> histories = HistoriesUtils.INSTANCE.loadHistories(requireContext(), true);
 
             for (int i = 0; i < histories.size(); i++) {
                 Story s = new Story("Loading...", histories.get(i).getId(), false, false, histories.get(i).getCreated());
@@ -4547,7 +4452,7 @@ public class StoriesFragment extends Fragment {
             clearStories();
         }
 
-        List<History> histories = UtilsKt.INSTANCE.loadHistories(requireContext(), true);
+        List<History> histories = HistoriesUtils.INSTANCE.loadHistories(requireContext(), true);
         if (histories.isEmpty()) {
             completeOnlyClickedSearch(requestGeneration, new ArrayList<>(), 0, 0);
             return;

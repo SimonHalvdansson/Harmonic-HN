@@ -16,7 +16,7 @@ abstract class TextSizePreference extends Preference {
 
     TextSizePreference(Context context, AttributeSet attrs) {
         super(context, attrs);
-        setLayoutResource(getTextSizeLayoutResource());
+        setLayoutResource(R.layout.preference_text_size);
         setSelectable(false);
     }
 
@@ -31,7 +31,7 @@ abstract class TextSizePreference extends Preference {
         holder.itemView.setClickable(false);
         holder.itemView.setFocusable(false);
 
-        Slider slider = getSlider(holder);
+        Slider slider = (Slider) holder.findViewById(R.id.text_size_slider);
         TextView valueText = (TextView) holder.findViewById(R.id.text_size_value);
         float textSize = getPersistedTextSize();
         int offset = getTextSizeOffset(textSize);
@@ -63,10 +63,6 @@ abstract class TextSizePreference extends Preference {
             persistString(stringValue);
         });
     }
-
-    protected abstract int getTextSizeLayoutResource();
-
-    protected abstract Slider getSlider(PreferenceViewHolder holder);
 
     protected abstract float getDefaultTextSize();
 
