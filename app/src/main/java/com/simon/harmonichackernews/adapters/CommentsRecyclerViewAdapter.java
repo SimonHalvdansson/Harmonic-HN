@@ -25,6 +25,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -116,6 +117,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean loadingFailed = false;
     public boolean loadingFailedServerError = false;
     public boolean commentsLoaded = false;
+    public boolean commentsRefreshInProgress = false;
     public boolean collapseParent;
     public boolean showThumbnail;
     public boolean showHeaderPreviewImage;
@@ -164,6 +166,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private static final float COMMENT_HIGHLIGHT_ALPHA_DARK = 0.14f;
     private static final float COMMENT_HIGHLIGHT_ALPHA_LIGHT = 0.08f;
     private static final int REFRESH_PROMPT_HIDE_DURATION_MS = 200;
+    private static final int HEADER_STATUS_ROW_DURATION_MS = 220;
+    private static final float HEADER_STATUS_ROW_HIDDEN_SCALE = 0.9f;
+    private static final int HEADER_STATUS_ROW_HIDDEN_TRANSLATION_Y_DP = 12;
+    private static final int INITIAL_LOADING_TOP_MARGIN_DP = 44;
+    private static final int REFRESH_LOADING_TOP_MARGIN_DP = 16;
     private static final int HEADER_ACTION_ICON_SWAP_OUT_DURATION_MS = 90;
     private static final int HEADER_ACTION_ICON_SWAP_IN_DURATION_MS = 150;
     private static final float HEADER_ACTION_ICON_SWAP_MIN_SCALE = 0.72f;
@@ -348,18 +355,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             FontUtils.setCommentsHeaderTitleTypeface(headerViewHolder.titleView);
             FontUtils.setCommentTextTypeface(headerViewHolder.textView, preferredTextSize);
 
-            if (loadingFailed) {
-                headerViewHolder.loadingIndicator.setVisibility(GONE);
-                headerViewHolder.emptyView.setVisibility(GONE);
-            } else {
-                if (commentsLoaded) {
-                    headerViewHolder.loadingIndicator.setVisibility(GONE);
-                    headerViewHolder.emptyView.setVisibility(story.descendants > 0 || comments.size() > 1 ? GONE : View.VISIBLE);
-                } else {
-                    headerViewHolder.loadingIndicator.setVisibility(View.VISIBLE);
-                    headerViewHolder.emptyView.setVisibility(GONE);
-                }
-            }
+            bindHeaderLoadingState(headerViewHolder, ctx);
 
             headerViewHolder.spacer.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, spacerHeight));
 
@@ -404,18 +400,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.opFilterContainer.setVisibility(commentsByOpFilterActive ? VISIBLE : GONE);
             headerViewHolder.bookmarkButtonParent.setVisibility(bookmarksEnabled && !hasAccountDetails ? VISIBLE : GONE);
             bindHeaderAccountActionVisibility(headerViewHolder);
-
-            headerViewHolder.loadingFailed.setVisibility(loadingFailed ? VISIBLE : GONE);
-            if (loadingFailed) {
-                if (!Utils.isNetworkAvailable(ctx)) {
-                    headerViewHolder.loadingFailedText.setText("No internet connection");
-                } else {
-                    headerViewHolder.loadingFailedText.setText("Loading failed");
-                }
-            }
-
-            headerViewHolder.serverErrorText.setVisibility(loadingFailedServerError ? VISIBLE : GONE);
-            headerViewHolder.openInBrowserButton.setVisibility(loadingFailedServerError ? VISIBLE : GONE);
 
         } else if (holder instanceof ItemViewHolder) {
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
@@ -905,18 +889,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void bindHeaderLoadingState(HeaderViewHolder headerViewHolder, Context ctx) {
-        if (loadingFailed) {
-            headerViewHolder.loadingIndicator.setVisibility(GONE);
-            headerViewHolder.emptyView.setVisibility(GONE);
-        } else if (commentsLoaded) {
-            headerViewHolder.loadingIndicator.setVisibility(GONE);
-            headerViewHolder.emptyView.setVisibility(story.descendants > 0 || comments.size() > 1 ? GONE : View.VISIBLE);
-        } else {
-            headerViewHolder.loadingIndicator.setVisibility(View.VISIBLE);
-            headerViewHolder.emptyView.setVisibility(GONE);
-        }
+        boolean showLoadingIndicator = !loadingFailed
+                && (!commentsLoaded || commentsRefreshInProgress);
+        boolean showEmptyState = !loadingFailed
+                && commentsLoaded
+                && story.descendants <= 0
+                && comments.size() <= 1;
 
-        headerViewHolder.loadingFailed.setVisibility(loadingFailed ? VISIBLE : GONE);
+        setLoadingIndicatorTopMargin(headerViewHolder, commentsLoaded);
+        headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
         if (loadingFailed) {
             if (!Utils.isNetworkAvailable(ctx)) {
                 headerViewHolder.loadingFailedText.setText("No internet connection");
@@ -927,6 +908,246 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         headerViewHolder.serverErrorText.setVisibility(loadingFailedServerError ? VISIBLE : GONE);
         headerViewHolder.openInBrowserButton.setVisibility(loadingFailedServerError ? VISIBLE : GONE);
+        setHeaderStatusRows(
+                headerViewHolder,
+                showLoadingIndicator,
+                loadingFailed,
+                showEmptyState);
+    }
+
+    private void setLoadingIndicatorTopMargin(
+            HeaderViewHolder headerViewHolder,
+            boolean compact) {
+        FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams)
+                headerViewHolder.loadingIndicator.getLayoutParams();
+        int targetTopMargin = Utils.pxFromDpInt(
+                headerViewHolder.loadingIndicator.getResources(),
+                compact ? REFRESH_LOADING_TOP_MARGIN_DP : INITIAL_LOADING_TOP_MARGIN_DP);
+        if (layoutParams.topMargin == targetTopMargin) {
+            return;
+        }
+        layoutParams.topMargin = targetTopMargin;
+        headerViewHolder.loadingIndicator.setLayoutParams(layoutParams);
+    }
+
+    private void setHeaderStatusRows(
+            HeaderViewHolder headerViewHolder,
+            boolean showLoadingIndicator,
+            boolean showFailure,
+            boolean showEmptyState) {
+        if (!headerViewHolder.statusRowsInitialized) {
+            setHeaderStatusRowImmediately(
+                    headerViewHolder,
+                    headerViewHolder.loadingContainer,
+                    showLoadingIndicator);
+            setHeaderStatusRowImmediately(
+                    headerViewHolder,
+                    headerViewHolder.loadingFailedContainer,
+                    showFailure);
+            setHeaderStatusRowImmediately(
+                    headerViewHolder,
+                    headerViewHolder.emptyContainer,
+                    showEmptyState);
+            headerViewHolder.statusRowsInitialized = true;
+            return;
+        }
+
+        setHeaderStatusRowVisible(
+                headerViewHolder,
+                headerViewHolder.loadingContainer,
+                showLoadingIndicator);
+        setHeaderStatusRowVisible(
+                headerViewHolder,
+                headerViewHolder.loadingFailedContainer,
+                showFailure);
+        setHeaderStatusRowVisible(
+                headerViewHolder,
+                headerViewHolder.emptyContainer,
+                showEmptyState);
+    }
+
+    private void setHeaderStatusRowImmediately(
+            HeaderViewHolder headerViewHolder,
+            FrameLayout container,
+            boolean visible) {
+        ValueAnimator animator = headerViewHolder.statusRowHeightAnimators.remove(container);
+        if (animator != null) {
+            animator.cancel();
+        }
+        headerViewHolder.statusRowVisibilityTargets.put(container, visible);
+
+        View content = container.getChildAt(0);
+        content.animate().cancel();
+        content.setAlpha(1f);
+        content.setScaleX(1f);
+        content.setScaleY(1f);
+        content.setTranslationY(0f);
+
+        ViewGroup.LayoutParams layoutParams = container.getLayoutParams();
+        if (visible) {
+            content.setVisibility(VISIBLE);
+            container.setVisibility(VISIBLE);
+            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        } else {
+            container.setVisibility(GONE);
+            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        }
+        container.setLayoutParams(layoutParams);
+    }
+
+    private void setHeaderStatusRowVisible(
+            HeaderViewHolder headerViewHolder,
+            FrameLayout container,
+            boolean visible) {
+        Boolean previousTarget = headerViewHolder.statusRowVisibilityTargets.get(container);
+        if (previousTarget != null && previousTarget == visible) {
+            return;
+        }
+        headerViewHolder.statusRowVisibilityTargets.put(container, visible);
+
+        ValueAnimator previousAnimator = headerViewHolder.statusRowHeightAnimators.remove(container);
+        if (previousAnimator != null) {
+            previousAnimator.cancel();
+        }
+
+        View content = container.getChildAt(0);
+        content.animate().cancel();
+        int hiddenTranslationY = Utils.pxFromDpInt(
+                container.getResources(),
+                HEADER_STATUS_ROW_HIDDEN_TRANSLATION_Y_DP);
+
+        if (visible) {
+            if (container.getVisibility() != VISIBLE) {
+                ViewGroup.LayoutParams layoutParams = container.getLayoutParams();
+                layoutParams.height = 0;
+                container.setLayoutParams(layoutParams);
+                container.setVisibility(VISIBLE);
+                content.setAlpha(0f);
+                content.setScaleX(HEADER_STATUS_ROW_HIDDEN_SCALE);
+                content.setScaleY(HEADER_STATUS_ROW_HIDDEN_SCALE);
+                content.setTranslationY(hiddenTranslationY);
+            }
+            content.setVisibility(VISIBLE);
+            content.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .translationY(0f)
+                    .setDuration(HEADER_STATUS_ROW_DURATION_MS)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
+            animateHeaderStatusRowHeight(
+                    headerViewHolder,
+                    container,
+                    container.getHeight(),
+                    measureHeaderStatusRowHeight(container),
+                    true);
+            return;
+        }
+
+        if (container.getVisibility() != VISIBLE) {
+            return;
+        }
+
+        content.animate()
+                .alpha(0f)
+                .scaleX(HEADER_STATUS_ROW_HIDDEN_SCALE)
+                .scaleY(HEADER_STATUS_ROW_HIDDEN_SCALE)
+                .translationY(-hiddenTranslationY)
+                .setDuration(HEADER_STATUS_ROW_DURATION_MS)
+                .setInterpolator(new DecelerateInterpolator())
+                .start();
+        animateHeaderStatusRowHeight(
+                headerViewHolder,
+                container,
+                container.getHeight(),
+                0,
+                false);
+    }
+
+    private void animateHeaderStatusRowHeight(
+            HeaderViewHolder headerViewHolder,
+            FrameLayout container,
+            int startHeight,
+            int endHeight,
+            boolean visibleAtEnd) {
+        if (startHeight == endHeight) {
+            finishHeaderStatusRowAnimation(headerViewHolder, container, visibleAtEnd);
+            return;
+        }
+
+        ValueAnimator animator = ValueAnimator.ofInt(Math.max(0, startHeight), endHeight);
+        headerViewHolder.statusRowHeightAnimators.put(container, animator);
+        animator.setDuration(HEADER_STATUS_ROW_DURATION_MS);
+        animator.setInterpolator(new DecelerateInterpolator());
+        animator.addUpdateListener(animation -> {
+            ViewGroup.LayoutParams layoutParams = container.getLayoutParams();
+            layoutParams.height = (int) animation.getAnimatedValue();
+            container.setLayoutParams(layoutParams);
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (headerViewHolder.statusRowHeightAnimators.get(container) != animator) {
+                    return;
+                }
+                headerViewHolder.statusRowHeightAnimators.remove(container);
+                Boolean target = headerViewHolder.statusRowVisibilityTargets.get(container);
+                if (target == null || target != visibleAtEnd) {
+                    return;
+                }
+                finishHeaderStatusRowAnimation(headerViewHolder, container, visibleAtEnd);
+            }
+        });
+        animator.start();
+    }
+
+    private void finishHeaderStatusRowAnimation(
+            HeaderViewHolder headerViewHolder,
+            FrameLayout container,
+            boolean visible) {
+        View content = container.getChildAt(0);
+        ViewGroup.LayoutParams layoutParams = container.getLayoutParams();
+        if (visible) {
+            content.setVisibility(VISIBLE);
+            content.setAlpha(1f);
+            content.setScaleX(1f);
+            content.setScaleY(1f);
+            content.setTranslationY(0f);
+            container.setVisibility(VISIBLE);
+        } else {
+            container.setVisibility(GONE);
+            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            content.setAlpha(1f);
+            content.setScaleX(1f);
+            content.setScaleY(1f);
+            content.setTranslationY(0f);
+        }
+        container.setLayoutParams(layoutParams);
+    }
+
+    private int measureHeaderStatusRowHeight(FrameLayout container) {
+        View content = container.getChildAt(0);
+        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) content.getLayoutParams();
+        int availableWidth = container.getWidth();
+        if (availableWidth <= 0) {
+            availableWidth = container.getResources().getDisplayMetrics().widthPixels;
+        }
+        int contentWidth = Math.max(
+                0,
+                availableWidth
+                        - container.getPaddingLeft()
+                        - container.getPaddingRight()
+                        - layoutParams.leftMargin
+                        - layoutParams.rightMargin);
+        content.measure(
+                View.MeasureSpec.makeMeasureSpec(contentWidth, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        return container.getPaddingTop()
+                + layoutParams.topMargin
+                + content.getMeasuredHeight()
+                + layoutParams.bottomMargin
+                + container.getPaddingBottom();
     }
 
     private void bindHeaderPreviewImage(final HeaderViewHolder headerViewHolder) {
@@ -2614,6 +2835,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout sheetButtonsContainer;
         public final LinearLayout actionsContainer;
         public final LinearLayout linkInfoContainer;
+        public final FrameLayout loadingContainer;
+        public final FrameLayout loadingFailedContainer;
+        public final FrameLayout emptyContainer;
         public final Button retryButton;
         public final Button openInBrowserButton;
         public final LinearLayout opFilterContainer;
@@ -2622,7 +2846,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout headerView;
         public final int headerBasePaddingTop;
         private final Map<View, Integer> baseRightPaddings = new HashMap<>();
+        private final Map<View, ValueAnimator> statusRowHeightAnimators = new HashMap<>();
+        private final Map<View, Boolean> statusRowVisibilityTargets = new HashMap<>();
         private ValueAnimator refreshPromptHeightAnimator;
+        private boolean statusRowsInitialized;
 
         public HeaderViewHolder(CommentsHeaderBinding binding) {
             super(binding.getRoot());
@@ -2648,13 +2875,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             emptyViewText = binding.commentsHeaderEmptyText;
             headerView = binding.commentsHeader;
             headerBasePaddingTop = headerView.getPaddingTop();
+            loadingContainer = binding.commentsHeaderLoadingContainer;
             loadingIndicator = binding.commentsHeaderLoading;
+            loadingFailedContainer = binding.commentsHeaderLoadingFailedContainer;
             loadingFailed = binding.commentsHeaderLoadingFailed;
             loadingFailedText = binding.commentsHeaderLoadingFailedText;
             serverErrorText = binding.commentsHeaderServerError;
             refreshPrompt = binding.commentsHeaderRefreshPrompt;
             lastRefreshedText = binding.commentsHeaderLastRefreshed;
             refreshButton = binding.commentsHeaderRefresh;
+            emptyContainer = binding.commentsHeaderEmptyContainer;
             favicon = binding.commentsHeaderFavicon;
             previewImage = binding.commentsHeaderStoryPreviewImage;
             linkInfoContainer = binding.commentsHeaderLinkInfoContainer;

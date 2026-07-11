@@ -1013,13 +1013,22 @@
 
     </LinearLayout>
 
-    <com.google.android.material.loadingindicator.LoadingIndicator
-        android:id="@+id/comments_header_loading"
-        android:indeterminate="true"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="52dp"
-        android:layout_width="60dp"
-        android:layout_height="60dp" />
+    <FrameLayout
+        android:id="@+id/comments_header_loading_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:visibility="gone">
+
+        <com.google.android.material.loadingindicator.LoadingIndicator
+            android:id="@+id/comments_header_loading"
+            android:indeterminate="true"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="44dp"
+            android:layout_marginBottom="8dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp" />
+
+    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/comments_header_refresh_prompt"
@@ -1062,13 +1071,19 @@
 
     </LinearLayout>
 
-    <LinearLayout
-        android:id="@+id/comments_header_loading_failed"
-        android:layout_marginTop="40dp"
-        android:layout_marginBottom="44dp"
+    <FrameLayout
+        android:id="@+id/comments_header_loading_failed_container"
         android:layout_width="match_parent"
-        android:orientation="vertical"
-        android:layout_height="wrap_content">
+        android:layout_height="0dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/comments_header_loading_failed"
+            android:layout_marginTop="40dp"
+            android:layout_marginBottom="44dp"
+            android:layout_width="match_parent"
+            android:orientation="vertical"
+            android:layout_height="wrap_content">
 
         <ImageView
             android:src="@drawable/ic_cloud_off"
@@ -1133,14 +1148,22 @@
             android:backgroundTint="?attr/colorSecondary"
             android:text="Open in browser"    />
 
-    </LinearLayout>
+        </LinearLayout>
 
-    <LinearLayout
-        android:id="@+id/comments_header_empty"
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/comments_header_empty_container"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="56dp"
-        android:orientation="vertical">
+        android:layout_height="0dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/comments_header_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="56dp"
+            android:orientation="vertical">
 
         <ImageView
             android:src="@drawable/ic_comment"
@@ -1163,6 +1186,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"    />
 
-    </LinearLayout>
+        </LinearLayout>
+
+    </FrameLayout>
 
 </LinearLayout>

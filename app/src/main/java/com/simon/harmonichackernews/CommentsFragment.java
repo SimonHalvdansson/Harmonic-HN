@@ -97,6 +97,7 @@ import okhttp3.Response;
 
 public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener, CommentsRecyclerViewAdapter.RequestSummaryCallback, CommentsRecyclerViewAdapter.RetryListener, CommentNavigationController.Host {
     private static final String TAG = "CommentsFragment";
+    private static final Object HEADER_UPDATE_PAYLOAD = new Object();
 
     public final static String EXTRA_TITLE = "com.simon.harmonichackernews.EXTRA_TITLE";
     public final static String EXTRA_PDF_TITLE = "com.simon.harmonichackernews.EXTRA_PDF_TITLE";
@@ -1076,7 +1077,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         // this is to make sure that action buttons in header get updated padding on rotations...
         // yes it's ugly, I know
         if (getContext() != null && Utils.isTablet(getResources()) && adapter != null) {
-            adapter.notifyItemChanged(0);
+            notifyHeaderChanged();
         }
         refreshCommentActionOverlayForConfiguration();
     }
@@ -1398,7 +1399,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         boolean regularChanged = setRecyclerSidePadding(recyclerViewRegular, leftPadding, rightPadding);
         boolean swipeChanged = setRecyclerSidePadding(recyclerViewSwipe, leftPadding, rightPadding);
         if ((regularChanged || swipeChanged) && adapter != null) {
-            adapter.notifyItemChanged(0);
+            notifyHeaderChanged();
         }
     }
 
@@ -1527,7 +1528,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
             }
             if (updateHeader) {
-                adapter.notifyItemChanged(0);
+                notifyHeaderChanged();
             }
             if (updateComments) {
                 adapter.notifyDataSetChanged();
@@ -1546,7 +1547,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             boolean hasAccountDetails = AccountUtils.hasAccountDetails(getContext());
             if (adapter.hasAccountDetails != hasAccountDetails) {
                 adapter.hasAccountDetails = hasAccountDetails;
-                adapter.notifyItemChanged(0);
+                notifyHeaderChanged();
             }
             if (adapter.showUpdate != shouldShowUpdate) {
                 adapter.showUpdate = shouldShowUpdate;
@@ -1555,11 +1556,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         commentNavigationController.clearSearchedCommentScrollTopTarget();
                     }
                 }
-                adapter.notifyItemChanged(0);
+                notifyHeaderChanged();
             }
         }
         if (adapter != null) {
-            adapter.notifyItemChanged(0);
+            notifyHeaderChanged();
         }
         saveScreenHeight();
         refreshCommentActionOverlayForConfiguration();
@@ -1914,6 +1915,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
         Log.d(TAG, "Retry requested for storyId=" + adapter.story.id);
+        adapter.commentsRefreshInProgress = true;
+        notifyHeaderChanged();
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(true);
         }
@@ -1960,7 +1963,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.lastRefreshed = lastLoaded;
             if (adapter.showUpdate) {
                 adapter.showUpdate = false;
-                adapter.notifyItemChanged(0);
+                notifyHeaderChanged();
             }
         }
 
@@ -1977,6 +1980,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (TextUtils.isEmpty(oldCachedResponse) || !oldCachedResponse.equals(response)) {
                     handleJsonResponse(id, response, true, oldCachedResponse == null, false);
                 }
+                setCommentsRefreshInProgress(false);
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -1990,7 +1994,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 adapter.loadingFailed = true;
                 adapter.loadingFailedServerError = !noInternet;
                 adapter.commentsLoaded = true;
-                adapter.notifyItemChanged(0);
+                setCommentsRefreshInProgress(false);
+                notifyHeaderChanged();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -2034,7 +2039,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                 adapter.loadingFailed = false;
                 adapter.loadingFailedServerError = false;
-                adapter.notifyItemChanged(0);
+                notifyHeaderChanged();
                 maybeLoadPollOptions();
             }
 
@@ -2048,7 +2053,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 adapter.loadingFailed = true;
                 adapter.loadingFailedServerError = false;
                 adapter.commentsLoaded = true;
-                adapter.notifyItemChanged(0);
+                setCommentsRefreshInProgress(false);
+                notifyHeaderChanged();
                 swipeRefreshLayout.setRefreshing(false);
             }
 
@@ -2067,8 +2073,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 CommentSorter.sort(allComments, getCurrentCommentSorting());
                 applyDisplayedComments(getDisplayedCommentsForCurrentFilter(allComments));
                 adapter.commentsLoaded = true;
+                setCommentsRefreshInProgress(false);
                 updateNavigationVisibility();
-                adapter.notifyItemChanged(0);
+                notifyHeaderChanged();
                 swipeRefreshLayout.setRefreshing(false);
                 recyclerView.post(() -> {
                     if (!isCommentsViewActive()) {
@@ -2091,8 +2098,22 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     private void onLinkPreviewChanged() {
         if (adapter != null) {
-            adapter.notifyItemChanged(0);
+            notifyHeaderChanged();
         }
+    }
+
+    private void notifyHeaderChanged() {
+        if (adapter != null) {
+            adapter.notifyItemChanged(0, HEADER_UPDATE_PAYLOAD);
+        }
+    }
+
+    private void setCommentsRefreshInProgress(boolean refreshInProgress) {
+        if (adapter == null || adapter.commentsRefreshInProgress == refreshInProgress) {
+            return;
+        }
+        adapter.commentsRefreshInProgress = refreshInProgress;
+        notifyHeaderChanged();
     }
 
     private void maybeLoadPollOptions() {
@@ -2164,7 +2185,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                                     pollOption.points = jsonObject.getInt("score");
                                     pollOption.text = JSONParser.preprocessHtml(jsonObject.getString("text"));
 
-                                    adapter.notifyItemChanged(0);
+                                    notifyHeaderChanged();
                                 }
                             }
                         } catch (JSONException e) {
@@ -2195,7 +2216,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (response.equals(JSONParser.ALGOLIA_ERROR_STRING)) {
             adapter.loadingFailed = true;
             adapter.loadingFailedServerError = true;
-            adapter.notifyItemChanged(0);
+            notifyHeaderChanged();
             swipeRefreshLayout.setRefreshing(false);
         }
 
@@ -2243,11 +2264,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             // Show some error, remove things?
             adapter.loadingFailed = true;
             adapter.loadingFailedServerError = false;
-            adapter.notifyItemChanged(0);
+            notifyHeaderChanged();
             swipeRefreshLayout.setRefreshing(false);
         }
 
         adapter.commentsLoaded = true;
+        notifyHeaderChanged();
         if (updateHeaderAfterLoad) {
             refreshHeaderAfterStoryLoad();
         }
@@ -2961,7 +2983,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         commentAdapter.loadUserTags(requireContext());
 
         if (story.by.equals(changedUser)) {
-            commentAdapter.notifyItemChanged(0);
+            notifyHeaderChanged();
         }
         for (int i = 1; i < comments.size(); i++) {
             String by = comments.get(i).by;
