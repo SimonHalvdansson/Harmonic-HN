@@ -44,7 +44,8 @@
         <item name="settingsMainToggleColor">@color/material_you_tertiary30</item>
         <item name="settingsSegmentColor">@color/material_you_neutral_variant20</item>
 
-        <item name="popupMenuBackground">@drawable/popup_dark_background_material</item>
+        <item name="popupMenuBackgroundColor">@color/material_you_neutral_800</item>
+        <item name="popupMenuBackground">@drawable/popup_menu_background</item>
         <item name="snackbarTextViewStyle">@style/snackbarTextStyle</item>
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
         <item name="android:statusBarColor">@color/material_you_neutral_900</item>
@@ -88,7 +89,8 @@
         <item name="android:colorBackground">@color/background</item>
         <item name="colorControlHighlight">#40ffffff</item>
 
-        <item name="popupMenuBackground">@drawable/popup_dark_background</item>
+        <item name="popupMenuBackgroundColor">@color/darkerBackground</item>
+        <item name="popupMenuBackground">@drawable/popup_menu_background</item>
         <item name="snackbarTextViewStyle">@style/snackbarTextStyle</item>
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
         <item name="android:statusBarColor">@color/statusBarColor</item>
@@ -162,7 +164,8 @@
         <item name="settingsHeaderSelectedColor">@color/hackerSurfaceContainerSelected</item>
         <item name="settingsMainToggleColor">@color/hackerAccentContainer</item>
         <item name="settingsSegmentColor">@color/settings_segment_hacker</item>
-        <item name="popupMenuBackground">@drawable/popup_hacker_background</item>
+        <item name="popupMenuBackgroundColor">@color/hackerBackground</item>
+        <item name="popupMenuBackground">@drawable/popup_menu_background</item>
         <item name="colorControlHighlight">#3300FF00</item>
         <item name="android:textViewStyle">@style/JetBrainsMonoTextViewStyle</item>
 
@@ -225,7 +228,8 @@
         <item name="android:statusBarColor">@color/lightStatusBarColor</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="popupMenuBackground">@drawable/popup_background_material</item>
+        <item name="popupMenuBackgroundColor">?attr/colorSurfaceContainerHigh</item>
+        <item name="popupMenuBackground">@drawable/popup_menu_background</item>
 
         <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
@@ -236,7 +240,6 @@
     <style name="AppThemeMaterialLight" parent="AppThemeLight">
         <item name="opCommentColor">@color/material_you_tertiary30</item>
         <item name="commentCountIndicatorColor">@color/material_you_600</item>
-        <item name="popupMenuBackground">@drawable/popup_background_material</item>
         <item name="secondaryTextColor">@color/material_you_secondary_40</item>
 
         <item name="colorAccent">@color/material_you_600</item>

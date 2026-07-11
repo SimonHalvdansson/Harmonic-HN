@@ -19,6 +19,7 @@
     <attr name="settingsMainToggleColor" format="reference|color"/>
     <attr name="settingsSegmentColor" format="reference|color"/>
     <attr name="storyCardBackgroundColor" format="reference|color"/>
+    <attr name="popupMenuBackgroundColor" format="reference|color"/>
 
     <declare-styleable name="SwipeBackLayout">
         <attr name="swipeBackFactor" format="float"/>
