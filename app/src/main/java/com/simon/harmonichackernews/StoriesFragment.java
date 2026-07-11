@@ -699,7 +699,7 @@ public class StoriesFragment extends Fragment {
                     + ", currentStories=" + (stories == null ? 0 : stories.size())
                     + ", loadingFailed=" + loadingFailed
                     + ", loadingFailedServerError=" + loadingFailedServerError);
-            attemptRefresh();
+            attemptStoryTypeRefresh();
         });
         showCachedButton.setOnClickListener(v -> showCachedStories());
 
