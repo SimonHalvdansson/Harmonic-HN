@@ -49,6 +49,7 @@
 
     <string-array name="font_entries">
         <item>Google Sans Flex Rounded</item>
+        <item>Google Sans</item>
         <item>Product Sans</item>
         <item>Device default</item>
         <item>Verdana</item>
@@ -60,6 +61,7 @@
 
     <string-array name="font_values">
         <item>googlesansflexrounded</item>
+        <item>googlesans</item>
         <item>productsans</item>
         <item>devicedefault</item>
         <item>verdana</item>

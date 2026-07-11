@@ -50,6 +50,8 @@ public class FontUtils {
                 return ResourcesCompat.getFont(ctx, R.font.product_sans);
             case "googlesansflexrounded":
                 return ResourcesCompat.getFont(ctx, R.font.google_sans_flex_rounded);
+            case "googlesans":
+                return ResourcesCompat.getFont(ctx, R.font.google_sans);
             case "devicedefault":
                 return Typeface.create("sans-serif", Typeface.NORMAL);
             case "verdana":
@@ -72,6 +74,8 @@ public class FontUtils {
                 return ResourcesCompat.getFont(ctx, R.font.product_sans_bold);
             case "googlesansflexrounded":
                 return ResourcesCompat.getFont(ctx, R.font.google_sans_flex_rounded_bold);
+            case "googlesans":
+                return ResourcesCompat.getFont(ctx, R.font.google_sans_bold);
             case "devicedefault":
                 return Typeface.create("sans-serif", Typeface.BOLD);
             case "verdana":
@@ -259,6 +263,8 @@ public class FontUtils {
             switch (SettingsUtils.sanitizeFont(font)) {
                 case "googlesansflexrounded":
                     return googleSansFlexRounded;
+                case "googlesans":
+                    return productSans;
                 case "devicedefault":
                     return deviceDefault;
                 case "verdana":

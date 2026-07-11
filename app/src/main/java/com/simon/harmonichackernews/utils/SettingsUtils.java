@@ -530,6 +530,7 @@ public class SettingsUtils {
     public static String sanitizeFont(String font) {
         if ("productsans".equals(font)
                 || "googlesansflexrounded".equals(font)
+                || "googlesans".equals(font)
                 || "devicedefault".equals(font)
                 || "verdana".equals(font)
                 || "jetbrainsmono".equals(font)
@@ -545,6 +546,7 @@ public class SettingsUtils {
         if ("georgia".equals(font)
                 || "productsans".equals(font)
                 || "googlesansflexrounded".equals(font)
+                || "googlesans".equals(font)
                 || "verdana".equals(font)
                 || "robotoslab".equals(font)
                 || "googlesanscode".equals(font)
