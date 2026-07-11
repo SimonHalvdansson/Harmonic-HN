@@ -19,6 +19,7 @@ public class StoryDisplaySettings {
     public final boolean compactView;
     public final boolean thumbnails;
     public final String previewImageMode;
+    public final boolean borderlessLargePreviewImage;
     public final float storyTextSize;
     public final boolean showIndex;
     public final boolean compactHeader;
@@ -39,6 +40,7 @@ public class StoryDisplaySettings {
                                  boolean compactView,
                                  boolean thumbnails,
                                  String previewImageMode,
+                                 boolean borderlessLargePreviewImage,
                                  float storyTextSize,
                                  boolean showIndex,
                                  boolean compactHeader,
@@ -58,6 +60,7 @@ public class StoryDisplaySettings {
         this.compactView = compactView;
         this.thumbnails = thumbnails;
         this.previewImageMode = previewImageMode;
+        this.borderlessLargePreviewImage = borderlessLargePreviewImage;
         this.storyTextSize = storyTextSize;
         this.showIndex = showIndex;
         this.compactHeader = compactHeader;
@@ -82,6 +85,7 @@ public class StoryDisplaySettings {
                 SettingsUtils.shouldUseCompactView(context),
                 SettingsUtils.shouldShowThumbnails(context),
                 SettingsUtils.getPreferredStoryPreviewImageMode(context),
+                SettingsUtils.shouldUseBorderlessLargeStoryPreviewImage(context),
                 SettingsUtils.getPreferredStoryTextSize(context),
                 SettingsUtils.shouldShowIndex(context),
                 SettingsUtils.shouldUseCompactHeader(context),
@@ -107,6 +111,7 @@ public class StoryDisplaySettings {
                 compactView,
                 thumbnails,
                 previewImageMode,
+                borderlessLargePreviewImage,
                 storyTextSize,
                 showIndex,
                 compactHeader,
@@ -134,6 +139,7 @@ public class StoryDisplaySettings {
                 compactView,
                 thumbnails,
                 previewImageMode,
+                borderlessLargePreviewImage,
                 storyTextSize,
                 showIndex,
                 compactHeader,
@@ -186,6 +192,10 @@ public class StoryDisplaySettings {
         if (!Objects.equals(adapter.previewImageMode, previewImageMode)) {
             adapter.previewImageMode = previewImageMode;
             previewImageModeChanged = true;
+            itemsChanged = true;
+        }
+        if (adapter.borderlessLargePreviewImage != borderlessLargePreviewImage) {
+            adapter.borderlessLargePreviewImage = borderlessLargePreviewImage;
             itemsChanged = true;
         }
         if (Float.compare(adapter.storyTextSize, storyTextSize) != 0) {
@@ -261,6 +271,7 @@ public class StoryDisplaySettings {
         targetAdapter.compactView = sourceAdapter.compactView;
         targetAdapter.thumbnails = sourceAdapter.thumbnails;
         targetAdapter.previewImageMode = sourceAdapter.previewImageMode;
+        targetAdapter.borderlessLargePreviewImage = sourceAdapter.borderlessLargePreviewImage;
         targetAdapter.storyTextSize = sourceAdapter.storyTextSize;
         targetAdapter.showIndex = sourceAdapter.showIndex;
         targetAdapter.compactHeader = sourceAdapter.compactHeader;

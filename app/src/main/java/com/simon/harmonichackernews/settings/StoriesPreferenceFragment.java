@@ -24,6 +24,7 @@ import java.util.Set;
 
 public class StoriesPreferenceFragment extends BaseSettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
     private StoryContentPreviewPreference previewView;
+    private Preference borderlessLargePreviewImagePreference;
     private Preference grayOutClickedPreference;
     private Preference tintCardUsingPreviewPreference;
     private Preference compactPointsPreference;
@@ -58,6 +59,8 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
         setPreferencesFromResource(R.xml.preferences_stories, rootKey);
 
         boolean compact = SettingsUtils.shouldUseCompactView(getContext());
+        borderlessLargePreviewImagePreference = findPreference(
+                SettingsUtils.PREF_STORY_PREVIEW_IMAGE_BORDERLESS);
         grayOutClickedPreference = findPreference(SettingsUtils.PREF_GRAY_OUT_CLICKED);
         tintCardUsingPreviewPreference = findPreference(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW);
         compactPointsPreference = findPreference(SettingsUtils.PREF_COMPACT_POINTS);
@@ -74,6 +77,8 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
         updateFaviconProviderPreference();
         updateGrayOutClickedPreference();
         updateTintCardUsingPreviewPreference();
+        updateBorderlessLargePreviewImagePreference(
+                SettingsUtils.getPreferredStoryPreviewImageMode(requireContext()));
 
         if (SettingsUtils.shouldShowThumbnails(getContext())) {
             changePrefStatus(faviconProviderPreference, !compact);
@@ -105,8 +110,18 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
             if (previewView != null) {
                 previewView.updatePreviewImageMode((String) newValue);
             }
+            updateBorderlessLargePreviewImagePreference((String) newValue);
             return true;
         });
+
+        if (borderlessLargePreviewImagePreference != null) {
+            borderlessLargePreviewImagePreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                if (previewView != null) {
+                    previewView.updateBorderlessLargePreviewImage((boolean) newValue);
+                }
+                return true;
+            });
+        }
 
         findPreference(SettingsUtils.PREF_STORY_DISPLAY_STYLE).setOnPreferenceChangeListener((preference, newValue) -> {
             if (previewView != null) {
@@ -222,6 +237,8 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
     public void onResume() {
         super.onResume();
         getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        updateBorderlessLargePreviewImagePreference(
+                SettingsUtils.getPreferredStoryPreviewImageMode(requireContext()));
         updateFaviconProviderPreference();
     }
 
@@ -233,7 +250,10 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (SettingsUtils.PREF_FAVICON_PROVIDER.equals(key)) {
+        if (SettingsUtils.PREF_STORY_PREVIEW_IMAGE_MODE.equals(key)) {
+            updateBorderlessLargePreviewImagePreference(
+                    SettingsUtils.getPreferredStoryPreviewImageMode(requireContext()));
+        } else if (SettingsUtils.PREF_FAVICON_PROVIDER.equals(key)) {
             updateFaviconProviderPreference();
         } else if (SettingsUtils.PREF_ADDITIONAL_FRONTPAGES.equals(key)) {
             updateAdditionalFrontpagesPreference();
@@ -287,6 +307,12 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
 
     private void updateCompactPointsPreference(boolean enabled) {
         changePrefStatus(compactPointsPreference, enabled);
+    }
+
+    private void updateBorderlessLargePreviewImagePreference(String previewImageMode) {
+        changePrefStatus(
+                borderlessLargePreviewImagePreference,
+                SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode));
     }
 
     private void refreshStoryWidgets() {

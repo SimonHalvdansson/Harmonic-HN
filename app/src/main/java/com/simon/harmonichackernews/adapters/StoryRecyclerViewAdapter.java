@@ -109,6 +109,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public boolean compactView;
     public boolean thumbnails;
     public String previewImageMode;
+    public boolean borderlessLargePreviewImage;
     public float storyTextSize;
     public boolean showIndex;
     public boolean compactHeader;
@@ -142,6 +143,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     boolean shouldUseCompactView,
                                     boolean shouldShowThumbnails,
                                     String preferredPreviewImageMode,
+                                    boolean shouldUseBorderlessLargePreviewImage,
                                     float preferredStoryTextSize,
                                     boolean shouldShowIndex,
                                     boolean shouldUseCompactHeader,
@@ -164,6 +166,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         compactView = shouldUseCompactView;
         thumbnails = shouldShowThumbnails;
         previewImageMode = preferredPreviewImageMode;
+        borderlessLargePreviewImage = shouldUseBorderlessLargePreviewImage;
         storyTextSize = SettingsUtils.clampStoryTextSize(preferredStoryTextSize);
         showIndex = shouldShowIndex;
         compactHeader = shouldUseCompactHeader;
@@ -262,6 +265,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyViewHolder.story = stories.get(position);
             boolean useClickedEffects = shouldUseClickedEffects(storyViewHolder.story);
             resetPreviewImages(storyViewHolder);
+            configureLargePreviewImageAppearance(storyViewHolder);
             configureStoryCardAppearance(storyViewHolder);
             hydrateCachedPreviewState(ctx, storyViewHolder.story);
             applyStoryCardBackground(storyViewHolder, storyViewHolder.story, false);
@@ -1433,6 +1437,59 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         card.setStrokeWidth(0);
         card.setStrokeColor(Color.TRANSPARENT);
         card.setCardElevation(0f);
+    }
+
+    private void configureLargePreviewImageAppearance(StoryViewHolder storyViewHolder) {
+        ImageView previewImage = storyViewHolder.largePreviewImage;
+        if (previewImage == null) {
+            return;
+        }
+
+        boolean useBorderless = borderlessLargePreviewImage
+                && SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode);
+        int inset = useBorderless
+                ? 0
+                : previewImage.getResources().getDimensionPixelSize(
+                        R.dimen.story_large_preview_image_inset);
+        int bottomMargin = useBorderless
+                ? 0
+                : previewImage.getResources().getDimensionPixelSize(
+                        R.dimen.story_large_preview_image_bottom_margin);
+        setLargePreviewImageMargins(previewImage, inset, inset, inset, bottomMargin);
+
+        if (useBorderless) {
+            previewImage.setBackground(null);
+            previewImage.setClipToOutline(false);
+        } else {
+            previewImage.setBackgroundResource(R.drawable.story_preview_image_background);
+            previewImage.setClipToOutline(true);
+        }
+    }
+
+    private static void setLargePreviewImageMargins(
+            ImageView previewImage,
+            int start,
+            int top,
+            int end,
+            int bottom) {
+        ViewGroup.LayoutParams layoutParams = previewImage.getLayoutParams();
+        if (!(layoutParams instanceof ViewGroup.MarginLayoutParams)) {
+            return;
+        }
+
+        ViewGroup.MarginLayoutParams marginParams = (ViewGroup.MarginLayoutParams) layoutParams;
+        if (marginParams.getMarginStart() == start
+                && marginParams.topMargin == top
+                && marginParams.getMarginEnd() == end
+                && marginParams.bottomMargin == bottom) {
+            return;
+        }
+
+        marginParams.setMarginStart(start);
+        marginParams.topMargin = top;
+        marginParams.setMarginEnd(end);
+        marginParams.bottomMargin = bottom;
+        previewImage.setLayoutParams(marginParams);
     }
 
     private static boolean isVisibleOnScreen(View view) {

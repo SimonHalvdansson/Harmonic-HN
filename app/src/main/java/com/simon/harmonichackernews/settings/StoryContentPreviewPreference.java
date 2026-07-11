@@ -70,9 +70,11 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     private ValueAnimator cardAppearanceAnimator;
     private ValueAnimator previewHeightAnimator;
     private ValueAnimator largePreviewImageHeightAnimator;
+    private ValueAnimator largePreviewImageMarginAnimator;
     private Integer currentCardBackgroundColor;
     private String previewImageModeOverride;
     private String displayStyleOverride;
+    private boolean borderlessLargePreviewImage;
     private int previewImageAnimationToken;
     private int metaAnimationToken;
     private int commentCountAnimationToken;
@@ -120,6 +122,8 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         leftAligned = SettingsUtils.shouldUseLeftAlign(getContext());
         cardStyle = SettingsUtils.shouldUseCardStoryDisplayStyle(getContext());
         tintCardUsingPreview = SettingsUtils.shouldTintCardUsingPreview(getContext());
+        borderlessLargePreviewImage =
+                SettingsUtils.shouldUseBorderlessLargeStoryPreviewImage(getContext());
         inflatePreviewItem(leftAligned);
         updatePreview(false);
         syncPreviewContainerHeight(getCurrentPreviewImageMode());
@@ -179,6 +183,10 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         applyPreviewImageMode(previewImageMode, true);
     }
 
+    public void updateBorderlessLargePreviewImage(boolean borderless) {
+        applyBorderlessLargePreviewImage(borderless, true);
+    }
+
     public void updateDisplayStyle(String displayStyle) {
         applyDisplayStyle(displayStyle, true);
     }
@@ -235,6 +243,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         storyMeta = null;
         comments = null;
         tintCardUsingPreview = false;
+        borderlessLargePreviewImage = false;
         displayStyleOverride = null;
     }
 
@@ -248,6 +257,15 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 return;
             }
             applyPreviewImageMode(previewImageMode, true);
+            return;
+        }
+
+        if (SettingsUtils.PREF_STORY_PREVIEW_IMAGE_BORDERLESS.equals(key)) {
+            boolean borderless = sharedPreferences.getBoolean(key, false);
+            if (borderless == borderlessLargePreviewImage) {
+                return;
+            }
+            applyBorderlessLargePreviewImage(borderless, true);
             return;
         }
 
@@ -308,6 +326,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         storyIndex = binding.storyIndex;
         storyMeta = binding.storyMeta;
         comments = binding.comments;
+        applyLargePreviewImageAppearance(largePreviewImage, borderlessLargePreviewImage);
         currentCardBackgroundColor = storyCard != null
                 ? storyCard.getCardBackgroundColor().getDefaultColor()
                 : null;
@@ -504,6 +523,36 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 false,
                 false);
         animatePreviewImageModeChange(displayedPreviewImageMode, previewImageMode);
+    }
+
+    private void applyBorderlessLargePreviewImage(boolean borderless, boolean animate) {
+        if (borderless == borderlessLargePreviewImage) {
+            return;
+        }
+
+        borderlessLargePreviewImage = borderless;
+        if (largePreviewImage == null) {
+            return;
+        }
+
+        applyLargePreviewImageClipping(largePreviewImage, borderless);
+        boolean largePreviewDisplayed = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(
+                getDisplayedPreviewImageMode());
+        if (!animate
+                || !largePreviewDisplayed
+                || previewItemContainer == null
+                || !ViewCompat.isLaidOut(previewItemContainer)) {
+            cancelLargePreviewImageMarginAnimator();
+            resumeStoryContainerChangingTransition();
+            applyLargePreviewImageMargins(largePreviewImage, borderless);
+            if (largePreviewDisplayed) {
+                syncPreviewContainerHeight(SettingsUtils.STORY_PREVIEW_IMAGE_LARGE);
+            }
+            requestPreviewRemeasure();
+            return;
+        }
+
+        animateLargePreviewImageMargins(borderless);
     }
 
     private void applyDisplayStyle(String displayStyle, boolean animate) {
@@ -778,6 +827,9 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         PreviewPreferenceViewUtils.copyViewVisibilityForMeasurement(favicon, binding.favicon);
         PreviewPreferenceViewUtils.copyViewVisibilityForMeasurement(smallPreviewImage, binding.smallPreviewImage);
         PreviewPreferenceViewUtils.copyViewVisibilityForMeasurement(largePreviewImage, binding.largePreviewImage);
+        applyLargePreviewImageAppearance(
+                binding.largePreviewImage,
+                borderlessLargePreviewImage);
         applyPreviewImageVisibilityForMeasurement(binding, previewImageMode);
     }
 
@@ -821,6 +873,8 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             }
             return;
         }
+
+        finishLargePreviewImageMarginAnimation();
 
         if (animate && ViewCompat.isLaidOut(previewItemContainer)) {
             animatePreviewHeights(heights, animateStoryRowHeight, endAction);
@@ -1439,6 +1493,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
 
     private void animatePreviewImageModeChange(String fromMode, String toMode) {
         int animationToken = ++previewImageAnimationToken;
+        cancelLargePreviewImageMarginAnimator();
         cancelLargePreviewImageHeightAnimator();
         cancelImageViewAnimation(smallPreviewImage);
         cancelImageViewAnimation(largePreviewImage);
@@ -1523,6 +1578,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         }
 
         cancelImageViewAnimation(largePreviewImage);
+        applyLargePreviewImageAppearance(largePreviewImage, borderlessLargePreviewImage);
         setLargePreviewImageHeight(getLargePreviewImageTargetHeight());
         largePreviewImage.setAlpha(0f);
         setVisibilityWithChangingOnly(largePreviewImage, View.VISIBLE);
@@ -1611,6 +1667,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
 
     private void cancelPreviewImageAnimations() {
         ++previewImageAnimationToken;
+        cancelLargePreviewImageMarginAnimator();
         cancelLargePreviewImageHeightAnimator();
         cancelImageViewAnimation(smallPreviewImage);
         cancelImageViewAnimation(largePreviewImage);
@@ -1757,6 +1814,196 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             largePreviewImageHeightAnimator.cancel();
             largePreviewImageHeightAnimator = null;
         }
+    }
+
+    private void animateLargePreviewImageMargins(boolean borderless) {
+        if (largePreviewImage == null
+                || !(largePreviewImage.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)) {
+            applyLargePreviewImageMargins(largePreviewImage, borderless);
+            return;
+        }
+
+        cancelLargePreviewImageMarginAnimator();
+        cancelPreviewHeightAnimator();
+        suspendStoryContainerChangingTransition();
+
+        ViewGroup.MarginLayoutParams marginParams =
+                (ViewGroup.MarginLayoutParams) largePreviewImage.getLayoutParams();
+        int startMarginStart = marginParams.getMarginStart();
+        int startMarginTop = marginParams.topMargin;
+        int startMarginEnd = marginParams.getMarginEnd();
+        int startMarginBottom = marginParams.bottomMargin;
+        int targetInset = getLargePreviewImageInset(borderless);
+        int targetBottomMargin = getLargePreviewImageBottomMargin(borderless);
+
+        PreviewHeights targetHeights = calculatePreviewHeights(
+                SettingsUtils.STORY_PREVIEW_IMAGE_LARGE);
+        boolean animatePreviewHeights = targetHeights.isValid()
+                && previewItemContainer != null
+                && previewRoot != null
+                && previewItemContainer.getChildCount() > 0;
+        int startContentHeight = animatePreviewHeights
+                ? getCurrentHeightForAnimation(
+                        previewItemContainer.getChildAt(0),
+                        targetHeights.contentHeight)
+                : 0;
+        int startContainerHeight = animatePreviewHeights
+                ? getCurrentHeightForAnimation(previewItemContainer, targetHeights.containerHeight)
+                : 0;
+        int startRootHeight = animatePreviewHeights
+                ? Math.max(previewRoot.getHeight(), previewRoot.getMinimumHeight())
+                : 0;
+        int startSelfHeight = animatePreviewHeights
+                ? Math.max(getHeight(), getMinimumHeight())
+                : 0;
+        if (animatePreviewHeights && startRootHeight <= 0) {
+            startRootHeight = targetHeights.rootHeight;
+        }
+        if (animatePreviewHeights && startSelfHeight <= 0) {
+            startSelfHeight = targetHeights.rootHeight;
+        }
+
+        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        largePreviewImageMarginAnimator = animator;
+        animator.setDuration(PREVIEW_ANIMATION_DURATION_MS);
+        animator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        int finalStartRootHeight = startRootHeight;
+        int finalStartSelfHeight = startSelfHeight;
+        animator.addUpdateListener(animation -> {
+            if (largePreviewImageMarginAnimator != animation || largePreviewImage == null) {
+                animation.cancel();
+                return;
+            }
+
+            float progress = (float) animation.getAnimatedValue();
+            setLargePreviewImageMargins(
+                    largePreviewImage,
+                    lerp(startMarginStart, targetInset, progress),
+                    lerp(startMarginTop, targetInset, progress),
+                    lerp(startMarginEnd, targetInset, progress),
+                    lerp(startMarginBottom, targetBottomMargin, progress));
+            if (animatePreviewHeights) {
+                PreviewHeights frameHeights = new PreviewHeights(
+                        lerp(startContentHeight, targetHeights.contentHeight, progress),
+                        lerp(startContainerHeight, targetHeights.containerHeight, progress),
+                        lerp(finalStartRootHeight, targetHeights.rootHeight, progress));
+                setPreviewHeights(frameHeights, true);
+                setMinimumHeight(lerp(finalStartSelfHeight, targetHeights.rootHeight, progress));
+            }
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (largePreviewImageMarginAnimator != animation) {
+                    return;
+                }
+
+                largePreviewImageMarginAnimator = null;
+                applyLargePreviewImageAppearance(largePreviewImage, borderless);
+                if (animatePreviewHeights) {
+                    setPreviewHeights(targetHeights);
+                } else {
+                    requestPreviewRemeasure();
+                }
+                resumeStoryContainerChangingTransition();
+            }
+        });
+        animator.start();
+    }
+
+    private void cancelLargePreviewImageMarginAnimator() {
+        if (largePreviewImageMarginAnimator == null) {
+            return;
+        }
+
+        ValueAnimator animator = largePreviewImageMarginAnimator;
+        largePreviewImageMarginAnimator = null;
+        animator.removeAllUpdateListeners();
+        animator.removeAllListeners();
+        animator.cancel();
+    }
+
+    private void finishLargePreviewImageMarginAnimation() {
+        if (largePreviewImageMarginAnimator == null) {
+            return;
+        }
+
+        cancelLargePreviewImageMarginAnimator();
+        applyLargePreviewImageAppearance(largePreviewImage, borderlessLargePreviewImage);
+        resumeStoryContainerChangingTransition();
+    }
+
+    private void applyLargePreviewImageAppearance(ImageView previewImage, boolean borderless) {
+        if (previewImage == null) {
+            return;
+        }
+
+        applyLargePreviewImageMargins(previewImage, borderless);
+        applyLargePreviewImageClipping(previewImage, borderless);
+    }
+
+    private void applyLargePreviewImageMargins(ImageView previewImage, boolean borderless) {
+        int inset = getLargePreviewImageInset(borderless);
+        setLargePreviewImageMargins(
+                previewImage,
+                inset,
+                inset,
+                inset,
+                getLargePreviewImageBottomMargin(borderless));
+    }
+
+    private void applyLargePreviewImageClipping(ImageView previewImage, boolean borderless) {
+        if (previewImage == null) {
+            return;
+        }
+
+        if (borderless) {
+            previewImage.setBackground(null);
+            previewImage.setClipToOutline(false);
+        } else {
+            previewImage.setBackgroundResource(R.drawable.story_preview_image_background);
+            previewImage.setClipToOutline(true);
+        }
+    }
+
+    private int getLargePreviewImageInset(boolean borderless) {
+        return borderless
+                ? 0
+                : getResources().getDimensionPixelSize(R.dimen.story_large_preview_image_inset);
+    }
+
+    private int getLargePreviewImageBottomMargin(boolean borderless) {
+        return borderless
+                ? 0
+                : getResources().getDimensionPixelSize(
+                        R.dimen.story_large_preview_image_bottom_margin);
+    }
+
+    private void setLargePreviewImageMargins(
+            ImageView previewImage,
+            int start,
+            int top,
+            int end,
+            int bottom) {
+        if (previewImage == null
+                || !(previewImage.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)) {
+            return;
+        }
+
+        ViewGroup.MarginLayoutParams marginParams =
+                (ViewGroup.MarginLayoutParams) previewImage.getLayoutParams();
+        if (marginParams.getMarginStart() == start
+                && marginParams.topMargin == top
+                && marginParams.getMarginEnd() == end
+                && marginParams.bottomMargin == bottom) {
+            return;
+        }
+
+        marginParams.setMarginStart(start);
+        marginParams.topMargin = top;
+        marginParams.setMarginEnd(end);
+        marginParams.bottomMargin = bottom;
+        previewImage.setLayoutParams(marginParams);
     }
 
     private void suspendStoryContainerChangingTransition() {

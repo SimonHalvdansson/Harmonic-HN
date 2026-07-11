@@ -10,6 +10,13 @@
             app:key="pref_story_preview_image_mode"
             app:title="Preview image" />
 
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:key="pref_story_preview_image_borderless"
+            app:singleLineTitle="false"
+            app:summary="Extends large previews to the card edges"
+            app:title="Borderless large image" />
+
         <com.simon.harmonichackernews.settings.StoryTextSizePreference
             app:defaultValue="17.5"
             app:key="pref_story_text_size"
