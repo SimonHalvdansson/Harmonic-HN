@@ -2510,6 +2510,7 @@ public class StoriesFragment extends Fragment {
                 Context ctx = v.getContext();
 
                 PopupMenu popupMenu = new PopupMenu(ctx, v);
+                popupMenu.setForceShowIcon(true);
 
                 Story story = stories.get(position);
                 boolean oldClicked = story.clicked;
@@ -2519,7 +2520,7 @@ public class StoriesFragment extends Fragment {
                 boolean oldFavorited = Utils.isFavorited(ctx, story.id);
                 History h = HistoriesUtils.INSTANCE.getHistorybyId(story.id);
 
-                popupMenu.getMenu().add("Upvote").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                popupMenu.getMenu().add("Upvote").setIcon(R.drawable.ic_thumb_up).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(@NonNull MenuItem item) {
                         UserActions.upvote(getContext(), story.id, getParentFragmentManager());
@@ -2529,7 +2530,7 @@ public class StoriesFragment extends Fragment {
                     }
                 });
 
-                popupMenu.getMenu().add(oldClicked ? "Mark as unread" : "Mark as read").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                popupMenu.getMenu().add(oldClicked ? "Mark as unread" : "Mark as read").setIcon(oldClicked ? R.drawable.ic_visibility_off : R.drawable.ic_visibility).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(@NonNull MenuItem item) {
                         story.clicked = !oldClicked;
@@ -2545,7 +2546,7 @@ public class StoriesFragment extends Fragment {
                 });
 
                 if (bookmarksEnabled) {
-                    popupMenu.getMenu().add(oldBookmarked ? "Remove bookmark" : "Bookmark").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                    popupMenu.getMenu().add(oldBookmarked ? "Remove bookmark" : "Bookmark").setIcon(oldBookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                         @Override
                         public boolean onMenuItemClick(@NonNull MenuItem item) {
                             if (oldBookmarked) {
