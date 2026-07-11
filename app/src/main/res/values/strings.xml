@@ -7,6 +7,8 @@
     <string name="cache_stories_explanation">Downloads top Hacker News stories for offline reading. When the built-in web view is enabled, linked articles are cached too. Larger batches use more data, time, and storage.</string>
     <string name="cache_stories_count_label">Stories to download</string>
     <string name="cache_stories_slider_content_description">Number of stories to download</string>
+    <string name="link_summary_open_short">Open</string>
+    <string name="link_summary_comments">Comments</string>
     <string-array name="sorting_options">
         <item>Top Stories</item>
         <item>Last 24 hours</item>

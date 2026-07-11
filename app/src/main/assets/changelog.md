@@ -9,7 +9,8 @@
 - Updated dropdown header font size for smaller screens
 - Fixed behavior of 'Hide clicked posts'
 - Added ability to clear history from history screen
-- 
+- Added rich story preview dialogs with quick actions, images, metadata, and predictive back animations
+- Added long-press preview dialogs for links collected from comments
 
 # Version 3.0
 This version is the to-date most comprehensive redesign and quality of life release, consisting of more than 200 commits. If you don't like the design updated, you are able to revert all big changes in the settings but I encourage you to give them a try!

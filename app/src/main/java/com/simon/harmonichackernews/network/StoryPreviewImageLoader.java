@@ -6,9 +6,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
+import androidx.annotation.Nullable;
+
 import org.json.JSONObject;
 
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
@@ -52,16 +51,21 @@ public class StoryPreviewImageLoader {
             "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_CACHE_ORDER";
     private static final String KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER =
             "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER";
+    private static final String KEY_LINK_SUMMARY_CACHE_ORDER =
+            "com.simon.harmonichackernews.KEY_LINK_SUMMARY_CACHE_ORDER";
     private static final String KEY_PREVIEW_IMAGE_URL =
             "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_URL";
     private static final String KEY_PREVIEW_IMAGE_URL_LOADED =
             "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_URL_LOADED";
     private static final String KEY_PREVIEW_IMAGE_TINT_COLOR =
             "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_TINT_COLOR";
+    private static final String KEY_LINK_SUMMARY =
+            "com.simon.harmonichackernews.KEY_LINK_SUMMARY";
     private static final String YOUTUBE_OEMBED_ENDPOINT = "https://www.youtube.com/oembed";
     private static final String YOUTUBE_OEMBED_CACHE_SUFFIX = "youtube_oembed";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
     private static final Map<String, String> IMAGE_CACHE = new HashMap<>();
+    private static final Map<String, LinkSummaryLoader.Result> LINK_SUMMARY_CACHE = new HashMap<>();
     private static final Set<String> MISS_CACHE = new HashSet<>();
     private static final Map<String, PendingPreviewImageBatch> PENDING_CALLBACKS = new HashMap<>();
     private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
@@ -71,16 +75,6 @@ public class StoryPreviewImageLoader {
                     + "([A-Za-z0-9_-]{11})(?:[?&#/].*)?$"
                     + "|^https?://(?:www\\.)?youtu\\.be/([A-Za-z0-9_-]{11})(?:[?&#/].*)?$",
             Pattern.CASE_INSENSITIVE);
-
-    private static final String[] IMAGE_SELECTORS = new String[]{
-            "meta[property=og:image:secure_url]",
-            "meta[property=og:image:url]",
-            "meta[property=og:image]",
-            "meta[name=twitter:image:src]",
-            "meta[name=twitter:image]",
-            "meta[itemprop=image]",
-            "link[rel=image_src]"
-    };
 
     private static class PendingPreviewImageBatch {
         final List<PendingPreviewImageRequest> requests = new ArrayList<>();
@@ -234,14 +228,14 @@ public class StoryPreviewImageLoader {
         call.enqueue(new okhttp3.Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                finish(normalizedPageUrl, requestBatch, null);
+                finish(normalizedPageUrl, requestBatch, null, null);
             }
 
             @Override
             public void onResponse(Call call, Response response) {
                 try (Response closeableResponse = response) {
                     if (!closeableResponse.isSuccessful() || closeableResponse.body() == null) {
-                        finish(normalizedPageUrl, requestBatch, null);
+                        finish(normalizedPageUrl, requestBatch, null, null);
                         return;
                     }
 
@@ -249,20 +243,32 @@ public class StoryPreviewImageLoader {
                     if (!youtubeOEmbedRequest
                             && !TextUtils.isEmpty(contentType)
                             && !contentType.toLowerCase(Locale.US).contains("html")) {
-                        finish(normalizedPageUrl, requestBatch, null);
+                        finish(normalizedPageUrl, requestBatch, null, null);
                         return;
                     }
 
                     String responseBody = closeableResponse.body().string();
                     if (youtubeOEmbedRequest) {
-                        finish(normalizedPageUrl, requestBatch, extractYoutubeOEmbedThumbnailUrl(responseBody));
+                        LinkSummaryLoader.Result summary = extractYoutubeOEmbedSummary(
+                                responseBody,
+                                normalizedPageUrl);
+                        finish(
+                                normalizedPageUrl,
+                                requestBatch,
+                                summary == null ? null : summary.imageUrl,
+                                summary);
                         return;
                     }
 
                     String baseUrl = closeableResponse.request().url().toString();
-                    finish(normalizedPageUrl, requestBatch, extractPreviewImageUrl(responseBody, baseUrl));
+                    LinkSummaryLoader.Result summary = LinkSummaryLoader.extract(
+                            responseBody,
+                            null,
+                            normalizeContentType(contentType),
+                            baseUrl);
+                    finish(normalizedPageUrl, requestBatch, summary.imageUrl, summary);
                 } catch (Exception e) {
-                    finish(normalizedPageUrl, requestBatch, null);
+                    finish(normalizedPageUrl, requestBatch, null, null);
                 }
             }
         });
@@ -291,39 +297,35 @@ public class StoryPreviewImageLoader {
         return loadCachedPreviewImageUrl(appContext, previewImageCacheEntryId, false).loaded;
     }
 
-    private static String extractPreviewImageUrl(String html, String baseUrl) {
-        if (TextUtils.isEmpty(html)) {
-            return null;
-        }
-
-        Document document = Jsoup.parse(html, baseUrl);
-        for (String selector : IMAGE_SELECTORS) {
-            Element element = document.selectFirst(selector);
-            if (element == null) {
-                continue;
-            }
-
-            String attribute = "link".equals(element.tagName()) ? "href" : "content";
-            String imageUrl = makeAbsoluteHttpUrl(element.attr(attribute), baseUrl);
-            if (!TextUtils.isEmpty(imageUrl)) {
-                return imageUrl;
-            }
-        }
-
-        return null;
-    }
-
-    private static String extractYoutubeOEmbedThumbnailUrl(String json) {
+    private static LinkSummaryLoader.Result extractYoutubeOEmbedSummary(String json, String pageUrl) {
         if (TextUtils.isEmpty(json)) {
             return null;
         }
 
         try {
             JSONObject jsonObject = new JSONObject(json);
-            return normalizeHttpUrl(jsonObject.optString("thumbnail_url", null));
+            String imageUrl = normalizeHttpUrl(jsonObject.optString("thumbnail_url", null));
+            return new LinkSummaryLoader.Result(
+                    jsonObject.optString("title", ""),
+                    jsonObject.optString("provider_name", "YouTube"),
+                    jsonObject.optString("author_name", ""),
+                    "",
+                    "",
+                    "application/json",
+                    "",
+                    imageUrl == null ? "" : imageUrl,
+                    pageUrl);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static String normalizeContentType(String contentType) {
+        if (TextUtils.isEmpty(contentType)) {
+            return "";
+        }
+        int separator = contentType.indexOf(';');
+        return (separator >= 0 ? contentType.substring(0, separator) : contentType).trim();
     }
 
     private static String normalizeHttpUrl(String url) {
@@ -335,23 +337,6 @@ public class StoryPreviewImageLoader {
         if (parsedUrl == null || !isHttpScheme(parsedUrl)) {
             return null;
         }
-        return parsedUrl.toString();
-    }
-
-    private static String makeAbsoluteHttpUrl(String candidate, String baseUrl) {
-        if (TextUtils.isEmpty(candidate) || candidate.trim().startsWith("data:")) {
-            return null;
-        }
-
-        HttpUrl parsedBase = HttpUrl.parse(baseUrl);
-        HttpUrl parsedUrl = parsedBase == null
-                ? HttpUrl.parse(candidate.trim())
-                : parsedBase.resolve(candidate.trim());
-
-        if (parsedUrl == null || !isHttpScheme(parsedUrl)) {
-            return null;
-        }
-
         return parsedUrl.toString();
     }
 
@@ -395,7 +380,11 @@ public class StoryPreviewImageLoader {
                 || path.endsWith(".avif");
     }
 
-    private static void finish(String pageUrl, PendingPreviewImageBatch batch, String imageUrl) {
+    private static void finish(
+            String pageUrl,
+            PendingPreviewImageBatch batch,
+            String imageUrl,
+            LinkSummaryLoader.Result summary) {
         List<PendingPreviewImageRequest> pendingRequests;
         synchronized (StoryPreviewImageLoader.class) {
             if (PENDING_CALLBACKS.get(pageUrl) != batch) {
@@ -427,6 +416,9 @@ public class StoryPreviewImageLoader {
                         pendingRequest.context,
                         getPreviewImageCacheEntryId(pendingRequest.storyId, pageUrl),
                         imageUrl);
+                if (summary != null) {
+                    saveCachedLinkSummary(pendingRequest.context, pageUrl, summary);
+                }
             }
         }
 
@@ -458,9 +450,11 @@ public class StoryPreviewImageLoader {
             for (String key : preferences.getAll().keySet()) {
                 if (KEY_PREVIEW_IMAGE_CACHE_ORDER.equals(key)
                         || KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER.equals(key)
+                        || KEY_LINK_SUMMARY_CACHE_ORDER.equals(key)
                         || key.startsWith(KEY_PREVIEW_IMAGE_URL)
                         || key.startsWith(KEY_PREVIEW_IMAGE_URL_LOADED)
-                        || key.startsWith(KEY_PREVIEW_IMAGE_TINT_COLOR)) {
+                        || key.startsWith(KEY_PREVIEW_IMAGE_TINT_COLOR)
+                        || key.startsWith(KEY_LINK_SUMMARY)) {
                     editor.remove(key);
                 }
             }
@@ -589,6 +583,10 @@ public class StoryPreviewImageLoader {
         return readCacheOrder(preferences, KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER);
     }
 
+    private static List<String> readLinkSummaryCacheOrder(SharedPreferences preferences) {
+        return readCacheOrder(preferences, KEY_LINK_SUMMARY_CACHE_ORDER);
+    }
+
     private static List<String> readCacheOrder(SharedPreferences preferences, String orderKey) {
         List<String> orderedIds = new ArrayList<>();
         String order = preferences.getString(orderKey, "");
@@ -644,6 +642,111 @@ public class StoryPreviewImageLoader {
             String paletteTintMode) {
         return KEY_PREVIEW_IMAGE_TINT_COLOR
                 + getPreviewImageTintColorCacheId(storyId, imageUrl, baseColor, paletteTintMode);
+    }
+
+    public static LinkSummaryLoader.Result getCachedLinkSummary(
+            @Nullable Context context,
+            String pageUrl) {
+        String normalizedUrl = normalizeHttpUrl(pageUrl);
+        if (TextUtils.isEmpty(normalizedUrl)) {
+            return null;
+        }
+        synchronized (StoryPreviewImageLoader.class) {
+            LinkSummaryLoader.Result memoryResult = LINK_SUMMARY_CACHE.get(normalizedUrl);
+            if (memoryResult != null) {
+                return memoryResult;
+            }
+            if (context == null) {
+                return null;
+            }
+            SharedPreferences preferences = getPreviewImageCachePreferences(context);
+            String key = getLinkSummaryKey(normalizedUrl);
+            String serialized = preferences.getString(key, null);
+            LinkSummaryLoader.Result result = deserializeLinkSummary(serialized);
+            if (result != null) {
+                LINK_SUMMARY_CACHE.put(normalizedUrl, result);
+                List<String> order = readLinkSummaryCacheOrder(preferences);
+                order.remove(key);
+                order.add(key);
+                preferences.edit()
+                        .putString(KEY_LINK_SUMMARY_CACHE_ORDER, TextUtils.join(",", order))
+                        .apply();
+            }
+            return result;
+        }
+    }
+
+    public static void saveCachedLinkSummary(
+            @Nullable Context context,
+            String pageUrl,
+            @Nullable LinkSummaryLoader.Result result) {
+        String normalizedUrl = normalizeHttpUrl(pageUrl);
+        if (TextUtils.isEmpty(normalizedUrl) || result == null) {
+            return;
+        }
+        synchronized (StoryPreviewImageLoader.class) {
+            if (LINK_SUMMARY_CACHE.size() >= MAX_CACHE_SIZE) {
+                LINK_SUMMARY_CACHE.clear();
+            }
+            LINK_SUMMARY_CACHE.put(normalizedUrl, result);
+            if (context == null) {
+                return;
+            }
+            SharedPreferences preferences = getPreviewImageCachePreferences(context);
+            String key = getLinkSummaryKey(normalizedUrl);
+            List<String> order = readLinkSummaryCacheOrder(preferences);
+            order.remove(key);
+            order.add(key);
+            SharedPreferences.Editor editor = preferences.edit()
+                    .putString(key, serializeLinkSummary(result));
+            while (order.size() > MAX_DISK_CACHE_SIZE) {
+                editor.remove(order.remove(0));
+            }
+            editor.putString(KEY_LINK_SUMMARY_CACHE_ORDER, TextUtils.join(",", order)).apply();
+        }
+    }
+
+    private static String getLinkSummaryKey(String pageUrl) {
+        return KEY_LINK_SUMMARY + sha256Hex(pageUrl);
+    }
+
+    private static String serializeLinkSummary(LinkSummaryLoader.Result result) {
+        try {
+            return new JSONObject()
+                    .put("title", result.title)
+                    .put("site", result.siteName)
+                    .put("author", result.author)
+                    .put("published", result.publishedTime)
+                    .put("language", result.language)
+                    .put("type", result.contentType)
+                    .put("description", result.description)
+                    .put("image", result.imageUrl)
+                    .put("url", result.finalUrl)
+                    .toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static LinkSummaryLoader.Result deserializeLinkSummary(String serialized) {
+        if (TextUtils.isEmpty(serialized)) {
+            return null;
+        }
+        try {
+            JSONObject json = new JSONObject(serialized);
+            return new LinkSummaryLoader.Result(
+                    json.optString("title", ""),
+                    json.optString("site", ""),
+                    json.optString("author", ""),
+                    json.optString("published", ""),
+                    json.optString("language", ""),
+                    json.optString("type", ""),
+                    json.optString("description", ""),
+                    json.optString("image", ""),
+                    json.optString("url", ""));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static String getPreviewImageTintColorCacheId(

@@ -1121,7 +1121,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return;
         }
 
-        int targetColor = getDefaultStoryCardBackgroundColor(storyViewHolder.storyCard);
+        int targetColor = resolveStoryCardBackgroundColor(storyViewHolder.storyCard.getContext(), story);
+        setStoryCardBackgroundColor(storyViewHolder, targetColor, animate);
+    }
+
+    public int resolveStoryCardBackgroundColor(@Nullable Context context, Story story) {
+        int targetColor = getDefaultStoryCardBackgroundColor(context);
         if (shouldUsePreviewTint(story, targetColor)) {
             targetColor = story.previewImageTintColor;
         } else if (shouldUseFaviconTint(story)
@@ -1129,8 +1134,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 && isFaviconTintColorCurrent(story, getFaviconTintSourceUrl(story), targetColor)) {
             targetColor = story.faviconTintColor;
         }
-
-        setStoryCardBackgroundColor(storyViewHolder, targetColor, animate);
+        return targetColor;
     }
 
     private void resetStoryCardBackground(StoryViewHolder storyViewHolder) {

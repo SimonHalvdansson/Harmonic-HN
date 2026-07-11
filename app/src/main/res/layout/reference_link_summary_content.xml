@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingTop="20dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="18dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="top"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:id="@+id/reference_link_preview_container"
+            android:layout_width="104dp"
+            android:layout_height="104dp"
+            android:layout_marginEnd="16dp">
+
+            <com.facebook.shimmer.ShimmerFrameLayout
+                android:id="@+id/reference_link_preview_shimmer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:importantForAccessibility="noHideDescendants"
+                app:shimmer_base_alpha="0.16"
+                app:shimmer_base_color="?attr/drawableColor"
+                app:shimmer_duration="2000"
+                app:shimmer_highlight_alpha="0.2">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/smooth_rectangle_drawable" />
+            </com.facebook.shimmer.ShimmerFrameLayout>
+
+            <ImageView
+                android:id="@+id/reference_link_preview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/story_preview_image_background"
+                android:clipToOutline="true"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop"
+                android:visibility="invisible"
+                tools:src="@drawable/web_preview"
+                tools:visibility="visible" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/reference_link_favicon"
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
+                    android:layout_marginEnd="6dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_public" />
+
+                <TextView
+                    android:id="@+id/reference_link_domain"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/product_sans"
+                    android:maxLines="1"
+                    android:textColor="?attr/storyColorDisabled"
+                    android:textSize="13sp"
+                    tools:text="example.com" />
+            </LinearLayout>
+
+            <com.facebook.shimmer.ShimmerFrameLayout
+                android:id="@+id/reference_link_title_shimmer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:importantForAccessibility="noHideDescendants"
+                app:shimmer_base_alpha="0.15"
+                app:shimmer_base_color="?attr/drawableColor"
+                app:shimmer_duration="2000"
+                app:shimmer_highlight_alpha="0.18">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="18dp"
+                        android:background="@drawable/smooth_rectangle_drawable" />
+
+                    <View
+                        android:layout_width="140dp"
+                        android:layout_height="18dp"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/smooth_rectangle_drawable" />
+                </LinearLayout>
+            </com.facebook.shimmer.ShimmerFrameLayout>
+
+            <TextView
+                android:id="@+id/reference_link_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/product_sans_bold"
+                android:textColor="?attr/storyColorNormal"
+                android:textIsSelectable="true"
+                android:textSize="18sp"
+                android:visibility="gone"
+                tools:text="An article linked from a comment"
+                tools:visibility="visible" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <com.facebook.shimmer.ShimmerFrameLayout
+        android:id="@+id/reference_link_description_shimmer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:importantForAccessibility="noHideDescendants"
+        app:shimmer_base_alpha="0.15"
+        app:shimmer_base_color="?attr/drawableColor"
+        app:shimmer_duration="2000"
+        app:shimmer_highlight_alpha="0.18">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="16dp"
+                android:background="@drawable/smooth_rectangle_drawable" />
+
+            <View
+                android:layout_width="240dp"
+                android:layout_height="16dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/smooth_rectangle_drawable" />
+        </LinearLayout>
+    </com.facebook.shimmer.ShimmerFrameLayout>
+
+    <TextView
+        android:id="@+id/reference_link_description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:fontFamily="@font/product_sans"
+        android:lineSpacingExtra="2dp"
+        android:textColor="?attr/storyColorNormal"
+        android:textIsSelectable="true"
+        android:textSize="15sp"
+        android:visibility="gone"
+        tools:text="A short description extracted from the page."
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/reference_link_error"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:fontFamily="@font/product_sans"
+        android:textColor="?attr/storyColorDisabled"
+        android:textSize="14sp"
+        android:visibility="gone"
+        tools:text="A preview could not be loaded."
+        tools:visibility="visible" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/reference_link_open"
+        style="@style/Widget.Material3Expressive.Button.ElevatedButton"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="18dp"
+        android:text="@string/link_summary_open_short"
+        android:textAllCaps="false"
+        android:textColor="?attr/storyColorNormal"
+        app:icon="@drawable/ic_link"
+        app:iconTint="?attr/storyColorNormal" />
+</LinearLayout>

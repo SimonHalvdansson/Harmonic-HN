@@ -30,6 +30,8 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.BackEventCompat;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.PopupMenu;
@@ -76,6 +78,7 @@ import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
+import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils;
 import com.simon.harmonichackernews.utils.StoryUpdate;
@@ -108,6 +111,9 @@ public class StoriesFragment extends Fragment {
     private static final int SWIPE_REFRESH_PROGRESS_END_OFFSET_DP = -64;
     private static final int SWIPE_REFRESH_SLINGSHOT_DISTANCE_OFFSET_DP = -20;
     private static final int UPDATE_FAB_LOAD_MORE_CLEARANCE_DP = 8;
+    private static final int NO_PENDING_LINK_SUMMARY_STORY_ID = -1;
+    private static final String STATE_LINK_SUMMARY_STORY_ID =
+            "com.simon.harmonichackernews.STATE_LINK_SUMMARY_STORY_ID";
 
     private StoryClickListener storyClickListener;
     private FragmentStoriesBinding binding;
@@ -132,6 +138,84 @@ public class StoriesFragment extends Fragment {
     private boolean restoredStateForCurrentView;
     private StoryCacheController storyCacheController;
     private int systemBottomInset = 0;
+    private OnBackPressedCallback linkSummaryBackCallback;
+    private int pendingLinkSummaryStoryId = NO_PENDING_LINK_SUMMARY_STORY_ID;
+    private final LinkSummaryOverlayController linkSummaryOverlayController =
+            new LinkSummaryOverlayController(new LinkSummaryOverlayController.Host() {
+                @Nullable
+                @Override
+                public Context getLinkSummaryContext() {
+                    return StoriesFragment.this.getContext();
+                }
+
+                @NonNull
+                @Override
+                public Context requireLinkSummaryContext() {
+                    return StoriesFragment.this.requireContext();
+                }
+
+                @Nullable
+                @Override
+                public ViewGroup getLinkSummaryOverlayHost() {
+                    return StoriesFragment.this.getLinkSummaryOverlayHost();
+                }
+
+                @Nullable
+                @Override
+                public View findLinkSummarySourceView(int storyId) {
+                    return StoriesFragment.this.findLinkSummarySourceView(storyId);
+                }
+
+                @Override
+                public int resolveStoryCardBackgroundColor(Story story) {
+                    Context context = StoriesFragment.this.getContext();
+                    if (adapter != null) {
+                        return adapter.resolveStoryCardBackgroundColor(context, story);
+                    }
+                    return PreviewImageTintUtils.getTintBaseColor(context);
+                }
+
+                @Override
+                public void stopLinkSummaryListScroll() {
+                    if (recyclerView != null) {
+                        recyclerView.stopScroll();
+                    }
+                }
+
+                @Override
+                public void syncLinkSummaryBackState() {
+                    if (linkSummaryBackCallback != null) {
+                        linkSummaryBackCallback.setEnabled(linkSummaryOverlayController.isShowing());
+                    }
+                }
+
+                @Override
+                public void openStoryLinkSummary(Story story, int position, boolean showWebsite) {
+                    StoriesFragment.this.openStoryFromLinkSummary(story, position, showWebsite);
+                }
+
+                @Override
+                public void toggleStoryVote(Story story, int position, boolean currentlyUpvoted,
+                                            Runnable completion) {
+                    StoriesFragment.this.toggleStoryVote(story, position, currentlyUpvoted, completion);
+                }
+
+                @Override
+                public void toggleStoryRead(Story story, int position) {
+                    StoriesFragment.this.toggleStoryRead(story, position);
+                }
+
+                @Override
+                public void toggleStoryBookmark(Story story, int position, boolean currentlyBookmarked) {
+                    StoriesFragment.this.toggleStoryBookmark(story, position, currentlyBookmarked);
+                }
+
+                @Override
+                public void toggleStoryFavorite(Story story, int position, boolean currentlyFavorited,
+                                                Runnable completion) {
+                    StoriesFragment.this.toggleStoryFavorite(story, position, currentlyFavorited, completion);
+                }
+            });
 
     // Header views
     private LinearLayout headerContainer;
@@ -309,9 +393,14 @@ public class StoriesFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        if (savedInstanceState != null) {
+            pendingLinkSummaryStoryId = savedInstanceState.getInt(
+                    STATE_LINK_SUMMARY_STORY_ID, NO_PENDING_LINK_SUMMARY_STORY_ID);
+        }
         binding = FragmentStoriesBinding.bind(view);
         headerBinding = binding.storiesHeaderContainer;
         applyStatusBarProtection();
+        setupLinkSummaryBackCallback();
 
         mainRecyclerView = binding.storiesRecyclerview;
         searchRecyclerView = binding.storiesSearchRecyclerview;
@@ -526,6 +615,28 @@ public class StoriesFragment extends Fragment {
             }
         };
         StoryUpdate.setStoryUpdatedListener(storyUpdateListener);
+        restoreLinkSummaryAfterRecreation(view);
+    }
+
+    private void restoreLinkSummaryAfterRecreation(@NonNull View rootView) {
+        if (pendingLinkSummaryStoryId == NO_PENDING_LINK_SUMMARY_STORY_ID) {
+            return;
+        }
+        int storyId = pendingLinkSummaryStoryId;
+        pendingLinkSummaryStoryId = NO_PENDING_LINK_SUMMARY_STORY_ID;
+        rootView.post(() -> {
+            if (binding == null || stories == null) {
+                return;
+            }
+            for (int position = 0; position < stories.size(); position++) {
+                Story story = stories.get(position);
+                if (story.id == storyId && story.isLink && !TextUtils.isEmpty(story.url)) {
+                    linkSummaryOverlayController.showStory(
+                            story, position, resolveLinkSummarySourceView(position, null));
+                    return;
+                }
+            }
+        });
     }
 
     private void restoreStoryLists(@Nullable StoriesViewModel.State state) {
@@ -2509,10 +2620,16 @@ public class StoriesFragment extends Fragment {
 
                 Context ctx = v.getContext();
 
+                Story story = stories.get(position);
+                if (story.isLink && !TextUtils.isEmpty(story.url)) {
+                    linkSummaryOverlayController.showStory(
+                            story, position, resolveLinkSummarySourceView(position, v));
+                    return true;
+                }
+
                 PopupMenu popupMenu = new PopupMenu(ctx, v);
                 popupMenu.setForceShowIcon(true);
 
-                Story story = stories.get(position);
                 boolean oldClicked = story.clicked;
                 boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
                 boolean oldBookmarked = bookmarksEnabled && Utils.isBookmarked(ctx, story.id);
@@ -2520,15 +2637,17 @@ public class StoriesFragment extends Fragment {
                 boolean oldFavorited = Utils.isFavorited(ctx, story.id);
                 History h = HistoriesUtils.INSTANCE.getHistorybyId(story.id);
 
-                popupMenu.getMenu().add("Upvote").setIcon(R.drawable.ic_thumb_up).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                    @Override
-                    public boolean onMenuItemClick(@NonNull MenuItem item) {
-                        UserActions.upvote(getContext(), story.id, getParentFragmentManager());
+                if (hasAccountDetails) {
+                    popupMenu.getMenu().add("Upvote").setIcon(R.drawable.ic_thumb_up).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                        @Override
+                        public boolean onMenuItemClick(@NonNull MenuItem item) {
+                            UserActions.upvote(getContext(), story.id, getParentFragmentManager());
 
-                        adapter.notifyItemChanged(position);
-                        return true;
-                    }
-                });
+                            adapter.notifyItemChanged(position);
+                            return true;
+                        }
+                    });
+                }
 
                 popupMenu.getMenu().add(oldClicked ? "Mark as unread" : "Mark as read").setIcon(oldClicked ? R.drawable.ic_visibility_off : R.drawable.ic_visibility).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
@@ -2636,6 +2755,227 @@ public class StoriesFragment extends Fragment {
                 return false;
             }
         });
+    }
+
+    private void setupLinkSummaryBackCallback() {
+        linkSummaryBackCallback = new OnBackPressedCallback(false) {
+            @Override
+            public void handleOnBackCancelled() {
+                if (linkSummaryOverlayController.isShowing()) {
+                    linkSummaryOverlayController.cancelPredictiveBack();
+                }
+            }
+
+            @Override
+            public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
+                if (linkSummaryOverlayController.isShowing()) {
+                    linkSummaryOverlayController.updatePredictiveBack(backEvent);
+                }
+            }
+
+            @Override
+            public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
+                if (linkSummaryOverlayController.isShowing()) {
+                    linkSummaryOverlayController.startPredictiveBack(backEvent);
+                }
+            }
+
+            @Override
+            public void handleOnBackPressed() {
+                if (!linkSummaryOverlayController.isShowing()) {
+                    return;
+                }
+                if (linkSummaryOverlayController.isPredictiveBackActive()) {
+                    linkSummaryOverlayController.commitPredictiveBack();
+                } else {
+                    linkSummaryOverlayController.dismiss(true);
+                }
+            }
+        };
+        requireActivity().getOnBackPressedDispatcher().addCallback(
+                getViewLifecycleOwner(), linkSummaryBackCallback);
+    }
+
+    private void openStoryFromLinkSummary(Story story, int position, boolean showWebsite) {
+        if (!isAdded() || story == null) {
+            return;
+        }
+        int currentPosition = stories.indexOf(story);
+        if (currentPosition < 0) {
+            currentPosition = position;
+        }
+        markStoryClicked(story);
+        if (currentPosition >= 0 && currentPosition < stories.size()) {
+            adapter.updateStoryClickedState(currentPosition);
+        }
+        openComments(story, currentPosition, showWebsite);
+    }
+
+    private void toggleStoryRead(Story story, int position) {
+        if (!isAdded() || story == null) {
+            return;
+        }
+        story.clicked = !story.clicked;
+        if (story.clicked) {
+            HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
+        } else {
+            HistoriesUtils.INSTANCE.removeHistoryById(requireContext(), story.id);
+        }
+        int currentPosition = stories.indexOf(story);
+        if (currentPosition >= 0) {
+            adapter.updateStoryClickedState(currentPosition);
+        }
+    }
+
+    private void toggleStoryBookmark(Story story, int position, boolean currentlyBookmarked) {
+        if (!isAdded() || story == null) {
+            return;
+        }
+        Context context = requireContext();
+        if (currentlyBookmarked) {
+            Utils.removeBookmark(context, story.id);
+            if (isBookmarksType(adapter.type)) {
+                bookmarkStories.remove(story);
+                int currentPosition = stories.indexOf(story);
+                if (currentPosition >= 0) {
+                    removeStoryAt(currentPosition, storyListGeneration, true);
+                }
+                updateHeader();
+                return;
+            }
+        } else {
+            Utils.addBookmark(context, story.id);
+        }
+        int currentPosition = stories.indexOf(story);
+        if (currentPosition >= 0) {
+            adapter.notifyItemChanged(currentPosition);
+        }
+    }
+
+    private void toggleStoryVote(Story story, int position, boolean currentlyUpvoted,
+                                 Runnable completion) {
+        if (!isAdded() || story == null) {
+            completion.run();
+            return;
+        }
+        Context context = requireContext();
+        boolean newUpvoted = !currentlyUpvoted;
+        Utils.setUpvoted(context, story.id, false, newUpvoted);
+        int currentPosition = stories.indexOf(story);
+        if (currentPosition >= 0) {
+            adapter.notifyItemChanged(currentPosition);
+        }
+        UserActions.ActionCallback callback = new UserActions.ActionCallback() {
+            @Override
+            public void onSuccess(Response response) {
+                if (response != null) {
+                    response.close();
+                }
+                completion.run();
+            }
+
+            @Override
+            public void onFailure(String summary, String response) {
+                Utils.setUpvoted(context, story.id, false, currentlyUpvoted);
+                int restoredPosition = stories.indexOf(story);
+                if (restoredPosition >= 0) {
+                    adapter.notifyItemChanged(restoredPosition);
+                }
+                completion.run();
+            }
+        };
+        if (newUpvoted) {
+            UserActions.upvote(context, story.id, getParentFragmentManager(), callback);
+        } else {
+            UserActions.unvote(context, story.id, getParentFragmentManager(), callback);
+        }
+    }
+
+    private void toggleStoryFavorite(Story story, int position, boolean currentlyFavorited,
+                                     Runnable completion) {
+        if (!isAdded() || story == null) {
+            completion.run();
+            return;
+        }
+        Context context = requireContext();
+        boolean newFavorited = !currentlyFavorited;
+        int optimisticIndex = stories.indexOf(story);
+        Utils.setFavorite(context, story.id, newFavorited);
+        if (optimisticIndex >= 0) {
+            if (currentlyFavorited && isFavoritesType(adapter.type)) {
+                removeStoryAt(optimisticIndex, storyListGeneration, true);
+                updateHeader();
+            } else {
+                adapter.notifyItemChanged(optimisticIndex);
+            }
+        }
+        UserActions.setFavorite(context, story.id, newFavorited, getParentFragmentManager(),
+                new UserActions.ActionCallback() {
+                    @Override
+                    public void onSuccess(Response response) {
+                        if (response != null) {
+                            response.close();
+                        }
+                        completion.run();
+                    }
+
+                    @Override
+                    public void onFailure(String summary, String response) {
+                        Utils.setFavorite(context, story.id, currentlyFavorited);
+                        int currentIndex = stories.indexOf(story);
+                        if (currentlyFavorited && isFavoritesType(adapter.type) && currentIndex == -1) {
+                            int restoreIndex = optimisticIndex >= 0
+                                    ? Math.min(optimisticIndex, stories.size()) : 0;
+                            stories.add(restoreIndex, story);
+                            adapter.notifyItemInserted(restoreIndex);
+                            updateHeader();
+                        } else if (currentIndex >= 0) {
+                            adapter.notifyItemChanged(currentIndex);
+                        }
+                        completion.run();
+                    }
+                });
+    }
+
+    @Nullable
+    private ViewGroup getLinkSummaryOverlayHost() {
+        if (!isAdded()) {
+            return null;
+        }
+        View activityContent = requireActivity().findViewById(android.R.id.content);
+        if (activityContent instanceof ViewGroup) {
+            return (ViewGroup) activityContent;
+        }
+        View fragmentView = getView();
+        return fragmentView instanceof ViewGroup ? (ViewGroup) fragmentView : null;
+    }
+
+    @Nullable
+    private View findLinkSummarySourceView(int storyId) {
+        if (stories == null || recyclerView == null) {
+            return null;
+        }
+        for (int position = 0; position < stories.size(); position++) {
+            Story candidate = stories.get(position);
+            if (candidate != null && candidate.id == storyId) {
+                return resolveLinkSummarySourceView(position, null);
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private View resolveLinkSummarySourceView(int position, @Nullable View fallback) {
+        if (recyclerView == null) {
+            return fallback;
+        }
+        RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(position);
+        if (!(holder instanceof StoryRecyclerViewAdapter.StoryViewHolder)) {
+            return fallback;
+        }
+        StoryRecyclerViewAdapter.StoryViewHolder storyHolder =
+                (StoryRecyclerViewAdapter.StoryViewHolder) holder;
+        return storyHolder.storyCard != null ? storyHolder.storyCard : storyHolder.linkLayoutView;
     }
 
     @Override
@@ -2855,12 +3195,23 @@ public class StoriesFragment extends Fragment {
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         saveStoryStateForRecreation();
+        int visibleStoryId = linkSummaryOverlayController.getVisibleStoryId();
+        if (visibleStoryId != NO_PENDING_LINK_SUMMARY_STORY_ID) {
+            outState.putInt(STATE_LINK_SUMMARY_STORY_ID, visibleStoryId);
+        }
         super.onSaveInstanceState(outState);
     }
 
     @Override
     public void onDestroyView() {
         saveStoryStateForRecreation();
+        pendingLinkSummaryStoryId = getActivity() != null
+                && requireActivity().isChangingConfigurations()
+                && linkSummaryOverlayController.getVisibleStoryId() != NO_PENDING_LINK_SUMMARY_STORY_ID
+                ? linkSummaryOverlayController.getVisibleStoryId()
+                : NO_PENDING_LINK_SUMMARY_STORY_ID;
+        linkSummaryOverlayController.removeNow();
+        linkSummaryBackCallback = null;
         View rootView = getView();
 
         if (rootView != null) {

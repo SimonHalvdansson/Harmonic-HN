@@ -136,6 +136,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static String STATE_COMMENT_ACTION_COMMENT_ID = "com.simon.harmonichackernews.STATE_COMMENT_ACTION_COMMENT_ID";
     private final static String STATE_ADBLOCK_DISABLED_FOR_SESSION = "com.simon.harmonichackernews.STATE_ADBLOCK_DISABLED_FOR_SESSION";
     private final static String STATE_COMMENT_SORTING = "com.simon.harmonichackernews.STATE_COMMENT_SORTING";
+    private final static String STATE_REFERENCE_LINK_SUMMARY_URL =
+            "com.simon.harmonichackernews.STATE_REFERENCE_LINK_SUMMARY_URL";
+    private final static String STATE_REFERENCE_LINK_SUMMARY_TITLE =
+            "com.simon.harmonichackernews.STATE_REFERENCE_LINK_SUMMARY_TITLE";
     private final static Pattern POLL_TITLE_PATTERN = Pattern.compile("\\bpoll\\b", Pattern.CASE_INSENSITIVE);
 
     private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
@@ -262,6 +266,46 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             updateUserTags(changedUser);
         }
     });
+    private final LinkSummaryOverlayController linkSummaryOverlayController =
+            new LinkSummaryOverlayController(new LinkSummaryOverlayController.Host() {
+                @Nullable
+                @Override
+                public Context getLinkSummaryContext() {
+                    return CommentsFragment.this.getContext();
+                }
+
+                @NonNull
+                @Override
+                public Context requireLinkSummaryContext() {
+                    return CommentsFragment.this.requireContext();
+                }
+
+                @Nullable
+                @Override
+                public ViewGroup getLinkSummaryOverlayHost() {
+                    return CommentsFragment.this.getCommentActionOverlayHost();
+                }
+
+                @Nullable
+                @Override
+                public View findLinkSummarySourceView(int storyId) {
+                    return null;
+                }
+
+                @Override
+                public void stopLinkSummaryListScroll() {
+                    if (recyclerView != null) {
+                        recyclerView.stopScroll();
+                    }
+                }
+
+                @Override
+                public void syncLinkSummaryBackState() {
+                    syncOnBackPressedCallbackEnabledState();
+                }
+            });
+    @Nullable private String pendingReferenceLinkSummaryUrl;
+    @Nullable private String pendingReferenceLinkSummaryTitle;
     private View scrollNavigation;
     private ExtendedFloatingActionButton searchScrollTopFab;
     private int commentsBottomInset = 0;
@@ -457,6 +501,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        if (savedInstanceState != null) {
+            pendingReferenceLinkSummaryUrl = savedInstanceState.getString(STATE_REFERENCE_LINK_SUMMARY_URL);
+            pendingReferenceLinkSummaryTitle = savedInstanceState.getString(STATE_REFERENCE_LINK_SUMMARY_TITLE);
+        }
         binding = FragmentCommentsBinding.bind(view);
         rootInsetsApplied = false;
         recyclerInsetsApplied = false;
@@ -547,6 +595,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackCancelled() {
+                if (linkSummaryOverlayController.isShowing()) {
+                    linkSummaryOverlayController.cancelPredictiveBack();
+                    return;
+                }
                 if (commentActionOverlayController.isShowing()) {
                     commentActionOverlayController.cancelPredictiveBack();
                     return;
@@ -565,6 +617,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
+                if (linkSummaryOverlayController.isShowing()) {
+                    linkSummaryOverlayController.updatePredictiveBack(backEvent);
+                    return;
+                }
                 if (commentActionOverlayController.isShowing()) {
                     commentActionOverlayController.updatePredictiveBack(backEvent);
                     return;
@@ -583,6 +639,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
+                if (linkSummaryOverlayController.isShowing()) {
+                    linkSummaryOverlayController.startPredictiveBack(backEvent);
+                    return;
+                }
                 if (commentActionOverlayController.isShowing()) {
                     commentActionOverlayController.startPredictiveBack(backEvent);
                     return;
@@ -601,6 +661,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackPressed() {
+                if (linkSummaryOverlayController.isShowing()) {
+                    if (linkSummaryOverlayController.isPredictiveBackActive()) {
+                        linkSummaryOverlayController.commitPredictiveBack();
+                    } else {
+                        linkSummaryOverlayController.dismiss(true);
+                    }
+                    return;
+                }
                 if (commentActionOverlayController.isShowing()) {
                     if (commentActionOverlayController.isPredictiveBackActive()) {
                         commentActionOverlayController.commitPredictiveBack();
@@ -845,7 +913,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (backPressedCallback == null) {
             return;
         }
-        if (commentActionOverlayController.isShowing()) {
+        if (linkSummaryOverlayController.isShowing() || commentActionOverlayController.isShowing()) {
             backPressedCallback.setEnabled(true);
             return;
         }
@@ -1173,6 +1241,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
 
         adapter.setOnCommentLongClickListener(this);
+        adapter.setOnReferenceLinkLongClickListener((link, view) ->
+                linkSummaryOverlayController.showReference(link, view));
+        restoreReferenceLinkSummaryAfterRecreation();
         adapter.setRetryListener(this);
 
         adapter.setOnHeaderActionClickListener(new CommentsRecyclerViewAdapter.HeaderActionClickListener() {
@@ -1530,6 +1601,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
 
+        if (linkSummaryOverlayController.isShowingReference()) {
+            outState.putString(STATE_REFERENCE_LINK_SUMMARY_URL,
+                    linkSummaryOverlayController.getVisibleUrl());
+            outState.putString(STATE_REFERENCE_LINK_SUMMARY_TITLE,
+                    linkSummaryOverlayController.getFallbackTitle());
+        }
+
         int visibleCommentActionId = commentActionOverlayController.getRestorableCommentId();
         if (visibleCommentActionId != CommentActionOverlayController.NO_COMMENT_ID) {
             outState.putInt(STATE_COMMENT_ACTION_COMMENT_ID, visibleCommentActionId);
@@ -1724,6 +1802,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onDestroyView() {
+        boolean preserveReferenceSummary = getActivity() != null
+                && requireActivity().isChangingConfigurations()
+                && linkSummaryOverlayController.isShowingReference();
+        pendingReferenceLinkSummaryUrl = preserveReferenceSummary
+                ? linkSummaryOverlayController.getVisibleUrl() : null;
+        pendingReferenceLinkSummaryTitle = preserveReferenceSummary
+                ? linkSummaryOverlayController.getFallbackTitle() : null;
+        linkSummaryOverlayController.removeNow();
         commentActionOverlayController.removeNow();
         if (commentNavigationController != null) {
             commentNavigationController.clear();
@@ -1798,6 +1884,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         clearViewReferences();
 
         super.onDestroyView();
+    }
+
+    private void restoreReferenceLinkSummaryAfterRecreation() {
+        if (TextUtils.isEmpty(pendingReferenceLinkSummaryUrl) || getView() == null) {
+            return;
+        }
+        String url = pendingReferenceLinkSummaryUrl;
+        String title = pendingReferenceLinkSummaryTitle;
+        pendingReferenceLinkSummaryUrl = null;
+        pendingReferenceLinkSummaryTitle = null;
+        getView().post(() -> linkSummaryOverlayController.showReference(url, title, null));
     }
 
     @Override

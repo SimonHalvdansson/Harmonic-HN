@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/link_summary_overlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="true"
+    android:elevation="32dp"
+    android:focusable="true">
+
+    <View
+        android:id="@+id/link_summary_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0"
+        android:background="#52000000" />
+
+    <FrameLayout
+        android:id="@+id/link_summary_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:paddingStart="20dp"
+        android:paddingTop="24dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="24dp">
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/link_summary_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="invisible"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="8dp"
+            app:strokeColor="@android:color/transparent"
+            app:strokeWidth="0dp">
+
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/link_summary_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fadingEdgeLength="20dp"
+                android:overScrollMode="ifContentScrolls"
+                android:scrollbarStyle="outsideOverlay"
+                android:scrollbars="vertical">
+
+                <FrameLayout
+                    android:id="@+id/link_summary_body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </androidx.core.widget.NestedScrollView>
+        </com.google.android.material.card.MaterialCardView>
+    </FrameLayout>
+</FrameLayout>

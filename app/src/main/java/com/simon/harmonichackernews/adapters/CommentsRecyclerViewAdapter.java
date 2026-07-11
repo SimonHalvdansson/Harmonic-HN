@@ -107,6 +107,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private HeaderClickListener headerClickListener;
     private CommentClickListener commentClickListener;
     private CommentClickListener commentLongClickListener;
+    private ReferenceLinkLongClickListener referenceLinkLongClickListener;
     private HeaderActionClickListener headerActionClickListener;
     private HeaderBackgroundColorListener headerBackgroundColorListener;
     private RetryListener retryListener;
@@ -2020,7 +2021,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     private View createReferenceLinkRow(LinearLayout container, CollectedReferenceLinks.ReferenceLink link) {
         loadHackerNewsReferenceTitleIfNeeded(container.getContext(), link);
-        return ReferenceLinkRowUtils.createReferenceLinkRow(
+        View row = ReferenceLinkRowUtils.createReferenceLinkRow(
                 container,
                 link,
                 font,
@@ -2028,6 +2029,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 getReferenceLinkContentDescription(link),
                 faviconProvider,
                 v -> Utils.openLinkMaybeHN(v.getContext(), link.getUrl()));
+        row.setOnLongClickListener(v -> {
+            if (referenceLinkLongClickListener == null) {
+                return false;
+            }
+            referenceLinkLongClickListener.onLongClick(link, v);
+            return true;
+        });
+        return row;
     }
 
     private String getReferenceLinkContentDescription(CollectedReferenceLinks.ReferenceLink link) {
@@ -3242,6 +3251,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         commentLongClickListener = clickListener;
     }
 
+    public void setOnReferenceLinkLongClickListener(ReferenceLinkLongClickListener clickListener) {
+        referenceLinkLongClickListener = clickListener;
+    }
+
     public void setOnHeaderActionClickListener(HeaderActionClickListener clickListener) {
         headerActionClickListener = clickListener;
     }
@@ -3287,6 +3300,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     public interface CommentClickListener {
         void onItemClick(Comment comment, int pos, View view);
+    }
+
+    public interface ReferenceLinkLongClickListener {
+        void onLongClick(CollectedReferenceLinks.ReferenceLink link, View view);
     }
 
     public int getIndexOfLastChild(int commentDepth, int pos) {
