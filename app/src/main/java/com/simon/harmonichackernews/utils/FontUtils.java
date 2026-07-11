@@ -19,7 +19,7 @@ public class FontUtils {
     private static final FontSizes STORIES_DROPDOWN_SELECTED_SIZES = new FontSizes(36, 34, 36, 33, 34, 34, 35, 35);
     private static final FontSizes COMPACT_STORIES_DROPDOWN_SELECTED_SIZES = new FontSizes(
             32.5f, 30.5f, 32.5f, 29.5f, 27.5f, 27.5f, 31.5f, 31.5f);
-    private static final FontSizes STORIES_DROPDOWN_ITEM_SIZES = new FontSizes(19, 18, 19, 18, 18, 18, 19, 19);
+    private static final FontSizes STORIES_DROPDOWN_ITEM_SIZES = new FontSizes(18, 17, 18, 17, 17, 17, 18, 18);
     private static final FontSizes COMMENTS_HEADER_META_SIZES = new FontSizes(14, 13.5f, 13, 13, 13, 13, 13, 13);
     private static final FontSizes COMMENTS_HEADER_TITLE_SIZES = new FontSizes(27, 26, 26, 23, 26, 26, 24, 26);
     private static final FontSizes COMMENT_TEXT_SIZES = new FontSizes(

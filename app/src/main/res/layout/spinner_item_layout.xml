@@ -9,11 +9,14 @@
         android:singleLine="true"
         android:layout_width="match_parent"
         android:fontFamily="@font/product_sans_bold"
-        android:textSize="19sp"
+        android:textSize="18sp"
         android:textColor="?attr/storyColorNormal"
         android:layout_height="wrap_content"
         android:background="?selectableItemBackground"
-        android:padding="12dp"
+        android:paddingStart="12dp"
+        android:paddingTop="11dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="11dp"
         android:ellipsize="marquee"/>
 
 </LinearLayout>
