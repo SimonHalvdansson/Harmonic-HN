@@ -74,12 +74,18 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         }
         setContentView(root);
 
-        commentsFragment = new CommentsFragment();
-        commentsFragment.setArguments(getIntent().getExtras());
-        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-        transaction.setReorderingAllowed(true);
-        transaction.replace(R.id.comment_fragment_container_view, commentsFragment);
-        transaction.commit();
+        CommentsFragment restoredCommentsFragment = (CommentsFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.comment_fragment_container_view);
+        if (restoredCommentsFragment != null) {
+            commentsFragment = restoredCommentsFragment;
+        } else {
+            commentsFragment = new CommentsFragment();
+            commentsFragment.setArguments(getIntent().getExtras());
+            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+            transaction.setReorderingAllowed(true);
+            transaction.replace(R.id.comment_fragment_container_view, commentsFragment);
+            transaction.commit();
+        }
 
         swipeBackLayout = binding.swipeBackLayout;
         this.splitChangeHandler = new SplitChangeHandler(

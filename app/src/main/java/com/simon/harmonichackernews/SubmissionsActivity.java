@@ -13,6 +13,7 @@ import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -71,11 +72,13 @@ public class SubmissionsActivity extends AppCompatActivity {
     private boolean submissionsCanLoadMore = false;
     private int submissionFilter = SUBMISSION_FILTER_BOTH;
     private int topInset = 0;
+    private int appBarOffset = 0;
+    private SubmissionsViewModel submissionsViewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        submissionsViewModel = new ViewModelProvider(this).get(SubmissionsViewModel.class);
         ThemeUtils.setupTheme(this, false);
 
         binding = ActivitySubmissionsBinding.inflate(getLayoutInflater());
@@ -94,6 +97,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         ViewCompat.setAccessibilityHeading(headerText, true);
 
         appBarLayout.addOnOffsetChangedListener((appBar, verticalOffset) -> {
+            appBarOffset = verticalOffset;
             float totalScrollRange = appBar.getTotalScrollRange();
             if (totalScrollRange > 0) {
                 headerText.setAlpha(1f - (Math.abs(verticalOffset) / totalScrollRange));
@@ -201,11 +205,14 @@ public class SubmissionsActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
         setUpWindowInsets(recyclerView);
 
-        loadSubmissions(true);
+        if (!restoreSubmissionsState()) {
+            loadSubmissions(true);
+        }
     }
 
     @Override
     protected void onDestroy() {
+        saveSubmissionsStateForRecreation();
         submissionsRequestGeneration++;
         cancelSubmissionsParseTask();
         if (queue != null) {
@@ -219,6 +226,87 @@ public class SubmissionsActivity extends AppCompatActivity {
         }
 
         super.onDestroy();
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        saveSubmissionsStateForRecreation();
+        super.onSaveInstanceState(outState);
+    }
+
+    private boolean restoreSubmissionsState() {
+        SubmissionsViewModel.State state = submissionsViewModel == null
+                ? null
+                : submissionsViewModel.getState();
+        if (state == null) {
+            return false;
+        }
+
+        allSubmissions.addAll(state.allSubmissions);
+        submissionFilter = state.submissionFilter;
+        submissionsHitsPerPage = state.submissionsHitsPerPage;
+        submissionsCanLoadMore = state.submissionsCanLoadMore;
+        initialLoadFinished = state.initialLoadFinished;
+        submissionsLoadedSuccessfully = state.submissionsLoadedSuccessfully;
+        submissionsLoading = false;
+        initialLoadingIndicator.setVisibility(View.GONE);
+        filterGroup.check(submissionFilterButtonId(submissionFilter));
+        applySubmissionFilter();
+
+        RecyclerView recyclerView = binding.submissionsRecyclerview;
+        if (state.firstVisiblePosition != RecyclerView.NO_POSITION && adapter.getItemCount() > 0) {
+            recyclerView.post(() -> {
+                if (recyclerView.getAdapter() != adapter
+                        || recyclerView.getLayoutManager() != linearLayoutManager) {
+                    return;
+                }
+                int position = Math.min(state.firstVisiblePosition, adapter.getItemCount() - 1);
+                linearLayoutManager.scrollToPositionWithOffset(
+                        position,
+                        state.firstVisibleTop - recyclerView.getPaddingTop());
+            });
+        }
+        if (state.appBarCollapsed) {
+            appBarLayout.post(() -> appBarLayout.setExpanded(false, false));
+        }
+
+        return submissionsLoadedSuccessfully || !allSubmissions.isEmpty();
+    }
+
+    private void saveSubmissionsStateForRecreation() {
+        if (submissionsViewModel == null || adapter == null || linearLayoutManager == null || binding == null) {
+            return;
+        }
+
+        SubmissionsViewModel.State state = new SubmissionsViewModel.State();
+        state.allSubmissions.addAll(allSubmissions);
+        state.submissionFilter = submissionFilter;
+        state.submissionsHitsPerPage = submissionsHitsPerPage;
+        state.submissionsCanLoadMore = submissionsCanLoadMore;
+        state.initialLoadFinished = initialLoadFinished;
+        state.submissionsLoadedSuccessfully = submissionsLoadedSuccessfully;
+        state.appBarCollapsed = appBarOffset < 0;
+
+        RecyclerView recyclerView = binding.submissionsRecyclerview;
+        state.firstVisiblePosition = linearLayoutManager.findFirstVisibleItemPosition();
+        if (state.firstVisiblePosition != RecyclerView.NO_POSITION) {
+            View firstVisibleView = linearLayoutManager.findViewByPosition(state.firstVisiblePosition);
+            state.firstVisibleTop = firstVisibleView == null
+                    ? recyclerView.getPaddingTop()
+                    : firstVisibleView.getTop();
+        }
+
+        submissionsViewModel.setState(state);
+    }
+
+    private int submissionFilterButtonId(int filter) {
+        if (filter == SUBMISSION_FILTER_STORIES) {
+            return R.id.submissions_header_filter_stories;
+        }
+        if (filter == SUBMISSION_FILTER_COMMENTS) {
+            return R.id.submissions_header_filter_comments;
+        }
+        return R.id.submissions_header_filter_both;
     }
 
     @Override

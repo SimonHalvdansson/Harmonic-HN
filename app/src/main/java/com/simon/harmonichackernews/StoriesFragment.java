@@ -40,6 +40,7 @@ import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
@@ -126,6 +127,10 @@ public class StoriesFragment extends Fragment {
     private MaterialButtonToggleGroup.OnButtonCheckedListener userItemFilterCheckedListener;
     private StoryUpdate.StoryUpdateListener storyUpdateListener;
     private final StorySearchController searchController = new StorySearchController();
+    private StoriesViewModel storiesViewModel;
+    @Nullable
+    private StoriesViewModel.State restoredState;
+    private boolean restoredStateForCurrentView;
     private StoryCacheController storyCacheController;
     private int systemBottomInset = 0;
 
@@ -260,6 +265,7 @@ public class StoriesFragment extends Fragment {
     private static final int USER_ITEM_LIST_FILTER_COMMENTS = 2;
 
     private int topInset = 0;
+    private int appBarOffset = 0;
     private boolean predictiveSearchBackInProgress = false;
     private boolean predictiveSearchBackShowingMainHeader = false;
     private float predictiveSearchBackProgress = 0f;
@@ -285,11 +291,18 @@ public class StoriesFragment extends Fragment {
     public StoriesFragment() {
     }
 
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        storiesViewModel = new ViewModelProvider(this).get(StoriesViewModel.class);
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         HistoriesUtils.INSTANCE.init(requireContext());
         historiesChangeVersion = HistoriesUtils.INSTANCE.getChangeVersion();
+        restoredState = storiesViewModel == null ? null : storiesViewModel.getState();
 
         return FragmentStoriesBinding.inflate(inflater, container, false).getRoot();
     }
@@ -308,6 +321,7 @@ public class StoriesFragment extends Fragment {
         updateFab = binding.storiesUpdateFab;
         appBarLayout = binding.storiesAppbar;
         appBarOffsetChangedListener = (appBar, verticalOffset) -> {
+            appBarOffset = verticalOffset;
             float totalScrollRange = appBar.getTotalScrollRange();
             if (totalScrollRange > 0) {
                 headerContainer.setAlpha(1f - (Math.abs(verticalOffset) / totalScrollRange));
@@ -414,6 +428,7 @@ public class StoriesFragment extends Fragment {
         hideJobs = SettingsUtils.shouldHideJobs(requireContext());
         hideClicked = SettingsUtils.shouldHideClicked(requireContext());
         alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(requireContext());
+        restoreStoryLists(restoredState);
         setupAdapter();
         mainRecyclerView.setAdapter(mainAdapter);
         searchRecyclerView.setAdapter(searchAdapter);
@@ -423,6 +438,7 @@ public class StoriesFragment extends Fragment {
 
         // Setup header after adapter so spinner callback can safely access adapter.type
         setupHeader();
+        restoredStateForCurrentView = restoreStoryStateAfterViewSetup(restoredState);
 
         final int rootPaddingLeft = view.getPaddingLeft();
         final int rootPaddingTop = view.getPaddingTop();
@@ -471,7 +487,17 @@ public class StoriesFragment extends Fragment {
         searchRecyclerView.addOnScrollListener(searchRecyclerViewScrollListener);
 
         queue = NetworkComponent.getRequestQueueInstance(requireContext());
-        attemptRefresh();
+        if (restoredStateForCurrentView) {
+            updateHeader();
+            restoreRecyclerViewPositions(restoredState);
+            if (shouldRefreshRestoredStoryState()) {
+                attemptRefresh();
+            } else if (!searching) {
+                resumeInterruptedStoryLoads();
+            }
+        } else {
+            attemptRefresh();
+        }
 
         storyUpdateListener = new StoryUpdate.StoryUpdateListener() {
             @Override
@@ -501,6 +527,265 @@ public class StoriesFragment extends Fragment {
             }
         };
         StoryUpdate.setStoryUpdatedListener(storyUpdateListener);
+    }
+
+    private void restoreStoryLists(@Nullable StoriesViewModel.State state) {
+        if (state == null) {
+            return;
+        }
+
+        mainStories.clear();
+        searchStories.clear();
+        bookmarkStories.clear();
+        userItemListStories.clear();
+        mainStories.addAll(state.mainStories);
+        searchStories.addAll(state.searchStories);
+        bookmarkStories.addAll(state.bookmarkStories);
+        userItemListStories.addAll(state.userItemListStories);
+        userItemListCommentIds = new HashSet<>(state.userItemListCommentIds);
+    }
+
+    private boolean restoreStoryStateAfterViewSetup(@Nullable StoriesViewModel.State state) {
+        if (state == null || mainAdapter == null || searchAdapter == null) {
+            return false;
+        }
+
+        int restoredMainType = getTypeIndex(state.mainTypeLabel);
+        if (restoredMainType >= 0) {
+            mainAdapter.type = restoredMainType;
+        }
+        int restoredSearchType = getTypeIndex(state.searchTypeLabel);
+        searchAdapter.type = restoredSearchType >= 0 ? restoredSearchType : mainAdapter.type;
+
+        mainAdapter.visibleStoryCount = state.mainVisibleStoryCount;
+        searchAdapter.visibleStoryCount = state.searchVisibleStoryCount;
+        mainAdapter.showLoadMoreButton = state.mainShowLoadMoreButton;
+        searchAdapter.showLoadMoreButton = state.searchShowLoadMoreButton;
+        updateAdapterCommentRows();
+
+        searching = state.searching;
+        lastSearch = state.lastSearch;
+        lastLoaded = state.lastLoaded;
+        updateButtonShowing = state.updateButtonShowing;
+        userItemListFilter = state.userItemListFilter;
+        if (frontPageDayUtc == null && state.frontPageDayUtcMillis >= 0L) {
+            frontPageDayUtc = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            frontPageDayUtc.setTimeInMillis(state.frontPageDayUtcMillis);
+            clearTime(frontPageDayUtc);
+        }
+        scrapedFrontpageNextPageUrl = state.scrapedFrontpageNextPageUrl;
+        scrapedFrontpageNextPageLoading = false;
+        scrapedFrontpageStoryType = currentTypeIsScrapedFrontpage()
+                ? getCurrentStoryType()
+                : StoryType.UNKNOWN;
+
+        searchController.setSortIndex(state.searchSortIndex);
+        searchController.setDateRangeIndex(state.searchDateRangeIndex);
+        searchController.setMinimumPointsIndex(state.searchMinimumPointsIndex);
+        searchController.setMinimumCommentsIndex(state.searchMinimumCommentsIndex);
+        if (searchController.isOnlyClicked() != state.searchOnlyClicked) {
+            searchController.toggleOnlyClicked();
+        }
+
+        if (searching) {
+            storiesBeforeSearch = new ArrayList<>(mainStories);
+            loadedToBeforeSearch = state.mainLoadedTo;
+            visibleStoryCountBeforeSearch = state.mainVisibleStoryCount;
+            showingCachedBeforeSearch = state.mainShowingCached;
+            loadingFailedBeforeSearch = state.mainLoadingFailed;
+            loadingFailedServerErrorBeforeSearch = state.mainLoadingFailedServerError;
+            loadingFailedRateLimitedBeforeSearch = state.mainLoadingFailedRateLimited;
+            showLoadMoreBeforeSearch = state.mainShowLoadMoreButton;
+            algoliaHitsPerPageBeforeSearch = state.mainAlgoliaHitsPerPage;
+            lastAlgoliaTopStoriesStartTimeBeforeSearch = state.mainLastAlgoliaTopStoriesStartTime;
+            firstVisiblePositionBeforeSearch = state.mainFirstVisiblePosition;
+            firstVisibleTopBeforeSearch = state.mainFirstVisibleTop;
+            loadPendingBeforeSearch = mainStories.isEmpty()
+                    && !state.mainLoadingFailed
+                    && !state.mainLoadingFailedServerError
+                    && !isBookmarksType(mainAdapter.type)
+                    && !isUserItemListType(mainAdapter.type);
+
+            loadedTo = state.searchLoadedTo;
+            showingCached = state.searchShowingCached;
+            loadingFailed = state.searchLoadingFailed;
+            loadingFailedServerError = state.searchLoadingFailedServerError;
+            loadingFailedRateLimited = state.searchLoadingFailedRateLimited;
+            algoliaHitsPerPage = state.searchAlgoliaHitsPerPage;
+            lastAlgoliaTopStoriesStartTime = state.searchLastAlgoliaTopStoriesStartTime;
+        } else {
+            loadedTo = state.mainLoadedTo;
+            showingCached = state.mainShowingCached;
+            loadingFailed = state.mainLoadingFailed;
+            loadingFailedServerError = state.mainLoadingFailedServerError;
+            loadingFailedRateLimited = state.mainLoadingFailedRateLimited;
+            algoliaHitsPerPage = state.mainAlgoliaHitsPerPage;
+            lastAlgoliaTopStoriesStartTime = state.mainLastAlgoliaTopStoriesStartTime;
+        }
+
+        syncActiveStoryListToSearchState();
+        applySearchRecyclerVisibility(false);
+        if (typeSpinner != null) {
+            typeSpinner.setSelection(mainAdapter.type);
+        }
+        if (userItemFilterGroup != null) {
+            userItemFilterGroup.check(userItemListFilterButtonId(userItemListFilter));
+        }
+        updateSearchOptionChips(false);
+        return true;
+    }
+
+    private int userItemListFilterButtonId(int filter) {
+        if (filter == USER_ITEM_LIST_FILTER_STORIES) {
+            return R.id.stories_header_user_item_filter_stories;
+        }
+        if (filter == USER_ITEM_LIST_FILTER_COMMENTS) {
+            return R.id.stories_header_user_item_filter_comments;
+        }
+        return R.id.stories_header_user_item_filter_both;
+    }
+
+    private boolean shouldRefreshRestoredStoryState() {
+        if (loadingFailed || loadingFailedServerError || !stories.isEmpty()) {
+            return false;
+        }
+        if (searching) {
+            return !TextUtils.isEmpty(lastSearch);
+        }
+        return !isBookmarksType(adapter.type)
+                && !isHistoryType(adapter.type)
+                && !isUserItemListType(adapter.type);
+    }
+
+    private void restoreRecyclerViewPositions(@Nullable StoriesViewModel.State state) {
+        if (state == null) {
+            return;
+        }
+
+        restoreRecyclerViewPosition(mainRecyclerView, mainLinearLayoutManager,
+                mainAdapter, state.mainFirstVisiblePosition, state.mainFirstVisibleTop);
+        restoreRecyclerViewPosition(searchRecyclerView, searchLinearLayoutManager,
+                searchAdapter, state.searchFirstVisiblePosition, state.searchFirstVisibleTop);
+        if (appBarLayout != null && state.appBarCollapsed) {
+            appBarLayout.post(() -> {
+                if (appBarLayout != null) {
+                    appBarLayout.setExpanded(false, false);
+                }
+            });
+        }
+    }
+
+    private void restoreRecyclerViewPosition(@Nullable RecyclerView targetRecyclerView,
+                                             @Nullable LinearLayoutManager targetLayoutManager,
+                                             @Nullable StoryRecyclerViewAdapter targetAdapter,
+                                             int firstVisiblePosition,
+                                             int firstVisibleTop) {
+        if (targetRecyclerView == null
+                || targetLayoutManager == null
+                || targetAdapter == null
+                || firstVisiblePosition == RecyclerView.NO_POSITION
+                || targetAdapter.getItemCount() == 0) {
+            return;
+        }
+
+        targetRecyclerView.post(() -> {
+            if (targetRecyclerView.getLayoutManager() != targetLayoutManager
+                    || targetRecyclerView.getAdapter() != targetAdapter) {
+                return;
+            }
+            int position = Math.min(firstVisiblePosition, targetAdapter.getItemCount() - 1);
+            targetLayoutManager.scrollToPositionWithOffset(
+                    position,
+                    firstVisibleTop - targetRecyclerView.getPaddingTop());
+        });
+    }
+
+    private void saveStoryStateForRecreation() {
+        if (storiesViewModel == null || mainAdapter == null || searchAdapter == null) {
+            return;
+        }
+
+        StoriesViewModel.State state = new StoriesViewModel.State();
+        state.mainStories.addAll(mainStories);
+        state.searchStories.addAll(searchStories);
+        state.bookmarkStories.addAll(bookmarkStories);
+        state.userItemListStories.addAll(userItemListStories);
+        state.userItemListCommentIds.addAll(userItemListCommentIds);
+        CharSequence mainTypeLabel = getTypeLabel(mainAdapter.type);
+        CharSequence searchTypeLabel = getTypeLabel(searchAdapter.type);
+        state.mainTypeLabel = mainTypeLabel == null ? null : mainTypeLabel.toString();
+        state.searchTypeLabel = searchTypeLabel == null ? null : searchTypeLabel.toString();
+        state.mainVisibleStoryCount = mainAdapter.visibleStoryCount;
+        state.searchVisibleStoryCount = searchAdapter.visibleStoryCount;
+        state.mainShowLoadMoreButton = mainAdapter.showLoadMoreButton;
+        state.searchShowLoadMoreButton = searchAdapter.showLoadMoreButton;
+        state.searching = searching;
+        state.lastSearch = lastSearch;
+        state.lastLoaded = lastLoaded;
+        state.updateButtonShowing = updateButtonShowing;
+        state.userItemListFilter = userItemListFilter;
+        state.frontPageDayUtcMillis = frontPageDayUtc == null ? -1L : frontPageDayUtc.getTimeInMillis();
+        state.scrapedFrontpageNextPageUrl = scrapedFrontpageNextPageUrl;
+
+        state.searchSortIndex = searchController.getSortIndex();
+        state.searchDateRangeIndex = searchController.getDateRangeIndex();
+        state.searchMinimumPointsIndex = searchController.getMinimumPointsIndex();
+        state.searchMinimumCommentsIndex = searchController.getMinimumCommentsIndex();
+        state.searchOnlyClicked = searchController.isOnlyClicked();
+
+        state.mainFirstVisiblePosition = getFirstVisiblePosition(mainLinearLayoutManager);
+        state.mainFirstVisibleTop = getFirstVisibleTop(mainRecyclerView, mainLinearLayoutManager,
+                state.mainFirstVisiblePosition);
+        state.searchFirstVisiblePosition = getFirstVisiblePosition(searchLinearLayoutManager);
+        state.searchFirstVisibleTop = getFirstVisibleTop(searchRecyclerView, searchLinearLayoutManager,
+                state.searchFirstVisiblePosition);
+        state.appBarCollapsed = appBarOffset < 0;
+
+        if (searching) {
+            state.mainLoadedTo = loadedToBeforeSearch;
+            state.mainShowingCached = showingCachedBeforeSearch;
+            state.mainLoadingFailed = loadingFailedBeforeSearch;
+            state.mainLoadingFailedServerError = loadingFailedServerErrorBeforeSearch;
+            state.mainLoadingFailedRateLimited = loadingFailedRateLimitedBeforeSearch;
+            state.mainAlgoliaHitsPerPage = algoliaHitsPerPageBeforeSearch;
+            state.mainLastAlgoliaTopStoriesStartTime = lastAlgoliaTopStoriesStartTimeBeforeSearch;
+
+            state.searchLoadedTo = loadedTo;
+            state.searchShowingCached = showingCached;
+            state.searchLoadingFailed = loadingFailed;
+            state.searchLoadingFailedServerError = loadingFailedServerError;
+            state.searchLoadingFailedRateLimited = loadingFailedRateLimited;
+            state.searchAlgoliaHitsPerPage = algoliaHitsPerPage;
+            state.searchLastAlgoliaTopStoriesStartTime = lastAlgoliaTopStoriesStartTime;
+        } else {
+            state.mainLoadedTo = loadedTo;
+            state.mainShowingCached = showingCached;
+            state.mainLoadingFailed = loadingFailed;
+            state.mainLoadingFailedServerError = loadingFailedServerError;
+            state.mainLoadingFailedRateLimited = loadingFailedRateLimited;
+            state.mainAlgoliaHitsPerPage = algoliaHitsPerPage;
+            state.mainLastAlgoliaTopStoriesStartTime = lastAlgoliaTopStoriesStartTime;
+        }
+
+        storiesViewModel.setState(state);
+    }
+
+    private int getFirstVisiblePosition(@Nullable LinearLayoutManager targetLayoutManager) {
+        return targetLayoutManager == null
+                ? RecyclerView.NO_POSITION
+                : targetLayoutManager.findFirstVisibleItemPosition();
+    }
+
+    private int getFirstVisibleTop(@Nullable RecyclerView targetRecyclerView,
+                                   @Nullable LinearLayoutManager targetLayoutManager,
+                                   int firstVisiblePosition) {
+        if (targetRecyclerView == null
+                || targetLayoutManager == null
+                || firstVisiblePosition == RecyclerView.NO_POSITION) {
+            return 0;
+        }
+        View firstVisibleView = targetLayoutManager.findViewByPosition(firstVisiblePosition);
+        return firstVisibleView == null ? targetRecyclerView.getPaddingTop() : firstVisibleView.getTop();
     }
 
     private int getPreferredTypeIndex() {
@@ -2662,7 +2947,14 @@ public class StoriesFragment extends Fragment {
     }
 
     @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        saveStoryStateForRecreation();
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
     public void onDestroyView() {
+        saveStoryStateForRecreation();
         View rootView = getView();
 
         if (rootView != null) {
