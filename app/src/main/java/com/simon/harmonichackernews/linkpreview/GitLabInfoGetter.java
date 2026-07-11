@@ -36,17 +36,17 @@ public class GitLabInfoGetter {
                             JSONObject jsonResponse = new JSONObject(response);
                             GitLabInfo gitLabInfo = new GitLabInfo();
 
-                            gitLabInfo.name = readJsonProp(jsonResponse, "name");
-                            gitLabInfo.namespace = readJsonProp(jsonResponse, "namespace");
-                            gitLabInfo.description = readJsonProp(jsonResponse, "description");
-                            gitLabInfo.website = readJsonProp(jsonResponse, "web_url");
-                            gitLabInfo.visibility = readJsonProp(jsonResponse, "visibility");
+                            gitLabInfo.name = LinkPreviewJsonUtils.getString(jsonResponse, "name");
+                            gitLabInfo.namespace = LinkPreviewJsonUtils.getString(jsonResponse, "namespace");
+                            gitLabInfo.description = LinkPreviewJsonUtils.getString(jsonResponse, "description");
+                            gitLabInfo.website = LinkPreviewJsonUtils.getString(jsonResponse, "web_url");
+                            gitLabInfo.visibility = LinkPreviewJsonUtils.getString(jsonResponse, "visibility");
                             gitLabInfo.stars = jsonResponse.optInt("star_count");
                             gitLabInfo.forks = jsonResponse.optInt("forks_count");
 
                             if (jsonResponse.has("namespace") && !jsonResponse.get("namespace").toString().equals("null")) {
                                 JSONObject namespace = jsonResponse.getJSONObject("namespace");
-                                gitLabInfo.namespace = readJsonProp(namespace, "full_path");
+                                gitLabInfo.namespace = LinkPreviewJsonUtils.getString(namespace, "full_path");
                             }
 
                             callback.onSuccess(gitLabInfo);
@@ -115,16 +115,6 @@ public class GitLabInfoGetter {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private static String readJsonProp(JSONObject jsonObject, String key) {
-        String input = jsonObject.optString(key);
-
-        if (TextUtils.isEmpty(input) || input.equals("null")) {
-            return null;
-        }
-
-        return input;
     }
 
     public interface GetterCallback {

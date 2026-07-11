@@ -72,6 +72,7 @@ import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
+import com.simon.harmonichackernews.utils.AccessibilityTextUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils;
@@ -306,8 +307,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 headerViewHolder.metaTime.setText(story.getTimeFormatted());
                 String tag = getCachedUserTag(ctx, story.by);
                 headerViewHolder.metaBy.setText(TextUtils.isEmpty(tag) ? story.by : story.by + " (" + tag + ")");
-                headerViewHolder.metaVotes.setContentDescription(pointCountDescription(story.score));
-                headerViewHolder.metaComments.setContentDescription(commentCountDescription(story.descendants));
+                headerViewHolder.metaVotes.setContentDescription(AccessibilityTextUtils.pointCountDescription(story.score));
+                headerViewHolder.metaComments.setContentDescription(AccessibilityTextUtils.commentCountDescription(story.descendants));
                 headerViewHolder.metaTime.setContentDescription("Posted " + story.getTimeFormatted());
                 headerViewHolder.metaBy.setContentDescription("Submitted by " + story.by);
                 headerViewHolder.userButton.setContentDescription("Open submitter " + story.by);
@@ -750,19 +751,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         headerViewHolder.titleShimmer.setVisibility(GONE);
         headerViewHolder.titleView.setVisibility(story.loaded || hasTitle ? View.VISIBLE : GONE);
         if (!TextUtils.isEmpty(story.pdfTitle)) {
-            headerViewHolder.titleView.setText(getTitleWithBadge(ctx, story.pdfTitle, R.drawable.ic_action_pdf_large));
+            headerViewHolder.titleView.setText(TextSizeImageSpan.createWithTrailingBadge(ctx, story.pdfTitle, R.drawable.ic_action_pdf_large));
         } else if (!TextUtils.isEmpty(story.videoTitle)) {
-            headerViewHolder.titleView.setText(getTitleWithBadge(ctx, story.videoTitle, R.drawable.ic_action_video_large));
+            headerViewHolder.titleView.setText(TextSizeImageSpan.createWithTrailingBadge(ctx, story.videoTitle, R.drawable.ic_action_video_large));
         } else {
             headerViewHolder.titleView.setText(story.title);
         }
-    }
-
-    private SpannableStringBuilder getTitleWithBadge(Context ctx, String title, int badgeDrawable) {
-        SpannableStringBuilder sb = new SpannableStringBuilder(title + " ");
-        TextSizeImageSpan imageSpan = new TextSizeImageSpan(ctx, badgeDrawable);
-        sb.setSpan(imageSpan, title.length(), title.length() + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        return sb;
     }
 
     private CharSequence getCommentByWithOpBadge(Context ctx, String displayName, boolean byOp, int badgeColor) {
@@ -848,8 +842,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.metaTime.setText(story.getTimeFormatted());
             String tag = getCachedUserTag(ctx, story.by);
             headerViewHolder.metaBy.setText(TextUtils.isEmpty(tag) ? story.by : story.by + " (" + tag + ")");
-            headerViewHolder.metaVotes.setContentDescription(pointCountDescription(story.score));
-            headerViewHolder.metaComments.setContentDescription(commentCountDescription(story.descendants));
+            headerViewHolder.metaVotes.setContentDescription(AccessibilityTextUtils.pointCountDescription(story.score));
+            headerViewHolder.metaComments.setContentDescription(AccessibilityTextUtils.commentCountDescription(story.descendants));
             headerViewHolder.metaTime.setContentDescription("Posted " + story.getTimeFormatted());
             headerViewHolder.metaBy.setContentDescription("Submitted by " + story.by);
             headerViewHolder.userButton.setContentDescription("Open submitter " + story.by);
@@ -3392,20 +3386,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
         String tag = userTagsByUser.get(username.toLowerCase().trim());
         return tag == null ? "" : tag;
-    }
-
-    private static String commentCountDescription(int count) {
-        if (count == 1) {
-            return "1 comment";
-        }
-        return count + " comments";
-    }
-
-    private static String pointCountDescription(int count) {
-        if (count == 1) {
-            return "1 point";
-        }
-        return count + " points";
     }
 
     private static String hiddenReplyCountDescription(int count) {

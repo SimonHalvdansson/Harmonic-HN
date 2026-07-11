@@ -4,6 +4,8 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.style.ReplacementSpan;
 
 import androidx.annotation.DrawableRes;
@@ -28,6 +30,17 @@ public class TextSizeImageSpan extends ReplacementSpan {
         int intrinsicWidth = Math.max(1, drawable.getIntrinsicWidth());
         int intrinsicHeight = Math.max(1, drawable.getIntrinsicHeight());
         aspectRatio = (float) intrinsicWidth / intrinsicHeight;
+    }
+
+    public static SpannableStringBuilder createWithTrailingBadge(
+            Context context, String text, @DrawableRes int drawableRes) {
+        SpannableStringBuilder result = new SpannableStringBuilder(text + " ");
+        result.setSpan(
+                new TextSizeImageSpan(context, drawableRes),
+                result.length() - 1,
+                result.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return result;
     }
 
     @Override

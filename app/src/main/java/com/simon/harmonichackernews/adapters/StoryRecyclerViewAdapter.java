@@ -12,7 +12,6 @@ import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.util.TypedValue;
@@ -45,6 +44,7 @@ import com.simon.harmonichackernews.databinding.SubmissionsCommentCardBinding;
 import com.simon.harmonichackernews.network.FaviconLoader;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
+import com.simon.harmonichackernews.utils.AccessibilityTextUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -281,12 +281,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     commentCountText = "";
                 }
                 storyViewHolder.commentsView.setText(commentCountText);
-                storyViewHolder.commentsView.setContentDescription(commentCountDescription(storyViewHolder.story.descendants));
+                storyViewHolder.commentsView.setContentDescription(AccessibilityTextUtils.commentCountDescription(storyViewHolder.story.descendants));
                 if (!showCommentsCount) {
                     storyViewHolder.commentsView.setText(null);
                     storyViewHolder.commentsView.setContentDescription(null);
                 }
-                storyViewHolder.commentLayoutView.setContentDescription(commentCountDescription(storyViewHolder.story.descendants));
+                storyViewHolder.commentLayoutView.setContentDescription(AccessibilityTextUtils.commentCountDescription(storyViewHolder.story.descendants));
 
                 String host = "";
                 try {
@@ -301,10 +301,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 if (showPoints && !storyViewHolder.story.isComment) {
                     String pointsText = compactPoints
                             ? "+" + storyViewHolder.story.score
-                            : pointCountDescription(storyViewHolder.story.score);
+                            : AccessibilityTextUtils.pointCountDescription(storyViewHolder.story.score);
                     storyViewHolder.metaView.setText(pointsText + " • " + host + " • " + storyViewHolder.story.getTimeFormatted());
                     storyViewHolder.metaView.setContentDescription(
-                            pointCountDescription(storyViewHolder.story.score) + ", "
+                            AccessibilityTextUtils.pointCountDescription(storyViewHolder.story.score) + ", "
                                     + host + ", "
                                     + storyViewHolder.story.getTimeFormatted());
                 } else {
@@ -623,7 +623,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     private void setStoryTitleText(StoryViewHolder storyViewHolder, Story story, boolean useClickedEffects) {
         if (!TextUtils.isEmpty(story.pdfTitle)) {
-            storyViewHolder.titleView.setText(getTitleWithBadge(
+            storyViewHolder.titleView.setText(TextSizeImageSpan.createWithTrailingBadge(
                     storyViewHolder.itemView.getContext(),
                     story.pdfTitle,
                     useClickedEffects ? R.drawable.ic_action_pdf_clicked : R.drawable.ic_action_pdf));
@@ -631,7 +631,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         if (!TextUtils.isEmpty(story.videoTitle)) {
-            storyViewHolder.titleView.setText(getTitleWithBadge(
+            storyViewHolder.titleView.setText(TextSizeImageSpan.createWithTrailingBadge(
                     storyViewHolder.itemView.getContext(),
                     story.videoTitle,
                     useClickedEffects ? R.drawable.ic_action_video_clicked : R.drawable.ic_action_video));
@@ -639,13 +639,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         storyViewHolder.titleView.setText(story.title);
-    }
-
-    private SpannableStringBuilder getTitleWithBadge(Context context, String title, int badgeDrawable) {
-        SpannableStringBuilder sb = new SpannableStringBuilder(title + " ");
-        TextSizeImageSpan imageSpan = new TextSizeImageSpan(context, badgeDrawable);
-        sb.setSpan(imageSpan, sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        return sb;
     }
 
     private void bindPreviewImage(final StoryViewHolder storyViewHolder, final Story story) {
@@ -2110,20 +2103,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             // More stories remain, update the button text
             notifyItemChanged(visibleStoryCount);
         }
-    }
-
-    private static String commentCountDescription(int count) {
-        if (count == 1) {
-            return "1 comment";
-        }
-        return count + " comments";
-    }
-
-    private static String pointCountDescription(int count) {
-        if (count == 1) {
-            return "1 point";
-        }
-        return count + " points";
     }
 
     private int getStoryViewType() {

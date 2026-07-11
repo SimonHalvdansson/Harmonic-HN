@@ -4,7 +4,6 @@ import android.util.Log;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.simon.harmonichackernews.data.Comment;
 import org.json.JSONException;
@@ -55,7 +54,7 @@ public class HNAPICommentLoader {
                 }
             },
             error -> {
-                Log.w(TAG, "HN API comment request failed, commentId=" + commentId + ": " + describeVolleyError(error), error);
+                Log.w(TAG, "HN API comment request failed, commentId=" + commentId + ": " + VolleyErrorUtils.describe(error), error);
                 listener.onCommentFailed(commentId);
             });
 
@@ -64,13 +63,4 @@ public class HNAPICommentLoader {
         queue.add(request);
     }
 
-    private static String describeVolleyError(VolleyError error) {
-        if (error == null) {
-            return "unknown VolleyError";
-        }
-        String status = error.networkResponse == null
-                ? "noNetworkResponse"
-                : "statusCode=" + error.networkResponse.statusCode;
-        return error.getClass().getSimpleName() + ", " + status + ", message=" + error.getMessage();
-    }
 }

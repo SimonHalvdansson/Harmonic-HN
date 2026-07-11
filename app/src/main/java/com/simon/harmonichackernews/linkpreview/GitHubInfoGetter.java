@@ -1,8 +1,6 @@
 package com.simon.harmonichackernews.linkpreview;
 
 import android.content.Context;
-import android.text.TextUtils;
-
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
@@ -40,23 +38,23 @@ public class GitHubInfoGetter {
 
                             if (jsonResponse.has("owner")) {
                                 JSONObject owner = jsonResponse.getJSONObject("owner");
-                                repoInfo.owner = readJsonProp(owner, "login");
+                                repoInfo.owner = LinkPreviewJsonUtils.getString(owner, "login");
                             }
 
                             repoInfo.name = jsonResponse.optString("name");
-                            repoInfo.about = readJsonProp(jsonResponse, "description");
-                            repoInfo.website = readJsonProp(jsonResponse, "homepage");
+                            repoInfo.about = LinkPreviewJsonUtils.getString(jsonResponse, "description");
+                            repoInfo.website = LinkPreviewJsonUtils.getString(jsonResponse, "homepage");
 
                             if (jsonResponse.has("license") && !jsonResponse.get("license").toString().equals("null")) {
                                 JSONObject license = jsonResponse.getJSONObject("license");
                                 if (license.has("name") && license.getString("name").equals("Other")) {
                                     repoInfo.license = "Other";
                                 } else {
-                                    repoInfo.license = readJsonProp(license, "spdx_id");
+                                    repoInfo.license = LinkPreviewJsonUtils.getString(license, "spdx_id");
                                 }
                             }
 
-                            repoInfo.language = readJsonProp(jsonResponse, "language");
+                            repoInfo.language = LinkPreviewJsonUtils.getString(jsonResponse, "language");
                             repoInfo.stars = jsonResponse.optInt("stargazers_count");
                             repoInfo.watching = jsonResponse.optInt("subscribers_count");
                             repoInfo.forks = jsonResponse.optInt("forks_count");
@@ -79,16 +77,6 @@ public class GitHubInfoGetter {
         } catch (Exception e) {
             callback.onFailure("Invalid GitHub URL");
         }
-    }
-
-    private static String readJsonProp(JSONObject jsonObject, String key) {
-        String input = jsonObject.optString(key);
-
-        if (TextUtils.isEmpty(input) || input.equals("null")) {
-            return null;
-        }
-
-        return input;
     }
 
     public interface GetterCallback {

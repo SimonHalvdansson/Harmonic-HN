@@ -5,7 +5,6 @@ import android.util.Log;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.Story;
@@ -67,7 +66,7 @@ public class AlgoliaFallbackManager implements HNAPICommentLoader.CommentLoadLis
                 listener.onAlgoliaSuccess(response);
             },
             error -> {
-                Log.w(TAG, "Algolia request failed for storyId=" + storyId + ": " + describeVolleyError(error), error);
+                Log.w(TAG, "Algolia request failed for storyId=" + storyId + ": " + VolleyErrorUtils.describe(error), error);
                 // If Algolia fails, try HN API
                 if (error.networkResponse != null && 
                     (error.networkResponse.statusCode == 404 || error.networkResponse.statusCode >= 500) ||
@@ -111,7 +110,7 @@ public class AlgoliaFallbackManager implements HNAPICommentLoader.CommentLoadLis
                 }
             },
             error -> {
-                Log.w(TAG, "HN API story request failed for storyId=" + storyId + ": " + describeVolleyError(error), error);
+                Log.w(TAG, "HN API story request failed for storyId=" + storyId + ": " + VolleyErrorUtils.describe(error), error);
                 listener.onHNAPIFailed();
             });
             
@@ -173,13 +172,4 @@ public class AlgoliaFallbackManager implements HNAPICommentLoader.CommentLoadLis
         }
     }
 
-    private static String describeVolleyError(VolleyError error) {
-        if (error == null) {
-            return "unknown VolleyError";
-        }
-        String status = error.networkResponse == null
-                ? "noNetworkResponse"
-                : "statusCode=" + error.networkResponse.statusCode;
-        return error.getClass().getSimpleName() + ", " + status + ", message=" + error.getMessage();
-    }
 }
