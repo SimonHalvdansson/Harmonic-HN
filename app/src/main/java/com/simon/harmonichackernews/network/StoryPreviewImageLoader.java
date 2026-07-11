@@ -11,6 +11,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.json.JSONObject;
 
+import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 import java.io.IOException;
@@ -652,6 +653,8 @@ public class StoryPreviewImageLoader {
             String paletteTintMode) {
         return ""
                 + storyId
+                + ":"
+                + PreviewImageTintUtils.TINT_ALGORITHM_VERSION
                 + ":"
                 + baseColor
                 + ":"

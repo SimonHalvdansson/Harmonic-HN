@@ -71,6 +71,8 @@ public final class StoryPreviewImageMemoryCache {
     private static String getTintKey(int storyId, String imageUrl, int baseColor, String paletteTintMode) {
         return getKey(storyId, imageUrl)
                 + ":"
+                + PreviewImageTintUtils.TINT_ALGORITHM_VERSION
+                + ":"
                 + baseColor
                 + ":"
                 + SettingsUtils.getPaletteTintConfigKey(paletteTintMode);

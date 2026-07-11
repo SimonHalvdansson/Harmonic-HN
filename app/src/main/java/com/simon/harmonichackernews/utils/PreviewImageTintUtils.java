@@ -12,27 +12,38 @@ import androidx.core.graphics.ColorUtils;
 import androidx.palette.graphics.Palette;
 
 import com.google.android.material.color.MaterialColors;
+import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Story;
 
 public class PreviewImageTintUtils {
-    private static final int TINT_SAMPLE_SIZE = 32;
+    public static final int TINT_ALGORITHM_VERSION = 2;
+    private static final int TINT_SAMPLE_SIZE = 96;
+    private static final float MIN_CHROMATIC_SOURCE_SATURATION = 0.05f;
     private static final float CARD_TINT_ALPHA_LIGHT = 0.24f;
     private static final float CARD_TINT_ALPHA_DARK = 0.34f;
 
     public static int calculateCardTint(Context context, Drawable drawable) {
-        int baseColor = MaterialColors.getColor(
-                context,
-                com.google.android.material.R.attr.colorSurfaceContainerHigh,
-                Color.TRANSPARENT);
+        int baseColor = getTintBaseColor(context);
         return calculateCardTint(baseColor, drawable, SettingsUtils.getPreferredPaletteTintConfigKey(context));
     }
 
     public static int calculateCardTint(Context context, Drawable drawable, String paletteTintMode) {
-        int baseColor = MaterialColors.getColor(
-                context,
-                com.google.android.material.R.attr.colorSurfaceContainerHigh,
-                Color.TRANSPARENT);
+        int baseColor = getTintBaseColor(context);
         return calculateCardTint(baseColor, drawable, paletteTintMode);
+    }
+
+    public static int getTintBaseColor(Context context) {
+        if (context == null) {
+            return Color.TRANSPARENT;
+        }
+
+        return MaterialColors.getColor(
+                context,
+                R.attr.storyCardBackgroundColor,
+                MaterialColors.getColor(
+                        context,
+                        com.google.android.material.R.attr.colorSurfaceContainerHigh,
+                        Color.TRANSPARENT));
     }
 
     public static int calculateCardTint(int baseColor, Drawable drawable) {
@@ -61,7 +72,8 @@ public class PreviewImageTintUtils {
         float[] hsl = swatch.getHsl();
         float targetSaturation = clamp01(
                 hsl[1] * SettingsUtils.getPaletteTintColorfulnessMultiplier(paletteTintConfigKey));
-        if (SettingsUtils.getPaletteTintColorfulness(paletteTintConfigKey)
+        if (hsl[1] >= MIN_CHROMATIC_SOURCE_SATURATION
+                && SettingsUtils.getPaletteTintColorfulness(paletteTintConfigKey)
                 >= SettingsUtils.DEFAULT_PALETTE_TINT_COLORFULNESS) {
             targetSaturation = Math.max(0.25f, targetSaturation);
         }

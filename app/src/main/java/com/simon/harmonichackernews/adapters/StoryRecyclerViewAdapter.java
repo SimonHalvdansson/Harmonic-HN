@@ -1167,13 +1167,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private static int getDefaultStoryCardBackgroundColor(View view) {
-        return MaterialColors.getColor(
-                view,
-                R.attr.storyCardBackgroundColor,
-                MaterialColors.getColor(
-                        view,
-                        com.google.android.material.R.attr.colorSurfaceContainerHigh,
-                        Color.TRANSPARENT));
+        return PreviewImageTintUtils.getTintBaseColor(view.getContext());
     }
 
     private static int getDefaultStoryCardBackgroundColor(@Nullable Context context) {
@@ -1181,13 +1175,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return Color.TRANSPARENT;
         }
 
-        return MaterialColors.getColor(
-                context,
-                R.attr.storyCardBackgroundColor,
-                MaterialColors.getColor(
-                        context,
-                        com.google.android.material.R.attr.colorSurfaceContainerHigh,
-                        Color.TRANSPARENT));
+        return PreviewImageTintUtils.getTintBaseColor(context);
     }
 
     private void updatePreviewImageTintColor(Context context, Story story, Drawable drawable) {
@@ -1233,6 +1221,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     private void bindStoryCardTintFallback(StoryViewHolder storyViewHolder, Story story) {
         if (!shouldUseFaviconTint(story)) {
+            return;
+        }
+
+        int baseColor = getDefaultStoryCardBackgroundColor(storyViewHolder.itemView.getContext());
+        if (shouldUsePreviewTint(story, baseColor)) {
             return;
         }
 
@@ -1366,15 +1359,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 && story.loaded
                 && !story.loadingFailed
                 && !story.isComment
-                && !TextUtils.isEmpty(story.url)
-                && (SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
-                || hasNoPreviewImageUrl(story));
-    }
-
-    private boolean hasNoPreviewImageUrl(Story story) {
-        return story != null
-                && story.previewImageUrlLoaded
-                && TextUtils.isEmpty(story.previewImageUrl);
+                && !TextUtils.isEmpty(story.url);
     }
 
     private boolean isFaviconTintColorCurrent(Story story, String faviconUrl, int baseColor) {

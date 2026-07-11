@@ -1377,14 +1377,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void bindHeaderTint(HeaderViewHolder headerViewHolder) {
+        int baseColor = getPreviewTintBaseColor(headerViewHolder.itemView);
         if (shouldTintHeader()) {
             hydrateCachedHeaderPreviewTintColor(
                     headerViewHolder.itemView.getContext(),
                     story,
-                    getPreviewTintBaseColor(headerViewHolder.itemView));
+                    baseColor);
         }
         applyHeaderBackground(headerViewHolder);
-        if (shouldUseHeaderFaviconTint(story)) {
+        if (shouldUseHeaderFaviconTint(story)
+                && !shouldUseHeaderPreviewTint(story, baseColor)) {
             loadHeaderFaviconTintColor(headerViewHolder.itemView.getContext(), story, headerViewHolder);
         }
     }
@@ -1478,17 +1480,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private int getPreviewTintBaseColor(View view) {
-        return MaterialColors.getColor(
-                view,
-                com.google.android.material.R.attr.colorSurfaceContainerHigh,
-                Color.TRANSPARENT);
+        return PreviewImageTintUtils.getTintBaseColor(view.getContext());
     }
 
     private int getPreviewTintBaseColor(Context context) {
-        return MaterialColors.getColor(
-                context,
-                com.google.android.material.R.attr.colorSurfaceContainerHigh,
-                Color.TRANSPARENT);
+        return PreviewImageTintUtils.getTintBaseColor(context);
     }
 
     private void updatePreviewImageTintColor(Context context, Story story, Drawable drawable) {
@@ -1691,15 +1687,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 && story.loaded
                 && !story.loadingFailed
                 && !story.isComment
-                && !TextUtils.isEmpty(story.url)
-                && (!showHeaderPreviewImage
-                || hasNoPreviewImageUrl(story));
-    }
-
-    private boolean hasNoPreviewImageUrl(Story story) {
-        return story != null
-                && story.previewImageUrlLoaded
-                && TextUtils.isEmpty(story.previewImageUrl);
+                && !TextUtils.isEmpty(story.url);
     }
 
     private boolean isFaviconTintColorCurrent(Story story, int baseColor) {
