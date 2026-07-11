@@ -140,6 +140,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             "com.simon.harmonichackernews.STATE_REFERENCE_LINK_SUMMARY_URL";
     private final static String STATE_REFERENCE_LINK_SUMMARY_TITLE =
             "com.simon.harmonichackernews.STATE_REFERENCE_LINK_SUMMARY_TITLE";
+    private final static String STATE_PREVIEW_IMAGE_DIALOG_URL =
+            "com.simon.harmonichackernews.STATE_PREVIEW_IMAGE_DIALOG_URL";
     private final static Pattern POLL_TITLE_PATTERN = Pattern.compile("\\bpoll\\b", Pattern.CASE_INSENSITIVE);
 
     private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
@@ -292,6 +294,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     return null;
                 }
 
+                @Nullable
+                @Override
+                public View findLinkSummaryImageSourceView() {
+                    return adapter == null ? null : adapter.getBoundHeaderPreviewImage();
+                }
+
+                @Override
+                public void setLinkSummaryImageSourceSuppressed(boolean suppressed) {
+                    if (adapter != null) {
+                        adapter.setHeaderPreviewImageSuppressed(suppressed);
+                    }
+                }
+
                 @Override
                 public void stopLinkSummaryListScroll() {
                     if (recyclerView != null) {
@@ -306,6 +321,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             });
     @Nullable private String pendingReferenceLinkSummaryUrl;
     @Nullable private String pendingReferenceLinkSummaryTitle;
+    @Nullable private String pendingPreviewImageDialogUrl;
     private View scrollNavigation;
     private ExtendedFloatingActionButton searchScrollTopFab;
     private int commentsBottomInset = 0;
@@ -504,6 +520,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (savedInstanceState != null) {
             pendingReferenceLinkSummaryUrl = savedInstanceState.getString(STATE_REFERENCE_LINK_SUMMARY_URL);
             pendingReferenceLinkSummaryTitle = savedInstanceState.getString(STATE_REFERENCE_LINK_SUMMARY_TITLE);
+            pendingPreviewImageDialogUrl = savedInstanceState.getString(STATE_PREVIEW_IMAGE_DIALOG_URL);
         }
         binding = FragmentCommentsBinding.bind(view);
         rootInsetsApplied = false;
@@ -1243,7 +1260,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         adapter.setOnCommentLongClickListener(this);
         adapter.setOnReferenceLinkLongClickListener((link, view) ->
                 linkSummaryOverlayController.showReference(link, view));
-        restoreReferenceLinkSummaryAfterRecreation();
+        adapter.setOnHeaderPreviewLongClickListener((imageUrl, imageView) ->
+                linkSummaryOverlayController.showImage(
+                        imageUrl,
+                        TextUtils.isEmpty(story.title)
+                                ? "Story preview image" : "Preview image for " + story.title,
+                        imageView));
+        restoreLinkSummaryAfterRecreation();
         adapter.setRetryListener(this);
 
         adapter.setOnHeaderActionClickListener(new CommentsRecyclerViewAdapter.HeaderActionClickListener() {
@@ -1606,6 +1629,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     linkSummaryOverlayController.getVisibleUrl());
             outState.putString(STATE_REFERENCE_LINK_SUMMARY_TITLE,
                     linkSummaryOverlayController.getFallbackTitle());
+        } else if (linkSummaryOverlayController.isShowingImage()) {
+            outState.putString(STATE_PREVIEW_IMAGE_DIALOG_URL,
+                    linkSummaryOverlayController.getVisibleUrl());
         }
 
         int visibleCommentActionId = commentActionOverlayController.getRestorableCommentId();
@@ -1805,10 +1831,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         boolean preserveReferenceSummary = getActivity() != null
                 && requireActivity().isChangingConfigurations()
                 && linkSummaryOverlayController.isShowingReference();
+        boolean preservePreviewImage = getActivity() != null
+                && requireActivity().isChangingConfigurations()
+                && linkSummaryOverlayController.isShowingImage();
         pendingReferenceLinkSummaryUrl = preserveReferenceSummary
                 ? linkSummaryOverlayController.getVisibleUrl() : null;
         pendingReferenceLinkSummaryTitle = preserveReferenceSummary
                 ? linkSummaryOverlayController.getFallbackTitle() : null;
+        pendingPreviewImageDialogUrl = preservePreviewImage
+                ? linkSummaryOverlayController.getVisibleUrl() : null;
         linkSummaryOverlayController.removeNow();
         commentActionOverlayController.removeNow();
         if (commentNavigationController != null) {
@@ -1886,7 +1917,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         super.onDestroyView();
     }
 
-    private void restoreReferenceLinkSummaryAfterRecreation() {
+    private void restoreLinkSummaryAfterRecreation() {
+        if (!TextUtils.isEmpty(pendingPreviewImageDialogUrl) && getView() != null) {
+            String imageUrl = pendingPreviewImageDialogUrl;
+            pendingPreviewImageDialogUrl = null;
+            getView().post(() -> linkSummaryOverlayController.showImage(
+                    imageUrl,
+                    TextUtils.isEmpty(story.title)
+                            ? "Story preview image" : "Preview image for " + story.title,
+                    adapter == null ? null : adapter.getBoundHeaderPreviewImage()));
+            return;
+        }
         if (TextUtils.isEmpty(pendingReferenceLinkSummaryUrl) || getView() == null) {
             return;
         }

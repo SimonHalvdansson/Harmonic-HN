@@ -37,6 +37,7 @@ import com.google.android.material.loadingindicator.LoadingIndicator;
 import com.google.android.material.shape.ShapeAppearanceModel;
 import com.google.android.material.transition.MaterialContainerTransform;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.databinding.ImageOnlyOverlayContentBinding;
 import com.simon.harmonichackernews.databinding.LinkSummaryOverlayBinding;
 import com.simon.harmonichackernews.databinding.ReferenceLinkSummaryContentBinding;
 import com.simon.harmonichackernews.databinding.StoryLinkSummaryContentBinding;
@@ -55,6 +56,7 @@ import com.simon.harmonichackernews.utils.ViewUtils;
 import coil.Coil;
 import coil.request.ImageRequest;
 import coil.target.ImageViewTarget;
+import coil.util.CoilUtils;
 
 final class LinkSummaryOverlayController {
     interface Host {
@@ -62,6 +64,8 @@ final class LinkSummaryOverlayController {
         @NonNull Context requireLinkSummaryContext();
         @Nullable ViewGroup getLinkSummaryOverlayHost();
         @Nullable View findLinkSummarySourceView(int storyId);
+        default @Nullable View findLinkSummaryImageSourceView() { return null; }
+        default void setLinkSummaryImageSourceSuppressed(boolean suppressed) { }
         default int resolveStoryCardBackgroundColor(Story story) {
             return PreviewImageTintUtils.getTintBaseColor(requireLinkSummaryContext());
         }
@@ -96,6 +100,7 @@ final class LinkSummaryOverlayController {
     private MaterialCardView card;
     private StoryLinkSummaryContentBinding storyBinding;
     private ReferenceLinkSummaryContentBinding referenceBinding;
+    private ImageOnlyOverlayContentBinding imageBinding;
     private View sourceView;
     private LinkSummaryLoader.SummaryRequest summaryRequest;
     private int visibleStoryId = NO_STORY_ID;
@@ -104,6 +109,7 @@ final class LinkSummaryOverlayController {
     private String fallbackTitle;
     private boolean dismissing;
     private boolean predictiveBackActive;
+    private boolean enterTransitionStarted;
     private int storyVoteLoadingId = NO_STORY_ID;
     private int storyFavoriteLoadingId = NO_STORY_ID;
 
@@ -115,6 +121,7 @@ final class LinkSummaryOverlayController {
     boolean isPredictiveBackActive() { return predictiveBackActive; }
     int getVisibleStoryId() { return visibleStoryId; }
     boolean isShowingReference() { return referenceBinding != null; }
+    boolean isShowingImage() { return imageBinding != null; }
     @Nullable String getVisibleUrl() { return visibleUrl; }
     @Nullable String getFallbackTitle() { return fallbackTitle; }
 
@@ -193,6 +200,109 @@ final class LinkSummaryOverlayController {
     }
 
     @SuppressLint("ClickableViewAccessibility")
+    void showImage(String imageUrl, String description, @Nullable ImageView source) {
+        Context context = host.getLinkSummaryContext();
+        Drawable sourceDrawable = source == null ? null : source.getDrawable();
+        if (context == null || (TextUtils.isEmpty(imageUrl) && sourceDrawable == null)
+                || !prepareOverlay(source)) {
+            return;
+        }
+        visibleUrl = imageUrl;
+        fallbackTitle = description;
+        imageBinding = ImageOnlyOverlayContentBinding.inflate(
+                LayoutInflater.from(context), binding.linkSummaryBody, true);
+        imageBinding.imageOnlyPreview.setContentDescription(description);
+        binding.linkSummaryScroll.setVerticalScrollBarEnabled(false);
+        binding.linkSummaryScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+
+        if (sourceDrawable != null) {
+            Drawable.ConstantState constantState = sourceDrawable.getConstantState();
+            Drawable overlayDrawable = constantState == null
+                    ? sourceDrawable
+                    : constantState.newDrawable(context.getResources()).mutate();
+            bindImageOnlyDrawable(overlayDrawable);
+            return;
+        }
+
+        ImageView image = imageBinding.imageOnlyPreview;
+        ImageRequest request = new ImageRequest.Builder(context)
+                .data(imageUrl)
+                .setHeader("User-Agent", NetworkComponent.USER_AGENT)
+                .allowHardware(false)
+                .target(new ImageViewTarget(image) {
+                    @Override public void onSuccess(Drawable result) {
+                        super.onSuccess(result);
+                        if (imageBinding != null) {
+                            bindImageOnlyDrawable(result);
+                        }
+                    }
+
+                    @Override public void onError(Drawable error) {
+                        super.onError(error);
+                        removeNow();
+                    }
+                }).build();
+        Coil.imageLoader(context).enqueue(request);
+    }
+
+    private void bindImageOnlyDrawable(Drawable drawable) {
+        if (imageBinding == null || drawable == null) return;
+        imageBinding.imageOnlyPreview.setImageDrawable(drawable);
+        configureImageOnlySize(drawable);
+        startEnterTransition();
+    }
+
+    private void configureImageOnlySize(Drawable drawable) {
+        if (binding == null || card == null || imageBinding == null) return;
+        binding.linkSummaryContent.post(() -> {
+            if (binding == null || card == null || imageBinding == null) return;
+            Context context = card.getContext();
+            int horizontalPadding = binding.linkSummaryContent.getPaddingLeft()
+                    + binding.linkSummaryContent.getPaddingRight();
+            int verticalPadding = binding.linkSummaryContent.getPaddingTop()
+                    + binding.linkSummaryContent.getPaddingBottom();
+            int availableWidth = binding.linkSummaryContent.getWidth() - horizontalPadding;
+            int availableHeight = binding.linkSummaryContent.getHeight() - verticalPadding;
+            if (availableWidth <= 0) {
+                availableWidth = context.getResources().getDisplayMetrics().widthPixels - horizontalPadding;
+            }
+            if (availableHeight <= 0) {
+                availableHeight = context.getResources().getDisplayMetrics().heightPixels - verticalPadding;
+            }
+            int maxWidth = Utils.pxFromDpInt(context.getResources(),
+                    Utils.isTablet(context.getResources()) ? 640 : 520);
+            availableWidth = Math.max(1, Math.min(availableWidth, maxWidth));
+            availableHeight = Math.max(1, availableHeight);
+
+            int intrinsicWidth = drawable.getIntrinsicWidth();
+            int intrinsicHeight = drawable.getIntrinsicHeight();
+            if (intrinsicWidth <= 0 || intrinsicHeight <= 0) {
+                intrinsicWidth = 16;
+                intrinsicHeight = 9;
+            }
+            float scale = Math.min(
+                    availableWidth / (float) intrinsicWidth,
+                    availableHeight / (float) intrinsicHeight);
+            int targetWidth = Math.max(1, Math.round(intrinsicWidth * scale));
+            int targetHeight = Math.max(1, Math.round(intrinsicHeight * scale));
+
+            FrameLayout.LayoutParams cardParams = (FrameLayout.LayoutParams) card.getLayoutParams();
+            cardParams.width = targetWidth;
+            cardParams.height = targetHeight;
+            card.setLayoutParams(cardParams);
+            ViewGroup.LayoutParams scrollParams = binding.linkSummaryScroll.getLayoutParams();
+            scrollParams.height = targetHeight;
+            binding.linkSummaryScroll.setLayoutParams(scrollParams);
+            ViewGroup.LayoutParams rootParams = imageBinding.getRoot().getLayoutParams();
+            rootParams.height = targetHeight;
+            imageBinding.getRoot().setLayoutParams(rootParams);
+            ViewGroup.LayoutParams imageParams = imageBinding.imageOnlyPreview.getLayoutParams();
+            imageParams.height = targetHeight;
+            imageBinding.imageOnlyPreview.setLayoutParams(imageParams);
+        });
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
     private boolean prepareOverlay(@Nullable View source) {
         Context context = host.getLinkSummaryContext();
         ViewGroup overlayHost = host.getLinkSummaryOverlayHost();
@@ -202,6 +312,7 @@ final class LinkSummaryOverlayController {
         removeNow();
         sourceView = source;
         dismissing = false;
+        enterTransitionStarted = false;
         binding = LinkSummaryOverlayBinding.inflate(LayoutInflater.from(context), overlayHost, false);
         overlay = binding.getRoot();
         overlayHost.addView(overlay, new ViewGroup.LayoutParams(
@@ -635,6 +746,8 @@ final class LinkSummaryOverlayController {
     }
 
     private void startEnterTransition() {
+        if (enterTransitionStarted || overlay == null) return;
+        enterTransitionStarted = true;
         ViewGroup overlayHost = host.getLinkSummaryOverlayHost();
         overlay.post(() -> {
             if (overlay == null || card == null || overlayHost == null) return;
@@ -644,14 +757,16 @@ final class LinkSummaryOverlayController {
                 transform.addTarget(card);
                 TransitionManager.beginDelayedTransition(overlayHost, transform);
                 binding.linkSummaryScrim.animate().alpha(1f).setDuration(TRANSFORM_DURATION_MS).start();
+                if (imageBinding != null) host.setLinkSummaryImageSourceSuppressed(true);
                 setSourceVisible(sourceView, false);
                 card.setVisibility(View.VISIBLE);
             } else {
                 binding.linkSummaryScrim.setAlpha(1f);
+                if (imageBinding != null) host.setLinkSummaryImageSourceSuppressed(true);
                 setSourceVisible(sourceView, false);
                 card.setVisibility(View.VISIBLE);
             }
-            resizeScroll();
+            if (imageBinding == null) resizeScroll();
         });
     }
 
@@ -750,7 +865,9 @@ final class LinkSummaryOverlayController {
     }
 
     private ShapeAppearanceModel createShape(View view) {
-        float radius = view == card ? CARD_CORNER_RADIUS_DP : view instanceof MaterialCardView ? 8 : 0;
+        float radius = view == card ? CARD_CORNER_RADIUS_DP
+                : view instanceof MaterialCardView ? 8
+                : view instanceof ImageView ? 12 : 0;
         return ShapeAppearanceModel.builder().setAllCornerSizes(
                 Utils.pxFromDpInt(view.getResources(), (int) radius)).build();
     }
@@ -798,12 +915,17 @@ final class LinkSummaryOverlayController {
     void removeNow() {
         cancelSummaryRequest();
         if (overlay == null) return;
+        boolean wasShowingImage = imageBinding != null;
+        if (imageBinding != null) CoilUtils.dispose(imageBinding.imageOnlyPreview);
         if (binding != null) ViewCompat.setOnApplyWindowInsetsListener(binding.linkSummaryContent, null);
         setSourceVisible(sourceView, true);
         if (overlay.getParent() instanceof ViewGroup) ((ViewGroup) overlay.getParent()).removeView(overlay);
-        overlay = null; binding = null; card = null; storyBinding = null; referenceBinding = null;
+        overlay = null; binding = null; card = null; storyBinding = null;
+        referenceBinding = null; imageBinding = null;
         sourceView = null; visibleStoryId = NO_STORY_ID; visibleStoryPosition = -1;
-        visibleUrl = null; fallbackTitle = null; dismissing = false; predictiveBackActive = false;
+        visibleUrl = null; fallbackTitle = null; dismissing = false;
+        predictiveBackActive = false; enterTransitionStarted = false;
+        if (wasShowingImage) host.setLinkSummaryImageSourceSuppressed(false);
         host.syncLinkSummaryBackState();
     }
 
@@ -851,6 +973,7 @@ final class LinkSummaryOverlayController {
 
     @Nullable private View resolveSourceView() {
         if (isUsableTransitionView(sourceView)) return sourceView;
+        if (imageBinding != null) return host.findLinkSummaryImageSourceView();
         return visibleStoryId == NO_STORY_ID ? null : host.findLinkSummarySourceView(visibleStoryId);
     }
 

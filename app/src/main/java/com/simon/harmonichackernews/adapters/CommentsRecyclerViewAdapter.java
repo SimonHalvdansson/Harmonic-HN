@@ -108,6 +108,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private CommentClickListener commentClickListener;
     private CommentClickListener commentLongClickListener;
     private ReferenceLinkLongClickListener referenceLinkLongClickListener;
+    private HeaderPreviewLongClickListener headerPreviewLongClickListener;
+    private boolean headerPreviewImageSuppressed;
     private HeaderActionClickListener headerActionClickListener;
     private HeaderBackgroundColorListener headerBackgroundColorListener;
     private RetryListener retryListener;
@@ -263,6 +265,22 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             headerViewHolder.headerView.setClickable(story.isLink);
             headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : GONE);
+            headerViewHolder.previewImage.setOnClickListener(v -> {
+                if (headerClickListener != null) {
+                    headerClickListener.onItemClick(story);
+                }
+            });
+            headerViewHolder.previewImage.setOnLongClickListener(v -> {
+                if (headerPreviewLongClickListener == null
+                        || v.getVisibility() != VISIBLE
+                        || headerViewHolder.previewImage.getDrawable() == null
+                        || TextUtils.isEmpty(story.previewImageUrl)) {
+                    return false;
+                }
+                headerPreviewLongClickListener.onLongClick(
+                        story.previewImageUrl, headerViewHolder.previewImage);
+                return true;
+            });
             bindHeaderPreviewImage(headerViewHolder);
             bindHeaderTint(headerViewHolder);
             bindReaderModeButton(headerViewHolder);
@@ -1332,8 +1350,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         applyHeaderPreviewImagePadding(headerViewHolder, visibility != GONE);
-        if (headerViewHolder.previewImage.getVisibility() != visibility) {
-            headerViewHolder.previewImage.setVisibility(visibility);
+        int resolvedVisibility = headerPreviewImageSuppressed && visibility == VISIBLE
+                ? View.INVISIBLE : visibility;
+        if (headerViewHolder.previewImage.getVisibility() != resolvedVisibility) {
+            headerViewHolder.previewImage.setVisibility(resolvedVisibility);
             headerViewHolder.itemView.requestLayout();
         }
     }
@@ -3255,6 +3275,35 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         referenceLinkLongClickListener = clickListener;
     }
 
+    public void setOnHeaderPreviewLongClickListener(HeaderPreviewLongClickListener clickListener) {
+        headerPreviewLongClickListener = clickListener;
+    }
+
+    @Nullable
+    public ImageView getBoundHeaderPreviewImage() {
+        if (boundHeaderViewHolder == null
+                || !ViewCompat.isAttachedToWindow(boundHeaderViewHolder.previewImage)
+                || boundHeaderViewHolder.previewImage.getVisibility() == GONE) {
+            return null;
+        }
+        return boundHeaderViewHolder.previewImage;
+    }
+
+    public void setHeaderPreviewImageSuppressed(boolean suppressed) {
+        headerPreviewImageSuppressed = suppressed;
+        if (boundHeaderViewHolder == null
+                || !ViewCompat.isAttachedToWindow(boundHeaderViewHolder.previewImage)) {
+            return;
+        }
+        ImageView previewImage = boundHeaderViewHolder.previewImage;
+        if (suppressed && previewImage.getVisibility() == VISIBLE) {
+            previewImage.setVisibility(View.INVISIBLE);
+        } else if (!suppressed && previewImage.getVisibility() == View.INVISIBLE
+                && previewImage.getDrawable() != null) {
+            previewImage.setVisibility(VISIBLE);
+        }
+    }
+
     public void setOnHeaderActionClickListener(HeaderActionClickListener clickListener) {
         headerActionClickListener = clickListener;
     }
@@ -3304,6 +3353,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     public interface ReferenceLinkLongClickListener {
         void onLongClick(CollectedReferenceLinks.ReferenceLink link, View view);
+    }
+
+    public interface HeaderPreviewLongClickListener {
+        void onLongClick(String imageUrl, ImageView view);
     }
 
     public int getIndexOfLastChild(int commentDepth, int pos) {
