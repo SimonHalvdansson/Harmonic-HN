@@ -345,6 +345,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
 
         cancelCardAppearanceAnimator();
         int currentStrokeWidth = targetCard.getStrokeWidth();
+        int currentStrokeColor = targetCard.getStrokeColor();
         float currentElevation = targetCard.getCardElevation();
         if (!animate || !ViewCompat.isLaidOut(targetCard)) {
             targetCard.setStrokeWidth(targetStrokeWidth);
@@ -356,6 +357,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         cardAppearanceAnimator = ValueAnimator.ofFloat(0f, 1f);
         cardAppearanceAnimator.setDuration(PREVIEW_ANIMATION_DURATION_MS);
         cardAppearanceAnimator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        ArgbEvaluator strokeColorEvaluator = new ArgbEvaluator();
         cardAppearanceAnimator.addUpdateListener(animation -> {
             if (storyCard != targetCard) {
                 animation.cancel();
@@ -364,7 +366,10 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
 
             float progress = (float) animation.getAnimatedValue();
             targetCard.setStrokeWidth(lerp(currentStrokeWidth, targetStrokeWidth, progress));
-            targetCard.setStrokeColor(targetStrokeColor);
+            targetCard.setStrokeColor((int) strokeColorEvaluator.evaluate(
+                    progress,
+                    currentStrokeColor,
+                    targetStrokeColor));
             targetCard.setCardElevation(currentElevation + (targetElevation - currentElevation) * progress);
         });
         cardAppearanceAnimator.addListener(new AnimatorListenerAdapter() {
