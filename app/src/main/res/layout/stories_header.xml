@@ -280,15 +280,6 @@
     </HorizontalScrollView>
 
     <TextView
-        android:id="@+id/stories_header_cached_stories_header"
-        android:visibility="gone"
-        android:textAllCaps="true"
-        android:text="Cached stories"
-        android:fontFamily="@font/product_sans_bold"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-
-    <TextView
         android:id="@+id/stories_header_last_updated"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

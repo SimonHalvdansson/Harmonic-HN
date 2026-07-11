@@ -158,7 +158,6 @@ public class StoriesFragment extends Fragment {
     private LinearLayout noBookmarksLayout;
     private ImageView noBookmarksImage;
     private TextView noBookmarksText;
-    private TextView showingCachedText;
     private LinearLayout searchEmptyContainer;
     private Button retryButton;
     private Button showCachedButton;
@@ -385,7 +384,6 @@ public class StoriesFragment extends Fragment {
         noBookmarksLayout = headerBinding.storiesHeaderNoBookmarks;
         noBookmarksImage = headerBinding.storiesHeaderNoBookmarksIcon;
         noBookmarksText = headerBinding.storiesHeaderNoBookmarksText;
-        showingCachedText = headerBinding.storiesHeaderCachedStoriesHeader;
         searchEmptyContainer = headerBinding.storiesHeaderSearchEmptyContainer;
         retryButton = headerBinding.storiesHeaderRetryButton;
         showCachedButton = headerBinding.storiesHeaderShowCached;
@@ -914,8 +912,7 @@ public class StoriesFragment extends Fragment {
             loadingIndicator.setVisibility(showLoading ? View.VISIBLE : View.GONE);
         }
 
-        showingCachedText.setVisibility(showingCached && !searching ? View.VISIBLE : View.GONE);
-
+        typeSpinnerAdapter.setSelectedTitle(showingCached ? "Cached stories" : null);
         typeSpinner.setSelection(adapter.type);
 
         TooltipCompat.setTooltipText(searchButton, "Search");
@@ -2786,7 +2783,6 @@ public class StoriesFragment extends Fragment {
         noBookmarksLayout = null;
         noBookmarksImage = null;
         noBookmarksText = null;
-        showingCachedText = null;
         searchEmptyContainer = null;
         retryButton = null;
         showCachedButton = null;

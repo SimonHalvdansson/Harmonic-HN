@@ -19,8 +19,18 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import java.util.ArrayList;
 
 class StoryTypeSpinnerAdapter extends ArrayAdapter<CharSequence> {
+    @Nullable
+    private CharSequence selectedTitle;
+
     StoryTypeSpinnerAdapter(Context context, ArrayList<CharSequence> items) {
         super(context, 0, items);
+    }
+
+    void setSelectedTitle(@Nullable CharSequence selectedTitle) {
+        if (!TextUtils.equals(this.selectedTitle, selectedTitle)) {
+            this.selectedTitle = selectedTitle;
+            notifyDataSetChanged();
+        }
     }
 
     @NonNull
@@ -45,7 +55,7 @@ class StoryTypeSpinnerAdapter extends ArrayAdapter<CharSequence> {
     }
 
     private void bindText(TextView textView, int position, boolean selectedView) {
-        textView.setText(getItem(position));
+        textView.setText(selectedView && selectedTitle != null ? selectedTitle : getItem(position));
 
         String preferredFont = SettingsUtils.getPreferredFont(getContext());
         if (FontUtils.activeBold == null || TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(preferredFont)) {
