@@ -252,7 +252,8 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
                 bottomMargin);
         updateSegmentedListPadding(child, true);
 
-        child.setBackground(createSegmentedItemBackground(firstInSegment, lastInSegment, child.isActivated()));
+        child.setBackground(createSegmentedItemBackground(
+                firstInSegment, lastInSegment, child.isActivated(), preference));
     }
 
     private void registerSegmentedListObserver() {
@@ -360,12 +361,18 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
     private Drawable createSegmentedItemBackground(
             boolean firstInSegment,
             boolean lastInSegment,
-            boolean activated) {
-        GradientDrawable content = createSegmentedShape(firstInSegment, lastInSegment);
+            boolean activated,
+            @Nullable Preference preference) {
+        boolean mainToggle = preference instanceof AiSummaryEnabledPreference;
+        GradientDrawable content = createSegmentedShape(firstInSegment, lastInSegment, mainToggle);
         content.setColor(resolveThemeColor(
-                activated ? R.attr.settingsHeaderSelectedColor : R.attr.settingsSegmentColor));
+                activated && mainToggle
+                        ? R.attr.settingsMainToggleColor
+                        : activated
+                                ? R.attr.settingsHeaderSelectedColor
+                                : R.attr.settingsSegmentColor));
 
-        GradientDrawable mask = createSegmentedShape(firstInSegment, lastInSegment);
+        GradientDrawable mask = createSegmentedShape(firstInSegment, lastInSegment, mainToggle);
         mask.setColor(0xffffffff);
 
         return new RippleDrawable(
@@ -375,8 +382,11 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
     }
 
     @NonNull
-    private GradientDrawable createSegmentedShape(boolean firstInSegment, boolean lastInSegment) {
-        float radius = getResources().getDimension(R.dimen.settings_list_segment_corner_radius);
+    private GradientDrawable createSegmentedShape(
+            boolean firstInSegment, boolean lastInSegment, boolean mainToggle) {
+        float radius = getResources().getDimension(mainToggle
+                ? R.dimen.settings_list_main_toggle_corner_radius
+                : R.dimen.settings_list_segment_corner_radius);
         float topRadius = firstInSegment ? radius : 0;
         float bottomRadius = lastInSegment ? radius : 0;
 

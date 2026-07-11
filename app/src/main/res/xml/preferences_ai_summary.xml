@@ -5,11 +5,11 @@
     <com.simon.harmonichackernews.settings.AiSummaryEnabledPreference
         app:key="pref_ai_summary_enabled"
         android:layout="@layout/preference_ai_summary_enabled"
-        app:title="Enabled"
+        app:title="Use AI summarization"
         app:singleLineTitle="false" />
 
     <PreferenceCategory
-        android:layout="@layout/preference_segment_break" />
+        android:layout="@layout/preference_main_toggle_break" />
 
     <com.simon.harmonichackernews.settings.AiSummaryModePreference
         app:key="pref_ai_summary_mode"

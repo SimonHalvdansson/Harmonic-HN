@@ -91,6 +91,7 @@
 
     <color name="material_you_900">#001E2C</color>
     <color name="material_you_50">#E0F3FF</color>
+    <color name="material_you_primary_200">#B0C6FF</color>
     <color name="material_you_600">#00668B</color>
     <color name="material_you_secondary_100">#D1E5F4</color>
     <color name="material_you_secondary_900">#091E28</color>
@@ -118,6 +119,8 @@
     <color name="material_you_neutral_variant50">#70777C</color>
 
     <color name="settings_header_selected_material_light">#D9DEE2</color>
+    <color name="settings_main_toggle_light">#C6E9D8</color>
+    <color name="settings_main_toggle_white">#C6E9D8</color>
     <color name="settings_header_selected_light">#EAE6D2</color>
     <color name="settings_header_selected_white">#E1E3E5</color>
     <color name="settings_header_selected_black">#151619</color>

@@ -5,10 +5,10 @@
     android:gravity="center_vertical"
     android:minHeight="?android:attr/listPreferredItemHeightSmall"
     android:orientation="horizontal"
-    android:paddingStart="16dp"
-    android:paddingTop="14dp"
+    android:paddingStart="24dp"
+    android:paddingTop="10dp"
     android:paddingEnd="16dp"
-    android:paddingBottom="14dp">
+    android:paddingBottom="10dp">
 
     <TextView
         android:id="@android:id/title"
@@ -17,7 +17,7 @@
         android:layout_weight="1"
         android:fontFamily="@font/product_sans"
         android:textColor="?attr/storyColorNormal"
-        android:textSize="18sp" />
+        android:textSize="17sp" />
 
     <FrameLayout
         android:id="@android:id/widget_frame"
