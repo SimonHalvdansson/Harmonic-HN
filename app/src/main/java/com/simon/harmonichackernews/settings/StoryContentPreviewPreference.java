@@ -18,6 +18,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
+import android.view.ViewTreeObserver;
 import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -38,12 +39,14 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryMetaPreviewAnimator;
 import com.simon.harmonichackernews.utils.Utils;
 
+import java.util.ArrayList;
+
 public class StoryContentPreviewPreference extends FrameLayout implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final long PREVIEW_ANIMATION_DURATION_MS = 180;
     private static final long PREVIEW_TEXT_FADE_DURATION_MS = 90;
     private static final long PREVIEW_IMAGE_FADE_DURATION_MS = 110;
-    private static final long PREVIEW_IMAGE_FADE_START_DELAY_MS = 70;
+    private static final long SMALL_PREVIEW_IMAGE_FADE_IN_DURATION_MS = PREVIEW_ANIMATION_DURATION_MS;
     private static final int LARGE_PREVIEW_IMAGE_HEIGHT_DP = 176;
     private static final int MIN_STABLE_PREVIEW_WIDTH_DP = 240;
     private static final String PREVIEW_STORY_TITLE = "Algorithm breaks speed limit for solving linear equations";
@@ -81,8 +84,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     private int previewImageAnimationToken;
     private int metaAnimationToken;
     private int commentCountAnimationToken;
-    private boolean storyContainerChangingTransitionSuspended;
-    private boolean storyContainerChangingTransitionWasEnabled;
+    private ArrayList<SuspendedLayoutTransition> suspendedStoryLayoutTransitions;
     private final View.OnLayoutChangeListener previewContainerLayoutChangeListener =
             (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
                 if (right - left != oldRight - oldLeft) {
@@ -225,7 +227,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         cancelPreviewHeightAnimator();
         cancelPreviewImageAnimations();
         cancelMetaAnimation();
-        resumeStoryContainerChangingTransition();
+        resumeStoryLayoutTransitions();
         previewRoot = null;
         if (previewItemContainer != null) {
             previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
@@ -545,7 +547,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 || previewItemContainer == null
                 || !ViewCompat.isLaidOut(previewItemContainer)) {
             cancelLargePreviewImageMarginAnimator();
-            resumeStoryContainerChangingTransition();
+            resumeStoryLayoutTransitions();
             applyLargePreviewImageAppearance(largePreviewImage, borderless);
             if (largePreviewDisplayed) {
                 syncPreviewContainerHeight(SettingsUtils.STORY_PREVIEW_IMAGE_LARGE);
@@ -788,6 +790,24 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         return new PreviewHeights(targetContentHeight, targetContainerHeight, targetRootHeight);
     }
 
+    private PreviewHeights calculateActualPreviewHeights(String previewImageMode) {
+        PreviewHeights reservedHeights = calculatePreviewHeights(previewImageMode);
+        if (!reservedHeights.isValid() || previewItemContainer == null) {
+            return reservedHeights;
+        }
+
+        int containerWidth = previewItemContainer.getWidth()
+                - previewItemContainer.getPaddingLeft()
+                - previewItemContainer.getPaddingRight();
+        int actualContentHeight = measureCurrentPreviewItemHeight(
+                containerWidth,
+                previewImageMode);
+        return new PreviewHeights(
+                actualContentHeight,
+                reservedHeights.containerHeight,
+                reservedHeights.rootHeight);
+    }
+
     private boolean isStablePreviewWidth(int containerWidth) {
         return containerWidth >= Utils.pxFromDpInt(previewItemContainer.getResources(), MIN_STABLE_PREVIEW_WIDTH_DP);
     }
@@ -955,9 +975,12 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             rowForHeightAnimation = null;
         }
 
-        if (startContainerHeight == targetHeights.containerHeight
+        if (startContentHeight == targetHeights.contentHeight
+                && startContainerHeight == targetHeights.containerHeight
                 && startRootHeight == targetHeights.rootHeight
-                && startSelfHeight == targetHeights.rootHeight) {
+                && startSelfHeight == targetHeights.rootHeight
+                && (rowForHeightAnimation == null
+                    || startStoryRowHeight == targetStoryRowHeight)) {
             clearStoryRowHeight();
             setPreviewHeights(targetHeights);
             if (endAction != null) {
@@ -1555,63 +1578,117 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         boolean toSmall = SettingsUtils.STORY_PREVIEW_IMAGE_SMALL.equals(toMode);
         boolean toLarge = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(toMode);
 
-        if (fromLarge || toLarge) {
-            suspendStoryContainerChangingTransition();
-        } else {
-            resumeStoryContainerChangingTransition();
-        }
+        suspendStoryLayoutTransitions();
 
-        if (fromLarge && !toLarge) {
-            if (toSmall) {
-                preparePreviewImageFadeIn(smallPreviewImage);
+        if (!fromLarge && !toLarge) {
+            if (fromSmall && !toSmall) {
+                animateSmallPreviewImageOut(toMode, animationToken);
+            } else if (!fromSmall && toSmall) {
+                animateSmallPreviewImageIn(toMode, animationToken);
             } else {
-                hidePreviewImageWithoutDrawing(smallPreviewImage);
-            }
-            PreviewHeights targetHeights = calculatePreviewHeights(toMode);
-            animateLargePreviewImageOut(animationToken, targetHeights);
-            if (toSmall) {
-                fadeInPreviewImage(
-                        smallPreviewImage,
-                        animationToken,
-                        PREVIEW_IMAGE_FADE_START_DELAY_MS + PREVIEW_IMAGE_FADE_DURATION_MS);
+                resumeStoryLayoutTransitions();
             }
             return;
         }
 
-        if (fromSmall && !toSmall) {
-            if (toLarge) {
-                hidePreviewImageWithoutDrawing(smallPreviewImage);
-            } else {
-                fadeOutPreviewImageThenGone(smallPreviewImage, animationToken, () -> {
-                    if (isPreviewImageAnimationActive(animationToken)) {
-                        syncPreviewContainerHeight(toMode, true);
-                    }
-                });
-                hidePreviewImageWithoutDrawing(largePreviewImage);
-                return;
-            }
+        if (fromLarge && !toLarge) {
+            hidePreviewImageWithoutDrawing(smallPreviewImage);
+            PreviewHeights targetHeights = calculatePreviewHeights(toMode);
+            animateLargePreviewImageOut(
+                    animationToken,
+                    targetHeights,
+                    toSmall ? () -> {
+                        if (!isPreviewImageAnimationActive(animationToken)) {
+                            return;
+                        }
+                        animateSmallPreviewImageIn(toMode, animationToken);
+                    } : null);
+            return;
+        }
+
+        if (fromSmall && toLarge) {
+            animateSmallPreviewImageOut(
+                    SettingsUtils.STORY_PREVIEW_IMAGE_OFF,
+                    animationToken,
+                    () -> animateLargePreviewImageIn(toMode, animationToken));
+            return;
         } else if (!toSmall) {
             hidePreviewImageWithoutDrawing(smallPreviewImage);
         }
 
         if (toLarge) {
-            prepareLargePreviewImageFadeIn();
-            resumeStoryContainerChangingTransitionAfterNextLayout();
-            syncPreviewContainerHeight(toMode, true);
-            fadeInPreviewImage(largePreviewImage, animationToken, 0);
+            animateLargePreviewImageIn(toMode, animationToken);
             return;
         }
 
-        resumeStoryContainerChangingTransition();
         hidePreviewImageWithoutDrawing(largePreviewImage);
         if (toSmall) {
             preparePreviewImageFadeIn(smallPreviewImage);
             syncPreviewContainerHeight(toMode, true);
+            resumeStoryLayoutTransitionsAfterNextLayout(animationToken);
             fadeInPreviewImage(smallPreviewImage, animationToken, 0);
             return;
         }
 
         syncPreviewContainerHeight(toMode, true);
+        resumeStoryLayoutTransitionsAfterNextLayout(animationToken);
+    }
+
+    private void animateLargePreviewImageIn(String toMode, int animationToken) {
+        PreviewHeights targetHeights = calculatePreviewHeights(toMode);
+        prepareLargePreviewImageFadeIn();
+        animateLargePreviewImageHeight(
+                0,
+                getLargePreviewImageTargetHeight(),
+                animationToken,
+                targetHeights,
+                null);
+        fadeInPreviewImage(largePreviewImage, animationToken, 0);
+    }
+
+    private void animateSmallPreviewImageIn(String toMode, int animationToken) {
+        hidePreviewImageWithoutDrawing(smallPreviewImage);
+        hidePreviewImageWithoutDrawing(largePreviewImage);
+        PreviewHeights targetHeights = calculateActualPreviewHeights(toMode);
+        applyPreviewHeights(targetHeights, true, true, () -> {
+            if (!isPreviewImageAnimationActive(animationToken)) {
+                return;
+            }
+            preparePreviewImageFadeIn(smallPreviewImage);
+            clearStoryRowHeight();
+            syncPreviewContainerHeight(toMode, false);
+            resumeStoryLayoutTransitionsAfterNextLayout(animationToken);
+            fadeInPreviewImage(smallPreviewImage, animationToken, 0);
+        });
+    }
+
+    private void animateSmallPreviewImageOut(String toMode, int animationToken) {
+        animateSmallPreviewImageOut(toMode, animationToken, null);
+    }
+
+    private void animateSmallPreviewImageOut(
+            String toMode,
+            int animationToken,
+            Runnable afterHeightAnimation) {
+        hidePreviewImageWithoutDrawing(largePreviewImage);
+        fadeOutPreviewImageThenGone(smallPreviewImage, animationToken, () -> {
+            if (!isPreviewImageAnimationActive(animationToken)) {
+                return;
+            }
+            PreviewHeights targetHeights = calculateActualPreviewHeights(toMode);
+            applyPreviewHeights(targetHeights, true, true, () -> {
+                if (!isPreviewImageAnimationActive(animationToken)) {
+                    return;
+                }
+                clearStoryRowHeight();
+                syncPreviewContainerHeight(toMode, false);
+                if (afterHeightAnimation != null) {
+                    afterHeightAnimation.run();
+                } else {
+                    resumeStoryLayoutTransitionsAfterNextLayout(animationToken);
+                }
+            });
+        });
     }
 
     private void preparePreviewImageFadeIn(ImageView previewImage) {
@@ -1631,7 +1708,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
 
         cancelImageViewAnimation(largePreviewImage);
         applyLargePreviewImageAppearance(largePreviewImage, borderlessLargePreviewImage);
-        setLargePreviewImageHeight(getLargePreviewImageTargetHeight());
+        setLargePreviewImageHeight(0);
         largePreviewImage.setAlpha(0f);
         setVisibilityWithChangingOnly(largePreviewImage, View.VISIBLE);
     }
@@ -1641,10 +1718,13 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             return;
         }
 
+        long fadeDuration = previewImage == smallPreviewImage
+                ? SMALL_PREVIEW_IMAGE_FADE_IN_DURATION_MS
+                : PREVIEW_IMAGE_FADE_DURATION_MS;
         previewImage.animate()
                 .alpha(1f)
                 .setStartDelay(startDelayMs)
-                .setDuration(PREVIEW_IMAGE_FADE_DURATION_MS)
+                .setDuration(fadeDuration)
                 .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
                 .setListener(new AnimatorListenerAdapter() {
                     @Override
@@ -1723,7 +1803,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         cancelLargePreviewImageHeightAnimator();
         cancelImageViewAnimation(smallPreviewImage);
         cancelImageViewAnimation(largePreviewImage);
-        resumeStoryContainerChangingTransition();
+        resumeStoryLayoutTransitions();
     }
 
     private void cancelImageViewAnimation(ImageView previewImage) {
@@ -1749,7 +1829,10 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         view.animate().setStartDelay(0);
     }
 
-    private void animateLargePreviewImageOut(int animationToken, PreviewHeights targetHeights) {
+    private void animateLargePreviewImageOut(
+            int animationToken,
+            PreviewHeights targetHeights,
+            Runnable afterHidden) {
         if (largePreviewImage == null) {
             return;
         }
@@ -1762,18 +1845,23 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 .setStartDelay(0)
                 .setDuration(PREVIEW_ANIMATION_DURATION_MS)
                 .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                .setListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        if (!isPreviewImageAnimationActive(animationToken) || largePreviewImage == null) {
-                            return;
-                        }
-                        largePreviewImage.animate().setListener(null);
-                        hidePreviewImageWithoutDrawing(largePreviewImage);
-                    }
-                })
                 .start();
-        animateLargePreviewImageHeight(startHeight, 0, animationToken, targetHeights, null);
+        animateLargePreviewImageHeight(
+                startHeight,
+                0,
+                animationToken,
+                targetHeights,
+                () -> {
+                    if (!isPreviewImageAnimationActive(animationToken)) {
+                        return;
+                    }
+                    hidePreviewImageWithoutDrawing(largePreviewImage);
+                    if (afterHidden != null) {
+                        afterHidden.run();
+                    } else {
+                        resumeStoryLayoutTransitions();
+                    }
+                });
     }
 
     private void animateLargePreviewImageHeight(
@@ -1814,8 +1902,9 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             }
             if (endAction != null) {
                 endAction.run();
+            } else {
+                resumeStoryLayoutTransitions();
             }
-            resumeStoryContainerChangingTransition();
             return;
         }
 
@@ -1834,7 +1923,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                         lerp(startContentHeight, targetHeights.contentHeight, progress),
                         lerp(startContainerHeight, targetHeights.containerHeight, progress),
                         lerp(startRootHeight, targetHeights.rootHeight, progress));
-                setPreviewHeights(frameHeights, true);
+                setPreviewHeights(frameHeights);
                 setMinimumHeight(lerp(startSelfHeight, targetHeights.rootHeight, progress));
             }
         });
@@ -1854,7 +1943,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                     endAction.run();
                 }
                 if (endAction == null) {
-                    resumeStoryContainerChangingTransition();
+                    resumeStoryLayoutTransitions();
                 }
             }
         });
@@ -1877,7 +1966,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
 
         cancelLargePreviewImageMarginAnimator();
         cancelPreviewHeightAnimator();
-        suspendStoryContainerChangingTransition();
+        suspendStoryLayoutTransitions();
 
         float roundedCornerRadius = getResources().getDimension(
                 R.dimen.story_preview_image_corner_radius);
@@ -1980,7 +2069,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 } else {
                     requestPreviewRemeasure();
                 }
-                resumeStoryContainerChangingTransition();
+                resumeStoryLayoutTransitions();
             }
         });
         animator.start();
@@ -2005,7 +2094,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
 
         cancelLargePreviewImageMarginAnimator();
         applyLargePreviewImageAppearance(largePreviewImage, borderlessLargePreviewImage);
-        resumeStoryContainerChangingTransition();
+        resumeStoryLayoutTransitions();
     }
 
     private void applyLargePreviewImageAppearance(ImageView previewImage, boolean borderless) {
@@ -2082,42 +2171,76 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         previewImage.setLayoutParams(marginParams);
     }
 
-    private void suspendStoryContainerChangingTransition() {
-        if (storyContainerChangingTransitionSuspended
-                || storyContainer == null
-                || storyContainer.getLayoutTransition() == null) {
+    private void suspendStoryLayoutTransitions() {
+        if (suspendedStoryLayoutTransitions != null || storyContainer == null) {
             return;
         }
 
-        LayoutTransition transition = storyContainer.getLayoutTransition();
-        storyContainerChangingTransitionWasEnabled =
-                transition.isTransitionTypeEnabled(LayoutTransition.CHANGING);
-        if (storyContainerChangingTransitionWasEnabled) {
-            transition.disableTransitionType(LayoutTransition.CHANGING);
-        }
-        storyContainerChangingTransitionSuspended = true;
+        suspendedStoryLayoutTransitions = new ArrayList<>();
+        suspendLayoutTransitions(storyContainer, suspendedStoryLayoutTransitions);
     }
 
-    private void resumeStoryContainerChangingTransition() {
-        if (!storyContainerChangingTransitionSuspended) {
+    private void suspendLayoutTransitions(
+            View view,
+            ArrayList<SuspendedLayoutTransition> suspendedTransitions) {
+        if (!(view instanceof ViewGroup)) {
             return;
         }
 
-        if (storyContainer != null && storyContainer.getLayoutTransition() != null
-                && storyContainerChangingTransitionWasEnabled) {
-            storyContainer.getLayoutTransition().enableTransitionType(LayoutTransition.CHANGING);
+        ViewGroup viewGroup = (ViewGroup) view;
+        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+            suspendLayoutTransitions(viewGroup.getChildAt(i), suspendedTransitions);
         }
-        storyContainerChangingTransitionSuspended = false;
-        storyContainerChangingTransitionWasEnabled = false;
+        LayoutTransition transition = viewGroup.getLayoutTransition();
+        if (transition != null) {
+            suspendedTransitions.add(new SuspendedLayoutTransition(viewGroup, transition));
+            viewGroup.setLayoutTransition(null);
+        }
     }
 
-    private void resumeStoryContainerChangingTransitionAfterNextLayout() {
+    private void resumeStoryLayoutTransitions() {
+        if (suspendedStoryLayoutTransitions == null) {
+            return;
+        }
+
+        for (SuspendedLayoutTransition suspendedTransition : suspendedStoryLayoutTransitions) {
+            suspendedTransition.viewGroup.setLayoutTransition(suspendedTransition.layoutTransition);
+        }
+        suspendedStoryLayoutTransitions = null;
+    }
+
+    private void resumeStoryLayoutTransitionsAfterNextLayout(int animationToken) {
         if (storyContainer == null) {
-            resumeStoryContainerChangingTransition();
+            resumeStoryLayoutTransitions();
             return;
         }
 
-        storyContainer.post(this::resumeStoryContainerChangingTransition);
+        View currentStoryContainer = storyContainer;
+        ViewTreeObserver viewTreeObserver = currentStoryContainer.getViewTreeObserver();
+        viewTreeObserver.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                ViewTreeObserver currentObserver = currentStoryContainer.getViewTreeObserver();
+                if (currentObserver.isAlive()) {
+                    currentObserver.removeOnPreDrawListener(this);
+                }
+                if (isPreviewImageAnimationActive(animationToken)) {
+                    resumeStoryLayoutTransitions();
+                }
+                return true;
+            }
+        });
+        currentStoryContainer.requestLayout();
+    }
+
+    private static class SuspendedLayoutTransition {
+        final ViewGroup viewGroup;
+        final LayoutTransition layoutTransition;
+
+        SuspendedLayoutTransition(ViewGroup viewGroup, LayoutTransition layoutTransition) {
+            this.viewGroup = viewGroup;
+            this.layoutTransition = layoutTransition;
+        }
     }
 
     private int getLargePreviewImageTargetHeight() {
