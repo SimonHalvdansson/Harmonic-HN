@@ -232,6 +232,13 @@ final class CommentActionOverlayController {
 
         configureOverlayInsets(content);
         configureCardWidth(card);
+        content.addOnLayoutChangeListener((view, left, top, right, bottom,
+                                           oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left != oldRight - oldLeft
+                    || bottom - top != oldBottom - oldTop) {
+                refreshForConfiguration();
+            }
+        });
         bind(comment);
 
         scrim.setOnClickListener(v -> dismiss(true));
@@ -1051,16 +1058,19 @@ final class CommentActionOverlayController {
     private void configureCardWidth(MaterialCardView card) {
         Context ctx = host.requireCommentActionContext();
         int maxCardWidth = Utils.pxFromDpInt(ctx.getResources(), Utils.isTablet(ctx.getResources()) ? 640 : 520);
-        int horizontalPadding = Utils.pxFromDpInt(ctx.getResources(), 40);
         int hostWidth = ctx.getResources().getDisplayMetrics().widthPixels;
+        int horizontalPadding = Utils.pxFromDpInt(ctx.getResources(), 40);
         if (card.getParent() instanceof View) {
-            int parentWidth = ((View) card.getParent()).getWidth();
-            if (parentWidth > 0) {
-                hostWidth = parentWidth;
+            View parent = (View) card.getParent();
+            if (parent.getWidth() > 0) {
+                hostWidth = parent.getWidth();
+                horizontalPadding = parent.getPaddingLeft() + parent.getPaddingRight();
             }
         }
-        int availableWidth = Math.max(Utils.pxFromDpInt(ctx.getResources(), 280),
-                hostWidth - horizontalPadding);
+        int availableWidth = hostWidth - horizontalPadding;
+        if (availableWidth <= 0) {
+            return;
+        }
 
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) card.getLayoutParams();
         params.width = Math.min(maxCardWidth, availableWidth);

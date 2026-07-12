@@ -351,6 +351,13 @@ final class LinkSummaryOverlayController {
         card.setStrokeColor(Color.TRANSPARENT);
         configureOverlayInsets(binding.linkSummaryContent);
         configureCardWidth(card);
+        binding.linkSummaryContent.addOnLayoutChangeListener((view, left, top, right, bottom,
+                                                              oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left != oldRight - oldLeft
+                    || bottom - top != oldBottom - oldTop) {
+                refreshForLayout();
+            }
+        });
         binding.linkSummaryScrim.setOnClickListener(v -> dismiss(true));
         binding.linkSummaryContent.setOnClickListener(v -> dismiss(true));
         card.setOnTouchListener((v, event) -> true);
@@ -857,11 +864,37 @@ final class LinkSummaryOverlayController {
     private void configureCardWidth(MaterialCardView target) {
         Context context = host.requireLinkSummaryContext();
         int max = Utils.pxFromDpInt(context.getResources(), Utils.isTablet(context.getResources()) ? 640 : 520);
-        int available = context.getResources().getDisplayMetrics().widthPixels -
-                Utils.pxFromDpInt(context.getResources(), 40);
+        int hostWidth = context.getResources().getDisplayMetrics().widthPixels;
+        int horizontalPadding = Utils.pxFromDpInt(context.getResources(), 40);
+        if (target.getParent() instanceof View) {
+            View parent = (View) target.getParent();
+            if (parent.getWidth() > 0) {
+                hostWidth = parent.getWidth();
+                horizontalPadding = parent.getPaddingLeft() + parent.getPaddingRight();
+            }
+        }
+        int available = hostWidth - horizontalPadding;
+        if (available <= 0) {
+            return;
+        }
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) target.getLayoutParams();
-        params.width = Math.min(max, Math.max(Utils.pxFromDpInt(context.getResources(), 280), available));
+        params.width = Math.min(max, available);
         target.setLayoutParams(params);
+    }
+
+    private void refreshForLayout() {
+        if (binding == null || card == null) return;
+        if (imageBinding != null) {
+            Drawable drawable = imageBinding.imageOnlyPreview.getDrawable();
+            if (drawable != null) configureImageOnlySize(drawable);
+            return;
+        }
+
+        configureCardWidth(card);
+        ViewGroup.LayoutParams params = binding.linkSummaryScroll.getLayoutParams();
+        params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        binding.linkSummaryScroll.setLayoutParams(params);
+        resizeScroll();
     }
 
     private void resizeScroll() {
