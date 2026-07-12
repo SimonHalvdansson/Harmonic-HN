@@ -3,40 +3,52 @@
 
     <item
         android:id="@+id/menu_refresh"
+        android:icon="@drawable/ic_refresh"
         android:title="Refresh" />
 
     <item
         android:id="@+id/menu_open_parent"
+        android:icon="@drawable/ic_reply"
         android:title="Open parent" />
 
     <item
         android:id="@+id/menu_open_top_level"
+        android:icon="@drawable/ic_arrow_upward"
         android:title="Open top level" />
 
     <item
         android:id="@+id/menu_adblock"
+        android:icon="@drawable/ic_block"
         android:title="Disable AdBlock" />
 
     <item
         android:id="@+id/menu_bookmark"
+        android:icon="@drawable/ic_bookmark"
         android:title="Bookmark" />
 
-    <item android:id="@+id/menu_search_comments"
-        android:title="Search comments"/>
+    <item
+        android:id="@+id/menu_search_comments"
+        android:icon="@drawable/ic_search"
+        android:title="Search comments" />
 
     <item
         android:id="@+id/menu_change_comment_sorting"
+        android:icon="@drawable/ic_filter_list"
         android:title="Sort comments" />
 
-    <item android:id="@+id/menu_comments_by_op"
-        android:title="Comments by OP"/>
+    <item
+        android:id="@+id/menu_comments_by_op"
+        android:icon="@drawable/ic_person"
+        android:title="Comments by OP" />
 
     <item
         android:id="@+id/menu_comments_browser"
+        android:icon="@drawable/ic_open_in_browser"
         android:title="Open in browser" />
 
     <item
         android:id="@+id/menu_archive"
+        android:icon="@drawable/ic_history"
         android:title="View on archive" />
 
 </menu>

@@ -2545,6 +2545,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         PopupMenu popup = new PopupMenu(requireActivity(), view);
+        popup.setForceShowIcon(true);
 
         popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             @Override
@@ -2619,6 +2620,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (bookmarksEnabled && story != null) {
             boolean bookmarked = Utils.isBookmarked(ctx, story.id);
             bookmarkItem.setTitle(bookmarked ? "Remove bookmark" : "Bookmark");
+            bookmarkItem.setIcon(bookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark);
         }
 
         for (int i = 0; i < popup.getMenu().size(); i++) {
