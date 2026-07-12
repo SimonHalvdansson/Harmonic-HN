@@ -21,6 +21,7 @@
     <dimen name="settings_list_segment_corner_radius">28dp</dimen>
     <dimen name="settings_list_main_toggle_corner_radius">36dp</dimen>
     <dimen name="settings_list_segment_vertical_padding_extra">2dp</dimen>
+    <dimen name="story_preview_image_corner_radius">6dp</dimen>
     <dimen name="story_large_preview_image_inset">10dp</dimen>
     <dimen name="story_large_preview_image_bottom_margin">2dp</dimen>
 

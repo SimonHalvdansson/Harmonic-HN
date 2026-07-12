@@ -9,12 +9,15 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Outline;
+import android.graphics.Path;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -535,7 +538,6 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             return;
         }
 
-        applyLargePreviewImageClipping(largePreviewImage, borderless);
         boolean largePreviewDisplayed = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(
                 getDisplayedPreviewImageMode());
         if (!animate
@@ -544,7 +546,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 || !ViewCompat.isLaidOut(previewItemContainer)) {
             cancelLargePreviewImageMarginAnimator();
             resumeStoryContainerChangingTransition();
-            applyLargePreviewImageMargins(largePreviewImage, borderless);
+            applyLargePreviewImageAppearance(largePreviewImage, borderless);
             if (largePreviewDisplayed) {
                 syncPreviewContainerHeight(SettingsUtils.STORY_PREVIEW_IMAGE_LARGE);
             }
@@ -1041,6 +1043,10 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         return Math.round(start + (end - start) * progress);
     }
 
+    private float lerp(float start, float end, float progress) {
+        return start + (end - start) * progress;
+    }
+
     private void clearPreviewHeights() {
         cancelPreviewHeightAnimator();
         clearStoryRowHeight();
@@ -1238,6 +1244,52 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
 
         boolean isValid() {
             return contentHeight > 0 && containerHeight > 0 && rootHeight > 0;
+        }
+    }
+
+    private static class LargePreviewImageOutlineProvider extends ViewOutlineProvider {
+        private final Path outlinePath = new Path();
+        private final float[] cornerRadii = new float[8];
+        private final float topCornerRadius;
+        private float bottomCornerRadius;
+
+        LargePreviewImageOutlineProvider(float topCornerRadius, float bottomCornerRadius) {
+            this.topCornerRadius = topCornerRadius;
+            setBottomCornerRadius(bottomCornerRadius);
+        }
+
+        @Override
+        public void getOutline(View view, Outline outline) {
+            if (view.getWidth() <= 0 || view.getHeight() <= 0) {
+                outline.setEmpty();
+                return;
+            }
+
+            outlinePath.reset();
+            outlinePath.addRoundRect(
+                    0,
+                    0,
+                    view.getWidth(),
+                    view.getHeight(),
+                    cornerRadii,
+                    Path.Direction.CW);
+            outline.setConvexPath(outlinePath);
+        }
+
+        float getBottomCornerRadius() {
+            return bottomCornerRadius;
+        }
+
+        void setBottomCornerRadius(float radius) {
+            bottomCornerRadius = radius;
+            cornerRadii[0] = topCornerRadius;
+            cornerRadii[1] = topCornerRadius;
+            cornerRadii[2] = topCornerRadius;
+            cornerRadii[3] = topCornerRadius;
+            cornerRadii[4] = radius;
+            cornerRadii[5] = radius;
+            cornerRadii[6] = radius;
+            cornerRadii[7] = radius;
         }
     }
 
@@ -1819,13 +1871,31 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     private void animateLargePreviewImageMargins(boolean borderless) {
         if (largePreviewImage == null
                 || !(largePreviewImage.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)) {
-            applyLargePreviewImageMargins(largePreviewImage, borderless);
+            applyLargePreviewImageAppearance(largePreviewImage, borderless);
             return;
         }
 
         cancelLargePreviewImageMarginAnimator();
         cancelPreviewHeightAnimator();
         suspendStoryContainerChangingTransition();
+
+        float roundedCornerRadius = getResources().getDimension(
+                R.dimen.story_preview_image_corner_radius);
+        float currentBottomCornerRadius = borderless ? roundedCornerRadius : 0f;
+        if (largePreviewImage.getOutlineProvider() instanceof LargePreviewImageOutlineProvider) {
+            currentBottomCornerRadius =
+                    ((LargePreviewImageOutlineProvider) largePreviewImage.getOutlineProvider())
+                            .getBottomCornerRadius();
+        }
+        float startBottomCornerRadius = currentBottomCornerRadius;
+        float targetBottomCornerRadius = borderless ? 0f : roundedCornerRadius;
+        LargePreviewImageOutlineProvider outlineProvider =
+                new LargePreviewImageOutlineProvider(
+                        roundedCornerRadius,
+                        startBottomCornerRadius);
+        largePreviewImage.setOutlineProvider(outlineProvider);
+        largePreviewImage.setClipToOutline(true);
+        largePreviewImage.invalidateOutline();
 
         ViewGroup.MarginLayoutParams marginParams =
                 (ViewGroup.MarginLayoutParams) largePreviewImage.getLayoutParams();
@@ -1882,6 +1952,11 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                     lerp(startMarginTop, targetInset, progress),
                     lerp(startMarginEnd, targetInset, progress),
                     lerp(startMarginBottom, targetBottomMargin, progress));
+            outlineProvider.setBottomCornerRadius(lerp(
+                    startBottomCornerRadius,
+                    targetBottomCornerRadius,
+                    progress));
+            largePreviewImage.invalidateOutline();
             if (animatePreviewHeights) {
                 PreviewHeights frameHeights = new PreviewHeights(
                         lerp(startContentHeight, targetHeights.contentHeight, progress),
@@ -1957,6 +2032,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             return;
         }
 
+        previewImage.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
         if (borderless) {
             previewImage.setBackground(null);
             previewImage.setClipToOutline(false);
