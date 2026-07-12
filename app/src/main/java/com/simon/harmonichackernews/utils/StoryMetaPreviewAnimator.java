@@ -23,11 +23,11 @@ public final class StoryMetaPreviewAnimator {
     private static final String POINTS_PREFIX = "53 points \u2022 ";
     private static final String COMPACT_POINTS_PREFIX = "+53 \u2022 ";
     private static final String FORMAT_TRANSITION_PREFIX = "+53 points \u2022 ";
-    private static final String META_DOMAIN = "quantamagazine";
+    private static final String META_DOMAIN = "science";
     private static final String META_TOP_LEVEL_DOMAIN = ".org";
     private static final String META_TIME_SUFFIX = " \u2022 2h";
-    private static final String META_SUFFIX_WITH_TOP_LEVEL_DOMAIN = "quantamagazine.org \u2022 2h";
-    private static final String META_SUFFIX_WITHOUT_TOP_LEVEL_DOMAIN = "quantamagazine \u2022 2h";
+    private static final String META_SUFFIX_WITH_TOP_LEVEL_DOMAIN = "science.org \u2022 2h";
+    private static final String META_SUFFIX_WITHOUT_TOP_LEVEL_DOMAIN = "science \u2022 2h";
     private static final WeakHashMap<TextView, ValueAnimator> RUNNING_ANIMATORS = new WeakHashMap<>();
 
     private StoryMetaPreviewAnimator() {

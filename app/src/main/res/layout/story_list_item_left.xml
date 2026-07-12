@@ -162,7 +162,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:textColor="?attr/textColorDefault"
-                    android:text="53 points • quantamagazine.org • 2h"
+                    android:text="53 points • science.org • 2h"
                     android:fontFamily="@font/product_sans"
                     android:textSize="13sp" />
 
