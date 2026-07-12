@@ -888,7 +888,7 @@ final class LinkSummaryOverlayController {
         transform.setScrimColor(Color.TRANSPARENT);
         transform.setDrawingViewId(ensureDrawingViewId(drawing));
         transform.setTransitionDirection(direction);
-        transform.setFadeMode(MaterialContainerTransform.FADE_MODE_THROUGH);
+        transform.setFadeMode(MaterialContainerTransform.FADE_MODE_IN);
         transform.setFitMode(MaterialContainerTransform.FIT_MODE_AUTO);
         transform.setStartShapeAppearanceModel(createShape(start));
         transform.setEndShapeAppearanceModel(createShape(end));
