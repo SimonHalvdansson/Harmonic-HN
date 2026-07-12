@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcelable;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -40,6 +41,9 @@ import okhttp3.Call;
 public final class AiModelSelectorDialogFragment extends BottomSheetDialogFragment {
     private static final String TAG = "ai_model_selector";
     private static final String STATE_MODEL = "model";
+    private static final String STATE_LIST_SCROLL = "list_scroll";
+    private static final String STATE_SORT = "sort";
+    private static final String STATE_FREE_ONLY = "free_only";
     private static final long PRICE_DEBOUNCE_MS = 400L;
     private static final long CATALOG_LOADING_DELAY_MS = 300L;
     private static final long STATE_FADE_OUT_MS = 80L;
@@ -60,6 +64,7 @@ public final class AiModelSelectorDialogFragment extends BottomSheetDialogFragme
     private int catalogRequestGeneration;
     private int priceAnimationGeneration;
     private View currentPriceState;
+    private Parcelable pendingListScrollState;
 
     public static void show(androidx.fragment.app.FragmentManager fragmentManager) {
         new AiModelSelectorDialogFragment().show(fragmentManager, TAG);
@@ -85,6 +90,18 @@ public final class AiModelSelectorDialogFragment extends BottomSheetDialogFragme
         provider = AiSummaryProviders.getProviderForBaseUrl(baseUrl);
         if (provider == null) {
             provider = AiSummaryProviders.OPENROUTER;
+        }
+
+        if (savedInstanceState != null) {
+            pendingListScrollState = savedInstanceState.getParcelable(STATE_LIST_SCROLL);
+            freeOnly = savedInstanceState.getBoolean(STATE_FREE_ONLY, false);
+            String savedSort = savedInstanceState.getString(
+                    STATE_SORT, AiModelCatalog.Sort.POPULAR.name());
+            try {
+                selectedSort = AiModelCatalog.Sort.valueOf(savedSort);
+            } catch (IllegalArgumentException ignored) {
+                selectedSort = AiModelCatalog.Sort.POPULAR;
+            }
         }
 
         String currentModel = savedInstanceState == null
@@ -124,6 +141,12 @@ public final class AiModelSelectorDialogFragment extends BottomSheetDialogFragme
         super.onSaveInstanceState(outState);
         if (binding != null) {
             outState.putString(STATE_MODEL, getModelInput());
+            outState.putString(STATE_SORT, selectedSort.name());
+            outState.putBoolean(STATE_FREE_ONLY, freeOnly);
+            if (binding.aiModelList.getLayoutManager() != null) {
+                outState.putParcelable(STATE_LIST_SCROLL,
+                        binding.aiModelList.getLayoutManager().onSaveInstanceState());
+            }
         }
     }
 
@@ -192,6 +215,12 @@ public final class AiModelSelectorDialogFragment extends BottomSheetDialogFragme
     }
 
     private void configureSortControls() {
+        int selectedControl = freeOnly
+                ? R.id.ai_model_sort_free
+                : selectedSort == AiModelCatalog.Sort.PRICE_LOW_TO_HIGH
+                ? R.id.ai_model_sort_price
+                : R.id.ai_model_sort_popular;
+        binding.aiModelSortGroup.check(selectedControl);
         binding.aiModelSortGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
             if (checkedIds.isEmpty()) {
                 return;
@@ -240,6 +269,7 @@ public final class AiModelSelectorDialogFragment extends BottomSheetDialogFragme
                             }
                         }
                         adapter.setModels(displayedModels);
+                        restorePendingListScrollState();
                         loadProviderIcons(models);
                         binding.aiModelCatalogState.setVisibility(
                                 displayedModels.isEmpty() ? View.VISIBLE : View.GONE);
@@ -269,6 +299,15 @@ public final class AiModelSelectorDialogFragment extends BottomSheetDialogFragme
                         binding.aiModelListTitle.setText(R.string.ai_model_suggestions);
                     }
                 });
+    }
+
+    private void restorePendingListScrollState() {
+        if (pendingListScrollState == null
+                || binding.aiModelList.getLayoutManager() == null) {
+            return;
+        }
+        binding.aiModelList.getLayoutManager().onRestoreInstanceState(pendingListScrollState);
+        pendingListScrollState = null;
     }
 
     private void loadProviderIcons(List<AiModelCatalog.Model> models) {
