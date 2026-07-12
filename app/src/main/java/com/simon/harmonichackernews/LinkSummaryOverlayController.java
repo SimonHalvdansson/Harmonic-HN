@@ -48,6 +48,7 @@ import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
+import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.TextSizeImageSpan;
@@ -142,6 +143,7 @@ final class LinkSummaryOverlayController {
 
         storyBinding = StoryLinkSummaryContentBinding.inflate(
                 LayoutInflater.from(context), binding.linkSummaryBody, true);
+        applyStoryTypography();
         bindStoryKnownContent(context, story);
         configureStoryActions(context, story);
         LinkSummaryLoader.Result cached = StoryPreviewImageLoader.getCachedLinkSummary(context, story.url);
@@ -173,6 +175,7 @@ final class LinkSummaryOverlayController {
         fallbackTitle = firstNonEmpty(link.getResolvedTitle(), link.getLabel(), link.getUrl());
         referenceBinding = ReferenceLinkSummaryContentBinding.inflate(
                 LayoutInflater.from(context), binding.linkSummaryBody, true);
+        applyReferenceTypography();
         referenceBinding.referenceLinkDomain.setText(safeDomain(link.getUrl()));
         FaviconLoader.loadFavicon(link.getUrl(), referenceBinding.referenceLinkFavicon, context,
                 SettingsUtils.getPreferredFaviconProvider(context));
@@ -191,6 +194,7 @@ final class LinkSummaryOverlayController {
         fallbackTitle = firstNonEmpty(title, url);
         referenceBinding = ReferenceLinkSummaryContentBinding.inflate(
                 LayoutInflater.from(context), binding.linkSummaryBody, true);
+        applyReferenceTypography();
         referenceBinding.referenceLinkDomain.setText(safeDomain(url));
         FaviconLoader.loadFavicon(url, referenceBinding.referenceLinkFavicon, context,
                 SettingsUtils.getPreferredFaviconProvider(context));
@@ -198,6 +202,21 @@ final class LinkSummaryOverlayController {
         startReferenceShimmers();
         loadReferenceSummary();
         startEnterTransition();
+    }
+
+    private void applyStoryTypography() {
+        FontUtils.setLinkSummaryStoryTitleTypeface(storyBinding.storyLinkTitle);
+        FontUtils.setLinkSummaryMetaTypeface(storyBinding.storyLinkMeta);
+        FontUtils.setLinkSummaryBodyTypeface(storyBinding.storyLinkDescription);
+        FontUtils.setLinkSummaryErrorTypeface(storyBinding.storyLinkError);
+    }
+
+    private void applyReferenceTypography() {
+        FontUtils.setLinkSummaryMetaTypeface(referenceBinding.referenceLinkDomain);
+        FontUtils.setLinkSummaryReferenceTitleTypeface(referenceBinding.referenceLinkTitle);
+        FontUtils.setLinkSummaryBodyTypeface(referenceBinding.referenceLinkDescription);
+        FontUtils.setLinkSummaryErrorTypeface(referenceBinding.referenceLinkError);
+        FontUtils.setLinkSummaryButtonTypeface(referenceBinding.referenceLinkOpen);
     }
 
     @SuppressLint("ClickableViewAccessibility")

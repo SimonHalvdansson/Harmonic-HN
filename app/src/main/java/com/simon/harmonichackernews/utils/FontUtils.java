@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.utils;
 
 import android.content.Context;
 import android.graphics.Typeface;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.widget.TextView;
 
@@ -31,6 +32,20 @@ public class FontUtils {
             14,
             15,
             15);
+    private static final FontSizes LINK_SUMMARY_STORY_TITLE_SIZES = STORY_TITLE_SIZES.plus(2.5f);
+    private static final FontSizes LINK_SUMMARY_REFERENCE_TITLE_SIZES = STORY_TITLE_SIZES.plus(0.5f);
+    private static final FontSizes LINK_SUMMARY_META_SIZES = STORY_META_SIZES;
+    private static final FontSizes LINK_SUMMARY_BODY_SIZES = COMMENT_TEXT_SIZES;
+    private static final FontSizes LINK_SUMMARY_ERROR_SIZES = COMMENT_TEXT_SIZES.plus(-1f);
+    private static final FontSizes LINK_SUMMARY_BUTTON_SIZES = new FontSizes(
+            14,
+            13.5f,
+            14,
+            13,
+            13,
+            13,
+            14,
+            14);
 
     public static Typeface activeRegular;
     public static Typeface activeBold;
@@ -153,6 +168,30 @@ public class FontUtils {
         setTypeface(textView, true, COMMENTS_HEADER_TITLE_SIZES);
     }
 
+    public static void setLinkSummaryStoryTitleTypeface(TextView textView) {
+        setTypeface(textView, true, LINK_SUMMARY_STORY_TITLE_SIZES);
+    }
+
+    public static void setLinkSummaryReferenceTitleTypeface(TextView textView) {
+        setTypeface(textView, true, LINK_SUMMARY_REFERENCE_TITLE_SIZES);
+    }
+
+    public static void setLinkSummaryMetaTypeface(TextView textView) {
+        setTypeface(textView, false, LINK_SUMMARY_META_SIZES);
+    }
+
+    public static void setLinkSummaryBodyTypeface(TextView textView) {
+        setTypeface(textView, false, LINK_SUMMARY_BODY_SIZES);
+    }
+
+    public static void setLinkSummaryErrorTypeface(TextView textView) {
+        setTypeface(textView, false, LINK_SUMMARY_ERROR_SIZES);
+    }
+
+    public static void setLinkSummaryButtonTypeface(TextView textView) {
+        setTypeface(textView, true, LINK_SUMMARY_BUTTON_SIZES);
+    }
+
     private static void setMultipleTypefaces(boolean bold, FontSizes sizes, TextView... textViews) {
         for (TextView textView : textViews) {
             FontUtils.setTypeface(textView, bold, sizes);
@@ -164,7 +203,9 @@ public class FontUtils {
     }
 
     private static void setTypeface(TextView textView, boolean bold, FontSizes sizes, int unit) {
-        if (activeRegular == null) {
+        String preferredFont = SettingsUtils.getPreferredFont(textView.getContext());
+        if (activeRegular == null || activeBold == null
+                || TextUtils.isEmpty(font) || !font.equals(preferredFont)) {
             init(textView.getContext());
         }
 
