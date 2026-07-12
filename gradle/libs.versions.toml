@@ -5,8 +5,8 @@ agp = "9.2.1"
 android-application = { id = "com.android.application", version.ref = "agp" }
 
 [libraries]
-androidx-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.10.0"
-androidx-lifecycle-viewmodel-ktx = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0"
+androidx-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.11.0"
+androidx-lifecycle-viewmodel-ktx = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0"
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-core = "androidx.core:core:1.19.0"
 androidx-recyclerview = "androidx.recyclerview:recyclerview:1.4.0"
@@ -27,8 +27,8 @@ materialui = "com.google.android.material:material:1.14.0"
 
 volley = "com.android.volley:volley:1.2.1"
 
-okhttp-core = "com.squareup.okhttp3:okhttp:5.3.2"
-okhttp-urlconnection = "com.squareup.okhttp3:okhttp-urlconnection:5.3.2"
+okhttp-core = "com.squareup.okhttp3:okhttp:5.4.0"
+okhttp-urlconnection = "com.squareup.okhttp3:okhttp-urlconnection:5.4.0"
 
 shimmer = "com.facebook.shimmer:shimmer:0.5.0"
 jsoup = "org.jsoup:jsoup:1.22.2"
