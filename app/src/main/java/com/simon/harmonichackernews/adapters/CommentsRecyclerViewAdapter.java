@@ -75,6 +75,7 @@ import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
 import com.simon.harmonichackernews.utils.AccessibilityTextUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
+import com.simon.harmonichackernews.utils.PreviewImageLayoutUtils;
 import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache;
@@ -193,8 +194,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private static final int INTERLEAVED_REFERENCE_LINK_BOTTOM_MARGIN_DP = 2;
     private static final int INTERLEAVED_COMMENT_TEXT_TOP_MARGIN_DP = 5;
     private static final int HEADER_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP = 176;
-    private static final int HEADER_PREVIEW_IMAGE_MIN_HEIGHT_DP = 164;
-    private static final int HEADER_PREVIEW_IMAGE_MAX_HEIGHT_DP = 208;
     private static final int HEADER_PREVIEW_IMAGE_TOP_PADDING_REDUCTION_DP = 4;
     private static final int HEADER_FAVICON_TINT_SIZE_DP = 64;
 
@@ -1308,8 +1307,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     private int getHeaderPreviewImageHeight(ImageView previewImage) {
         int viewHeight = previewImage.getHeight();
-        int maxHeight = Utils.pxFromDpInt(previewImage.getResources(), HEADER_PREVIEW_IMAGE_MAX_HEIGHT_DP);
-        return viewHeight > 0 ? Math.max(viewHeight, maxHeight) : maxHeight;
+        int defaultHeight = Utils.pxFromDpInt(
+                previewImage.getResources(),
+                HEADER_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP);
+        return viewHeight > 0 ? Math.max(viewHeight, defaultHeight) : defaultHeight;
     }
 
     private void updateHeaderPreviewImageLayout(HeaderViewHolder headerViewHolder, Drawable drawable) {
@@ -1317,33 +1318,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             return;
         }
 
-        int width = headerViewHolder.previewImage.getWidth();
-        if (width <= 0) {
-            width = getHeaderPreviewImageWidth(headerViewHolder.previewImage);
-        }
-
-        int targetHeight = Utils.pxFromDpInt(
-                headerViewHolder.previewImage.getResources(),
+        PreviewImageLayoutUtils.applyWideImageHeight(
+                headerViewHolder.previewImage,
+                drawable,
                 HEADER_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP);
-        int intrinsicWidth = drawable.getIntrinsicWidth();
-        int intrinsicHeight = drawable.getIntrinsicHeight();
-        if (width > 0 && intrinsicWidth > 0 && intrinsicHeight > 0) {
-            targetHeight = Math.round((float) width * intrinsicHeight / intrinsicWidth);
-        }
-
-        int minHeight = Utils.pxFromDpInt(
-                headerViewHolder.previewImage.getResources(),
-                HEADER_PREVIEW_IMAGE_MIN_HEIGHT_DP);
-        int maxHeight = Utils.pxFromDpInt(
-                headerViewHolder.previewImage.getResources(),
-                HEADER_PREVIEW_IMAGE_MAX_HEIGHT_DP);
-        targetHeight = Math.max(minHeight, Math.min(maxHeight, targetHeight));
-
-        ViewGroup.LayoutParams layoutParams = headerViewHolder.previewImage.getLayoutParams();
-        if (layoutParams != null && layoutParams.height != targetHeight) {
-            layoutParams.height = targetHeight;
-            headerViewHolder.previewImage.setLayoutParams(layoutParams);
-        }
     }
 
     private void setHeaderPreviewImageVisibility(HeaderViewHolder headerViewHolder, int visibility) {
@@ -1393,6 +1371,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         previewImage.setAlpha(1f);
         previewImage.setImageDrawable(null);
         previewImage.setVisibility(GONE);
+        PreviewImageLayoutUtils.resetHeight(
+                previewImage,
+                HEADER_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP);
     }
 
     private static boolean isCurrentHeaderPreviewTarget(ImageView previewImage, String imageUrl) {

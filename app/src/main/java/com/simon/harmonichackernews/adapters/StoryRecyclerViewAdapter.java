@@ -47,6 +47,7 @@ import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import com.simon.harmonichackernews.utils.AccessibilityTextUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
+import com.simon.harmonichackernews.utils.PreviewImageLayoutUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache;
 import com.simon.harmonichackernews.utils.TextSizeImageSpan;
@@ -94,6 +95,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final long CLICKED_STATE_ANIMATION_DURATION_MS = 180;
     private static final long CARD_TINT_ANIMATION_DURATION_MS = 180;
     private static final int FAVICON_TINT_SIZE_DP = 64;
+    private static final int LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP = 176;
     private static final String PAYLOAD_CLICKED_STATE = "clicked_state";
     private static final String PAYLOAD_STORY_INDEX = "story_index";
     private static final String PAYLOAD_LOAD_MORE_STATE = "load_more_state";
@@ -932,7 +934,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 ? context.getResources().getDisplayMetrics().widthPixels
                 : Utils.pxFromDpInt(context.getResources(), 72);
         int previewHeight = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
-                ? Utils.pxFromDpInt(context.getResources(), 176)
+                ? Utils.pxFromDpInt(context.getResources(), LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP)
                 : Utils.pxFromDpInt(context.getResources(), 54);
         ImageRequest request = new ImageRequest.Builder(context)
                 .data(imageUrl)
@@ -982,7 +984,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 ? previewImage.getResources().getDisplayMetrics().widthPixels
                 : Utils.pxFromDpInt(previewImage.getResources(), 72);
         int previewHeight = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
-                ? Utils.pxFromDpInt(previewImage.getResources(), 176)
+                ? Utils.pxFromDpInt(previewImage.getResources(), LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP)
                 : Utils.pxFromDpInt(previewImage.getResources(), 54);
         ImageRequest request = new ImageRequest.Builder(previewImage.getContext())
                 .data(imageUrl)
@@ -1034,6 +1036,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         cachePreviewState(previewImage.getContext(), story);
                         if (isCurrentPreviewTarget(previewImage, imageUrl)) {
                             super.onSuccess(result);
+                            if (previewImage == storyViewHolder.largePreviewImage) {
+                                PreviewImageLayoutUtils.applyWideImageHeight(
+                                        previewImage,
+                                        result,
+                                        LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP);
+                            }
                             applyStoryCardBackground(
                                     storyViewHolder,
                                     story,
@@ -1067,6 +1075,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         previewImage.setImageDrawable(cachedPreviewImage);
+        if (previewImage == storyViewHolder.largePreviewImage) {
+            PreviewImageLayoutUtils.applyWideImageHeight(
+                    previewImage,
+                    cachedPreviewImage,
+                    LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP);
+        }
         previewImage.setAlpha(getPreviewImageTargetAlpha(story));
         setPreviewImageVisibility(storyViewHolder, previewImage, View.VISIBLE);
         story.previewImageLoaded = true;
@@ -1090,14 +1104,14 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     private static void resetPreviewImages(StoryViewHolder storyViewHolder) {
         storyViewHolder.cancelPreviewImageRequests();
-        boolean changed = resetPreviewImage(storyViewHolder.smallPreviewImage)
-                | resetPreviewImage(storyViewHolder.largePreviewImage);
+        boolean changed = resetPreviewImage(storyViewHolder.smallPreviewImage, false)
+                | resetPreviewImage(storyViewHolder.largePreviewImage, true);
         if (changed) {
             storyViewHolder.itemView.requestLayout();
         }
     }
 
-    private static boolean resetPreviewImage(ImageView previewImage) {
+    private static boolean resetPreviewImage(ImageView previewImage, boolean large) {
         if (previewImage == null) {
             return false;
         }
@@ -1113,6 +1127,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         previewImage.setAlpha(1.0f);
         previewImage.setImageDrawable(null);
         previewImage.setVisibility(View.GONE);
+        if (large) {
+            PreviewImageLayoutUtils.resetHeight(
+                    previewImage,
+                    LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP);
+        }
         return changed;
     }
 

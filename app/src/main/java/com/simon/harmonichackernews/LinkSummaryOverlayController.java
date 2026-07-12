@@ -50,6 +50,7 @@ import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
+import com.simon.harmonichackernews.utils.PreviewImageLayoutUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.TextSizeImageSpan;
 import com.simon.harmonichackernews.utils.Utils;
@@ -92,6 +93,7 @@ final class LinkSummaryOverlayController {
     private static final int ACTION_SWAP_IN_DURATION_MS = 150;
     private static final float ACTION_SWAP_MIN_SCALE = 0.72f;
     private static final int CARD_CORNER_RADIUS_DP = 28;
+    private static final int STORY_PREVIEW_DEFAULT_HEIGHT_DP = 220;
     private static final int PREDICTIVE_BACK_TRANSLATION_X_DP = 56;
     private static final int PREDICTIVE_BACK_TRANSLATION_Y_DP = 18;
     private static final float PREDICTIVE_BACK_MIN_SCALE = 0.9f;
@@ -616,12 +618,23 @@ final class LinkSummaryOverlayController {
                     @Override public void onSuccess(Drawable result) {
                         super.onSuccess(result);
                         if (storyBinding == null) return;
+                        PreviewImageLayoutUtils.applyWideImageHeight(
+                                imageView,
+                                storyBinding.storyLinkPreviewContainer,
+                                result,
+                                STORY_PREVIEW_DEFAULT_HEIGHT_DP);
                         storyBinding.storyLinkPreviewShimmer.stopShimmer();
                         storyBinding.storyLinkPreviewShimmer.setVisibility(View.GONE);
                         imageView.setVisibility(View.VISIBLE);
                         int base = PreviewImageTintUtils.getTintBaseColor(imageView.getContext());
                         PreviewImageTintUtils.updateStoryPreviewImageTintColor(story, imageUrl, result, base,
                                 SettingsUtils.getPreferredPaletteTintConfigKey(imageView.getContext()));
+                        imageView.post(this::resizeStoryScroll);
+                    }
+                    private void resizeStoryScroll() {
+                        if (storyBinding != null) {
+                            resizeScroll();
+                        }
                     }
                     @Override public void onError(Drawable error) {
                         super.onError(null);
