@@ -22,6 +22,7 @@ import android.widget.ImageView;
 import androidx.activity.BackEventCompat;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.TooltipCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
@@ -431,8 +432,10 @@ final class LinkSummaryOverlayController {
                                 boolean selected, int normalIcon, int selectedIcon,
                                 String normalDescription, String selectedDescription) {
         Runnable apply = () -> {
+            String description = selected ? selectedDescription : normalDescription;
             button.setImageResource(selected ? selectedIcon : normalIcon);
-            button.setContentDescription(selected ? selectedDescription : normalDescription);
+            button.setContentDescription(description);
+            TooltipCompat.setTooltipText(button, description);
             button.setTag(selected);
         };
         Object previousState = button.getTag();
