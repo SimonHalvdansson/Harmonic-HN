@@ -12,9 +12,9 @@
 
         <SwitchPreferenceCompat
             app:defaultValue="false"
+            app:icon="@drawable/ic_fullscreen"
             app:key="pref_story_preview_image_borderless"
             app:singleLineTitle="false"
-            app:summary="Extends large previews to the card edges"
             app:title="Borderless large image" />
 
         <com.simon.harmonichackernews.settings.StoryTextSizePreference
