@@ -1183,10 +1183,10 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
             MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(ctx)
                     .setTitle(summary)
                     .setMessage(response)
-                    .setNegativeButton("Done", null);
+                    .setPositiveButton("Done", null);
 
             if (clipboardText != null) {
-                builder.setNeutralButton("Copy", new DialogInterface.OnClickListener() {
+                builder.setNeutralButton("Copy comment", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         ClipboardManager clipboard = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);

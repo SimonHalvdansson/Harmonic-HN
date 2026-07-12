@@ -712,6 +712,11 @@ public class ComposeActivity extends AppCompatActivity {
             return;
         }
 
+        if (!Utils.isNetworkAvailable(this)) {
+            showSubmissionFailure(null, null, getCommentDraft());
+            return;
+        }
+
         setSubmitLoading(true);
 
         if (type == TYPE_POST) {
@@ -729,8 +734,7 @@ public class ComposeActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(String summary, String response) {
                     resetSubmitButton();
-                    UserActions.showFailureDetailDialog(view.getContext(), summary, response);
-                    Toast.makeText(view.getContext(), "Post submission unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
+                    showSubmissionFailure(summary, response, null);
                 }
 
                 @Override
@@ -767,8 +771,7 @@ public class ComposeActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(String summary, String response) {
                     resetSubmitButton();
-                    UserActions.showFailureDetailDialog(view.getContext(), summary, response + "\n\n" + "Here is your comment should you wish to copy it and try again:\n\n" + commentText, commentText);
-                    Toast.makeText(view.getContext(), "Comment post unsuccessful, see dialog for details", Toast.LENGTH_SHORT).show();
+                    showSubmissionFailure(summary, response, commentText);
                 }
 
                 @Override
@@ -789,6 +792,46 @@ public class ComposeActivity extends AppCompatActivity {
                 }
             });
         }
+    }
+
+    @Nullable
+    private String getCommentDraft() {
+        return type == TYPE_POST ? null : editText.getText().toString();
+    }
+
+    private void showSubmissionFailure(@Nullable String summary,
+                                       @Nullable String response,
+                                       @Nullable String commentDraft) {
+        final boolean isPost = type == TYPE_POST;
+        final String draftName = isPost ? "post" : "comment";
+        final String title;
+        final String message;
+
+        if (!Utils.isNetworkAvailable(this)) {
+            title = "No internet connection";
+            message = "Connect to the internet, then try again. Your " + draftName
+                    + " is still here.";
+        } else {
+            title = isPost ? "Couldn't submit post" : "Couldn't post comment";
+            StringBuilder messageBuilder = new StringBuilder();
+            if (!TextUtils.isEmpty(summary)) {
+                messageBuilder.append(summary);
+            }
+            if (!TextUtils.isEmpty(response)) {
+                if (messageBuilder.length() > 0) {
+                    messageBuilder.append("\n\n");
+                }
+                messageBuilder.append(response);
+            }
+            if (messageBuilder.length() > 0) {
+                messageBuilder.append("\n\n");
+            }
+            messageBuilder.append("Your ").append(draftName)
+                    .append(" is still here, so you can edit it or try again.");
+            message = messageBuilder.toString();
+        }
+
+        UserActions.showFailureDetailDialog(this, title, message, commentDraft);
     }
 
     private void resetSubmitButton() {
