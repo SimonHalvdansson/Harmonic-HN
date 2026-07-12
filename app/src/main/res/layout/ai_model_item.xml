@@ -28,31 +28,74 @@
             android:paddingEnd="64dp"
             android:paddingBottom="13dp">
 
-            <TextView
-                android:id="@+id/ai_model_item_name"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="@font/product_sans_bold"
-                android:maxLines="3"
-                android:textColor="?attr/storyColorNormal"
-                android:textSize="16sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/ai_model_item_id"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:ellipsize="middle"
-                android:fontFamily="@font/jetbrains_mono"
-                android:maxLines="1"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="11sp" />
+                <FrameLayout
+                    android:layout_width="24dp"
+                    android:layout_height="24dp">
+
+                    <TextView
+                        android:id="@+id/ai_model_item_provider_fallback"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/ai_model_provider_icon_background"
+                        android:fontFamily="@font/product_sans_bold"
+                        android:gravity="center"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp" />
+
+                    <ImageView
+                        android:id="@+id/ai_model_item_provider_icon"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:scaleType="fitCenter"
+                        android:visibility="invisible" />
+
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/ai_model_item_name"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:fontFamily="@font/product_sans_bold"
+                        android:maxLines="3"
+                        android:textColor="?attr/storyColorNormal"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/ai_model_item_id"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="middle"
+                        android:fontFamily="@font/jetbrains_mono"
+                        android:maxLines="1"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/ai_model_item_price"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="34dp"
                 android:layout_marginTop="7dp"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="13sp" />
@@ -61,6 +104,7 @@
                 android:id="@+id/ai_model_item_free"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="34dp"
                 android:layout_marginTop="7dp"
                 android:background="@drawable/ai_model_free_badge"
                 android:fontFamily="@font/product_sans_bold"

@@ -33,6 +33,7 @@ okhttp-urlconnection = "com.squareup.okhttp3:okhttp-urlconnection:5.3.2"
 shimmer = "com.facebook.shimmer:shimmer:0.5.0"
 jsoup = "org.jsoup:jsoup:1.22.2"
 coil = "io.coil-kt:coil:2.7.0"
+coil-svg = "io.coil-kt:coil-svg:2.7.0"
 
 mlkit-genai-summarization = "com.google.mlkit:genai-summarization:1.0.0-beta1"
 

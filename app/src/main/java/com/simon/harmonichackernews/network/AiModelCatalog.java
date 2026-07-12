@@ -359,6 +359,11 @@ public final class AiModelCatalog {
             return hasPrices() && inputPrice == 0d && outputPrice == 0d;
         }
 
+        public String providerSlug() {
+            int separator = openRouterId.indexOf('/');
+            return separator > 0 ? openRouterId.substring(0, separator) : "";
+        }
+
         double totalTokenPrice() {
             return inputPrice + outputPrice;
         }

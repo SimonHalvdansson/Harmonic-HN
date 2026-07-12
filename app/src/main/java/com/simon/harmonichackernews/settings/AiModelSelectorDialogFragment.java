@@ -28,9 +28,12 @@ import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.databinding.AiModelSelectorSheetBinding;
 import com.simon.harmonichackernews.network.AiModelCatalog;
 import com.simon.harmonichackernews.network.AiSummaryProviders;
+import com.simon.harmonichackernews.network.OpenRouterProviderIconLoader;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import okhttp3.Call;
 
@@ -237,6 +240,7 @@ public final class AiModelSelectorDialogFragment extends BottomSheetDialogFragme
                             }
                         }
                         adapter.setModels(displayedModels);
+                        loadProviderIcons(models);
                         binding.aiModelCatalogState.setVisibility(
                                 displayedModels.isEmpty() ? View.VISIBLE : View.GONE);
                         binding.aiModelCatalogProgress.setVisibility(View.GONE);
@@ -265,6 +269,23 @@ public final class AiModelSelectorDialogFragment extends BottomSheetDialogFragme
                         binding.aiModelListTitle.setText(R.string.ai_model_suggestions);
                     }
                 });
+    }
+
+    private void loadProviderIcons(List<AiModelCatalog.Model> models) {
+        AiModelAdapter currentAdapter = adapter;
+        Set<String> providerSlugs = new LinkedHashSet<>();
+        for (AiModelCatalog.Model model : models) {
+            if (!model.providerSlug().isEmpty()) {
+                providerSlugs.add(model.providerSlug());
+            }
+        }
+        for (String providerSlug : providerSlugs) {
+            OpenRouterProviderIconLoader.resolve(providerSlug, (resolvedSlug, iconData) -> {
+                if (binding != null && adapter == currentAdapter) {
+                    currentAdapter.setProviderIcon(resolvedSlug, iconData);
+                }
+            });
+        }
     }
 
     private void showCatalogLoading() {

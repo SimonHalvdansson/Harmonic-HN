@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.settings;
 
 import android.animation.ValueAnimator;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,10 +16,20 @@ import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.databinding.AiModelItemBinding;
 import com.simon.harmonichackernews.network.AiModelCatalog;
+import com.simon.harmonichackernews.network.NetworkComponent;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
+
+import coil.Coil;
+import coil.decode.SvgDecoder;
+import coil.request.ImageRequest;
+import coil.target.ImageViewTarget;
+import coil.util.CoilUtils;
 
 final class AiModelAdapter extends RecyclerView.Adapter<AiModelAdapter.ModelViewHolder> {
     private static final long SELECTION_ANIMATION_DURATION_MS = 100L;
@@ -30,6 +41,7 @@ final class AiModelAdapter extends RecyclerView.Adapter<AiModelAdapter.ModelView
     }
 
     private final List<AiModelCatalog.Model> models = new ArrayList<>();
+    private final Map<String, Object> providerIcons = new HashMap<>();
     private final Listener listener;
     private String selectedModelId = "";
     private RecyclerView recyclerView;
@@ -82,6 +94,23 @@ final class AiModelAdapter extends RecyclerView.Adapter<AiModelAdapter.ModelView
         }
     }
 
+    void setProviderIcon(String providerSlug, Object iconData) {
+        providerIcons.put(providerSlug, iconData);
+        if (recyclerView == null) {
+            return;
+        }
+        for (int i = 0; i < recyclerView.getChildCount(); i++) {
+            RecyclerView.ViewHolder holder = recyclerView.getChildViewHolder(
+                    recyclerView.getChildAt(i));
+            if (holder instanceof ModelViewHolder) {
+                ModelViewHolder modelHolder = (ModelViewHolder) holder;
+                if (providerSlug.equals(modelHolder.boundProviderSlug)) {
+                    modelHolder.setProviderIcon(iconData);
+                }
+            }
+        }
+    }
+
     private void animateVisibleSelection(int position, boolean selected) {
         if (position < 0 || recyclerView == null) {
             return;
@@ -116,12 +145,14 @@ final class AiModelAdapter extends RecyclerView.Adapter<AiModelAdapter.ModelView
 
     @Override
     public void onBindViewHolder(@NonNull ModelViewHolder holder, int position) {
-        holder.bind(models.get(position), selectedModelId, listener);
+        AiModelCatalog.Model model = models.get(position);
+        holder.bind(model, selectedModelId, providerIcons.get(model.providerSlug()), listener);
     }
 
     @Override
     public void onViewRecycled(@NonNull ModelViewHolder holder) {
         holder.cancelSelectionAnimation();
+        holder.clearProviderIcon();
         super.onViewRecycled(holder);
     }
 
@@ -149,19 +180,24 @@ final class AiModelAdapter extends RecyclerView.Adapter<AiModelAdapter.ModelView
         private ValueAnimator selectionAnimator;
         private AiModelCatalog.Model boundModel;
         private String displayName = "";
+        private String boundProviderSlug = "";
 
         ModelViewHolder(AiModelItemBinding binding) {
             super(binding.getRoot());
             this.binding = binding;
         }
 
-        void bind(AiModelCatalog.Model model, String selectedModelId, Listener listener) {
+        void bind(AiModelCatalog.Model model, String selectedModelId, Object providerIconData,
+                  Listener listener) {
             boolean selected = model.requestId.equals(selectedModelId);
             boundModel = model;
+            boundProviderSlug = model.providerSlug();
             displayName = model.isFree()
                     ? FREE_TITLE_SUFFIX.matcher(model.name).replaceFirst("")
                     : model.name;
             binding.aiModelItemName.setText(displayName);
+            binding.aiModelItemProviderFallback.setText(providerInitial(boundProviderSlug));
+            setProviderIcon(providerIconData);
             binding.aiModelItemId.setText(model.requestId);
             if (model.isFree()) {
                 binding.aiModelItemPrice.setVisibility(View.GONE);
@@ -176,6 +212,65 @@ final class AiModelAdapter extends RecyclerView.Adapter<AiModelAdapter.ModelView
             }
             setSelectionState(selected, false);
             binding.aiModelItemCard.setOnClickListener(view -> listener.onModelSelected(model));
+        }
+
+        void setProviderIcon(Object iconData) {
+            clearProviderIcon();
+            binding.aiModelItemProviderFallback.setVisibility(View.VISIBLE);
+            binding.aiModelItemProviderIcon.setVisibility(View.INVISIBLE);
+            if (iconData == null || (iconData instanceof String
+                    && ((String) iconData).trim().isEmpty())) {
+                return;
+            }
+
+            binding.aiModelItemProviderIcon.setTag(iconData);
+            ImageRequest.Builder requestBuilder = new ImageRequest.Builder(itemView.getContext())
+                    .data(iconData)
+                    .setHeader("User-Agent", NetworkComponent.USER_AGENT)
+                    .crossfade(100)
+                    .target(new ImageViewTarget(binding.aiModelItemProviderIcon) {
+                        @Override
+                        public void onStart(Drawable placeholder) {
+                            super.onStart((Drawable) null);
+                        }
+
+                        @Override
+                        public void onSuccess(Drawable result) {
+                            if (!iconData.equals(binding.aiModelItemProviderIcon.getTag())) {
+                                return;
+                            }
+                            super.onSuccess(result);
+                            binding.aiModelItemProviderIcon.setVisibility(View.VISIBLE);
+                            binding.aiModelItemProviderFallback.setVisibility(View.INVISIBLE);
+                        }
+
+                        @Override
+                        public void onError(Drawable error) {
+                            if (iconData.equals(binding.aiModelItemProviderIcon.getTag())) {
+                                super.onError(null);
+                                binding.aiModelItemProviderIcon.setVisibility(View.INVISIBLE);
+                                binding.aiModelItemProviderFallback.setVisibility(View.VISIBLE);
+                            }
+                        }
+                    });
+            if (iconData instanceof byte[] || (iconData instanceof String
+                    && ((String) iconData).toLowerCase(Locale.ROOT).contains(".svg"))) {
+                requestBuilder.decoderFactory(new SvgDecoder.Factory());
+            }
+            ImageRequest request = requestBuilder.build();
+            Coil.imageLoader(itemView.getContext()).enqueue(request);
+        }
+
+        void clearProviderIcon() {
+            CoilUtils.dispose(binding.aiModelItemProviderIcon);
+            binding.aiModelItemProviderIcon.setTag(null);
+            binding.aiModelItemProviderIcon.setImageDrawable(null);
+        }
+
+        private String providerInitial(String providerSlug) {
+            return providerSlug.isEmpty()
+                    ? "?"
+                    : providerSlug.substring(0, 1).toUpperCase(Locale.ROOT);
         }
 
         void setSelectionState(boolean selected, boolean animate) {
