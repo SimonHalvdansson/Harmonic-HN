@@ -67,6 +67,7 @@ final class LinkSummaryOverlayController {
         @Nullable ViewGroup getLinkSummaryOverlayHost();
         @Nullable View findLinkSummarySourceView(int storyId);
         default @Nullable View findLinkSummaryImageSourceView() { return null; }
+        default @Nullable Integer getLinkSummaryImageBackgroundColor() { return null; }
         default void setLinkSummaryImageSourceSuppressed(boolean suppressed) { }
         default int resolveStoryCardBackgroundColor(Story story) {
             return PreviewImageTintUtils.getTintBaseColor(requireLinkSummaryContext());
@@ -231,6 +232,10 @@ final class LinkSummaryOverlayController {
         fallbackTitle = description;
         imageBinding = ImageOnlyOverlayContentBinding.inflate(
                 LayoutInflater.from(context), binding.linkSummaryBody, true);
+        Integer imageBackgroundColor = host.getLinkSummaryImageBackgroundColor();
+        if (imageBackgroundColor != null && card != null) {
+            card.setCardBackgroundColor(imageBackgroundColor);
+        }
         imageBinding.imageOnlyPreview.setContentDescription(description);
         binding.linkSummaryScroll.setVerticalScrollBarEnabled(false);
         binding.linkSummaryScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);

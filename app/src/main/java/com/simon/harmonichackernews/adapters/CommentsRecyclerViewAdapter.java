@@ -165,6 +165,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private boolean storySummaryLoading = false;
     private float headerSlideOffset = 1f;
     @Nullable
+    private Integer currentHeaderContentBackgroundColor;
+    @Nullable
     private HeaderViewHolder boundHeaderViewHolder;
     @Nullable
     private StoryPreviewImageLoader.PreviewImageRequest headerPreviewImageUrlRequest;
@@ -1425,6 +1427,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 previewTintBaseColor,
                 getDefaultHeaderTintColor(headerViewHolder.itemView));
         int color = ColorUtils.blendARGB(normalColor, targetColor, headerSlideOffset);
+        currentHeaderContentBackgroundColor = color;
         int visibleColor = ColorUtils.blendARGB(normalColor, targetColor, getEffectiveHeaderTintProgress());
         boolean hasTint = shouldTintHeader();
         applyHeaderEndBleed(headerViewHolder);
@@ -3287,6 +3290,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             return null;
         }
         return boundHeaderViewHolder.previewImage;
+    }
+
+    @Nullable
+    public Integer getCurrentHeaderContentBackgroundColor() {
+        return currentHeaderContentBackgroundColor;
     }
 
     public void setHeaderPreviewImageSuppressed(boolean suppressed) {

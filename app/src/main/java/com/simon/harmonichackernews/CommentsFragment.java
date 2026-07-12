@@ -300,6 +300,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     return adapter == null ? null : adapter.getBoundHeaderPreviewImage();
                 }
 
+                @Nullable
+                @Override
+                public Integer getLinkSummaryImageBackgroundColor() {
+                    return adapter == null ? null : adapter.getCurrentHeaderContentBackgroundColor();
+                }
+
                 @Override
                 public void setLinkSummaryImageSourceSuppressed(boolean suppressed) {
                     if (adapter != null) {
