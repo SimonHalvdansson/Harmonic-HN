@@ -328,10 +328,14 @@ public class SummaryManager {
         String apiKey = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_api_key", "");
         String baseUrl = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_base_url", AiSummaryProviders.getDefaultBaseUrl());
         String model = AiSummaryProviders.getModelForRequest(baseUrl,
-                PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_model", AiSummaryProviders.getDefaultModelForBaseUrl(baseUrl)));
+                PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_model", ""));
 
         if (apiKey.isEmpty()) {
             postFailure(callback, "API Key missing");
+            return;
+        }
+        if (model.isEmpty()) {
+            postFailure(callback, "Model missing. Open AI summarization settings and choose a model.");
             return;
         }
 

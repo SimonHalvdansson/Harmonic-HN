@@ -21,6 +21,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.databinding.AiSummaryBaseUrlDialogBinding;
+import com.simon.harmonichackernews.network.AiModelCatalog;
 import com.simon.harmonichackernews.network.AiSummaryProviders;
 
 public class AiSummaryBaseUrlDialogFragment extends AppCompatDialogFragment {
@@ -159,9 +160,18 @@ public class AiSummaryBaseUrlDialogFragment extends AppCompatDialogFragment {
         SharedPreferences.Editor editor = prefs.edit()
                 .putString("pref_ai_summary_base_url", url);
         if (newProvider != null && (oldProvider == null || !newProvider.id.equals(oldProvider.id))) {
-            editor.putString("pref_ai_summary_model", newProvider.defaultModel);
+            String translatedModel = oldProvider == null ? "" : AiSummaryProviders.translateModelId(
+                    oldProvider, newProvider, prefs.getString("pref_ai_summary_model", ""));
+            if (translatedModel.isEmpty()) {
+                editor.remove("pref_ai_summary_model");
+            } else {
+                editor.putString("pref_ai_summary_model", translatedModel);
+            }
         }
         editor.apply();
+        if (newProvider != null && !prefs.contains("pref_ai_summary_model")) {
+            AiModelCatalog.ensureProviderDefault(requireContext(), newProvider);
+        }
         dismiss();
     }
 

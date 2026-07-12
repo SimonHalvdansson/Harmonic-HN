@@ -25,6 +25,7 @@ import androidx.preference.PreferenceManager;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.databinding.WelcomeDialogBinding;
 import com.simon.harmonichackernews.databinding.StoryListItemBinding;
+import com.simon.harmonichackernews.network.AiModelCatalog;
 import com.simon.harmonichackernews.utils.DialogWindowUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
@@ -45,6 +46,7 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
     @NonNull
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
+        AiModelCatalog.ensureInitialDefault(requireContext());
         WelcomeDialogBinding binding = WelcomeDialogBinding.inflate(LayoutInflater.from(requireContext()));
         binding.welcomeDialogTitle.setText(shouldShowVersionTitle()
                 ? "Welcome to Harmonic for Hacker News 3.0"

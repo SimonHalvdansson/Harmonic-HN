@@ -56,11 +56,31 @@
         <item>Last 24 hours</item>
     </string-array>
 
-    <string-array name="ai_summary_models">
-        <item>Loading...</item>
-    </string-array>
-    <string-array name="ai_summary_model_values">
-        <item>loading</item>
-    </string-array>
+    <string name="ai_model_choose_title">Choose a model</string>
+    <string name="ai_model_catalog_subtitle">Pricing and model list from OpenRouter</string>
+    <string name="ai_model_id_hint">Model ID</string>
+    <string name="ai_model_suggestions">Models</string>
+    <string name="ai_model_sort_popular">Popular</string>
+    <string name="ai_model_sort_free">Free</string>
+    <string name="ai_model_sort_price">Price: low to high</string>
+    <string name="ai_model_loading">Loading live models…</string>
+    <string name="ai_model_retry">Try again</string>
+    <string name="ai_model_cancel">Cancel</string>
+    <string name="ai_model_save">Save model</string>
+    <string name="ai_model_free_badge">FREE</string>
+    <plurals name="ai_model_count">
+        <item quantity="one">Models (%1$d)</item>
+        <item quantity="other">Models (%1$d)</item>
+    </plurals>
+    <string name="ai_model_no_free">No free models are available for this provider right now</string>
+    <string name="ai_model_price_label">INPUT / OUTPUT</string>
+    <string name="ai_model_price_pair_format">%1$s / %2$s</string>
+    <string name="ai_model_price_per_million">per 1M tokens</string>
+    <string name="ai_model_row_price_format">%1$s / %2$s per 1M tokens</string>
+    <string name="ai_model_price_enter">Enter a model ID to resolve its price</string>
+    <string name="ai_model_price_resolving">Resolving price…</string>
+    <string name="ai_model_required">Enter or select a model</string>
+    <string name="ai_model_item_description">%1$s, input %2$s, output %3$s per million tokens%4$s</string>
+    <string name="ai_model_selected_description">, selected</string>
 
 </resources>
