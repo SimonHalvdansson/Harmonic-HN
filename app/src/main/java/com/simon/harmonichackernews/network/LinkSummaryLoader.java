@@ -11,16 +11,24 @@ import androidx.annotation.Nullable;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import okhttp3.Call;
 import okhttp3.HttpUrl;
+import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public final class LinkSummaryLoader {
     private static final int MAX_DESCRIPTION_CHARS = 600;
+    private static final int MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
     private static final String[] IMAGE_SELECTORS = new String[]{
             "meta[property=og:image:secure_url]",
@@ -130,7 +138,7 @@ public final class LinkSummaryLoader {
 
                     String finalUrl = closeableResponse.request().url().toString();
                     Result result = extract(
-                            closeableResponse.body().string(),
+                            readBoundedBody(closeableResponse.body()),
                             fallbackTitle,
                             contentType,
                             finalUrl);
@@ -144,6 +152,37 @@ public final class LinkSummaryLoader {
             }
         });
         return call::cancel;
+    }
+
+    private static String readBoundedBody(ResponseBody body) throws IOException {
+        long contentLength = body.contentLength();
+        if (contentLength > MAX_RESPONSE_BYTES) {
+            throw new IOException("The page is too large to preview");
+        }
+
+        int initialCapacity = contentLength > 0
+                ? (int) Math.min(contentLength, MAX_RESPONSE_BYTES)
+                : 8192;
+        try (InputStream input = body.byteStream();
+             ByteArrayOutputStream output = new ByteArrayOutputStream(initialCapacity)) {
+            byte[] buffer = new byte[8192];
+            int totalBytes = 0;
+            int bytesRead;
+            while ((bytesRead = input.read(buffer)) != -1) {
+                totalBytes += bytesRead;
+                if (totalBytes > MAX_RESPONSE_BYTES) {
+                    throw new IOException("The page is too large to preview");
+                }
+                output.write(buffer, 0, bytesRead);
+            }
+
+            Charset charset = StandardCharsets.UTF_8;
+            MediaType mediaType = body.contentType();
+            if (mediaType != null) {
+                charset = mediaType.charset(StandardCharsets.UTF_8);
+            }
+            return new String(output.toByteArray(), charset);
+        }
     }
 
     public static Result extract(String html,

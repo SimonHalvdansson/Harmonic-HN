@@ -1588,18 +1588,18 @@ public class Utils {
         if ("local".equals(mode)) {
             return SummaryManager.canAttemptLocalSummarization();
         }
-        String apiKey = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_api_key", "");
+        String apiKey = AiSummaryApiKeyStore.getApiKey(ctx);
         return !apiKey.isEmpty();
     }
 
     public static boolean isAiSummaryEnabled(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_ai_summary_enabled", isAiSummaryEnabledByDefault(ctx, prefs));
+        return prefs.getBoolean("pref_ai_summary_enabled", isAiSummaryEnabledByDefault(ctx));
     }
 
-    private static boolean isAiSummaryEnabledByDefault(Context ctx, SharedPreferences prefs) {
+    private static boolean isAiSummaryEnabledByDefault(Context ctx) {
         return SummaryManager.canAttemptLocalSummarization()
-                || !prefs.getString("pref_ai_summary_api_key", "").isEmpty();
+                || !AiSummaryApiKeyStore.getApiKey(ctx).isEmpty();
     }
 
     public static boolean isNetworkAvailable(Context context) {

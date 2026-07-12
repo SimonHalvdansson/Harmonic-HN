@@ -20,6 +20,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.utils.AccountUtils;
+import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -207,6 +208,7 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
                 .edit()
                 .clear()
                 .commit();
+        AiSummaryApiKeyStore.clearApiKey(context);
 
         SharedPreferences.Editor globalPrefsEditor = context
                 .getSharedPreferences(Utils.GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)

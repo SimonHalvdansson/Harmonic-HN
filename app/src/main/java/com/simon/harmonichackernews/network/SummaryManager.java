@@ -21,6 +21,7 @@ import com.google.mlkit.genai.summarization.SummarizationRequest;
 import com.google.mlkit.genai.summarization.SummarizationResult;
 import com.google.mlkit.genai.summarization.Summarizer;
 import com.google.mlkit.genai.summarization.SummarizerOptions;
+import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -55,7 +56,7 @@ public class SummaryManager {
 
     public static void fetchModels(Context ctx, RequestQueue queue, SummaryCallback callback) {
         String baseUrl = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_base_url", AiSummaryProviders.getDefaultBaseUrl());
-        String apiKey = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_api_key", "");
+        String apiKey = AiSummaryApiKeyStore.getApiKey(ctx);
         String url = joinUrl(baseUrl, "models");
 
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
@@ -208,10 +209,11 @@ public class SummaryManager {
             int featureStatus = summarizer.checkFeatureStatus().get();
             if (featureStatus == FeatureStatus.UNAVAILABLE) {
                 postFailure(callback, "Gemini Nano summarization is not available on this device");
-            } else if (featureStatus == FeatureStatus.DOWNLOADABLE) {
+            } else if (featureStatus == FeatureStatus.DOWNLOADABLE
+                    || featureStatus == FeatureStatus.DOWNLOADING) {
                 downloadLocalFeatureAndSummarize(content, summarizer, callback);
                 summarizerReleased = true;
-            } else if (featureStatus == FeatureStatus.DOWNLOADING || featureStatus == FeatureStatus.AVAILABLE) {
+            } else if (featureStatus == FeatureStatus.AVAILABLE) {
                 runLocalInference(content, summarizer, callback);
                 summarizerReleased = true;
             } else {
@@ -325,7 +327,7 @@ public class SummaryManager {
     }
 
     private static void summarizeWithLLM(Context ctx, RequestQueue queue, String text, SummaryCallback callback) {
-        String apiKey = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_api_key", "");
+        String apiKey = AiSummaryApiKeyStore.getApiKey(ctx);
         String baseUrl = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_base_url", AiSummaryProviders.getDefaultBaseUrl());
         String model = AiSummaryProviders.getModelForRequest(baseUrl,
                 PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_model", ""));

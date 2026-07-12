@@ -21,13 +21,20 @@ public class EncryptedSharedPreferencesHelper {
 
 
     public static SharedPreferences getEncryptedSharedPreferences(Context ctx) throws Exception {
+        return getEncryptedSharedPreferences(ctx, HARMONIC_ENCRYPTED_PREFS, MASTER_KEY_ALIAS);
+    }
+
+    public static SharedPreferences getEncryptedSharedPreferences(
+            Context ctx,
+            String sharedPreferencesName,
+            String masterKeyAlias) throws Exception {
         try {
-            return createSharedPreferences(ctx);
+            return createSharedPreferences(ctx, sharedPreferencesName, masterKeyAlias);
         } catch (Exception e) {
             e.printStackTrace();
             try {
-                deleteSharedPreferences(ctx);
-                return createSharedPreferences(ctx);
+                deleteSharedPreferences(ctx, sharedPreferencesName, masterKeyAlias);
+                return createSharedPreferences(ctx, sharedPreferencesName, masterKeyAlias);
             } catch (Exception otherException) {
                 otherException.printStackTrace();
                 throw new Exception();
@@ -35,18 +42,20 @@ public class EncryptedSharedPreferencesHelper {
         }
     }
 
-    private static SharedPreferences createSharedPreferences(Context ctx) throws Exception {
-        MasterKey mainKey = getMasterKey(ctx);
+    private static SharedPreferences createSharedPreferences(
+            Context ctx,
+            String sharedPreferencesName,
+            String masterKeyAlias) throws Exception {
+        MasterKey mainKey = getMasterKey(ctx, masterKeyAlias);
 
         if (mainKey == null) {
-            Exception e = new Exception();
-            throw e;
+            throw new Exception();
         }
 
         return EncryptedSharedPreferences.create(
                 ctx,
-                HARMONIC_ENCRYPTED_PREFS,
-                getMasterKey(ctx),
+                sharedPreferencesName,
+                mainKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         );
@@ -55,11 +64,19 @@ public class EncryptedSharedPreferencesHelper {
     // Workaround [https://github.com/google/tink/issues/535#issuecomment-912170221]
     // Issue Tracker - https://issuetracker.google.com/issues/176215143?pli=1
     public static boolean deleteSharedPreferences(Context ctx) {
+        return deleteSharedPreferences(ctx, HARMONIC_ENCRYPTED_PREFS, MASTER_KEY_ALIAS);
+    }
+
+    private static boolean deleteSharedPreferences(
+            Context ctx,
+            String sharedPreferencesName,
+            String masterKeyAlias) {
         try {
-            File sharedPrefsFile = new File(ctx.getFilesDir().getParent() + "/shared_prefs/" + HARMONIC_ENCRYPTED_PREFS + ".xml");
+            File sharedPrefsFile = new File(ctx.getFilesDir().getParent()
+                    + "/shared_prefs/" + sharedPreferencesName + ".xml");
 
             // Clear the encrypted prefs
-            clearSharedPreference(ctx);
+            clearSharedPreference(ctx, sharedPreferencesName);
 
             // Delete the encrypted prefs file
             if (sharedPrefsFile.exists()) {
@@ -72,7 +89,7 @@ public class EncryptedSharedPreferencesHelper {
             // Delete the master key
             KeyStore keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER);
             keyStore.load(null);
-            keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS);
+            keyStore.deleteEntry(masterKeyAlias);
             return true;
         } catch (Exception e) {
             Utils.log("EncryptedSharedPref: Error occurred while trying to reset shared pref=" + e);
@@ -80,21 +97,21 @@ public class EncryptedSharedPreferencesHelper {
         }
     }
 
-    private static void clearSharedPreference(Context ctx) {
-        ctx.getSharedPreferences(HARMONIC_ENCRYPTED_PREFS, Context.MODE_PRIVATE).edit().clear().apply();
+    private static void clearSharedPreference(Context ctx, String sharedPreferencesName) {
+        ctx.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE).edit().clear().apply();
     }
 
-    private static MasterKey getMasterKey(Context ctx) {
+    private static MasterKey getMasterKey(Context ctx, String masterKeyAlias) {
         try {
             KeyGenParameterSpec spec = new KeyGenParameterSpec.Builder(
-                    MASTER_KEY_ALIAS,
+                    masterKeyAlias,
                     KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                     .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                     .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                     .setKeySize(256)
                     .build();
 
-            return new MasterKey.Builder(ctx, MASTER_KEY_ALIAS)
+            return new MasterKey.Builder(ctx, masterKeyAlias)
                     .setKeyGenParameterSpec(spec)
                     .build();
         } catch (Exception e) {

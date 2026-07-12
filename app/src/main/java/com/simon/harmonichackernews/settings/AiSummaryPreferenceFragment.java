@@ -13,6 +13,7 @@ import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.network.AiModelCatalog;
 import com.simon.harmonichackernews.network.AiSummaryProviders;
 import com.simon.harmonichackernews.network.SummaryManager;
+import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore;
 import com.simon.harmonichackernews.utils.Utils;
 
 public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
@@ -20,7 +21,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
     private static final String PREF_ENABLED = "pref_ai_summary_enabled";
     private static final String PREF_MODE = "pref_ai_summary_mode";
     private static final String PREF_BASE_URL = "pref_ai_summary_base_url";
-    private static final String PREF_API_KEY = "pref_ai_summary_api_key";
+    private static final String PREF_API_KEY = AiSummaryApiKeyStore.PREF_API_KEY;
     private static final String PREF_MODEL = "pref_ai_summary_model";
     private static final String PREF_SYSTEM_PROMPT = "pref_ai_summary_system_prompt";
     private static final String DEFAULT_BASE_URL = AiSummaryProviders.getDefaultBaseUrl();
@@ -44,7 +45,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         AiModelCatalog.ensureInitialDefault(requireContext());
         boolean hadEnablePreference = prefs.contains(PREF_ENABLED);
         boolean defaultEnabled = SummaryManager.canAttemptLocalSummarization()
-                || !prefs.getString(PREF_API_KEY, "").isEmpty();
+                || !AiSummaryApiKeyStore.getApiKey(requireContext()).isEmpty();
 
         setPreferencesFromResource(R.xml.preferences_ai_summary, rootKey);
 
@@ -54,6 +55,20 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         apiKeyPreference = findPreference(PREF_API_KEY);
         modelPreference = findPreference(PREF_MODEL);
         systemPromptPreference = findPreference(PREF_SYSTEM_PROMPT);
+
+        getParentFragmentManager().setFragmentResultListener(
+                AiSummaryTextDialogFragment.RESULT_KEY,
+                this,
+                (requestKey, result) -> {
+                    String changedKey = result.getString(
+                            AiSummaryTextDialogFragment.RESULT_PREFERENCE_KEY);
+                    if (PREF_API_KEY.equals(changedKey)) {
+                        updateApiKeySummary();
+                        updateDependentPreferenceStates();
+                    } else if (PREF_SYSTEM_PROMPT.equals(changedKey)) {
+                        updateSystemPromptSummary();
+                    }
+                });
 
         if (enablePreference != null) {
             enablePreference.setChecked(hadEnablePreference
@@ -202,8 +217,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
 
     private void updateApiKeySummary() {
         if (apiKeyPreference != null && getContext() != null) {
-            String key = PreferenceManager.getDefaultSharedPreferences(requireContext())
-                    .getString(PREF_API_KEY, "");
+            String key = AiSummaryApiKeyStore.getApiKey(requireContext());
             if (key.isEmpty()) {
                 apiKeyPreference.setSummary("Not set");
             } else {

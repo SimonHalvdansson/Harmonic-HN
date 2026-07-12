@@ -2701,10 +2701,14 @@ public class StoriesFragment extends Fragment {
                         @Override
                         public boolean onMenuItemClick(@NonNull MenuItem item) {
                             boolean newFavorited = !oldFavorited;
+                            int actionGeneration = storyListGeneration;
+                            StoryRecyclerViewAdapter actionAdapter = adapter;
+                            List<Story> actionStories = stories;
+                            boolean actionIsFavoritesList = isFavoritesType(actionAdapter.type);
                             int optimisticIndex = stories.indexOf(story);
                             Utils.setFavorite(ctx, story.id, newFavorited);
                             if (optimisticIndex >= 0) {
-                                if (oldFavorited && isFavoritesType(adapter.type)) {
+                                if (oldFavorited && actionIsFavoritesList) {
                                     removeStoryAt(optimisticIndex, storyListGeneration, true);
                                     updateHeader();
                                 } else {
@@ -2715,13 +2719,20 @@ public class StoriesFragment extends Fragment {
                             UserActions.setFavorite(ctx, story.id, !oldFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
                                 @Override
                                 public void onSuccess(Response response) {
+                                    if (response != null) {
+                                        response.close();
+                                    }
                                 }
 
                                 @Override
                                 public void onFailure(String summary, String response) {
                                     Utils.setFavorite(ctx, story.id, oldFavorited);
+                                    if (!isCurrentStoryActionContext(
+                                            actionGeneration, actionAdapter, actionStories)) {
+                                        return;
+                                    }
                                     int currentIndex = stories.indexOf(story);
-                                    if (oldFavorited && isFavoritesType(adapter.type) && currentIndex == -1) {
+                                    if (oldFavorited && actionIsFavoritesList && currentIndex == -1) {
                                         int restoreIndex = optimisticIndex >= 0 ? Math.min(optimisticIndex, stories.size()) : 0;
                                         stories.add(restoreIndex, story);
                                         adapter.notifyItemInserted(restoreIndex);
@@ -2861,11 +2872,14 @@ public class StoriesFragment extends Fragment {
 
     private void toggleStoryVote(Story story, int position, boolean currentlyUpvoted,
                                  Runnable completion) {
-        if (!isAdded() || story == null) {
+        if (!isAdded() || getView() == null || story == null || adapter == null || stories == null) {
             completion.run();
             return;
         }
         Context context = requireContext();
+        int actionGeneration = storyListGeneration;
+        StoryRecyclerViewAdapter actionAdapter = adapter;
+        List<Story> actionStories = stories;
         boolean newUpvoted = !currentlyUpvoted;
         Utils.setUpvoted(context, story.id, false, newUpvoted);
         int currentPosition = stories.indexOf(story);
@@ -2884,9 +2898,12 @@ public class StoriesFragment extends Fragment {
             @Override
             public void onFailure(String summary, String response) {
                 Utils.setUpvoted(context, story.id, false, currentlyUpvoted);
-                int restoredPosition = stories.indexOf(story);
-                if (restoredPosition >= 0) {
-                    adapter.notifyItemChanged(restoredPosition);
+                if (isCurrentStoryActionContext(
+                        actionGeneration, actionAdapter, actionStories)) {
+                    int restoredPosition = stories.indexOf(story);
+                    if (restoredPosition >= 0) {
+                        adapter.notifyItemChanged(restoredPosition);
+                    }
                 }
                 completion.run();
             }
@@ -2900,16 +2917,20 @@ public class StoriesFragment extends Fragment {
 
     private void toggleStoryFavorite(Story story, int position, boolean currentlyFavorited,
                                      Runnable completion) {
-        if (!isAdded() || story == null) {
+        if (!isAdded() || getView() == null || story == null || adapter == null || stories == null) {
             completion.run();
             return;
         }
         Context context = requireContext();
+        int actionGeneration = storyListGeneration;
+        StoryRecyclerViewAdapter actionAdapter = adapter;
+        List<Story> actionStories = stories;
+        boolean actionIsFavoritesList = isFavoritesType(actionAdapter.type);
         boolean newFavorited = !currentlyFavorited;
         int optimisticIndex = stories.indexOf(story);
         Utils.setFavorite(context, story.id, newFavorited);
         if (optimisticIndex >= 0) {
-            if (currentlyFavorited && isFavoritesType(adapter.type)) {
+            if (currentlyFavorited && actionIsFavoritesList) {
                 removeStoryAt(optimisticIndex, storyListGeneration, true);
                 updateHeader();
             } else {
@@ -2929,8 +2950,13 @@ public class StoriesFragment extends Fragment {
                     @Override
                     public void onFailure(String summary, String response) {
                         Utils.setFavorite(context, story.id, currentlyFavorited);
+                        if (!isCurrentStoryActionContext(
+                                actionGeneration, actionAdapter, actionStories)) {
+                            completion.run();
+                            return;
+                        }
                         int currentIndex = stories.indexOf(story);
-                        if (currentlyFavorited && isFavoritesType(adapter.type) && currentIndex == -1) {
+                        if (currentlyFavorited && actionIsFavoritesList && currentIndex == -1) {
                             int restoreIndex = optimisticIndex >= 0
                                     ? Math.min(optimisticIndex, stories.size()) : 0;
                             stories.add(restoreIndex, story);
@@ -2942,6 +2968,17 @@ public class StoriesFragment extends Fragment {
                         completion.run();
                     }
                 });
+    }
+
+    private boolean isCurrentStoryActionContext(
+            int generation,
+            StoryRecyclerViewAdapter expectedAdapter,
+            List<Story> expectedStories) {
+        return isAdded()
+                && getView() != null
+                && generation == storyListGeneration
+                && adapter == expectedAdapter
+                && stories == expectedStories;
     }
 
     @Nullable

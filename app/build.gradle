@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.simon.harmonichackernews"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 37
         versionCode = 77
         versionName = "3.0.2"

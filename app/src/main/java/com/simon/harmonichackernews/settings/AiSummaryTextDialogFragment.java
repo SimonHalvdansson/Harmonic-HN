@@ -19,8 +19,12 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.simon.harmonichackernews.databinding.AiSummaryTextDialogBinding;
+import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore;
 
 public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
+    public static final String RESULT_KEY = "ai_summary_text_dialog_result";
+    public static final String RESULT_PREFERENCE_KEY = "preference_key";
+
     private static final String TAG = "ai_summary_text_dialog";
     private static final String ARG_KEY = "key";
     private static final String ARG_TITLE = "title";
@@ -143,10 +147,22 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
             inputLayout.setError("Required");
             return;
         }
-        PreferenceManager.getDefaultSharedPreferences(requireContext())
-                .edit()
-                .putString(args.getString(ARG_KEY), value)
-                .apply();
+        String key = args.getString(ARG_KEY);
+        if (AiSummaryApiKeyStore.PREF_API_KEY.equals(key)) {
+            if (!AiSummaryApiKeyStore.setApiKey(requireContext(), value)) {
+                inputLayout.setError("Couldn't securely save API key");
+                return;
+            }
+        } else {
+            PreferenceManager.getDefaultSharedPreferences(requireContext())
+                    .edit()
+                    .putString(key, value)
+                    .apply();
+        }
+
+        Bundle result = new Bundle();
+        result.putString(RESULT_PREFERENCE_KEY, key);
+        getParentFragmentManager().setFragmentResult(RESULT_KEY, result);
         dismiss();
     }
 
@@ -167,6 +183,9 @@ public class AiSummaryTextDialogFragment extends AppCompatDialogFragment {
     private static String getSavedValue(Context context, @Nullable String key, String defaultValue) {
         if (key == null) {
             return defaultValue;
+        }
+        if (AiSummaryApiKeyStore.PREF_API_KEY.equals(key)) {
+            return AiSummaryApiKeyStore.getApiKey(context);
         }
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         return prefs.getString(key, defaultValue);
