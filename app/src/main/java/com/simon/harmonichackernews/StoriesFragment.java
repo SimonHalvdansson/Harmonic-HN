@@ -2,6 +2,7 @@ package com.simon.harmonichackernews;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -558,6 +559,7 @@ public class StoriesFragment extends Fragment {
 
                 systemBottomInset = insets.bottom;
                 applyStoriesRecyclerPadding();
+                requestRecyclerScrollStateUpdate();
 
                 return windowInsets;
             }
@@ -1367,6 +1369,11 @@ public class StoriesFragment extends Fragment {
 
     private void applyStoriesRecyclerPadding() {
         int bottomPadding = systemBottomInset;
+        if (appBarLayout != null) {
+            // The scrolling view is measured for the collapsed app bar. Reserve its scroll
+            // range so a list that fills the expanded viewport can still collapse the header.
+            bottomPadding += appBarLayout.getTotalScrollRange();
+        }
         if (updateButtonShowing && updateFab != null) {
             int updateFabHeight = updateFab.getHeight();
             ViewGroup.LayoutParams layoutParams = updateFab.getLayoutParams();
@@ -5067,18 +5074,35 @@ public class StoriesFragment extends Fragment {
 
         int contentTop = linearLayoutManager.getDecoratedTop(firstChild);
         int contentBottom = linearLayoutManager.getDecoratedBottom(lastChild);
-        int viewportTop = recyclerView.getPaddingTop();
-        int viewportBottom = recyclerView.getHeight() - recyclerView.getPaddingBottom();
+        Rect visibleBounds = new Rect();
+        if (!recyclerView.getLocalVisibleRect(visibleBounds)) {
+            return false;
+        }
+
+        int viewportTop = Math.max(recyclerView.getPaddingTop(), visibleBounds.top);
+        int bottomClearance = recyclerView.getPaddingBottom();
+        WindowInsetsCompat rootWindowInsets = ViewCompat.getRootWindowInsets(recyclerView);
+        if (rootWindowInsets != null) {
+            bottomClearance = Math.max(
+                    bottomClearance,
+                    rootWindowInsets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures()).bottom);
+        }
+        int viewportBottom = visibleBounds.bottom - bottomClearance;
 
         return contentTop >= viewportTop && contentBottom <= viewportBottom;
     }
 
     private void requestRecyclerScrollStateUpdate() {
-        updateRecyclerScrollState();
+        refreshRecyclerScrollState();
 
         if (recyclerView != null) {
-            recyclerView.post(this::updateRecyclerScrollState);
+            recyclerView.post(this::refreshRecyclerScrollState);
         }
+    }
+
+    private void refreshRecyclerScrollState() {
+        applyStoriesRecyclerPadding();
+        updateRecyclerScrollState();
     }
 
     private void updateRecyclerScrollState() {
