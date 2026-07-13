@@ -67,6 +67,7 @@
                 tools:text="How we scale PgBouncer in ClickHouse Managed Postgres" />
 
             <LinearLayout
+                android:id="@+id/story_link_meta_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"

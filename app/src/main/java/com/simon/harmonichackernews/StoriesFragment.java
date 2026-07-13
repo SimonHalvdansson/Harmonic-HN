@@ -169,8 +169,9 @@ public class StoriesFragment extends Fragment {
 
                 @Nullable
                 @Override
-                public ImageView findLinkSummaryStoryImageSourceView(int storyId) {
-                    return StoriesFragment.this.findLinkSummaryStoryImageSourceView(storyId);
+                public LinkSummaryOverlayController.StorySharedElements findLinkSummaryStorySharedElements(
+                        int storyId) {
+                    return StoriesFragment.this.findLinkSummaryStorySharedElements(storyId);
                 }
 
                 @Override
@@ -643,7 +644,7 @@ public class StoriesFragment extends Fragment {
                             story,
                             position,
                             resolveLinkSummarySourceView(position, null),
-                            resolveLinkSummaryStoryImageSourceView(position));
+                            resolveLinkSummaryStorySharedElements(position));
                     return;
                 }
             }
@@ -2642,7 +2643,7 @@ public class StoriesFragment extends Fragment {
                             story,
                             position,
                             resolveLinkSummarySourceView(position, v),
-                            resolveLinkSummaryStoryImageSourceView(position));
+                            resolveLinkSummaryStorySharedElements(position));
                     return true;
                 }
 
@@ -3021,14 +3022,14 @@ public class StoriesFragment extends Fragment {
     }
 
     @Nullable
-    private ImageView findLinkSummaryStoryImageSourceView(int storyId) {
+    private LinkSummaryOverlayController.StorySharedElements findLinkSummaryStorySharedElements(int storyId) {
         if (stories == null || recyclerView == null) {
             return null;
         }
         for (int position = 0; position < stories.size(); position++) {
             Story candidate = stories.get(position);
             if (candidate != null && candidate.id == storyId) {
-                return resolveLinkSummaryStoryImageSourceView(position);
+                return resolveLinkSummaryStorySharedElements(position);
             }
         }
         return null;
@@ -3049,7 +3050,8 @@ public class StoriesFragment extends Fragment {
     }
 
     @Nullable
-    private ImageView resolveLinkSummaryStoryImageSourceView(int position) {
+    private LinkSummaryOverlayController.StorySharedElements resolveLinkSummaryStorySharedElements(
+            int position) {
         if (recyclerView == null) {
             return null;
         }
@@ -3063,21 +3065,29 @@ public class StoriesFragment extends Fragment {
                 && SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(adapter.previewImageMode)
                 ? storyHolder.largePreviewImage
                 : storyHolder.smallPreviewImage;
-        if (isVisibleStoryPreviewImage(preferred)) {
-            return preferred;
+        ImageView image = preferred;
+        if (!isVisibleStoryPreviewImage(image)) {
+            ImageView fallback = preferred == storyHolder.largePreviewImage
+                    ? storyHolder.smallPreviewImage
+                    : storyHolder.largePreviewImage;
+            image = isVisibleStoryPreviewImage(fallback) ? fallback : null;
         }
-        ImageView fallback = preferred == storyHolder.largePreviewImage
-                ? storyHolder.smallPreviewImage
-                : storyHolder.largePreviewImage;
-        return isVisibleStoryPreviewImage(fallback) ? fallback : null;
+        View title = isVisibleStorySharedElement(storyHolder.titleView)
+                ? storyHolder.titleView : null;
+        View meta = isVisibleStorySharedElement(storyHolder.metaContainer)
+                ? storyHolder.metaContainer : null;
+        return new LinkSummaryOverlayController.StorySharedElements(image, title, meta);
     }
 
     private boolean isVisibleStoryPreviewImage(@Nullable ImageView image) {
-        return image != null
-                && image.getVisibility() == View.VISIBLE
-                && image.getDrawable() != null
-                && image.getWidth() > 0
-                && image.getHeight() > 0;
+        return isVisibleStorySharedElement(image) && image.getDrawable() != null;
+    }
+
+    private boolean isVisibleStorySharedElement(@Nullable View view) {
+        return view != null
+                && view.getVisibility() == View.VISIBLE
+                && view.getWidth() > 0
+                && view.getHeight() > 0;
     }
 
     @Override

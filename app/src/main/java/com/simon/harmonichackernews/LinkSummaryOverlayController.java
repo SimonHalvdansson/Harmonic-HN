@@ -3,8 +3,17 @@ package com.simon.harmonichackernews;
 import android.annotation.SuppressLint;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PixelFormat;
+import android.graphics.RectF;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,6 +24,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -32,7 +42,6 @@ import androidx.transition.Transition;
 import androidx.transition.AutoTransition;
 import androidx.transition.TransitionListenerAdapter;
 import androidx.transition.TransitionManager;
-import androidx.transition.TransitionSet;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.loadingindicator.LoadingIndicator;
@@ -62,13 +71,178 @@ import coil.request.ImageRequest;
 import coil.target.ImageViewTarget;
 import coil.util.CoilUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 final class LinkSummaryOverlayController {
+    static final class StorySharedElements {
+        @Nullable final ImageView image;
+        @Nullable final View title;
+        @Nullable final View meta;
+
+        StorySharedElements(
+                @Nullable ImageView image,
+                @Nullable View title,
+                @Nullable View meta) {
+            this.image = image;
+            this.title = title;
+            this.meta = meta;
+        }
+    }
+
+    private static final class SoftwareImageDrawableSwap {
+        final ImageView view;
+        final Drawable original;
+        final Bitmap softwareBitmap;
+
+        SoftwareImageDrawableSwap(
+                @NonNull ImageView view,
+                @NonNull Drawable original,
+                @NonNull Bitmap softwareBitmap) {
+            this.view = view;
+            this.original = original;
+            this.softwareBitmap = softwareBitmap;
+        }
+
+        void restore() {
+            view.setImageDrawable(original);
+            softwareBitmap.recycle();
+        }
+    }
+
+    private static final class StorySharedElementSnapshot {
+        final View start;
+        final View end;
+        final StorySharedElementSnapshotDrawable overlay;
+        final Bitmap startBitmap;
+        final Bitmap endBitmap;
+        final float startAlpha;
+        final float endAlpha;
+        final float startX;
+        final float startY;
+        final float endX;
+        final float endY;
+        final int startWidth;
+        final int startHeight;
+        final int endWidth;
+        final int endHeight;
+
+        StorySharedElementSnapshot(
+                @NonNull View start,
+                @NonNull View end,
+                @NonNull StorySharedElementSnapshotDrawable overlay,
+                @NonNull Bitmap startBitmap,
+                @NonNull Bitmap endBitmap,
+                float startAlpha,
+                float endAlpha,
+                float startX,
+                float startY,
+                float endX,
+                float endY) {
+            this.start = start;
+            this.end = end;
+            this.overlay = overlay;
+            this.startBitmap = startBitmap;
+            this.endBitmap = endBitmap;
+            this.startAlpha = startAlpha;
+            this.endAlpha = endAlpha;
+            this.startX = startX;
+            this.startY = startY;
+            this.endX = endX;
+            this.endY = endY;
+            startWidth = start.getWidth();
+            startHeight = start.getHeight();
+            endWidth = end.getWidth();
+            endHeight = end.getHeight();
+        }
+    }
+
+    private static final class StorySharedElementSnapshotDrawable extends Drawable {
+        private final Bitmap start;
+        private final Bitmap end;
+        private final float startViewAlpha;
+        private final float endViewAlpha;
+        private final float startTopRadius;
+        private final float startBottomRadius;
+        private final float endTopRadius;
+        private final float endBottomRadius;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final Path clipPath = new Path();
+        private final RectF clipBounds = new RectF();
+        private float progress;
+        private int alpha = 255;
+
+        StorySharedElementSnapshotDrawable(
+                @NonNull Bitmap start,
+                @NonNull Bitmap end,
+                float startViewAlpha,
+                float endViewAlpha,
+                float startTopRadius,
+                float startBottomRadius,
+                float endTopRadius,
+                float endBottomRadius) {
+            this.start = start;
+            this.end = end;
+            this.startViewAlpha = startViewAlpha;
+            this.endViewAlpha = endViewAlpha;
+            this.startTopRadius = startTopRadius;
+            this.startBottomRadius = startBottomRadius;
+            this.endTopRadius = endTopRadius;
+            this.endBottomRadius = endBottomRadius;
+        }
+
+        void setProgress(float progress) {
+            this.progress = progress;
+            invalidateSelf();
+        }
+
+        @Override public void draw(@NonNull Canvas canvas) {
+            float topRadius = lerp(startTopRadius, endTopRadius, progress);
+            float bottomRadius = lerp(startBottomRadius, endBottomRadius, progress);
+            int saveCount = canvas.save();
+            if (topRadius > 0f || bottomRadius > 0f) {
+                clipBounds.set(getBounds());
+                float[] radii = {
+                        topRadius, topRadius,
+                        topRadius, topRadius,
+                        bottomRadius, bottomRadius,
+                        bottomRadius, bottomRadius
+                };
+                clipPath.reset();
+                clipPath.addRoundRect(clipBounds, radii, Path.Direction.CW);
+                canvas.clipPath(clipPath);
+            }
+            float viewAlpha = lerp(startViewAlpha, endViewAlpha, progress);
+            paint.setAlpha(Math.round(alpha * viewAlpha * (1f - progress)));
+            canvas.drawBitmap(start, null, getBounds(), paint);
+            paint.setAlpha(Math.round(alpha * viewAlpha * progress));
+            canvas.drawBitmap(end, null, getBounds(), paint);
+            canvas.restoreToCount(saveCount);
+        }
+
+        private static float lerp(float start, float end, float progress) {
+            return start + (end - start) * progress;
+        }
+
+        @Override public void setAlpha(int alpha) {
+            this.alpha = alpha;
+            invalidateSelf();
+        }
+
+        @Override public void setColorFilter(@Nullable ColorFilter colorFilter) {
+            paint.setColorFilter(colorFilter);
+            invalidateSelf();
+        }
+
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    }
+
     interface Host {
         @Nullable Context getLinkSummaryContext();
         @NonNull Context requireLinkSummaryContext();
         @Nullable ViewGroup getLinkSummaryOverlayHost();
         @Nullable View findLinkSummarySourceView(int storyId);
-        default @Nullable ImageView findLinkSummaryStoryImageSourceView(int storyId) { return null; }
+        default @Nullable StorySharedElements findLinkSummaryStorySharedElements(int storyId) { return null; }
         default @Nullable View findLinkSummaryImageSourceView() { return null; }
         default @Nullable Integer getLinkSummaryImageBackgroundColor() { return null; }
         default void setLinkSummaryImageSourceSuppressed(boolean suppressed) { }
@@ -110,7 +284,11 @@ final class LinkSummaryOverlayController {
     private ImageOnlyOverlayContentBinding imageBinding;
     private View sourceView;
     private ImageView storyImageSourceView;
+    private View storyTitleSourceView;
+    private View storyMetaSourceView;
     private float storyImageSourceAlpha = 1f;
+    private float storyTitleSourceAlpha = 1f;
+    private float storyMetaSourceAlpha = 1f;
     private LinkSummaryLoader.SummaryRequest summaryRequest;
     private int visibleStoryId = NO_STORY_ID;
     private int visibleStoryPosition = -1;
@@ -119,6 +297,11 @@ final class LinkSummaryOverlayController {
     private boolean dismissing;
     private boolean predictiveBackActive;
     private boolean enterTransitionStarted;
+    private boolean enterTransitionComplete;
+    private final List<StorySharedElementSnapshot> storySharedElementSnapshots = new ArrayList<>();
+    private ValueAnimator storySharedElementSnapshotAnimator;
+    private ViewGroup storySharedElementSnapshotDrawing;
+    private int storySharedElementSnapshotGeneration;
     private int storyVoteLoadingId = NO_STORY_ID;
     private int storyFavoriteLoadingId = NO_STORY_ID;
 
@@ -135,15 +318,16 @@ final class LinkSummaryOverlayController {
     @Nullable String getFallbackTitle() { return fallbackTitle; }
 
     @SuppressLint("ClickableViewAccessibility")
-    void showStory(Story story, int position, @Nullable View source, @Nullable ImageView imageSource) {
+    void showStory(
+            Story story,
+            int position,
+            @Nullable View source,
+            @Nullable StorySharedElements sharedElements) {
         Context context = host.getLinkSummaryContext();
         if (context == null || story == null || TextUtils.isEmpty(story.url) || !prepareOverlay(source)) {
             return;
         }
-        if (isUsableStoryImageSource(imageSource)) {
-            storyImageSourceView = imageSource;
-            storyImageSourceAlpha = imageSource.getAlpha();
-        }
+        captureStorySharedElements(sharedElements, false);
         visibleStoryId = story.id;
         visibleStoryPosition = position;
         visibleUrl = story.url;
@@ -195,6 +379,38 @@ final class LinkSummaryOverlayController {
         storyBinding.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
         stopPreviewShimmer(storyBinding.storyLinkPreviewShimmer);
         configureSeededStoryPreviewHeight(previewDrawable);
+    }
+
+    private void captureStorySharedElements(
+            @Nullable StorySharedElements sharedElements,
+            boolean onlyMissing) {
+        if (sharedElements == null) return;
+        if ((!onlyMissing || !isUsableTransitionView(storyImageSourceView))
+                && isUsableStoryImageSource(sharedElements.image)) {
+            storyImageSourceView = sharedElements.image;
+            storyImageSourceAlpha = sharedElements.image.getAlpha();
+        }
+        if ((!onlyMissing || !isUsableTransitionView(storyTitleSourceView))
+                && isUsableStorySharedSource(sharedElements.title)) {
+            storyTitleSourceView = sharedElements.title;
+            storyTitleSourceAlpha = sharedElements.title.getAlpha();
+        }
+        if ((!onlyMissing || !isUsableTransitionView(storyMetaSourceView))
+                && isUsableStorySharedSource(sharedElements.meta)) {
+            storyMetaSourceView = sharedElements.meta;
+            storyMetaSourceAlpha = sharedElements.meta.getAlpha();
+        }
+    }
+
+    private void resolveStorySharedElementsIfNeeded() {
+        if (visibleStoryId == NO_STORY_ID
+                || (isUsableTransitionView(storyImageSourceView)
+                && isUsableTransitionView(storyTitleSourceView)
+                && isUsableTransitionView(storyMetaSourceView))) {
+            return;
+        }
+        captureStorySharedElements(
+                host.findLinkSummaryStorySharedElements(visibleStoryId), true);
     }
 
     private void configureSeededStoryPreviewHeight(@NonNull Drawable drawable) {
@@ -387,6 +603,7 @@ final class LinkSummaryOverlayController {
         sourceView = source;
         dismissing = false;
         enterTransitionStarted = false;
+        enterTransitionComplete = false;
         binding = LinkSummaryOverlayBinding.inflate(LayoutInflater.from(context), overlayHost, false);
         overlay = binding.getRoot();
         overlayHost.addView(overlay, new ViewGroup.LayoutParams(
@@ -814,7 +1031,7 @@ final class LinkSummaryOverlayController {
     }
 
     private void beginContentTransition(int durationMs) {
-        if (binding == null) return;
+        if (binding == null || !enterTransitionComplete) return;
         AutoTransition transition = new AutoTransition();
         transition.setDuration(durationMs);
         TransitionManager.beginDelayedTransition(binding.linkSummaryContent, transition);
@@ -849,24 +1066,28 @@ final class LinkSummaryOverlayController {
                 MaterialContainerTransform cardTransform = createTransform(overlayHost, sourceView, card,
                         MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
                 cardTransform.addTarget(card);
-                Transition transition = createStoryTransition(
+                Transition transition = cardTransform;
+                addEnterTransitionCompletionListener(transition);
+                prepareStorySharedElementSnapshotAnimation(
                         overlayHost,
-                        cardTransform,
-                        resolveStoryImageSourceView(),
-                        getStoryPreviewView(),
+                        transition,
                         MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
-                addStoryImageAlphaRestoreListener(transition);
                 TransitionManager.beginDelayedTransition(overlayHost, transition);
                 binding.linkSummaryScrim.animate().alpha(1f).setDuration(TRANSFORM_DURATION_MS).start();
                 if (imageBinding != null) host.setLinkSummaryImageSourceSuppressed(true);
                 setSourceVisible(sourceView, false);
                 setSourceVisible(storyImageSourceView, false);
+                setSourceVisible(storyTitleSourceView, false);
+                setSourceVisible(storyMetaSourceView, false);
                 card.setVisibility(View.VISIBLE);
             } else {
+                enterTransitionComplete = true;
                 binding.linkSummaryScrim.setAlpha(1f);
                 if (imageBinding != null) host.setLinkSummaryImageSourceSuppressed(true);
                 setSourceVisible(sourceView, false);
                 setSourceVisible(storyImageSourceView, false);
+                setSourceVisible(storyTitleSourceView, false);
+                setSourceVisible(storyMetaSourceView, false);
                 card.setVisibility(View.VISIBLE);
             }
             if (imageBinding == null) resizeScroll();
@@ -993,75 +1214,262 @@ final class LinkSummaryOverlayController {
         return transform;
     }
 
-    private Transition createStoryTransition(
+    private void prepareStorySharedElementSnapshotAnimation(
             @NonNull ViewGroup drawing,
-            @NonNull MaterialContainerTransform cardTransform,
-            @Nullable ImageView imageStart,
-            @Nullable ImageView imageEnd,
+            @NonNull Transition transition,
             int direction) {
-        if (!isUsableStoryImageTransition(drawing, imageStart, imageEnd)) {
-            return cardTransform;
-        }
+        finishStorySharedElementSnapshotAnimation();
+        resolveStorySharedElementsIfNeeded();
+        // Container transforms draw on the content overlay. Use the decor overlay so these
+        // independently moving snapshots remain above the transforming card.
+        View root = drawing.getRootView();
+        ViewGroup snapshotDrawing = root instanceof ViewGroup ? (ViewGroup) root : drawing;
+        boolean entering = direction == MaterialContainerTransform.TRANSITION_DIRECTION_ENTER;
+        ImageView dialogImage = getStoryPreviewView();
+        View dialogTitle = getStoryTitleView();
+        View dialogMeta = getStoryMetaView();
 
-        MaterialContainerTransform imageTransform = createStoryImageTransform(
-                drawing, imageStart, imageEnd, direction);
-        imageTransform.addTarget(imageEnd);
-        return new TransitionSet()
-                .setOrdering(TransitionSet.ORDERING_TOGETHER)
-                .addTransition(cardTransform)
-                .addTransition(imageTransform);
+        ImageView imageStart = entering ? storyImageSourceView : dialogImage;
+        ImageView imageEnd = entering ? dialogImage : storyImageSourceView;
+        float listImageRadius = getStoryListImageRadius(storyImageSourceView);
+        float dialogImageRadius = Utils.pxFromDpInt(
+                snapshotDrawing.getResources(), CARD_CORNER_RADIUS_DP);
+        addStorySharedElementSnapshot(
+                snapshotDrawing,
+                imageStart,
+                imageEnd,
+                entering ? listImageRadius : dialogImageRadius,
+                entering ? listImageRadius : 0f,
+                entering ? dialogImageRadius : listImageRadius,
+                entering ? 0f : listImageRadius);
+
+        addStorySharedElementSnapshot(
+                snapshotDrawing,
+                entering ? storyTitleSourceView : dialogTitle,
+                entering ? dialogTitle : storyTitleSourceView,
+                0f, 0f, 0f, 0f);
+        addStorySharedElementSnapshot(
+                snapshotDrawing,
+                entering ? storyMetaSourceView : dialogMeta,
+                entering ? dialogMeta : storyMetaSourceView,
+                0f, 0f, 0f, 0f);
+        if (storySharedElementSnapshots.isEmpty()) return;
+        storySharedElementSnapshotDrawing = snapshotDrawing;
+
+        for (StorySharedElementSnapshot snapshot : storySharedElementSnapshots) {
+            snapshot.start.setAlpha(0f);
+            snapshot.end.setAlpha(0f);
+        }
+        int generation = ++storySharedElementSnapshotGeneration;
+        transition.addListener(new TransitionListenerAdapter() {
+            private boolean finished;
+
+            @Override public void onTransitionStart(@NonNull Transition transition) {
+                if (generation == storySharedElementSnapshotGeneration) {
+                    startStorySharedElementSnapshotAnimation(snapshotDrawing);
+                }
+            }
+
+            @Override public void onTransitionEnd(@NonNull Transition transition) { finish(); }
+            @Override public void onTransitionCancel(@NonNull Transition transition) { finish(); }
+
+            private void finish() {
+                if (!finished) {
+                    finished = true;
+                    transition.removeListener(this);
+                    if (generation == storySharedElementSnapshotGeneration) {
+                        finishStorySharedElementSnapshotAnimation();
+                    }
+                }
+            }
+        });
     }
 
-    private MaterialContainerTransform createStoryImageTransform(
+    private void addStorySharedElementSnapshot(
             @NonNull ViewGroup drawing,
-            @NonNull ImageView start,
-            @NonNull ImageView end,
-            int direction) {
-        MaterialContainerTransform transform = new MaterialContainerTransform();
-        transform.setStartView(start);
-        transform.setEndView(end);
-        transform.setDuration(TRANSFORM_DURATION_MS);
-        transform.setScrimColor(Color.TRANSPARENT);
-        transform.setDrawingViewId(ensureDrawingViewId(drawing));
-        transform.setTransitionDirection(direction);
-        transform.setFadeMode(MaterialContainerTransform.FADE_MODE_CROSS);
-        transform.setFitMode(MaterialContainerTransform.FIT_MODE_AUTO);
-        transform.setElevationShadowEnabled(false);
-        transform.setAllContainerColors(Color.TRANSPARENT);
-        MaterialContainerTransform.ProgressThresholds thresholds =
-                new MaterialContainerTransform.ProgressThresholds(0f, 1f);
-        transform.setFadeProgressThresholds(thresholds);
-        transform.setScaleMaskProgressThresholds(thresholds);
-        transform.setShapeMaskProgressThresholds(thresholds);
-
-        ShapeAppearanceModel listShape = createStoryListImageShape(
-                direction == MaterialContainerTransform.TRANSITION_DIRECTION_ENTER ? start : end);
-        ShapeAppearanceModel dialogShape = createStoryDialogImageShape(end.getResources());
-        if (direction == MaterialContainerTransform.TRANSITION_DIRECTION_ENTER) {
-            transform.setStartShapeAppearanceModel(listShape);
-            transform.setEndShapeAppearanceModel(dialogShape);
-        } else {
-            transform.setStartShapeAppearanceModel(dialogShape);
-            transform.setEndShapeAppearanceModel(listShape);
+            @Nullable View start,
+            @Nullable View end,
+            float startTopRadius,
+            float startBottomRadius,
+            float endTopRadius,
+            float endBottomRadius) {
+        if (!isUsableTransition(drawing, start, end)) return;
+        if ((start instanceof ImageView && ((ImageView) start).getDrawable() == null)
+                || (end instanceof ImageView && ((ImageView) end).getDrawable() == null)) {
+            return;
         }
-        return transform;
+        Bitmap startBitmap = captureViewBitmap(start);
+        Bitmap endBitmap = captureViewBitmap(end);
+        if (startBitmap == null || endBitmap == null) {
+            if (startBitmap != null) startBitmap.recycle();
+            if (endBitmap != null) endBitmap.recycle();
+            return;
+        }
+
+        int[] drawingLocation = new int[2];
+        int[] startLocation = new int[2];
+        int[] endLocation = new int[2];
+        drawing.getLocationOnScreen(drawingLocation);
+        start.getLocationOnScreen(startLocation);
+        end.getLocationOnScreen(endLocation);
+        float startX = startLocation[0] - drawingLocation[0];
+        float startY = startLocation[1] - drawingLocation[1];
+        float endX = endLocation[0] - drawingLocation[0];
+        float endY = endLocation[1] - drawingLocation[1];
+
+        StorySharedElementSnapshotDrawable overlay = new StorySharedElementSnapshotDrawable(
+                startBitmap,
+                endBitmap,
+                start.getAlpha(),
+                end.getAlpha(),
+                startTopRadius,
+                startBottomRadius,
+                endTopRadius,
+                endBottomRadius);
+        overlay.setBounds(
+                Math.round(startX),
+                Math.round(startY),
+                Math.round(startX) + start.getWidth(),
+                Math.round(startY) + start.getHeight());
+        storySharedElementSnapshots.add(new StorySharedElementSnapshot(
+                start,
+                end,
+                overlay,
+                startBitmap,
+                endBitmap,
+                start.getAlpha(),
+                end.getAlpha(),
+                startX,
+                startY,
+                endX,
+                endY));
     }
 
-    private ShapeAppearanceModel createStoryListImageShape(@NonNull ImageView image) {
-        float radius = image.getClipToOutline()
+    @Nullable
+    private Bitmap captureViewBitmap(@NonNull View view) {
+        if (view.getWidth() <= 0 || view.getHeight() <= 0) return null;
+        Bitmap bitmap;
+        try {
+            bitmap = Bitmap.createBitmap(
+                    view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+        float alpha = view.getAlpha();
+        int visibility = view.getVisibility();
+        List<SoftwareImageDrawableSwap> drawableSwaps = new ArrayList<>();
+        try {
+            replaceHardwareImageDrawables(view, drawableSwaps);
+            view.setAlpha(1f);
+            view.setVisibility(View.VISIBLE);
+            view.draw(new Canvas(bitmap));
+            return bitmap;
+        } catch (RuntimeException exception) {
+            bitmap.recycle();
+            return null;
+        } finally {
+            for (int index = drawableSwaps.size() - 1; index >= 0; index--) {
+                drawableSwaps.get(index).restore();
+            }
+            view.setVisibility(visibility);
+            view.setAlpha(alpha);
+        }
+    }
+
+    private void replaceHardwareImageDrawables(
+            @NonNull View view,
+            @NonNull List<SoftwareImageDrawableSwap> drawableSwaps) {
+        if (view instanceof ImageView) {
+            ImageView imageView = (ImageView) view;
+            Drawable drawable = imageView.getDrawable();
+            if (drawable instanceof BitmapDrawable) {
+                Bitmap drawableBitmap = ((BitmapDrawable) drawable).getBitmap();
+                if (drawableBitmap != null
+                        && drawableBitmap.getConfig() == Bitmap.Config.HARDWARE) {
+                    Bitmap softwareBitmap = drawableBitmap.copy(Bitmap.Config.ARGB_8888, false);
+                    if (softwareBitmap != null) {
+                        BitmapDrawable softwareDrawable = new BitmapDrawable(
+                                view.getResources(), softwareBitmap);
+                        softwareDrawable.setAlpha(drawable.getAlpha());
+                        softwareDrawable.setColorFilter(drawable.getColorFilter());
+                        imageView.setImageDrawable(softwareDrawable);
+                        drawableSwaps.add(new SoftwareImageDrawableSwap(
+                                imageView, drawable, softwareBitmap));
+                    }
+                }
+            }
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                replaceHardwareImageDrawables(group.getChildAt(index), drawableSwaps);
+            }
+        }
+    }
+
+    private void startStorySharedElementSnapshotAnimation(@NonNull ViewGroup drawing) {
+        if (storySharedElementSnapshots.isEmpty()) return;
+        for (StorySharedElementSnapshot snapshot : storySharedElementSnapshots) {
+            drawing.getOverlay().add(snapshot.overlay);
+        }
+        updateStorySharedElementSnapshots(drawing, 0f);
+        storySharedElementSnapshotAnimator = ValueAnimator.ofFloat(0f, 1f);
+        storySharedElementSnapshotAnimator.setDuration(TRANSFORM_DURATION_MS);
+        storySharedElementSnapshotAnimator.setInterpolator(new PathInterpolator(0.4f, 0f, 0.2f, 1f));
+        storySharedElementSnapshotAnimator.addUpdateListener(animator -> updateStorySharedElementSnapshots(
+                drawing, (Float) animator.getAnimatedValue()));
+        storySharedElementSnapshotAnimator.start();
+    }
+
+    private void updateStorySharedElementSnapshots(@NonNull ViewGroup drawing, float progress) {
+        for (StorySharedElementSnapshot snapshot : storySharedElementSnapshots) {
+            float left = lerp(snapshot.startX, snapshot.endX, progress);
+            float top = lerp(snapshot.startY, snapshot.endY, progress);
+            int width = Math.round(lerp(snapshot.startWidth, snapshot.endWidth, progress));
+            int height = Math.round(lerp(snapshot.startHeight, snapshot.endHeight, progress));
+            snapshot.overlay.setBounds(
+                    Math.round(left),
+                    Math.round(top),
+                    Math.round(left) + width,
+                    Math.round(top) + height);
+            snapshot.overlay.setProgress(progress);
+
+            // Container transforms also draw in this overlay. Re-add the snapshots so they stay
+            // above the card throughout the animation, regardless of transition listener order.
+            drawing.getOverlay().remove(snapshot.overlay);
+            drawing.getOverlay().add(snapshot.overlay);
+        }
+    }
+
+    private void finishStorySharedElementSnapshotAnimation() {
+        storySharedElementSnapshotGeneration++;
+        if (storySharedElementSnapshotAnimator != null) {
+            storySharedElementSnapshotAnimator.removeAllUpdateListeners();
+            storySharedElementSnapshotAnimator.cancel();
+            storySharedElementSnapshotAnimator = null;
+        }
+        for (StorySharedElementSnapshot snapshot : storySharedElementSnapshots) {
+            if (storySharedElementSnapshotDrawing != null) {
+                storySharedElementSnapshotDrawing.getOverlay().remove(snapshot.overlay);
+            }
+            snapshot.start.setAlpha(snapshot.startAlpha);
+            snapshot.end.setAlpha(snapshot.endAlpha);
+            snapshot.startBitmap.recycle();
+            snapshot.endBitmap.recycle();
+        }
+        storySharedElementSnapshots.clear();
+        storySharedElementSnapshotDrawing = null;
+    }
+
+    private float lerp(float start, float end, float progress) {
+        return start + (end - start) * progress;
+    }
+
+    private float getStoryListImageRadius(@Nullable ImageView image) {
+        if (image == null) return 0f;
+        return image.getClipToOutline()
                 ? image.getResources().getDimension(R.dimen.story_preview_image_corner_radius)
                 : 0f;
-        return ShapeAppearanceModel.builder().setAllCornerSizes(radius).build();
-    }
-
-    private ShapeAppearanceModel createStoryDialogImageShape(@NonNull android.content.res.Resources resources) {
-        float radius = Utils.pxFromDpInt(resources, CARD_CORNER_RADIUS_DP);
-        return ShapeAppearanceModel.builder()
-                .setTopLeftCornerSize(radius)
-                .setTopRightCornerSize(radius)
-                .setBottomLeftCornerSize(0f)
-                .setBottomRightCornerSize(0f)
-                .build();
     }
 
     private ShapeAppearanceModel createShape(View view) {
@@ -1091,11 +1499,10 @@ final class LinkSummaryOverlayController {
             MaterialContainerTransform cardTransform = createTransform(overlayHost, card, end,
                     MaterialContainerTransform.TRANSITION_DIRECTION_RETURN);
             cardTransform.addTarget(end);
-            Transition transition = createStoryTransition(
+            Transition transition = cardTransform;
+            prepareStorySharedElementSnapshotAnimation(
                     overlayHost,
-                    cardTransform,
-                    getStoryPreviewView(),
-                    resolveStoryImageSourceView(),
+                    transition,
                     MaterialContainerTransform.TRANSITION_DIRECTION_RETURN);
             transition.addListener(new TransitionListenerAdapter() {
                 private boolean finished;
@@ -1105,7 +1512,7 @@ final class LinkSummaryOverlayController {
                     if (!finished) {
                         finished = true;
                         transition.removeListener(this);
-                        restoreStoryImageSourceAlpha();
+                        restoreStorySharedElementAlphas();
                         removeNow();
                     }
                 }
@@ -1113,7 +1520,9 @@ final class LinkSummaryOverlayController {
             TransitionManager.beginDelayedTransition(overlayHost, transition);
             binding.linkSummaryScrim.animate().alpha(0f).setDuration(TRANSFORM_DURATION_MS).start();
             setSourceVisible(end, true);
-            setSourceVisible(resolveStoryImageSourceView(), true);
+            setSourceVisible(storyImageSourceView, true);
+            setSourceVisible(storyTitleSourceView, true);
+            setSourceVisible(storyMetaSourceView, true);
             card.setVisibility(View.INVISIBLE);
         } else if (!animate) {
             removeNow();
@@ -1128,20 +1537,27 @@ final class LinkSummaryOverlayController {
 
     void removeNow() {
         cancelSummaryRequest();
+        finishStorySharedElementSnapshotAnimation();
         if (overlay == null) return;
         boolean wasShowingImage = imageBinding != null;
         if (imageBinding != null) CoilUtils.dispose(imageBinding.imageOnlyPreview);
         if (binding != null) ViewCompat.setOnApplyWindowInsetsListener(binding.linkSummaryContent, null);
         setSourceVisible(sourceView, true);
         setSourceVisible(storyImageSourceView, true);
-        restoreStoryImageSourceAlpha();
+        setSourceVisible(storyTitleSourceView, true);
+        setSourceVisible(storyMetaSourceView, true);
+        restoreStorySharedElementAlphas();
         if (overlay.getParent() instanceof ViewGroup) ((ViewGroup) overlay.getParent()).removeView(overlay);
         overlay = null; binding = null; card = null; storyBinding = null;
         referenceBinding = null; imageBinding = null;
-        sourceView = null; storyImageSourceView = null; storyImageSourceAlpha = 1f;
+        sourceView = null; storyImageSourceView = null; storyTitleSourceView = null;
+        storyMetaSourceView = null;
+        storyImageSourceAlpha = 1f; storyTitleSourceAlpha = 1f;
+        storyMetaSourceAlpha = 1f;
         visibleStoryId = NO_STORY_ID; visibleStoryPosition = -1;
         visibleUrl = null; fallbackTitle = null; dismissing = false;
         predictiveBackActive = false; enterTransitionStarted = false;
+        enterTransitionComplete = false;
         if (wasShowingImage) host.setLinkSummaryImageSourceSuppressed(false);
         host.syncLinkSummaryBackState();
     }
@@ -1198,16 +1614,12 @@ final class LinkSummaryOverlayController {
         return storyBinding == null ? null : storyBinding.storyLinkPreview;
     }
 
-    @Nullable private ImageView resolveStoryImageSourceView() {
-        if (isUsableTransitionView(storyImageSourceView)) return storyImageSourceView;
-        if (visibleStoryId == NO_STORY_ID) return null;
-        ImageView resolved = host.findLinkSummaryStoryImageSourceView(visibleStoryId);
-        if (isUsableStoryImageSource(resolved)) {
-            storyImageSourceView = resolved;
-            storyImageSourceAlpha = resolved.getAlpha();
-            return resolved;
-        }
-        return null;
+    @Nullable private View getStoryTitleView() {
+        return storyBinding == null ? null : storyBinding.storyLinkTitle;
+    }
+
+    @Nullable private View getStoryMetaView() {
+        return storyBinding == null ? null : storyBinding.storyLinkMetaContainer;
     }
 
     private boolean isUsableStoryImageSource(@Nullable ImageView image) {
@@ -1216,19 +1628,11 @@ final class LinkSummaryOverlayController {
                 && image.getDrawable() != null;
     }
 
-    private boolean isUsableStoryImageTransition(
-            @NonNull ViewGroup drawing,
-            @Nullable ImageView start,
-            @Nullable ImageView end) {
-        return start != null
-                && end != null
-                && start.getDrawable() != null
-                && end.getDrawable() != null
-                && isUsableTransition(drawing, start, end);
+    private boolean isUsableStorySharedSource(@Nullable View view) {
+        return isUsableTransitionView(view) && view.getVisibility() == View.VISIBLE;
     }
 
-    private void addStoryImageAlphaRestoreListener(@NonNull Transition transition) {
-        if (storyImageSourceView == null) return;
+    private void addEnterTransitionCompletionListener(@NonNull Transition transition) {
         transition.addListener(new TransitionListenerAdapter() {
             private boolean restored;
             @Override public void onTransitionEnd(@NonNull Transition transition) { restore(); }
@@ -1237,15 +1641,22 @@ final class LinkSummaryOverlayController {
                 if (!restored) {
                     restored = true;
                     transition.removeListener(this);
-                    restoreStoryImageSourceAlpha();
+                    enterTransitionComplete = true;
+                    restoreStorySharedElementAlphas();
                 }
             }
         });
     }
 
-    private void restoreStoryImageSourceAlpha() {
+    private void restoreStorySharedElementAlphas() {
         if (storyImageSourceView != null) {
             storyImageSourceView.setAlpha(storyImageSourceAlpha);
+        }
+        if (storyTitleSourceView != null) {
+            storyTitleSourceView.setAlpha(storyTitleSourceAlpha);
+        }
+        if (storyMetaSourceView != null) {
+            storyMetaSourceView.setAlpha(storyMetaSourceAlpha);
         }
     }
 
