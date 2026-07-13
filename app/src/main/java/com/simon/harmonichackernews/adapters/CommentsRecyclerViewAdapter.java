@@ -104,6 +104,8 @@ import coil.util.CoilUtils;
 
 public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
+    private static final Object HEADER_SUMMARY_UPDATE_PAYLOAD = new Object();
+
     private final List<Comment> comments;
     private HeaderClickListener headerClickListener;
     private CommentClickListener commentClickListener;
@@ -245,6 +247,20 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         } else {
             return new HeaderViewHolder(CommentsHeaderBinding.inflate(inflater, parent, false));
         }
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder,
+                                 int position,
+                                 @NonNull List<Object> payloads) {
+        if (position == 0
+                && holder instanceof HeaderViewHolder
+                && payloads.size() == 1
+                && payloads.get(0) == HEADER_SUMMARY_UPDATE_PAYLOAD) {
+            bindHeaderSummary((HeaderViewHolder) holder, holder.itemView.getContext());
+            return;
+        }
+        onBindViewHolder(holder, position);
     }
 
     @SuppressLint({"RecyclerView", "SetTextI18n"})
@@ -723,16 +739,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             showHeaderSummaryLoading(headerViewHolder.summarizeButton, true);
             summaryCallback.onRequest(() -> {
                 storySummaryLoading = false;
-                notifyItemChanged(0);
-                if (story.summaryGeneratedSuccessfully) {
-                    headerViewHolder.summarizeButtonParent.setVisibility(GONE);
-                    return;
-                }
-
-                ImageButton button = resolveStorySummaryButton(v);
-                if (button != null) {
-                    showHeaderSummaryButton(button, true);
-                }
+                notifyItemChanged(0, HEADER_SUMMARY_UPDATE_PAYLOAD);
             });
         });
     }
@@ -2348,20 +2355,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (boundHeaderViewHolder != null
                 && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.voteButton)) {
             return boundHeaderViewHolder.voteButton;
-        }
-        return null;
-    }
-
-    @Nullable
-    private ImageButton resolveStorySummaryButton(@Nullable View actionView) {
-        if (actionView instanceof ImageButton
-                && actionView.getId() == R.id.comments_header_button_summarize
-                && ViewCompat.isAttachedToWindow(actionView)) {
-            return (ImageButton) actionView;
-        }
-        if (boundHeaderViewHolder != null
-                && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.summarizeButton)) {
-            return boundHeaderViewHolder.summarizeButton;
         }
         return null;
     }
