@@ -8,10 +8,17 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import groovy.transform.CompileStatic
 
+import java.io.BufferedOutputStream
+import java.io.BufferedReader
+import java.io.DataOutputStream
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.util.Arrays
 
 @CacheableTask
+@CompileStatic
 abstract class GenerateAdblocklistTask extends DefaultTask {
     @InputFile
     @PathSensitive(PathSensitivity.RELATIVE)
@@ -22,35 +29,47 @@ abstract class GenerateAdblocklistTask extends DefaultTask {
 
     @TaskAction
     void generate() {
-        List<Long> hashes = new ArrayList<>()
-        sourceFile.get().asFile.withReader(StandardCharsets.UTF_8.name()) { reader ->
+        long[] hashes = new long[131_920]
+        int count = 0
+        BufferedReader reader = Files.newBufferedReader(
+                sourceFile.get().asFile.toPath(), StandardCharsets.UTF_8)
+        try {
             String host
             while ((host = reader.readLine()) != null) {
+                if (count == hashes.length) {
+                    hashes = Arrays.copyOf(hashes, hashes.length * 2)
+                }
                 long hash = 0xcbf29ce484222325L
                 for (int i = 0; i < host.length(); i++) {
                     hash ^= (long) host.charAt(i)
                     hash *= 0x100000001b3L
                 }
-                hashes.add(hash)
+                hashes[count++] = hash
             }
+        } finally {
+            reader.close()
         }
 
-        hashes.sort { left, right -> Long.compare(left, right) }
-        for (int i = 1; i < hashes.size(); i++) {
-            if (hashes.get(i - 1) == hashes.get(i)) {
+        Arrays.sort(hashes, 0, count)
+        for (int i = 1; i < count; i++) {
+            if (hashes[i - 1] == hashes[i]) {
                 throw new GradleException(
                         "Ad host hash collision detected at sorted index ${i}")
             }
         }
 
         File outputFile = outputDirectory.file("raw/adblockserverlist.bin").get().asFile
-        outputFile.parentFile.mkdirs()
-        outputFile.withDataOutputStream { output ->
+        Files.createDirectories(outputFile.parentFile.toPath())
+        DataOutputStream output = new DataOutputStream(new BufferedOutputStream(
+                Files.newOutputStream(outputFile.toPath())))
+        try {
             output.writeInt(0x48414431) // HAD1
-            output.writeInt(hashes.size())
-            for (long hash : hashes) {
-                output.writeLong(hash)
+            output.writeInt(count)
+            for (int i = 0; i < count; i++) {
+                output.writeLong(hashes[i])
             }
+        } finally {
+            output.close()
         }
     }
 }
@@ -84,13 +103,8 @@ android {
             signingConfig = signingConfigs.debug
 
             debuggable = false
-            minifyEnabled = true
-            shrinkResources = true
-
-            proguardFiles(
-                    getDefaultProguardFile("proguard-android-optimize.txt"),
-                    "proguard-rules.pro"
-            )
+            minifyEnabled = false
+            shrinkResources = false
 
             matchingFallbacks.add("release")
         }
