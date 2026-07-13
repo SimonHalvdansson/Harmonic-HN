@@ -3,27 +3,26 @@ package com.simon.harmonichackernews.utils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.io.BufferedReader;
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.Arrays;
 
-/** Immutable primitive hash table for allocation-free blocked-host lookups. */
+/** Immutable sorted primitive table for allocation-free blocked-host lookups. */
 public final class AdHostBlocklist {
-    private static final int INITIAL_TABLE_CAPACITY = 262_144;
+    private static final int FILE_MAGIC = 0x48414431; // HAD1
+    private static final int MAX_HOST_COUNT = 1_000_000;
     private static final long FNV_OFFSET_BASIS = 0xcbf29ce484222325L;
     private static final long FNV_PRIME = 0x100000001b3L;
-    private static final AdHostBlocklist EMPTY = new AdHostBlocklist(new long[0], 0, false);
+    private static final AdHostBlocklist EMPTY = new AdHostBlocklist(new long[0]);
 
-    private final long[] hostHashes;
-    private final int size;
-    private final boolean containsZeroHash;
+    private final long[] sortedHostHashes;
 
-    private AdHostBlocklist(long[] hostHashes, int size, boolean containsZeroHash) {
-        this.hostHashes = hostHashes;
-        this.size = size;
-        this.containsZeroHash = containsZeroHash;
+    private AdHostBlocklist(long[] sortedHostHashes) {
+        this.sortedHostHashes = sortedHostHashes;
     }
 
     @NonNull
@@ -33,47 +32,45 @@ public final class AdHostBlocklist {
 
     @NonNull
     public static AdHostBlocklist read(@NonNull InputStream inputStream) throws IOException {
-        Builder builder = new Builder();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            String host;
-            while ((host = reader.readLine()) != null) {
-                builder.add(hash(host));
+        try (DataInputStream input = new DataInputStream(new BufferedInputStream(inputStream))) {
+            if (input.readInt() != FILE_MAGIC) {
+                throw new IOException("Invalid ad host blocklist header");
             }
+            int count = input.readInt();
+            if (count < 0 || count > MAX_HOST_COUNT) {
+                throw new IOException("Invalid ad host blocklist size: " + count);
+            }
+
+            byte[] encodedHashes = new byte[Math.multiplyExact(count, Long.BYTES)];
+            input.readFully(encodedHashes);
+            if (input.read() != -1) {
+                throw new IOException("Unexpected data after ad host blocklist");
+            }
+
+            long[] hashes = new long[count];
+            ByteBuffer.wrap(encodedHashes)
+                    .order(ByteOrder.BIG_ENDIAN)
+                    .asLongBuffer()
+                    .get(hashes);
+            for (int i = 0; i < count; i++) {
+                if (i > 0 && hashes[i - 1] >= hashes[i]) {
+                    throw new IOException("Ad host blocklist is not strictly sorted");
+                }
+            }
+            return count == 0 ? EMPTY : new AdHostBlocklist(hashes);
         }
-        return builder.build();
     }
 
     public boolean isEmpty() {
-        return size == 0;
+        return sortedHostHashes.length == 0;
     }
 
     public int size() {
-        return size;
+        return sortedHostHashes.length;
     }
 
     public boolean contains(@Nullable String host) {
-        if (host == null || size == 0) {
-            return false;
-        }
-        long targetHash = hash(host);
-        if (targetHash == 0) {
-            return containsZeroHash;
-        }
-
-        int mask = hostHashes.length - 1;
-        int index = indexFor(targetHash, mask);
-        while (hostHashes[index] != 0) {
-            if (hostHashes[index] == targetHash) {
-                return true;
-            }
-            index = (index + 1) & mask;
-        }
-        return false;
-    }
-
-    private static int indexFor(long hash, int mask) {
-        return ((int) (hash ^ (hash >>> 32))) & mask;
+        return host != null && Arrays.binarySearch(sortedHostHashes, hash(host)) >= 0;
     }
 
     private static long hash(String host) {
@@ -85,52 +82,4 @@ public final class AdHostBlocklist {
         return hash;
     }
 
-    private static final class Builder {
-        private long[] table = new long[INITIAL_TABLE_CAPACITY];
-        private int size;
-        private boolean containsZeroHash;
-
-        void add(long hash) {
-            if (hash == 0) {
-                if (!containsZeroHash) {
-                    containsZeroHash = true;
-                    size++;
-                }
-                return;
-            }
-            if ((size + 1) * 10 > table.length * 7) {
-                resize();
-            }
-            if (insert(table, hash)) {
-                size++;
-            }
-        }
-
-        AdHostBlocklist build() {
-            return size == 0 ? EMPTY : new AdHostBlocklist(table, size, containsZeroHash);
-        }
-
-        private void resize() {
-            long[] largerTable = new long[table.length * 2];
-            for (long hash : table) {
-                if (hash != 0) {
-                    insert(largerTable, hash);
-                }
-            }
-            table = largerTable;
-        }
-
-        private static boolean insert(long[] table, long hash) {
-            int mask = table.length - 1;
-            int index = indexFor(hash, mask);
-            while (table[index] != 0) {
-                if (table[index] == hash) {
-                    return false;
-                }
-                index = (index + 1) & mask;
-            }
-            table[index] = hash;
-            return true;
-        }
-    }
 }
