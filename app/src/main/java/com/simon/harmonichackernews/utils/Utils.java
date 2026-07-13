@@ -67,6 +67,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -115,7 +116,8 @@ public class Utils {
     public final static String URL_SHOW = "https://hacker-news.firebaseio.com/v0/showstories.json";
     public final static String URL_JOBS = "https://hacker-news.firebaseio.com/v0/jobstories.json";
 
-    public static Set<String> adservers = new HashSet<>();
+    public static volatile AdHostBlocklist adservers = AdHostBlocklist.empty();
+    private static final AtomicBoolean adserversLoading = new AtomicBoolean(false);
 
     public static void log(String s) {
         Log.d("HARMONIC_TAG", s);
@@ -164,22 +166,23 @@ public class Utils {
     }
 
     public static void loadAdservers(Resources resources) {
+        if (!adservers.isEmpty() || !adserversLoading.compareAndSet(false, true)) {
+            return;
+        }
         Runnable r = new Runnable() {
             @Override
             public void run() {
-                String strLine2;
-                Set<String> adSet = new HashSet<>();
-
-                InputStream fis2 = resources.openRawResource(R.raw.adblockserverlist);
-                BufferedReader br2 = new BufferedReader(new InputStreamReader(fis2));
                 try {
-                    while ((strLine2 = br2.readLine()) != null) {
-                        adSet.add(strLine2);
+                    AdHostBlocklist blocklist = AdHostBlocklist.read(
+                            resources.openRawResource(R.raw.adblockserverlist));
+                    if (!blocklist.isEmpty()) {
+                        Utils.adservers = blocklist;
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    Log.e("HARMONIC_TAG", "Failed to load ad host blocklist", e);
+                } finally {
+                    adserversLoading.set(false);
                 }
-                Utils.adservers = adSet;
             }
         };
         AsyncTask.execute(r);
