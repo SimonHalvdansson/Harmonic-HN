@@ -12,7 +12,6 @@ import androidx.preference.SwitchPreferenceCompat;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.network.AiModelCatalog;
 import com.simon.harmonichackernews.network.AiSummaryProviders;
-import com.simon.harmonichackernews.network.SummaryManager;
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -44,8 +43,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
         AiModelCatalog.ensureInitialDefault(requireContext());
         boolean hadEnablePreference = prefs.contains(PREF_ENABLED);
-        boolean defaultEnabled = SummaryManager.canAttemptLocalSummarization()
-                || !AiSummaryApiKeyStore.getApiKey(requireContext()).isEmpty();
+        boolean defaultEnabled = isConfigurationComplete();
 
         setPreferencesFromResource(R.xml.preferences_ai_summary, rootKey);
 
@@ -64,9 +62,11 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
                             AiSummaryTextDialogFragment.RESULT_PREFERENCE_KEY);
                     if (PREF_API_KEY.equals(changedKey)) {
                         updateApiKeySummary();
+                        updateEnablePreferenceAvailability();
                         updateDependentPreferenceStates();
                     } else if (PREF_SYSTEM_PROMPT.equals(changedKey)) {
                         updateSystemPromptSummary();
+                        updateEnablePreferenceAvailability();
                     }
                 });
 
@@ -75,7 +75,10 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
                     ? prefs.getBoolean(PREF_ENABLED, defaultEnabled)
                     : defaultEnabled);
             enablePreference.setOnPreferenceChangeListener((preference, newValue) -> {
-                updateDependentPreferenceStates((Boolean) newValue);
+                if ((Boolean) newValue && !isConfigurationComplete()) {
+                    return false;
+                }
+                updateDependentPreferenceStates();
                 return true;
             });
         }
@@ -148,11 +151,12 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         normalizeModelForCurrentProvider();
         String mode = PreferenceManager.getDefaultSharedPreferences(requireContext())
                 .getString(PREF_MODE, AiSummaryModePreference.MODE_CLOUD);
-        updateDependentPreferenceStates(Utils.isAiSummaryEnabled(requireContext()), mode);
         updateBaseUrlSummary();
         updateApiKeySummary();
         updateModelSummary();
         updateSystemPromptSummary();
+        updateEnablePreferenceAvailability();
+        updateDependentPreferenceStates(mode);
     }
 
     @Override
@@ -168,43 +172,62 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
             if (enablePreference != null) {
                 enablePreference.setChecked(Utils.isAiSummaryEnabled(requireContext()));
             }
+            updateEnablePreferenceAvailability();
             updateDependentPreferenceStates();
         } else if (PREF_BASE_URL.equals(key)) {
             updateBaseUrlSummary();
+            updateEnablePreferenceAvailability();
         } else if (PREF_API_KEY.equals(key)) {
             updateApiKeySummary();
+            updateEnablePreferenceAvailability();
         } else if (PREF_MODEL.equals(key)) {
             updateModelSummary();
+            updateEnablePreferenceAvailability();
         } else if (PREF_MODE.equals(key)) {
             updateDependentPreferenceStates(sharedPreferences.getString(key, AiSummaryModePreference.MODE_CLOUD));
         } else if (PREF_SYSTEM_PROMPT.equals(key)) {
             updateSystemPromptSummary();
+            updateEnablePreferenceAvailability();
         }
     }
 
     private void updateDependentPreferenceStates() {
         String mode = PreferenceManager.getDefaultSharedPreferences(requireContext())
                 .getString(PREF_MODE, AiSummaryModePreference.MODE_CLOUD);
-        updateDependentPreferenceStates(Utils.isAiSummaryEnabled(requireContext()), mode);
+        updateDependentPreferenceStates(mode);
     }
 
     private void updateDependentPreferenceStates(String mode) {
-        updateDependentPreferenceStates(Utils.isAiSummaryEnabled(requireContext()), mode);
-    }
-
-    private void updateDependentPreferenceStates(boolean aiEnabled) {
-        String mode = PreferenceManager.getDefaultSharedPreferences(requireContext())
-                .getString(PREF_MODE, AiSummaryModePreference.MODE_CLOUD);
-        updateDependentPreferenceStates(aiEnabled, mode);
-    }
-
-    private void updateDependentPreferenceStates(boolean aiEnabled, String mode) {
-        boolean cloudSettingsEnabled = aiEnabled && AiSummaryModePreference.MODE_CLOUD.equals(mode);
-        if (modePreference != null) modePreference.setControlsEnabled(aiEnabled);
+        boolean cloudSettingsEnabled = AiSummaryModePreference.MODE_CLOUD.equals(mode);
+        if (modePreference != null) modePreference.setControlsEnabled(true);
         if (baseUrlPreference != null) changePrefStatus(baseUrlPreference, cloudSettingsEnabled);
         if (apiKeyPreference != null) changePrefStatus(apiKeyPreference, cloudSettingsEnabled);
         if (modelPreference != null) changePrefStatus(modelPreference, cloudSettingsEnabled);
         if (systemPromptPreference != null) changePrefStatus(systemPromptPreference, cloudSettingsEnabled);
+    }
+
+    private void updateEnablePreferenceAvailability() {
+        if (enablePreference == null || getContext() == null) {
+            return;
+        }
+
+        boolean configurationComplete = isConfigurationComplete();
+        if (!configurationComplete && enablePreference.isChecked()) {
+            enablePreference.setChecked(false);
+        }
+        enablePreference.setEnabled(configurationComplete);
+    }
+
+    private boolean isConfigurationComplete() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        String baseUrl = prefs.getString(PREF_BASE_URL, DEFAULT_BASE_URL);
+        String apiKey = AiSummaryApiKeyStore.getApiKey(requireContext());
+        String model = prefs.getString(PREF_MODEL, "");
+        String systemPrompt = prefs.getString(PREF_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT);
+        return !TextUtils.isEmpty(baseUrl == null ? "" : baseUrl.trim())
+                && !TextUtils.isEmpty(apiKey.trim())
+                && !TextUtils.isEmpty(model == null ? "" : model.trim())
+                && !TextUtils.isEmpty(systemPrompt == null ? "" : systemPrompt.trim());
     }
 
     private void updateBaseUrlSummary() {
