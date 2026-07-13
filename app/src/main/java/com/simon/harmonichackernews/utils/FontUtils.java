@@ -14,18 +14,19 @@ public class FontUtils {
 
     private static final float GOOGLE_SANS_FLEX_ROUNDED_SIZE_ADJUSTMENT = -0.5f;
     private static final float EXTRA_COMPACT_STORIES_DROPDOWN_SELECTED_SCALE = 0.8f;
-    private static final FontSizes STORY_TITLE_SIZES = new FontSizes(17.5f, 16, 18, 15, 16, 16, 17, 17.5f);
-    private static final FontSizes STORY_META_SIZES = new FontSizes(13, 13f, 13, 12, 12, 12, 13, 13);
-    private static final FontSizes STORY_COMMENT_COUNT_SIZES = new FontSizes(14, 13.5f, 13, 13, 14, 14, 14, 14);
-    private static final FontSizes STORIES_DROPDOWN_SELECTED_SIZES = new FontSizes(36, 34, 36, 33, 34, 34, 35, 35);
+    private static final FontSizes STORY_TITLE_SIZES = new FontSizes(17.5f, 16, 17.5f, 18, 15, 16, 16, 17, 17.5f);
+    private static final FontSizes STORY_META_SIZES = new FontSizes(13, 13f, 13, 13, 12, 12, 12, 13, 13);
+    private static final FontSizes STORY_COMMENT_COUNT_SIZES = new FontSizes(14, 13.5f, 14, 13, 13, 14, 14, 14, 14);
+    private static final FontSizes STORIES_DROPDOWN_SELECTED_SIZES = new FontSizes(36, 34, 36, 36, 33, 34, 34, 35, 35);
     private static final FontSizes COMPACT_STORIES_DROPDOWN_SELECTED_SIZES = new FontSizes(
-            32.5f, 30.5f, 32.5f, 29.5f, 27.5f, 27.5f, 31.5f, 31.5f);
-    private static final FontSizes STORIES_DROPDOWN_ITEM_SIZES = new FontSizes(18, 17, 18, 17, 17, 17, 18, 18);
-    private static final FontSizes COMMENTS_HEADER_META_SIZES = new FontSizes(14, 13.5f, 13, 13, 13, 13, 13, 13);
-    private static final FontSizes COMMENTS_HEADER_TITLE_SIZES = new FontSizes(27, 26, 26, 23, 26, 26, 24, 26);
+            32.5f, 30.5f, 32.5f, 32.5f, 29.5f, 27.5f, 27.5f, 31.5f, 31.5f);
+    private static final FontSizes STORIES_DROPDOWN_ITEM_SIZES = new FontSizes(18, 17, 18, 18, 17, 17, 17, 18, 18);
+    private static final FontSizes COMMENTS_HEADER_META_SIZES = new FontSizes(14, 13.5f, 14, 13, 13, 13, 13, 13, 13);
+    private static final FontSizes COMMENTS_HEADER_TITLE_SIZES = new FontSizes(27, 26, 27, 26, 23, 26, 26, 24, 26);
     private static final FontSizes COMMENT_TEXT_SIZES = new FontSizes(
             15,
             14,
+            15,
             15,
             14,
             14,
@@ -40,6 +41,7 @@ public class FontUtils {
     private static final FontSizes LINK_SUMMARY_BUTTON_SIZES = new FontSizes(
             14,
             13.5f,
+            14,
             14,
             13,
             13,
@@ -235,6 +237,7 @@ public class FontUtils {
 
         private final float productSans;
         private final float googleSansFlexRounded;
+        private final float googleSans;
         private final float deviceDefault;
         private final float verdana;
         private final float jetbrainsMono;
@@ -244,6 +247,7 @@ public class FontUtils {
 
         FontSizes(float productSans,
                   float googleSansFlexRounded,
+                  float googleSans,
                   float deviceDefault,
                   float verdana,
                   float jetbrainsMono,
@@ -252,6 +256,7 @@ public class FontUtils {
                   float robotoSlab) {
             this.productSans = productSans;
             this.googleSansFlexRounded = googleSansFlexRounded;
+            this.googleSans = googleSans;
             this.deviceDefault = deviceDefault;
             this.verdana = verdana;
             this.jetbrainsMono = jetbrainsMono;
@@ -261,13 +266,14 @@ public class FontUtils {
         }
 
         static FontSizes uniform(float size) {
-            return new FontSizes(size, size, size, size, size, size, size, size);
+            return new FontSizes(size, size, size, size, size, size, size, size, size);
         }
 
         FontSizes plus(float delta) {
             return new FontSizes(
                     productSans + delta,
                     googleSansFlexRounded + delta,
+                    googleSans + delta,
                     deviceDefault + delta,
                     verdana + delta,
                     jetbrainsMono + delta,
@@ -280,6 +286,7 @@ public class FontUtils {
             return new FontSizes(
                     productSans * scale,
                     googleSansFlexRounded * scale,
+                    googleSans * scale,
                     deviceDefault * scale,
                     verdana * scale,
                     jetbrainsMono * scale,
@@ -292,6 +299,7 @@ public class FontUtils {
             return new FontSizes(
                     productSans,
                     size,
+                    googleSans,
                     deviceDefault,
                     verdana,
                     jetbrainsMono,
@@ -305,7 +313,7 @@ public class FontUtils {
                 case "googlesansflexrounded":
                     return googleSansFlexRounded;
                 case "googlesans":
-                    return productSans;
+                    return googleSans;
                 case "devicedefault":
                     return deviceDefault;
                 case "verdana":

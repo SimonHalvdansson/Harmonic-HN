@@ -729,6 +729,7 @@ class CommentsWebViewController {
         switch (SettingsUtils.sanitizeReaderModeFont(font)) {
             case "productsans":
             case "googlesansflexrounded":
+            case "googlesans":
             case "verdana":
                 return "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
             case "robotoslab":
@@ -754,6 +755,10 @@ class CommentsWebViewController {
             case "googlesansflexrounded":
                 regularFontResource = R.font.google_sans_flex_rounded_regular;
                 boldFontResource = R.font.google_sans_flex_rounded_bold;
+                break;
+            case "googlesans":
+                regularFontResource = R.font.google_sans_regular;
+                boldFontResource = R.font.google_sans_bold;
                 break;
             case "verdana":
                 regularFontResource = R.font.verdana_regular;
