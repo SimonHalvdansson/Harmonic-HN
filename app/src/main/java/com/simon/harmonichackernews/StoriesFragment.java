@@ -167,6 +167,12 @@ public class StoriesFragment extends Fragment {
                     return StoriesFragment.this.findLinkSummarySourceView(storyId);
                 }
 
+                @Nullable
+                @Override
+                public ImageView findLinkSummaryStoryImageSourceView(int storyId) {
+                    return StoriesFragment.this.findLinkSummaryStoryImageSourceView(storyId);
+                }
+
                 @Override
                 public int resolveStoryCardBackgroundColor(Story story) {
                     Context context = StoriesFragment.this.getContext();
@@ -634,7 +640,10 @@ public class StoriesFragment extends Fragment {
                 Story story = stories.get(position);
                 if (story.id == storyId && story.isLink && !TextUtils.isEmpty(story.url)) {
                     linkSummaryOverlayController.showStory(
-                            story, position, resolveLinkSummarySourceView(position, null));
+                            story,
+                            position,
+                            resolveLinkSummarySourceView(position, null),
+                            resolveLinkSummaryStoryImageSourceView(position));
                     return;
                 }
             }
@@ -2630,7 +2639,10 @@ public class StoriesFragment extends Fragment {
                 Story story = stories.get(position);
                 if (story.isLink && !TextUtils.isEmpty(story.url)) {
                     linkSummaryOverlayController.showStory(
-                            story, position, resolveLinkSummarySourceView(position, v));
+                            story,
+                            position,
+                            resolveLinkSummarySourceView(position, v),
+                            resolveLinkSummaryStoryImageSourceView(position));
                     return true;
                 }
 
@@ -3009,6 +3021,20 @@ public class StoriesFragment extends Fragment {
     }
 
     @Nullable
+    private ImageView findLinkSummaryStoryImageSourceView(int storyId) {
+        if (stories == null || recyclerView == null) {
+            return null;
+        }
+        for (int position = 0; position < stories.size(); position++) {
+            Story candidate = stories.get(position);
+            if (candidate != null && candidate.id == storyId) {
+                return resolveLinkSummaryStoryImageSourceView(position);
+            }
+        }
+        return null;
+    }
+
+    @Nullable
     private View resolveLinkSummarySourceView(int position, @Nullable View fallback) {
         if (recyclerView == null) {
             return fallback;
@@ -3020,6 +3046,38 @@ public class StoriesFragment extends Fragment {
         StoryRecyclerViewAdapter.StoryViewHolder storyHolder =
                 (StoryRecyclerViewAdapter.StoryViewHolder) holder;
         return storyHolder.storyCard != null ? storyHolder.storyCard : storyHolder.linkLayoutView;
+    }
+
+    @Nullable
+    private ImageView resolveLinkSummaryStoryImageSourceView(int position) {
+        if (recyclerView == null) {
+            return null;
+        }
+        RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(position);
+        if (!(holder instanceof StoryRecyclerViewAdapter.StoryViewHolder)) {
+            return null;
+        }
+        StoryRecyclerViewAdapter.StoryViewHolder storyHolder =
+                (StoryRecyclerViewAdapter.StoryViewHolder) holder;
+        ImageView preferred = adapter != null
+                && SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(adapter.previewImageMode)
+                ? storyHolder.largePreviewImage
+                : storyHolder.smallPreviewImage;
+        if (isVisibleStoryPreviewImage(preferred)) {
+            return preferred;
+        }
+        ImageView fallback = preferred == storyHolder.largePreviewImage
+                ? storyHolder.smallPreviewImage
+                : storyHolder.largePreviewImage;
+        return isVisibleStoryPreviewImage(fallback) ? fallback : null;
+    }
+
+    private boolean isVisibleStoryPreviewImage(@Nullable ImageView image) {
+        return image != null
+                && image.getVisibility() == View.VISIBLE
+                && image.getDrawable() != null
+                && image.getWidth() > 0
+                && image.getHeight() > 0;
     }
 
     @Override

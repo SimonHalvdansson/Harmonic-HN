@@ -32,6 +32,7 @@ import androidx.transition.Transition;
 import androidx.transition.AutoTransition;
 import androidx.transition.TransitionListenerAdapter;
 import androidx.transition.TransitionManager;
+import androidx.transition.TransitionSet;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.loadingindicator.LoadingIndicator;
@@ -67,6 +68,7 @@ final class LinkSummaryOverlayController {
         @NonNull Context requireLinkSummaryContext();
         @Nullable ViewGroup getLinkSummaryOverlayHost();
         @Nullable View findLinkSummarySourceView(int storyId);
+        default @Nullable ImageView findLinkSummaryStoryImageSourceView(int storyId) { return null; }
         default @Nullable View findLinkSummaryImageSourceView() { return null; }
         default @Nullable Integer getLinkSummaryImageBackgroundColor() { return null; }
         default void setLinkSummaryImageSourceSuppressed(boolean suppressed) { }
@@ -107,6 +109,8 @@ final class LinkSummaryOverlayController {
     private ReferenceLinkSummaryContentBinding referenceBinding;
     private ImageOnlyOverlayContentBinding imageBinding;
     private View sourceView;
+    private ImageView storyImageSourceView;
+    private float storyImageSourceAlpha = 1f;
     private LinkSummaryLoader.SummaryRequest summaryRequest;
     private int visibleStoryId = NO_STORY_ID;
     private int visibleStoryPosition = -1;
@@ -131,10 +135,14 @@ final class LinkSummaryOverlayController {
     @Nullable String getFallbackTitle() { return fallbackTitle; }
 
     @SuppressLint("ClickableViewAccessibility")
-    void showStory(Story story, int position, @Nullable View source) {
+    void showStory(Story story, int position, @Nullable View source, @Nullable ImageView imageSource) {
         Context context = host.getLinkSummaryContext();
         if (context == null || story == null || TextUtils.isEmpty(story.url) || !prepareOverlay(source)) {
             return;
+        }
+        if (isUsableStoryImageSource(imageSource)) {
+            storyImageSourceView = imageSource;
+            storyImageSourceAlpha = imageSource.getAlpha();
         }
         visibleStoryId = story.id;
         visibleStoryPosition = position;
@@ -165,7 +173,46 @@ final class LinkSummaryOverlayController {
             }
             loadStorySummary(story);
         }
+        seedStoryPreviewFromSource();
         startEnterTransition();
+    }
+
+    private void seedStoryPreviewFromSource() {
+        if (storyBinding == null || card == null || storyImageSourceView == null) return;
+        Drawable sourceDrawable = storyImageSourceView.getDrawable();
+        if (sourceDrawable == null) return;
+
+        ImageView preview = storyBinding.storyLinkPreview;
+        Drawable previewDrawable = preview.getDrawable();
+        if (previewDrawable == null) {
+            Drawable.ConstantState constantState = sourceDrawable.getConstantState();
+            previewDrawable = constantState == null
+                    ? sourceDrawable
+                    : constantState.newDrawable(card.getResources()).mutate();
+            preview.setImageDrawable(previewDrawable);
+        }
+        preview.setVisibility(View.VISIBLE);
+        storyBinding.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
+        stopPreviewShimmer(storyBinding.storyLinkPreviewShimmer);
+        configureSeededStoryPreviewHeight(previewDrawable);
+    }
+
+    private void configureSeededStoryPreviewHeight(@NonNull Drawable drawable) {
+        if (storyBinding == null || card == null) return;
+        ViewGroup.LayoutParams cardParams = card.getLayoutParams();
+        int width = cardParams == null ? 0 : cardParams.width;
+        int intrinsicWidth = drawable.getIntrinsicWidth();
+        int intrinsicHeight = drawable.getIntrinsicHeight();
+        if (width <= 0 || intrinsicWidth <= 0 || intrinsicHeight <= 0) return;
+
+        int defaultHeight = Utils.pxFromDpInt(card.getResources(), STORY_PREVIEW_DEFAULT_HEIGHT_DP);
+        int targetHeight = Math.min(defaultHeight,
+                Math.max(1, Math.round(width * intrinsicHeight / (float) intrinsicWidth)));
+        ViewGroup.LayoutParams previewParams = storyBinding.storyLinkPreviewContainer.getLayoutParams();
+        if (previewParams.height != targetHeight) {
+            previewParams.height = targetHeight;
+            storyBinding.storyLinkPreviewContainer.setLayoutParams(previewParams);
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -799,18 +846,27 @@ final class LinkSummaryOverlayController {
         overlay.post(() -> {
             if (overlay == null || card == null || overlayHost == null) return;
             if (isUsableTransition(overlayHost, sourceView, card)) {
-                MaterialContainerTransform transform = createTransform(overlayHost, sourceView, card,
+                MaterialContainerTransform cardTransform = createTransform(overlayHost, sourceView, card,
                         MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
-                transform.addTarget(card);
-                TransitionManager.beginDelayedTransition(overlayHost, transform);
+                cardTransform.addTarget(card);
+                Transition transition = createStoryTransition(
+                        overlayHost,
+                        cardTransform,
+                        resolveStoryImageSourceView(),
+                        getStoryPreviewView(),
+                        MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
+                addStoryImageAlphaRestoreListener(transition);
+                TransitionManager.beginDelayedTransition(overlayHost, transition);
                 binding.linkSummaryScrim.animate().alpha(1f).setDuration(TRANSFORM_DURATION_MS).start();
                 if (imageBinding != null) host.setLinkSummaryImageSourceSuppressed(true);
                 setSourceVisible(sourceView, false);
+                setSourceVisible(storyImageSourceView, false);
                 card.setVisibility(View.VISIBLE);
             } else {
                 binding.linkSummaryScrim.setAlpha(1f);
                 if (imageBinding != null) host.setLinkSummaryImageSourceSuppressed(true);
                 setSourceVisible(sourceView, false);
+                setSourceVisible(storyImageSourceView, false);
                 card.setVisibility(View.VISIBLE);
             }
             if (imageBinding == null) resizeScroll();
@@ -937,6 +993,77 @@ final class LinkSummaryOverlayController {
         return transform;
     }
 
+    private Transition createStoryTransition(
+            @NonNull ViewGroup drawing,
+            @NonNull MaterialContainerTransform cardTransform,
+            @Nullable ImageView imageStart,
+            @Nullable ImageView imageEnd,
+            int direction) {
+        if (!isUsableStoryImageTransition(drawing, imageStart, imageEnd)) {
+            return cardTransform;
+        }
+
+        MaterialContainerTransform imageTransform = createStoryImageTransform(
+                drawing, imageStart, imageEnd, direction);
+        imageTransform.addTarget(imageEnd);
+        return new TransitionSet()
+                .setOrdering(TransitionSet.ORDERING_TOGETHER)
+                .addTransition(cardTransform)
+                .addTransition(imageTransform);
+    }
+
+    private MaterialContainerTransform createStoryImageTransform(
+            @NonNull ViewGroup drawing,
+            @NonNull ImageView start,
+            @NonNull ImageView end,
+            int direction) {
+        MaterialContainerTransform transform = new MaterialContainerTransform();
+        transform.setStartView(start);
+        transform.setEndView(end);
+        transform.setDuration(TRANSFORM_DURATION_MS);
+        transform.setScrimColor(Color.TRANSPARENT);
+        transform.setDrawingViewId(ensureDrawingViewId(drawing));
+        transform.setTransitionDirection(direction);
+        transform.setFadeMode(MaterialContainerTransform.FADE_MODE_CROSS);
+        transform.setFitMode(MaterialContainerTransform.FIT_MODE_AUTO);
+        transform.setElevationShadowEnabled(false);
+        transform.setAllContainerColors(Color.TRANSPARENT);
+        MaterialContainerTransform.ProgressThresholds thresholds =
+                new MaterialContainerTransform.ProgressThresholds(0f, 1f);
+        transform.setFadeProgressThresholds(thresholds);
+        transform.setScaleMaskProgressThresholds(thresholds);
+        transform.setShapeMaskProgressThresholds(thresholds);
+
+        ShapeAppearanceModel listShape = createStoryListImageShape(
+                direction == MaterialContainerTransform.TRANSITION_DIRECTION_ENTER ? start : end);
+        ShapeAppearanceModel dialogShape = createStoryDialogImageShape(end.getResources());
+        if (direction == MaterialContainerTransform.TRANSITION_DIRECTION_ENTER) {
+            transform.setStartShapeAppearanceModel(listShape);
+            transform.setEndShapeAppearanceModel(dialogShape);
+        } else {
+            transform.setStartShapeAppearanceModel(dialogShape);
+            transform.setEndShapeAppearanceModel(listShape);
+        }
+        return transform;
+    }
+
+    private ShapeAppearanceModel createStoryListImageShape(@NonNull ImageView image) {
+        float radius = image.getClipToOutline()
+                ? image.getResources().getDimension(R.dimen.story_preview_image_corner_radius)
+                : 0f;
+        return ShapeAppearanceModel.builder().setAllCornerSizes(radius).build();
+    }
+
+    private ShapeAppearanceModel createStoryDialogImageShape(@NonNull android.content.res.Resources resources) {
+        float radius = Utils.pxFromDpInt(resources, CARD_CORNER_RADIUS_DP);
+        return ShapeAppearanceModel.builder()
+                .setTopLeftCornerSize(radius)
+                .setTopRightCornerSize(radius)
+                .setBottomLeftCornerSize(0f)
+                .setBottomRightCornerSize(0f)
+                .build();
+    }
+
     private ShapeAppearanceModel createShape(View view) {
         float radius = view == card ? CARD_CORNER_RADIUS_DP
                 : view instanceof MaterialCardView ? 8
@@ -961,18 +1088,32 @@ final class LinkSummaryOverlayController {
         View end = resolveSourceView();
         host.syncLinkSummaryBackState();
         if (animate && overlayHost != null && isUsableTransition(overlayHost, card, end)) {
-            MaterialContainerTransform transform = createTransform(overlayHost, card, end,
+            MaterialContainerTransform cardTransform = createTransform(overlayHost, card, end,
                     MaterialContainerTransform.TRANSITION_DIRECTION_RETURN);
-            transform.addTarget(end);
-            transform.addListener(new TransitionListenerAdapter() {
+            cardTransform.addTarget(end);
+            Transition transition = createStoryTransition(
+                    overlayHost,
+                    cardTransform,
+                    getStoryPreviewView(),
+                    resolveStoryImageSourceView(),
+                    MaterialContainerTransform.TRANSITION_DIRECTION_RETURN);
+            transition.addListener(new TransitionListenerAdapter() {
                 private boolean finished;
                 @Override public void onTransitionEnd(@NonNull Transition transition) { finish(); }
                 @Override public void onTransitionCancel(@NonNull Transition transition) { finish(); }
-                private void finish() { if (!finished) { finished = true; removeNow(); } }
+                private void finish() {
+                    if (!finished) {
+                        finished = true;
+                        transition.removeListener(this);
+                        restoreStoryImageSourceAlpha();
+                        removeNow();
+                    }
+                }
             });
-            TransitionManager.beginDelayedTransition(overlayHost, transform);
+            TransitionManager.beginDelayedTransition(overlayHost, transition);
             binding.linkSummaryScrim.animate().alpha(0f).setDuration(TRANSFORM_DURATION_MS).start();
             setSourceVisible(end, true);
+            setSourceVisible(resolveStoryImageSourceView(), true);
             card.setVisibility(View.INVISIBLE);
         } else if (!animate) {
             removeNow();
@@ -992,10 +1133,13 @@ final class LinkSummaryOverlayController {
         if (imageBinding != null) CoilUtils.dispose(imageBinding.imageOnlyPreview);
         if (binding != null) ViewCompat.setOnApplyWindowInsetsListener(binding.linkSummaryContent, null);
         setSourceVisible(sourceView, true);
+        setSourceVisible(storyImageSourceView, true);
+        restoreStoryImageSourceAlpha();
         if (overlay.getParent() instanceof ViewGroup) ((ViewGroup) overlay.getParent()).removeView(overlay);
         overlay = null; binding = null; card = null; storyBinding = null;
         referenceBinding = null; imageBinding = null;
-        sourceView = null; visibleStoryId = NO_STORY_ID; visibleStoryPosition = -1;
+        sourceView = null; storyImageSourceView = null; storyImageSourceAlpha = 1f;
+        visibleStoryId = NO_STORY_ID; visibleStoryPosition = -1;
         visibleUrl = null; fallbackTitle = null; dismissing = false;
         predictiveBackActive = false; enterTransitionStarted = false;
         if (wasShowingImage) host.setLinkSummaryImageSourceSuppressed(false);
@@ -1048,6 +1192,61 @@ final class LinkSummaryOverlayController {
         if (isUsableTransitionView(sourceView)) return sourceView;
         if (imageBinding != null) return host.findLinkSummaryImageSourceView();
         return visibleStoryId == NO_STORY_ID ? null : host.findLinkSummarySourceView(visibleStoryId);
+    }
+
+    @Nullable private ImageView getStoryPreviewView() {
+        return storyBinding == null ? null : storyBinding.storyLinkPreview;
+    }
+
+    @Nullable private ImageView resolveStoryImageSourceView() {
+        if (isUsableTransitionView(storyImageSourceView)) return storyImageSourceView;
+        if (visibleStoryId == NO_STORY_ID) return null;
+        ImageView resolved = host.findLinkSummaryStoryImageSourceView(visibleStoryId);
+        if (isUsableStoryImageSource(resolved)) {
+            storyImageSourceView = resolved;
+            storyImageSourceAlpha = resolved.getAlpha();
+            return resolved;
+        }
+        return null;
+    }
+
+    private boolean isUsableStoryImageSource(@Nullable ImageView image) {
+        return isUsableTransitionView(image)
+                && image.getVisibility() == View.VISIBLE
+                && image.getDrawable() != null;
+    }
+
+    private boolean isUsableStoryImageTransition(
+            @NonNull ViewGroup drawing,
+            @Nullable ImageView start,
+            @Nullable ImageView end) {
+        return start != null
+                && end != null
+                && start.getDrawable() != null
+                && end.getDrawable() != null
+                && isUsableTransition(drawing, start, end);
+    }
+
+    private void addStoryImageAlphaRestoreListener(@NonNull Transition transition) {
+        if (storyImageSourceView == null) return;
+        transition.addListener(new TransitionListenerAdapter() {
+            private boolean restored;
+            @Override public void onTransitionEnd(@NonNull Transition transition) { restore(); }
+            @Override public void onTransitionCancel(@NonNull Transition transition) { restore(); }
+            private void restore() {
+                if (!restored) {
+                    restored = true;
+                    transition.removeListener(this);
+                    restoreStoryImageSourceAlpha();
+                }
+            }
+        });
+    }
+
+    private void restoreStoryImageSourceAlpha() {
+        if (storyImageSourceView != null) {
+            storyImageSourceView.setAlpha(storyImageSourceAlpha);
+        }
     }
 
     private void setSourceVisible(@Nullable View view, boolean visible) {
