@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.adapters;
 
+import android.graphics.Color;
 import android.graphics.drawable.RippleDrawable;
 import android.text.TextUtils;
 import android.util.TypedValue;
@@ -13,6 +14,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.databinding.CommentsItemBinding;
@@ -37,6 +40,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     private final List<Comment> comments;
     private final List<Comment> visibleComments = new ArrayList<>();
     private final boolean cardStyle;
+    private final boolean cardBorder;
     private final float preferredTextSize;
 
     private String searchTerm = "";
@@ -46,9 +50,11 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
 
     public CommentSearchAdapter(List<Comment> comments,
                                 boolean shouldUseCardStyle,
+                                boolean shouldShowCardBorder,
                                 float prefTextSize) {
         this.comments = comments == null ? new ArrayList<>() : new ArrayList<>(comments);
         cardStyle = shouldUseCardStyle;
+        cardBorder = shouldShowCardBorder;
         preferredTextSize = prefTextSize;
         visibleComments.addAll(this.comments);
         setHasStableIds(true);
@@ -241,6 +247,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
 
         Comment comment = visibleComments.get(position);
         applyItemMargins(commentViewHolder.itemView);
+        applyCardChrome(commentViewHolder);
         applyCardContentPadding(commentViewHolder);
         commentViewHolder.commentIndentIndicator.setVisibility(View.GONE);
 
@@ -328,6 +335,19 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
                 contentContainer.getPaddingTop(),
                 verticalPadding,
                 contentContainer.getPaddingBottom());
+    }
+
+    private void applyCardChrome(CommentViewHolder commentViewHolder) {
+        if (!(commentViewHolder.commentCard instanceof MaterialCardView)) {
+            return;
+        }
+
+        MaterialCardView card = (MaterialCardView) commentViewHolder.commentCard;
+        card.setStrokeWidth(cardBorder ? Utils.pxFromDpInt(card.getResources(), 1) : 0);
+        card.setStrokeColor(cardBorder
+                ? MaterialColors.getColor(card, R.attr.commentDividerColor, Color.TRANSPARENT)
+                : Color.TRANSPARENT);
+        card.setCardElevation(cardBorder ? Utils.pxFromDpInt(card.getResources(), 1) : 0f);
     }
 
     @Override

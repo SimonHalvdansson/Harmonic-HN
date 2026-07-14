@@ -32,6 +32,7 @@ public class CommentDisplaySettings {
     public final String faviconProvider;
     public final boolean swapLongPressTap;
     public final boolean cardStyle;
+    public final boolean cardBorder;
     public final boolean collectReferenceLinks;
     public final boolean hasAccountDetails;
 
@@ -51,6 +52,7 @@ public class CommentDisplaySettings {
                                    String faviconProvider,
                                    boolean swapLongPressTap,
                                    boolean cardStyle,
+                                   boolean cardBorder,
                                    boolean collectReferenceLinks,
                                    boolean hasAccountDetails) {
         this.collapseParent = collapseParent;
@@ -69,6 +71,7 @@ public class CommentDisplaySettings {
         this.faviconProvider = faviconProvider;
         this.swapLongPressTap = swapLongPressTap;
         this.cardStyle = cardStyle;
+        this.cardBorder = cardBorder;
         this.collectReferenceLinks = collectReferenceLinks;
         this.hasAccountDetails = hasAccountDetails;
     }
@@ -95,6 +98,7 @@ public class CommentDisplaySettings {
                 SettingsUtils.getPreferredFaviconProvider(context),
                 SettingsUtils.shouldSwapCommentLongPressTap(context),
                 SettingsUtils.shouldUseCardCommentDisplayStyle(context),
+                SettingsUtils.shouldShowCommentCardBorder(context),
                 SettingsUtils.shouldCollectLinksInComments(context),
                 hasAccountDetails
         );
@@ -188,6 +192,10 @@ public class CommentDisplaySettings {
         }
         if (adapter.cardStyle != cardStyle) {
             adapter.cardStyle = cardStyle;
+            updateComments = true;
+        }
+        if (adapter.cardBorder != cardBorder) {
+            adapter.cardBorder = cardBorder;
             updateComments = true;
         }
         if (adapter.collectReferenceLinks != collectReferenceLinks) {

@@ -144,6 +144,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean showTopLevelDepthIndicator;
     public boolean swapLongPressTap;
     public boolean cardStyle;
+    public boolean cardBorder;
     public boolean collectReferenceLinks;
     public boolean hasAccountDetails;
     private boolean readerModeAvailable = false;
@@ -414,6 +415,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         } else if (holder instanceof ItemViewHolder) {
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
             Comment comment = comments.get(position);
+            applyCommentCardChrome(itemViewHolder);
             itemViewHolder.comment = comment;
             applyCommentHighlight(itemViewHolder, comment.id == highlightedCommentId);
 
@@ -2230,6 +2232,22 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             int highlightColor = getCommentHighlightColor(itemViewHolder.itemView, baseColor);
             itemViewHolder.itemView.setBackgroundColor(highlighted ? highlightColor : Color.TRANSPARENT);
         }
+    }
+
+    private void applyCommentCardChrome(@NonNull ItemViewHolder itemViewHolder) {
+        if (!(itemViewHolder.commentCard instanceof MaterialCardView)) {
+            return;
+        }
+
+        MaterialCardView card = (MaterialCardView) itemViewHolder.commentCard;
+        int strokeWidth = cardBorder ? Utils.pxFromDpInt(card.getResources(), 1) : 0;
+        int strokeColor = cardBorder
+                ? MaterialColors.getColor(card, R.attr.commentDividerColor, Color.TRANSPARENT)
+                : Color.TRANSPARENT;
+        float elevation = cardBorder ? Utils.pxFromDpInt(card.getResources(), 1) : 0f;
+        card.setStrokeWidth(strokeWidth);
+        card.setStrokeColor(strokeColor);
+        card.setCardElevation(elevation);
     }
 
     private int getCommentHighlightColor(@NonNull View view, int baseColor) {

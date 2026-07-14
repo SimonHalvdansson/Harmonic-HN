@@ -17,6 +17,7 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 public class CommentsPreferenceFragment extends BaseSettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private Preference threadDepthIndicatorsPreference;
+    private Preference commentCardBorderPreference;
     private CommentContentPreviewPreference previewPreference;
     private Preference enableHeaderTintPreference;
     private Preference enableHeaderPreviewImagePreference;
@@ -47,6 +48,7 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
         setPreferencesFromResource(R.xml.preferences_comments, rootKey);
 
         threadDepthIndicatorsPreference = findPreference(SettingsUtils.PREF_COMMENT_DEPTH_INDICATORS);
+        commentCardBorderPreference = findPreference(SettingsUtils.PREF_COMMENT_CARD_BORDER);
         enableHeaderTintPreference = findPreference(SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_TINT);
         enableHeaderPreviewImagePreference = findPreference(SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE);
         if (threadDepthIndicatorsPreference != null) {
@@ -61,8 +63,18 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
             if (previewPreference != null) {
                 previewPreference.updateDisplayStyle((String) newValue);
             }
+            updateCommentCardBorderPreference((String) newValue);
             return true;
         });
+
+        if (commentCardBorderPreference != null) {
+            commentCardBorderPreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                if (previewPreference != null) {
+                    previewPreference.updateBorder((boolean) newValue);
+                }
+                return true;
+            });
+        }
 
         findPreference(SettingsUtils.PREF_COMMENT_TEXT_SIZE).setOnPreferenceChangeListener((preference, newValue) -> {
             if (previewPreference != null) {
@@ -72,6 +84,7 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
         });
 
         updateHeaderDisplayPreferenceStatus();
+        updateCommentCardBorderPreference(SettingsUtils.getPreferredCommentDisplayStyle(requireContext()));
     }
 
     @Override
@@ -80,6 +93,7 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
         getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
         updateThreadDepthIndicatorsSummary();
         updateHeaderDisplayPreferenceStatus();
+        updateCommentCardBorderPreference(SettingsUtils.getPreferredCommentDisplayStyle(requireContext()));
     }
 
     @Override
@@ -121,5 +135,11 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
         changePrefStatus(
                 enableHeaderPreviewImagePreference,
                 !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(SettingsUtils.getPreferredStoryPreviewImageMode(requireContext())));
+    }
+
+    private void updateCommentCardBorderPreference(String displayStyle) {
+        changePrefStatus(
+                commentCardBorderPreference,
+                SettingsUtils.COMMENT_DISPLAY_STYLE_CARD.equals(displayStyle));
     }
 }

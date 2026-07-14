@@ -10,6 +10,13 @@
             app:key="pref_comment_display_style"
             app:title="Display style" />
 
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:icon="@drawable/ic_select"
+            app:key="pref_comment_card_border"
+            app:singleLineTitle="false"
+            app:title="Border" />
+
         <com.simon.harmonichackernews.settings.CommentTextSizePreference
             app:defaultValue="15"
             app:key="pref_comment_text_size"

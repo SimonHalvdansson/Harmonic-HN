@@ -2,10 +2,12 @@ package com.simon.harmonichackernews.settings;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -21,6 +23,8 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.preference.PreferenceManager;
 
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.databinding.CommentsItemBinding;
 import com.simon.harmonichackernews.databinding.CommentsItemCardBinding;
@@ -52,8 +56,11 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
     private TextView commentHiddenText;
     private View commentIndentIndicator;
     private LinearLayout referenceLinksContainer;
+    private MaterialCardView commentCard;
     private boolean cardStyle;
+    private boolean cardBorder;
     private String displayStyleOverride;
+    private ValueAnimator cardAppearanceAnimator;
     private ValueAnimator displayStyleAnimator;
     private ValueAnimator textSizeAnimator;
     private float textSizeTargetSp = -1;
@@ -92,6 +99,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             previewItemContainer.addOnLayoutChangeListener(previewContainerLayoutChangeListener);
         }
         cardStyle = SettingsUtils.shouldUseCardCommentDisplayStyle(getContext());
+        cardBorder = SettingsUtils.shouldShowCommentCardBorder(getContext());
         inflatePreviewItem();
         updatePreview();
         syncReservedPreviewHeight();
@@ -109,6 +117,10 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
 
     public void updateTextSize(String textSize) {
         applyTextSize(parseTextSize(textSize), true);
+    }
+
+    public void updateBorder(boolean showBorder) {
+        applyBorder(showBorder, true);
     }
 
     @Override
@@ -144,6 +156,11 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             return;
         }
 
+        if (SettingsUtils.PREF_COMMENT_CARD_BORDER.equals(key)) {
+            applyBorder(SettingsUtils.shouldShowCommentCardBorder(getContext()), true);
+            return;
+        }
+
         if (SettingsUtils.PREF_COLLECT_LINKS_IN_COMMENTS.equals(key)) {
             updateCollectedLinksPreview(true);
             return;
@@ -164,6 +181,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
 
     private void clearPreviewViews() {
         cancelDisplayStyleAnimator();
+        cancelCardAppearanceAnimator();
         cancelTextSizeAnimator();
         if (previewItemContainer != null) {
             previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
@@ -177,6 +195,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         commentHiddenText = null;
         commentIndentIndicator = null;
         referenceLinksContainer = null;
+        commentCard = null;
         displayStyleOverride = null;
         textSizeTargetSp = -1;
     }
@@ -220,6 +239,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         }
 
         cancelDisplayStyleAnimator();
+        cancelCardAppearanceAnimator();
         if (previewItemContainer.getChildCount() > 1) {
             previewItemContainer.removeAllViews();
             inflatePreviewItem();
@@ -311,6 +331,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         }
 
         cancelTextSizeAnimator();
+        cancelCardAppearanceAnimator();
         previewItemContainer.removeAllViews();
         PreviewCommentItemBinding binding = inflatePreviewCommentItemBinding();
         previewItemContainer.addView(binding.root, createPreviewItemLayoutParams());
@@ -327,6 +348,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         commentHiddenText = binding.commentHiddenText;
         commentIndentIndicator = binding.commentIndentIndicator;
         referenceLinksContainer = binding.referenceLinksContainer;
+        commentCard = binding.commentCard;
 
         itemView.setClickable(false);
         itemView.setFocusable(false);
@@ -352,6 +374,73 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             commentHiddenText.setVisibility(View.GONE);
         }
         bindPreviewCommentContent(commentBody, referenceLinksContainer);
+        configureCommentCardAppearance(false);
+    }
+
+    private void applyBorder(boolean showBorder, boolean animate) {
+        if (cardBorder == showBorder) {
+            return;
+        }
+
+        cardBorder = showBorder;
+        configureCommentCardAppearance(animate);
+    }
+
+    private void configureCommentCardAppearance(boolean animate) {
+        MaterialCardView targetCard = commentCard;
+        if (targetCard == null) {
+            return;
+        }
+
+        int targetStrokeWidth = cardBorder ? Utils.pxFromDpInt(targetCard.getResources(), 1) : 0;
+        int targetStrokeColor = cardBorder
+                ? MaterialColors.getColor(targetCard, R.attr.commentDividerColor, Color.TRANSPARENT)
+                : Color.TRANSPARENT;
+        float targetElevation = cardBorder ? Utils.pxFromDpInt(targetCard.getResources(), 1) : 0f;
+
+        cancelCardAppearanceAnimator();
+        int currentStrokeWidth = targetCard.getStrokeWidth();
+        int currentStrokeColor = targetCard.getStrokeColor();
+        float currentElevation = targetCard.getCardElevation();
+        if (!animate || !ViewCompat.isLaidOut(targetCard)) {
+            targetCard.setStrokeWidth(targetStrokeWidth);
+            targetCard.setStrokeColor(targetStrokeColor);
+            targetCard.setCardElevation(targetElevation);
+            return;
+        }
+
+        cardAppearanceAnimator = ValueAnimator.ofFloat(0f, 1f);
+        cardAppearanceAnimator.setDuration(DISPLAY_STYLE_ANIMATION_DURATION_MS);
+        cardAppearanceAnimator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        ArgbEvaluator colorEvaluator = new ArgbEvaluator();
+        cardAppearanceAnimator.addUpdateListener(animation -> {
+            if (commentCard != targetCard) {
+                animation.cancel();
+                return;
+            }
+
+            float progress = (float) animation.getAnimatedValue();
+            targetCard.setStrokeWidth(lerp(currentStrokeWidth, targetStrokeWidth, progress));
+            targetCard.setStrokeColor((int) colorEvaluator.evaluate(
+                    progress,
+                    currentStrokeColor,
+                    targetStrokeColor));
+            targetCard.setCardElevation(
+                    currentElevation + (targetElevation - currentElevation) * progress);
+        });
+        cardAppearanceAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (cardAppearanceAnimator != animation) {
+                    return;
+                }
+                targetCard.setStrokeWidth(targetStrokeWidth);
+                targetCard.setStrokeColor(targetStrokeColor);
+                targetCard.setCardElevation(targetElevation);
+                cardAppearanceAnimator = null;
+            }
+        });
+        cardAppearanceAnimator.start();
     }
 
     private void updatePreview() {
@@ -529,6 +618,17 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         textSizeAnimator.removeAllListeners();
         textSizeAnimator.cancel();
         textSizeAnimator = null;
+    }
+
+    private void cancelCardAppearanceAnimator() {
+        if (cardAppearanceAnimator == null) {
+            return;
+        }
+
+        cardAppearanceAnimator.removeAllUpdateListeners();
+        cardAppearanceAnimator.removeAllListeners();
+        cardAppearanceAnimator.cancel();
+        cardAppearanceAnimator = null;
     }
 
     private void applyReferenceLinkTextSize(float commentTextSize) {
@@ -758,6 +858,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
                     CommentsItemCardBinding.inflate(inflater, previewItemContainer, false);
             return new PreviewCommentItemBinding(
                     binding.getRoot(),
+                    binding.commentCard,
                     binding.commentBody,
                     binding.commentBy,
                     binding.commentByTime,
@@ -770,6 +871,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         CommentsItemBinding binding = CommentsItemBinding.inflate(inflater, previewItemContainer, false);
         return new PreviewCommentItemBinding(
                 binding.getRoot(),
+                null,
                 binding.commentBody,
                 binding.commentBy,
                 binding.commentByTime,
@@ -781,6 +883,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
 
     private static class PreviewCommentItemBinding {
         final View root;
+        final MaterialCardView commentCard;
         final HtmlTextView commentBody;
         final TextView commentBy;
         final TextView commentByTime;
@@ -791,6 +894,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
 
         PreviewCommentItemBinding(
                 View root,
+                MaterialCardView commentCard,
                 HtmlTextView commentBody,
                 TextView commentBy,
                 TextView commentByTime,
@@ -799,6 +903,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
                 View commentIndentIndicator,
                 LinearLayout referenceLinksContainer) {
             this.root = root;
+            this.commentCard = commentCard;
             this.commentBody = commentBody;
             this.commentBy = commentBy;
             this.commentByTime = commentByTime;
