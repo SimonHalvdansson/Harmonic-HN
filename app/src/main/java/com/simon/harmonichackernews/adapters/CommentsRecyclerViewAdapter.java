@@ -145,6 +145,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean swapLongPressTap;
     public boolean cardStyle;
     public boolean cardBorder;
+    public boolean showDividers;
     public boolean collectReferenceLinks;
     public boolean hasAccountDetails;
     private boolean readerModeAvailable = false;

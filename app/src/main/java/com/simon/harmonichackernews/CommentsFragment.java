@@ -1353,6 +1353,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(layoutManager);
+        recyclerView.addItemDecoration(new CommentDividerItemDecoration(adapter));
         recyclerViewScrollListener = new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {

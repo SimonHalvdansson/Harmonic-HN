@@ -28,6 +28,7 @@ public class SettingsUtils {
     public static final String DEFAULT_THEME = "material_daynight";
     public static final String DEFAULT_NIGHTTIME_THEME = "dark";
     public static final String PREF_COMMENT_DEPTH_INDICATORS = "pref_comment_depth_indicators";
+    public static final String PREF_COMMENT_DIVIDERS = "pref_comment_dividers";
     public static final String PREF_MONOCHROME_COMMENT_DEPTH = "pref_monochrome_comment_depth";
     public static final String PREF_STORY_DISPLAY_STYLE = "pref_story_display_style";
     public static final String PREF_STORY_PREVIEW_IMAGE_MODE = "pref_story_preview_image_mode";
@@ -762,6 +763,10 @@ public class SettingsUtils {
 
     public static boolean shouldShowCommentCardBorder(Context ctx) {
         return getBooleanPref(PREF_COMMENT_CARD_BORDER, true, ctx);
+    }
+
+    public static boolean shouldShowCommentDividers(Context ctx) {
+        return getBooleanPref(PREF_COMMENT_DIVIDERS, false, ctx);
     }
 
     public static boolean shouldUseTransparentStatusBar(Context ctx) {

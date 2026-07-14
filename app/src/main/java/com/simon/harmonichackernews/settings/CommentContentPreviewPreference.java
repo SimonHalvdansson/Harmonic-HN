@@ -8,6 +8,11 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.transition.ChangeBounds;
+import android.transition.Fade;
+import android.transition.Transition;
+import android.transition.TransitionManager;
+import android.transition.TransitionSet;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -43,9 +48,11 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
 
     private static final long TEXT_SIZE_ANIMATION_DURATION_MS = 120;
     private static final long DISPLAY_STYLE_ANIMATION_DURATION_MS = 180;
+    private static final long COLLECT_LINKS_ANIMATION_DURATION_MS = 260;
     private static final int DISPLAY_STYLE_TRANSLATION_DP = 8;
     private static final int MIN_STABLE_PREVIEW_WIDTH_DP = 240;
     private static final String PREVIEW_COMMENT_BODY = "This reminds me of the old systems where the boring path was often the most durable one. The less hidden state there is, the easier it is to reason about. [0]<p>[0] <a href=\"https://example.com/reference\" rel=\"nofollow\">https://example.com/reference</a>";
+    private static final String PREVIEW_INLINE_REFERENCE = "[0] <a href=\"https://example.com/reference\" rel=\"nofollow\">https://example.com/reference</a>";
 
     private ViewGroup previewRoot;
     private ViewGroup previewItemContainer;
@@ -63,6 +70,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
     private ValueAnimator cardAppearanceAnimator;
     private ValueAnimator displayStyleAnimator;
     private ValueAnimator textSizeAnimator;
+    private int collectLinksAnimationToken;
     private float textSizeTargetSp = -1;
     private final View.OnLayoutChangeListener previewContainerLayoutChangeListener =
             (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
@@ -180,6 +188,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
     }
 
     private void clearPreviewViews() {
+        cancelCollectedLinksTransition();
         cancelDisplayStyleAnimator();
         cancelCardAppearanceAnimator();
         cancelTextSizeAnimator();
@@ -201,6 +210,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
     }
 
     private void applyDisplayStyle(String displayStyle) {
+        cancelCollectedLinksTransition();
         displayStyleOverride = displayStyle;
         boolean useCardStyle = SettingsUtils.COMMENT_DISPLAY_STYLE_CARD.equals(displayStyle);
         if (useCardStyle == cardStyle) {
@@ -330,6 +340,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             return;
         }
 
+        cancelCollectedLinksTransition();
         cancelTextSizeAnimator();
         cancelCardAppearanceAnimator();
         previewItemContainer.removeAllViews();
@@ -459,6 +470,14 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             return;
         }
 
+        if (animate
+                && previewRoot != null
+                && previewItemContainer != null
+                && ViewCompat.isLaidOut(previewItemContainer)) {
+            animateCollectedLinksPreview();
+            return;
+        }
+
         bindPreviewCommentContent(commentBody, referenceLinksContainer);
         disablePreviewItemScrollbars();
         applyTextSize(SettingsUtils.getPreferredCommentTextSize(getContext()), false);
@@ -466,11 +485,71 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         requestPreviewRemeasure();
     }
 
+    private void animateCollectedLinksPreview() {
+        cancelCollectedLinksTransition();
+        int animationToken = ++collectLinksAnimationToken;
+
+        TransitionSet transition = new TransitionSet();
+        transition.setOrdering(TransitionSet.ORDERING_TOGETHER);
+        transition.setDuration(COLLECT_LINKS_ANIMATION_DURATION_MS);
+        transition.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        transition.addTransition(new ChangeBounds());
+        transition.addTransition(new Fade(Fade.IN | Fade.OUT));
+        transition.addListener(new Transition.TransitionListener() {
+            private boolean finished;
+
+            private void finish() {
+                if (finished || animationToken != collectLinksAnimationToken) {
+                    return;
+                }
+                finished = true;
+                transition.removeListener(this);
+                disablePreviewItemScrollbars();
+                syncReservedPreviewHeight();
+                requestPreviewRemeasure();
+            }
+
+            @Override
+            public void onTransitionStart(Transition transition) {
+            }
+
+            @Override
+            public void onTransitionEnd(Transition transition) {
+                finish();
+            }
+
+            @Override
+            public void onTransitionCancel(Transition transition) {
+                finish();
+            }
+
+            @Override
+            public void onTransitionPause(Transition transition) {
+            }
+
+            @Override
+            public void onTransitionResume(Transition transition) {
+            }
+        });
+
+        TransitionManager.beginDelayedTransition(previewRoot, transition);
+        clearReservedPreviewHeight();
+        bindPreviewCommentContent(commentBody, referenceLinksContainer);
+        disablePreviewItemScrollbars();
+        applyTextSize(SettingsUtils.getPreferredCommentTextSize(getContext()), false, false);
+        requestPreviewRemeasure();
+    }
+
+    private void cancelCollectedLinksTransition() {
+        collectLinksAnimationToken++;
+        if (previewRoot != null) {
+            TransitionManager.endTransitions(previewRoot);
+        }
+    }
+
     private void bindPreviewCommentContent(HtmlTextView body, LinearLayout linksContainer) {
         boolean collectLinks = SettingsUtils.shouldCollectLinksInComments(getContext());
-        CollectedReferenceLinks.Result referenceLinks = collectLinks
-                ? CollectedReferenceLinks.parse(PREVIEW_COMMENT_BODY)
-                : null;
+        CollectedReferenceLinks.Result referenceLinks = CollectedReferenceLinks.parse(PREVIEW_COMMENT_BODY);
         boolean hasCollectedLinks = referenceLinks != null && referenceLinks.hasLinks();
 
         if (body != null) {
@@ -478,7 +557,11 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             disablePreviewLinks(body);
         }
 
-        bindPreviewReferenceLinks(linksContainer, referenceLinks);
+        if (collectLinks) {
+            bindPreviewReferenceLinks(linksContainer, referenceLinks);
+        } else {
+            bindPreviewInlineReference(linksContainer, hasCollectedLinks);
+        }
     }
 
     private void disablePreviewLinks(HtmlTextView body) {
@@ -511,6 +594,35 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             container.addView(createPreviewReferenceLinkRow(container, link));
         }
         return true;
+    }
+
+    private void bindPreviewInlineReference(LinearLayout container, boolean hasReference) {
+        if (container == null) {
+            return;
+        }
+
+        container.removeAllViews();
+        if (!hasReference) {
+            container.setVisibility(View.GONE);
+            return;
+        }
+
+        HtmlTextView inlineReference = new HtmlTextView(container.getContext());
+        inlineReference.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        inlineReference.setHtml(PREVIEW_INLINE_REFERENCE);
+        inlineReference.setTextColor(MaterialColors.getColor(
+                container,
+                R.attr.storyColorNormal,
+                Color.BLACK));
+        inlineReference.setTypeface(FontUtils.activeRegular);
+        inlineReference.setTextSize(
+                TypedValue.COMPLEX_UNIT_SP,
+                FontUtils.getCommentTextSize(SettingsUtils.getPreferredCommentTextSize(getContext())));
+        disablePreviewLinks(inlineReference);
+        container.addView(inlineReference);
+        container.setVisibility(View.VISIBLE);
     }
 
     private View createPreviewReferenceLinkRow(LinearLayout container, CollectedReferenceLinks.ReferenceLink link) {
@@ -640,6 +752,14 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         float labelTextSize = getReferenceLinkLabelTextSize(commentTextSize);
         for (int i = 0; i < referenceLinksContainer.getChildCount(); i++) {
             View child = referenceLinksContainer.getChildAt(i);
+            if (child instanceof HtmlTextView) {
+                HtmlTextView inlineReference = (HtmlTextView) child;
+                inlineReference.setTypeface(FontUtils.activeRegular);
+                inlineReference.setTextSize(
+                        TypedValue.COMPLEX_UNIT_SP,
+                        FontUtils.getCommentTextSize(commentTextSize));
+                continue;
+            }
             if (!(child instanceof ViewGroup)) {
                 continue;
             }

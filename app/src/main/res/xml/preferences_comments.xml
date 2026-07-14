@@ -36,6 +36,13 @@
             app:title="Thread depth indicators" />
 
         <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_horizontal_rule"
+            app:key="pref_comment_dividers"
+            app:singleLineTitle="false"
+            app:title="Dividers" />
+
+        <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:key="pref_top_level_thread_indicators"
             app:icon="@drawable/ic_format_align_left"

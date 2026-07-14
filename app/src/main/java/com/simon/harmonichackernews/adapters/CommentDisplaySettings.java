@@ -33,6 +33,7 @@ public class CommentDisplaySettings {
     public final boolean swapLongPressTap;
     public final boolean cardStyle;
     public final boolean cardBorder;
+    public final boolean showDividers;
     public final boolean collectReferenceLinks;
     public final boolean hasAccountDetails;
 
@@ -53,6 +54,7 @@ public class CommentDisplaySettings {
                                    boolean swapLongPressTap,
                                    boolean cardStyle,
                                    boolean cardBorder,
+                                   boolean showDividers,
                                    boolean collectReferenceLinks,
                                    boolean hasAccountDetails) {
         this.collapseParent = collapseParent;
@@ -72,6 +74,7 @@ public class CommentDisplaySettings {
         this.swapLongPressTap = swapLongPressTap;
         this.cardStyle = cardStyle;
         this.cardBorder = cardBorder;
+        this.showDividers = showDividers;
         this.collectReferenceLinks = collectReferenceLinks;
         this.hasAccountDetails = hasAccountDetails;
     }
@@ -99,6 +102,7 @@ public class CommentDisplaySettings {
                 SettingsUtils.shouldSwapCommentLongPressTap(context),
                 SettingsUtils.shouldUseCardCommentDisplayStyle(context),
                 SettingsUtils.shouldShowCommentCardBorder(context),
+                SettingsUtils.shouldShowCommentDividers(context),
                 SettingsUtils.shouldCollectLinksInComments(context),
                 hasAccountDetails
         );
@@ -196,6 +200,10 @@ public class CommentDisplaySettings {
         }
         if (adapter.cardBorder != cardBorder) {
             adapter.cardBorder = cardBorder;
+            updateComments = true;
+        }
+        if (adapter.showDividers != showDividers) {
+            adapter.showDividers = showDividers;
             updateComments = true;
         }
         if (adapter.collectReferenceLinks != collectReferenceLinks) {
