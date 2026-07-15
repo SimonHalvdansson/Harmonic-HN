@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
+import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
@@ -23,11 +24,13 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.view.ViewParent;
 import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 
 import androidx.activity.BackEventCompat;
 import androidx.annotation.NonNull;
@@ -237,6 +240,50 @@ final class LinkSummaryOverlayController {
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
     }
 
+    private static final class SplitCornerOutlineProvider extends ViewOutlineProvider {
+        private final Path outlinePath = new Path();
+        private final float[] cornerRadii = new float[8];
+        private float topRadius;
+        private float bottomRadius;
+
+        SplitCornerOutlineProvider(float topRadius, float bottomRadius) {
+            setCornerRadii(topRadius, bottomRadius);
+        }
+
+        float getTopRadius() {
+            return topRadius;
+        }
+
+        float getBottomRadius() {
+            return bottomRadius;
+        }
+
+        void setCornerRadii(float topRadius, float bottomRadius) {
+            this.topRadius = topRadius;
+            this.bottomRadius = bottomRadius;
+            cornerRadii[0] = topRadius;
+            cornerRadii[1] = topRadius;
+            cornerRadii[2] = topRadius;
+            cornerRadii[3] = topRadius;
+            cornerRadii[4] = bottomRadius;
+            cornerRadii[5] = bottomRadius;
+            cornerRadii[6] = bottomRadius;
+            cornerRadii[7] = bottomRadius;
+        }
+
+        @Override public void getOutline(View view, Outline outline) {
+            if (view.getWidth() <= 0 || view.getHeight() <= 0) {
+                outline.setEmpty();
+                return;
+            }
+            outlinePath.reset();
+            outlinePath.addRoundRect(
+                    0, 0, view.getWidth(), view.getHeight(),
+                    cornerRadii, Path.Direction.CW);
+            outline.setConvexPath(outlinePath);
+        }
+    }
+
     interface Host {
         @Nullable Context getLinkSummaryContext();
         @NonNull Context requireLinkSummaryContext();
@@ -265,6 +312,10 @@ final class LinkSummaryOverlayController {
     private static final int TRANSFORM_DURATION_MS = 280;
     private static final int STORY_CONTENT_TRANSITION_DURATION_MS = 220;
     private static final int REFERENCE_CONTENT_TRANSITION_DURATION_MS = 90;
+    private static final int REFERENCE_IMAGE_TRANSITION_DURATION_MS = 360;
+    private static final int REFERENCE_METADATA_FADE_OUT_DURATION_MS = 70;
+    private static final int REFERENCE_METADATA_FADE_IN_DURATION_MS = 140;
+    private static final int REFERENCE_IMAGE_COLLAPSED_SIZE_DP = 104;
     private static final int ACTION_SWAP_OUT_DURATION_MS = 90;
     private static final int ACTION_SWAP_IN_DURATION_MS = 150;
     private static final float ACTION_SWAP_MIN_SCALE = 0.72f;
@@ -304,6 +355,8 @@ final class LinkSummaryOverlayController {
     private int storySharedElementSnapshotGeneration;
     private int storyVoteLoadingId = NO_STORY_ID;
     private int storyFavoriteLoadingId = NO_STORY_ID;
+    private boolean referenceImageExpanded;
+    private ValueAnimator referenceImageCornerAnimator;
 
     LinkSummaryOverlayController(Host host) {
         this.host = host;
@@ -1055,6 +1108,7 @@ final class LinkSummaryOverlayController {
                             stopPreviewShimmer(referenceBinding.referenceLinkPreviewShimmer);
                             referenceBinding.referenceLinkPreviewContainer.setVisibility(View.VISIBLE);
                             image.setVisibility(View.VISIBLE);
+                            configureReferenceImageInteraction(image);
                         }
                     }
                     @Override public void onError(Drawable error) {
@@ -1067,6 +1121,168 @@ final class LinkSummaryOverlayController {
                     }
                 }).build();
         Coil.imageLoader(image.getContext()).enqueue(request);
+    }
+
+    private void configureReferenceImageInteraction(@NonNull ImageView image) {
+        image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        image.setContentDescription(image.getContext().getString(R.string.link_summary_expand_image));
+        image.setOnClickListener(view -> setReferenceImageExpanded(!referenceImageExpanded));
+    }
+
+    private void setReferenceImageExpanded(boolean expanded) {
+        if (referenceBinding == null || binding == null || card == null
+                || expanded == referenceImageExpanded) {
+            return;
+        }
+        ImageView image = referenceBinding.referenceLinkPreview;
+        Drawable drawable = image.getDrawable();
+        if (drawable == null || !ViewCompat.isLaidOut(referenceBinding.getRoot())) {
+            return;
+        }
+
+        int width = referenceBinding.getRoot().getWidth();
+        if (width <= 0) {
+            width = card.getWidth();
+        }
+        int intrinsicWidth = drawable.getIntrinsicWidth();
+        int intrinsicHeight = drawable.getIntrinsicHeight();
+        if (width <= 0 || intrinsicWidth <= 0 || intrinsicHeight <= 0) {
+            return;
+        }
+        int targetWidth = width;
+
+        referenceImageExpanded = expanded;
+        image.setContentDescription(image.getContext().getString(expanded
+                ? R.string.link_summary_collapse_image
+                : R.string.link_summary_expand_image));
+        LinearLayout metadata = referenceBinding.referenceLinkMetadataContainer;
+        metadata.animate().cancel();
+        metadata.animate()
+                .alpha(0f)
+                .setStartDelay(0)
+                .setDuration(REFERENCE_METADATA_FADE_OUT_DURATION_MS)
+                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                .withEndAction(() -> {
+                    if (referenceBinding == null || binding == null || card == null
+                            || referenceImageExpanded != expanded) {
+                        metadata.setAlpha(1f);
+                        return;
+                    }
+                    startReferenceImageBoundsTransition(
+                            image, expanded, targetWidth, intrinsicWidth, intrinsicHeight);
+                })
+                .start();
+    }
+
+    private void startReferenceImageBoundsTransition(
+            @NonNull ImageView image,
+            boolean expanded,
+            int width,
+            int intrinsicWidth,
+            int intrinsicHeight) {
+        AutoTransition transition = new AutoTransition();
+        transition.setDuration(REFERENCE_IMAGE_TRANSITION_DURATION_MS);
+        transition.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        TransitionManager.beginDelayedTransition(binding.linkSummaryContent, transition);
+
+        int collapsedSize = Utils.pxFromDpInt(
+                image.getResources(), REFERENCE_IMAGE_COLLAPSED_SIZE_DP);
+        int expandedHeight = Math.max(1,
+                Math.round(width * intrinsicHeight / (float) intrinsicWidth));
+        int standardMargin = Utils.pxFromDpInt(image.getResources(), 20);
+        int imageTextGap = Utils.pxFromDpInt(image.getResources(), expanded ? 18 : 16);
+
+        LinearLayout header = referenceBinding.referenceLinkHeader;
+        header.setOrientation(expanded ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+
+        LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(
+                expanded ? ViewGroup.LayoutParams.MATCH_PARENT : collapsedSize,
+                expanded ? expandedHeight : collapsedSize);
+        imageParams.setMarginStart(expanded ? 0 : standardMargin);
+        imageParams.topMargin = expanded ? 0 : standardMargin;
+        imageParams.setMarginEnd(expanded ? 0 : imageTextGap);
+        referenceBinding.referenceLinkPreviewContainer.setLayoutParams(imageParams);
+
+        LinearLayout.LayoutParams metadataParams = new LinearLayout.LayoutParams(
+                expanded ? ViewGroup.LayoutParams.MATCH_PARENT : 0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                expanded ? 0f : 1f);
+        metadataParams.setMarginStart(expanded ? standardMargin : 0);
+        metadataParams.topMargin = expanded ? imageTextGap : standardMargin;
+        metadataParams.setMarginEnd(standardMargin);
+        referenceBinding.referenceLinkMetadataContainer.setLayoutParams(metadataParams);
+
+        ViewGroup.LayoutParams scrollParams = binding.linkSummaryScroll.getLayoutParams();
+        scrollParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        binding.linkSummaryScroll.setLayoutParams(scrollParams);
+        animateReferenceImageCorners(image, expanded);
+        LinearLayout metadata = referenceBinding.referenceLinkMetadataContainer;
+        metadata.animate().cancel();
+        metadata.setAlpha(0f);
+        metadata.animate()
+                .alpha(1f)
+                .setStartDelay(REFERENCE_IMAGE_TRANSITION_DURATION_MS
+                        - REFERENCE_METADATA_FADE_IN_DURATION_MS)
+                .setDuration(REFERENCE_METADATA_FADE_IN_DURATION_MS)
+                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                .start();
+        resizeScroll();
+    }
+
+    private void animateReferenceImageCorners(@NonNull ImageView image, boolean expanded) {
+        float collapsedRadius = image.getResources().getDimension(
+                R.dimen.story_preview_image_corner_radius);
+        float expandedTopRadius = Utils.pxFromDpInt(
+                image.getResources(), CARD_CORNER_RADIUS_DP);
+        float startTopRadius = collapsedRadius;
+        float startBottomRadius = collapsedRadius;
+        if (image.getOutlineProvider() instanceof SplitCornerOutlineProvider) {
+            SplitCornerOutlineProvider currentProvider =
+                    (SplitCornerOutlineProvider) image.getOutlineProvider();
+            startTopRadius = currentProvider.getTopRadius();
+            startBottomRadius = currentProvider.getBottomRadius();
+        }
+        if (referenceImageCornerAnimator != null) {
+            referenceImageCornerAnimator.cancel();
+        }
+        float targetTopRadius = expanded ? expandedTopRadius : collapsedRadius;
+        float targetBottomRadius = expanded ? 0f : collapsedRadius;
+        SplitCornerOutlineProvider outlineProvider = new SplitCornerOutlineProvider(
+                startTopRadius, startBottomRadius);
+        image.setBackground(null);
+        image.setOutlineProvider(outlineProvider);
+        image.setClipToOutline(true);
+        referenceImageCornerAnimator = ValueAnimator.ofFloat(0f, 1f);
+        referenceImageCornerAnimator.setDuration(REFERENCE_IMAGE_TRANSITION_DURATION_MS);
+        referenceImageCornerAnimator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        float initialTopRadius = startTopRadius;
+        float initialBottomRadius = startBottomRadius;
+        referenceImageCornerAnimator.addUpdateListener(animator -> {
+            float progress = (Float) animator.getAnimatedValue();
+            outlineProvider.setCornerRadii(
+                    lerp(initialTopRadius, targetTopRadius, progress),
+                    lerp(initialBottomRadius, targetBottomRadius, progress));
+            image.invalidateOutline();
+        });
+        referenceImageCornerAnimator.addListener(new AnimatorListenerAdapter() {
+            private boolean cancelled;
+
+            @Override public void onAnimationCancel(Animator animation) {
+                cancelled = true;
+            }
+
+            @Override public void onAnimationEnd(Animator animation) {
+                if (referenceImageCornerAnimator == animation) {
+                    referenceImageCornerAnimator = null;
+                }
+                if (!cancelled && referenceBinding != null && !expanded) {
+                    image.setBackgroundResource(R.drawable.story_preview_image_background);
+                    image.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
+                    image.setClipToOutline(true);
+                }
+            }
+        });
+        referenceImageCornerAnimator.start();
     }
 
     private void startReferenceShimmers() {
@@ -1612,6 +1828,15 @@ final class LinkSummaryOverlayController {
     void removeNow() {
         cancelSummaryRequest();
         finishStorySharedElementSnapshotAnimation();
+        if (referenceBinding != null) {
+            referenceBinding.referenceLinkMetadataContainer.animate().cancel();
+        }
+        if (referenceImageCornerAnimator != null) {
+            referenceImageCornerAnimator.removeAllUpdateListeners();
+            referenceImageCornerAnimator.removeAllListeners();
+            referenceImageCornerAnimator.cancel();
+            referenceImageCornerAnimator = null;
+        }
         if (overlay == null) return;
         boolean wasShowingImage = imageBinding != null;
         if (imageBinding != null) CoilUtils.dispose(imageBinding.imageOnlyPreview);
@@ -1632,6 +1857,7 @@ final class LinkSummaryOverlayController {
         visibleUrl = null; fallbackTitle = null; dismissing = false;
         predictiveBackActive = false; enterTransitionStarted = false;
         enterTransitionComplete = false;
+        referenceImageExpanded = false;
         if (wasShowingImage) host.setLinkSummaryImageSourceSuppressed(false);
         host.syncLinkSummaryBackState();
     }
