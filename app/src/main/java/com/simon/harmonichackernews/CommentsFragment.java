@@ -373,10 +373,20 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int horizontalInsetFadeBottom = -1;
     private boolean horizontalInsetFadeAvailable;
     private boolean horizontalInsetHeaderPassed;
+    private boolean appliedHorizontalInsetProtectionKnown;
+    private int appliedHorizontalInsetLeft;
+    private int appliedHorizontalInsetRight;
+    private int appliedHorizontalInsetColor = Color.TRANSPARENT;
+    private int appliedHorizontalInsetFadeTop = -1;
+    private int appliedHorizontalInsetFadeBottom = -1;
+    private boolean appliedHorizontalInsetProtectionEnabled;
+    private boolean appliedHorizontalInsetFadeAvailable;
+    private boolean appliedHorizontalInsetHeaderPassed;
     private boolean appliedStatusBarProtectionKnown = false;
     private boolean appliedStatusBarProtectionEnabled = false;
     private int appliedStatusBarProtectionColor = Color.TRANSPARENT;
     private String currentCommentSorting;
+    private float lastHeaderSpacerSlideOffset = Float.NaN;
 
     // Clean fallback management
     private AlgoliaFallbackManager fallbackManager;
@@ -557,6 +567,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         commentsPaneStatusBarColor = StatusBarProtectionUtils.getPaneBackgroundColor(requireContext());
         commentsHeaderStatusBarColor = commentsPaneStatusBarColor;
         appliedStatusBarProtectionKnown = false;
+        appliedHorizontalInsetProtectionKnown = false;
         updateCommentsStatusBarAppearance();
 
         integratedWebview = prefIntegratedWebview && story.isLink;
@@ -1015,20 +1026,27 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             appliedStatusBarProtectionColor = statusBarProtectionEnabled ? statusBarColor : Color.TRANSPARENT;
         }
         updateHorizontalInsetFadeRange();
-        updateHorizontalInsetProtection(
-                binding.commentsHorizontalInsetLeft,
-                binding.commentsHorizontalInsetLeftTint,
-                binding.commentsHorizontalInsetLeftFade,
-                horizontalInsetLeft,
+        if (shouldApplyHorizontalInsetProtection(
                 statusBarProtectionEnabled,
-                commentsHeaderStatusBarColor);
-        updateHorizontalInsetProtection(
-                binding.commentsHorizontalInsetRight,
-                binding.commentsHorizontalInsetRightTint,
-                binding.commentsHorizontalInsetRightFade,
-                horizontalInsetRight,
-                statusBarProtectionEnabled,
-                commentsHeaderStatusBarColor);
+                commentsHeaderStatusBarColor)) {
+            updateHorizontalInsetProtection(
+                    binding.commentsHorizontalInsetLeft,
+                    binding.commentsHorizontalInsetLeftTint,
+                    binding.commentsHorizontalInsetLeftFade,
+                    horizontalInsetLeft,
+                    statusBarProtectionEnabled,
+                    commentsHeaderStatusBarColor);
+            updateHorizontalInsetProtection(
+                    binding.commentsHorizontalInsetRight,
+                    binding.commentsHorizontalInsetRightTint,
+                    binding.commentsHorizontalInsetRightFade,
+                    horizontalInsetRight,
+                    statusBarProtectionEnabled,
+                    commentsHeaderStatusBarColor);
+            recordAppliedHorizontalInsetProtection(
+                    statusBarProtectionEnabled,
+                    commentsHeaderStatusBarColor);
+        }
 
         if (getActivity() == null) {
             return;
@@ -1039,6 +1057,30 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (requireActivity().getWindow().getStatusBarColor() != windowStatusBarColor) {
             requireActivity().getWindow().setStatusBarColor(windowStatusBarColor);
         }
+    }
+
+    private boolean shouldApplyHorizontalInsetProtection(boolean enabled, int color) {
+        return !appliedHorizontalInsetProtectionKnown
+                || appliedHorizontalInsetLeft != horizontalInsetLeft
+                || appliedHorizontalInsetRight != horizontalInsetRight
+                || appliedHorizontalInsetColor != color
+                || appliedHorizontalInsetProtectionEnabled != enabled
+                || appliedHorizontalInsetFadeAvailable != horizontalInsetFadeAvailable
+                || appliedHorizontalInsetHeaderPassed != horizontalInsetHeaderPassed
+                || appliedHorizontalInsetFadeTop != horizontalInsetFadeTop
+                || appliedHorizontalInsetFadeBottom != horizontalInsetFadeBottom;
+    }
+
+    private void recordAppliedHorizontalInsetProtection(boolean enabled, int color) {
+        appliedHorizontalInsetProtectionKnown = true;
+        appliedHorizontalInsetLeft = horizontalInsetLeft;
+        appliedHorizontalInsetRight = horizontalInsetRight;
+        appliedHorizontalInsetColor = color;
+        appliedHorizontalInsetProtectionEnabled = enabled;
+        appliedHorizontalInsetFadeAvailable = horizontalInsetFadeAvailable;
+        appliedHorizontalInsetHeaderPassed = horizontalInsetHeaderPassed;
+        appliedHorizontalInsetFadeTop = horizontalInsetFadeTop;
+        appliedHorizontalInsetFadeBottom = horizontalInsetFadeBottom;
     }
 
     private void updateHorizontalInsetProtection(@NonNull View protection,
@@ -1697,6 +1739,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         float sanitizedSlideOffset = Float.isNaN(slideOffset) ? 1f : Math.max(0f, Math.min(1f, slideOffset));
         int spacerHeight = Math.round(topInset * sanitizedSlideOffset);
+        if (Float.compare(lastHeaderSpacerSlideOffset, sanitizedSlideOffset) == 0
+                && adapter.spacerHeight == spacerHeight) {
+            return;
+        }
+        lastHeaderSpacerSlideOffset = sanitizedSlideOffset;
         adapter.spacerHeight = spacerHeight;
         updateCommentsStatusBarAppearance();
 
@@ -1970,6 +2017,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         bottomSheet = null;
         headerSpacer = null;
         appliedStatusBarProtectionKnown = false;
+        appliedHorizontalInsetProtectionKnown = false;
+        lastHeaderSpacerSlideOffset = Float.NaN;
         if (webViewController != null) {
             webViewController.clearViewReferences();
             webViewController = null;

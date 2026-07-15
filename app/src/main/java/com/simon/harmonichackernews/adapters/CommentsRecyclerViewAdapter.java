@@ -2837,6 +2837,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         private final Map<View, Boolean> statusRowVisibilityTargets = new HashMap<>();
         private ValueAnimator refreshPromptHeightAnimator;
         private boolean statusRowsInitialized;
+        private boolean sheetSlideOffsetApplied;
+        private float lastAppliedSheetSlideOffset;
 
         public HeaderViewHolder(CommentsHeaderBinding binding) {
             super(binding.getRoot());
@@ -3089,6 +3091,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
                 @Override
                 public void onSlide(@NonNull View bottomSheet, float slideOffset) {
+                    if (sheetSlideOffsetApplied
+                            && Float.compare(lastAppliedSheetSlideOffset, slideOffset) == 0) {
+                        return;
+                    }
+                    sheetSlideOffsetApplied = true;
+                    lastAppliedSheetSlideOffset = slideOffset;
+
                     // 0 when small, 1 when opened
                     setSheetButtonsContentAlpha((1 - slideOffset) * (1 - slideOffset) * (1 - slideOffset));
                     sheetButtonsContainer.getLayoutParams().height = Math.round((1 - slideOffset) * (SHEET_ITEM_HEIGHT + navbarHeight));
