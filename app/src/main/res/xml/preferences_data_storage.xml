@@ -29,7 +29,6 @@
             app:singleLineTitle="false"
             app:key="pref_import_bookmarks"
             app:title="Import bookmarks"
-            app:summary="Overwrites current bookmarks"
             app:icon="@drawable/ic_bookmark_filled" />
 
     </PreferenceCategory>

@@ -27,10 +27,12 @@ import com.simon.harmonichackernews.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashSet;
 
 public class DataStoragePreferenceFragment extends BaseSettingsFragment {
 
     private static final String PREF_RESET_ALL_SETTINGS = "pref_reset_all_settings";
+    private static final String STATE_OVERWRITE_BOOKMARKS_ON_IMPORT = "overwrite_bookmarks_on_import";
 
     @Override
     protected String getToolbarTitle() {
@@ -45,10 +47,17 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
     private Preference importBookmarksPreference;
     private Preference clearClickedStoriesPreference;
     private Preference clearPostCachePreference;
+    private boolean overwriteBookmarksOnImport = true;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (savedInstanceState != null) {
+            overwriteBookmarksOnImport = savedInstanceState.getBoolean(
+                    STATE_OVERWRITE_BOOKMARKS_ON_IMPORT,
+                    true);
+        }
 
         exportLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -74,9 +83,28 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
                             String content = Utils.readFileContent(getContext(), result.getData().getData());
                             ArrayList<Bookmark> bookmarks = Utils.loadBookmarks(true, content);
                             if (!bookmarks.isEmpty()) {
-                                SettingsUtils.saveStringToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS, content);
+                                int importedCount = bookmarks.size();
+                                if (overwriteBookmarksOnImport) {
+                                    SettingsUtils.saveStringToSharedPreferences(getContext(), Utils.KEY_SHARED_PREFERENCES_BOOKMARKS, content);
+                                } else {
+                                    ArrayList<Bookmark> currentBookmarks = Utils.loadBookmarks(getContext(), false);
+                                    HashSet<Integer> currentBookmarkIds = new HashSet<>();
+                                    for (Bookmark bookmark : currentBookmarks) {
+                                        currentBookmarkIds.add(bookmark.id);
+                                    }
+
+                                    importedCount = 0;
+                                    for (Bookmark bookmark : bookmarks) {
+                                        if (currentBookmarkIds.add(bookmark.id)) {
+                                            currentBookmarks.add(bookmark);
+                                            importedCount++;
+                                        }
+                                    }
+                                    Utils.saveBookmarks(getContext(), currentBookmarks);
+                                }
                                 updateBookmarksPreferences();
-                                Toast.makeText(getContext(), "Loaded " + bookmarks.size() + " bookmarks", Toast.LENGTH_SHORT).show();
+                                String action = overwriteBookmarksOnImport ? "Loaded " : "Added ";
+                                Toast.makeText(getContext(), action + formatBookmarkCount(importedCount), Toast.LENGTH_SHORT).show();
                             } else {
                                 Toast.makeText(getContext(), "File contained no bookmarks", Toast.LENGTH_SHORT).show();
                             }
@@ -138,12 +166,19 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
         });
 
         importBookmarksPreference.setOnPreferenceClickListener(preference -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("text/plain");
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Import bookmarks")
+                    .setItems(new String[]{"Overwrite current bookmarks", "Add to current bookmarks"}, (dialog, which) -> {
+                        overwriteBookmarksOnImport = which == 0;
 
-            importLauncher.launch(intent);
-            return false;
+                        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                        intent.addCategory(Intent.CATEGORY_OPENABLE);
+                        intent.setType("text/plain");
+                        importLauncher.launch(intent);
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+            return true;
         });
 
         clearClickedStoriesPreference.setOnPreferenceClickListener(preference -> {
@@ -228,6 +263,12 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
         super.onResume();
         updateBookmarksPreferences();
         updateDataSummaries();
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(STATE_OVERWRITE_BOOKMARKS_ON_IMPORT, overwriteBookmarksOnImport);
     }
 
     private void updateBookmarksPreferences() {
