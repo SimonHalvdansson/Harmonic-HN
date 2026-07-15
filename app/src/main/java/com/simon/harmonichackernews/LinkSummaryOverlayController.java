@@ -446,7 +446,6 @@ final class LinkSummaryOverlayController {
         FaviconLoader.loadFavicon(link.getUrl(), referenceBinding.referenceLinkFavicon, context,
                 SettingsUtils.getPreferredFaviconProvider(context));
         referenceBinding.referenceLinkOpen.setOnClickListener(v -> Utils.openLinkMaybeHN(v.getContext(), visibleUrl));
-        startReferenceShimmers();
         loadReferenceSummary();
         startEnterTransition();
     }
@@ -465,7 +464,6 @@ final class LinkSummaryOverlayController {
         FaviconLoader.loadFavicon(url, referenceBinding.referenceLinkFavicon, context,
                 SettingsUtils.getPreferredFaviconProvider(context));
         referenceBinding.referenceLinkOpen.setOnClickListener(v -> Utils.openLinkMaybeHN(v.getContext(), visibleUrl));
-        startReferenceShimmers();
         loadReferenceSummary();
         startEnterTransition();
     }
@@ -481,7 +479,9 @@ final class LinkSummaryOverlayController {
         FontUtils.setLinkSummaryMetaTypeface(referenceBinding.referenceLinkDomain);
         FontUtils.setLinkSummaryReferenceTitleTypeface(referenceBinding.referenceLinkTitle);
         FontUtils.setLinkSummaryBodyTypeface(referenceBinding.referenceLinkDescription);
+        FontUtils.setLinkSummaryReferenceTitleTypeface(referenceBinding.referenceLinkErrorTitle);
         FontUtils.setLinkSummaryErrorTypeface(referenceBinding.referenceLinkError);
+        FontUtils.setLinkSummaryButtonTypeface(referenceBinding.referenceLinkRetry);
         FontUtils.setLinkSummaryButtonTypeface(referenceBinding.referenceLinkOpen);
     }
 
@@ -921,34 +921,107 @@ final class LinkSummaryOverlayController {
     }
 
     private void loadReferenceSummary() {
+        loadReferenceSummary(false);
+    }
+
+    private void retryReferenceSummary() {
+        if (referenceBinding == null || summaryRequest != null) return;
+        Context context = referenceBinding.referenceLinkRetry.getContext();
+        if (!Utils.isNetworkAvailable(context)) {
+            referenceBinding.referenceLinkError.announceForAccessibility(
+                    context.getString(R.string.link_summary_offline_message));
+            return;
+        }
+        setReferenceRetryLoading(true);
+        loadReferenceSummary(true);
+    }
+
+    private void loadReferenceSummary(boolean preserveErrorState) {
         String requestedUrl = visibleUrl;
+        if (!preserveErrorState) {
+            showReferenceLoadingState();
+        }
         summaryRequest = LinkSummaryLoader.load(host.getLinkSummaryContext(), requestedUrl, fallbackTitle,
                 new LinkSummaryLoader.Callback() {
                     @Override public void onSuccess(@NonNull LinkSummaryLoader.Result result) {
                         if (referenceBinding == null || !TextUtils.equals(requestedUrl, visibleUrl)) return;
                         summaryRequest = null;
+                        setReferenceRetryLoading(false);
                         bindReferenceResult(result);
                     }
                     @Override public void onFailure(@NonNull String message) {
                         if (referenceBinding == null || !TextUtils.equals(requestedUrl, visibleUrl)) return;
                         summaryRequest = null;
+                        setReferenceRetryLoading(false);
+                        if (preserveErrorState) {
+                            bindReferenceError(message);
+                            resizeScroll();
+                            return;
+                        }
                         stopReferenceShimmers();
                         referenceBinding.referenceLinkTitle.setAlpha(0f);
                         referenceBinding.referenceLinkTitle.setText(fallbackTitle);
                         referenceBinding.referenceLinkTitle.setVisibility(View.VISIBLE);
-                        referenceBinding.referenceLinkError.setAlpha(0f);
-                        referenceBinding.referenceLinkError.setText(message);
-                        referenceBinding.referenceLinkError.setVisibility(View.VISIBLE);
                         referenceBinding.referenceLinkPreviewContainer.setVisibility(View.GONE);
+                        referenceBinding.referenceLinkErrorContainer.setAlpha(0f);
+                        bindReferenceError(message);
                         fadeInReferenceView(referenceBinding.referenceLinkTitle);
-                        fadeInReferenceView(referenceBinding.referenceLinkError);
+                        fadeInReferenceView(referenceBinding.referenceLinkErrorContainer);
                         resizeScroll();
                     }
                 });
     }
 
+    private void showReferenceLoadingState() {
+        if (referenceBinding == null) return;
+        referenceBinding.referenceLinkRetry.setOnClickListener(v -> retryReferenceSummary());
+        referenceBinding.referenceLinkErrorContainer.animate().cancel();
+        referenceBinding.referenceLinkErrorContainer.setAlpha(1f);
+        referenceBinding.referenceLinkErrorContainer.setVisibility(View.GONE);
+        referenceBinding.referenceLinkTitle.setVisibility(View.GONE);
+        referenceBinding.referenceLinkDescription.setVisibility(View.GONE);
+        referenceBinding.referenceLinkPreview.setVisibility(View.INVISIBLE);
+        referenceBinding.referenceLinkPreviewContainer.setVisibility(View.VISIBLE);
+        referenceBinding.referenceLinkPreviewShimmer.setVisibility(View.VISIBLE);
+        referenceBinding.referenceLinkTitleShimmer.setVisibility(View.VISIBLE);
+        referenceBinding.referenceLinkDescriptionShimmer.setVisibility(View.VISIBLE);
+        startReferenceShimmers();
+        resizeScroll();
+    }
+
+    private void setReferenceRetryLoading(boolean loading) {
+        if (referenceBinding == null) return;
+        referenceBinding.referenceLinkRetry.setEnabled(!loading);
+        referenceBinding.referenceLinkRetry.setVisibility(loading ? View.INVISIBLE : View.VISIBLE);
+        referenceBinding.referenceLinkRetryLoading.setVisibility(loading ? View.VISIBLE : View.GONE);
+    }
+
+    private void bindReferenceError(@NonNull String loaderMessage) {
+        Context context = referenceBinding.referenceLinkError.getContext();
+        boolean offline = !Utils.isNetworkAvailable(context);
+        referenceBinding.referenceLinkErrorTitle.setText(offline
+                ? R.string.link_summary_offline_title
+                : R.string.link_summary_error_title);
+        referenceBinding.referenceLinkError.setText(offline
+                ? context.getText(R.string.link_summary_offline_message)
+                : getReferenceErrorMessage(loaderMessage));
+        referenceBinding.referenceLinkErrorContainer.setVisibility(View.VISIBLE);
+    }
+
+    private CharSequence getReferenceErrorMessage(@NonNull String loaderMessage) {
+        if (loaderMessage.startsWith("The page returned HTTP ")
+                || loaderMessage.startsWith("This link contains ")
+                || loaderMessage.startsWith("This link does not use ")
+                || loaderMessage.startsWith("The page is too large ")) {
+            return loaderMessage;
+        }
+        return referenceBinding.referenceLinkError.getContext()
+                .getString(R.string.link_summary_error_message);
+    }
+
     private void bindReferenceResult(LinkSummaryLoader.Result result) {
         if (!TextUtils.isEmpty(result.finalUrl)) visibleUrl = result.finalUrl;
+        referenceBinding.referenceLinkErrorContainer.setVisibility(View.GONE);
         referenceBinding.referenceLinkTitleShimmer.stopShimmer();
         referenceBinding.referenceLinkTitleShimmer.setVisibility(View.GONE);
         referenceBinding.referenceLinkTitle.setAlpha(0f);
@@ -980,6 +1053,7 @@ final class LinkSummaryOverlayController {
                         super.onSuccess(result);
                         if (referenceBinding != null) {
                             stopPreviewShimmer(referenceBinding.referenceLinkPreviewShimmer);
+                            referenceBinding.referenceLinkPreviewContainer.setVisibility(View.VISIBLE);
                             image.setVisibility(View.VISIBLE);
                         }
                     }

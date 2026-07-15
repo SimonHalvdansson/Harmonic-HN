@@ -8,6 +8,12 @@
     <string name="cache_stories_count_label">Stories to download</string>
     <string name="cache_stories_slider_content_description">Number of stories to download</string>
     <string name="link_summary_open_short">Open</string>
+    <string name="link_summary_retry">Try again</string>
+    <string name="link_summary_retrying">Trying…</string>
+    <string name="link_summary_offline_title">You’re offline</string>
+    <string name="link_summary_offline_message">Connect to the internet and try again.</string>
+    <string name="link_summary_error_title">Preview unavailable</string>
+    <string name="link_summary_error_message">Harmonic couldn’t load a preview for this link. The website may be unavailable or may not allow previews.</string>
     <string name="link_summary_comments">Comments</string>
     <string-array name="sorting_options">
         <item>Top Stories</item>

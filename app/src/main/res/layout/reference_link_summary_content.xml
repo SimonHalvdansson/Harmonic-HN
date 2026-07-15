@@ -173,17 +173,77 @@
         tools:text="A short description extracted from the page."
         tools:visibility="visible" />
 
-    <TextView
-        android:id="@+id/reference_link_error"
+    <LinearLayout
+        android:id="@+id/reference_link_error_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:fontFamily="@font/product_sans"
-        android:textColor="?attr/storyColorDisabled"
-        android:textSize="14sp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingTop="8dp"
+        android:paddingBottom="2dp"
         android:visibility="gone"
-        tools:text="A preview could not be loaded."
-        tools:visibility="visible" />
+        tools:visibility="visible">
+
+        <ImageView
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_cloud_off" />
+
+        <TextView
+            android:id="@+id/reference_link_error_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="@font/product_sans_bold"
+            android:gravity="center"
+            android:textColor="?attr/storyColorNormal"
+            android:textSize="18sp"
+            tools:text="You're offline" />
+
+        <TextView
+            android:id="@+id/reference_link_error"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="@font/product_sans"
+            android:gravity="center"
+            android:lineSpacingExtra="2dp"
+            android:textColor="?attr/storyColorDisabled"
+            android:textSize="14sp"
+            tools:text="Connect to the internet and try again." />
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginTop="16dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/reference_link_retry"
+                style="@style/Widget.Material3Expressive.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="@string/link_summary_retry"
+                android:textAllCaps="false"
+                android:textColor="?attr/storyColorNormal"
+                app:icon="@drawable/ic_refresh"
+                app:iconTint="?attr/storyColorNormal" />
+
+            <com.google.android.material.loadingindicator.LoadingIndicator
+                android:id="@+id/reference_link_retry_loading"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center"
+                android:clickable="false"
+                android:contentDescription="@string/link_summary_retrying"
+                android:focusable="false"
+                android:indeterminate="true"
+                android:visibility="gone"
+                app:indicatorSize="32dp" />
+        </FrameLayout>
+    </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/reference_link_open"
