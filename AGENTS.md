@@ -47,4 +47,25 @@ Use `assembleDebug` for the normal edit/verify loop when the change warrants com
 
 ## Device Verification
 
-Do not run or control a connected Android device or emulator unless the user explicitly asks for device verification. When asked, use `adb devices` to confirm it is online. To verify UI changes, install the debug APK with `adb install -r app/build/outputs/apk/debug/app-debug.apk`, launch the app with `adb shell monkey -p com.simon.harmonichackernews -c android.intent.category.LAUNCHER 1`, navigate with `adb shell input tap ...` or inspect the hierarchy with `adb shell uiautomator dump`, and capture screenshots with `adb shell screencap -p /sdcard/<name>.png` followed by `adb pull`.
+Do not run or control a connected Android device or emulator unless the user explicitly asks for device verification. When asked, use `adb devices` to confirm it is online. If more than one device is connected, select the intended target explicitly with `adb -s <serial>` for every install, navigation, inspection, and capture command. To verify UI changes, install the debug APK with `adb install -r app/build/outputs/apk/debug/app-debug.apk`, launch the app with `adb shell monkey -p com.simon.harmonichackernews -c android.intent.category.LAUNCHER 1`, navigate with `adb shell input tap ...`, and inspect the hierarchy with `adb shell uiautomator dump` when verifying text, visibility, state, or clickability.
+
+If `adb` or `emulator` is not on `PATH`, use the binaries under `/Users/simon/Library/Android/sdk/platform-tools/` and `/Users/simon/Library/Android/sdk/emulator/` rather than searching the system repeatedly.
+
+### Debug Fixtures
+
+Before searching live Hacker News content or adding temporary debug hooks, check Settings -> Debug. Its Sample content section provides repeatable link posts, reference-link posts, polls, internal HN links, and video examples. It also provides direct access to dialogs and arbitrary HN item IDs. Prefer these fixtures when they cover the behavior being tested. Do not duplicate their hardcoded item IDs in `AGENTS.md`; `DebugFragment.java` is the source of truth.
+
+### Device State Restoration
+
+Before changing device or app state for verification, note the original state. Restore any connectivity mode, animation scales, orientation, app preferences, and other persistent changes when verification is complete. Do not clear app data, caches, accounts, or user content unless the user explicitly authorizes it.
+
+### Screenshot and Animation Capture
+
+Prefer native ADB capture over desktop or computer screenshots. Use desktop or computer screenshot tools only when the user explicitly requests them or the relevant surface cannot be captured through ADB.
+
+- For static screenshots and before/after comparisons, use `adb exec-out screencap -p > <name>.png`. This captures a lossless, native-resolution image without creating a temporary file on the device.
+- For animations or transitions, prefer `adb shell screenrecord /sdcard/<name>.mp4`, followed by `adb pull` and frame extraction from the video. This is faster and more consistent than repeatedly invoking `screencap`.
+- For subtle animations, temporarily slow the emulator's animation scales, normally to 5x, and restore their original values afterward.
+- Avoid high-frequency `screencap` loops when a screen recording will work; rapid captures can interfere with rendering or produce black GPU tiles.
+- Use `uiautomator dump` alongside visual capture when verification depends on view state rather than appearance alone.
+- When screenshots will be shown in the final response, save representative images in the current task's visualization directory rather than `/tmp` so the evidence remains available. Bulk diagnostic captures and extracted frames may remain in `/tmp`.
