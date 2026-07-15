@@ -15,7 +15,7 @@
         <Preference
             app:singleLineTitle="false"
             app:key="pref_add_bookmarks_to_favorites"
-            app:title="Add all bookmarks to favorites"
+            app:title="Add all bookmarks to HN favorites"
             app:icon="@drawable/ic_star" />
 
         <Preference
