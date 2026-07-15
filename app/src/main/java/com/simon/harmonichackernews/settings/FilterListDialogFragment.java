@@ -4,6 +4,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
@@ -83,6 +84,13 @@ public class FilterListDialogFragment extends AppCompatDialogFragment {
         inputLayout = binding.filterListInputLayout;
         inputEditText = binding.filterListInput;
         MaterialButton addButton = binding.filterListAdd;
+
+        if ("pref_filter_users".equals(preferenceKey)) {
+            inputEditText.setInputType(
+                    InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+            inputEditText.setImeOptions(
+                    inputEditText.getImeOptions() | EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING);
+        }
 
         inputLayout.setHint(inputHint);
         emptyView.setText(emptyMessage);
