@@ -53,6 +53,8 @@
                         android:layout_width="22dp"
                         android:layout_height="22dp"
                         android:layout_gravity="center"
+                        android:background="@drawable/favicon_thumbnail_background"
+                        android:clipToOutline="true"
                         android:contentDescription="@null"
                         android:scaleType="fitCenter"
                         android:visibility="invisible" />
