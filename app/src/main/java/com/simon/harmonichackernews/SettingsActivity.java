@@ -339,6 +339,36 @@ public class SettingsActivity extends AppCompatActivity implements
         }
     }
 
+    public void showSettingsSection(@NonNull String fragmentClassName, @NonNull String detailKey) {
+        Fragment fragment = SettingsFragmentFactory.create(
+                getSupportFragmentManager(), getClassLoader(), fragmentClassName);
+        if (fragment == null) {
+            return;
+        }
+
+        currentDetailClassName = fragmentClassName;
+        currentDetailKey = detailKey;
+
+        if (isTwoPane) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+                    .replace(R.id.settings_detail, fragment)
+                    .commit();
+
+            Fragment headerFragment = getSupportFragmentManager().findFragmentById(R.id.settings);
+            if (headerFragment instanceof SettingsHeaderFragment) {
+                ((SettingsHeaderFragment) headerFragment).setSelectedKey(detailKey);
+            }
+        } else {
+            startActivity(SettingsDetailActivity.createIntent(
+                    this,
+                    fragmentClassName,
+                    detailKey,
+                    null));
+        }
+    }
+
     @Override
     public void onRequestRestart() {
         needsRestart = true;

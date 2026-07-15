@@ -91,7 +91,7 @@
                 android:layout_weight="1"
                 android:checkable="true"
                 android:fontFamily="@font/product_sans"
-                android:text="Clean"
+                android:text="Simple"
                 android:textAllCaps="false"
                 android:textStyle="bold" />
 

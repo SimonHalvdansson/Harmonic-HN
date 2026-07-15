@@ -129,6 +129,10 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
         finish();
     }
 
+    public void showSettingsSection(@NonNull String fragmentClassName, @NonNull String detailKey) {
+        startActivity(createIntent(this, fragmentClassName, detailKey, null));
+    }
+
     @Override
     public boolean isTwoPane() {
         return false;

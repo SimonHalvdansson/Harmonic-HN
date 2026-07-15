@@ -9,6 +9,9 @@ import androidx.preference.Preference;
 import com.google.android.material.timepicker.MaterialTimePicker;
 import com.google.android.material.timepicker.TimeFormat;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.SettingsActivity;
+import com.simon.harmonichackernews.SettingsDetailActivity;
+import com.simon.harmonichackernews.WelcomeDialogFragment;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -41,6 +44,23 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
         updateFontSummary();
         paletteTintPreference = findPreference(SettingsUtils.PREF_PALETTE_TINT_MODE);
         updatePaletteTintSummary();
+
+        Preference stylePreference = findPreference("pref_style");
+        if (stylePreference != null) {
+            stylePreference.setOnPreferenceClickListener(preference -> {
+                WelcomeDialogFragment.showStyleChooser(getParentFragmentManager());
+                return true;
+            });
+        }
+
+        setSettingsLink(
+                findPreference("pref_appearance_stories"),
+                StoriesPreferenceFragment.class.getName(),
+                "pref_header_stories");
+        setSettingsLink(
+                findPreference("pref_appearance_comments"),
+                CommentsPreferenceFragment.class.getName(),
+                "pref_header_comments");
 
         getParentFragmentManager().setFragmentResultListener(
                 ThemeSelectionDialogFragment.RESULT_KEY,
@@ -188,6 +208,21 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
             Date dateTo = new Date(0, 0, 0, nighttimeHours[2], nighttimeHours[3]);
             findPreference("pref_theme_timed_range").setSummary(df.format(dateFrom) + " - " + df.format(dateTo));
         }
+    }
+
+    private void setSettingsLink(Preference preference, String fragmentClassName, String detailKey) {
+        if (preference == null) {
+            return;
+        }
+
+        preference.setOnPreferenceClickListener(clickedPreference -> {
+            if (getActivity() instanceof SettingsActivity) {
+                ((SettingsActivity) getActivity()).showSettingsSection(fragmentClassName, detailKey);
+            } else if (getActivity() instanceof SettingsDetailActivity) {
+                ((SettingsDetailActivity) getActivity()).showSettingsSection(fragmentClassName, detailKey);
+            }
+            return true;
+        });
     }
 
     private String getNighttimeTheme() {

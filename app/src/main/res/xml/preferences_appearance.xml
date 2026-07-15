@@ -70,4 +70,28 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory
+        app:title="Style"
+        android:layout="@layout/preference_category">
+
+        <Preference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_design_services"
+            app:key="pref_style"
+            app:title="General style" />
+
+        <Preference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_open_in_new"
+            app:key="pref_appearance_stories"
+            app:title="Stories settings" />
+
+        <Preference
+            app:singleLineTitle="false"
+            app:icon="@drawable/ic_open_in_new"
+            app:key="pref_appearance_comments"
+            app:title="Comments settings" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

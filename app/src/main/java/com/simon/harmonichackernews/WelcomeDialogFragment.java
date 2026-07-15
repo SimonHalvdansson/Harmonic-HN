@@ -36,6 +36,7 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
 
     private static final String TAG = "WelcomeDialogFragment";
     private static final String ARG_SHOW_VERSION_TITLE = "show_version_title";
+    private static final String ARG_STYLE_CHOOSER = "style_chooser";
     private static final String FONT_EXPRESSIVE = "googlesansflexrounded";
     private static final String FONT_CLEAN = "productsans";
     private static final long PRESET_TRANSITION_DURATION_MS = 180L;
@@ -46,11 +47,21 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
     @NonNull
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
+        boolean styleChooser = isStyleChooser();
         AiModelCatalog.ensureInitialDefault(requireContext());
         WelcomeDialogBinding binding = WelcomeDialogBinding.inflate(LayoutInflater.from(requireContext()));
-        binding.welcomeDialogTitle.setText(shouldShowVersionTitle()
-                ? "Welcome to Harmonic for Hacker News 3.0"
-                : "Welcome to Harmonic for Hacker News");
+        if (styleChooser) {
+            binding.welcomeDialogLogo.setVisibility(View.GONE);
+            binding.welcomeDialogTitle.setText("Style");
+            binding.welcomeDialogBody.setText(
+                    "Choose a general style for the app. This changes the font, story preview images and palette tint.");
+            binding.welcomeDialogSettingsNote.setVisibility(View.GONE);
+            binding.welcomeDialogGetStarted.setText("Apply");
+        } else {
+            binding.welcomeDialogTitle.setText(shouldShowVersionTitle()
+                    ? "Welcome to Harmonic for Hacker News 3.0"
+                    : "Welcome to Harmonic for Hacker News");
+        }
         ViewCompat.setAccessibilityHeading(binding.welcomeDialogTitle, true);
         setupStoryPreview(binding);
         binding.welcomeDialogPresetGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
@@ -59,7 +70,11 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
             }
             updatePresetPreview(binding, checkedId != R.id.welcome_dialog_preset_clean, true);
         });
-        updatePresetPreview(binding, true, false);
+        boolean expressive = !styleChooser || !isSimplePresetSelected();
+        binding.welcomeDialogPresetGroup.check(expressive
+                ? R.id.welcome_dialog_preset_expressive
+                : R.id.welcome_dialog_preset_clean);
+        updatePresetPreview(binding, expressive, false);
         binding.welcomeDialogStoryPreviewContainer.addOnLayoutChangeListener(
                 (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
                     int width = right - left;
@@ -77,11 +92,14 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
         });
         binding.welcomeDialogGetStarted.setOnClickListener(view -> {
             applySelectedPreset(binding);
+            FontUtils.init(requireContext());
             MainActivity.applyWelcomePresetToActiveUi();
-            Utils.markWelcomeDialogShown(requireContext());
+            if (!styleChooser) {
+                Utils.markWelcomeDialogShown(requireContext());
+            }
             dismiss();
         });
-        setCancelable(false);
+        setCancelable(styleChooser);
 
         return new MaterialAlertDialogBuilder(requireContext())
                 .setView(binding.getRoot())
@@ -113,6 +131,18 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
     private boolean shouldShowVersionTitle() {
         Bundle args = getArguments();
         return args != null && args.getBoolean(ARG_SHOW_VERSION_TITLE, false);
+    }
+
+    private boolean isStyleChooser() {
+        Bundle args = getArguments();
+        return args != null && args.getBoolean(ARG_STYLE_CHOOSER, false);
+    }
+
+    private boolean isSimplePresetSelected() {
+        return FONT_CLEAN.equals(SettingsUtils.getPreferredFont(requireContext()))
+                && !SettingsUtils.shouldTintCardUsingPreview(requireContext())
+                && SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(
+                        SettingsUtils.getPreferredStoryPreviewImageMode(requireContext()));
     }
 
     private void setupStoryPreview(WelcomeDialogBinding binding) {
@@ -260,6 +290,18 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
         WelcomeDialogFragment fragment = new WelcomeDialogFragment();
         Bundle args = new Bundle();
         args.putBoolean(ARG_SHOW_VERSION_TITLE, showVersionTitle);
+        fragment.setArguments(args);
+        fragment.show(fm, TAG);
+    }
+
+    public static void showStyleChooser(FragmentManager fm) {
+        if (fm.findFragmentByTag(TAG) != null) {
+            return;
+        }
+
+        WelcomeDialogFragment fragment = new WelcomeDialogFragment();
+        Bundle args = new Bundle();
+        args.putBoolean(ARG_STYLE_CHOOSER, true);
         fragment.setArguments(args);
         fragment.show(fm, TAG);
     }
