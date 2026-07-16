@@ -2,6 +2,7 @@ package com.simon.harmonichackernews;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
@@ -43,6 +44,7 @@ import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -283,6 +285,16 @@ public class StoriesFragment extends Fragment {
     private Set<String> filteredUsers;
     private boolean hideJobs, alwaysOpenComments, hideClicked;
     private long historiesChangeVersion = -1L;
+    @Nullable
+    private SharedPreferences bookmarkPreferences;
+    private boolean bookmarksChanged = false;
+    private final SharedPreferences.OnSharedPreferenceChangeListener bookmarkPreferenceChangeListener =
+            (sharedPreferences, key) -> {
+                if (Utils.KEY_SHARED_PREFERENCES_BOOKMARKS.equals(key)) {
+                    bookmarksChanged = true;
+                    refreshBookmarksIfNeeded();
+                }
+            };
     private boolean searching = false;
     private boolean loadingFailed = false;
     private boolean loadingFailedServerError = false;
@@ -386,6 +398,11 @@ public class StoriesFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         storiesViewModel = new ViewModelProvider(this).get(StoriesViewModel.class);
+        bookmarkPreferences = requireContext().getSharedPreferences(
+                Utils.GLOBAL_SHARED_PREFERENCES_KEY,
+                Context.MODE_PRIVATE);
+        bookmarkPreferences.registerOnSharedPreferenceChangeListener(
+                bookmarkPreferenceChangeListener);
     }
 
     @Nullable
@@ -3116,6 +3133,7 @@ public class StoriesFragment extends Fragment {
         alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(getContext());
         refreshTypeSpinnerItemsIfNeeded();
         syncVisibleUserItemListWithLocalCache();
+        refreshBookmarksIfNeeded();
 
         long timeDiff = System.currentTimeMillis() - lastLoaded;
 
@@ -3183,6 +3201,19 @@ public class StoriesFragment extends Fragment {
 
         syncInactiveStoryAdapterDisplaySettings();
         syncStoriesWithHistoriesIfNeeded();
+    }
+
+    private void refreshBookmarksIfNeeded() {
+        if (!bookmarksChanged
+                || adapter == null
+                || searching
+                || !getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED)
+                || !isBookmarksType(adapter.type)) {
+            return;
+        }
+
+        bookmarksChanged = false;
+        attemptRefresh();
     }
 
     public void onAccountStateChanged() {
@@ -3383,6 +3414,16 @@ public class StoriesFragment extends Fragment {
         clearViewReferences();
 
         super.onDestroyView();
+    }
+
+    @Override
+    public void onDestroy() {
+        if (bookmarkPreferences != null) {
+            bookmarkPreferences.unregisterOnSharedPreferenceChangeListener(
+                    bookmarkPreferenceChangeListener);
+            bookmarkPreferences = null;
+        }
+        super.onDestroy();
     }
 
     private void clearAppBarDragCallback() {
@@ -3908,6 +3949,7 @@ public class StoriesFragment extends Fragment {
             ArrayList<Story> refreshedStories = new ArrayList<>();
             showingCached = false;
 
+            bookmarksChanged = false;
             ArrayList<Bookmark> bookmarks = Utils.loadBookmarks(getContext(), true);
 
             for (int i = 0; i < bookmarks.size(); i++) {
@@ -4836,6 +4878,7 @@ public class StoriesFragment extends Fragment {
             } else {
                 attemptRefresh();
             }
+            refreshBookmarksIfNeeded();
         }
     }
 
