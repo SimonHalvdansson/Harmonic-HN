@@ -5,6 +5,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -357,6 +358,7 @@ final class LinkSummaryOverlayController {
     private boolean predictiveBackActive;
     private boolean enterTransitionStarted;
     private boolean enterTransitionComplete;
+    private boolean pendingStoryPreviewHide;
     private final List<StorySharedElementSnapshot> storySharedElementSnapshots = new ArrayList<>();
     private ValueAnimator storySharedElementSnapshotAnimator;
     private ViewGroup storySharedElementSnapshotDrawing;
@@ -430,10 +432,7 @@ final class LinkSummaryOverlayController {
         ImageView preview = storyBinding.storyLinkPreview;
         Drawable previewDrawable = preview.getDrawable();
         if (previewDrawable == null) {
-            Drawable.ConstantState constantState = sourceDrawable.getConstantState();
-            previewDrawable = constantState == null
-                    ? sourceDrawable
-                    : constantState.newDrawable(card.getResources()).mutate();
+            previewDrawable = copyDrawable(sourceDrawable, card.getResources());
             preview.setImageDrawable(previewDrawable);
         }
         preview.setVisibility(View.VISIBLE);
@@ -683,6 +682,7 @@ final class LinkSummaryOverlayController {
         dismissing = false;
         enterTransitionStarted = false;
         enterTransitionComplete = false;
+        pendingStoryPreviewHide = false;
         binding = LinkSummaryOverlayBinding.inflate(LayoutInflater.from(context), overlayHost, false);
         overlay = binding.getRoot();
         overlayHost.addView(overlay, new ViewGroup.LayoutParams(
@@ -985,6 +985,7 @@ final class LinkSummaryOverlayController {
 
     private void loadStoryImage(Story story, String imageUrl) {
         ImageView imageView = storyBinding.storyLinkPreview;
+        Drawable requestFallback = imageView.getDrawable();
         imageView.setTag(imageUrl);
         storyBinding.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
         storyBinding.storyLinkPreviewShimmer.setVisibility(View.VISIBLE);
@@ -993,9 +994,14 @@ final class LinkSummaryOverlayController {
                 .data(imageUrl).setHeader("User-Agent", NetworkComponent.USER_AGENT)
                 .allowHardware(false).crossfade(true)
                 .target(new ImageViewTarget(imageView) {
+                    @Override public void onStart(Drawable placeholder) {
+                        if (requestFallback == null && getStoryImageSourceDrawable() == null) {
+                            super.onStart(placeholder);
+                        }
+                    }
                     @Override public void onSuccess(Drawable result) {
+                        if (!isCurrentStoryImageTarget(imageView, imageUrl)) return;
                         super.onSuccess(result);
-                        if (storyBinding == null) return;
                         PreviewImageLayoutUtils.applyWideImageHeight(
                                 imageView,
                                 storyBinding.storyLinkPreviewContainer,
@@ -1015,16 +1021,58 @@ final class LinkSummaryOverlayController {
                         }
                     }
                     @Override public void onError(Drawable error) {
-                        super.onError(null);
-                        if (storyBinding != null) {
-                            beginContentTransition(STORY_CONTENT_TRANSITION_DURATION_MS);
-                            stopPreviewShimmer(storyBinding.storyLinkPreviewShimmer);
-                            hideStoryPreview();
-                            resizeScroll();
+                        if (!isCurrentStoryImageTarget(imageView, imageUrl)) return;
+                        Drawable retainedDrawable = imageView.getDrawable();
+                        if (retainedDrawable == null) {
+                            retainedDrawable = requestFallback;
                         }
+                        if (retainedDrawable == null) {
+                            Drawable sourceDrawable = getStoryImageSourceDrawable();
+                            if (sourceDrawable != null) {
+                                retainedDrawable = copyDrawable(
+                                        sourceDrawable, imageView.getResources());
+                            }
+                        }
+                        if (retainedDrawable != null) {
+                            imageView.setImageDrawable(retainedDrawable);
+                            PreviewImageLayoutUtils.applyWideImageHeight(
+                                    imageView,
+                                    storyBinding.storyLinkPreviewContainer,
+                                    retainedDrawable,
+                                    STORY_PREVIEW_DEFAULT_HEIGHT_DP);
+                            stopPreviewShimmer(storyBinding.storyLinkPreviewShimmer);
+                            storyBinding.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
+                            imageView.setVisibility(View.VISIBLE);
+                            resizeScroll();
+                            return;
+                        }
+
+                        super.onError(null);
+                        beginContentTransition(STORY_CONTENT_TRANSITION_DURATION_MS);
+                        stopPreviewShimmer(storyBinding.storyLinkPreviewShimmer);
+                        hideStoryPreview();
+                        resizeScroll();
                     }
                 }).build();
         Coil.imageLoader(imageView.getContext()).enqueue(request);
+    }
+
+    @Nullable
+    private Drawable getStoryImageSourceDrawable() {
+        return storyImageSourceView == null ? null : storyImageSourceView.getDrawable();
+    }
+
+    private static Drawable copyDrawable(Drawable source, Resources resources) {
+        Drawable.ConstantState constantState = source.getConstantState();
+        return constantState == null
+                ? source
+                : constantState.newDrawable(resources).mutate();
+    }
+
+    private boolean isCurrentStoryImageTarget(ImageView imageView, String imageUrl) {
+        return storyBinding != null
+                && storyBinding.storyLinkPreview == imageView
+                && imageUrl.equals(imageView.getTag());
     }
 
     private void loadReferenceSummary() {
@@ -1374,8 +1422,24 @@ final class LinkSummaryOverlayController {
     private void hideStoryPreview() {
         if (storyBinding == null) return;
         stopPreviewShimmer(storyBinding.storyLinkPreviewShimmer);
+        if (enterTransitionStarted && !enterTransitionComplete) {
+            pendingStoryPreviewHide = true;
+            return;
+        }
+        pendingStoryPreviewHide = false;
+        if (enterTransitionComplete) {
+            beginContentTransition(STORY_CONTENT_TRANSITION_DURATION_MS);
+        }
         storyBinding.storyLinkPreview.setVisibility(View.GONE);
         storyBinding.storyLinkPreviewContainer.setVisibility(View.GONE);
+    }
+
+    private void finishPendingStoryPreviewHide() {
+        if (!pendingStoryPreviewHide || storyBinding == null) {
+            return;
+        }
+        hideStoryPreview();
+        resizeScroll();
     }
 
     private void setStoryTitle(Story story, String fallback) {
@@ -1450,6 +1514,7 @@ final class LinkSummaryOverlayController {
                 setSourceVisible(storyTitleSourceView, false);
                 setSourceVisible(storyMetaSourceView, false);
                 card.setVisibility(View.VISIBLE);
+                finishPendingStoryPreviewHide();
             }
             if (imageBinding == null) resizeScroll();
         });
@@ -2029,6 +2094,7 @@ final class LinkSummaryOverlayController {
                     transition.removeListener(this);
                     enterTransitionComplete = true;
                     restoreStorySharedElementAlphas();
+                    finishPendingStoryPreviewHide();
                 }
             }
         });

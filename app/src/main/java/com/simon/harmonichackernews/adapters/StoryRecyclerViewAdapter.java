@@ -48,6 +48,7 @@ import com.simon.harmonichackernews.utils.AccessibilityTextUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.PreviewImageLayoutUtils;
+import com.simon.harmonichackernews.utils.PreviewImageFailureAnimator;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache;
 import com.simon.harmonichackernews.utils.TextSizeImageSpan;
@@ -715,10 +716,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 story.previewImageLoadFailed = true;
                 PreviewImageTintUtils.clearStoryPreviewImageTintColor(story);
                 cachePreviewState(appContext, story);
-                int index = stories.indexOf(story);
-                if (index >= 0 && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)) {
-                    notifyItemChanged(index);
-                }
+                showPreviewImageFailure(story);
                 return;
             }
 
@@ -976,6 +974,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         storyViewHolder.cancelPreviewImageRequest(previewImage);
+        PreviewImageFailureAnimator.cancel(previewImage);
         previewImage.setTag(imageUrl);
         boolean hasMemoryPreviewImage = bindCachedPreviewImage(storyViewHolder, story, previewImage, imageUrl);
         final boolean fadeInWhenLoaded = !hasMemoryPreviewImage && !story.previewImageLoaded;
@@ -1016,13 +1015,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                             PreviewImageTintUtils.clearStoryPreviewImageTintColor(story);
                             previewImage.animate().cancel();
                             super.onError(null);
-                            setPreviewImageVisibility(storyViewHolder, previewImage, View.GONE);
-                            applyStoryCardBackground(storyViewHolder, story, false);
-                            loadFaviconTintColor(
-                                    previewImage.getContext(),
-                                    story,
-                                    storyViewHolder,
-                                    isVisibleOnScreen(storyViewHolder.itemView));
+                            animatePreviewImageFailure(storyViewHolder, story, previewImage);
                         }
                     }
 
@@ -1120,6 +1113,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 || previewImage.getDrawable() != null
                 || previewImage.getTag() != null
                 || previewImage.getAlpha() != 1.0f;
+        PreviewImageFailureAnimator.cancel(previewImage);
         CoilUtils.dispose(previewImage);
         previewImage.animate().cancel();
         previewImage.clearAnimation();
@@ -1133,6 +1127,49 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP);
         }
         return changed;
+    }
+
+    private void showPreviewImageFailure(Story story) {
+        int index = stories.indexOf(story);
+        if (index < 0 || SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)) {
+            return;
+        }
+
+        RecyclerView.ViewHolder holder = recyclerView == null
+                ? null : recyclerView.findViewHolderForAdapterPosition(index);
+        if (holder instanceof StoryViewHolder
+                && ((StoryViewHolder) holder).story == story) {
+            StoryViewHolder storyViewHolder = (StoryViewHolder) holder;
+            ImageView previewImage = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)
+                    ? storyViewHolder.largePreviewImage
+                    : storyViewHolder.smallPreviewImage;
+            animatePreviewImageFailure(storyViewHolder, story, previewImage);
+            return;
+        }
+
+        notifyItemChanged(index);
+    }
+
+    private void animatePreviewImageFailure(
+            StoryViewHolder storyViewHolder,
+            Story story,
+            @Nullable ImageView previewImage) {
+        boolean visible = isVisibleOnScreen(storyViewHolder.itemView);
+        applyStoryCardBackground(storyViewHolder, story, visible);
+        loadFaviconTintColor(
+                storyViewHolder.itemView.getContext(),
+                story,
+                storyViewHolder,
+                visible);
+        if (previewImage == null || previewImage.getVisibility() == View.GONE) {
+            return;
+        }
+
+        PreviewImageFailureAnimator.Axis axis =
+                previewImage == storyViewHolder.largePreviewImage
+                        ? PreviewImageFailureAnimator.Axis.VERTICAL
+                        : PreviewImageFailureAnimator.Axis.HORIZONTAL;
+        PreviewImageFailureAnimator.collapse(previewImage, axis);
     }
 
     private void applyStoryCardBackground(StoryViewHolder storyViewHolder, Story story, boolean animate) {

@@ -76,6 +76,7 @@ import com.simon.harmonichackernews.utils.AccessibilityTextUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.PreviewImageLayoutUtils;
+import com.simon.harmonichackernews.utils.PreviewImageFailureAnimator;
 import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache;
@@ -1235,6 +1236,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
         }
 
+        PreviewImageFailureAnimator.cancel(previewImage);
         CoilUtils.dispose(previewImage);
         previewImage.animate().cancel();
         previewImage.clearAnimation();
@@ -1268,7 +1270,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                             story.previewImageLoadFailed = true;
                             PreviewImageTintUtils.clearStoryPreviewImageTintColor(story);
                             super.onError(null);
-                            resetHeaderPreviewImage(headerViewHolder);
+                            animateHeaderPreviewImageFailure(headerViewHolder);
                             bindHeaderTint(headerViewHolder);
                         }
                     }
@@ -1374,6 +1376,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             return;
         }
 
+        PreviewImageFailureAnimator.cancel(previewImage);
         applyHeaderPreviewImagePadding(headerViewHolder, false);
         CoilUtils.dispose(previewImage);
         previewImage.animate().cancel();
@@ -1385,6 +1388,30 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         PreviewImageLayoutUtils.resetHeight(
                 previewImage,
                 HEADER_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP);
+    }
+
+    private void animateHeaderPreviewImageFailure(HeaderViewHolder headerViewHolder) {
+        ImageView previewImage = headerViewHolder.previewImage;
+        if (previewImage == null || previewImage.getVisibility() == GONE) {
+            resetHeaderPreviewImage(headerViewHolder);
+            return;
+        }
+
+        int startPaddingTop = headerViewHolder.headerView.getPaddingTop();
+        int targetPaddingTop = headerViewHolder.headerBasePaddingTop;
+        PreviewImageFailureAnimator.collapse(
+                previewImage,
+                PreviewImageFailureAnimator.Axis.VERTICAL,
+                progress -> {
+                    int topPadding = Math.round(startPaddingTop
+                            + (targetPaddingTop - startPaddingTop) * progress);
+                    headerViewHolder.headerView.setPadding(
+                            headerViewHolder.headerView.getPaddingLeft(),
+                            topPadding,
+                            headerViewHolder.headerView.getPaddingRight(),
+                            headerViewHolder.headerView.getPaddingBottom());
+                },
+                () -> resetHeaderPreviewImage(headerViewHolder));
     }
 
     private static boolean isCurrentHeaderPreviewTarget(ImageView previewImage, String imageUrl) {
