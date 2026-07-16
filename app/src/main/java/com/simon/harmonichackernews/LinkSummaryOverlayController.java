@@ -113,6 +113,13 @@ final class LinkSummaryOverlayController {
         }
     }
 
+    private static final class LinkPositionSourceView extends View {
+        LinkPositionSourceView(@NonNull Context context) {
+            super(context);
+            setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        }
+    }
+
     private static final class StorySharedElementSnapshot {
         final View start;
         final View end;
@@ -334,6 +341,7 @@ final class LinkSummaryOverlayController {
     private ReferenceLinkSummaryContentBinding referenceBinding;
     private ImageOnlyOverlayContentBinding imageBinding;
     private View sourceView;
+    private LinkPositionSourceView linkPositionSourceView;
     private ImageView storyImageSourceView;
     private View storyTitleSourceView;
     private View storyMetaSourceView;
@@ -504,8 +512,17 @@ final class LinkSummaryOverlayController {
     }
 
     void showReference(String url, String title, @Nullable View source) {
+        showReference(url, title, source, null);
+    }
+
+    void showReference(
+            String url,
+            String title,
+            @Nullable View source,
+            @Nullable RectF sourceBounds) {
         Context context = host.getLinkSummaryContext();
-        if (context == null || TextUtils.isEmpty(url) || !prepareOverlay(source)) {
+        if (context == null || TextUtils.isEmpty(url)
+                || !prepareOverlay(source, sourceBounds)) {
             return;
         }
         visibleUrl = url;
@@ -647,13 +664,22 @@ final class LinkSummaryOverlayController {
 
     @SuppressLint("ClickableViewAccessibility")
     private boolean prepareOverlay(@Nullable View source) {
+        return prepareOverlay(source, null);
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private boolean prepareOverlay(
+            @Nullable View source,
+            @Nullable RectF sourceBounds) {
         Context context = host.getLinkSummaryContext();
         ViewGroup overlayHost = host.getLinkSummaryOverlayHost();
         if (context == null || overlayHost == null) {
             return false;
         }
         removeNow();
-        sourceView = source;
+        LinkPositionSourceView linkSource = createLinkPositionSource(
+                overlayHost, source, sourceBounds);
+        sourceView = linkSource == null ? source : linkSource;
         dismissing = false;
         enterTransitionStarted = false;
         enterTransitionComplete = false;
@@ -680,6 +706,34 @@ final class LinkSummaryOverlayController {
         card.setOnTouchListener((v, event) -> true);
         host.syncLinkSummaryBackState();
         return true;
+    }
+
+    @Nullable
+    private LinkPositionSourceView createLinkPositionSource(
+            @NonNull ViewGroup overlayHost,
+            @Nullable View source,
+            @Nullable RectF sourceBounds) {
+        if (!isUsableTransitionView(source) || sourceBounds == null || sourceBounds.isEmpty()) {
+            return null;
+        }
+
+        RectF clippedBounds = new RectF(sourceBounds);
+        if (!clippedBounds.intersect(0, 0, source.getWidth(), source.getHeight())) {
+            return null;
+        }
+        int[] hostLocation = new int[2];
+        int[] sourceLocation = new int[2];
+        overlayHost.getLocationOnScreen(hostLocation);
+        source.getLocationOnScreen(sourceLocation);
+        int anchorSize = Math.max(1, Utils.pxFromDpInt(source.getResources(), 8));
+        LinkPositionSourceView linkSource = new LinkPositionSourceView(source.getContext());
+        overlayHost.addView(linkSource, new ViewGroup.LayoutParams(anchorSize, anchorSize));
+        linkSource.setX(sourceLocation[0] - hostLocation[0]
+                + clippedBounds.centerX() - anchorSize / 2f);
+        linkSource.setY(sourceLocation[1] - hostLocation[1]
+                + clippedBounds.centerY() - anchorSize / 2f);
+        linkPositionSourceView = linkSource;
+        return linkSource;
     }
 
     private void bindStoryKnownContent(Context context, Story story) {
@@ -1763,7 +1817,8 @@ final class LinkSummaryOverlayController {
     }
 
     private ShapeAppearanceModel createShape(View view) {
-        float radius = view == card ? CARD_CORNER_RADIUS_DP
+        float radius = view instanceof LinkPositionSourceView ? 0
+                : view == card ? CARD_CORNER_RADIUS_DP
                 : view instanceof MaterialCardView ? 8
                 : view instanceof ImageView ? 12 : 0;
         return ShapeAppearanceModel.builder().setAllCornerSizes(
@@ -1771,7 +1826,9 @@ final class LinkSummaryOverlayController {
     }
 
     private int getContainerColor(View view) {
-        return view instanceof MaterialCardView
+        return view instanceof LinkPositionSourceView
+                ? Color.TRANSPARENT
+                : view instanceof MaterialCardView
                 ? ((MaterialCardView) view).getCardBackgroundColor().getDefaultColor()
                 : PreviewImageTintUtils.getTintBaseColor(view.getContext());
     }
@@ -1837,7 +1894,10 @@ final class LinkSummaryOverlayController {
             referenceImageCornerAnimator.cancel();
             referenceImageCornerAnimator = null;
         }
-        if (overlay == null) return;
+        if (overlay == null) {
+            removeLinkPositionSource();
+            return;
+        }
         boolean wasShowingImage = imageBinding != null;
         if (imageBinding != null) CoilUtils.dispose(imageBinding.imageOnlyPreview);
         if (binding != null) ViewCompat.setOnApplyWindowInsetsListener(binding.linkSummaryContent, null);
@@ -1847,6 +1907,7 @@ final class LinkSummaryOverlayController {
         setSourceVisible(storyMetaSourceView, true);
         restoreStorySharedElementAlphas();
         if (overlay.getParent() instanceof ViewGroup) ((ViewGroup) overlay.getParent()).removeView(overlay);
+        removeLinkPositionSource();
         overlay = null; binding = null; card = null; storyBinding = null;
         referenceBinding = null; imageBinding = null;
         sourceView = null; storyImageSourceView = null; storyTitleSourceView = null;
@@ -1860,6 +1921,14 @@ final class LinkSummaryOverlayController {
         referenceImageExpanded = false;
         if (wasShowingImage) host.setLinkSummaryImageSourceSuppressed(false);
         host.syncLinkSummaryBackState();
+    }
+
+    private void removeLinkPositionSource() {
+        if (linkPositionSourceView == null) return;
+        if (linkPositionSourceView.getParent() instanceof ViewGroup) {
+            ((ViewGroup) linkPositionSourceView.getParent()).removeView(linkPositionSourceView);
+        }
+        linkPositionSourceView = null;
     }
 
     private void cancelSummaryRequest() {

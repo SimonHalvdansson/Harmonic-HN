@@ -1306,8 +1306,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
 
         adapter.setOnCommentLongClickListener(this);
-        adapter.setOnReferenceLinkLongClickListener((link, view) ->
-                linkSummaryOverlayController.showReference(link, view));
+        adapter.setOnReferenceLinkLongClickListener((url, title, view, sourceBounds) ->
+                linkSummaryOverlayController.showReference(url, title, view, sourceBounds));
         adapter.setOnHeaderPreviewLongClickListener((imageUrl, imageView) ->
                 linkSummaryOverlayController.showImage(
                         imageUrl,

@@ -17,11 +17,17 @@
 package org.sufficientlysecure.htmltextview;
 
 import android.content.Context;
+import android.graphics.Path;
+import android.graphics.RectF;
 import android.text.Html;
+import android.text.Layout;
+import android.text.Selection;
 import android.text.Spannable;
 import android.text.Spanned;
 import android.text.style.QuoteSpan;
+import android.text.style.URLSpan;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -44,6 +50,9 @@ public class HtmlTextView extends JellyBeanSpanFixTextView {
     private DrawTableLinkSpan drawTableLinkSpan;
     @Nullable
     private OnClickATagListener onClickATagListener;
+    @Nullable
+    private OnLongClickATagListener onLongClickATagListener;
+    private boolean anchorLongClickHandled;
     private float indent = 24.0f; // Default to 24px.
 
     private boolean removeTrailingWhiteSpace = true;
@@ -149,6 +158,76 @@ public class HtmlTextView extends JellyBeanSpanFixTextView {
 
     public void setOnClickATagListener(@Nullable OnClickATagListener onClickATagListener) {
         this.onClickATagListener = onClickATagListener;
+    }
+
+    public void setOnLongClickATagListener(@Nullable OnLongClickATagListener onLongClickATagListener) {
+        this.onLongClickATagListener = onLongClickATagListener;
+    }
+
+    @Override
+    public boolean performLongClick() {
+        CharSequence text = getText();
+        if (onLongClickATagListener != null && text instanceof Spannable) {
+            Spannable spannable = (Spannable) text;
+            int selectionStart = Selection.getSelectionStart(spannable);
+            int selectionEnd = Selection.getSelectionEnd(spannable);
+            if (selectionStart >= 0 && selectionEnd >= selectionStart) {
+                URLSpan[] links = spannable.getSpans(selectionStart, selectionEnd, URLSpan.class);
+                if (links.length > 0 && performAnchorLongClick(spannable, links[0])) {
+                    return true;
+                }
+            }
+        }
+        return super.performLongClick();
+    }
+
+    @Override
+    public boolean performLongClick(float x, float y) {
+        CharSequence text = getText();
+        if (onLongClickATagListener != null && text instanceof Spannable && getLayout() != null) {
+            Spannable spannable = (Spannable) text;
+            int offset = getOffsetForPosition(x, y);
+            URLSpan[] links = spannable.getSpans(offset, offset, URLSpan.class);
+            if (links.length > 0 && performAnchorLongClick(spannable, links[0])) {
+                return true;
+            }
+        }
+        return super.performLongClick(x, y);
+    }
+
+    private boolean performAnchorLongClick(Spannable spannable, URLSpan link) {
+        int spanStart = spannable.getSpanStart(link);
+        int spanEnd = spannable.getSpanEnd(link);
+        String label = spannable.subSequence(spanStart, spanEnd).toString();
+        Path sourceClipPath = new Path();
+        Layout layout = getLayout();
+        layout.getSelectionPath(spanStart, spanEnd, sourceClipPath);
+        sourceClipPath.offset(
+                getCompoundPaddingLeft() - getScrollX(),
+                getBaseline() - layout.getLineBaseline(0) - getScrollY());
+        RectF sourceBounds = new RectF();
+        sourceClipPath.computeBounds(sourceBounds, true);
+        anchorLongClickHandled = onLongClickATagListener != null
+                && onLongClickATagListener.onLongClick(
+                this, label, link.getURL(), sourceBounds);
+        return anchorLongClickHandled;
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            anchorLongClickHandled = false;
+        } else if (anchorLongClickHandled
+                && (event.getActionMasked() == MotionEvent.ACTION_UP
+                || event.getActionMasked() == MotionEvent.ACTION_CANCEL)) {
+            CharSequence text = getText();
+            if (text instanceof Spannable) {
+                Selection.removeSelection((Spannable) text);
+            }
+            anchorLongClickHandled = false;
+            return true;
+        }
+        return super.onTouchEvent(event);
     }
 
     /**

@@ -89,6 +89,7 @@ import org.json.JSONObject;
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
+import org.sufficientlysecure.htmltextview.OnLongClickATagListener;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1954,6 +1955,22 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 return true;
             }
         });
+        body.setOnLongClickATagListener(new OnLongClickATagListener() {
+            @Override
+            public boolean onLongClick(
+                    View widget,
+                    String spannedText,
+                    @Nullable String href,
+                    @NonNull RectF sourceBounds) {
+                if (disableCommentATagClick || referenceLinkLongClickListener == null
+                        || TextUtils.isEmpty(href)) {
+                    return disableCommentATagClick;
+                }
+                referenceLinkLongClickListener.onLongClick(
+                        href, spannedText, widget, sourceBounds);
+                return true;
+            }
+        });
     }
 
     private void bindInterleavedHiddenCommentPreview(ItemViewHolder itemViewHolder, Comment comment) {
@@ -2047,7 +2064,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             if (referenceLinkLongClickListener == null) {
                 return false;
             }
-            referenceLinkLongClickListener.onLongClick(link, v);
+            referenceLinkLongClickListener.onLongClick(
+                    link.getUrl(), ReferenceLinkRowUtils.getReferenceLinkLabel(link), v, null);
             return true;
         });
         return row;
@@ -2665,6 +2683,22 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     if (disableCommentATagClick) return true;
 
                     Utils.openLinkMaybeHN(widget.getContext(), href);
+                    return true;
+                }
+            });
+            commentBody.setOnLongClickATagListener(new OnLongClickATagListener() {
+                @Override
+                public boolean onLongClick(
+                        View widget,
+                        String spannedText,
+                        @Nullable String href,
+                        @NonNull RectF sourceBounds) {
+                    if (disableCommentATagClick || referenceLinkLongClickListener == null
+                            || TextUtils.isEmpty(href)) {
+                        return disableCommentATagClick;
+                    }
+                    referenceLinkLongClickListener.onLongClick(
+                            href, spannedText, widget, sourceBounds);
                     return true;
                 }
             });
@@ -3362,7 +3396,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     public interface ReferenceLinkLongClickListener {
-        void onLongClick(CollectedReferenceLinks.ReferenceLink link, View view);
+        void onLongClick(
+                String url,
+                String title,
+                View view,
+                @Nullable RectF sourceBounds);
     }
 
     public interface HeaderPreviewLongClickListener {
