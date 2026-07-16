@@ -1069,7 +1069,7 @@ final class LinkSummaryOverlayController {
                         referenceBinding.referenceLinkTitle.setAlpha(0f);
                         referenceBinding.referenceLinkTitle.setText(fallbackTitle);
                         referenceBinding.referenceLinkTitle.setVisibility(View.VISIBLE);
-                        referenceBinding.referenceLinkPreviewContainer.setVisibility(View.GONE);
+                        setReferencePreviewVisible(false);
                         referenceBinding.referenceLinkErrorContainer.setAlpha(0f);
                         bindReferenceError(message);
                         fadeInReferenceView(referenceBinding.referenceLinkTitle);
@@ -1088,7 +1088,7 @@ final class LinkSummaryOverlayController {
         referenceBinding.referenceLinkTitle.setVisibility(View.GONE);
         referenceBinding.referenceLinkDescription.setVisibility(View.GONE);
         referenceBinding.referenceLinkPreview.setVisibility(View.INVISIBLE);
-        referenceBinding.referenceLinkPreviewContainer.setVisibility(View.VISIBLE);
+        setReferencePreviewVisible(true);
         referenceBinding.referenceLinkPreviewShimmer.setVisibility(View.VISIBLE);
         referenceBinding.referenceLinkTitleShimmer.setVisibility(View.VISIBLE);
         referenceBinding.referenceLinkDescriptionShimmer.setVisibility(View.VISIBLE);
@@ -1144,7 +1144,7 @@ final class LinkSummaryOverlayController {
         fadeInReferenceView(referenceBinding.referenceLinkTitle);
         if (TextUtils.isEmpty(result.imageUrl)) {
             stopPreviewShimmer(referenceBinding.referenceLinkPreviewShimmer);
-            referenceBinding.referenceLinkPreviewContainer.setVisibility(View.GONE);
+            setReferencePreviewVisible(false);
         } else {
             loadReferenceImage(result.imageUrl);
         }
@@ -1160,7 +1160,7 @@ final class LinkSummaryOverlayController {
                         super.onSuccess(result);
                         if (referenceBinding != null) {
                             stopPreviewShimmer(referenceBinding.referenceLinkPreviewShimmer);
-                            referenceBinding.referenceLinkPreviewContainer.setVisibility(View.VISIBLE);
+                            setReferencePreviewVisible(true);
                             image.setVisibility(View.VISIBLE);
                             configureReferenceImageInteraction(image);
                         }
@@ -1169,12 +1169,29 @@ final class LinkSummaryOverlayController {
                         super.onError(null);
                         if (referenceBinding != null) {
                             stopPreviewShimmer(referenceBinding.referenceLinkPreviewShimmer);
-                            referenceBinding.referenceLinkPreviewContainer.setVisibility(View.GONE);
+                            setReferencePreviewVisible(false);
                             resizeScroll();
                         }
                     }
                 }).build();
         Coil.imageLoader(image.getContext()).enqueue(request);
+    }
+
+    private void setReferencePreviewVisible(boolean visible) {
+        if (referenceBinding == null) return;
+        referenceBinding.referenceLinkPreviewContainer.setVisibility(
+                visible ? View.VISIBLE : View.GONE);
+
+        ViewGroup.LayoutParams rawParams =
+                referenceBinding.referenceLinkMetadataContainer.getLayoutParams();
+        if (!(rawParams instanceof ViewGroup.MarginLayoutParams)) return;
+        ViewGroup.MarginLayoutParams marginParams = (ViewGroup.MarginLayoutParams) rawParams;
+        int startMargin = visible ? 0 : Utils.pxFromDpInt(
+                referenceBinding.getRoot().getResources(), 20);
+        if (marginParams.getMarginStart() != startMargin) {
+            marginParams.setMarginStart(startMargin);
+            referenceBinding.referenceLinkMetadataContainer.setLayoutParams(marginParams);
+        }
     }
 
     private void configureReferenceImageInteraction(@NonNull ImageView image) {

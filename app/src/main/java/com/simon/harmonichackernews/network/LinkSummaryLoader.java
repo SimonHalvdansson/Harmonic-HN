@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -32,6 +33,7 @@ public final class LinkSummaryLoader {
     private static final int MAX_DESCRIPTION_CHARS = 600;
     private static final int MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
     private static final String YOUTUBE_OEMBED_ENDPOINT = "https://www.youtube.com/oembed";
+    private static final String REDDIT_OEMBED_ENDPOINT = "https://www.reddit.com/oembed";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
     private static final Pattern YOUTUBE_VIDEO_URL_PATTERN = Pattern.compile(
             "^https?://(?:(?:www|m|music)\\.)?(?:youtube\\.com|youtube-nocookie\\.com)/"
@@ -108,16 +110,21 @@ public final class LinkSummaryLoader {
         String normalizedPageUrl = parsedUrl.toString();
         String youtubeOEmbedUrl = buildYoutubeOEmbedUrl(normalizedPageUrl);
         boolean youtubeOEmbedRequest = !TextUtils.isEmpty(youtubeOEmbedUrl);
+        String redditOEmbedUrl = buildRedditOEmbedUrl(normalizedPageUrl);
+        boolean redditOEmbedRequest = !TextUtils.isEmpty(redditOEmbedUrl);
+        boolean oEmbedRequest = youtubeOEmbedRequest || redditOEmbedRequest;
         Result cached = StoryPreviewImageLoader.getCachedLinkSummary(context, normalizedPageUrl);
         if (cached != null
-                && (!youtubeOEmbedRequest || "application/json".equals(cached.contentType))) {
+                && (!oEmbedRequest || "application/json".equals(cached.contentType))) {
             MAIN_HANDLER.post(() -> callback.onSuccess(cached));
             return () -> { };
         }
 
         Request request = new Request.Builder()
-                .url(youtubeOEmbedRequest ? youtubeOEmbedUrl : normalizedPageUrl)
-                .header("Accept", youtubeOEmbedRequest
+                .url(youtubeOEmbedRequest
+                        ? youtubeOEmbedUrl
+                        : redditOEmbedRequest ? redditOEmbedUrl : normalizedPageUrl)
+                .header("Accept", oEmbedRequest
                         ? "application/json"
                         : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 .get()
@@ -144,7 +151,7 @@ public final class LinkSummaryLoader {
                     }
 
                     String contentType = normalizeContentType(closeableResponse.header("Content-Type", ""));
-                    if (!youtubeOEmbedRequest
+                    if (!oEmbedRequest
                             && !TextUtils.isEmpty(contentType)
                             && !contentType.toLowerCase(Locale.US).contains("html")
                             && !contentType.toLowerCase(Locale.US).contains("xml")) {
@@ -152,12 +159,14 @@ public final class LinkSummaryLoader {
                         return;
                     }
 
-                    if (youtubeOEmbedRequest) {
-                        Result result = extractYoutubeOEmbedSummary(
+                    if (oEmbedRequest) {
+                        Result result = extractOEmbedSummary(
                                 readBoundedBody(closeableResponse.body()),
-                                normalizedPageUrl);
+                                normalizedPageUrl,
+                                youtubeOEmbedRequest ? "YouTube" : "Reddit");
                         if (result == null) {
-                            postFailure(callback, "YouTube did not return video information");
+                            postFailure(callback, (youtubeOEmbedRequest ? "YouTube" : "Reddit")
+                                    + " did not return link information");
                             return;
                         }
                         StoryPreviewImageLoader.saveCachedLinkSummary(
@@ -209,7 +218,61 @@ public final class LinkSummaryLoader {
     }
 
     @Nullable
+    static String buildRedditOEmbedUrl(String pageUrl) {
+        if (!isRedditPostUrl(pageUrl)) {
+            return null;
+        }
+
+        HttpUrl endpoint = HttpUrl.parse(REDDIT_OEMBED_ENDPOINT);
+        if (endpoint == null) {
+            return null;
+        }
+
+        return endpoint.newBuilder()
+                .addQueryParameter("url", pageUrl)
+                .addQueryParameter("format", "json")
+                .build()
+                .toString();
+    }
+
+    static boolean isRedditPostUrl(String url) {
+        if (TextUtils.isEmpty(url)) {
+            return false;
+        }
+
+        HttpUrl parsedUrl = HttpUrl.parse(url);
+        if (parsedUrl == null || !isHttpScheme(parsedUrl)) {
+            return false;
+        }
+
+        String host = parsedUrl.host().toLowerCase(Locale.US);
+        if ("redd.it".equals(host) || "www.redd.it".equals(host)) {
+            return parsedUrl.pathSize() > 0 && !TextUtils.isEmpty(parsedUrl.pathSegments().get(0));
+        }
+        if (!("reddit.com".equals(host) || host.endsWith(".reddit.com"))) {
+            return false;
+        }
+
+        List<String> segments = parsedUrl.pathSegments();
+        for (int i = 0; i < segments.size(); i++) {
+            if ("comments".equalsIgnoreCase(segments.get(i)) && i + 1 < segments.size()
+                    && !TextUtils.isEmpty(segments.get(i + 1))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Nullable
     static Result extractYoutubeOEmbedSummary(String json, String pageUrl) {
+        return extractOEmbedSummary(json, pageUrl, "YouTube");
+    }
+
+    @Nullable
+    private static Result extractOEmbedSummary(
+            String json,
+            String pageUrl,
+            String fallbackProviderName) {
         if (TextUtils.isEmpty(json)) {
             return null;
         }
@@ -219,7 +282,7 @@ public final class LinkSummaryLoader {
             String imageUrl = normalizeHttpUrl(jsonObject.optString("thumbnail_url", null));
             return new Result(
                     jsonObject.optString("title", ""),
-                    jsonObject.optString("provider_name", "YouTube"),
+                    jsonObject.optString("provider_name", fallbackProviderName),
                     jsonObject.optString("author_name", ""),
                     "",
                     "",
