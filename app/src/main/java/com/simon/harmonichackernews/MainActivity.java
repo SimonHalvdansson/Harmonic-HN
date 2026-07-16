@@ -21,6 +21,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.databinding.ActivityMainBinding;
+import com.simon.harmonichackernews.databinding.ActivityMainFoldableBinding;
 import com.simon.harmonichackernews.utils.Changelog;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -54,10 +55,17 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
         ThemeUtils.setupTheme(this);
 
-        ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
-        mainFragmentsContainer = binding.mainFragmentsContainer;
-        mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
+        if (shouldUseFoldableActivityEmbedding()) {
+            ActivityMainFoldableBinding binding = ActivityMainFoldableBinding.inflate(getLayoutInflater());
+            setContentView(binding.getRoot());
+            mainFragmentsContainer = binding.mainFragmentsContainer;
+            mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
+        } else {
+            ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
+            setContentView(binding.getRoot());
+            mainFragmentsContainer = binding.mainFragmentsContainer;
+            mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
+        }
 
         updateFragmentLayout();
         removeUnavailableCommentsPaneFragment();
