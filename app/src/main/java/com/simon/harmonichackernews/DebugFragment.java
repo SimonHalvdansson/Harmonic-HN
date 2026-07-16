@@ -17,6 +17,7 @@ public class DebugFragment extends BaseSettingsFragment {
     private static final String PREF_ANDROID_VERSION = "pref_debug_android_version";
     private static final String PREF_LINK_POST = "pref_debug_link_post";
     private static final String PREF_REFERENCE_LINKS_POST = "pref_debug_reference_links_post";
+    private static final String PREF_YOUTUBE_COMMENT = "pref_debug_youtube_comment";
     private static final String PREF_POLL = "pref_debug_poll";
     private static final String PREF_INTERNAL_HN_LINK = "pref_debug_internal_hn_link";
     private static final String PREF_NITTER_VIDEO = "pref_debug_nitter_video";
@@ -41,6 +42,7 @@ public class DebugFragment extends BaseSettingsFragment {
 
         setLinkPreference(PREF_LINK_POST, "https://news.ycombinator.com/item?id=47938725");
         setLinkPreference(PREF_REFERENCE_LINKS_POST, "https://news.ycombinator.com/item?id=48352939");
+        setLinkPreference(PREF_YOUTUBE_COMMENT, "https://news.ycombinator.com/item?id=34225887");
         setLinkPreference(PREF_POLL, "https://news.ycombinator.com/item?id=39572682");
         setLinkPreference(PREF_INTERNAL_HN_LINK, "https://news.ycombinator.com/item?id=30676384");
         setLinkPreference(PREF_NITTER_VIDEO, "https://news.ycombinator.com/item?id=48012735");

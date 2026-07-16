@@ -37,6 +37,12 @@
             app:title="Reference links post" />
 
         <Preference
+            app:icon="@drawable/ic_link"
+            app:key="pref_debug_youtube_comment"
+            app:singleLineTitle="false"
+            app:title="YouTube comment" />
+
+        <Preference
             app:icon="@drawable/ic_comment"
             app:key="pref_debug_poll"
             app:singleLineTitle="false"

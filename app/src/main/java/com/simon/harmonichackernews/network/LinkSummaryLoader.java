@@ -8,6 +8,7 @@ import android.text.TextUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -18,6 +19,7 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 import okhttp3.Call;
 import okhttp3.HttpUrl;
@@ -29,7 +31,14 @@ import okhttp3.ResponseBody;
 public final class LinkSummaryLoader {
     private static final int MAX_DESCRIPTION_CHARS = 600;
     private static final int MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+    private static final String YOUTUBE_OEMBED_ENDPOINT = "https://www.youtube.com/oembed";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
+    private static final Pattern YOUTUBE_VIDEO_URL_PATTERN = Pattern.compile(
+            "^https?://(?:(?:www|m|music)\\.)?(?:youtube\\.com|youtube-nocookie\\.com)/"
+                    + "(?:watch\\?(?:[^#]*&)?v=|embed/|v/|shorts/|live/)"
+                    + "([A-Za-z0-9_-]{11})(?:[?&#/].*)?$"
+                    + "|^https?://(?:www\\.)?youtu\\.be/([A-Za-z0-9_-]{11})(?:[?&#/].*)?$",
+            Pattern.CASE_INSENSITIVE);
     private static final String[] IMAGE_SELECTORS = new String[]{
             "meta[property=og:image:secure_url]",
             "meta[property=og:image:url]",
@@ -96,15 +105,21 @@ public final class LinkSummaryLoader {
             return () -> { };
         }
 
-        Result cached = StoryPreviewImageLoader.getCachedLinkSummary(context, parsedUrl.toString());
-        if (cached != null) {
+        String normalizedPageUrl = parsedUrl.toString();
+        String youtubeOEmbedUrl = buildYoutubeOEmbedUrl(normalizedPageUrl);
+        boolean youtubeOEmbedRequest = !TextUtils.isEmpty(youtubeOEmbedUrl);
+        Result cached = StoryPreviewImageLoader.getCachedLinkSummary(context, normalizedPageUrl);
+        if (cached != null
+                && (!youtubeOEmbedRequest || "application/json".equals(cached.contentType))) {
             MAIN_HANDLER.post(() -> callback.onSuccess(cached));
             return () -> { };
         }
 
         Request request = new Request.Builder()
-                .url(parsedUrl)
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                .url(youtubeOEmbedRequest ? youtubeOEmbedUrl : normalizedPageUrl)
+                .header("Accept", youtubeOEmbedRequest
+                        ? "application/json"
+                        : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 .get()
                 .build();
         Call call = NetworkComponent.getOkHttpClientInstance().newCall(request);
@@ -129,10 +144,27 @@ public final class LinkSummaryLoader {
                     }
 
                     String contentType = normalizeContentType(closeableResponse.header("Content-Type", ""));
-                    if (!TextUtils.isEmpty(contentType)
+                    if (!youtubeOEmbedRequest
+                            && !TextUtils.isEmpty(contentType)
                             && !contentType.toLowerCase(Locale.US).contains("html")
                             && !contentType.toLowerCase(Locale.US).contains("xml")) {
                         postFailure(callback, "This link contains " + contentType + ", not a web page");
+                        return;
+                    }
+
+                    if (youtubeOEmbedRequest) {
+                        Result result = extractYoutubeOEmbedSummary(
+                                readBoundedBody(closeableResponse.body()),
+                                normalizedPageUrl);
+                        if (result == null) {
+                            postFailure(callback, "YouTube did not return video information");
+                            return;
+                        }
+                        StoryPreviewImageLoader.saveCachedLinkSummary(
+                                context,
+                                normalizedPageUrl,
+                                result);
+                        MAIN_HANDLER.post(() -> callback.onSuccess(result));
                         return;
                     }
 
@@ -152,6 +184,52 @@ public final class LinkSummaryLoader {
             }
         });
         return call::cancel;
+    }
+
+    @Nullable
+    static String buildYoutubeOEmbedUrl(String pageUrl) {
+        if (!isYoutubeVideoUrl(pageUrl)) {
+            return null;
+        }
+
+        HttpUrl endpoint = HttpUrl.parse(YOUTUBE_OEMBED_ENDPOINT);
+        if (endpoint == null) {
+            return null;
+        }
+
+        return endpoint.newBuilder()
+                .addQueryParameter("url", pageUrl)
+                .addQueryParameter("format", "json")
+                .build()
+                .toString();
+    }
+
+    static boolean isYoutubeVideoUrl(String url) {
+        return !TextUtils.isEmpty(url) && YOUTUBE_VIDEO_URL_PATTERN.matcher(url).matches();
+    }
+
+    @Nullable
+    static Result extractYoutubeOEmbedSummary(String json, String pageUrl) {
+        if (TextUtils.isEmpty(json)) {
+            return null;
+        }
+
+        try {
+            JSONObject jsonObject = new JSONObject(json);
+            String imageUrl = normalizeHttpUrl(jsonObject.optString("thumbnail_url", null));
+            return new Result(
+                    jsonObject.optString("title", ""),
+                    jsonObject.optString("provider_name", "YouTube"),
+                    jsonObject.optString("author_name", ""),
+                    "",
+                    "",
+                    "application/json",
+                    "",
+                    imageUrl == null ? "" : imageUrl,
+                    pageUrl);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static String readBoundedBody(ResponseBody body) throws IOException {
@@ -297,6 +375,16 @@ public final class LinkSummaryLoader {
     private static String getHost(String url) {
         HttpUrl parsedUrl = HttpUrl.parse(url);
         return parsedUrl == null ? "" : parsedUrl.host();
+    }
+
+    @Nullable
+    private static String normalizeHttpUrl(String url) {
+        if (TextUtils.isEmpty(url)) {
+            return null;
+        }
+
+        HttpUrl parsedUrl = HttpUrl.parse(url);
+        return parsedUrl == null || !isHttpScheme(parsedUrl) ? null : parsedUrl.toString();
     }
 
     private static boolean isHttpScheme(HttpUrl url) {
