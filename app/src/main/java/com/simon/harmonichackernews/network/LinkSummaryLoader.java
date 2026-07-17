@@ -410,10 +410,15 @@ public final class LinkSummaryLoader {
         String language = firstNonEmpty(
                 elementAttribute(document.selectFirst("html[lang]"), "lang"),
                 metaContent(document, "meta[http-equiv=content-language]"));
-        String description = truncate(firstNonEmpty(
+        String metadataDescription = firstNonEmpty(
                 metaContent(document, "meta[property=og:description]"),
                 metaContent(document, "meta[name=description]"),
-                metaContent(document, "meta[name=twitter:description]")), MAX_DESCRIPTION_CHARS);
+                metaContent(document, "meta[name=twitter:description]"));
+        String description = truncate(HtmlDescriptionExtractor.chooseDescription(
+                metadataDescription,
+                document,
+                title,
+                fallbackTitle), MAX_DESCRIPTION_CHARS);
         String imageUrl = extractImageUrl(document, finalUrl);
 
         return new Result(
