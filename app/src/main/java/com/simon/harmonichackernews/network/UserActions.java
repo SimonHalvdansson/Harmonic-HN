@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -62,6 +61,8 @@ private static final String LOGIN_PARAM_PW = "pw";
 private static final String LOGIN_PARAM_CREATING = "creating";
 private static final String LOGIN_PARAM_GOTO = "goto";
 private static final String ITEM_PARAM_ID = "id";
+private static final String AUTH_PARAM = "auth";
+private static final String UNFAVORITE_PARAM = "un";
 private static final String COMMENTS_PARAM = "comments";
 private static final String VOTE_PARAM_ID = "id";
 private static final String VOTE_PARAM_HOW = "how";
@@ -687,7 +688,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
                         return;
                     }
 
-                    FavoriteLinkResult linkResult = findFavoriteLink(body, favorite);
+                    FavoriteLinkResult linkResult = findFavoriteLink(body, id, favorite);
                     if (linkResult.alreadyDesiredState) {
                         if (favorite) {
                             Utils.addFavorite(ctx, id);
@@ -710,12 +711,8 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
                     executeRequest(ctx, favoriteRequest, new ActionCallback() {
                         @Override
                         public void onSuccess(Response response) {
-                            if (favorite) {
-                                Utils.addFavorite(ctx, id);
-                            } else {
-                                Utils.removeFavorite(ctx, id);
-                            }
-                            cb.onSuccess(response);
+                            response.close();
+                            verifyFavoriteState(ctx, id, favorite, cb);
                         }
 
                         @Override
@@ -735,54 +732,110 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
         });
     }
 
-    private static FavoriteLinkResult findFavoriteLink(String body, boolean favorite) {
+    private static void verifyFavoriteState(Context ctx, int id, boolean favorite, ActionCallback cb) {
+        Handler main = new Handler(ctx.getMainLooper());
+        HttpUrl url = Objects.requireNonNull(HttpUrl.parse(BASE_WEB_URL))
+                .newBuilder()
+                .addPathSegment(ITEM_PATH)
+                .addQueryParameter(ITEM_PARAM_ID, String.valueOf(id))
+                .build();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        NetworkComponent.getOkHttpClientInstanceWithCookies().newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                main.post(() -> cb.onFailure("Couldn't verify favorite", e.getMessage()));
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) {
+                if (!response.isSuccessful()) {
+                    String failure = response.toString();
+                    response.close();
+                    main.post(() -> cb.onFailure("Couldn't verify favorite", failure));
+                    return;
+                }
+
+                try {
+                    String body = response.body() == null ? "" : response.body().string();
+                    if (body.contains("Bad login.")) {
+                        AccountUtils.deleteAccountDetails(ctx);
+                        response.close();
+                        main.post(() -> cb.onFailure("Bad login",
+                                "Your session has expired or credentials are invalid. Logged out."));
+                        return;
+                    }
+
+                    if (isCaptchaRequired(body)) {
+                        CaptchaChallenge challenge = parseCaptchaChallenge(body, true);
+                        response.close();
+                        if (challenge != null) {
+                            main.post(() -> cb.onCaptchaRequired(challenge));
+                        } else {
+                            main.post(() -> cb.onFailure("Captcha parsing error", "HN asked for a captcha, but Harmonic could not read the challenge form."));
+                        }
+                        return;
+                    }
+
+                    FavoriteLinkResult linkResult = findFavoriteLink(body, id, favorite);
+                    if (!linkResult.alreadyDesiredState) {
+                        response.close();
+                        main.post(() -> cb.onFailure(
+                                "Favorite update not confirmed",
+                                favorite
+                                        ? "HN still reports this item as not favorited."
+                                        : "HN still reports this item as favorited."));
+                        return;
+                    }
+
+                    if (favorite) {
+                        Utils.addFavorite(ctx, id);
+                    } else {
+                        Utils.removeFavorite(ctx, id);
+                    }
+                    main.post(() -> cb.onSuccess(response));
+                } catch (Exception e) {
+                    response.close();
+                    main.post(() -> cb.onFailure("Couldn't verify favorite", e.getMessage()));
+                }
+            }
+        });
+    }
+
+    private static FavoriteLinkResult findFavoriteLink(String body, int id, boolean favorite) {
         Document document = Jsoup.parse(body, BASE_WEB_URL + "/");
         FavoriteLinkResult result = new FavoriteLinkResult();
 
         for (Element link : document.select("a[href]")) {
-            String href = link.attr("href");
-            if (TextUtils.isEmpty(href)
-                    || (!href.startsWith(FAVE_PATH) && !href.contains("/" + FAVE_PATH))) {
+            HttpUrl actionUrl = HttpUrl.parse(link.absUrl("href"));
+            if (actionUrl == null
+                    || !"https".equals(actionUrl.scheme())
+                    || !Objects.requireNonNull(HttpUrl.parse(BASE_WEB_URL)).host().equals(actionUrl.host())
+                    || !("/" + FAVE_PATH).equals(actionUrl.encodedPath())
+                    || !String.valueOf(id).equals(actionUrl.queryParameter(ITEM_PARAM_ID))
+                    || TextUtils.isEmpty(actionUrl.queryParameter(AUTH_PARAM))) {
                 continue;
             }
 
-            String label = link.text().trim().toLowerCase(Locale.US);
-            String normalizedLabel = label.replace("-", "").replace(" ", "");
-            boolean linkRemovesFavorite = normalizedLabel.contains("unfavorite");
-            boolean linkAddsFavorite = normalizedLabel.contains("favorite") && !linkRemovesFavorite;
-
-            if (favorite && linkAddsFavorite) {
-                result.actionUrl = link.absUrl("href");
-                return result;
+            String unfavoriteValue = actionUrl.queryParameter(UNFAVORITE_PARAM);
+            if (unfavoriteValue != null && !TRUE_VALUE.equals(unfavoriteValue)) {
+                continue;
             }
 
-            if (!favorite && (linkAddsFavorite || linkRemovesFavorite)) {
-                result.actionUrl = buildFavoriteRemovalUrl(link.absUrl("href"));
-                return result;
-            }
-
-            if (favorite && linkRemovesFavorite) {
+            boolean removalAction = TRUE_VALUE.equals(unfavoriteValue);
+            boolean currentlyFavorited = removalAction;
+            if (currentlyFavorited == favorite) {
                 result.alreadyDesiredState = true;
+            } else {
+                result.actionUrl = actionUrl.toString();
             }
+            return result;
         }
 
         return result;
-    }
-
-    private static String buildFavoriteRemovalUrl(String actionUrl) {
-        HttpUrl parsed = HttpUrl.parse(actionUrl);
-        if (parsed == null) {
-            return actionUrl;
-        }
-
-        if (parsed.queryParameter("un") != null) {
-            return actionUrl;
-        }
-
-        return parsed.newBuilder()
-                .addQueryParameter("un", TRUE_VALUE)
-                .build()
-                .toString();
     }
 
 
