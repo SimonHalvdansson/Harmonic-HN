@@ -27,6 +27,7 @@ import android.text.Spanned;
 import android.text.style.QuoteSpan;
 import android.text.style.URLSpan;
 import android.util.AttributeSet;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 
 import androidx.annotation.NonNull;
@@ -210,6 +211,9 @@ public class HtmlTextView extends JellyBeanSpanFixTextView {
         anchorLongClickHandled = onLongClickATagListener != null
                 && onLongClickATagListener.onLongClick(
                 this, label, link.getURL(), sourceBounds);
+        if (anchorLongClickHandled) {
+            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        }
         return anchorLongClickHandled;
     }
 

@@ -333,6 +333,8 @@ final class LinkSummaryOverlayController {
     private static final int PREDICTIVE_BACK_TRANSLATION_Y_DP = 18;
     private static final float PREDICTIVE_BACK_MIN_SCALE = 0.9f;
     private static final float PREDICTIVE_BACK_MIN_SCRIM_ALPHA = 0.45f;
+    private static final float INLINE_LINK_RETURN_FADE_START = 0.45f;
+    private static final float INLINE_LINK_RETURN_FADE_END = 0.75f;
 
     private final Host host;
     private FrameLayout overlay;
@@ -1618,6 +1620,8 @@ final class LinkSummaryOverlayController {
 
     private MaterialContainerTransform createTransform(ViewGroup drawing, View start, View end, int direction) {
         MaterialContainerTransform transform = new MaterialContainerTransform();
+        boolean returningToInlineLink = direction == MaterialContainerTransform.TRANSITION_DIRECTION_RETURN
+                && end instanceof LinkPositionSourceView;
         transform.setStartView(start);
         transform.setEndView(end);
         transform.setDuration(TRANSFORM_DURATION_MS);
@@ -1632,7 +1636,13 @@ final class LinkSummaryOverlayController {
                 new MaterialContainerTransform.ProgressThresholds(0f, 1f);
         transform.setScaleMaskProgressThresholds(thresholds);
         transform.setShapeMaskProgressThresholds(thresholds);
-        transform.setElevationShadowEnabled(true);
+        if (returningToInlineLink) {
+            transform.setFadeProgressThresholds(
+                    new MaterialContainerTransform.ProgressThresholds(
+                            INLINE_LINK_RETURN_FADE_START,
+                            INLINE_LINK_RETURN_FADE_END));
+        }
+        transform.setElevationShadowEnabled(!returningToInlineLink);
         transform.setStartContainerColor(getContainerColor(start));
         transform.setEndContainerColor(getContainerColor(end));
         transform.setStartElevation(start.getElevation());

@@ -3106,6 +3106,21 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     return true;
                 }
             });
+            textView.setOnLongClickATagListener(new OnLongClickATagListener() {
+                @Override
+                public boolean onLongClick(
+                        View widget,
+                        String spannedText,
+                        @Nullable String href,
+                        @NonNull RectF sourceBounds) {
+                    if (referenceLinkLongClickListener == null || TextUtils.isEmpty(href)) {
+                        return false;
+                    }
+                    referenceLinkLongClickListener.onLongClick(
+                            href, spannedText, widget, sourceBounds);
+                    return true;
+                }
+            });
 
             githubWebsite.setOnClickATagListener(new OnClickATagListener() {
                 @Override
