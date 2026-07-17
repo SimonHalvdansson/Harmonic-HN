@@ -29,6 +29,13 @@
             app:icon="@drawable/ic_link"
             app:title="Collect links in comments" />
 
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_dropdown_menu"
+            app:key="pref_highlight_comment_meta"
+            app:singleLineTitle="false"
+            app:title="Emphasize meta" />
+
         <Preference
             app:singleLineTitle="false"
             app:key="pref_comment_depth_indicators"

@@ -41,6 +41,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     private final List<Comment> visibleComments = new ArrayList<>();
     private final boolean cardStyle;
     private final boolean cardBorder;
+    private final boolean highlightCommentMeta;
     private final float preferredTextSize;
 
     private String searchTerm = "";
@@ -51,10 +52,12 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     public CommentSearchAdapter(List<Comment> comments,
                                 boolean shouldUseCardStyle,
                                 boolean shouldShowCardBorder,
+                                boolean shouldHighlightCommentMeta,
                                 float prefTextSize) {
         this.comments = comments == null ? new ArrayList<>() : new ArrayList<>(comments);
         cardStyle = shouldUseCardStyle;
         cardBorder = shouldShowCardBorder;
+        highlightCommentMeta = shouldHighlightCommentMeta;
         preferredTextSize = prefTextSize;
         visibleComments.addAll(this.comments);
         setHasStableIds(true);
@@ -112,6 +115,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         public HtmlTextView commentText;
         public TextView commentBy;
         public TextView commentByTime;
+        public View commentMetaContainer;
         public TextView commentHiddenCount;
         public TextView commentHiddenText;
         public View commentIndentIndicator;
@@ -124,6 +128,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
                     binding.commentBody,
                     binding.commentBy,
                     binding.commentByTime,
+                    binding.commentMetaContainer,
                     binding.commentHiddenCount,
                     binding.commentHiddenShort,
                     binding.commentIndentIndicator,
@@ -136,6 +141,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
                     binding.commentBody,
                     binding.commentBy,
                     binding.commentByTime,
+                    binding.commentMetaContainer,
                     binding.commentHiddenCount,
                     binding.commentHiddenShort,
                     binding.commentIndentIndicator,
@@ -146,6 +152,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
                                   HtmlTextView text,
                                   TextView by,
                                   TextView byTime,
+                                  View metaContainer,
                                   TextView hiddenCount,
                                   TextView hiddenText,
                                   View indentIndicator,
@@ -154,6 +161,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
             commentText = text;
             commentBy = by;
             commentByTime = byTime;
+            commentMetaContainer = metaContainer;
             commentHiddenCount = hiddenCount;
             commentHiddenText = hiddenText;
             commentIndentIndicator = indentIndicator;
@@ -249,6 +257,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         applyItemMargins(commentViewHolder.itemView);
         applyCardChrome(commentViewHolder);
         applyCardContentPadding(commentViewHolder);
+        applyCommentMetaHighlight(commentViewHolder);
         commentViewHolder.commentIndentIndicator.setVisibility(View.GONE);
 
         String text = Utils.expandShortenedAnchorText(comment.text == null ? "" : comment.text);
@@ -282,6 +291,29 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         FontUtils.setCommentTextTypeface(commentViewHolder.commentText, preferredTextSize);
         commentViewHolder.commentBy.setTypeface(FontUtils.activeBold);
         commentViewHolder.commentByTime.setTypeface(FontUtils.activeRegular);
+    }
+
+    private void applyCommentMetaHighlight(CommentViewHolder commentViewHolder) {
+        int horizontalPadding = highlightCommentMeta
+                ? Utils.pxFromDpInt(commentViewHolder.commentMetaContainer.getResources(), 7)
+                : 0;
+        int verticalPadding = highlightCommentMeta
+                ? Utils.pxFromDpInt(commentViewHolder.commentMetaContainer.getResources(), 2)
+                : 0;
+        commentViewHolder.commentMetaContainer.setBackgroundResource(
+                highlightCommentMeta ? R.drawable.comment_meta_highlight_background : 0);
+        commentViewHolder.commentMetaContainer.setPadding(
+                horizontalPadding,
+                verticalPadding,
+                horizontalPadding,
+                verticalPadding);
+
+        int textColor = MaterialColors.getColor(
+                commentViewHolder.commentMetaContainer,
+                highlightCommentMeta ? R.attr.storyColorNormal : R.attr.storyColorDisabled,
+                Color.BLACK);
+        commentViewHolder.commentBy.setTextColor(textColor);
+        commentViewHolder.commentByTime.setTextColor(textColor);
     }
 
     private void applyItemMargins(View itemView) {

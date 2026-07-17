@@ -27,24 +27,33 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <TextView
-                android:id="@+id/comment_by"
-                android:textColor="?attr/storyColorDisabled"
-                android:fontFamily="@font/product_sans_bold"
-                tools:text="eanzenberg"
-                android:textSize="13sp"
+            <LinearLayout
+                android:id="@+id/comment_meta_container"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"    />
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <TextView
-                android:layout_marginLeft="4dp"
-                android:id="@+id/comment_by_time"
-                android:textColor="?attr/storyColorDisabled"
-                android:fontFamily="@font/product_sans"
-                tools:text="7 hrs ago"
-                android:textSize="13sp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"    />
+                <TextView
+                    android:id="@+id/comment_by"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/product_sans_bold"
+                    android:textColor="?attr/storyColorDisabled"
+                    android:textSize="13sp"
+                    tools:text="eanzenberg" />
+
+                <TextView
+                    android:id="@+id/comment_by_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="4dp"
+                    android:fontFamily="@font/product_sans"
+                    android:textColor="?attr/storyColorDisabled"
+                    android:textSize="13sp"
+                    tools:text="7 hrs ago" />
+
+            </LinearLayout>
 
             <LinearLayout
                 android:gravity="right"

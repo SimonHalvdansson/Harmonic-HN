@@ -32,6 +32,18 @@ final class PreviewPreferenceViewUtils {
         target.setVisibility(source.getVisibility());
     }
 
+    static void copyViewPaddingForMeasurement(View source, View target) {
+        if (source == null || target == null) {
+            return;
+        }
+
+        target.setPadding(
+                source.getPaddingLeft(),
+                source.getPaddingTop(),
+                source.getPaddingRight(),
+                source.getPaddingBottom());
+    }
+
     static void setExactHeight(View view, int height) {
         if (view == null || height <= 0) {
             return;

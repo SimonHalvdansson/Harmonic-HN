@@ -43,6 +43,7 @@ public class SettingsUtils {
     public static final String PREF_INCLUDE_TOP_LEVEL_DOMAIN = "pref_include_top_level_domain";
     public static final String PREF_COMMENT_DISPLAY_STYLE = "pref_comment_display_style";
     public static final String PREF_COMMENT_CARD_BORDER = "pref_comment_card_border";
+    public static final String PREF_HIGHLIGHT_COMMENT_META = "pref_highlight_comment_meta";
     public static final String PREF_COMMENT_TEXT_SIZE = "pref_comment_text_size";
     public static final String PREF_ENABLE_COMMENTS_HEADER_TINT = "pref_enable_comments_header_tint";
     public static final String PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE = "pref_enable_comments_header_preview_image";
@@ -767,6 +768,10 @@ public class SettingsUtils {
 
     public static boolean shouldShowCommentDividers(Context ctx) {
         return getBooleanPref(PREF_COMMENT_DIVIDERS, false, ctx);
+    }
+
+    public static boolean shouldHighlightCommentMeta(Context ctx) {
+        return getBooleanPref(PREF_HIGHLIGHT_COMMENT_META, false, ctx);
     }
 
     public static boolean shouldUseTransparentStatusBar(Context ctx) {
