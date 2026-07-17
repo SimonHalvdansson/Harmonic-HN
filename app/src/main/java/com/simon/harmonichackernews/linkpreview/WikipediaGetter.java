@@ -50,12 +50,13 @@ public class WikipediaGetter {
                                     }
                                 }
 
-                                String cleanedHtml = doc.html();
-
-                                WikipediaInfo wikiInfo = new WikipediaInfo();
-
-                                wikiInfo.summary = cleanedHtml;
-                                callback.onSuccess(wikiInfo);
+                                if (doc.hasText()) {
+                                    WikipediaInfo wikiInfo = new WikipediaInfo();
+                                    wikiInfo.summary = doc.html();
+                                    callback.onSuccess(wikiInfo);
+                                } else {
+                                    callback.onFailure("Wikipedia did not return a visible summary");
+                                }
                             } else {
                                 callback.onFailure("Failed to retrieve Wikipedia summary");
                             }
