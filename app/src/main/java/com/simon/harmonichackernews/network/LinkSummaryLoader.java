@@ -8,6 +8,9 @@ import android.text.TextUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.simon.harmonichackernews.data.WikipediaInfo;
+import com.simon.harmonichackernews.linkpreview.WikipediaGetter;
+
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -108,6 +111,7 @@ public final class LinkSummaryLoader {
         }
 
         String normalizedPageUrl = parsedUrl.toString();
+        boolean wikipediaSummaryRequest = WikipediaGetter.isValidWikipediaUrl(normalizedPageUrl);
         String youtubeOEmbedUrl = buildYoutubeOEmbedUrl(normalizedPageUrl);
         boolean youtubeOEmbedRequest = !TextUtils.isEmpty(youtubeOEmbedUrl);
         String redditOEmbedUrl = buildRedditOEmbedUrl(normalizedPageUrl);
@@ -115,9 +119,18 @@ public final class LinkSummaryLoader {
         boolean oEmbedRequest = youtubeOEmbedRequest || redditOEmbedRequest;
         Result cached = StoryPreviewImageLoader.getCachedLinkSummary(context, normalizedPageUrl);
         if (cached != null
-                && (!oEmbedRequest || "application/json".equals(cached.contentType))) {
+                && (!oEmbedRequest || "application/json".equals(cached.contentType))
+                && (!wikipediaSummaryRequest || "application/json".equals(cached.contentType))) {
             MAIN_HANDLER.post(() -> callback.onSuccess(cached));
             return () -> { };
+        }
+
+        if (wikipediaSummaryRequest) {
+            return loadWikipediaSummary(
+                    context,
+                    normalizedPageUrl,
+                    fallbackTitle,
+                    callback);
         }
 
         Request request = new Request.Builder()
@@ -193,6 +206,51 @@ public final class LinkSummaryLoader {
             }
         });
         return call::cancel;
+    }
+
+    private static SummaryRequest loadWikipediaSummary(
+            @Nullable Context context,
+            String pageUrl,
+            @Nullable String fallbackTitle,
+            Callback callback) {
+        if (context == null) {
+            postFailure(callback, "Wikipedia summary unavailable");
+            return () -> { };
+        }
+
+        com.android.volley.Request<?> request = WikipediaGetter.getInfo(
+                pageUrl,
+                context,
+                new WikipediaGetter.GetterCallback() {
+                    @Override
+                    public void onSuccess(WikipediaInfo wikipediaInfo) {
+                        String firstParagraph = WikipediaGetter.getFirstParagraphText(
+                                wikipediaInfo.summary);
+                        if (TextUtils.isEmpty(firstParagraph)) {
+                            callback.onFailure("Wikipedia did not return a summary");
+                            return;
+                        }
+
+                        Result result = new Result(
+                                clean(fallbackTitle),
+                                "Wikipedia",
+                                "",
+                                "",
+                                "en",
+                                "application/json",
+                                firstParagraph,
+                                "",
+                                pageUrl);
+                        StoryPreviewImageLoader.saveCachedLinkSummary(context, pageUrl, result);
+                        callback.onSuccess(result);
+                    }
+
+                    @Override
+                    public void onFailure(String reason) {
+                        callback.onFailure(reason);
+                    }
+                });
+        return request == null ? () -> { } : request::cancel;
     }
 
     @Nullable

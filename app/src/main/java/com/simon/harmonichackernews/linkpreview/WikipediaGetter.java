@@ -26,7 +26,7 @@ public class WikipediaGetter {
         return matcher.matches();
     }
 
-    public static void getInfo(String wikipediaUrl, Context ctx, WikipediaGetter.GetterCallback callback) {
+    public static Request<?> getInfo(String wikipediaUrl, Context ctx, WikipediaGetter.GetterCallback callback) {
         try {
             String title = wikipediaUrl.split("en.wikipedia.org/wiki/")[1];
 
@@ -72,10 +72,22 @@ public class WikipediaGetter {
 
             RequestQueue queue = NetworkComponent.getRequestQueueInstance(ctx);
             queue.add(stringRequest);
+            return stringRequest;
 
         } catch (Exception e) {
             callback.onFailure("Invalid Wikipedia URL");
+            return null;
         }
+    }
+
+    public static String getFirstParagraphText(String summaryHtml) {
+        if (TextUtils.isEmpty(summaryHtml)) {
+            return "";
+        }
+
+        Document document = Jsoup.parse(summaryHtml);
+        Element firstParagraph = document.selectFirst("p");
+        return firstParagraph == null ? document.text() : firstParagraph.text();
     }
 
     public interface GetterCallback {
