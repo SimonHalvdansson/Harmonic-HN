@@ -44,8 +44,11 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.widget.NestedScrollView;
 import androidx.transition.Transition;
 import androidx.transition.AutoTransition;
+import androidx.transition.ChangeBounds;
+import androidx.transition.Fade;
 import androidx.transition.TransitionListenerAdapter;
 import androidx.transition.TransitionManager;
+import androidx.transition.TransitionSet;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.loadingindicator.LoadingIndicator;
@@ -317,9 +320,11 @@ final class LinkSummaryOverlayController {
     }
 
     private static final int NO_STORY_ID = -1;
+    private static final String PDF_CONTENT_TYPE_ERROR =
+            "This link contains application/pdf, not a web page";
     private static final int TRANSFORM_DURATION_MS = 280;
     private static final int STORY_CONTENT_TRANSITION_DURATION_MS = 220;
-    private static final int REFERENCE_CONTENT_TRANSITION_DURATION_MS = 90;
+    private static final int REFERENCE_CONTENT_TRANSITION_DURATION_MS = 240;
     private static final int REFERENCE_IMAGE_TRANSITION_DURATION_MS = 360;
     private static final int REFERENCE_METADATA_FADE_OUT_DURATION_MS = 70;
     private static final int REFERENCE_METADATA_FADE_IN_DURATION_MS = 140;
@@ -361,6 +366,8 @@ final class LinkSummaryOverlayController {
     private boolean enterTransitionStarted;
     private boolean enterTransitionComplete;
     private boolean pendingStoryPreviewHide;
+    private Runnable pendingStoryStateChange;
+    private Runnable pendingReferenceStateChange;
     private final List<StorySharedElementSnapshot> storySharedElementSnapshots = new ArrayList<>();
     private ValueAnimator storySharedElementSnapshotAnimator;
     private ViewGroup storySharedElementSnapshotDrawing;
@@ -685,6 +692,8 @@ final class LinkSummaryOverlayController {
         enterTransitionStarted = false;
         enterTransitionComplete = false;
         pendingStoryPreviewHide = false;
+        pendingStoryStateChange = null;
+        pendingReferenceStateChange = null;
         binding = LinkSummaryOverlayBinding.inflate(LayoutInflater.from(context), overlayHost, false);
         overlay = binding.getRoot();
         overlayHost.addView(overlay, new ViewGroup.LayoutParams(
@@ -943,19 +952,25 @@ final class LinkSummaryOverlayController {
                     @Override public void onSuccess(@NonNull LinkSummaryLoader.Result result) {
                         if (storyBinding == null || !TextUtils.equals(requestedUrl, visibleUrl)) return;
                         summaryRequest = null;
-                        bindStoryResult(story, result);
+                        applyOrDeferStoryStateChange(() -> bindStoryResult(story, result));
                     }
                     @Override public void onFailure(@NonNull String message) {
                         if (storyBinding == null || !TextUtils.equals(requestedUrl, visibleUrl)) return;
                         summaryRequest = null;
-                        beginContentTransition(STORY_CONTENT_TRANSITION_DURATION_MS);
-                        stopDescriptionShimmer(storyBinding.storyLinkDescriptionShimmer);
-                        if (storyBinding.storyLinkPreview.getVisibility() != View.VISIBLE) {
-                            hideStoryPreview();
-                        }
-                        storyBinding.storyLinkError.setText(message);
-                        storyBinding.storyLinkError.setVisibility(View.VISIBLE);
-                        resizeScroll();
+                        applyOrDeferStoryStateChange(() -> {
+                            beginContentTransition(STORY_CONTENT_TRANSITION_DURATION_MS);
+                            stopDescriptionShimmer(storyBinding.storyLinkDescriptionShimmer);
+                            if (storyBinding.storyLinkPreview.getVisibility() != View.VISIBLE) {
+                                hideStoryPreview();
+                            }
+                            if (isPdfContentTypeError(message)) {
+                                storyBinding.storyLinkError.setVisibility(View.GONE);
+                            } else {
+                                storyBinding.storyLinkError.setText(message);
+                                storyBinding.storyLinkError.setVisibility(View.VISIBLE);
+                            }
+                            resizeScroll();
+                        });
                     }
                 });
     }
@@ -1104,27 +1119,25 @@ final class LinkSummaryOverlayController {
                         if (referenceBinding == null || !TextUtils.equals(requestedUrl, visibleUrl)) return;
                         summaryRequest = null;
                         setReferenceRetryLoading(false);
-                        bindReferenceResult(result);
+                        animateReferenceStateChange(() -> bindReferenceResult(result));
                     }
                     @Override public void onFailure(@NonNull String message) {
                         if (referenceBinding == null || !TextUtils.equals(requestedUrl, visibleUrl)) return;
                         summaryRequest = null;
                         setReferenceRetryLoading(false);
-                        if (preserveErrorState) {
-                            bindReferenceError(message);
-                            resizeScroll();
+                        if (isPdfContentTypeError(message)) {
+                            animateReferenceStateChange(() -> bindReferenceNoSummary());
                             return;
                         }
-                        stopReferenceShimmers();
-                        referenceBinding.referenceLinkTitle.setAlpha(0f);
-                        referenceBinding.referenceLinkTitle.setText(fallbackTitle);
-                        referenceBinding.referenceLinkTitle.setVisibility(View.VISIBLE);
-                        setReferencePreviewVisible(false);
-                        referenceBinding.referenceLinkErrorContainer.setAlpha(0f);
-                        bindReferenceError(message);
-                        fadeInReferenceView(referenceBinding.referenceLinkTitle);
-                        fadeInReferenceView(referenceBinding.referenceLinkErrorContainer);
-                        resizeScroll();
+                        if (preserveErrorState) {
+                            animateReferenceStateChange(() -> bindReferenceError(message));
+                            return;
+                        }
+                        animateReferenceStateChange(() -> {
+                            bindReferenceFallbackContent();
+                            referenceBinding.referenceLinkErrorContainer.setAlpha(1f);
+                            bindReferenceError(message);
+                        });
                     }
                 });
     }
@@ -1162,7 +1175,36 @@ final class LinkSummaryOverlayController {
         referenceBinding.referenceLinkError.setText(offline
                 ? context.getText(R.string.link_summary_offline_message)
                 : getReferenceErrorMessage(loaderMessage));
+        referenceBinding.referenceLinkRetryContainer.setVisibility(
+                offline || isReferenceErrorRetryable(loaderMessage)
+                        ? View.VISIBLE
+                        : View.GONE);
         referenceBinding.referenceLinkErrorContainer.setVisibility(View.VISIBLE);
+    }
+
+    private void bindReferenceNoSummary() {
+        bindReferenceFallbackContent();
+        referenceBinding.referenceLinkErrorContainer.animate().cancel();
+        referenceBinding.referenceLinkErrorContainer.setAlpha(1f);
+        referenceBinding.referenceLinkErrorContainer.setVisibility(View.GONE);
+        referenceBinding.referenceLinkRetryContainer.setVisibility(View.GONE);
+    }
+
+    private void bindReferenceFallbackContent() {
+        stopReferenceShimmers();
+        referenceBinding.referenceLinkTitle.setAlpha(1f);
+        referenceBinding.referenceLinkTitle.setText(firstNonEmpty(fallbackTitle, visibleUrl));
+        referenceBinding.referenceLinkTitle.setVisibility(View.VISIBLE);
+        referenceBinding.referenceLinkDescription.setVisibility(View.GONE);
+        setReferencePreviewVisible(false);
+    }
+
+    private boolean isReferenceErrorRetryable(@NonNull String loaderMessage) {
+        return !loaderMessage.startsWith("This link contains ");
+    }
+
+    private static boolean isPdfContentTypeError(@NonNull String loaderMessage) {
+        return PDF_CONTENT_TYPE_ERROR.equalsIgnoreCase(loaderMessage.trim());
     }
 
     private CharSequence getReferenceErrorMessage(@NonNull String loaderMessage) {
@@ -1181,17 +1223,17 @@ final class LinkSummaryOverlayController {
         referenceBinding.referenceLinkErrorContainer.setVisibility(View.GONE);
         referenceBinding.referenceLinkTitleShimmer.stopShimmer();
         referenceBinding.referenceLinkTitleShimmer.setVisibility(View.GONE);
-        referenceBinding.referenceLinkTitle.setAlpha(0f);
+        referenceBinding.referenceLinkTitle.setAlpha(1f);
         referenceBinding.referenceLinkTitle.setText(firstNonEmpty(result.title, fallbackTitle, visibleUrl));
         referenceBinding.referenceLinkTitle.setVisibility(View.VISIBLE);
         stopDescriptionShimmer(referenceBinding.referenceLinkDescriptionShimmer);
         if (!TextUtils.isEmpty(result.description)) {
-            referenceBinding.referenceLinkDescription.setAlpha(0f);
+            referenceBinding.referenceLinkDescription.setAlpha(1f);
             referenceBinding.referenceLinkDescription.setText(result.description);
             referenceBinding.referenceLinkDescription.setVisibility(View.VISIBLE);
-            fadeInReferenceView(referenceBinding.referenceLinkDescription);
+        } else {
+            referenceBinding.referenceLinkDescription.setVisibility(View.GONE);
         }
-        fadeInReferenceView(referenceBinding.referenceLinkTitle);
         if (TextUtils.isEmpty(result.imageUrl)) {
             stopPreviewShimmer(referenceBinding.referenceLinkPreviewShimmer);
             setReferencePreviewVisible(false);
@@ -1444,6 +1486,33 @@ final class LinkSummaryOverlayController {
         resizeScroll();
     }
 
+    private void applyOrDeferStoryStateChange(@NonNull Runnable stateChange) {
+        if (storyBinding == null) return;
+        StoryLinkSummaryContentBinding expectedBinding = storyBinding;
+        Runnable guardedStateChange = () -> {
+            if (storyBinding != expectedBinding || binding == null) return;
+            stateChange.run();
+        };
+        if (!enterTransitionComplete) {
+            pendingStoryStateChange = guardedStateChange;
+            return;
+        }
+        guardedStateChange.run();
+    }
+
+    private void finishPendingStoryStateChange() {
+        Runnable stateChange = pendingStoryStateChange;
+        pendingStoryStateChange = null;
+        if (stateChange == null || storyBinding == null) return;
+        storyBinding.getRoot().post(() -> {
+            if (!enterTransitionComplete) {
+                pendingStoryStateChange = stateChange;
+                return;
+            }
+            stateChange.run();
+        });
+    }
+
     private void setStoryTitle(Story story, String fallback) {
         Context context = storyBinding.storyLinkTitle.getContext();
         if (!TextUtils.isEmpty(story.pdfTitle)) {
@@ -1464,13 +1533,39 @@ final class LinkSummaryOverlayController {
         TransitionManager.beginDelayedTransition(binding.linkSummaryContent, transition);
     }
 
-    private void fadeInReferenceView(View view) {
-        view.animate().cancel();
-        view.animate()
-                .alpha(1f)
-                .setDuration(REFERENCE_CONTENT_TRANSITION_DURATION_MS)
-                .setListener(null)
-                .start();
+    private void animateReferenceStateChange(@NonNull Runnable stateChange) {
+        if (referenceBinding == null) return;
+        ReferenceLinkSummaryContentBinding expectedBinding = referenceBinding;
+        Runnable guardedStateChange = () -> {
+            if (referenceBinding != expectedBinding || binding == null) return;
+            TransitionSet transition = new TransitionSet()
+                    .setOrdering(TransitionSet.ORDERING_TOGETHER)
+                    .addTransition(new Fade())
+                    .addTransition(new ChangeBounds());
+            transition.setDuration(REFERENCE_CONTENT_TRANSITION_DURATION_MS);
+            transition.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+            TransitionManager.beginDelayedTransition(binding.linkSummaryContent, transition);
+            stateChange.run();
+            resizeScroll();
+        };
+        if (!enterTransitionComplete) {
+            pendingReferenceStateChange = guardedStateChange;
+            return;
+        }
+        guardedStateChange.run();
+    }
+
+    private void finishPendingReferenceStateChange() {
+        Runnable stateChange = pendingReferenceStateChange;
+        pendingReferenceStateChange = null;
+        if (stateChange == null || referenceBinding == null) return;
+        referenceBinding.getRoot().post(() -> {
+            if (!enterTransitionComplete) {
+                pendingReferenceStateChange = stateChange;
+                return;
+            }
+            stateChange.run();
+        });
     }
 
     private void stopPreviewShimmer(com.facebook.shimmer.ShimmerFrameLayout shimmer) {
@@ -1517,6 +1612,8 @@ final class LinkSummaryOverlayController {
                 setSourceVisible(storyMetaSourceView, false);
                 card.setVisibility(View.VISIBLE);
                 finishPendingStoryPreviewHide();
+                finishPendingStoryStateChange();
+                finishPendingReferenceStateChange();
             }
             if (imageBinding == null) resizeScroll();
         });
@@ -2010,6 +2107,8 @@ final class LinkSummaryOverlayController {
         visibleUrl = null; fallbackTitle = null; dismissing = false;
         predictiveBackActive = false; enterTransitionStarted = false;
         enterTransitionComplete = false;
+        pendingStoryStateChange = null;
+        pendingReferenceStateChange = null;
         referenceImageExpanded = false;
         if (wasShowingImage) host.setLinkSummaryImageSourceSuppressed(false);
         host.syncLinkSummaryBackState();
@@ -2105,6 +2204,8 @@ final class LinkSummaryOverlayController {
                     enterTransitionComplete = true;
                     restoreStorySharedElementAlphas();
                     finishPendingStoryPreviewHide();
+                    finishPendingStoryStateChange();
+                    finishPendingReferenceStateChange();
                 }
             }
         });

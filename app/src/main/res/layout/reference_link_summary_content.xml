@@ -225,6 +225,7 @@
             tools:text="Connect to the internet and try again." />
 
         <FrameLayout
+            android:id="@+id/reference_link_retry_container"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:layout_marginTop="16dp">
