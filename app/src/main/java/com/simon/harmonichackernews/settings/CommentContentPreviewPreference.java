@@ -8,6 +8,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.transition.ChangeBounds;
 import android.transition.Fade;
 import android.transition.Transition;
@@ -25,6 +26,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.view.ViewCompat;
 import androidx.preference.PreferenceManager;
 
@@ -48,6 +50,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
 
     private static final long TEXT_SIZE_ANIMATION_DURATION_MS = 120;
     private static final long DISPLAY_STYLE_ANIMATION_DURATION_MS = 180;
+    private static final long META_HIGHLIGHT_ANIMATION_DURATION_MS = 180;
     private static final long COLLECT_LINKS_ANIMATION_DURATION_MS = 260;
     private static final int DISPLAY_STYLE_TRANSLATION_DP = 8;
     private static final int MIN_STABLE_PREVIEW_WIDTH_DP = 240;
@@ -59,6 +62,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
     private HtmlTextView commentBody;
     private TextView commentBy;
     private TextView commentByTime;
+    private LinearLayout commentMetaContainer;
     private TextView commentHiddenCount;
     private TextView commentHiddenText;
     private View commentIndentIndicator;
@@ -69,7 +73,10 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
     private String displayStyleOverride;
     private ValueAnimator cardAppearanceAnimator;
     private ValueAnimator displayStyleAnimator;
+    private ValueAnimator metaHighlightAnimator;
     private ValueAnimator textSizeAnimator;
+    private boolean metaHighlight;
+    private float metaHighlightProgress;
     private int collectLinksAnimationToken;
     private float textSizeTargetSp = -1;
     private final View.OnLayoutChangeListener previewContainerLayoutChangeListener =
@@ -131,6 +138,10 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         applyBorder(showBorder, true);
     }
 
+    public void updateMetaHighlight(boolean highlight) {
+        applyMetaHighlight(highlight, true);
+    }
+
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -169,6 +180,11 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             return;
         }
 
+        if (SettingsUtils.PREF_HIGHLIGHT_COMMENT_META.equals(key)) {
+            applyMetaHighlight(SettingsUtils.shouldHighlightCommentMeta(getContext()), true);
+            return;
+        }
+
         if (SettingsUtils.PREF_COLLECT_LINKS_IN_COMMENTS.equals(key)) {
             updateCollectedLinksPreview(true);
             return;
@@ -191,6 +207,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         cancelCollectedLinksTransition();
         cancelDisplayStyleAnimator();
         cancelCardAppearanceAnimator();
+        cancelMetaHighlightAnimator();
         cancelTextSizeAnimator();
         if (previewItemContainer != null) {
             previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
@@ -200,12 +217,15 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         commentBody = null;
         commentBy = null;
         commentByTime = null;
+        commentMetaContainer = null;
         commentHiddenCount = null;
         commentHiddenText = null;
         commentIndentIndicator = null;
         referenceLinksContainer = null;
         commentCard = null;
         displayStyleOverride = null;
+        metaHighlight = false;
+        metaHighlightProgress = 0f;
         textSizeTargetSp = -1;
     }
 
@@ -355,6 +375,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         commentBody = binding.commentBody;
         commentBy = binding.commentBy;
         commentByTime = binding.commentByTime;
+        commentMetaContainer = binding.commentMetaContainer;
         commentHiddenCount = binding.commentHiddenCount;
         commentHiddenText = binding.commentHiddenText;
         commentIndentIndicator = binding.commentIndentIndicator;
@@ -385,7 +406,110 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             commentHiddenText.setVisibility(View.GONE);
         }
         bindPreviewCommentContent(commentBody, referenceLinksContainer);
+        applyMetaHighlight(SettingsUtils.shouldHighlightCommentMeta(getContext()), false);
         configureCommentCardAppearance(false);
+    }
+
+    private void applyMetaHighlight(boolean highlight, boolean animate) {
+        if (commentMetaContainer == null) {
+            return;
+        }
+
+        float targetProgress = highlight ? 1f : 0f;
+        if (!animate || !ViewCompat.isLaidOut(commentMetaContainer)) {
+            cancelMetaHighlightAnimator();
+            metaHighlight = highlight;
+            applyMetaHighlightProgress(targetProgress);
+            return;
+        }
+        if (metaHighlight == highlight
+                && (metaHighlightAnimator != null
+                || Math.abs(metaHighlightProgress - targetProgress) < 0.001f)) {
+            return;
+        }
+
+        float startProgress = metaHighlightProgress;
+        cancelMetaHighlightAnimator();
+        metaHighlight = highlight;
+        metaHighlightAnimator = ValueAnimator.ofFloat(startProgress, targetProgress);
+        metaHighlightAnimator.setDuration(Math.max(
+                1L,
+                Math.round(META_HIGHLIGHT_ANIMATION_DURATION_MS
+                        * Math.abs(targetProgress - startProgress))));
+        metaHighlightAnimator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        metaHighlightAnimator.addUpdateListener(animation ->
+                applyMetaHighlightProgress((float) animation.getAnimatedValue()));
+        metaHighlightAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (metaHighlightAnimator != animation) {
+                    return;
+                }
+                metaHighlightAnimator = null;
+                applyMetaHighlightProgress(targetProgress);
+            }
+        });
+        metaHighlightAnimator.start();
+    }
+
+    private void applyMetaHighlightProgress(float progress) {
+        if (commentMetaContainer == null) {
+            return;
+        }
+
+        metaHighlightProgress = Math.max(0f, Math.min(1f, progress));
+        int horizontalPadding = Math.round(
+                Utils.pxFromDpInt(getResources(), 7) * metaHighlightProgress);
+        int verticalPadding = Math.round(
+                Utils.pxFromDpInt(getResources(), 2) * metaHighlightProgress);
+        commentMetaContainer.setPadding(
+                horizontalPadding,
+                verticalPadding,
+                horizontalPadding,
+                verticalPadding);
+
+        int disabledTextColor = MaterialColors.getColor(
+                commentMetaContainer,
+                R.attr.storyColorDisabled,
+                Color.BLACK);
+        int emphasizedTextColor = MaterialColors.getColor(
+                commentMetaContainer,
+                R.attr.storyColorNormal,
+                Color.BLACK);
+        int textColor = ColorUtils.blendARGB(
+                disabledTextColor,
+                emphasizedTextColor,
+                metaHighlightProgress);
+        commentBy.setTextColor(textColor);
+        commentByTime.setTextColor(textColor);
+
+        if (metaHighlightProgress <= 0.001f) {
+            commentMetaContainer.setBackground(null);
+        } else {
+            int fillColor = MaterialColors.getColor(
+                    commentMetaContainer,
+                    com.google.android.material.R.attr.colorSurfaceContainerHighest,
+                    Color.TRANSPARENT);
+            int strokeColor = MaterialColors.getColor(
+                    commentMetaContainer,
+                    R.attr.commentDividerColor,
+                    Color.TRANSPARENT);
+            GradientDrawable background = new GradientDrawable();
+            background.setShape(GradientDrawable.RECTANGLE);
+            background.setCornerRadius(Utils.pxFromDpInt(getResources(), 12));
+            background.setColor(ColorUtils.setAlphaComponent(
+                    fillColor,
+                    Math.round(Color.alpha(fillColor) * metaHighlightProgress)));
+            background.setStroke(
+                    Utils.pxFromDpInt(getResources(), 1),
+                    ColorUtils.setAlphaComponent(
+                            strokeColor,
+                            Math.round(Color.alpha(strokeColor) * metaHighlightProgress)));
+            commentMetaContainer.setBackground(background);
+        }
+
+        syncReservedPreviewHeight();
+        requestPreviewRemeasure();
     }
 
     private void applyBorder(boolean showBorder, boolean animate) {
@@ -732,6 +856,17 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         textSizeAnimator = null;
     }
 
+    private void cancelMetaHighlightAnimator() {
+        if (metaHighlightAnimator == null) {
+            return;
+        }
+
+        metaHighlightAnimator.removeAllUpdateListeners();
+        metaHighlightAnimator.removeAllListeners();
+        metaHighlightAnimator.cancel();
+        metaHighlightAnimator = null;
+    }
+
     private void cancelCardAppearanceAnimator() {
         if (cardAppearanceAnimator == null) {
             return;
@@ -923,6 +1058,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         PreviewPreferenceViewUtils.copyTextViewForMeasurement(commentBody, binding.commentBody);
         PreviewPreferenceViewUtils.copyTextViewForMeasurement(commentBy, binding.commentBy);
         PreviewPreferenceViewUtils.copyTextViewForMeasurement(commentByTime, binding.commentByTime);
+        PreviewPreferenceViewUtils.copyViewPaddingForMeasurement(commentMetaContainer, binding.commentMetaContainer);
         PreviewPreferenceViewUtils.copyTextViewForMeasurement(commentHiddenCount, binding.commentHiddenCount);
         PreviewPreferenceViewUtils.copyTextViewForMeasurement(commentHiddenText, binding.commentHiddenText);
         PreviewPreferenceViewUtils.copyViewVisibilityForMeasurement(commentIndentIndicator, binding.commentIndentIndicator);
@@ -982,6 +1118,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
                     binding.commentBody,
                     binding.commentBy,
                     binding.commentByTime,
+                    binding.commentMetaContainer,
                     binding.commentHiddenCount,
                     binding.commentHiddenShort,
                     binding.commentIndentIndicator,
@@ -995,6 +1132,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
                 binding.commentBody,
                 binding.commentBy,
                 binding.commentByTime,
+                binding.commentMetaContainer,
                 binding.commentHiddenCount,
                 binding.commentHiddenShort,
                 binding.commentIndentIndicator,
@@ -1007,6 +1145,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         final HtmlTextView commentBody;
         final TextView commentBy;
         final TextView commentByTime;
+        final LinearLayout commentMetaContainer;
         final TextView commentHiddenCount;
         final TextView commentHiddenText;
         final View commentIndentIndicator;
@@ -1018,6 +1157,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
                 HtmlTextView commentBody,
                 TextView commentBy,
                 TextView commentByTime,
+                LinearLayout commentMetaContainer,
                 TextView commentHiddenCount,
                 TextView commentHiddenText,
                 View commentIndentIndicator,
@@ -1027,6 +1167,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             this.commentBody = commentBody;
             this.commentBy = commentBy;
             this.commentByTime = commentByTime;
+            this.commentMetaContainer = commentMetaContainer;
             this.commentHiddenCount = commentHiddenCount;
             this.commentHiddenText = commentHiddenText;
             this.commentIndentIndicator = commentIndentIndicator;

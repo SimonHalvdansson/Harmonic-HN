@@ -34,6 +34,7 @@ public class CommentDisplaySettings {
     public final boolean cardStyle;
     public final boolean cardBorder;
     public final boolean showDividers;
+    public final boolean highlightCommentMeta;
     public final boolean collectReferenceLinks;
     public final boolean hasAccountDetails;
 
@@ -55,6 +56,7 @@ public class CommentDisplaySettings {
                                    boolean cardStyle,
                                    boolean cardBorder,
                                    boolean showDividers,
+                                   boolean highlightCommentMeta,
                                    boolean collectReferenceLinks,
                                    boolean hasAccountDetails) {
         this.collapseParent = collapseParent;
@@ -75,6 +77,7 @@ public class CommentDisplaySettings {
         this.cardStyle = cardStyle;
         this.cardBorder = cardBorder;
         this.showDividers = showDividers;
+        this.highlightCommentMeta = highlightCommentMeta;
         this.collectReferenceLinks = collectReferenceLinks;
         this.hasAccountDetails = hasAccountDetails;
     }
@@ -103,6 +106,7 @@ public class CommentDisplaySettings {
                 SettingsUtils.shouldUseCardCommentDisplayStyle(context),
                 SettingsUtils.shouldShowCommentCardBorder(context),
                 SettingsUtils.shouldShowCommentDividers(context),
+                SettingsUtils.shouldHighlightCommentMeta(context),
                 SettingsUtils.shouldCollectLinksInComments(context),
                 hasAccountDetails
         );
@@ -204,6 +208,10 @@ public class CommentDisplaySettings {
         }
         if (adapter.showDividers != showDividers) {
             adapter.showDividers = showDividers;
+            updateComments = true;
+        }
+        if (adapter.highlightCommentMeta != highlightCommentMeta) {
+            adapter.highlightCommentMeta = highlightCommentMeta;
             updateComments = true;
         }
         if (adapter.collectReferenceLinks != collectReferenceLinks) {

@@ -148,6 +148,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean cardStyle;
     public boolean cardBorder;
     public boolean showDividers;
+    public boolean highlightCommentMeta;
     public boolean collectReferenceLinks;
     public boolean hasAccountDetails;
     private boolean readerModeAvailable = false;
@@ -419,6 +420,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
             Comment comment = comments.get(position);
             applyCommentCardChrome(itemViewHolder);
+            applyCommentMetaHighlight(itemViewHolder);
             itemViewHolder.comment = comment;
             applyCommentHighlight(itemViewHolder, comment.id == highlightedCommentId);
 
@@ -484,8 +486,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             } else if (byOp) {
                 itemViewHolder.commentBy.setTextColor(opCommentColor);
             } else {
-                itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.storyColorDisabled));
+                itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(
+                        itemViewHolder.commentBy,
+                        highlightCommentMeta ? R.attr.storyColorNormal : R.attr.storyColorDisabled));
             }
+            itemViewHolder.commentByTime.setTextColor(MaterialColors.getColor(
+                    itemViewHolder.commentByTime,
+                    highlightCommentMeta ? R.attr.storyColorNormal : R.attr.storyColorDisabled));
 
             itemViewHolder.commentBy.setTypeface(FontUtils.activeBold);
             itemViewHolder.commentByTime.setTypeface(FontUtils.activeRegular);
@@ -511,6 +518,22 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentHiddenCount.setContentDescription(null);
             }
         }
+    }
+
+    private void applyCommentMetaHighlight(ItemViewHolder itemViewHolder) {
+        int horizontalPadding = highlightCommentMeta
+                ? Utils.pxFromDpInt(itemViewHolder.commentMetaContainer.getResources(), 7)
+                : 0;
+        int verticalPadding = highlightCommentMeta
+                ? Utils.pxFromDpInt(itemViewHolder.commentMetaContainer.getResources(), 2)
+                : 0;
+        itemViewHolder.commentMetaContainer.setBackgroundResource(
+                highlightCommentMeta ? R.drawable.comment_meta_highlight_background : 0);
+        itemViewHolder.commentMetaContainer.setPadding(
+                horizontalPadding,
+                verticalPadding,
+                horizontalPadding,
+                verticalPadding);
     }
 
     public void setHeaderSlideOffset(float slideOffset) {
@@ -2634,6 +2657,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final HtmlTextView commentBody;
         public final TextView commentBy;
         public final TextView commentByTime;
+        public final LinearLayout commentMetaContainer;
         public final TextView commentHiddenCount;
         public final TextView commentHiddenText;
         public final View commentIndentIndicator;
@@ -2649,6 +2673,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     binding.commentBody,
                     binding.commentBy,
                     binding.commentByTime,
+                    binding.commentMetaContainer,
                     binding.commentHiddenCount,
                     binding.commentHiddenShort,
                     binding.commentIndentIndicator,
@@ -2662,6 +2687,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     binding.commentBody,
                     binding.commentBy,
                     binding.commentByTime,
+                    binding.commentMetaContainer,
                     binding.commentHiddenCount,
                     binding.commentHiddenShort,
                     binding.commentIndentIndicator,
@@ -2673,6 +2699,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                HtmlTextView body,
                                TextView by,
                                TextView byTime,
+                               LinearLayout metaContainer,
                                TextView hiddenCount,
                                TextView hiddenText,
                                View indentIndicator,
@@ -2682,6 +2709,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentBody = body;
             commentBy = by;
             commentByTime = byTime;
+            commentMetaContainer = metaContainer;
             commentHiddenCount = hiddenCount;
             commentHiddenText = hiddenText;
             commentIndentIndicator = indentIndicator;

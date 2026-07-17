@@ -83,6 +83,13 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
             return true;
         });
 
+        findPreference(SettingsUtils.PREF_HIGHLIGHT_COMMENT_META).setOnPreferenceChangeListener((preference, newValue) -> {
+            if (previewPreference != null) {
+                previewPreference.updateMetaHighlight((boolean) newValue);
+            }
+            return true;
+        });
+
         updateHeaderDisplayPreferenceStatus();
         updateCommentCardBorderPreference(SettingsUtils.getPreferredCommentDisplayStyle(requireContext()));
     }
