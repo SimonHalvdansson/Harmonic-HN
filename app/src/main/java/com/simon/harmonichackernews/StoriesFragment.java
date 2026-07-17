@@ -1396,9 +1396,11 @@ public class StoriesFragment extends Fragment {
 
     private void applyStoriesRecyclerPadding() {
         int bottomPadding = systemBottomInset;
-        if (appBarLayout != null) {
+        if (appBarLayout != null && (adapter == null || !adapter.hasLoadMoreButton())) {
             // The scrolling view is measured for the collapsed app bar. Reserve its scroll
             // range so a list that fills the expanded viewport can still collapse the header.
+            // Lists ending in a load-more row already fill it, and reserving the range leaves
+            // a large gap below that row.
             bottomPadding += appBarLayout.getTotalScrollRange();
         }
         if (updateButtonShowing && updateFab != null) {

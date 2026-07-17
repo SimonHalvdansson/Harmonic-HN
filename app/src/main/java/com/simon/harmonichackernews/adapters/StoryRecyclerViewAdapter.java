@@ -1724,7 +1724,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         return stories.size();
     }
 
-    private boolean hasLoadMoreButton() {
+    public boolean hasLoadMoreButton() {
         return loadMoreLoading || showLoadMoreButton || (paginationMode && visibleStoryCount < stories.size());
     }
 
