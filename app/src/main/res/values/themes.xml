@@ -33,9 +33,13 @@
 
         <item name="android:windowBackground">@color/material_you_neutral_900</item>
         <item name="android:colorBackground">@color/material_you_neutral_900</item>
+        <item name="android:textColorHighlight">@color/text_selection_highlight</item>
+        <item name="android:textColorLink">?attr/colorSecondary</item>
         <item name="colorControlHighlight">#40ffffff</item>
 
         <item name="colorPrimary">@color/material_you_third_400</item>
+        <item name="colorSecondary">@color/material_you_primary_200</item>
+        <item name="colorTertiary">@color/material_you_tertiary50</item>
         <item name="colorPrimaryContainer">@color/material_you_third_700</item>
         <item name="colorOnPrimary">@color/material_you_neutral_100</item>
         <item name="colorSurfaceContainerHigh">@color/material_you_neutral_variant20</item>
@@ -77,6 +81,8 @@
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorSecondary">@color/colorPrimary</item>
+        <item name="colorTertiary">@color/colorPrimaryDark</item>
         <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
         <item name="colorOnPrimary">@color/lightBackground</item>
         <item name="colorSurfaceContainerHigh">@color/darkerBackground</item>
@@ -87,6 +93,8 @@
 
         <item name="android:windowBackground">@color/background</item>
         <item name="android:colorBackground">@color/background</item>
+        <item name="android:textColorHighlight">@color/text_selection_highlight</item>
+        <item name="android:textColorLink">?attr/colorSecondary</item>
         <item name="colorControlHighlight">#40ffffff</item>
 
         <item name="popupMenuBackgroundColor">@color/darkerBackground</item>
@@ -172,11 +180,9 @@
         <item name="android:windowBackground">@color/hackerBackground</item>
         <item name="android:colorBackground">@color/hackerBackground</item>
         <item name="android:statusBarColor">@color/hackerBackground</item>
-        <item name="android:textColorHighlight">@color/hackerTextSelectionHighlight</item>
         <item name="android:textColorPrimary">@color/hackerTextColor</item>
         <item name="android:textColorSecondary">@color/hackerTextColorDisabled</item>
         <item name="android:textColorTertiary">@color/hackerTextColorDisabled</item>
-        <item name="android:textColorLink">@color/hackerAccent</item>
         <item name="android:fontFamily">@font/jetbrains_mono</item>
     </style>
 
@@ -212,6 +218,7 @@
         <item name="colorPrimaryDark">@color/colorPrimaryGreen</item>
         <item name="colorAccent">@color/colorPrimaryGreen</item>
         <item name="colorSecondary">@color/colorPrimaryGreen</item>
+        <item name="colorTertiary">@color/colorPrimaryGreenLighter</item>
         <item name="colorOnSecondary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/colorPrimaryGreenLighter</item>
         <item name="colorSurfaceContainerHigh">@color/lightBackground</item>
@@ -222,6 +229,8 @@
 
         <item name="android:windowBackground">@color/lightBackground</item>
         <item name="android:colorBackground">@color/lightBackground</item>
+        <item name="android:textColorHighlight">@color/text_selection_highlight</item>
+        <item name="android:textColorLink">?attr/colorSecondary</item>
         <item name="colorControlHighlight">#20000000</item>
         <item name="snackbarTextViewStyle">@style/snackbarTextStyleLight</item>
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
@@ -244,6 +253,7 @@
 
         <item name="colorAccent">@color/material_you_600</item>
         <item name="colorSecondary">@color/material_you_600</item>
+        <item name="colorTertiary">@color/material_you_tertiary50</item>
         <item name="colorOnSecondary">@android:color/white</item>
 
         <item name="colorPrimary">@color/material_you_third_400</item>
@@ -257,7 +267,6 @@
 
         <item name="android:windowBackground">@color/material_you_neutral_50</item>
         <item name="android:colorBackground">@color/material_you_neutral_50</item>
-
         <item name="android:statusBarColor">@color/material_you_neutral_50</item>
 
         <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
@@ -282,6 +291,7 @@
         <item name="colorPrimaryDark">@color/hackerNewsAccentDark</item>
         <item name="colorAccent">@color/hackerNewsAccent</item>
         <item name="colorSecondary">@color/hackerNewsAccent</item>
+        <item name="colorTertiary">@color/hackerNewsAccentDark</item>
         <item name="colorOnSecondary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/hackerNewsAccentContainer</item>
         <item name="colorOnPrimary">@android:color/white</item>
@@ -295,7 +305,6 @@
         <item name="android:windowBackground">@color/hackerNewsBackground</item>
         <item name="android:colorBackground">@color/hackerNewsBackground</item>
         <item name="android:statusBarColor">@color/hackerNewsBackground</item>
-        <item name="android:textColorHighlight">@color/hackerNewsTextSelectionHighlight</item>
     </style>
 
     <style name="AppThemeWhite" parent="@style/AppThemeLight">
