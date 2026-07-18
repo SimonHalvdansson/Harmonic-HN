@@ -43,7 +43,8 @@ public class DebugHnIdPreference extends Preference {
         super.onBindViewHolder(holder);
 
         holder.itemView.setClickable(false);
-        holder.itemView.setFocusable(false);
+        holder.itemView.setFocusableInTouchMode(true);
+        holder.itemView.requestFocus();
 
         PreferenceDebugHnIdBinding binding = PreferenceDebugHnIdBinding.bind(holder.itemView);
         TextInputEditText input = binding.debugHnIdInput;
