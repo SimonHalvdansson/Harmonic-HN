@@ -974,7 +974,7 @@
     <View
         android:id="@+id/comments_header_tint_fade"
         android:layout_width="match_parent"
-        android:layout_height="36dp"
+        android:layout_height="38dp"
         android:layout_marginTop="-6dp"
         android:visibility="gone" />
 

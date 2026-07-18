@@ -203,6 +203,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private static final int HEADER_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP = 176;
     private static final int HEADER_PREVIEW_IMAGE_TOP_PADDING_REDUCTION_DP = 4;
     private static final int HEADER_FAVICON_TINT_SIZE_DP = 64;
+    private static final int HEADER_BOTTOM_FADE_STOP_COUNT = 5;
+    private static final int HEADER_BOTTOM_FADE_OVERLAP_DP = 10;
 
     public final static int FLAG_ACTION_CLICK_USER = 0;
     public final static int FLAG_ACTION_CLICK_COMMENT = 1;
@@ -439,11 +441,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     cardStyle ? (comment.depth > 0 && !collapseParent ? 6 : 4) : (comment.depth > 0 && !collapseParent ? 10 : 6));
             int bottomMargin = Utils.pxFromDpInt(ctx.getResources(), cardStyle ? 4 : 6);
             int cardShadowPadding = cardStyle ? ctx.getResources().getDimensionPixelSize(R.dimen.comment_card_shadow_padding) : 0;
+            // Pull the first comment into the tint fade's near-background tail to tighten the
+            // transition without changing untinted comment spacing.
+            int headerFadeOverlap = shouldTintHeader() && position == 1
+                    ? Utils.pxFromDpInt(ctx.getResources(), HEADER_BOTTOM_FADE_OVERLAP_DP)
+                    : 0;
 
             // 16 is base padding, then add depth-based indentation for child comments.
             params.setMargins(
                     Math.max(0, horizontalStartMargin - cardShadowPadding),
-                    Math.max(0, topMargin - cardShadowPadding),
+                    Math.max(-headerFadeOverlap, topMargin - cardShadowPadding - headerFadeOverlap),
                     Math.max(0, Utils.pxFromDpInt(ctx.getResources(), 16) - cardShadowPadding),
                     Math.max(0, bottomMargin - cardShadowPadding));
             itemViewHolder.itemView.setLayoutParams(params);
@@ -1523,9 +1530,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             return;
         }
 
+        int[] colors = new int[HEADER_BOTTOM_FADE_STOP_COUNT];
+        for (int i = 0; i < colors.length; i++) {
+            float position = i / (float) (colors.length - 1);
+            float progress = position * position * (3f - 2f * position);
+            colors[i] = ColorUtils.blendARGB(headerColor, normalColor, progress);
+        }
         GradientDrawable fade = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{headerColor, normalColor});
+                colors);
         headerViewHolder.tintFade.setBackground(fade);
     }
 
