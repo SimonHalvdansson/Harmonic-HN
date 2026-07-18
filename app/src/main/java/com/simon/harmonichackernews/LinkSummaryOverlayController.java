@@ -796,15 +796,25 @@ final class LinkSummaryOverlayController {
         String summary = Html.fromHtml(storyHtml, Html.FROM_HTML_MODE_LEGACY)
                 .toString()
                 .replace('\u00a0', ' ')
-                .replaceAll("\\s+", " ")
+                .replace("\r\n", "\n")
+                .replace('\r', '\n')
+                .replaceAll("[\\t\\x0B\\f ]+", " ")
+                .replaceAll(" *\\n *", "\n")
+                .replaceAll("\\n{3,}", "\n\n")
                 .trim();
         if (summary.length() <= TEXT_STORY_SUMMARY_MAX_CHARS) {
             return summary;
         }
-        int lastSpace = summary.lastIndexOf(' ', TEXT_STORY_SUMMARY_MAX_CHARS - 1);
-        int end = lastSpace >= TEXT_STORY_SUMMARY_MAX_CHARS * 0.75f
-                ? lastSpace
-                : TEXT_STORY_SUMMARY_MAX_CHARS;
+        int end = TEXT_STORY_SUMMARY_MAX_CHARS;
+        int minimumBoundary = Math.round(TEXT_STORY_SUMMARY_MAX_CHARS * 0.75f);
+        for (int index = TEXT_STORY_SUMMARY_MAX_CHARS - 1;
+             index >= minimumBoundary;
+             index--) {
+            if (Character.isWhitespace(summary.charAt(index))) {
+                end = index;
+                break;
+            }
+        }
         return summary.substring(0, end).trim() + "…";
     }
 
