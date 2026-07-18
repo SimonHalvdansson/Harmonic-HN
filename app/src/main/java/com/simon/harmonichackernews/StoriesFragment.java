@@ -656,7 +656,8 @@ public class StoriesFragment extends Fragment {
             }
             for (int position = 0; position < stories.size(); position++) {
                 Story story = stories.get(position);
-                if (story.id == storyId && story.isLink && !TextUtils.isEmpty(story.url)) {
+                if (story.id == storyId
+                        && (!story.isLink || !TextUtils.isEmpty(story.url))) {
                     linkSummaryOverlayController.showStory(
                             story,
                             position,
@@ -2654,155 +2655,13 @@ public class StoriesFragment extends Fragment {
                     return false;
                 }
 
-                Context ctx = v.getContext();
-
                 Story story = stories.get(position);
-                if (story.isLink && !TextUtils.isEmpty(story.url)) {
-                    linkSummaryOverlayController.showStory(
-                            story,
-                            position,
-                            resolveLinkSummarySourceView(position, v),
-                            resolveLinkSummaryStorySharedElements(position));
-                    return true;
-                }
-
-                PopupMenu popupMenu = new PopupMenu(ctx, v);
-                popupMenu.setForceShowIcon(true);
-
-                boolean oldClicked = story.clicked;
-                boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
-                boolean oldBookmarked = bookmarksEnabled && Utils.isBookmarked(ctx, story.id);
-                boolean hasAccountDetails = AccountUtils.hasAccountDetails(ctx);
-                boolean oldFavorited = Utils.isFavorited(ctx, story.id);
-                History h = HistoriesUtils.INSTANCE.getHistorybyId(story.id);
-
-                if (hasAccountDetails) {
-                    popupMenu.getMenu().add("Upvote").setIcon(R.drawable.ic_thumb_up).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                        @Override
-                        public boolean onMenuItemClick(@NonNull MenuItem item) {
-                            UserActions.upvote(getContext(), story.id, getParentFragmentManager());
-
-                            adapter.notifyItemChanged(position);
-                            return true;
-                        }
-                    });
-                }
-
-                popupMenu.getMenu().add(oldClicked ? "Mark as unread" : "Mark as read").setIcon(oldClicked ? R.drawable.ic_visibility_off : R.drawable.ic_visibility).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                    @Override
-                    public boolean onMenuItemClick(@NonNull MenuItem item) {
-                        story.clicked = !oldClicked;
-                        if (oldClicked) {
-                            HistoriesUtils.INSTANCE.removeHistoryById(requireContext(), story.id);
-                        } else {
-                            HistoriesUtils.INSTANCE.addHistory(requireContext(), story.id);
-                        }
-
-                        adapter.updateStoryClickedState(position);
-                        return true;
-                    }
-                });
-
-                if (bookmarksEnabled) {
-                    popupMenu.getMenu().add(oldBookmarked ? "Remove bookmark" : "Bookmark").setIcon(oldBookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                        @Override
-                        public boolean onMenuItemClick(@NonNull MenuItem item) {
-                            if (oldBookmarked) {
-                                Utils.removeBookmark(ctx, story.id);
-                                if (isBookmarksType(adapter.type)) {
-                                    bookmarkStories.remove(story);
-                                    int removeIndex = stories.indexOf(story);
-                                    if (removeIndex >= 0) {
-                                        removeStoryAt(removeIndex, storyListGeneration, true);
-                                    }
-                                    updateHeader();
-                                    return true;
-                                }
-                            } else {
-                                Utils.addBookmark(ctx, story.id);
-                            }
-
-                            adapter.notifyItemChanged(position);
-                            return true;
-                        }
-                    });
-                }
-
-                if (hasAccountDetails) {
-                    popupMenu.getMenu().add(oldFavorited ? "Remove favorite" : "Favorite").setIcon(oldFavorited ? R.drawable.ic_star_filled : R.drawable.ic_star).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                        @Override
-                        public boolean onMenuItemClick(@NonNull MenuItem item) {
-                            boolean newFavorited = !oldFavorited;
-                            int actionGeneration = storyListGeneration;
-                            StoryRecyclerViewAdapter actionAdapter = adapter;
-                            List<Story> actionStories = stories;
-                            boolean actionIsFavoritesList = isFavoritesType(actionAdapter.type);
-                            int optimisticIndex = stories.indexOf(story);
-                            Utils.setFavorite(ctx, story.id, newFavorited);
-                            if (optimisticIndex >= 0) {
-                                if (oldFavorited && actionIsFavoritesList) {
-                                    removeStoryAt(optimisticIndex, storyListGeneration, true);
-                                    updateHeader();
-                                } else {
-                                    adapter.notifyItemChanged(optimisticIndex);
-                                }
-                            }
-
-                            UserActions.setFavorite(ctx, story.id, !oldFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
-                                @Override
-                                public void onSuccess(Response response) {
-                                    if (response != null) {
-                                        response.close();
-                                    }
-                                }
-
-                                @Override
-                                public void onFailure(String summary, String response) {
-                                    Utils.setFavorite(ctx, story.id, oldFavorited);
-                                    if (!isCurrentStoryActionContext(
-                                            actionGeneration, actionAdapter, actionStories)) {
-                                        return;
-                                    }
-                                    int currentIndex = stories.indexOf(story);
-                                    if (oldFavorited && actionIsFavoritesList && currentIndex == -1) {
-                                        int restoreIndex = optimisticIndex >= 0 ? Math.min(optimisticIndex, stories.size()) : 0;
-                                        stories.add(restoreIndex, story);
-                                        adapter.notifyItemInserted(restoreIndex);
-                                        updateHeader();
-                                    } else if (currentIndex >= 0) {
-                                        adapter.notifyItemChanged(currentIndex);
-                                    }
-                                    if (newFavorited) {
-                                        Toast.makeText(ctx, "Couldn't add favorite", Toast.LENGTH_SHORT).show();
-                                    } else {
-                                        UserActions.showFailureDetailDialog(ctx, summary, response);
-                                        Toast.makeText(ctx, "Couldn't update favorite", Toast.LENGTH_SHORT).show();
-                                    }
-                                }
-                            });
-                            return true;
-                        }
-                    });
-                }
-
-                try {
-                    // Reflection code to force show the popup at x,y position
-                    java.lang.reflect.Field fieldPopup = popupMenu.getClass().getDeclaredField("mPopup");
-                    fieldPopup.setAccessible(true);
-                    Object menuPopupHelper = fieldPopup.get(popupMenu);
-
-                    // the reason for the -10 - height/3 thing is so match the popup location better
-                    // with the press location - for some reason this is necessary.
-                    int targetX = x - Utils.pxFromDpInt(getResources(), 56);
-                    int targetY = y - topInset - Utils.pxFromDpInt(getResources(), 10) - v.getHeight() / 3;
-
-                    menuPopupHelper.getClass().getDeclaredMethod("show", int.class, int.class).invoke(menuPopupHelper, targetX, targetY);
-                } catch (Exception e) {
-                    // In case reflection fails, show the popup the usual way
-                    popupMenu.show();
-                }
-
-                return false;
+                linkSummaryOverlayController.showStory(
+                        story,
+                        position,
+                        resolveLinkSummarySourceView(position, v),
+                        resolveLinkSummaryStorySharedElements(position));
+                return true;
             }
         });
     }

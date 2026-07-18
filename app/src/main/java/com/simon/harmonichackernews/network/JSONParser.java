@@ -727,6 +727,7 @@ public class JSONParser {
             summary.put("created_at_i", item.optInt("created_at_i", 0));
             summary.put("descendants", countAlgoliaComments(item.optJSONArray("children")));
             putNonNullString(summary, "url", item.optString("url", ""));
+            putNonNullString(summary, "text", item.optString("text", ""));
 
             if (item.has("story_id")) {
                 summary.put("story_id", item.optInt("story_id", 0));
@@ -851,6 +852,10 @@ public class JSONParser {
                 story.isLink = hasValidUrl;
                 story.url = hasValidUrl ? rawUrl : "https://news.ycombinator.com/item?id=" + story.id;
                 story.isJob = "job".equals(type);
+            }
+
+            if (item.has("text")) {
+                updateStoryText(story, item.optString("text", ""));
             }
 
             applyPreviewImageSummaryFields(story, item);

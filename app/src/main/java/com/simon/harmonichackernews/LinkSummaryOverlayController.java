@@ -20,6 +20,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.text.Html;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -334,6 +335,7 @@ final class LinkSummaryOverlayController {
     private static final float ACTION_SWAP_MIN_SCALE = 0.72f;
     private static final int CARD_CORNER_RADIUS_DP = 28;
     private static final int STORY_PREVIEW_DEFAULT_HEIGHT_DP = 220;
+    private static final int TEXT_STORY_SUMMARY_MAX_CHARS = 600;
     private static final int PREDICTIVE_BACK_TRANSLATION_X_DP = 56;
     private static final int PREDICTIVE_BACK_TRANSLATION_Y_DP = 18;
     private static final float PREDICTIVE_BACK_MIN_SCALE = 0.9f;
@@ -396,7 +398,9 @@ final class LinkSummaryOverlayController {
             @Nullable View source,
             @Nullable StorySharedElements sharedElements) {
         Context context = host.getLinkSummaryContext();
-        if (context == null || story == null || TextUtils.isEmpty(story.url) || !prepareOverlay(source)) {
+        if (context == null || story == null
+                || (story.isLink && TextUtils.isEmpty(story.url))
+                || !prepareOverlay(source)) {
             return;
         }
         captureStorySharedElements(sharedElements, false);
@@ -413,6 +417,11 @@ final class LinkSummaryOverlayController {
         applyStoryTypography();
         bindStoryKnownContent(context, story);
         configureStoryActions(context, story);
+        if (!story.isLink) {
+            bindTextStorySummary(story);
+            startEnterTransition();
+            return;
+        }
         LinkSummaryLoader.Result cached = StoryPreviewImageLoader.getCachedLinkSummary(context, story.url);
         if (cached != null) {
             bindStoryResult(story, cached);
@@ -749,12 +758,54 @@ final class LinkSummaryOverlayController {
 
     private void bindStoryKnownContent(Context context, Story story) {
         setStoryTitle(story, firstNonEmpty(story.title, story.url));
-        storyBinding.storyLinkMeta.setText(story.score +
-                (story.score == 1 ? " point" : " points") + " • " + safeDomain(story.url) +
-                " • " + story.getTimeFormatted());
+        StringBuilder meta = new StringBuilder()
+                .append(story.score)
+                .append(story.score == 1 ? " point" : " points");
+        if (story.isLink) {
+            meta.append(" • ").append(safeDomain(story.url));
+            FaviconLoader.loadFavicon(story.url, storyBinding.storyLinkFavicon, context,
+                    SettingsUtils.getPreferredFaviconProvider(context));
+        } else {
+            storyBinding.storyLinkFavicon.setVisibility(View.GONE);
+            if (!TextUtils.isEmpty(story.by)) {
+                meta.append(" • ").append(story.by);
+            }
+        }
+        meta.append(" • ").append(story.getTimeFormatted());
+        storyBinding.storyLinkMeta.setText(meta);
         storyBinding.storyLinkComments.setText(R.string.link_summary_comments);
-        FaviconLoader.loadFavicon(story.url, storyBinding.storyLinkFavicon, context,
-                SettingsUtils.getPreferredFaviconProvider(context));
+    }
+
+    private void bindTextStorySummary(Story story) {
+        hideStoryPreview();
+        stopDescriptionShimmer(storyBinding.storyLinkDescriptionShimmer);
+        storyBinding.storyLinkError.setVisibility(View.GONE);
+        String summary = extractTextStorySummary(story.text);
+        if (TextUtils.isEmpty(summary)) {
+            storyBinding.storyLinkDescription.setVisibility(View.GONE);
+            return;
+        }
+        storyBinding.storyLinkDescription.setText(summary);
+        storyBinding.storyLinkDescription.setVisibility(View.VISIBLE);
+    }
+
+    private static String extractTextStorySummary(@Nullable String storyHtml) {
+        if (TextUtils.isEmpty(storyHtml)) {
+            return "";
+        }
+        String summary = Html.fromHtml(storyHtml, Html.FROM_HTML_MODE_LEGACY)
+                .toString()
+                .replace('\u00a0', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (summary.length() <= TEXT_STORY_SUMMARY_MAX_CHARS) {
+            return summary;
+        }
+        int lastSpace = summary.lastIndexOf(' ', TEXT_STORY_SUMMARY_MAX_CHARS - 1);
+        int end = lastSpace >= TEXT_STORY_SUMMARY_MAX_CHARS * 0.75f
+                ? lastSpace
+                : TEXT_STORY_SUMMARY_MAX_CHARS;
+        return summary.substring(0, end).trim() + "…";
     }
 
     private void configureStoryActions(Context context, Story story) {
@@ -802,10 +853,11 @@ final class LinkSummaryOverlayController {
                     () -> finishStoryActionLoading(context, story, button, loadingIndicator, false));
         });
         storyBinding.storyLinkHeader.setContentDescription(
-                "Open link: " + firstNonEmpty(story.title, story.url));
+                (story.isLink ? "Open link: " : "Open discussion: ")
+                        + firstNonEmpty(story.title, story.url));
         storyBinding.storyLinkHeader.setOnClickListener(v -> {
             int position = visibleStoryPosition;
-            navigateToStory(story, position, true);
+            navigateToStory(story, position, story.isLink);
         });
         storyBinding.storyLinkComments.setOnClickListener(v -> {
             int position = visibleStoryPosition;
