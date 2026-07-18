@@ -310,7 +310,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             bindReaderModeButton(headerViewHolder);
             bindStoryText(headerViewHolder);
 
-            LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story, integratedWebview, bottomSheet);
+            LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story);
 
             if (story.pollOptionArrayList != null) {
                 headerViewHolder.pollLayout.setVisibility(View.VISIBLE);
@@ -725,7 +725,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         headerViewHolder.headerView.setClickable(story.isLink);
         headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : GONE);
         bindStoryText(headerViewHolder);
-        LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story, integratedWebview, bottomSheet);
+        LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story);
         bindHeaderTitle(headerViewHolder, ctx);
         bindHeaderMeta(headerViewHolder, ctx);
         bindHeaderLoadingState(headerViewHolder, ctx);

@@ -6,10 +6,8 @@ import static android.view.View.VISIBLE;
 import android.content.Context;
 import android.text.TextUtils;
 import android.view.View;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.FontUtils;
@@ -34,9 +32,7 @@ final class LinkPreviewHeaderBinder {
 
     static void bind(Context ctx,
                      CommentsRecyclerViewAdapter.HeaderViewHolder holder,
-                     Story story,
-                     boolean integratedWebview,
-                     LinearLayout bottomSheet) {
+                     Story story) {
         holder.infoContainer.setVisibility(story.hasExtraInfo() ? View.VISIBLE : GONE);
         boolean hasLoadedLinkPreview = story.hasLoadedLinkPreview();
         boolean showLinkPreviewLoading = story.linkPreviewLoading && !hasLoadedLinkPreview;
@@ -73,7 +69,7 @@ final class LinkPreviewHeaderBinder {
         }
 
         if (story.nitterInfo != null) {
-            bindNitterPreview(ctx, holder, story, integratedWebview, bottomSheet);
+            bindNitterPreview(ctx, holder, story);
         }
     }
 
@@ -208,9 +204,7 @@ final class LinkPreviewHeaderBinder {
 
     private static void bindNitterPreview(Context ctx,
                                           CommentsRecyclerViewAdapter.HeaderViewHolder holder,
-                                          Story story,
-                                          boolean integratedWebview,
-                                          LinearLayout bottomSheet) {
+                                          Story story) {
         holder.nitterContainer.setVisibility(View.VISIBLE);
         holder.infoHeader.setText(story.nitterInfo.userName + " " + story.nitterInfo.userTag);
 
@@ -250,16 +244,7 @@ final class LinkPreviewHeaderBinder {
 
         if (hasNitterImage) {
             holder.nitterImage.setContentDescription(story.nitterInfo.hasVideo ? "Tweet video" : "Tweet image");
-            holder.nitterImage.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (integratedWebview && bottomSheet != null) {
-                        BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_COLLAPSED);
-                    } else {
-                        Utils.launchCustomTab(v.getContext(), story.url);
-                    }
-                }
-            });
+            holder.nitterImage.setOnClickListener(v -> Utils.launchCustomTab(v.getContext(), story.url));
             try {
                 ImageRequest request = new ImageRequest.Builder(ctx)
                         .data(story.nitterInfo.imgSrc)
