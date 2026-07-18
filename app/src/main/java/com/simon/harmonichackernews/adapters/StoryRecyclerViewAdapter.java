@@ -14,6 +14,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.text.Spanned;
 import android.text.TextUtils;
+import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -60,6 +61,7 @@ import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -135,6 +137,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public static final int PAGINATION_PAGE_SIZE = 30;
     public int visibleStoryCount = 30;
     private final Map<Story, StoryPreviewImageLoader.PreviewImageRequest> previewImageUrlRequests = new IdentityHashMap<>();
+    private final SparseArray<Float> previewPagingAlphas = new SparseArray<>();
     @Nullable
     private RecyclerView recyclerView;
 
@@ -239,6 +242,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             }
 
             if (handled) {
+                applyPreviewPagingAlpha(storyViewHolder, story);
                 return;
             }
         }
@@ -368,6 +372,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
             storyViewHolder.commentLayoutView.setVisibility(storyViewHolder.story.isFrontpageLink ? View.GONE : View.VISIBLE);
             applyStoryClickedState(storyViewHolder, storyViewHolder.story);
+            applyPreviewPagingAlpha(storyViewHolder, storyViewHolder.story);
         } else if (holder instanceof CommentViewHolder) {
             final CommentViewHolder commentViewHolder = (CommentViewHolder) holder;
 
@@ -429,6 +434,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             StoryViewHolder storyViewHolder = (StoryViewHolder) holder;
             storyViewHolder.story = null;
             storyViewHolder.cancelClickedStateAnimator();
+            if (storyViewHolder.itemView.getAlpha() != 1f) {
+                storyViewHolder.itemView.animate().cancel();
+                storyViewHolder.itemView.setAlpha(1f);
+            }
             resetPreviewImages(storyViewHolder);
             resetStoryCardBackground(storyViewHolder);
         } else if (holder instanceof CommentViewHolder) {
@@ -465,6 +474,84 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         notifyItemChanged(position, PAYLOAD_CLICKED_STATE);
+    }
+
+    public void setPreviewPagingAlphas(
+            int firstStoryId, float firstAlpha,
+            int secondStoryId, float secondAlpha) {
+        ArrayList<Integer> affectedStoryIds = new ArrayList<>();
+        for (int index = 0; index < previewPagingAlphas.size(); index++) {
+            affectedStoryIds.add(previewPagingAlphas.keyAt(index));
+        }
+        previewPagingAlphas.clear();
+        putPreviewPagingAlpha(firstStoryId, firstAlpha, affectedStoryIds);
+        putPreviewPagingAlpha(secondStoryId, secondAlpha, affectedStoryIds);
+        for (Integer storyId : affectedStoryIds) {
+            applyPreviewPagingAlphaToVisibleStory(storyId, false);
+        }
+    }
+
+    public void clearPreviewPagingAlphas(boolean animate) {
+        ArrayList<Integer> affectedStoryIds = new ArrayList<>();
+        for (int index = 0; index < previewPagingAlphas.size(); index++) {
+            affectedStoryIds.add(previewPagingAlphas.keyAt(index));
+        }
+        previewPagingAlphas.clear();
+        for (Integer storyId : affectedStoryIds) {
+            applyPreviewPagingAlphaToVisibleStory(storyId, animate);
+        }
+    }
+
+    private void putPreviewPagingAlpha(
+            int storyId,
+            float alpha,
+            List<Integer> affectedStoryIds) {
+        if (storyId < 0) return;
+        float clampedAlpha = Math.max(0f, Math.min(1f, alpha));
+        if (clampedAlpha < 1f) {
+            previewPagingAlphas.put(storyId, clampedAlpha);
+        }
+        if (!affectedStoryIds.contains(storyId)) {
+            affectedStoryIds.add(storyId);
+        }
+    }
+
+    private void applyPreviewPagingAlphaToVisibleStory(int storyId, boolean animate) {
+        if (recyclerView == null) return;
+        int position = findStoryPosition(storyId);
+        if (position == RecyclerView.NO_POSITION) return;
+        RecyclerView.ViewHolder holder =
+                recyclerView.findViewHolderForAdapterPosition(position);
+        if (!(holder instanceof StoryViewHolder)) return;
+        View itemView = holder.itemView;
+        itemView.animate().cancel();
+        Float alpha = previewPagingAlphas.get(storyId);
+        float targetAlpha = alpha == null ? 1f : alpha;
+        if (animate) {
+            itemView.animate().alpha(targetAlpha)
+                    .setDuration(CLICKED_STATE_ANIMATION_DURATION_MS)
+                    .setListener(null)
+                    .start();
+        } else {
+            itemView.setAlpha(targetAlpha);
+        }
+    }
+
+    private void applyPreviewPagingAlpha(StoryViewHolder holder, Story story) {
+        Float alpha = previewPagingAlphas.get(story.id);
+        float targetAlpha = alpha == null ? 1f : alpha;
+        if (alpha != null || holder.itemView.getAlpha() != targetAlpha) {
+            holder.itemView.animate().cancel();
+            holder.itemView.setAlpha(targetAlpha);
+        }
+    }
+
+    private int findStoryPosition(int storyId) {
+        int visibleItemCount = getVisibleItemCount();
+        for (int position = 0; position < visibleItemCount; position++) {
+            if (stories.get(position).id == storyId) return position;
+        }
+        return RecyclerView.NO_POSITION;
     }
 
     public void updateStoryIndicesFromPosition(int position) {
@@ -1722,6 +1809,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         return stories.size();
+    }
+
+    public int getVisibleStoryItemCount() {
+        return getVisibleItemCount();
     }
 
     public boolean hasLoadMoreButton() {

@@ -165,6 +165,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.bundles.androidx.window)
     implementation(libs.androidx.startup)
+    implementation(libs.androidx.viewpager2)
 
     implementation(libs.materialui)
 

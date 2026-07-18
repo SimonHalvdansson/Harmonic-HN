@@ -53,5 +53,15 @@
                     android:layout_height="wrap_content" />
             </androidx.core.widget.NestedScrollView>
         </com.google.android.material.card.MaterialCardView>
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/link_summary_story_pager"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:orientation="vertical"
+            android:overScrollMode="never"
+            android:visibility="gone" />
     </FrameLayout>
 </FrameLayout>

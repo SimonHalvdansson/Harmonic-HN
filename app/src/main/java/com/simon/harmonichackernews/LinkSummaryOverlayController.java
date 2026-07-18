@@ -43,6 +43,7 @@ import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.widget.NestedScrollView;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.Transition;
 import androidx.transition.AutoTransition;
 import androidx.transition.ChangeBounds;
@@ -50,6 +51,7 @@ import androidx.transition.Fade;
 import androidx.transition.TransitionListenerAdapter;
 import androidx.transition.TransitionManager;
 import androidx.transition.TransitionSet;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.loadingindicator.LoadingIndicator;
@@ -58,6 +60,7 @@ import com.google.android.material.transition.MaterialContainerTransform;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.databinding.ImageOnlyOverlayContentBinding;
 import com.simon.harmonichackernews.databinding.LinkSummaryOverlayBinding;
+import com.simon.harmonichackernews.databinding.LinkSummaryStoryPageBinding;
 import com.simon.harmonichackernews.databinding.ReferenceLinkSummaryContentBinding;
 import com.simon.harmonichackernews.databinding.StoryLinkSummaryContentBinding;
 import com.simon.harmonichackernews.network.FaviconLoader;
@@ -302,6 +305,19 @@ final class LinkSummaryOverlayController {
         @Nullable ViewGroup getLinkSummaryOverlayHost();
         @Nullable View findLinkSummarySourceView(int storyId);
         default @Nullable StorySharedElements findLinkSummaryStorySharedElements(int storyId) { return null; }
+        default int getLinkSummaryStoryCount() { return 0; }
+        default @Nullable Story getLinkSummaryStoryAt(int position) { return null; }
+        default boolean isLinkSummaryStoryPageable(int position, @NonNull Story story) {
+            return !story.isComment;
+        }
+        default int getLinkSummaryStoryPagingDistance(int firstStoryId, int secondStoryId) {
+            return 0;
+        }
+        default void scrollLinkSummaryStoryListBy(int dy) { }
+        default void setLinkSummaryStoryPagingAlphas(
+                int firstStoryId, float firstAlpha,
+                int secondStoryId, float secondAlpha) { }
+        default void clearLinkSummaryStoryPagingAlphas(boolean animate) { }
         default @Nullable View findLinkSummaryImageSourceView() { return null; }
         default @Nullable Integer getLinkSummaryImageBackgroundColor() { return null; }
         default void setLinkSummaryImageSourceSuppressed(boolean suppressed) { }
@@ -343,11 +359,128 @@ final class LinkSummaryOverlayController {
     private static final float INLINE_LINK_RETURN_FADE_START = 0.45f;
     private static final float INLINE_LINK_RETURN_FADE_END = 0.75f;
 
+    private static final class StoryPageEntry {
+        @NonNull final Story story;
+        final int sourcePosition;
+
+        StoryPageEntry(@NonNull Story story, int sourcePosition) {
+            this.story = story;
+            this.sourcePosition = sourcePosition;
+        }
+    }
+
+    private final class StoryPageHolder extends RecyclerView.ViewHolder {
+        final LinkSummaryStoryPageBinding pageBinding;
+        final MaterialCardView pageCard;
+        final NestedScrollView pageScroll;
+        final StoryLinkSummaryContentBinding content;
+        @Nullable Story story;
+        int sourcePosition = RecyclerView.NO_POSITION;
+        @Nullable String pageUrl;
+        @Nullable String pageFallbackTitle;
+        @Nullable LinkSummaryLoader.SummaryRequest pageSummaryRequest;
+        boolean pendingPreviewHide;
+        @Nullable Runnable pendingStateChange;
+
+        StoryPageHolder(@NonNull LinkSummaryStoryPageBinding pageBinding) {
+            super(pageBinding.getRoot());
+            this.pageBinding = pageBinding;
+            pageCard = pageBinding.linkSummaryStoryPageCard;
+            pageScroll = pageBinding.linkSummaryStoryPageScroll;
+            content = StoryLinkSummaryContentBinding.inflate(
+                    LayoutInflater.from(pageBinding.getRoot().getContext()),
+                    pageBinding.linkSummaryStoryPageBody,
+                    true);
+        }
+
+        void cancelRequests() {
+            if (pageSummaryRequest != null) {
+                pageSummaryRequest.cancel();
+                pageSummaryRequest = null;
+            }
+            CoilUtils.dispose(content.storyLinkPreview);
+        }
+    }
+
+    private final class StoryPagerAdapter extends RecyclerView.Adapter<StoryPageHolder> {
+        private final List<StoryPageEntry> entries;
+        private final android.util.SparseArray<StoryPageHolder> boundHolders =
+                new android.util.SparseArray<>();
+
+        StoryPagerAdapter(@NonNull List<StoryPageEntry> entries) {
+            this.entries = entries;
+            setHasStableIds(true);
+        }
+
+        @NonNull
+        @Override
+        public StoryPageHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            LinkSummaryStoryPageBinding pageBinding = LinkSummaryStoryPageBinding.inflate(
+                    LayoutInflater.from(parent.getContext()), parent, false);
+            StoryPageHolder holder = new StoryPageHolder(pageBinding);
+            holder.itemView.setOnClickListener(view -> dismiss(true));
+            holder.pageCard.setOnTouchListener((view, event) -> true);
+            configureNestedStoryScroll(holder);
+            holder.itemView.addOnLayoutChangeListener((view, left, top, right, bottom,
+                                                        oldLeft, oldTop, oldRight, oldBottom) -> {
+                if (right - left != oldRight - oldLeft
+                        || bottom - top != oldBottom - oldTop) {
+                    configureStoryPageWidth(holder);
+                    resizeStoryPage(holder);
+                }
+            });
+            return holder;
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull StoryPageHolder holder, int position) {
+            removeBoundHolder(holder);
+            boundHolders.put(position, holder);
+            bindStoryPage(holder, entries.get(position));
+        }
+
+        @Override
+        public void onViewRecycled(@NonNull StoryPageHolder holder) {
+            removeBoundHolder(holder);
+            holder.cancelRequests();
+            super.onViewRecycled(holder);
+        }
+
+        @Override public int getItemCount() { return entries.size(); }
+        @Override public long getItemId(int position) { return entries.get(position).story.id; }
+
+        @Nullable StoryPageHolder getBoundHolder(int position) {
+            return boundHolders.get(position);
+        }
+
+        @NonNull StoryPageEntry getEntry(int position) { return entries.get(position); }
+
+        private void removeBoundHolder(@NonNull StoryPageHolder holder) {
+            for (int index = boundHolders.size() - 1; index >= 0; index--) {
+                if (boundHolders.valueAt(index) == holder) {
+                    boundHolders.removeAt(index);
+                }
+            }
+        }
+
+        void cancelAllRequests() {
+            for (int index = 0; index < boundHolders.size(); index++) {
+                StoryPageHolder holder = boundHolders.valueAt(index);
+                if (holder != null) holder.cancelRequests();
+            }
+        }
+    }
+
     private final Host host;
     private FrameLayout overlay;
     private LinkSummaryOverlayBinding binding;
     private MaterialCardView card;
     private StoryLinkSummaryContentBinding storyBinding;
+    private ViewPager2 storyPager;
+    private StoryPagerAdapter storyPagerAdapter;
+    private StoryPageHolder currentStoryPage;
+    private float lastStoryPagerPosition = Float.NaN;
+    private float pendingStoryListScrollPixels;
     private ReferenceLinkSummaryContentBinding referenceBinding;
     private ImageOnlyOverlayContentBinding imageBinding;
     private View sourceView;
@@ -367,8 +500,6 @@ final class LinkSummaryOverlayController {
     private boolean predictiveBackActive;
     private boolean enterTransitionStarted;
     private boolean enterTransitionComplete;
-    private boolean pendingStoryPreviewHide;
-    private Runnable pendingStoryStateChange;
     private Runnable pendingReferenceStateChange;
     private final List<StorySharedElementSnapshot> storySharedElementSnapshots = new ArrayList<>();
     private ValueAnimator storySharedElementSnapshotAnimator;
@@ -404,59 +535,212 @@ final class LinkSummaryOverlayController {
             return;
         }
         captureStorySharedElements(sharedElements, false);
-        visibleStoryId = story.id;
-        visibleStoryPosition = position;
-        visibleUrl = story.url;
-        fallbackTitle = story.title;
-        if (card != null) {
-            card.setCardBackgroundColor(host.resolveStoryCardBackgroundColor(story));
-        }
-
-        storyBinding = StoryLinkSummaryContentBinding.inflate(
-                LayoutInflater.from(context), binding.linkSummaryBody, true);
-        applyStoryTypography();
-        bindStoryKnownContent(context, story);
-        configureStoryActions(context, story);
-        if (!story.isLink) {
-            bindTextStorySummary(story);
-            startEnterTransition();
-            return;
-        }
-        LinkSummaryLoader.Result cached = StoryPreviewImageLoader.getCachedLinkSummary(context, story.url);
-        if (cached != null) {
-            bindStoryResult(story, cached);
-        } else {
-            startStoryShimmers();
-            if (story.previewImageUrlLoaded) {
-                if (TextUtils.isEmpty(story.previewImageUrl)) {
-                    hideStoryPreview();
-                } else {
-                    loadStoryImage(story, story.previewImageUrl);
-                }
-            } else if (!TextUtils.isEmpty(story.pdfTitle) || !TextUtils.isEmpty(story.videoTitle)) {
-                hideStoryPreview();
-            }
-            loadStorySummary(story);
-        }
-        seedStoryPreviewFromSource();
-        startEnterTransition();
+        setupStoryPager(story, position);
     }
 
-    private void seedStoryPreviewFromSource() {
-        if (storyBinding == null || card == null || storyImageSourceView == null) return;
+    private void setupStoryPager(@NonNull Story openedStory, int openedPosition) {
+        if (binding == null) return;
+        List<StoryPageEntry> entries = new ArrayList<>();
+        int initialItem = RecyclerView.NO_POSITION;
+        int storyCount = host.getLinkSummaryStoryCount();
+        for (int sourcePosition = 0; sourcePosition < storyCount; sourcePosition++) {
+            Story candidate = host.getLinkSummaryStoryAt(sourcePosition);
+            if (candidate == null || !host.isLinkSummaryStoryPageable(sourcePosition, candidate)) {
+                continue;
+            }
+            if (candidate == openedStory
+                    || (candidate.id == openedStory.id && sourcePosition == openedPosition)) {
+                initialItem = entries.size();
+            }
+            entries.add(new StoryPageEntry(candidate, sourcePosition));
+        }
+        if (initialItem == RecyclerView.NO_POSITION) {
+            initialItem = entries.size();
+            entries.add(new StoryPageEntry(openedStory, openedPosition));
+        }
+
+        binding.linkSummaryCard.setVisibility(View.GONE);
+        storyPager = binding.linkSummaryStoryPager;
+        storyPager.setVisibility(View.VISIBLE);
+        storyPager.setOrientation(ViewPager2.ORIENTATION_VERTICAL);
+        storyPager.setOffscreenPageLimit(1);
+        storyPager.setUserInputEnabled(false);
+        storyPagerAdapter = new StoryPagerAdapter(entries);
+        storyPager.setAdapter(storyPagerAdapter);
+        final int startingItem = initialItem;
+        lastStoryPagerPosition = startingItem;
+        pendingStoryListScrollPixels = 0f;
+        storyPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageScrolled(int position, float positionOffset,
+                                       int positionOffsetPixels) {
+                updateStoryPagingProgress(position, positionOffset);
+            }
+
+            @Override
+            public void onPageSelected(int position) {
+                activateStoryPage(position);
+            }
+
+            @Override
+            public void onPageScrollStateChanged(int state) {
+                if (state == ViewPager2.SCROLL_STATE_IDLE && storyPager != null) {
+                    int position = storyPager.getCurrentItem();
+                    lastStoryPagerPosition = position;
+                    updateStoryPagingProgress(position, 0f);
+                    activateStoryPage(position);
+                }
+            }
+        });
+        storyPager.setCurrentItem(startingItem, false);
+        storyPager.post(() -> {
+            if (storyPager == null || storyPagerAdapter == null) return;
+            activateStoryPage(storyPager.getCurrentItem());
+        });
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void configureNestedStoryScroll(@NonNull StoryPageHolder holder) {
+        final float[] downY = new float[1];
+        holder.pageScroll.setOnTouchListener((view, event) -> {
+            if (storyPager == null) return false;
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                downY[0] = event.getY();
+                view.getParent().requestDisallowInterceptTouchEvent(true);
+            } else if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
+                float delta = downY[0] - event.getY();
+                int direction = delta > 0f ? 1 : -1;
+                boolean letPageScroll = Math.abs(delta) > 0f
+                        && holder.pageScroll.canScrollVertically(direction);
+                view.getParent().requestDisallowInterceptTouchEvent(letPageScroll);
+            } else if (event.getActionMasked() == MotionEvent.ACTION_UP
+                    || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                view.getParent().requestDisallowInterceptTouchEvent(false);
+            }
+            return false;
+        });
+    }
+
+    private void updateStoryPagingProgress(int position, float positionOffset) {
+        if (storyPagerAdapter == null || storyPagerAdapter.getItemCount() == 0) return;
+        int lowerPosition = Math.max(0,
+                Math.min(position, storyPagerAdapter.getItemCount() - 1));
+        int upperPosition = Math.min(lowerPosition + 1, storyPagerAdapter.getItemCount() - 1);
+        StoryPageEntry lower = storyPagerAdapter.getEntry(lowerPosition);
+        StoryPageEntry upper = storyPagerAdapter.getEntry(upperPosition);
+        float clampedOffset = Math.max(0f, Math.min(1f, positionOffset));
+        host.setLinkSummaryStoryPagingAlphas(
+                lower.story.id,
+                upperPosition == lowerPosition ? 0f : clampedOffset,
+                upperPosition == lowerPosition ? NO_STORY_ID : upper.story.id,
+                upperPosition == lowerPosition ? 1f : 1f - clampedOffset);
+
+        float pagerPosition = lowerPosition + clampedOffset;
+        scrollStoryListForPagerDelta(lastStoryPagerPosition, pagerPosition);
+        lastStoryPagerPosition = pagerPosition;
+    }
+
+    private void scrollStoryListForPagerDelta(float previousPosition, float currentPosition) {
+        if (storyPagerAdapter == null || Float.isNaN(previousPosition)
+                || previousPosition == currentPosition) {
+            return;
+        }
+        float cursor = previousPosition;
+        if (currentPosition > previousPosition) {
+            while (cursor < currentPosition) {
+                int segment = Math.min((int) Math.floor(cursor),
+                        storyPagerAdapter.getItemCount() - 2);
+                if (segment < 0) break;
+                float end = Math.min(currentPosition, segment + 1f);
+                addStoryListScrollForSegment(segment, end - cursor);
+                cursor = end;
+            }
+        } else {
+            while (cursor > currentPosition) {
+                int segment = Math.min((int) Math.ceil(cursor) - 1,
+                        storyPagerAdapter.getItemCount() - 2);
+                if (segment < 0) break;
+                float end = Math.max(currentPosition, segment);
+                addStoryListScrollForSegment(segment, end - cursor);
+                cursor = end;
+            }
+        }
+    }
+
+    private void addStoryListScrollForSegment(int segment, float pageDelta) {
+        if (storyPagerAdapter == null || segment < 0
+                || segment + 1 >= storyPagerAdapter.getItemCount()) {
+            return;
+        }
+        StoryPageEntry first = storyPagerAdapter.getEntry(segment);
+        StoryPageEntry second = storyPagerAdapter.getEntry(segment + 1);
+        int distance = host.getLinkSummaryStoryPagingDistance(
+                first.story.id, second.story.id);
+        if (distance <= 0) return;
+        pendingStoryListScrollPixels += pageDelta * distance;
+        int wholePixels = pendingStoryListScrollPixels > 0f
+                ? (int) Math.floor(pendingStoryListScrollPixels)
+                : (int) Math.ceil(pendingStoryListScrollPixels);
+        if (wholePixels != 0) {
+            host.scrollLinkSummaryStoryListBy(wholePixels);
+            pendingStoryListScrollPixels -= wholePixels;
+        }
+    }
+
+    private void activateStoryPage(int position) {
+        if (storyPager == null || storyPagerAdapter == null
+                || position < 0 || position >= storyPagerAdapter.getItemCount()) {
+            return;
+        }
+        StoryPageHolder holder = storyPagerAdapter.getBoundHolder(position);
+        if (holder == null) {
+            storyPager.post(() -> activateStoryPage(position));
+            return;
+        }
+        currentStoryPage = holder;
+        storyBinding = holder.content;
+        card = holder.pageCard;
+        visibleStoryId = holder.story == null ? NO_STORY_ID : holder.story.id;
+        visibleStoryPosition = holder.sourcePosition;
+        visibleUrl = holder.pageUrl;
+        fallbackTitle = holder.pageFallbackTitle;
+
+        restoreStorySharedElementAlphas();
+        sourceView = visibleStoryId == NO_STORY_ID
+                ? null : host.findLinkSummarySourceView(visibleStoryId);
+        storyImageSourceView = null;
+        storyTitleSourceView = null;
+        storyMetaSourceView = null;
+        storyImageSourceAlpha = 1f;
+        storyTitleSourceAlpha = 1f;
+        storyMetaSourceAlpha = 1f;
+        if (visibleStoryId != NO_STORY_ID) {
+            captureStorySharedElements(
+                    host.findLinkSummaryStorySharedElements(visibleStoryId), false);
+        }
+
+        if (!enterTransitionStarted) {
+            holder.pageCard.setVisibility(View.INVISIBLE);
+            seedStoryPreviewFromSource(holder);
+            startEnterTransition();
+        }
+    }
+
+    private void seedStoryPreviewFromSource(@NonNull StoryPageHolder page) {
+        if (storyImageSourceView == null) return;
         Drawable sourceDrawable = storyImageSourceView.getDrawable();
         if (sourceDrawable == null) return;
 
-        ImageView preview = storyBinding.storyLinkPreview;
+        ImageView preview = page.content.storyLinkPreview;
         Drawable previewDrawable = preview.getDrawable();
         if (previewDrawable == null) {
-            previewDrawable = copyDrawable(sourceDrawable, card.getResources());
+            previewDrawable = copyDrawable(sourceDrawable, page.pageCard.getResources());
             preview.setImageDrawable(previewDrawable);
         }
         preview.setVisibility(View.VISIBLE);
-        storyBinding.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
-        stopPreviewShimmer(storyBinding.storyLinkPreviewShimmer);
-        configureSeededStoryPreviewHeight(previewDrawable);
+        page.content.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
+        stopPreviewShimmer(page.content.storyLinkPreviewShimmer);
+        configureSeededStoryPreviewHeight(page, previewDrawable);
     }
 
     private void captureStorySharedElements(
@@ -491,21 +775,24 @@ final class LinkSummaryOverlayController {
                 host.findLinkSummaryStorySharedElements(visibleStoryId), true);
     }
 
-    private void configureSeededStoryPreviewHeight(@NonNull Drawable drawable) {
-        if (storyBinding == null || card == null) return;
-        ViewGroup.LayoutParams cardParams = card.getLayoutParams();
+    private void configureSeededStoryPreviewHeight(
+            @NonNull StoryPageHolder page,
+            @NonNull Drawable drawable) {
+        ViewGroup.LayoutParams cardParams = page.pageCard.getLayoutParams();
         int width = cardParams == null ? 0 : cardParams.width;
         int intrinsicWidth = drawable.getIntrinsicWidth();
         int intrinsicHeight = drawable.getIntrinsicHeight();
         if (width <= 0 || intrinsicWidth <= 0 || intrinsicHeight <= 0) return;
 
-        int defaultHeight = Utils.pxFromDpInt(card.getResources(), STORY_PREVIEW_DEFAULT_HEIGHT_DP);
+        int defaultHeight = Utils.pxFromDpInt(
+                page.pageCard.getResources(), STORY_PREVIEW_DEFAULT_HEIGHT_DP);
         int targetHeight = Math.min(defaultHeight,
                 Math.max(1, Math.round(width * intrinsicHeight / (float) intrinsicWidth)));
-        ViewGroup.LayoutParams previewParams = storyBinding.storyLinkPreviewContainer.getLayoutParams();
+        ViewGroup.LayoutParams previewParams =
+                page.content.storyLinkPreviewContainer.getLayoutParams();
         if (previewParams.height != targetHeight) {
             previewParams.height = targetHeight;
-            storyBinding.storyLinkPreviewContainer.setLayoutParams(previewParams);
+            page.content.storyLinkPreviewContainer.setLayoutParams(previewParams);
         }
     }
 
@@ -555,11 +842,11 @@ final class LinkSummaryOverlayController {
         startEnterTransition();
     }
 
-    private void applyStoryTypography() {
-        FontUtils.setLinkSummaryStoryTitleTypeface(storyBinding.storyLinkTitle);
-        FontUtils.setLinkSummaryMetaTypeface(storyBinding.storyLinkMeta);
-        FontUtils.setLinkSummaryBodyTypeface(storyBinding.storyLinkDescription);
-        FontUtils.setLinkSummaryErrorTypeface(storyBinding.storyLinkError);
+    private void applyStoryTypography(@NonNull StoryPageHolder page) {
+        FontUtils.setLinkSummaryStoryTitleTypeface(page.content.storyLinkTitle);
+        FontUtils.setLinkSummaryMetaTypeface(page.content.storyLinkMeta);
+        FontUtils.setLinkSummaryBodyTypeface(page.content.storyLinkDescription);
+        FontUtils.setLinkSummaryErrorTypeface(page.content.storyLinkError);
     }
 
     private void applyReferenceTypography() {
@@ -700,8 +987,6 @@ final class LinkSummaryOverlayController {
         dismissing = false;
         enterTransitionStarted = false;
         enterTransitionComplete = false;
-        pendingStoryPreviewHide = false;
-        pendingStoryStateChange = null;
         pendingReferenceStateChange = null;
         binding = LinkSummaryOverlayBinding.inflate(LayoutInflater.from(context), overlayHost, false);
         overlay = binding.getRoot();
@@ -756,37 +1041,111 @@ final class LinkSummaryOverlayController {
         return linkSource;
     }
 
-    private void bindStoryKnownContent(Context context, Story story) {
-        setStoryTitle(story, firstNonEmpty(story.title, story.url));
+    private void bindStoryPage(
+            @NonNull StoryPageHolder page,
+            @NonNull StoryPageEntry entry) {
+        Context context = page.itemView.getContext();
+        page.cancelRequests();
+        page.story = entry.story;
+        page.sourcePosition = entry.sourcePosition;
+        page.pageUrl = entry.story.url;
+        page.pageFallbackTitle = entry.story.title;
+        page.pendingPreviewHide = false;
+        page.pendingStateChange = null;
+        page.pageCard.setVisibility(View.VISIBLE);
+        page.pageCard.setAlpha(1f);
+        page.pageCard.setScaleX(1f);
+        page.pageCard.setScaleY(1f);
+        page.pageCard.setTranslationX(0f);
+        page.pageCard.setTranslationY(0f);
+        page.pageCard.setCardBackgroundColor(
+                host.resolveStoryCardBackgroundColor(entry.story));
+        page.pageCard.setStrokeWidth(0);
+        page.pageCard.setStrokeColor(Color.TRANSPARENT);
+        configureStoryPageWidth(page);
+        applyStoryTypography(page);
+        resetStoryPageContent(page);
+        bindStoryKnownContent(page, context, entry.story);
+        configureStoryActions(page, context, entry.story);
+        if (!entry.story.isLink) {
+            bindTextStorySummary(page, entry.story);
+            resizeStoryPage(page);
+            return;
+        }
+        LinkSummaryLoader.Result cached = StoryPreviewImageLoader.getCachedLinkSummary(
+                context, entry.story.url);
+        if (cached != null) {
+            bindStoryResult(page, entry.story, cached);
+        } else {
+            startStoryShimmers(page);
+            if (entry.story.previewImageUrlLoaded) {
+                if (TextUtils.isEmpty(entry.story.previewImageUrl)) {
+                    hideStoryPreview(page);
+                } else {
+                    loadStoryImage(page, entry.story, entry.story.previewImageUrl);
+                }
+            } else if (!TextUtils.isEmpty(entry.story.pdfTitle)
+                    || !TextUtils.isEmpty(entry.story.videoTitle)) {
+                hideStoryPreview(page);
+            }
+            loadStorySummary(page, entry.story);
+        }
+        resizeStoryPage(page);
+    }
+
+    private void resetStoryPageContent(@NonNull StoryPageHolder page) {
+        StoryLinkSummaryContentBinding content = page.content;
+        content.storyLinkPreview.setTag(null);
+        content.storyLinkPreview.setImageDrawable(null);
+        content.storyLinkPreview.setVisibility(View.INVISIBLE);
+        content.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
+        content.storyLinkDescription.setText(null);
+        content.storyLinkDescription.setVisibility(View.GONE);
+        content.storyLinkError.setText(null);
+        content.storyLinkError.setVisibility(View.GONE);
+        content.storyLinkFavicon.setImageDrawable(null);
+        content.storyLinkFavicon.setVisibility(View.VISIBLE);
+        page.pageScroll.scrollTo(0, 0);
+    }
+
+    private void bindStoryKnownContent(
+            @NonNull StoryPageHolder page,
+            @NonNull Context context,
+            @NonNull Story story) {
+        StoryLinkSummaryContentBinding content = page.content;
+        setStoryTitle(page, story, firstNonEmpty(story.title, story.url));
         StringBuilder meta = new StringBuilder()
                 .append(story.score)
                 .append(story.score == 1 ? " point" : " points");
         if (story.isLink) {
             meta.append(" • ").append(safeDomain(story.url));
-            FaviconLoader.loadFavicon(story.url, storyBinding.storyLinkFavicon, context,
+            FaviconLoader.loadFavicon(story.url, content.storyLinkFavicon, context,
                     SettingsUtils.getPreferredFaviconProvider(context));
         } else {
-            storyBinding.storyLinkFavicon.setVisibility(View.GONE);
+            content.storyLinkFavicon.setVisibility(View.GONE);
             if (!TextUtils.isEmpty(story.by)) {
                 meta.append(" • ").append(story.by);
             }
         }
         meta.append(" • ").append(story.getTimeFormatted());
-        storyBinding.storyLinkMeta.setText(meta);
-        storyBinding.storyLinkComments.setText(R.string.link_summary_comments);
+        content.storyLinkMeta.setText(meta);
+        content.storyLinkComments.setText(R.string.link_summary_comments);
     }
 
-    private void bindTextStorySummary(Story story) {
-        hideStoryPreview();
-        stopDescriptionShimmer(storyBinding.storyLinkDescriptionShimmer);
-        storyBinding.storyLinkError.setVisibility(View.GONE);
+    private void bindTextStorySummary(
+            @NonNull StoryPageHolder page,
+            @NonNull Story story) {
+        StoryLinkSummaryContentBinding content = page.content;
+        hideStoryPreview(page);
+        stopDescriptionShimmer(content.storyLinkDescriptionShimmer);
+        content.storyLinkError.setVisibility(View.GONE);
         String summary = extractTextStorySummary(story.text);
         if (TextUtils.isEmpty(summary)) {
-            storyBinding.storyLinkDescription.setVisibility(View.GONE);
+            content.storyLinkDescription.setVisibility(View.GONE);
             return;
         }
-        storyBinding.storyLinkDescription.setText(summary);
-        storyBinding.storyLinkDescription.setVisibility(View.VISIBLE);
+        content.storyLinkDescription.setText(summary);
+        content.storyLinkDescription.setVisibility(View.VISIBLE);
     }
 
     private static String extractTextStorySummary(@Nullable String storyHtml) {
@@ -818,60 +1177,64 @@ final class LinkSummaryOverlayController {
         return summary.substring(0, end).trim() + "…";
     }
 
-    private void configureStoryActions(Context context, Story story) {
+    private void configureStoryActions(
+            @NonNull StoryPageHolder page,
+            @NonNull Context context,
+            @NonNull Story story) {
+        StoryLinkSummaryContentBinding content = page.content;
         boolean hasAccount = AccountUtils.hasAccountDetails(context);
-        storyBinding.storyLinkComments.setText(hasAccount
+        content.storyLinkComments.setText(hasAccount
                 ? String.valueOf(story.descendants)
                 : context.getString(R.string.link_summary_comments));
-        storyBinding.storyLinkComments.setContentDescription(
+        content.storyLinkComments.setContentDescription(
                 "Comments (" + story.descendants + ")");
-        storyBinding.storyLinkVoteSlot.setVisibility(hasAccount ? View.VISIBLE : View.GONE);
-        storyBinding.storyLinkFavoriteSlot.setVisibility(hasAccount ? View.VISIBLE : View.GONE);
-        storyBinding.storyLinkBookmark.setVisibility(
+        content.storyLinkVoteSlot.setVisibility(hasAccount ? View.VISIBLE : View.GONE);
+        content.storyLinkFavoriteSlot.setVisibility(hasAccount ? View.VISIBLE : View.GONE);
+        content.storyLinkBookmark.setVisibility(
                 SettingsUtils.shouldUseBookmarks(context) ? View.VISIBLE : View.GONE);
-        refreshStoryActionButtons(context, story);
+        refreshStoryActionButtons(page, context, story);
 
-        storyBinding.storyLinkVote.setOnClickListener(v -> {
+        content.storyLinkVote.setOnClickListener(v -> {
             if (storyVoteLoadingId == story.id) return;
             boolean selected = Utils.isUpvoted(context, story.id, false);
             storyVoteLoadingId = story.id;
-            ImageButton button = storyBinding.storyLinkVote;
-            LoadingIndicator loadingIndicator = storyBinding.storyLinkVoteLoading;
+            ImageButton button = content.storyLinkVote;
+            LoadingIndicator loadingIndicator = content.storyLinkVoteLoading;
             showStoryActionLoading(button, loadingIndicator,
                     selected ? "Removing upvote" : "Upvoting");
-            host.toggleStoryVote(story, visibleStoryPosition, selected,
-                    () -> finishStoryActionLoading(context, story, button, loadingIndicator, true));
+            host.toggleStoryVote(story, page.sourcePosition, selected,
+                    () -> finishStoryActionLoading(
+                            page, context, story, button, loadingIndicator, true));
         });
-        storyBinding.storyLinkRead.setOnClickListener(v -> {
-            host.toggleStoryRead(story, visibleStoryPosition);
-            refreshStoryActionButtons(context, story);
+        content.storyLinkRead.setOnClickListener(v -> {
+            host.toggleStoryRead(story, page.sourcePosition);
+            refreshStoryActionButtons(page, context, story);
         });
-        storyBinding.storyLinkBookmark.setOnClickListener(v -> {
+        content.storyLinkBookmark.setOnClickListener(v -> {
             boolean selected = Utils.isBookmarked(context, story.id);
-            host.toggleStoryBookmark(story, visibleStoryPosition, selected);
-            refreshStoryActionButtons(context, story);
+            host.toggleStoryBookmark(story, page.sourcePosition, selected);
+            refreshStoryActionButtons(page, context, story);
         });
-        storyBinding.storyLinkFavorite.setOnClickListener(v -> {
+        content.storyLinkFavorite.setOnClickListener(v -> {
             if (storyFavoriteLoadingId == story.id) return;
             boolean selected = Utils.isFavorited(context, story.id);
             storyFavoriteLoadingId = story.id;
-            ImageButton button = storyBinding.storyLinkFavorite;
-            LoadingIndicator loadingIndicator = storyBinding.storyLinkFavoriteLoading;
+            ImageButton button = content.storyLinkFavorite;
+            LoadingIndicator loadingIndicator = content.storyLinkFavoriteLoading;
             showStoryActionLoading(button, loadingIndicator,
                     selected ? "Removing favorite" : "Adding favorite");
-            host.toggleStoryFavorite(story, visibleStoryPosition, selected,
-                    () -> finishStoryActionLoading(context, story, button, loadingIndicator, false));
+            host.toggleStoryFavorite(story, page.sourcePosition, selected,
+                    () -> finishStoryActionLoading(
+                            page, context, story, button, loadingIndicator, false));
         });
-        storyBinding.storyLinkHeader.setContentDescription(
+        content.storyLinkHeader.setContentDescription(
                 (story.isLink ? "Open link: " : "Open discussion: ")
                         + firstNonEmpty(story.title, story.url));
-        storyBinding.storyLinkHeader.setOnClickListener(v -> {
-            int position = visibleStoryPosition;
-            navigateToStory(story, position, story.isLink);
+        content.storyLinkHeader.setOnClickListener(v -> {
+            navigateToStory(story, page.sourcePosition, story.isLink);
         });
-        storyBinding.storyLinkComments.setOnClickListener(v -> {
-            int position = visibleStoryPosition;
-            navigateToStory(story, position, false);
+        content.storyLinkComments.setOnClickListener(v -> {
+            navigateToStory(story, page.sourcePosition, false);
         });
     }
 
@@ -894,14 +1257,18 @@ final class LinkSummaryOverlayController {
         }
     }
 
-    private void refreshStoryActionButtons(Context context, Story story) {
-        setActionState(storyBinding.storyLinkVote, Utils.isUpvoted(context, story.id, false),
+    private void refreshStoryActionButtons(
+            @NonNull StoryPageHolder page,
+            @NonNull Context context,
+            @NonNull Story story) {
+        StoryLinkSummaryContentBinding content = page.content;
+        setActionState(content.storyLinkVote, Utils.isUpvoted(context, story.id, false),
                 R.drawable.ic_thumb_up, R.drawable.ic_thumb_up_filled, "Upvote", "Remove upvote");
-        setActionState(storyBinding.storyLinkRead, story.clicked,
+        setActionState(content.storyLinkRead, story.clicked,
                 R.drawable.ic_visibility, R.drawable.ic_visibility_off, "Mark as read", "Mark as unread");
-        setActionState(storyBinding.storyLinkBookmark, Utils.isBookmarked(context, story.id),
+        setActionState(content.storyLinkBookmark, Utils.isBookmarked(context, story.id),
                 R.drawable.ic_bookmark, R.drawable.ic_bookmark_filled, "Bookmark", "Remove bookmark");
-        setActionState(storyBinding.storyLinkFavorite, Utils.isFavorited(context, story.id),
+        setActionState(content.storyLinkFavorite, Utils.isFavorited(context, story.id),
                 R.drawable.ic_star, R.drawable.ic_star_filled, "Favorite", "Remove favorite");
     }
 
@@ -943,8 +1310,9 @@ final class LinkSummaryOverlayController {
         });
     }
 
-    private void finishStoryActionLoading(Context context,
-                                          Story story,
+    private void finishStoryActionLoading(@NonNull StoryPageHolder page,
+                                          @NonNull Context context,
+                                          @NonNull Story story,
                                           @Nullable ImageButton button,
                                           @Nullable LoadingIndicator loadingIndicator,
                                           boolean vote) {
@@ -958,7 +1326,7 @@ final class LinkSummaryOverlayController {
             }
         }
         if (button == null || loadingIndicator == null
-                || storyBinding == null || visibleStoryId != story.id) {
+                || page.story != story || page.content.getRoot().getParent() == null) {
             return;
         }
         animateActionViewOut(loadingIndicator, () -> {
@@ -966,7 +1334,7 @@ final class LinkSummaryOverlayController {
             resetActionView(loadingIndicator);
             button.setTag(null);
             button.setVisibility(View.VISIBLE);
-            refreshStoryActionButtons(context, story);
+            refreshStoryActionButtons(page, context, story);
             button.setEnabled(false);
             animateActionViewIn(button, () -> button.setEnabled(true));
         });
@@ -998,115 +1366,127 @@ final class LinkSummaryOverlayController {
                 .withEndAction(afterIn).start();
     }
 
-    private void startStoryShimmers() {
-        storyBinding.storyLinkDescriptionShimmer.setVisibility(View.VISIBLE);
-        storyBinding.storyLinkDescriptionShimmer.startShimmer();
-        storyBinding.storyLinkPreviewShimmer.setVisibility(View.VISIBLE);
-        storyBinding.storyLinkPreviewShimmer.startShimmer();
-        storyBinding.storyLinkDescription.setVisibility(View.GONE);
-        storyBinding.storyLinkError.setVisibility(View.GONE);
+    private void startStoryShimmers(@NonNull StoryPageHolder page) {
+        StoryLinkSummaryContentBinding content = page.content;
+        content.storyLinkDescriptionShimmer.setVisibility(View.VISIBLE);
+        content.storyLinkDescriptionShimmer.startShimmer();
+        content.storyLinkPreviewShimmer.setVisibility(View.VISIBLE);
+        content.storyLinkPreviewShimmer.startShimmer();
+        content.storyLinkDescription.setVisibility(View.GONE);
+        content.storyLinkError.setVisibility(View.GONE);
     }
 
-    private void loadStorySummary(Story story) {
-        String requestedUrl = visibleUrl;
-        summaryRequest = LinkSummaryLoader.load(host.getLinkSummaryContext(), requestedUrl, fallbackTitle,
+    private void loadStorySummary(
+            @NonNull StoryPageHolder page,
+            @NonNull Story story) {
+        String requestedUrl = page.pageUrl;
+        page.pageSummaryRequest = LinkSummaryLoader.load(
+                host.getLinkSummaryContext(), requestedUrl, page.pageFallbackTitle,
                 new LinkSummaryLoader.Callback() {
                     @Override public void onSuccess(@NonNull LinkSummaryLoader.Result result) {
-                        if (storyBinding == null || !TextUtils.equals(requestedUrl, visibleUrl)) return;
-                        summaryRequest = null;
-                        applyOrDeferStoryStateChange(() -> bindStoryResult(story, result));
+                        if (page.story != story
+                                || !TextUtils.equals(requestedUrl, page.pageUrl)) return;
+                        page.pageSummaryRequest = null;
+                        applyOrDeferStoryStateChange(
+                                page, () -> bindStoryResult(page, story, result));
                     }
                     @Override public void onFailure(@NonNull String message) {
-                        if (storyBinding == null || !TextUtils.equals(requestedUrl, visibleUrl)) return;
-                        summaryRequest = null;
-                        applyOrDeferStoryStateChange(() -> {
-                            beginContentTransition(STORY_CONTENT_TRANSITION_DURATION_MS);
-                            stopDescriptionShimmer(storyBinding.storyLinkDescriptionShimmer);
-                            if (storyBinding.storyLinkPreview.getVisibility() != View.VISIBLE) {
-                                hideStoryPreview();
+                        if (page.story != story
+                                || !TextUtils.equals(requestedUrl, page.pageUrl)) return;
+                        page.pageSummaryRequest = null;
+                        applyOrDeferStoryStateChange(page, () -> {
+                            beginStoryContentTransition(
+                                    page, STORY_CONTENT_TRANSITION_DURATION_MS);
+                            stopDescriptionShimmer(page.content.storyLinkDescriptionShimmer);
+                            if (page.content.storyLinkPreview.getVisibility() != View.VISIBLE) {
+                                hideStoryPreview(page);
                             }
                             if (isPdfContentTypeError(message)) {
-                                storyBinding.storyLinkError.setVisibility(View.GONE);
+                                page.content.storyLinkError.setVisibility(View.GONE);
                             } else {
-                                storyBinding.storyLinkError.setText(message);
-                                storyBinding.storyLinkError.setVisibility(View.VISIBLE);
+                                page.content.storyLinkError.setText(message);
+                                page.content.storyLinkError.setVisibility(View.VISIBLE);
                             }
-                            resizeScroll();
+                            resizeStoryPage(page);
                         });
                     }
                 });
     }
 
-    private void bindStoryResult(Story story, LinkSummaryLoader.Result result) {
-        if (!TextUtils.isEmpty(result.finalUrl)) visibleUrl = result.finalUrl;
-        beginContentTransition(STORY_CONTENT_TRANSITION_DURATION_MS);
-        setStoryTitle(story, firstNonEmpty(result.title, story.title, visibleUrl));
-        stopDescriptionShimmer(storyBinding.storyLinkDescriptionShimmer);
+    private void bindStoryResult(
+            @NonNull StoryPageHolder page,
+            @NonNull Story story,
+            @NonNull LinkSummaryLoader.Result result) {
+        if (!TextUtils.isEmpty(result.finalUrl)) page.pageUrl = result.finalUrl;
+        if (page == currentStoryPage) visibleUrl = page.pageUrl;
+        beginStoryContentTransition(page, STORY_CONTENT_TRANSITION_DURATION_MS);
+        setStoryTitle(page, story,
+                firstNonEmpty(result.title, story.title, page.pageUrl));
+        stopDescriptionShimmer(page.content.storyLinkDescriptionShimmer);
         if (!TextUtils.isEmpty(result.description)) {
-            storyBinding.storyLinkDescription.setText(result.description);
-            storyBinding.storyLinkDescription.setVisibility(View.VISIBLE);
+            page.content.storyLinkDescription.setText(result.description);
+            page.content.storyLinkDescription.setVisibility(View.VISIBLE);
         } else {
-            storyBinding.storyLinkDescription.setVisibility(View.GONE);
+            page.content.storyLinkDescription.setVisibility(View.GONE);
         }
         String imageUrl = firstNonEmpty(result.imageUrl, story.previewImageUrl);
         if (TextUtils.isEmpty(imageUrl)) {
-            hideStoryPreview();
+            hideStoryPreview(page);
         } else {
             story.previewImageUrl = imageUrl;
             story.previewImageUrlLoaded = true;
-            if (!imageUrl.equals(storyBinding.storyLinkPreview.getTag())
-                    || storyBinding.storyLinkPreview.getVisibility() != View.VISIBLE) {
-                loadStoryImage(story, imageUrl);
+            if (!imageUrl.equals(page.content.storyLinkPreview.getTag())
+                    || page.content.storyLinkPreview.getVisibility() != View.VISIBLE) {
+                loadStoryImage(page, story, imageUrl);
             }
         }
-        resizeScroll();
+        resizeStoryPage(page);
     }
 
-    private void loadStoryImage(Story story, String imageUrl) {
-        ImageView imageView = storyBinding.storyLinkPreview;
+    private void loadStoryImage(
+            @NonNull StoryPageHolder page,
+            @NonNull Story story,
+            @NonNull String imageUrl) {
+        ImageView imageView = page.content.storyLinkPreview;
         Drawable requestFallback = imageView.getDrawable();
         imageView.setTag(imageUrl);
-        storyBinding.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
-        storyBinding.storyLinkPreviewShimmer.setVisibility(View.VISIBLE);
-        storyBinding.storyLinkPreviewShimmer.startShimmer();
+        page.content.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
+        page.content.storyLinkPreviewShimmer.setVisibility(View.VISIBLE);
+        page.content.storyLinkPreviewShimmer.startShimmer();
         ImageRequest request = new ImageRequest.Builder(imageView.getContext())
                 .data(imageUrl).setHeader("User-Agent", NetworkComponent.USER_AGENT)
                 .allowHardware(false).crossfade(true)
                 .target(new ImageViewTarget(imageView) {
                     @Override public void onStart(Drawable placeholder) {
-                        if (requestFallback == null && getStoryImageSourceDrawable() == null) {
+                        if (requestFallback == null
+                                && getStoryImageSourceDrawable(page) == null) {
                             super.onStart(placeholder);
                         }
                     }
                     @Override public void onSuccess(Drawable result) {
-                        if (!isCurrentStoryImageTarget(imageView, imageUrl)) return;
+                        if (!isCurrentStoryImageTarget(page, story, imageView, imageUrl)) return;
                         super.onSuccess(result);
                         PreviewImageLayoutUtils.applyWideImageHeight(
                                 imageView,
-                                storyBinding.storyLinkPreviewContainer,
+                                page.content.storyLinkPreviewContainer,
                                 result,
                                 STORY_PREVIEW_DEFAULT_HEIGHT_DP);
-                        storyBinding.storyLinkPreviewShimmer.stopShimmer();
-                        storyBinding.storyLinkPreviewShimmer.setVisibility(View.GONE);
+                        page.content.storyLinkPreviewShimmer.stopShimmer();
+                        page.content.storyLinkPreviewShimmer.setVisibility(View.GONE);
                         imageView.setVisibility(View.VISIBLE);
                         int base = PreviewImageTintUtils.getTintBaseColor(imageView.getContext());
                         PreviewImageTintUtils.updateStoryPreviewImageTintColor(story, imageUrl, result, base,
                                 SettingsUtils.getPreferredPaletteTintConfigKey(imageView.getContext()));
-                        imageView.post(this::resizeStoryScroll);
-                    }
-                    private void resizeStoryScroll() {
-                        if (storyBinding != null) {
-                            resizeScroll();
-                        }
+                        imageView.post(() -> resizeStoryPage(page));
                     }
                     @Override public void onError(Drawable error) {
-                        if (!isCurrentStoryImageTarget(imageView, imageUrl)) return;
+                        if (!isCurrentStoryImageTarget(page, story, imageView, imageUrl)) return;
                         Drawable retainedDrawable = imageView.getDrawable();
                         if (retainedDrawable == null) {
                             retainedDrawable = requestFallback;
                         }
                         if (retainedDrawable == null) {
-                            Drawable sourceDrawable = getStoryImageSourceDrawable();
+                            Drawable sourceDrawable = getStoryImageSourceDrawable(page);
                             if (sourceDrawable != null) {
                                 retainedDrawable = copyDrawable(
                                         sourceDrawable, imageView.getResources());
@@ -1116,29 +1496,37 @@ final class LinkSummaryOverlayController {
                             imageView.setImageDrawable(retainedDrawable);
                             PreviewImageLayoutUtils.applyWideImageHeight(
                                     imageView,
-                                    storyBinding.storyLinkPreviewContainer,
+                                    page.content.storyLinkPreviewContainer,
                                     retainedDrawable,
                                     STORY_PREVIEW_DEFAULT_HEIGHT_DP);
-                            stopPreviewShimmer(storyBinding.storyLinkPreviewShimmer);
-                            storyBinding.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
+                            stopPreviewShimmer(page.content.storyLinkPreviewShimmer);
+                            page.content.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
                             imageView.setVisibility(View.VISIBLE);
-                            resizeScroll();
+                            resizeStoryPage(page);
                             return;
                         }
 
                         super.onError(null);
-                        beginContentTransition(STORY_CONTENT_TRANSITION_DURATION_MS);
-                        stopPreviewShimmer(storyBinding.storyLinkPreviewShimmer);
-                        hideStoryPreview();
-                        resizeScroll();
+                        beginStoryContentTransition(
+                                page, STORY_CONTENT_TRANSITION_DURATION_MS);
+                        stopPreviewShimmer(page.content.storyLinkPreviewShimmer);
+                        hideStoryPreview(page);
+                        resizeStoryPage(page);
                     }
                 }).build();
         Coil.imageLoader(imageView.getContext()).enqueue(request);
     }
 
     @Nullable
-    private Drawable getStoryImageSourceDrawable() {
-        return storyImageSourceView == null ? null : storyImageSourceView.getDrawable();
+    private Drawable getStoryImageSourceDrawable(@NonNull StoryPageHolder page) {
+        if (page == currentStoryPage && storyImageSourceView != null) {
+            return storyImageSourceView.getDrawable();
+        }
+        if (page.story == null) return null;
+        StorySharedElements elements =
+                host.findLinkSummaryStorySharedElements(page.story.id);
+        return elements == null || elements.image == null
+                ? null : elements.image.getDrawable();
     }
 
     private static Drawable copyDrawable(Drawable source, Resources resources) {
@@ -1148,9 +1536,13 @@ final class LinkSummaryOverlayController {
                 : constantState.newDrawable(resources).mutate();
     }
 
-    private boolean isCurrentStoryImageTarget(ImageView imageView, String imageUrl) {
-        return storyBinding != null
-                && storyBinding.storyLinkPreview == imageView
+    private boolean isCurrentStoryImageTarget(
+            @NonNull StoryPageHolder page,
+            @NonNull Story story,
+            @NonNull ImageView imageView,
+            @NonNull String imageUrl) {
+        return page.story == story
+                && page.content.storyLinkPreview == imageView
                 && imageUrl.equals(imageView.getTag());
     }
 
@@ -1525,74 +1917,85 @@ final class LinkSummaryOverlayController {
         referenceBinding.referenceLinkDescriptionShimmer.setVisibility(View.GONE);
     }
 
-    private void hideStoryPreview() {
-        if (storyBinding == null) return;
-        stopPreviewShimmer(storyBinding.storyLinkPreviewShimmer);
-        if (enterTransitionStarted && !enterTransitionComplete) {
-            pendingStoryPreviewHide = true;
+    private void hideStoryPreview(@NonNull StoryPageHolder page) {
+        stopPreviewShimmer(page.content.storyLinkPreviewShimmer);
+        if (page == currentStoryPage && enterTransitionStarted && !enterTransitionComplete) {
+            page.pendingPreviewHide = true;
             return;
         }
-        pendingStoryPreviewHide = false;
+        page.pendingPreviewHide = false;
         if (enterTransitionComplete) {
-            beginContentTransition(STORY_CONTENT_TRANSITION_DURATION_MS);
+            beginStoryContentTransition(page, STORY_CONTENT_TRANSITION_DURATION_MS);
         }
-        storyBinding.storyLinkPreview.setVisibility(View.GONE);
-        storyBinding.storyLinkPreviewContainer.setVisibility(View.GONE);
+        page.content.storyLinkPreview.setVisibility(View.GONE);
+        page.content.storyLinkPreviewContainer.setVisibility(View.GONE);
     }
 
-    private void finishPendingStoryPreviewHide() {
-        if (!pendingStoryPreviewHide || storyBinding == null) {
-            return;
+    private void finishPendingStoryPreviewHides() {
+        if (storyPagerAdapter == null) return;
+        for (int position = 0; position < storyPagerAdapter.getItemCount(); position++) {
+            StoryPageHolder page = storyPagerAdapter.getBoundHolder(position);
+            if (page == null || !page.pendingPreviewHide) continue;
+            hideStoryPreview(page);
+            resizeStoryPage(page);
         }
-        hideStoryPreview();
-        resizeScroll();
     }
 
-    private void applyOrDeferStoryStateChange(@NonNull Runnable stateChange) {
-        if (storyBinding == null) return;
-        StoryLinkSummaryContentBinding expectedBinding = storyBinding;
+    private void applyOrDeferStoryStateChange(
+            @NonNull StoryPageHolder page,
+            @NonNull Runnable stateChange) {
+        Story expectedStory = page.story;
         Runnable guardedStateChange = () -> {
-            if (storyBinding != expectedBinding || binding == null) return;
+            if (page.story != expectedStory || binding == null) return;
             stateChange.run();
         };
-        if (!enterTransitionComplete) {
-            pendingStoryStateChange = guardedStateChange;
+        if (page == currentStoryPage && !enterTransitionComplete) {
+            page.pendingStateChange = guardedStateChange;
             return;
         }
         guardedStateChange.run();
     }
 
-    private void finishPendingStoryStateChange() {
-        Runnable stateChange = pendingStoryStateChange;
-        pendingStoryStateChange = null;
-        if (stateChange == null || storyBinding == null) return;
-        storyBinding.getRoot().post(() -> {
-            if (!enterTransitionComplete) {
-                pendingStoryStateChange = stateChange;
-                return;
-            }
-            stateChange.run();
-        });
-    }
-
-    private void setStoryTitle(Story story, String fallback) {
-        Context context = storyBinding.storyLinkTitle.getContext();
-        if (!TextUtils.isEmpty(story.pdfTitle)) {
-            storyBinding.storyLinkTitle.setText(TextSizeImageSpan.createWithTrailingBadge(
-                    context, story.pdfTitle, R.drawable.ic_action_pdf));
-        } else if (!TextUtils.isEmpty(story.videoTitle)) {
-            storyBinding.storyLinkTitle.setText(TextSizeImageSpan.createWithTrailingBadge(
-                    context, story.videoTitle, R.drawable.ic_action_video));
-        } else {
-            storyBinding.storyLinkTitle.setText(fallback);
+    private void finishPendingStoryStateChanges() {
+        if (storyPagerAdapter == null) return;
+        for (int position = 0; position < storyPagerAdapter.getItemCount(); position++) {
+            StoryPageHolder page = storyPagerAdapter.getBoundHolder(position);
+            if (page == null || page.pendingStateChange == null) continue;
+            Runnable stateChange = page.pendingStateChange;
+            page.pendingStateChange = null;
+            page.content.getRoot().post(() -> {
+                if (!enterTransitionComplete) {
+                    page.pendingStateChange = stateChange;
+                    return;
+                }
+                stateChange.run();
+            });
         }
     }
 
-    private void beginContentTransition(int durationMs) {
+    private void setStoryTitle(
+            @NonNull StoryPageHolder page,
+            @NonNull Story story,
+            @NonNull String fallback) {
+        Context context = page.content.storyLinkTitle.getContext();
+        if (!TextUtils.isEmpty(story.pdfTitle)) {
+            page.content.storyLinkTitle.setText(TextSizeImageSpan.createWithTrailingBadge(
+                    context, story.pdfTitle, R.drawable.ic_action_pdf));
+        } else if (!TextUtils.isEmpty(story.videoTitle)) {
+            page.content.storyLinkTitle.setText(TextSizeImageSpan.createWithTrailingBadge(
+                    context, story.videoTitle, R.drawable.ic_action_video));
+        } else {
+            page.content.storyLinkTitle.setText(fallback);
+        }
+    }
+
+    private void beginStoryContentTransition(
+            @NonNull StoryPageHolder page,
+            int durationMs) {
         if (binding == null || !enterTransitionComplete) return;
         AutoTransition transition = new AutoTransition();
         transition.setDuration(durationMs);
-        TransitionManager.beginDelayedTransition(binding.linkSummaryContent, transition);
+        TransitionManager.beginDelayedTransition(page.pageBinding.getRoot(), transition);
     }
 
     private void animateReferenceStateChange(@NonNull Runnable stateChange) {
@@ -1673,12 +2076,26 @@ final class LinkSummaryOverlayController {
                 setSourceVisible(storyTitleSourceView, false);
                 setSourceVisible(storyMetaSourceView, false);
                 card.setVisibility(View.VISIBLE);
-                finishPendingStoryPreviewHide();
-                finishPendingStoryStateChange();
+                finishStoryPagerEnter();
                 finishPendingReferenceStateChange();
             }
-            if (imageBinding == null) resizeScroll();
+            if (currentStoryPage != null) {
+                resizeStoryPage(currentStoryPage);
+            } else if (imageBinding == null) {
+                resizeScroll();
+            }
         });
+    }
+
+    private void finishStoryPagerEnter() {
+        if (storyPager == null) return;
+        setSourceVisible(sourceView, true);
+        setSourceVisible(storyImageSourceView, true);
+        setSourceVisible(storyTitleSourceView, true);
+        setSourceVisible(storyMetaSourceView, true);
+        storyPager.setUserInputEnabled(true);
+        finishPendingStoryPreviewHides();
+        finishPendingStoryStateChanges();
     }
 
     private int resolveDialogBackground(Context context, @Nullable View source) {
@@ -1746,6 +2163,21 @@ final class LinkSummaryOverlayController {
         target.setLayoutParams(params);
     }
 
+    private void configureStoryPageWidth(@NonNull StoryPageHolder page) {
+        Context context = page.pageCard.getContext();
+        int max = Utils.pxFromDpInt(context.getResources(),
+                Utils.isTablet(context.getResources()) ? 640 : 520);
+        int available = page.itemView.getWidth();
+        if (available <= 0) {
+            available = context.getResources().getDisplayMetrics().widthPixels
+                    - Utils.pxFromDpInt(context.getResources(), 40);
+        }
+        FrameLayout.LayoutParams params =
+                (FrameLayout.LayoutParams) page.pageCard.getLayoutParams();
+        params.width = Math.min(max, available);
+        page.pageCard.setLayoutParams(params);
+    }
+
     private void refreshForLayout() {
         if (binding == null || card == null) return;
         if (imageBinding != null) {
@@ -1774,6 +2206,23 @@ final class LinkSummaryOverlayController {
             params.height = height > available ? available : ViewGroup.LayoutParams.WRAP_CONTENT;
             scroll.setLayoutParams(params);
             scroll.setVerticalFadingEdgeEnabled(height > available);
+        });
+    }
+
+    private void resizeStoryPage(@NonNull StoryPageHolder page) {
+        page.pageScroll.post(() -> {
+            if (binding == null || page.story == null
+                    || page.pageScroll.getChildCount() == 0) {
+                return;
+            }
+            int available = page.itemView.getHeight();
+            if (available <= 0) return;
+            int height = page.pageScroll.getChildAt(0).getHeight();
+            ViewGroup.LayoutParams params = page.pageScroll.getLayoutParams();
+            params.height = height > available
+                    ? available : ViewGroup.LayoutParams.WRAP_CONTENT;
+            page.pageScroll.setLayoutParams(params);
+            page.pageScroll.setVerticalFadingEdgeEnabled(height > available);
         });
     }
 
@@ -2089,6 +2538,10 @@ final class LinkSummaryOverlayController {
         if (binding == null || card == null) { removeNow(); return; }
         dismissing = true;
         predictiveBackActive = false;
+        if (storyPager != null) {
+            storyPager.setUserInputEnabled(false);
+            host.clearLinkSummaryStoryPagingAlphas(animate);
+        }
         cancelSummaryRequest();
         ViewGroup overlayHost = host.getLinkSummaryOverlayHost();
         View end = resolveSourceView();
@@ -2136,6 +2589,7 @@ final class LinkSummaryOverlayController {
     void removeNow() {
         cancelSummaryRequest();
         finishStorySharedElementSnapshotAnimation();
+        host.clearLinkSummaryStoryPagingAlphas(false);
         if (referenceBinding != null) {
             referenceBinding.referenceLinkMetadataContainer.animate().cancel();
         }
@@ -2159,7 +2613,11 @@ final class LinkSummaryOverlayController {
         restoreStorySharedElementAlphas();
         if (overlay.getParent() instanceof ViewGroup) ((ViewGroup) overlay.getParent()).removeView(overlay);
         removeLinkPositionSource();
+        if (storyPager != null) {
+            storyPager.setAdapter(null);
+        }
         overlay = null; binding = null; card = null; storyBinding = null;
+        storyPager = null; storyPagerAdapter = null; currentStoryPage = null;
         referenceBinding = null; imageBinding = null;
         sourceView = null; storyImageSourceView = null; storyTitleSourceView = null;
         storyMetaSourceView = null;
@@ -2169,8 +2627,9 @@ final class LinkSummaryOverlayController {
         visibleUrl = null; fallbackTitle = null; dismissing = false;
         predictiveBackActive = false; enterTransitionStarted = false;
         enterTransitionComplete = false;
-        pendingStoryStateChange = null;
         pendingReferenceStateChange = null;
+        lastStoryPagerPosition = Float.NaN;
+        pendingStoryListScrollPixels = 0f;
         referenceImageExpanded = false;
         if (wasShowingImage) host.setLinkSummaryImageSourceSuppressed(false);
         host.syncLinkSummaryBackState();
@@ -2186,6 +2645,7 @@ final class LinkSummaryOverlayController {
 
     private void cancelSummaryRequest() {
         if (summaryRequest != null) { summaryRequest.cancel(); summaryRequest = null; }
+        if (storyPagerAdapter != null) storyPagerAdapter.cancelAllRequests();
     }
 
     void startPredictiveBack(@NonNull BackEventCompat event) {
@@ -2265,8 +2725,7 @@ final class LinkSummaryOverlayController {
                     transition.removeListener(this);
                     enterTransitionComplete = true;
                     restoreStorySharedElementAlphas();
-                    finishPendingStoryPreviewHide();
-                    finishPendingStoryStateChange();
+                    finishStoryPagerEnter();
                     finishPendingReferenceStateChange();
                 }
             }

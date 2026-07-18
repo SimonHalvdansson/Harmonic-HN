@@ -12,6 +12,7 @@ import android.transition.AutoTransition;
 import android.transition.TransitionManager;
 import android.transition.TransitionSet;
 import android.util.Log;
+import android.util.SparseIntArray;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -143,6 +144,7 @@ public class StoriesFragment extends Fragment {
     private int systemBottomInset = 0;
     private OnBackPressedCallback linkSummaryBackCallback;
     private int pendingLinkSummaryStoryId = NO_PENDING_LINK_SUMMARY_STORY_ID;
+    private final SparseIntArray linkSummaryStoryHeights = new SparseIntArray();
     private final LinkSummaryOverlayController linkSummaryOverlayController =
             new LinkSummaryOverlayController(new LinkSummaryOverlayController.Host() {
                 @Nullable
@@ -174,6 +176,55 @@ public class StoriesFragment extends Fragment {
                 public LinkSummaryOverlayController.StorySharedElements findLinkSummaryStorySharedElements(
                         int storyId) {
                     return StoriesFragment.this.findLinkSummaryStorySharedElements(storyId);
+                }
+
+                @Override
+                public int getLinkSummaryStoryCount() {
+                    if (stories == null || adapter == null) return 0;
+                    return Math.min(stories.size(), adapter.getVisibleStoryItemCount());
+                }
+
+                @Nullable
+                @Override
+                public Story getLinkSummaryStoryAt(int position) {
+                    if (stories == null || position < 0 || position >= stories.size()) {
+                        return null;
+                    }
+                    return stories.get(position);
+                }
+
+                @Override
+                public int getLinkSummaryStoryPagingDistance(
+                        int firstStoryId, int secondStoryId) {
+                    return StoriesFragment.this.getLinkSummaryStoryPagingDistance(
+                            firstStoryId, secondStoryId);
+                }
+
+                @Override
+                public void scrollLinkSummaryStoryListBy(int dy) {
+                    if (recyclerView != null && dy != 0) {
+                        recyclerView.scrollBy(0, dy);
+                    }
+                }
+
+                @Override
+                public void setLinkSummaryStoryPagingAlphas(
+                        int firstStoryId, float firstAlpha,
+                        int secondStoryId, float secondAlpha) {
+                    if (adapter != null) {
+                        adapter.setPreviewPagingAlphas(
+                                firstStoryId, firstAlpha, secondStoryId, secondAlpha);
+                    }
+                }
+
+                @Override
+                public void clearLinkSummaryStoryPagingAlphas(boolean animate) {
+                    if (mainAdapter != null) {
+                        mainAdapter.clearPreviewPagingAlphas(animate);
+                    }
+                    if (searchAdapter != null) {
+                        searchAdapter.clearPreviewPagingAlphas(animate);
+                    }
                 }
 
                 @Override
@@ -2911,6 +2962,78 @@ public class StoriesFragment extends Fragment {
             }
         }
         return null;
+    }
+
+    private int getLinkSummaryStoryPagingDistance(int firstStoryId, int secondStoryId) {
+        if (stories == null || recyclerView == null) return 0;
+        cacheVisibleLinkSummaryStoryHeights();
+        int firstPosition = findStoryPositionById(firstStoryId);
+        int secondPosition = findStoryPositionById(secondStoryId);
+        if (firstPosition == RecyclerView.NO_POSITION
+                || secondPosition == RecyclerView.NO_POSITION
+                || firstPosition == secondPosition) {
+            return resolveLinkSummaryStoryHeight(firstStoryId, firstPosition);
+        }
+        int start = Math.min(firstPosition, secondPosition);
+        int end = Math.max(firstPosition, secondPosition);
+        int distance = 0;
+        for (int position = start; position < end; position++) {
+            Story story = stories.get(position);
+            distance += resolveLinkSummaryStoryHeight(story.id, position);
+        }
+        return distance;
+    }
+
+    private void cacheVisibleLinkSummaryStoryHeights() {
+        if (recyclerView == null || recyclerView.getLayoutManager() == null
+                || stories == null) {
+            return;
+        }
+        RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
+        for (int childIndex = 0; childIndex < recyclerView.getChildCount(); childIndex++) {
+            View child = recyclerView.getChildAt(childIndex);
+            int position = recyclerView.getChildAdapterPosition(child);
+            if (position == RecyclerView.NO_POSITION || position >= stories.size()) continue;
+            int height = layoutManager.getDecoratedMeasuredHeight(child);
+            if (height > 0) {
+                linkSummaryStoryHeights.put(stories.get(position).id, height);
+            }
+        }
+    }
+
+    private int resolveLinkSummaryStoryHeight(int storyId, int position) {
+        int cachedHeight = linkSummaryStoryHeights.get(storyId, 0);
+        if (cachedHeight > 0) return cachedHeight;
+        if (recyclerView != null && recyclerView.getLayoutManager() != null
+                && position != RecyclerView.NO_POSITION) {
+            RecyclerView.ViewHolder holder =
+                    recyclerView.findViewHolderForAdapterPosition(position);
+            if (holder != null) {
+                int measuredHeight = recyclerView.getLayoutManager()
+                        .getDecoratedMeasuredHeight(holder.itemView);
+                if (measuredHeight > 0) {
+                    linkSummaryStoryHeights.put(storyId, measuredHeight);
+                    return measuredHeight;
+                }
+            }
+        }
+        if (linkSummaryStoryHeights.size() > 0) {
+            int totalHeight = 0;
+            for (int index = 0; index < linkSummaryStoryHeights.size(); index++) {
+                totalHeight += linkSummaryStoryHeights.valueAt(index);
+            }
+            return Math.max(1, totalHeight / linkSummaryStoryHeights.size());
+        }
+        return Utils.pxFromDpInt(getResources(), 96);
+    }
+
+    private int findStoryPositionById(int storyId) {
+        if (stories == null) return RecyclerView.NO_POSITION;
+        for (int position = 0; position < stories.size(); position++) {
+            Story story = stories.get(position);
+            if (story != null && story.id == storyId) return position;
+        }
+        return RecyclerView.NO_POSITION;
     }
 
     @Nullable
