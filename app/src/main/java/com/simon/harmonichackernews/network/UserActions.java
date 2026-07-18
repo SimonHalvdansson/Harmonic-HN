@@ -688,7 +688,13 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
                         return;
                     }
 
-                    FavoriteLinkResult linkResult = findFavoriteLink(body, id, favorite);
+                    Document document = Jsoup.parse(body, BASE_WEB_URL + "/");
+                    String itemTitle = findHackerNewsItemTitle(document, id);
+                    if (!TextUtils.isEmpty(itemTitle)) {
+                        main.post(() -> cb.onItemTitleLoaded(id, itemTitle));
+                    }
+
+                    FavoriteLinkResult linkResult = findFavoriteLink(document, id, favorite);
                     if (linkResult.alreadyDesiredState) {
                         if (favorite) {
                             Utils.addFavorite(ctx, id);
@@ -807,6 +813,10 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
 
     private static FavoriteLinkResult findFavoriteLink(String body, int id, boolean favorite) {
         Document document = Jsoup.parse(body, BASE_WEB_URL + "/");
+        return findFavoriteLink(document, id, favorite);
+    }
+
+    private static FavoriteLinkResult findFavoriteLink(Document document, int id, boolean favorite) {
         FavoriteLinkResult result = new FavoriteLinkResult();
 
         for (Element link : document.select("a[href]")) {
@@ -836,6 +846,12 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
         }
 
         return result;
+    }
+
+    private static String findHackerNewsItemTitle(Document document, int id) {
+        Element item = document.getElementById(String.valueOf(id));
+        Element titleLink = item == null ? null : item.selectFirst("span.titleline > a");
+        return titleLink == null ? "" : titleLink.text().trim();
     }
 
 
@@ -1270,6 +1286,9 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
     public interface ActionCallback {
         void onSuccess(Response response);
         void onFailure(String summary, String response);
+
+        default void onItemTitleLoaded(int itemId, String title) {
+        }
 
         default void onCaptchaRequired(CaptchaChallenge challenge) {
             onFailure("Captcha required", "HN requires a captcha for this action. Please try again in a browser.");
