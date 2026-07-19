@@ -25,6 +25,7 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.ViewParent;
@@ -43,6 +44,7 @@ import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.widget.NestedScrollView;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.Transition;
 import androidx.transition.AutoTransition;
@@ -359,6 +361,8 @@ final class LinkSummaryOverlayController {
     private static final float INLINE_LINK_RETURN_FADE_START = 0.45f;
     private static final float INLINE_LINK_RETURN_FADE_END = 0.75f;
     private static final float STORY_PAGE_FADE_START = 0.75f;
+    private static final int STORY_PAGER_OFFSCREEN_PAGE_LIMIT = 2;
+    private static final int STORY_PAGER_SETTLE_RECOVERY_DELAY_MS = 450;
 
     private static final class StoryPageEntry {
         @NonNull final Story story;
@@ -478,10 +482,12 @@ final class LinkSummaryOverlayController {
     private MaterialCardView card;
     private StoryLinkSummaryContentBinding storyBinding;
     private ViewPager2 storyPager;
+    private RecyclerView storyPagerRecyclerView;
     private StoryPagerAdapter storyPagerAdapter;
     private StoryPageHolder currentStoryPage;
     private float lastStoryPagerPosition = Float.NaN;
     private float pendingStoryListScrollPixels;
+    private Runnable storyPagerSettleRecovery;
     private ReferenceLinkSummaryContentBinding referenceBinding;
     private ImageOnlyOverlayContentBinding imageBinding;
     private View sourceView;
@@ -539,6 +545,7 @@ final class LinkSummaryOverlayController {
         setupStoryPager(story, position);
     }
 
+    @SuppressLint("WrongConstant") // ViewPager2 accepts any offscreen page limit >= 1.
     private void setupStoryPager(@NonNull Story openedStory, int openedPosition) {
         if (binding == null) return;
         List<StoryPageEntry> entries = new ArrayList<>();
@@ -564,7 +571,10 @@ final class LinkSummaryOverlayController {
         storyPager = binding.linkSummaryStoryPager;
         storyPager.setVisibility(View.VISIBLE);
         storyPager.setOrientation(ViewPager2.ORIENTATION_VERTICAL);
-        storyPager.setOffscreenPageLimit(1);
+        // Keep the page after each immediate neighbor ready as well. When a user starts another
+        // swipe before the first one has settled, that page is the new adjacent page and must not
+        // be inflated and bound on the first frames of the gesture.
+        storyPager.setOffscreenPageLimit(STORY_PAGER_OFFSCREEN_PAGE_LIMIT);
         // Pages draw outside their bounds for card elevation, so hide adjacent cards at rest.
         storyPager.setPageTransformer((page, pagePosition) -> {
             float distanceFromSelectedPage = Math.min(1f, Math.abs(pagePosition));
@@ -576,6 +586,13 @@ final class LinkSummaryOverlayController {
         storyPager.setUserInputEnabled(false);
         storyPagerAdapter = new StoryPagerAdapter(entries);
         storyPager.setAdapter(storyPagerAdapter);
+        View pagerChild = storyPager.getChildAt(0);
+        if (pagerChild instanceof RecyclerView) {
+            storyPagerRecyclerView = (RecyclerView) pagerChild;
+            storyPagerRecyclerView.setItemViewCacheSize(
+                    STORY_PAGER_OFFSCREEN_PAGE_LIMIT * 2 + 1);
+            configureStoryPagerSettleRecovery(storyPagerRecyclerView);
+        }
         final int startingItem = initialItem;
         lastStoryPagerPosition = startingItem;
         pendingStoryListScrollPixels = 0f;
@@ -587,17 +604,16 @@ final class LinkSummaryOverlayController {
             }
 
             @Override
-            public void onPageSelected(int position) {
-                activateStoryPage(position);
-            }
-
-            @Override
             public void onPageScrollStateChanged(int state) {
+                if (state == ViewPager2.SCROLL_STATE_SETTLING) {
+                    scheduleStoryPagerSettleRecovery();
+                }
                 if (state == ViewPager2.SCROLL_STATE_IDLE && storyPager != null) {
+                    cancelStoryPagerSettleRecovery();
                     int position = storyPager.getCurrentItem();
                     lastStoryPagerPosition = position;
                     updateStoryPagingProgress(position, 0f);
-                    activateStoryPage(position);
+                    finishStoryPagerPageChange(position);
                 }
             }
         });
@@ -610,24 +626,122 @@ final class LinkSummaryOverlayController {
 
     @SuppressLint("ClickableViewAccessibility")
     private void configureNestedStoryScroll(@NonNull StoryPageHolder holder) {
+        final int touchSlop = ViewConfiguration.get(holder.itemView.getContext())
+                .getScaledTouchSlop();
+        final float[] downX = new float[1];
         final float[] downY = new float[1];
         holder.pageScroll.setOnTouchListener((view, event) -> {
             if (storyPager == null) return false;
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                cancelStoryPagerSettleRecovery();
+                downX[0] = event.getX();
                 downY[0] = event.getY();
                 view.getParent().requestDisallowInterceptTouchEvent(true);
             } else if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
-                float delta = downY[0] - event.getY();
-                int direction = delta > 0f ? 1 : -1;
-                boolean letPageScroll = Math.abs(delta) > 0f
-                        && holder.pageScroll.canScrollVertically(direction);
-                view.getParent().requestDisallowInterceptTouchEvent(letPageScroll);
+                float deltaX = event.getX() - downX[0];
+                float deltaY = event.getY() - downY[0];
+                if (deltaY != 0f && Math.abs(deltaY) >= Math.abs(deltaX)) {
+                    int direction = deltaY > 0f ? -1 : 1;
+                    if (!holder.pageScroll.canScrollVertically(direction)) {
+                        // Most story dialogs fit without scrolling. Hand their paging gesture to
+                        // ViewPager2 on the first directional movement instead of holding it until
+                        // touch slop is crossed and making the pager jump to catch up.
+                        view.getParent().requestDisallowInterceptTouchEvent(false);
+                        return false;
+                    }
+                }
+                float scaledDeltaX = Math.abs(deltaX);
+                float scaledDeltaY = Math.abs(deltaY) * 0.5f;
+                if (scaledDeltaX > touchSlop || scaledDeltaY > touchSlop) {
+                    boolean verticalGesture = scaledDeltaY > scaledDeltaX;
+                    int direction = deltaY > 0f ? -1 : 1;
+                    boolean letPageScroll = verticalGesture
+                            && holder.pageScroll.canScrollVertically(direction);
+                    view.getParent().requestDisallowInterceptTouchEvent(letPageScroll);
+                }
             } else if (event.getActionMasked() == MotionEvent.ACTION_UP
                     || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
                 view.getParent().requestDisallowInterceptTouchEvent(false);
+                if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                    scheduleStoryPagerSettleRecovery();
+                }
             }
             return false;
         });
+    }
+
+    private void configureStoryPagerSettleRecovery(@NonNull RecyclerView pagerRecyclerView) {
+        pagerRecyclerView.addOnItemTouchListener(new RecyclerView.SimpleOnItemTouchListener() {
+            @Override
+            public boolean onInterceptTouchEvent(
+                    @NonNull RecyclerView recyclerView,
+                    @NonNull MotionEvent event) {
+                int action = event.getActionMasked();
+                if (action == MotionEvent.ACTION_DOWN) {
+                    cancelStoryPagerSettleRecovery();
+                } else if (action == MotionEvent.ACTION_UP
+                        || action == MotionEvent.ACTION_CANCEL) {
+                    scheduleStoryPagerSettleRecovery();
+                }
+                return false;
+            }
+        });
+    }
+
+    private void scheduleStoryPagerSettleRecovery() {
+        ViewPager2 expectedPager = storyPager;
+        if (expectedPager == null || dismissing) return;
+        cancelStoryPagerSettleRecovery();
+        storyPagerSettleRecovery = () -> {
+            if (storyPager != expectedPager) return;
+            storyPagerSettleRecovery = null;
+            snapStoryPagerToNearestPage();
+        };
+        expectedPager.postDelayed(
+                storyPagerSettleRecovery, STORY_PAGER_SETTLE_RECOVERY_DELAY_MS);
+    }
+
+    private void cancelStoryPagerSettleRecovery() {
+        if (storyPager != null && storyPagerSettleRecovery != null) {
+            storyPager.removeCallbacks(storyPagerSettleRecovery);
+        }
+        storyPagerSettleRecovery = null;
+    }
+
+    private void snapStoryPagerToNearestPage() {
+        if (storyPager == null || storyPagerRecyclerView == null
+                || storyPagerAdapter == null || dismissing) {
+            return;
+        }
+        RecyclerView.LayoutManager layoutManager = storyPagerRecyclerView.getLayoutManager();
+        if (!(layoutManager instanceof LinearLayoutManager)) return;
+        LinearLayoutManager linearLayoutManager = (LinearLayoutManager) layoutManager;
+        int firstPosition = linearLayoutManager.findFirstVisibleItemPosition();
+        View firstPage = linearLayoutManager.findViewByPosition(firstPosition);
+        if (firstPosition == RecyclerView.NO_POSITION || firstPage == null) return;
+
+        int pageStart = linearLayoutManager.getDecoratedTop(firstPage)
+                - storyPagerRecyclerView.getPaddingTop();
+        boolean aligned = pageStart == 0;
+        if (aligned && storyPager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE) {
+            return;
+        }
+
+        int targetPosition = firstPosition;
+        int pageHeight = linearLayoutManager.getDecoratedMeasuredHeight(firstPage);
+        if (pageHeight > 0 && -pageStart >= pageHeight / 2) {
+            targetPosition++;
+        }
+        targetPosition = Math.max(0,
+                Math.min(targetPosition, storyPagerAdapter.getItemCount() - 1));
+        if (storyPager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE
+                && targetPosition == storyPager.getCurrentItem()) {
+            // ViewPager2 ignores setCurrentItem for its current item while it reports idle, even
+            // if an interrupted RecyclerView scroll left that item slightly off its snap point.
+            storyPagerRecyclerView.scrollToPosition(targetPosition);
+        } else {
+            storyPager.setCurrentItem(targetPosition, false);
+        }
     }
 
     private void updateStoryPagingProgress(int position, float positionOffset) {
@@ -647,6 +761,20 @@ final class LinkSummaryOverlayController {
         float pagerPosition = lowerPosition + clampedOffset;
         scrollStoryListForPagerDelta(lastStoryPagerPosition, pagerPosition);
         lastStoryPagerPosition = pagerPosition;
+    }
+
+    private void finishStoryPagerPageChange(int position) {
+        ViewPager2 expectedPager = storyPager;
+        if (expectedPager == null) return;
+        expectedPager.post(() -> {
+            if (storyPager != expectedPager || storyPagerAdapter == null
+                    || expectedPager.getScrollState() != ViewPager2.SCROLL_STATE_IDLE
+                    || expectedPager.getCurrentItem() != position) {
+                return;
+            }
+            activateStoryPage(position);
+            finishPendingStoryStateChanges();
+        });
     }
 
     private void scrollStoryListForPagerDelta(float previousPosition, float currentPosition) {
@@ -674,6 +802,7 @@ final class LinkSummaryOverlayController {
                 cursor = end;
             }
         }
+        flushPendingStoryListScroll();
     }
 
     private void addStoryListScrollForSegment(int segment, float pageDelta) {
@@ -687,6 +816,9 @@ final class LinkSummaryOverlayController {
                 first.story.id, second.story.id);
         if (distance <= 0) return;
         pendingStoryListScrollPixels += pageDelta * distance;
+    }
+
+    private void flushPendingStoryListScroll() {
         int wholePixels = pendingStoryListScrollPixels > 0f
                 ? (int) Math.floor(pendingStoryListScrollPixels)
                 : (int) Math.ceil(pendingStoryListScrollPixels);
@@ -706,7 +838,11 @@ final class LinkSummaryOverlayController {
             storyPager.post(() -> activateStoryPage(position));
             return;
         }
+        if (currentStoryPage != null && currentStoryPage != holder) {
+            setStoryPageShimmersRunning(currentStoryPage, false);
+        }
         currentStoryPage = holder;
+        setStoryPageShimmersRunning(holder, true);
         storyBinding = holder.content;
         card = holder.pageCard;
         visibleStoryId = holder.story == null ? NO_STORY_ID : holder.story.id;
@@ -1377,11 +1513,29 @@ final class LinkSummaryOverlayController {
     private void startStoryShimmers(@NonNull StoryPageHolder page) {
         StoryLinkSummaryContentBinding content = page.content;
         content.storyLinkDescriptionShimmer.setVisibility(View.VISIBLE);
-        content.storyLinkDescriptionShimmer.startShimmer();
         content.storyLinkPreviewShimmer.setVisibility(View.VISIBLE);
-        content.storyLinkPreviewShimmer.startShimmer();
+        setStoryPageShimmersRunning(page, page == currentStoryPage);
         content.storyLinkDescription.setVisibility(View.GONE);
         content.storyLinkError.setVisibility(View.GONE);
+    }
+
+    private void setStoryPageShimmersRunning(
+            @NonNull StoryPageHolder page,
+            boolean running) {
+        if (page.content.storyLinkDescriptionShimmer.getVisibility() == View.VISIBLE) {
+            if (running) {
+                page.content.storyLinkDescriptionShimmer.startShimmer();
+            } else {
+                page.content.storyLinkDescriptionShimmer.stopShimmer();
+            }
+        }
+        if (page.content.storyLinkPreviewShimmer.getVisibility() == View.VISIBLE) {
+            if (running) {
+                page.content.storyLinkPreviewShimmer.startShimmer();
+            } else {
+                page.content.storyLinkPreviewShimmer.stopShimmer();
+            }
+        }
     }
 
     private void loadStorySummary(
@@ -1398,7 +1552,7 @@ final class LinkSummaryOverlayController {
                         applyOrDeferStoryStateChange(
                                 page, () -> bindStoryResult(page, story, result));
                     }
-                    @Override public void onFailure(@NonNull String message) {
+                    @Override public void onFailure(@NonNull String ignoredMessage) {
                         if (page.story != story
                                 || !TextUtils.equals(requestedUrl, page.pageUrl)) return;
                         page.pageSummaryRequest = null;
@@ -1409,12 +1563,8 @@ final class LinkSummaryOverlayController {
                             if (page.content.storyLinkPreview.getVisibility() != View.VISIBLE) {
                                 hideStoryPreview(page);
                             }
-                            if (isPdfContentTypeError(message)) {
-                                page.content.storyLinkError.setVisibility(View.GONE);
-                            } else {
-                                page.content.storyLinkError.setText(message);
-                                page.content.storyLinkError.setVisibility(View.VISIBLE);
-                            }
+                            page.content.storyLinkError.setText(null);
+                            page.content.storyLinkError.setVisibility(View.GONE);
                             resizeStoryPage(page);
                         });
                     }
@@ -1460,7 +1610,11 @@ final class LinkSummaryOverlayController {
         imageView.setTag(imageUrl);
         page.content.storyLinkPreviewContainer.setVisibility(View.VISIBLE);
         page.content.storyLinkPreviewShimmer.setVisibility(View.VISIBLE);
-        page.content.storyLinkPreviewShimmer.startShimmer();
+        if (page == currentStoryPage) {
+            page.content.storyLinkPreviewShimmer.startShimmer();
+        } else {
+            page.content.storyLinkPreviewShimmer.stopShimmer();
+        }
         ImageRequest request = new ImageRequest.Builder(imageView.getContext())
                 .data(imageUrl).setHeader("User-Agent", NetworkComponent.USER_AGENT)
                 .allowHardware(false).crossfade(true)
@@ -1482,9 +1636,6 @@ final class LinkSummaryOverlayController {
                         page.content.storyLinkPreviewShimmer.stopShimmer();
                         page.content.storyLinkPreviewShimmer.setVisibility(View.GONE);
                         imageView.setVisibility(View.VISIBLE);
-                        int base = PreviewImageTintUtils.getTintBaseColor(imageView.getContext());
-                        PreviewImageTintUtils.updateStoryPreviewImageTintColor(story, imageUrl, result, base,
-                                SettingsUtils.getPreferredPaletteTintConfigKey(imageView.getContext()));
                         imageView.post(() -> resizeStoryPage(page));
                     }
                     @Override public void onError(Drawable error) {
@@ -1957,7 +2108,9 @@ final class LinkSummaryOverlayController {
             if (page.story != expectedStory || binding == null) return;
             stateChange.run();
         };
-        if (page == currentStoryPage && !enterTransitionComplete) {
+        if ((page == currentStoryPage && !enterTransitionComplete)
+                || (storyPager != null
+                && storyPager.getScrollState() != ViewPager2.SCROLL_STATE_IDLE)) {
             page.pendingStateChange = guardedStateChange;
             return;
         }
@@ -1972,7 +2125,9 @@ final class LinkSummaryOverlayController {
             Runnable stateChange = page.pendingStateChange;
             page.pendingStateChange = null;
             page.content.getRoot().post(() -> {
-                if (!enterTransitionComplete) {
+                if (!enterTransitionComplete
+                        || (storyPager != null
+                        && storyPager.getScrollState() != ViewPager2.SCROLL_STATE_IDLE)) {
                     page.pendingStateChange = stateChange;
                     return;
                 }
@@ -2000,7 +2155,11 @@ final class LinkSummaryOverlayController {
     private void beginStoryContentTransition(
             @NonNull StoryPageHolder page,
             int durationMs) {
-        if (binding == null || !enterTransitionComplete) return;
+        if (binding == null || !enterTransitionComplete || page != currentStoryPage
+                || (storyPager != null
+                && storyPager.getScrollState() != ViewPager2.SCROLL_STATE_IDLE)) {
+            return;
+        }
         AutoTransition transition = new AutoTransition();
         transition.setDuration(durationMs);
         TransitionManager.beginDelayedTransition(page.pageBinding.getRoot(), transition);
@@ -2595,6 +2754,7 @@ final class LinkSummaryOverlayController {
     }
 
     void removeNow() {
+        cancelStoryPagerSettleRecovery();
         cancelSummaryRequest();
         finishStorySharedElementSnapshotAnimation();
         host.clearLinkSummaryStoryPagingAlphas(false);
@@ -2625,7 +2785,8 @@ final class LinkSummaryOverlayController {
             storyPager.setAdapter(null);
         }
         overlay = null; binding = null; card = null; storyBinding = null;
-        storyPager = null; storyPagerAdapter = null; currentStoryPage = null;
+        storyPager = null; storyPagerRecyclerView = null;
+        storyPagerAdapter = null; currentStoryPage = null;
         referenceBinding = null; imageBinding = null;
         sourceView = null; storyImageSourceView = null; storyTitleSourceView = null;
         storyMetaSourceView = null;

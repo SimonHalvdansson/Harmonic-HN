@@ -479,15 +479,25 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public void setPreviewPagingAlphas(
             int firstStoryId, float firstAlpha,
             int secondStoryId, float secondAlpha) {
-        ArrayList<Integer> affectedStoryIds = new ArrayList<>();
-        for (int index = 0; index < previewPagingAlphas.size(); index++) {
-            affectedStoryIds.add(previewPagingAlphas.keyAt(index));
-        }
+        int previousFirstStoryId = previewPagingAlphas.size() > 0
+                ? previewPagingAlphas.keyAt(0) : RecyclerView.NO_POSITION;
+        int previousSecondStoryId = previewPagingAlphas.size() > 1
+                ? previewPagingAlphas.keyAt(1) : RecyclerView.NO_POSITION;
         previewPagingAlphas.clear();
-        putPreviewPagingAlpha(firstStoryId, firstAlpha, affectedStoryIds);
-        putPreviewPagingAlpha(secondStoryId, secondAlpha, affectedStoryIds);
-        for (Integer storyId : affectedStoryIds) {
-            applyPreviewPagingAlphaToVisibleStory(storyId, false);
+        putPreviewPagingAlpha(firstStoryId, firstAlpha);
+        putPreviewPagingAlpha(secondStoryId, secondAlpha);
+        applyPreviewPagingAlphaToVisibleStory(previousFirstStoryId, false);
+        if (previousSecondStoryId != previousFirstStoryId) {
+            applyPreviewPagingAlphaToVisibleStory(previousSecondStoryId, false);
+        }
+        if (firstStoryId != previousFirstStoryId
+                && firstStoryId != previousSecondStoryId) {
+            applyPreviewPagingAlphaToVisibleStory(firstStoryId, false);
+        }
+        if (secondStoryId != previousFirstStoryId
+                && secondStoryId != previousSecondStoryId
+                && secondStoryId != firstStoryId) {
+            applyPreviewPagingAlphaToVisibleStory(secondStoryId, false);
         }
     }
 
@@ -504,15 +514,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     private void putPreviewPagingAlpha(
             int storyId,
-            float alpha,
-            List<Integer> affectedStoryIds) {
+            float alpha) {
         if (storyId < 0) return;
         float clampedAlpha = Math.max(0f, Math.min(1f, alpha));
         if (clampedAlpha < 1f) {
             previewPagingAlphas.put(storyId, clampedAlpha);
-        }
-        if (!affectedStoryIds.contains(storyId)) {
-            affectedStoryIds.add(storyId);
         }
     }
 
@@ -524,15 +530,16 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 recyclerView.findViewHolderForAdapterPosition(position);
         if (!(holder instanceof StoryViewHolder)) return;
         View itemView = holder.itemView;
-        itemView.animate().cancel();
         Float alpha = previewPagingAlphas.get(storyId);
         float targetAlpha = alpha == null ? 1f : alpha;
         if (animate) {
+            itemView.animate().cancel();
             itemView.animate().alpha(targetAlpha)
                     .setDuration(CLICKED_STATE_ANIMATION_DURATION_MS)
                     .setListener(null)
                     .start();
-        } else {
+        } else if (itemView.getAlpha() != targetAlpha) {
+            itemView.animate().cancel();
             itemView.setAlpha(targetAlpha);
         }
     }
