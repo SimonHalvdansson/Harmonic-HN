@@ -1537,7 +1537,6 @@ class CommentsWebViewController {
                     webViewToDestroy.onPause();
                     webViewToDestroy.removeAllViews();
                     webViewToDestroy.destroyDrawingCache();
-                    webViewToDestroy.pauseTimers();
                 }
                 webViewToDestroy.destroy();
             } catch (RuntimeException e) {
@@ -1805,6 +1804,18 @@ class CommentsWebViewController {
                 showCustomErrorPage(view, request.getUrl() != null ? request.getUrl().toString() : null, errorPageType);
             } else {
                 super.onReceivedError(view, request, error);
+            }
+        }
+
+        @Override
+        public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+            if (request != null && request.isForMainFrame()) {
+                String failingUrl = request.getUrl() != null ? request.getUrl().toString() : null;
+                int statusCode = errorResponse != null ? errorResponse.getStatusCode() : -1;
+                Log.w("MY_APP_TAG", "WebView HTTP error " + statusCode + " for " + failingUrl);
+                showCustomErrorPage(view, failingUrl, ErrorPageType.GENERIC);
+            } else {
+                super.onReceivedHttpError(view, request, errorResponse);
             }
         }
 
