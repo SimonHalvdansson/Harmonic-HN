@@ -3,10 +3,12 @@ package com.simon.harmonichackernews;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.preference.Preference;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.simon.harmonichackernews.settings.BaseSettingsFragment;
 import com.simon.harmonichackernews.settings.DebugHnIdPreference;
@@ -37,8 +39,14 @@ public class DebugFragment extends BaseSettingsFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        getListView().setFocusableInTouchMode(true);
-        getListView().requestFocus();
+        RecyclerView listView = getListView();
+        int descendantFocusability = listView.getDescendantFocusability();
+        listView.setDescendantFocusability(ViewGroup.FOCUS_BEFORE_DESCENDANTS);
+        listView.setFocusableInTouchMode(true);
+        listView.post(() -> {
+            listView.requestFocus();
+            listView.setDescendantFocusability(descendantFocusability);
+        });
     }
 
     @Override
