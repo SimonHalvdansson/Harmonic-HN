@@ -242,7 +242,7 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
         PreferenceManager.getDefaultSharedPreferences(context)
                 .edit()
                 .clear()
-                .commit();
+                .apply();
         AiSummaryApiKeyStore.clearApiKey(context);
 
         SharedPreferences.Editor globalPrefsEditor = context
@@ -252,7 +252,7 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
         globalPrefsEditor.remove(Utils.KEY_NIGHTTIME_FROM_MINUTE);
         globalPrefsEditor.remove(Utils.KEY_NIGHTTIME_TO_HOUR);
         globalPrefsEditor.remove(Utils.KEY_NIGHTTIME_TO_MINUTE);
-        globalPrefsEditor.commit();
+        globalPrefsEditor.apply();
 
         Utils.toast("Settings reset", context);
         restartSettingsActivity();

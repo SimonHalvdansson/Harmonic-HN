@@ -56,7 +56,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
     public static void setSkipFetch(Context context, int appWidgetId, boolean skip) {
         Utils.log("WidgetFactory setSkipFetch widgetId=" + appWidgetId + " skip=" + skip);
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putBoolean(KEY_SKIP_FETCH_PREFIX + appWidgetId, skip).commit();
+                .edit().putBoolean(KEY_SKIP_FETCH_PREFIX + appWidgetId, skip).apply();
     }
 
     public static void setSkipFetchAll(Context context, boolean skip) {
@@ -68,7 +68,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         for (int id : ids) {
             editor.putBoolean(KEY_SKIP_FETCH_PREFIX + id, skip);
         }
-        editor.commit();
+        editor.apply();
     }
 
     static void setRefreshing(Context context, int appWidgetId, boolean refreshing) {
