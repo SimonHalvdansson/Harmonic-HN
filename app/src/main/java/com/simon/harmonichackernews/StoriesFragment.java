@@ -1054,6 +1054,11 @@ public class StoriesFragment extends Fragment {
             public boolean canScrollVertically() {
                 return !shouldLockRecyclerScroll() && super.canScrollVertically();
             }
+
+            @Override
+            public boolean supportsPredictiveItemAnimations() {
+                return false;
+            }
         };
     }
 
@@ -2276,7 +2281,10 @@ public class StoriesFragment extends Fragment {
 
     private void replaceStories(List<Story> newStories, boolean notifyDataSetChanged, boolean showLoadMoreButton) {
         resetPreviewImagePrefetchRamp();
-        if (notifyDataSetChanged) {
+        // A full remove followed immediately by an insert can leave disappearing holders in
+        // RecyclerView's hidden-child list while slow item animations are still running.
+        // Detach for non-empty replacements so those holders are fully recycled first.
+        if (notifyDataSetChanged || adapter.getItemCount() > 0) {
             boolean detachedAdapter = detachAdapterForHardSwap();
             stories.clear();
             resetPaginationState();
