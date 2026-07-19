@@ -358,6 +358,7 @@ final class LinkSummaryOverlayController {
     private static final float PREDICTIVE_BACK_MIN_SCRIM_ALPHA = 0.45f;
     private static final float INLINE_LINK_RETURN_FADE_START = 0.45f;
     private static final float INLINE_LINK_RETURN_FADE_END = 0.75f;
+    private static final float STORY_PAGE_FADE_START = 0.75f;
 
     private static final class StoryPageEntry {
         @NonNull final Story story;
@@ -564,6 +565,14 @@ final class LinkSummaryOverlayController {
         storyPager.setVisibility(View.VISIBLE);
         storyPager.setOrientation(ViewPager2.ORIENTATION_VERTICAL);
         storyPager.setOffscreenPageLimit(1);
+        // Pages draw outside their bounds for card elevation, so hide adjacent cards at rest.
+        storyPager.setPageTransformer((page, pagePosition) -> {
+            float distanceFromSelectedPage = Math.min(1f, Math.abs(pagePosition));
+            float fadeProgress = Math.max(0f,
+                    (distanceFromSelectedPage - STORY_PAGE_FADE_START)
+                            / (1f - STORY_PAGE_FADE_START));
+            page.setAlpha(1f - fadeProgress);
+        });
         storyPager.setUserInputEnabled(false);
         storyPagerAdapter = new StoryPagerAdapter(entries);
         storyPager.setAdapter(storyPagerAdapter);
