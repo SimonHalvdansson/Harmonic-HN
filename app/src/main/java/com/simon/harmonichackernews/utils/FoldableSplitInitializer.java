@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.utils;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 
@@ -44,6 +45,7 @@ public class FoldableSplitInitializer implements Initializer<RuleController> {
       return SplitController.getInstance(context).getSplitSupportStatus().equals(SplitSupportStatus.SPLIT_AVAILABLE);
    }
 
+   @SuppressLint("InlinedApi")
    private static boolean isFoldableDevice(Context context) {
       return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE);
    }
