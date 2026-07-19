@@ -84,7 +84,9 @@ import com.simon.harmonichackernews.utils.TextSizeImageSpan;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
+import io.noties.markwon.AbstractMarkwonPlugin;
 import io.noties.markwon.Markwon;
+import io.noties.markwon.core.MarkwonTheme;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.jetbrains.annotations.NotNull;
@@ -754,7 +756,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         headerViewHolder.summary.setMaxLines(Integer.MAX_VALUE);
         headerViewHolder.summary.setEllipsize(null);
         if (hasSummary) {
-            Markwon.create(ctx).setMarkdown(headerViewHolder.summary, story.summary);
+            int bulletWidth = Math.max(1, Math.round(headerViewHolder.summary.getTextSize() * 0.28f));
+            Markwon markwon = Markwon.builder(ctx)
+                    .usePlugin(new AbstractMarkwonPlugin() {
+                        @Override
+                        public void configureTheme(@NonNull MarkwonTheme.Builder builder) {
+                            builder.bulletWidth(bulletWidth);
+                        }
+                    })
+                    .build();
+            markwon.setMarkdown(headerViewHolder.summary, story.summary);
         } else {
             headerViewHolder.summary.setText(null);
         }
