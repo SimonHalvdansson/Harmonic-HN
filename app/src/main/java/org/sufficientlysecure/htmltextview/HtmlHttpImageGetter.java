@@ -29,6 +29,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
+import androidx.core.content.res.ResourcesCompat;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -83,10 +85,13 @@ public class HtmlHttpImageGetter implements ImageGetter {
     public Drawable getDrawable(String source) {
         UrlDrawable urlDrawable = new UrlDrawable();
         if (placeHolder != 0) {
-            Drawable placeDrawable = container.getContext().getResources().getDrawable(placeHolder);
-            placeDrawable.setBounds(0, 0, placeDrawable.getIntrinsicWidth(), placeDrawable.getIntrinsicHeight());
-            urlDrawable.setBounds(0, 0, placeDrawable.getIntrinsicWidth(), placeDrawable.getIntrinsicHeight());
-            urlDrawable.drawable = placeDrawable;
+            Drawable placeDrawable = ResourcesCompat.getDrawable(
+                    container.getResources(), placeHolder, container.getContext().getTheme());
+            if (placeDrawable != null) {
+                placeDrawable.setBounds(0, 0, placeDrawable.getIntrinsicWidth(), placeDrawable.getIntrinsicHeight());
+                urlDrawable.setBounds(0, 0, placeDrawable.getIntrinsicWidth(), placeDrawable.getIntrinsicHeight());
+                urlDrawable.drawable = placeDrawable;
+            }
         }
         // get the actual source
         ImageGetterAsyncTask asyncTask = new ImageGetterAsyncTask(urlDrawable, this, container,

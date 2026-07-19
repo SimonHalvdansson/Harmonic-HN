@@ -21,7 +21,9 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.text.Html;
 import android.util.Log;
+
 import androidx.annotation.NonNull;
+import androidx.core.content.res.ResourcesCompat;
 
 /**
  * Copied from http://stackoverflow.com/a/22298833
@@ -46,7 +48,12 @@ public class HtmlResImageGetter implements Html.ImageGetter {
             Log.e(HtmlTextView.TAG, "source could not be found: " + source);
             return null;
         } else {
-            Drawable d = context.getResources().getDrawable(id);
+            Drawable d = ResourcesCompat.getDrawable(
+                    context.getResources(), id, context.getTheme());
+            if (d == null) {
+                Log.e(HtmlTextView.TAG, "drawable could not be loaded: " + source);
+                return null;
+            }
             d.setBounds(0, 0, d.getIntrinsicWidth(), d.getIntrinsicHeight());
             return d;
         }
