@@ -1059,6 +1059,28 @@ public class StoriesFragment extends Fragment {
             public boolean supportsPredictiveItemAnimations() {
                 return false;
             }
+
+            @Override
+            public void onLayoutChildren(@NonNull RecyclerView.Recycler recycler,
+                                         @NonNull RecyclerView.State state) {
+                try {
+                    super.onLayoutChildren(recycler, state);
+                } catch (IllegalArgumentException exception) {
+                    String message = exception.getMessage();
+                    if (message == null
+                            || !message.startsWith("Called attach on a child which is not detached")) {
+                        throw exception;
+                    }
+
+                    // RecyclerView can occasionally leave a holder in its scrap list after its
+                    // temporary-detached flag has already been cleared. Discard that one layout's
+                    // scrap state and retry with fully recycled holders instead of crashing.
+                    Log.w(TAG, "Recovering from stale detached story holder", exception);
+                    removeAndRecycleAllViews(recycler);
+                    recycler.clear();
+                    super.onLayoutChildren(recycler, state);
+                }
+            }
         };
     }
 
@@ -2281,10 +2303,7 @@ public class StoriesFragment extends Fragment {
 
     private void replaceStories(List<Story> newStories, boolean notifyDataSetChanged, boolean showLoadMoreButton) {
         resetPreviewImagePrefetchRamp();
-        // A full remove followed immediately by an insert can leave disappearing holders in
-        // RecyclerView's hidden-child list while slow item animations are still running.
-        // Detach for non-empty replacements so those holders are fully recycled first.
-        if (notifyDataSetChanged || adapter.getItemCount() > 0) {
+        if (notifyDataSetChanged) {
             boolean detachedAdapter = detachAdapterForHardSwap();
             stories.clear();
             resetPaginationState();
