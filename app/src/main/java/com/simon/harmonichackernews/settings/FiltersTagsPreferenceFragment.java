@@ -28,14 +28,17 @@ public class FiltersTagsPreferenceFragment extends BaseSettingsFragment {
 
         setupFilterPreference(
                 "pref_filter",
+                "Hide stories containing these words or phrases in the title",
                 "Word or phrase",
                 "No story title filters");
         setupFilterPreference(
                 "pref_filter_domains",
+                "Hide stories from these domains",
                 "Domain",
                 "No domain filters");
         setupFilterPreference(
                 "pref_filter_users",
+                "Hide stories and comments posted by these users",
                 "Username",
                 "No blocked users");
 
@@ -111,7 +114,8 @@ public class FiltersTagsPreferenceFragment extends BaseSettingsFragment {
         }
     }
 
-    private void setupFilterPreference(String key, String inputHint, String emptyMessage) {
+    private void setupFilterPreference(
+            String key, String subtitle, String inputHint, String emptyMessage) {
         Preference preference = findPreference(key);
         if (preference == null) {
             return;
@@ -122,6 +126,7 @@ public class FiltersTagsPreferenceFragment extends BaseSettingsFragment {
                     getParentFragmentManager(),
                     clickedPreference.getKey(),
                     String.valueOf(clickedPreference.getTitle()),
+                    subtitle,
                     inputHint,
                     emptyMessage);
             return true;

@@ -7,24 +7,21 @@
 
         <Preference
             app:singleLineTitle="false"
-            app:title="Filter stories"
+            app:title="Filter by story title"
             app:key="pref_filter"
-            app:icon="@drawable/ic_filter_list"
-            app:summary="Hide stories based on words in title" />
+            app:icon="@drawable/ic_title" />
 
         <Preference
             app:singleLineTitle="false"
-            app:title="Filter stories by domain"
+            app:title="Filter by domain"
             app:key="pref_filter_domains"
-            app:icon="@drawable/ic_block"
-            app:summary="Hide stories based on domain name" />
+            app:icon="@drawable/ic_public" />
 
         <Preference
             app:singleLineTitle="false"
             app:title="Blocked users"
             app:key="pref_filter_users"
-            app:icon="@drawable/ic_block"
-            app:summary="Hide comments by the specified users" />
+            app:icon="@drawable/ic_person" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"

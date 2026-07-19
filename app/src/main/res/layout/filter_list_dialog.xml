@@ -13,12 +13,21 @@
         android:paddingRight="24dp"
         android:paddingBottom="8dp">
 
+        <TextView
+            android:id="@+id/filter_list_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/product_sans"
+            android:paddingTop="4dp"
+            android:paddingBottom="14dp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="4dp"
             android:paddingBottom="10dp">
 
             <com.google.android.material.textfield.TextInputLayout

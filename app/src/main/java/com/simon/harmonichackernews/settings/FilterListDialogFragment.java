@@ -30,6 +30,7 @@ public class FilterListDialogFragment extends AppCompatDialogFragment {
 
     private static final String ARG_KEY = "key";
     private static final String ARG_TITLE = "title";
+    private static final String ARG_SUBTITLE = "subtitle";
     private static final String ARG_INPUT_HINT = "input_hint";
     private static final String ARG_EMPTY_MESSAGE = "empty_message";
     private static final String STATE_ITEMS = "items";
@@ -44,12 +45,14 @@ public class FilterListDialogFragment extends AppCompatDialogFragment {
     public static void show(androidx.fragment.app.FragmentManager fm,
                             String key,
                             String title,
+                            String subtitle,
                             String inputHint,
                             String emptyMessage) {
         FilterListDialogFragment fragment = new FilterListDialogFragment();
         Bundle args = new Bundle();
         args.putString(ARG_KEY, key);
         args.putString(ARG_TITLE, title);
+        args.putString(ARG_SUBTITLE, subtitle);
         args.putString(ARG_INPUT_HINT, inputHint);
         args.putString(ARG_EMPTY_MESSAGE, emptyMessage);
         fragment.setArguments(args);
@@ -63,6 +66,7 @@ public class FilterListDialogFragment extends AppCompatDialogFragment {
         Bundle args = requireArguments();
         preferenceKey = args.getString(ARG_KEY, "");
         String title = args.getString(ARG_TITLE, "");
+        String subtitle = args.getString(ARG_SUBTITLE, "");
         String inputHint = args.getString(ARG_INPUT_HINT, "");
         String emptyMessage = args.getString(ARG_EMPTY_MESSAGE, "");
 
@@ -79,6 +83,7 @@ public class FilterListDialogFragment extends AppCompatDialogFragment {
         }
 
         FilterListDialogBinding binding = FilterListDialogBinding.inflate(getLayoutInflater());
+        binding.filterListSubtitle.setText(subtitle);
         listContainer = binding.filterListItems;
         emptyView = binding.filterListEmpty;
         inputLayout = binding.filterListInputLayout;
