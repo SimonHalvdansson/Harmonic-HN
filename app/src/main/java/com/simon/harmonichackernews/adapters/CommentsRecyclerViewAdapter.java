@@ -783,10 +783,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             storySummaryLoading = true;
             showHeaderSummaryLoading(headerViewHolder.summarizeButton, true);
-            summaryCallback.onRequest(() -> {
-                storySummaryLoading = false;
-                notifyItemChanged(0, HEADER_SUMMARY_UPDATE_PAYLOAD);
-            });
+            summaryCallback.onRequest(
+                    () -> notifyItemChanged(0, HEADER_SUMMARY_UPDATE_PAYLOAD),
+                    () -> {
+                        storySummaryLoading = false;
+                        notifyItemChanged(0, HEADER_SUMMARY_UPDATE_PAYLOAD);
+                    });
         });
     }
 
@@ -3596,7 +3598,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     public interface RequestSummaryCallback {
-        //maybe take a callback as argument here
-        void onRequest(Runnable onDone);
+        void onRequest(Runnable onUpdate, Runnable onDone);
     }
 }

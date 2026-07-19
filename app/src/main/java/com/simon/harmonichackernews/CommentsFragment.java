@@ -3121,7 +3121,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     @Override
-    public void onRequest(Runnable onDone) {
+    public void onRequest(Runnable onUpdate, Runnable onDone) {
         if (story == null || TextUtils.isEmpty(story.url)) {
             onDone.run();
             return;
@@ -3136,17 +3136,28 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 .getString("pref_ai_summary_mode", "cloud");
 
         if (webViewController != null) {
-            webViewController.getLoadedPageText(text -> summarizeStory(context, mode, text, onDone));
+            webViewController.getLoadedPageText(
+                    text -> summarizeStory(context, mode, text, onUpdate, onDone));
             return;
         }
 
-        summarizeStory(context, mode, null, onDone);
+        summarizeStory(context, mode, null, onUpdate, onDone);
     }
 
-    private void summarizeStory(Context context, String mode, @Nullable String articleText, Runnable onDone) {
+    private void summarizeStory(Context context,
+                                String mode,
+                                @Nullable String articleText,
+                                Runnable onUpdate,
+                                Runnable onDone) {
         boolean hasArticleText = !TextUtils.isEmpty(articleText);
         if ("local".equals(mode)) {
             SummaryManager.SummaryCallback callback = new SummaryManager.SummaryCallback() {
+                @Override
+                public void onProgress(String summary) {
+                    story.summary = summary;
+                    onUpdate.run();
+                }
+
                 @Override
                 public void onSuccess(String summary) {
                     story.summary = summary;
@@ -3168,6 +3179,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         } else {
             SummaryManager.SummaryCallback callback = new SummaryManager.SummaryCallback() {
+                @Override
+                public void onProgress(String summary) {
+                    story.summary = summary;
+                    onUpdate.run();
+                }
+
                 @Override
                 public void onSuccess(String summary) {
                     story.summary = summary;

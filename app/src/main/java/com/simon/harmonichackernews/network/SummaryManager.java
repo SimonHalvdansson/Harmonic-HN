@@ -8,7 +8,6 @@ import android.util.Log;
 
 import androidx.preference.PreferenceManager;
 
-import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
@@ -29,12 +28,24 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public class SummaryManager {
     private static final String TAG = "SummaryManager";
@@ -45,6 +56,9 @@ public class SummaryManager {
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
     public interface SummaryCallback {
+        default void onProgress(String summary) {
+        }
+
         void onSuccess(String summary);
         void onFailure(String error);
     }
@@ -360,6 +374,7 @@ public class SummaryManager {
         JSONObject payload = new JSONObject();
         try {
             payload.put("model", model);
+            payload.put("stream", true);
             JSONArray messages = new JSONArray();
 
             JSONObject systemMsg = new JSONObject();
@@ -377,29 +392,8 @@ public class SummaryManager {
             e.printStackTrace();
         }
 
-        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, payload,
-            response -> {
-                try {
-                    JSONArray choices = response.getJSONArray("choices");
-                    String summary = choices.getJSONObject(0).getJSONObject("message").getString("content");
-                    postSuccess(callback, summary);
-                } catch (JSONException e) {
-                    postFailure(callback, "API response error");
-                }
-            },
-            error -> {
-                postFailure(callback, "API error: " + getApiErrorMessage(error));
-            }
-        ) {
-            @Override
-            public Map<String, String> getHeaders() {
-                Map<String, String> headers = new HashMap<>();
-                headers.put("Authorization", "Bearer " + apiKey);
-                return headers;
-            }
-        };
-        request.setRetryPolicy(new DefaultRetryPolicy(120000, 0, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
-        queue.add(request);
+        streamSummary(url, payload, new okhttp3.Request.Builder()
+                .header("Authorization", "Bearer " + apiKey), false, callback);
     }
 
     private static void summarizeWithAnthropic(RequestQueue queue,
@@ -416,6 +410,7 @@ public class SummaryManager {
             payload.put("model", model);
             payload.put("max_tokens", CLOUD_SUMMARY_MAX_OUTPUT_TOKENS);
             payload.put("system", prompt);
+            payload.put("stream", true);
 
             JSONArray messages = new JSONArray();
             JSONObject userMsg = new JSONObject();
@@ -427,27 +422,167 @@ public class SummaryManager {
             e.printStackTrace();
         }
 
-        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, payload,
-            response -> {
-                String summary = parseAnthropicSummary(response);
-                if (TextUtils.isEmpty(summary)) {
-                    postFailure(callback, "API response error");
-                } else {
-                    postSuccess(callback, summary);
-                }
-            },
-            error -> postFailure(callback, "API error: " + getApiErrorMessage(error))
-        ) {
+        streamSummary(url, payload, new okhttp3.Request.Builder()
+                .header("x-api-key", apiKey)
+                .header("anthropic-version", "2023-06-01"), true, callback);
+    }
+
+    private static void streamSummary(String url,
+                                      JSONObject payload,
+                                      okhttp3.Request.Builder requestBuilder,
+                                      boolean anthropic,
+                                      SummaryCallback callback) {
+        RequestBody requestBody = RequestBody.create(payload.toString(),
+                MediaType.get("application/json; charset=utf-8"));
+        okhttp3.Request request = requestBuilder
+                .url(url)
+                .header("Accept", "text/event-stream")
+                .post(requestBody)
+                .build();
+        OkHttpClient client = NetworkComponent.getOkHttpClientInstance().newBuilder()
+                .readTimeout(120, TimeUnit.SECONDS)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
             @Override
-            public Map<String, String> getHeaders() {
-                Map<String, String> headers = new HashMap<>();
-                headers.put("x-api-key", apiKey);
-                headers.put("anthropic-version", "2023-06-01");
-                return headers;
+            public void onFailure(Call call, IOException e) {
+                postFailure(callback, "API error: " + getThrowableMessage(e));
             }
-        };
-        request.setRetryPolicy(new DefaultRetryPolicy(120000, 0, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
-        queue.add(request);
+
+            @Override
+            public void onResponse(Call call, Response response) {
+                try (ResponseBody body = response.body()) {
+                    if (!response.isSuccessful()) {
+                        String errorBody = body == null ? "" : body.string();
+                        postFailure(callback, "API error: "
+                                + getApiErrorMessage(errorBody, response.message()));
+                        return;
+                    }
+                    if (body == null) {
+                        postFailure(callback, "API response error");
+                        return;
+                    }
+
+                    readSummaryStream(body, anthropic, callback);
+                } catch (IOException e) {
+                    postFailure(callback, "API error: " + getThrowableMessage(e));
+                }
+            }
+        });
+    }
+
+    private static void readSummaryStream(ResponseBody body,
+                                          boolean anthropic,
+                                          SummaryCallback callback) throws IOException {
+        StringBuilder summary = new StringBuilder();
+        StringBuilder eventData = new StringBuilder();
+        StringBuilder plainResponse = new StringBuilder();
+        boolean sawSseData = false;
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(body.byteStream(), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isEmpty()) {
+                    if (eventData.length() > 0) {
+                        sawSseData = true;
+                        if (appendStreamEvent(eventData.toString(), anthropic, summary, callback)) {
+                            eventData.setLength(0);
+                            break;
+                        }
+                        eventData.setLength(0);
+                    }
+                } else if (line.startsWith("data:")) {
+                    if (eventData.length() > 0) {
+                        eventData.append('\n');
+                    }
+                    eventData.append(line.substring(5).trim());
+                } else if (!line.startsWith(":")) {
+                    if (plainResponse.length() > 0) {
+                        plainResponse.append('\n');
+                    }
+                    plainResponse.append(line);
+                }
+            }
+        }
+
+        if (eventData.length() > 0) {
+            sawSseData = true;
+            appendStreamEvent(eventData.toString(), anthropic, summary, callback);
+        }
+
+        if (!sawSseData && summary.length() == 0 && plainResponse.length() > 0) {
+            appendNonStreamingResponse(plainResponse.toString(), anthropic, summary, callback);
+        }
+
+        if (summary.length() == 0) {
+            postFailure(callback, "API response error");
+        } else {
+            postSuccess(callback, summary.toString());
+        }
+    }
+
+    private static boolean appendStreamEvent(String data,
+                                             boolean anthropic,
+                                             StringBuilder summary,
+                                             SummaryCallback callback) throws IOException {
+        if ("[DONE]".equals(data)) {
+            return true;
+        }
+
+        try {
+            JSONObject event = new JSONObject(data);
+            if ("error".equals(event.optString("type")) || event.has("error")) {
+                throw new IOException(getApiErrorMessage(data, "Streaming request failed"));
+            }
+
+            String chunk;
+            if (anthropic) {
+                JSONObject delta = event.optJSONObject("delta");
+                chunk = delta == null ? "" : delta.optString("text", "");
+            } else {
+                JSONArray choices = event.optJSONArray("choices");
+                JSONObject choice = choices == null ? null : choices.optJSONObject(0);
+                JSONObject delta = choice == null ? null : choice.optJSONObject("delta");
+                chunk = delta == null ? "" : delta.optString("content", "");
+            }
+
+            appendSummaryChunk(summary, chunk, callback);
+            return false;
+        } catch (JSONException e) {
+            throw new IOException("Invalid streaming response", e);
+        }
+    }
+
+    private static void appendNonStreamingResponse(String responseBody,
+                                                   boolean anthropic,
+                                                   StringBuilder summary,
+                                                   SummaryCallback callback) throws IOException {
+        try {
+            JSONObject response = new JSONObject(responseBody);
+            String content;
+            if (anthropic) {
+                content = parseAnthropicSummary(response);
+            } else {
+                JSONArray choices = response.optJSONArray("choices");
+                JSONObject choice = choices == null ? null : choices.optJSONObject(0);
+                JSONObject message = choice == null ? null : choice.optJSONObject("message");
+                content = message == null ? "" : message.optString("content", "");
+            }
+            appendSummaryChunk(summary, content, callback);
+        } catch (JSONException e) {
+            throw new IOException("Invalid API response", e);
+        }
+    }
+
+    private static void appendSummaryChunk(StringBuilder summary,
+                                           String chunk,
+                                           SummaryCallback callback) {
+        if (TextUtils.isEmpty(chunk)) {
+            return;
+        }
+        summary.append(chunk);
+        postProgress(callback, summary.toString());
     }
 
     private static String parseAnthropicSummary(JSONObject response) {
@@ -473,23 +608,25 @@ public class SummaryManager {
         return summary.toString();
     }
 
-    private static String getApiErrorMessage(com.android.volley.VolleyError error) {
-        String finalErrorMsg = error.getMessage() != null ? error.getMessage() : "Unknown error";
-        if (error.networkResponse != null && error.networkResponse.data != null) {
-            try {
-                String body = new String(error.networkResponse.data, "UTF-8");
-                JSONObject errorJson = new JSONObject(body);
-                if (errorJson.has("error")) {
-                    Object errorObject = errorJson.get("error");
-                    if (errorObject instanceof JSONObject) {
-                        finalErrorMsg = ((JSONObject) errorObject).optString("message", finalErrorMsg);
-                    } else if (errorObject instanceof String) {
-                        finalErrorMsg = (String) errorObject;
-                    }
-                }
-            } catch (Exception ignored) {}
+    private static String getApiErrorMessage(String body, String fallback) {
+        if (TextUtils.isEmpty(body)) {
+            return fallback;
         }
-        return finalErrorMsg;
+        try {
+            JSONObject errorJson = new JSONObject(body);
+            if (errorJson.has("error")) {
+                Object errorObject = errorJson.get("error");
+                if (errorObject instanceof JSONObject) {
+                    return ((JSONObject) errorObject).optString("message", fallback);
+                }
+                if (errorObject instanceof String) {
+                    return (String) errorObject;
+                }
+            }
+            return errorJson.optString("message", fallback);
+        } catch (JSONException ignored) {
+            return fallback;
+        }
     }
 
     private static String joinUrl(String baseUrl, String path) {
@@ -498,6 +635,10 @@ public class SummaryManager {
 
     private static void postSuccess(SummaryCallback callback, String summary) {
         MAIN_HANDLER.post(() -> callback.onSuccess(summary));
+    }
+
+    private static void postProgress(SummaryCallback callback, String summary) {
+        MAIN_HANDLER.post(() -> callback.onProgress(summary));
     }
 
     private static void postFailure(SummaryCallback callback, String error) {
