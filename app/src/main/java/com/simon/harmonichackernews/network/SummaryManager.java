@@ -52,6 +52,7 @@ public class SummaryManager {
     private static final int LOCAL_SUMMARY_MIN_CHARS = 400;
     private static final int LOCAL_SUMMARY_MAX_WORDS = 3000;
     private static final int CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 1000;
+    private static final String PREF_STREAM_RESPONSES = "pref_ai_summary_stream_responses";
     private static final String DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant that is an expert on summarizing articles into an information-dense, concise and brief bullet-point list. Focus on key takeaways and most important/note-worthy points in the article. Keep the summary under 500 characters where possible. Respond in markdown format. Respond with only the summarized content - nothing else before or after.";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
@@ -355,10 +356,14 @@ public class SummaryManager {
         }
 
         String prompt = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_system_prompt", DEFAULT_SYSTEM_PROMPT);
+        boolean streamResponses = PreferenceManager.getDefaultSharedPreferences(ctx)
+                .getBoolean(PREF_STREAM_RESPONSES, true);
         if (AiSummaryProviders.isAnthropicBaseUrl(baseUrl)) {
-            summarizeWithAnthropic(queue, baseUrl, apiKey, model, prompt, text, callback);
+            summarizeWithAnthropic(queue, baseUrl, apiKey, model, prompt, text,
+                    streamResponses, callback);
         } else {
-            summarizeWithChatCompletions(queue, baseUrl, apiKey, model, prompt, text, callback);
+            summarizeWithChatCompletions(queue, baseUrl, apiKey, model, prompt, text,
+                    streamResponses, callback);
         }
     }
 
@@ -368,13 +373,14 @@ public class SummaryManager {
                                                      String model,
                                                      String prompt,
                                                      String text,
+                                                     boolean streamResponses,
                                                      SummaryCallback callback) {
         String url = joinUrl(baseUrl, "chat/completions");
 
         JSONObject payload = new JSONObject();
         try {
             payload.put("model", model);
-            payload.put("stream", true);
+            payload.put("stream", streamResponses);
             JSONArray messages = new JSONArray();
 
             JSONObject systemMsg = new JSONObject();
@@ -392,8 +398,9 @@ public class SummaryManager {
             e.printStackTrace();
         }
 
-        streamSummary(url, payload, new okhttp3.Request.Builder()
-                .header("Authorization", "Bearer " + apiKey), false, callback);
+        requestSummary(url, payload, new okhttp3.Request.Builder()
+                .header("Authorization", "Bearer " + apiKey), false,
+                streamResponses, callback);
     }
 
     private static void summarizeWithAnthropic(RequestQueue queue,
@@ -402,6 +409,7 @@ public class SummaryManager {
                                                String model,
                                                String prompt,
                                                String text,
+                                               boolean streamResponses,
                                                SummaryCallback callback) {
         String url = joinUrl(baseUrl, "messages");
 
@@ -410,7 +418,7 @@ public class SummaryManager {
             payload.put("model", model);
             payload.put("max_tokens", CLOUD_SUMMARY_MAX_OUTPUT_TOKENS);
             payload.put("system", prompt);
-            payload.put("stream", true);
+            payload.put("stream", streamResponses);
 
             JSONArray messages = new JSONArray();
             JSONObject userMsg = new JSONObject();
@@ -422,21 +430,23 @@ public class SummaryManager {
             e.printStackTrace();
         }
 
-        streamSummary(url, payload, new okhttp3.Request.Builder()
+        requestSummary(url, payload, new okhttp3.Request.Builder()
                 .header("x-api-key", apiKey)
-                .header("anthropic-version", "2023-06-01"), true, callback);
+                .header("anthropic-version", "2023-06-01"), true,
+                streamResponses, callback);
     }
 
-    private static void streamSummary(String url,
-                                      JSONObject payload,
-                                      okhttp3.Request.Builder requestBuilder,
-                                      boolean anthropic,
-                                      SummaryCallback callback) {
+    private static void requestSummary(String url,
+                                       JSONObject payload,
+                                       okhttp3.Request.Builder requestBuilder,
+                                       boolean anthropic,
+                                       boolean streamResponses,
+                                       SummaryCallback callback) {
         RequestBody requestBody = RequestBody.create(payload.toString(),
                 MediaType.get("application/json; charset=utf-8"));
         okhttp3.Request request = requestBuilder
                 .url(url)
-                .header("Accept", "text/event-stream")
+                .header("Accept", streamResponses ? "text/event-stream" : "application/json")
                 .post(requestBody)
                 .build();
         OkHttpClient client = NetworkComponent.getOkHttpClientInstance().newBuilder()
@@ -463,12 +473,27 @@ public class SummaryManager {
                         return;
                     }
 
-                    readSummaryStream(body, anthropic, callback);
+                    if (streamResponses) {
+                        readSummaryStream(body, anthropic, callback);
+                    } else {
+                        readSummaryResponse(body, anthropic, callback);
+                    }
                 } catch (IOException e) {
                     postFailure(callback, "API error: " + getThrowableMessage(e));
                 }
             }
         });
+    }
+
+    private static void readSummaryResponse(ResponseBody body,
+                                            boolean anthropic,
+                                            SummaryCallback callback) throws IOException {
+        String summary = parseNonStreamingResponse(body.string(), anthropic);
+        if (TextUtils.isEmpty(summary)) {
+            postFailure(callback, "API response error");
+        } else {
+            postSuccess(callback, summary);
+        }
     }
 
     private static void readSummaryStream(ResponseBody body,
@@ -558,18 +583,20 @@ public class SummaryManager {
                                                    boolean anthropic,
                                                    StringBuilder summary,
                                                    SummaryCallback callback) throws IOException {
+        appendSummaryChunk(summary, parseNonStreamingResponse(responseBody, anthropic), callback);
+    }
+
+    private static String parseNonStreamingResponse(String responseBody,
+                                                    boolean anthropic) throws IOException {
         try {
             JSONObject response = new JSONObject(responseBody);
-            String content;
             if (anthropic) {
-                content = parseAnthropicSummary(response);
-            } else {
-                JSONArray choices = response.optJSONArray("choices");
-                JSONObject choice = choices == null ? null : choices.optJSONObject(0);
-                JSONObject message = choice == null ? null : choice.optJSONObject("message");
-                content = message == null ? "" : message.optString("content", "");
+                return parseAnthropicSummary(response);
             }
-            appendSummaryChunk(summary, content, callback);
+            JSONArray choices = response.optJSONArray("choices");
+            JSONObject choice = choices == null ? null : choices.optJSONObject(0);
+            JSONObject message = choice == null ? null : choice.optJSONObject("message");
+            return message == null ? "" : message.optString("content", "");
         } catch (JSONException e) {
             throw new IOException("Invalid API response", e);
         }

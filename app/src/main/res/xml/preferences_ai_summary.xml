@@ -38,4 +38,11 @@
         app:key="pref_ai_summary_system_prompt"
         app:icon="@drawable/ic_subject"
         app:singleLineTitle="false" />
+
+    <SwitchPreferenceCompat
+        app:defaultValue="true"
+        app:icon="@drawable/ic_stream"
+        app:key="pref_ai_summary_stream_responses"
+        app:singleLineTitle="false"
+        app:title="Stream responses" />
 </PreferenceScreen>

@@ -23,6 +23,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
     private static final String PREF_API_KEY = AiSummaryApiKeyStore.PREF_API_KEY;
     private static final String PREF_MODEL = "pref_ai_summary_model";
     private static final String PREF_SYSTEM_PROMPT = "pref_ai_summary_system_prompt";
+    private static final String PREF_STREAM_RESPONSES = "pref_ai_summary_stream_responses";
     private static final String DEFAULT_BASE_URL = AiSummaryProviders.getDefaultBaseUrl();
     private static final String DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant that is an expert on summarizing articles into an information-dense, concise and brief bullet-point list. Focus on key takeaways and most important/note-worthy points in the article. Keep the summary under 500 characters where possible. Respond in markdown format. Respond with only the summarized content - nothing else before or after.";
 
@@ -31,6 +32,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
     private Preference apiKeyPreference;
     private Preference modelPreference;
     private Preference systemPromptPreference;
+    private SwitchPreferenceCompat streamResponsesPreference;
     private AiSummaryModePreference modePreference;
 
     @Override
@@ -53,6 +55,7 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         apiKeyPreference = findPreference(PREF_API_KEY);
         modelPreference = findPreference(PREF_MODEL);
         systemPromptPreference = findPreference(PREF_SYSTEM_PROMPT);
+        streamResponsesPreference = findPreference(PREF_STREAM_RESPONSES);
 
         getParentFragmentManager().setFragmentResultListener(
                 AiSummaryTextDialogFragment.RESULT_KEY,
@@ -204,6 +207,9 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         if (apiKeyPreference != null) changePrefStatus(apiKeyPreference, cloudSettingsEnabled);
         if (modelPreference != null) changePrefStatus(modelPreference, cloudSettingsEnabled);
         if (systemPromptPreference != null) changePrefStatus(systemPromptPreference, cloudSettingsEnabled);
+        if (streamResponsesPreference != null) {
+            changePrefStatus(streamResponsesPreference, cloudSettingsEnabled);
+        }
     }
 
     private void updateEnablePreferenceAvailability() {
