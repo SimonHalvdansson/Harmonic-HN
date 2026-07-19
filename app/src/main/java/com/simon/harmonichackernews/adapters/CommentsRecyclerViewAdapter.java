@@ -173,6 +173,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private boolean storyVoteLoading = false;
     private boolean storyVoteLoadingTarget = false;
     private boolean storySummaryLoading = false;
+    private boolean storySummaryReceivedProgress = false;
+    @Nullable
+    private ValueAnimator headerSummaryHeightAnimator;
+    private int headerSummaryHeightAnimationTarget = -1;
     private float headerSlideOffset = 1f;
     @Nullable
     private Integer currentHeaderContentBackgroundColor;
@@ -197,6 +201,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private static final int HEADER_ACTION_ICON_SWAP_IN_DURATION_MS = 150;
     private static final float HEADER_ACTION_ICON_SWAP_MIN_SCALE = 0.72f;
     private static final int HEADER_READER_BUTTON_VISIBILITY_DURATION_MS = 160;
+    private static final int HEADER_SUMMARY_HEIGHT_DURATION_MS = 220;
+    private static final int HEADER_SUMMARY_COMPLETION_DURATION_MS = 180;
     private static final int HEADER_FAVORITE_LOADING_SIZE_DP = 28;
     private static final int REFERENCE_LINKS_CONTAINER_TOP_MARGIN_DP = 5;
     private static final int INTERLEAVED_REFERENCE_LINK_TOP_MARGIN_DP = 4;
@@ -745,13 +751,23 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void bindHeaderSummary(HeaderViewHolder headerViewHolder, Context ctx) {
-        boolean canSummarize = story.isLink
-                && Utils.canProvideSummary(ctx)
-                && !story.summaryGeneratedSuccessfully;
-        headerViewHolder.summarizeButtonParent.setVisibility(canSummarize ? VISIBLE : GONE);
+        bindHeaderSummaryContent(headerViewHolder, ctx, false);
+        bindHeaderSummaryAction(headerViewHolder, ctx);
+    }
+
+    private void bindHeaderSummaryContent(HeaderViewHolder headerViewHolder,
+                                          Context ctx,
+                                          boolean animateHeight) {
+        LinearLayout summaryContainer = headerViewHolder.summaryContainer;
+        int startHeight = summaryContainer.getVisibility() == VISIBLE
+                ? summaryContainer.getHeight()
+                : 0;
 
         boolean hasSummary = !TextUtils.isEmpty(story.summary);
-        headerViewHolder.summaryContainer.setVisibility(hasSummary ? VISIBLE : GONE);
+        if (currentHeaderContentBackgroundColor != null) {
+            summaryContainer.setBackgroundColor(currentHeaderContentBackgroundColor);
+        }
+        summaryContainer.setVisibility(hasSummary ? VISIBLE : GONE);
         headerViewHolder.summaryContentContainer.setVisibility(hasSummary ? VISIBLE : GONE);
         headerViewHolder.summary.setMaxLines(Integer.MAX_VALUE);
         headerViewHolder.summary.setEllipsize(null);
@@ -770,6 +786,19 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.summary.setText(null);
         }
 
+        if (animateHeight && hasSummary) {
+            animateHeaderSummaryHeight(summaryContainer, startHeight);
+        } else {
+            resetHeaderSummaryHeight(summaryContainer);
+        }
+    }
+
+    private void bindHeaderSummaryAction(HeaderViewHolder headerViewHolder, Context ctx) {
+        boolean canSummarize = story.isLink
+                && Utils.canProvideSummary(ctx)
+                && !story.summaryGeneratedSuccessfully;
+        headerViewHolder.summarizeButtonParent.setVisibility(canSummarize ? VISIBLE : GONE);
+
         if (storySummaryLoading) {
             showHeaderSummaryLoading(headerViewHolder.summarizeButton, false);
         } else {
@@ -782,14 +811,113 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
 
             storySummaryLoading = true;
+            storySummaryReceivedProgress = false;
             showHeaderSummaryLoading(headerViewHolder.summarizeButton, true);
             summaryCallback.onRequest(
-                    () -> notifyItemChanged(0, HEADER_SUMMARY_UPDATE_PAYLOAD),
+                    () -> {
+                        storySummaryReceivedProgress = true;
+                        updateBoundHeaderSummary(false);
+                    },
                     () -> {
                         storySummaryLoading = false;
-                        notifyItemChanged(0, HEADER_SUMMARY_UPDATE_PAYLOAD);
+                        if (storySummaryReceivedProgress) {
+                            updateBoundHeaderSummary(true);
+                        } else {
+                            notifyItemChanged(0, HEADER_SUMMARY_UPDATE_PAYLOAD);
+                        }
+                        storySummaryReceivedProgress = false;
                     });
         });
+    }
+
+    private void updateBoundHeaderSummary(boolean completed) {
+        HeaderViewHolder headerViewHolder = boundHeaderViewHolder;
+        if (headerViewHolder == null
+                || !ViewCompat.isAttachedToWindow(headerViewHolder.itemView)) {
+            notifyItemChanged(0, HEADER_SUMMARY_UPDATE_PAYLOAD);
+            return;
+        }
+
+        Context context = headerViewHolder.itemView.getContext();
+        bindHeaderSummaryContent(headerViewHolder, context, true);
+        if (!completed) {
+            return;
+        }
+
+        AutoTransition transition = new AutoTransition();
+        transition.setDuration(HEADER_SUMMARY_COMPLETION_DURATION_MS);
+        TransitionManager.beginDelayedTransition(headerViewHolder.actionsContainer, transition);
+        bindHeaderSummaryAction(headerViewHolder, context);
+    }
+
+    private void animateHeaderSummaryHeight(LinearLayout container, int startHeight) {
+        int width = container.getWidth();
+        if (width <= 0) {
+            resetHeaderSummaryHeight(container);
+            return;
+        }
+
+        container.measure(
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        int targetHeight = container.getMeasuredHeight();
+        if (headerSummaryHeightAnimator != null
+                && headerSummaryHeightAnimationTarget == targetHeight) {
+            return;
+        }
+
+        cancelHeaderSummaryHeightAnimation();
+        if (startHeight == targetHeight) {
+            setHeaderSummaryHeight(container, ViewGroup.LayoutParams.WRAP_CONTENT);
+            return;
+        }
+
+        setHeaderSummaryHeight(container, startHeight);
+        ValueAnimator animator = ValueAnimator.ofInt(startHeight, targetHeight);
+        headerSummaryHeightAnimator = animator;
+        headerSummaryHeightAnimationTarget = targetHeight;
+        animator.setDuration(HEADER_SUMMARY_HEIGHT_DURATION_MS);
+        animator.setInterpolator(new DecelerateInterpolator());
+        animator.addUpdateListener(valueAnimator -> {
+            if (headerSummaryHeightAnimator == valueAnimator) {
+                setHeaderSummaryHeight(container, (Integer) valueAnimator.getAnimatedValue());
+            }
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (headerSummaryHeightAnimator != animation) {
+                    return;
+                }
+                headerSummaryHeightAnimator = null;
+                headerSummaryHeightAnimationTarget = -1;
+                setHeaderSummaryHeight(container, ViewGroup.LayoutParams.WRAP_CONTENT);
+            }
+        });
+        animator.start();
+    }
+
+    private void resetHeaderSummaryHeight(LinearLayout container) {
+        cancelHeaderSummaryHeightAnimation();
+        setHeaderSummaryHeight(container, ViewGroup.LayoutParams.WRAP_CONTENT);
+    }
+
+    private void cancelHeaderSummaryHeightAnimation() {
+        ValueAnimator animator = headerSummaryHeightAnimator;
+        headerSummaryHeightAnimator = null;
+        headerSummaryHeightAnimationTarget = -1;
+        if (animator != null) {
+            animator.cancel();
+        }
+    }
+
+    private void setHeaderSummaryHeight(LinearLayout container, int height) {
+        ViewGroup.LayoutParams layoutParams = container.getLayoutParams();
+        if (layoutParams.height == height) {
+            return;
+        }
+        layoutParams.height = height;
+        container.setLayoutParams(layoutParams);
     }
 
     private void configureSummaryTitleIcon(TextView title) {
