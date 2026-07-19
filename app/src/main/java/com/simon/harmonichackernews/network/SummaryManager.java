@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.network;
 
 import android.content.Context;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
@@ -102,7 +101,7 @@ public class SummaryManager {
     }
 
     public static boolean canAttemptLocalSummarization() {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O;
+        return true;
     }
 
     public static void checkLocalSummaryAvailability(Context ctx, LocalSummaryAvailabilityCallback callback) {

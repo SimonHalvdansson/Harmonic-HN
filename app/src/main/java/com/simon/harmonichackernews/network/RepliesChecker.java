@@ -130,10 +130,6 @@ public class RepliesChecker {
     }
 
     public static void createNotificationChannel(Context ctx) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            return;
-        }
-
         NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
                 "Replies",

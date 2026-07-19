@@ -110,14 +110,8 @@ public class ThemeUtils {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             // All themes have nav bar color set to transparent so on API 29+ the system will draw
             // translucent scrim for us. However on older versions we need to set correct nav bar
-            // color manually. Also before API 26 Android doesn't support light nav bars, so we
-            // need to always use dark background
-            int navBarColor;
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-                navBarColor = defaultDarkScrim;
-            } else {
-                navBarColor = isDarkMode(activity) ? defaultDarkScrim : defaultLightScrim;
-            }
+            // color manually.
+            int navBarColor = isDarkMode(activity) ? defaultDarkScrim : defaultLightScrim;
             window.setNavigationBarColor(navBarColor);
         }
 

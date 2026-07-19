@@ -1767,17 +1767,15 @@ class CommentsWebViewController {
                 return true;
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (!detail.didCrash()) {
-                    Log.e("MY_APP_TAG", "System killed the WebView rendering process " +
-                            "to reclaim memory. Recreating...");
+            if (!detail.didCrash()) {
+                Log.e("MY_APP_TAG", "System killed the WebView rendering process " +
+                        "to reclaim memory. Recreating...");
 
-                    if (wasCurrentWebView) {
-                        restartWebView();
-                    }
-
-                    return true;
+                if (wasCurrentWebView) {
+                    restartWebView();
                 }
+
+                return true;
             }
             Context context = fragment.getContext();
             if (context != null && wasCurrentWebView) {
