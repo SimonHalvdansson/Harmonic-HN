@@ -569,7 +569,9 @@ final class LinkSummaryOverlayController {
 
         binding.linkSummaryCard.setVisibility(View.GONE);
         storyPager = binding.linkSummaryStoryPager;
-        storyPager.setVisibility(View.VISIBLE);
+        // Keep the pager laid out so the destination card can be measured, but do not let its
+        // bound content draw before the posted page activation has prepared the enter transition.
+        storyPager.setVisibility(View.INVISIBLE);
         storyPager.setOrientation(ViewPager2.ORIENTATION_VERTICAL);
         // Keep the page after each immediate neighbor ready as well. When a user starts another
         // swipe before the first one has settled, that page is the new adjacent page and must not
@@ -2226,6 +2228,7 @@ final class LinkSummaryOverlayController {
                         overlayHost,
                         transition,
                         MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
+                if (storyPager != null) storyPager.setVisibility(View.VISIBLE);
                 TransitionManager.beginDelayedTransition(overlayHost, transition);
                 binding.linkSummaryScrim.animate().alpha(1f).setDuration(TRANSFORM_DURATION_MS).start();
                 if (imageBinding != null) host.setLinkSummaryImageSourceSuppressed(true);
@@ -2237,6 +2240,7 @@ final class LinkSummaryOverlayController {
             } else {
                 enterTransitionComplete = true;
                 binding.linkSummaryScrim.setAlpha(1f);
+                if (storyPager != null) storyPager.setVisibility(View.VISIBLE);
                 if (imageBinding != null) host.setLinkSummaryImageSourceSuppressed(true);
                 setSourceVisible(sourceView, false);
                 setSourceVisible(storyImageSourceView, false);

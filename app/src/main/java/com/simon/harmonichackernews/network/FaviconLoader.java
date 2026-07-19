@@ -31,6 +31,10 @@ public class FaviconLoader {
             ImageRequest request = new ImageRequest.Builder(ctx)
                     .data(getFaviconUrlForHost(host, faviconProvider))
                     .size(faviconSize, faviconSize)
+                    // Metadata shared-element snapshots draw the favicon and text together onto
+                    // a software bitmap. A crossfade around a hardware bitmap makes that capture
+                    // fail and causes the entire metadata row to be omitted from the transition.
+                    .allowHardware(false)
                     .placeholder(webDrawable)
                     .error(webDrawable)
                     .fallback(webDrawable)
