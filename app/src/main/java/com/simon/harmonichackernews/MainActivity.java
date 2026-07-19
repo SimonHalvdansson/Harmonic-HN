@@ -28,6 +28,7 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
@@ -38,7 +39,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     public static ArrayList<CommentsScrollProgress> commentsScrollProgresses = new ArrayList<>();
     private static final Set<SearchBackStateListener> searchBackStateListeners =
             Collections.newSetFromMap(new WeakHashMap<>());
-    private static MainActivity currentMainActivity;
+    private static WeakReference<MainActivity> currentMainActivity = new WeakReference<>(null);
 
     int lastPosition = 0;
     public OnBackPressedCallback backPressedCallback;
@@ -51,7 +52,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        currentMainActivity = this;
+        currentMainActivity = new WeakReference<>(this);
 
         ThemeUtils.setupTheme(this);
 
@@ -106,8 +107,8 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
     @Override
     protected void onDestroy() {
-        if (currentMainActivity == this) {
-            currentMainActivity = null;
+        if (getCurrentMainActivity() == this) {
+            currentMainActivity.clear();
             searchBackEnabled = false;
             notifySearchBackStateListeners(false);
         }
@@ -121,7 +122,8 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     public static boolean isSearchBackActive() {
-        return currentMainActivity != null && currentMainActivity.searchBackEnabled;
+        MainActivity activity = getCurrentMainActivity();
+        return activity != null && activity.searchBackEnabled;
     }
 
     public static void addSearchBackStateListener(SearchBackStateListener listener) {
@@ -134,31 +136,40 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     public static void startActiveSearchBackProgress(float progress) {
-        if (currentMainActivity != null) {
-            currentMainActivity.startSearchBackProgress(progress);
+        MainActivity activity = getCurrentMainActivity();
+        if (activity != null) {
+            activity.startSearchBackProgress(progress);
         }
     }
 
     public static void updateActiveSearchBackProgress(float progress) {
-        if (currentMainActivity != null) {
-            currentMainActivity.updateSearchBackProgress(progress);
+        MainActivity activity = getCurrentMainActivity();
+        if (activity != null) {
+            activity.updateSearchBackProgress(progress);
         }
     }
 
     public static void cancelActiveSearchBackProgress() {
-        if (currentMainActivity != null) {
-            currentMainActivity.cancelSearchBackProgress();
+        MainActivity activity = getCurrentMainActivity();
+        if (activity != null) {
+            activity.cancelSearchBackProgress();
         }
     }
 
     public static boolean finishActiveSearchBackProgress() {
-        return currentMainActivity != null && currentMainActivity.finishSearchBackProgress();
+        MainActivity activity = getCurrentMainActivity();
+        return activity != null && activity.finishSearchBackProgress();
     }
 
     public static void applyWelcomePresetToActiveUi() {
-        if (currentMainActivity != null) {
-            currentMainActivity.applyWelcomePresetToUi();
+        MainActivity activity = getCurrentMainActivity();
+        if (activity != null) {
+            activity.applyWelcomePresetToUi();
         }
+    }
+
+    private static MainActivity getCurrentMainActivity() {
+        return currentMainActivity.get();
     }
 
     private void applyWelcomePresetToUi() {
