@@ -18,6 +18,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.Toast;
@@ -234,41 +235,53 @@ final class CommentActionOverlayController {
         configureCardWidth(card);
         content.addOnLayoutChangeListener((view, left, top, right, bottom,
                                            oldLeft, oldTop, oldRight, oldBottom) -> {
-            if (right - left != oldRight - oldLeft
-                    || bottom - top != oldBottom - oldTop) {
+            // Initial sizing is handled before the enter transform. Only react to later
+            // size changes, such as a rotation or multi-window resize.
+            if (oldRight > oldLeft
+                    && oldBottom > oldTop
+                    && (right - left != oldRight - oldLeft
+                    || bottom - top != oldBottom - oldTop)) {
                 refreshForConfiguration();
             }
         });
-        bind(comment);
+        bind(comment, () -> startEnterTransition(
+                overlayHost,
+                sourceView,
+                scrim,
+                animate));
 
         scrim.setOnClickListener(v -> dismiss(true));
         content.setOnClickListener(v -> dismiss(true));
         card.setOnTouchListener((v, event) -> true);
 
         host.syncCommentActionBackState();
+    }
 
-        overlay.post(() -> {
-            if (overlay == null || card == null) {
-                return;
-            }
+    private void startEnterTransition(ViewGroup overlayHost,
+                                      @Nullable View sourceView,
+                                      View scrim,
+                                      boolean animate) {
+        if (overlay == null || card == null || binding == null
+                || scrim != binding.commentActionScrim) {
+            return;
+        }
 
-            if (animate && isUsableTransition(overlayHost, sourceView, card)) {
-                MaterialContainerTransform transform = createTransform(
-                        overlayHost,
-                        sourceView,
-                        card,
-                        MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
-                transform.addTarget(card);
-                TransitionManager.beginDelayedTransition(overlayHost, transform);
-                scrim.animate().alpha(1f).setDuration(TRANSFORM_DURATION_MS).start();
-                setSourceVisible(sourceView, false);
-                card.setVisibility(View.VISIBLE);
-            } else {
-                scrim.setAlpha(1f);
-                setSourceVisible(sourceView, false);
-                card.setVisibility(View.VISIBLE);
-            }
-        });
+        if (animate && isUsableTransition(overlayHost, sourceView, card)) {
+            MaterialContainerTransform transform = createTransform(
+                    overlayHost,
+                    sourceView,
+                    card,
+                    MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
+            transform.addTarget(card);
+            TransitionManager.beginDelayedTransition(overlayHost, transform);
+            scrim.animate().alpha(1f).setDuration(TRANSFORM_DURATION_MS).start();
+            setSourceVisible(sourceView, false);
+            card.setVisibility(View.VISIBLE);
+        } else {
+            scrim.setAlpha(1f);
+            setSourceVisible(sourceView, false);
+            card.setVisibility(View.VISIBLE);
+        }
     }
 
     private void cancelCurrentCommentListTouch(ViewGroup overlayHost) {
@@ -286,6 +299,10 @@ final class CommentActionOverlayController {
     }
 
     private void bind(Comment comment) {
+        bind(comment, null);
+    }
+
+    private void bind(Comment comment, @Nullable Runnable afterResize) {
         Context ctx = host.requireCommentActionContext();
 
         boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
@@ -316,7 +333,7 @@ final class CommentActionOverlayController {
         FontUtils.setCommentTextTypeface(commentText, SettingsUtils.getPreferredCommentTextSize(ctx));
 
         NestedScrollView textScroll = binding.commentActionTextScroll;
-        resizeTextBox(textScroll, commentText);
+        resizeTextBox(textScroll, commentText, afterResize);
 
         bindButtons(ctx, comment, bookmarksEnabled, oldBookmarked, oldFavorited);
     }
@@ -1078,46 +1095,61 @@ final class CommentActionOverlayController {
     }
 
     private void resizeDialogScroll() {
-        if (binding == null) {
+        resizeDialogScroll(null);
+    }
+
+    private void resizeDialogScroll(@Nullable Runnable afterResize) {
+        CommentActionOverlayBinding currentBinding = binding;
+        if (currentBinding == null) {
             return;
         }
 
-        NestedScrollView cardScroll = binding.commentActionCardScroll;
-        View content = binding.commentActionContent;
+        NestedScrollView cardScroll = currentBinding.commentActionCardScroll;
+        View content = currentBinding.commentActionContent;
         if (cardScroll == null || content == null) {
             return;
         }
 
-        cardScroll.post(() -> {
-            if (binding == null) {
-                return;
-            }
+        if (binding != currentBinding) {
+            return;
+        }
 
-            int availableHeight = content.getHeight() - content.getPaddingTop() - content.getPaddingBottom();
-            if (availableHeight <= 0 || cardScroll.getChildCount() == 0) {
-                return;
-            }
+        int availableHeight = content.getHeight() - content.getPaddingTop() - content.getPaddingBottom();
+        if (availableHeight <= 0 || cardScroll.getChildCount() == 0) {
+            return;
+        }
 
-            int minHeight = Utils.pxFromDpInt(content.getResources(), 160);
-            int maxHeight = Math.max(minHeight, availableHeight);
-            View child = cardScroll.getChildAt(0);
-            int contentHeight = child.getHeight() + cardScroll.getPaddingTop() + cardScroll.getPaddingBottom();
-            if (contentHeight <= 0) {
-                return;
-            }
+        int minHeight = Utils.pxFromDpInt(content.getResources(), 160);
+        int maxHeight = Math.max(minHeight, availableHeight);
+        View child = cardScroll.getChildAt(0);
+        int contentHeight = child.getHeight() + cardScroll.getPaddingTop() + cardScroll.getPaddingBottom();
+        if (contentHeight <= 0) {
+            return;
+        }
 
-            boolean needsScrolling = contentHeight > maxHeight;
-            ViewGroup.LayoutParams params = cardScroll.getLayoutParams();
-            params.height = needsScrolling ? maxHeight : ViewGroup.LayoutParams.WRAP_CONTENT;
-            cardScroll.setLayoutParams(params);
-            cardScroll.setVerticalFadingEdgeEnabled(needsScrolling);
-            cardScroll.setOverScrollMode(needsScrolling ? View.OVER_SCROLL_IF_CONTENT_SCROLLS : View.OVER_SCROLL_NEVER);
-        });
+        boolean needsScrolling = contentHeight > maxHeight;
+        ViewGroup.LayoutParams params = cardScroll.getLayoutParams();
+        params.height = needsScrolling ? maxHeight : ViewGroup.LayoutParams.WRAP_CONTENT;
+        cardScroll.setLayoutParams(params);
+        cardScroll.setVerticalFadingEdgeEnabled(needsScrolling);
+        cardScroll.setOverScrollMode(needsScrolling ? View.OVER_SCROLL_IF_CONTENT_SCROLLS : View.OVER_SCROLL_NEVER);
+
+        runAfterNextLayout(cardScroll, currentBinding, afterResize);
     }
 
     private void resizeTextBox(NestedScrollView textScroll, HtmlTextView commentText) {
+        resizeTextBox(textScroll, commentText, null);
+    }
+
+    private void resizeTextBox(NestedScrollView textScroll,
+                               HtmlTextView commentText,
+                               @Nullable Runnable afterResize) {
+        CommentActionOverlayBinding currentBinding = binding;
         textScroll.post(() -> {
-            if (overlay == null) {
+            if (binding != currentBinding
+                    || currentBinding == null
+                    || textScroll != currentBinding.commentActionTextScroll
+                    || commentText != currentBinding.commentActionText) {
                 return;
             }
 
@@ -1137,7 +1169,42 @@ final class CommentActionOverlayController {
             textScroll.setScrollbarFadingEnabled(true);
             textScroll.setVerticalFadingEdgeEnabled(needsScrolling);
             textScroll.setOverScrollMode(needsScrolling ? View.OVER_SCROLL_IF_CONTENT_SCROLLS : View.OVER_SCROLL_NEVER);
-            resizeDialogScroll();
+            // The outer scroll height depends on the constrained text height, so wait
+            // until this layout is applied before measuring the card.
+            runAfterNextLayout(textScroll, currentBinding,
+                    () -> resizeDialogScroll(afterResize));
+        });
+    }
+
+    private void runAfterNextLayout(View view,
+                                    CommentActionOverlayBinding expectedBinding,
+                                    @Nullable Runnable action) {
+        if (action == null || binding != expectedBinding) {
+            return;
+        }
+
+        ViewTreeObserver observer = view.getViewTreeObserver();
+        if (!observer.isAlive()) {
+            return;
+        }
+
+        observer.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                ViewTreeObserver currentObserver = view.getViewTreeObserver();
+                if (currentObserver.isAlive()) {
+                    currentObserver.removeOnPreDrawListener(this);
+                }
+                // Starting a delayed transition from inside this pre-draw would make its own
+                // listener miss the current dispatch. The destination card would then draw once
+                // at its final position before the transition starts on the following frame.
+                view.post(() -> {
+                    if (binding == expectedBinding) {
+                        action.run();
+                    }
+                });
+                return true;
+            }
         });
     }
 
