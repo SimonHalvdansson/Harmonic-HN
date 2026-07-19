@@ -22,6 +22,7 @@ public class DebugFragment extends BaseSettingsFragment {
     private static final String PREF_INTERNAL_HN_LINK = "pref_debug_internal_hn_link";
     private static final String PREF_NITTER_VIDEO = "pref_debug_nitter_video";
     private static final String PREF_WELCOME_DIALOG = "pref_debug_welcome_dialog";
+    private static final String PREF_CHANGELOG = "pref_debug_changelog";
     private static final String PREF_NOTIFICATIONS = "pref_debug_notifications";
     private static final String PREF_OPEN_HN_ID = "pref_debug_open_hn_id";
 
@@ -51,6 +52,14 @@ public class DebugFragment extends BaseSettingsFragment {
         if (welcomeDialog != null) {
             welcomeDialog.setOnPreferenceClickListener(preference -> {
                 WelcomeDialogFragment.show(getParentFragmentManager(), false);
+                return true;
+            });
+        }
+
+        Preference changelog = findPreference(PREF_CHANGELOG);
+        if (changelog != null) {
+            changelog.setOnPreferenceClickListener(preference -> {
+                DialogHostActivity.showChangelog(requireContext());
                 return true;
             });
         }

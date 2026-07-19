@@ -73,6 +73,12 @@
             app:title="Welcome dialog" />
 
         <Preference
+            app:icon="@drawable/ic_history"
+            app:key="pref_debug_changelog"
+            app:singleLineTitle="false"
+            app:title="Changelog" />
+
+        <Preference
             app:icon="@drawable/ic_notifications"
             app:key="pref_debug_notifications"
             app:singleLineTitle="false"
