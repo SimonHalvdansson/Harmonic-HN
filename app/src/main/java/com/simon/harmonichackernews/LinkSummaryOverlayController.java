@@ -386,6 +386,9 @@ final class LinkSummaryOverlayController {
         @Nullable LinkSummaryLoader.SummaryRequest pageSummaryRequest;
         boolean pendingPreviewHide;
         @Nullable Runnable pendingStateChange;
+        @Nullable String commentsButtonLabel;
+        boolean hideWrappedCommentsButtonLabel;
+        final Runnable commentsButtonLabelFitRunnable;
 
         StoryPageHolder(@NonNull LinkSummaryStoryPageBinding pageBinding) {
             super(pageBinding.getRoot());
@@ -396,6 +399,14 @@ final class LinkSummaryOverlayController {
                     LayoutInflater.from(pageBinding.getRoot().getContext()),
                     pageBinding.linkSummaryStoryPageBody,
                     true);
+            commentsButtonLabelFitRunnable = () -> fitStoryCommentsButtonLabel(this);
+            content.storyLinkComments.addOnLayoutChangeListener(
+                    (view, left, top, right, bottom,
+                     oldLeft, oldTop, oldRight, oldBottom) -> {
+                        if (right - left != oldRight - oldLeft) {
+                            scheduleStoryCommentsButtonLabelFit(this);
+                        }
+                    });
         }
 
         void cancelRequests() {
@@ -1334,9 +1345,9 @@ final class LinkSummaryOverlayController {
             @NonNull Story story) {
         StoryLinkSummaryContentBinding content = page.content;
         boolean hasAccount = AccountUtils.hasAccountDetails(context);
-        content.storyLinkComments.setText(hasAccount
+        setStoryCommentsButtonLabel(page, hasAccount
                 ? String.valueOf(story.descendants)
-                : context.getString(R.string.link_summary_comments));
+                : context.getString(R.string.link_summary_comments), hasAccount);
         content.storyLinkComments.setContentDescription(
                 "Comments (" + story.descendants + ")");
         content.storyLinkVoteSlot.setVisibility(hasAccount ? View.VISIBLE : View.GONE);
@@ -1387,6 +1398,33 @@ final class LinkSummaryOverlayController {
         content.storyLinkComments.setOnClickListener(v -> {
             navigateToStory(story, page.sourcePosition, false);
         });
+    }
+
+    private void setStoryCommentsButtonLabel(
+            @NonNull StoryPageHolder page,
+            @NonNull String label,
+            boolean hideIfWrapped) {
+        page.commentsButtonLabel = label;
+        page.hideWrappedCommentsButtonLabel = hideIfWrapped;
+        scheduleStoryCommentsButtonLabelFit(page);
+    }
+
+    private void scheduleStoryCommentsButtonLabelFit(@NonNull StoryPageHolder page) {
+        String label = page.commentsButtonLabel;
+        if (label == null) return;
+        page.content.storyLinkComments.removeCallbacks(page.commentsButtonLabelFitRunnable);
+        page.content.storyLinkComments.setText(label);
+        if (page.hideWrappedCommentsButtonLabel) {
+            page.content.storyLinkComments.post(page.commentsButtonLabelFitRunnable);
+        }
+    }
+
+    private void fitStoryCommentsButtonLabel(@NonNull StoryPageHolder page) {
+        if (!page.hideWrappedCommentsButtonLabel || page.commentsButtonLabel == null) return;
+        if (page.content.storyLinkComments.getLayout() != null
+                && page.content.storyLinkComments.getLayout().getLineCount() > 1) {
+            page.content.storyLinkComments.setText(null);
+        }
     }
 
     private void navigateToStory(Story story, int position, boolean showWebsite) {
