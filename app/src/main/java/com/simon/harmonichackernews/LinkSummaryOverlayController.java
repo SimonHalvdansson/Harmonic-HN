@@ -754,11 +754,16 @@ final class LinkSummaryOverlayController {
         StoryPageEntry lower = storyPagerAdapter.getEntry(lowerPosition);
         StoryPageEntry upper = storyPagerAdapter.getEntry(upperPosition);
         float clampedOffset = Math.max(0f, Math.min(1f, positionOffset));
-        host.setLinkSummaryStoryPagingAlphas(
-                lower.story.id,
-                upperPosition == lowerPosition ? 0f : clampedOffset,
-                upperPosition == lowerPosition ? NO_STORY_ID : upper.story.id,
-                upperPosition == lowerPosition ? 1f : 1f - clampedOffset);
+        // The initial ViewPager2 callback runs before the enter transform has started. Hiding the
+        // source row at that point exposes the list background for a frame. Hand its alpha over to
+        // the pager only once the enter transition can cover the row.
+        if (enterTransitionComplete) {
+            host.setLinkSummaryStoryPagingAlphas(
+                    lower.story.id,
+                    upperPosition == lowerPosition ? 0f : clampedOffset,
+                    upperPosition == lowerPosition ? NO_STORY_ID : upper.story.id,
+                    upperPosition == lowerPosition ? 1f : 1f - clampedOffset);
+        }
 
         float pagerPosition = lowerPosition + clampedOffset;
         scrollStoryListForPagerDelta(lastStoryPagerPosition, pagerPosition);
@@ -2260,6 +2265,7 @@ final class LinkSummaryOverlayController {
 
     private void finishStoryPagerEnter() {
         if (storyPager == null) return;
+        updateStoryPagingProgress(storyPager.getCurrentItem(), 0f);
         setSourceVisible(sourceView, true);
         setSourceVisible(storyImageSourceView, true);
         setSourceVisible(storyTitleSourceView, true);
@@ -2711,7 +2717,6 @@ final class LinkSummaryOverlayController {
         predictiveBackActive = false;
         if (storyPager != null) {
             storyPager.setUserInputEnabled(false);
-            host.clearLinkSummaryStoryPagingAlphas(animate);
         }
         cancelSummaryRequest();
         ViewGroup overlayHost = host.getLinkSummaryOverlayHost();
@@ -2749,6 +2754,7 @@ final class LinkSummaryOverlayController {
         } else if (!animate) {
             removeNow();
         } else {
+            host.clearLinkSummaryStoryPagingAlphas(true);
             card.animate().alpha(0f).scaleX(.96f).scaleY(.96f).setDuration(TRANSFORM_DURATION_MS)
                     .setListener(new AnimatorListenerAdapter() {
                         @Override public void onAnimationEnd(Animator animation) { removeNow(); }
