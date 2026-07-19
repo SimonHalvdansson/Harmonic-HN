@@ -1,4 +1,5 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
     android:id="@+id/comments_header_github_container"
     android:visibility="gone"
@@ -15,7 +16,8 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:baselineAligned="false">
 
         <LinearLayout
             android:orientation="vertical"
@@ -27,7 +29,8 @@
                 android:paddingTop="2dp"
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                tools:ignore="UseCompoundDrawables">
 
                 <ImageView
                     android:layout_marginRight="4dp"
@@ -50,7 +53,8 @@
                 android:paddingTop="2dp"
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                tools:ignore="UseCompoundDrawables">
 
                 <ImageView
                     android:layout_marginRight="4dp"
@@ -73,7 +77,8 @@
                 android:paddingTop="2dp"
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                tools:ignore="UseCompoundDrawables">
 
                 <ImageView
                     android:layout_marginRight="4dp"
@@ -129,7 +134,8 @@
                 android:paddingTop="2dp"
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                tools:ignore="UseCompoundDrawables">
 
                 <ImageView
                     android:layout_marginRight="4dp"
@@ -153,7 +159,8 @@
                 android:paddingTop="2dp"
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                tools:ignore="UseCompoundDrawables">
 
                 <ImageView
                     android:layout_marginRight="4dp"

@@ -36,12 +36,17 @@ class StoryTypeSpinnerAdapter extends ArrayAdapter<CharSequence> {
     @NonNull
     @Override
     public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-        SpinnerTopLayoutBinding binding = SpinnerTopLayoutBinding.inflate(
-                LayoutInflater.from(parent.getContext()),
-                parent,
-                false);
-        bindText(binding.getRoot(), position, true);
-        return binding.getRoot();
+        TextView textView;
+        if (convertView instanceof TextView) {
+            textView = (TextView) convertView;
+        } else {
+            textView = SpinnerTopLayoutBinding.inflate(
+                    LayoutInflater.from(parent.getContext()),
+                    parent,
+                    false).getRoot();
+        }
+        bindText(textView, position, true);
+        return textView;
     }
 
     @Override

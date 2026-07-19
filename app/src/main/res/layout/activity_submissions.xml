@@ -59,6 +59,7 @@
             android:paddingRight="@dimen/single_view_side_margin"
             android:visibility="gone"
             app:layout_behavior="@string/appbar_scrolling_view_behavior"
+            tools:ignore="UseCompoundDrawables"
             tools:visibility="visible">
 
             <ImageView

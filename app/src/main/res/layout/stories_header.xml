@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/stories_header_container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -17,6 +18,7 @@
         android:id="@+id/stories_header_toolbar_row"
         android:layout_width="match_parent"
         android:layout_height="56dp"
+        android:baselineAligned="false"
         android:gravity="center_vertical">
 
         <LinearLayout
@@ -337,7 +339,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingTop="56dp"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        tools:ignore="UseCompoundDrawables">
 
         <ImageView
             android:src="@drawable/ic_search"
@@ -366,7 +369,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingTop="56dp"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        tools:ignore="UseCompoundDrawables">
 
         <ImageView
             android:id="@+id/stories_header_no_bookmarks_icon"
