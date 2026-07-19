@@ -5,6 +5,7 @@ import static android.view.View.VISIBLE;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.LayoutTransition;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -25,6 +26,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.view.ViewTreeObserver;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -176,7 +178,21 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private boolean storySummaryReceivedProgress = false;
     @Nullable
     private ValueAnimator headerSummaryHeightAnimator;
-    private int headerSummaryHeightAnimationTarget = -1;
+    private boolean headerSummaryCompletionTransitionRunning = false;
+    private boolean headerSummaryCompletionPending = false;
+    private boolean headerSummaryCompletionScheduled = false;
+    @Nullable
+    private LayoutTransition headerSummaryLayoutTransition;
+    @Nullable
+    private ValueAnimator headerSummaryActionReflowAnimator;
+    @Nullable
+    private String displayedHeaderSummary;
+    @Nullable
+    private String pendingHeaderSummary;
+    @Nullable
+    private String headerSummaryAnimationSummary;
+    @Nullable
+    private CharSequence headerSummaryAnimationText;
     private float headerSlideOffset = 1f;
     @Nullable
     private Integer currentHeaderContentBackgroundColor;
@@ -751,17 +767,21 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void bindHeaderSummary(HeaderViewHolder headerViewHolder, Context ctx) {
-        bindHeaderSummaryContent(headerViewHolder, ctx, false);
+        bindHeaderSummaryContent(headerViewHolder, ctx);
         bindHeaderSummaryAction(headerViewHolder, ctx);
     }
 
     private void bindHeaderSummaryContent(HeaderViewHolder headerViewHolder,
-                                          Context ctx,
-                                          boolean animateHeight) {
+                                          Context ctx) {
         LinearLayout summaryContainer = headerViewHolder.summaryContainer;
-        int startHeight = summaryContainer.getVisibility() == VISIBLE
-                ? summaryContainer.getHeight()
-                : 0;
+        cancelHeaderSummaryCompletionAnimation(headerViewHolder);
+        restoreHeaderSummaryLayoutTransition(summaryContainer);
+        cancelHeaderSummaryHeightAnimation();
+        pendingHeaderSummary = null;
+        headerSummaryAnimationSummary = null;
+        headerSummaryAnimationText = null;
+        headerSummaryCompletionPending = false;
+        headerSummaryCompletionScheduled = false;
 
         boolean hasSummary = !TextUtils.isEmpty(story.summary);
         if (currentHeaderContentBackgroundColor != null) {
@@ -769,34 +789,25 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
         summaryContainer.setVisibility(hasSummary ? VISIBLE : GONE);
         headerViewHolder.summaryContentContainer.setVisibility(hasSummary ? VISIBLE : GONE);
+        headerViewHolder.summaryContentContainer.setAlpha(1f);
         headerViewHolder.summary.setMaxLines(Integer.MAX_VALUE);
         headerViewHolder.summary.setEllipsize(null);
         if (hasSummary) {
-            int bulletWidth = Math.max(1, Math.round(headerViewHolder.summary.getTextSize() * 0.28f));
-            Markwon markwon = Markwon.builder(ctx)
-                    .usePlugin(new AbstractMarkwonPlugin() {
-                        @Override
-                        public void configureTheme(@NonNull MarkwonTheme.Builder builder) {
-                            builder.bulletWidth(bulletWidth);
-                        }
-                    })
-                    .build();
-            markwon.setMarkdown(headerViewHolder.summary, story.summary);
+            renderHeaderSummaryMarkdown(headerViewHolder.summary, ctx, story.summary);
         } else {
             headerViewHolder.summary.setText(null);
         }
-
-        if (animateHeight && hasSummary) {
-            animateHeaderSummaryHeight(summaryContainer, startHeight);
-        } else {
-            resetHeaderSummaryHeight(summaryContainer);
-        }
+        displayedHeaderSummary = story.summary;
+        resetHeaderSummaryHeight(headerViewHolder);
     }
 
     private void bindHeaderSummaryAction(HeaderViewHolder headerViewHolder, Context ctx) {
         boolean canSummarize = story.isLink
                 && Utils.canProvideSummary(ctx)
                 && !story.summaryGeneratedSuccessfully;
+        if (!headerSummaryCompletionTransitionRunning) {
+            resetHeaderSummaryActionTransform(headerViewHolder.summarizeButtonParent);
+        }
         headerViewHolder.summarizeButtonParent.setVisibility(canSummarize ? VISIBLE : GONE);
 
         if (storySummaryLoading) {
@@ -812,16 +823,24 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             storySummaryLoading = true;
             storySummaryReceivedProgress = false;
+            pendingHeaderSummary = null;
+            headerSummaryAnimationSummary = null;
+            headerSummaryAnimationText = null;
+            headerSummaryCompletionPending = false;
+            headerSummaryCompletionScheduled = false;
             showHeaderSummaryLoading(headerViewHolder.summarizeButton, true);
             summaryCallback.onRequest(
                     () -> {
                         storySummaryReceivedProgress = true;
-                        updateBoundHeaderSummary(false);
+                        enqueueBoundHeaderSummary(false);
                     },
                     () -> {
                         storySummaryLoading = false;
                         if (storySummaryReceivedProgress) {
-                            updateBoundHeaderSummary(true);
+                            enqueueBoundHeaderSummary(true);
+                        } else if (story.summaryGeneratedSuccessfully
+                                && !TextUtils.isEmpty(story.summary)) {
+                            enqueueBoundHeaderSummary(true);
                         } else {
                             notifyItemChanged(0, HEADER_SUMMARY_UPDATE_PAYLOAD);
                         }
@@ -830,7 +849,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         });
     }
 
-    private void updateBoundHeaderSummary(boolean completed) {
+    private void enqueueBoundHeaderSummary(boolean completed) {
         HeaderViewHolder headerViewHolder = boundHeaderViewHolder;
         if (headerViewHolder == null
                 || !ViewCompat.isAttachedToWindow(headerViewHolder.itemView)) {
@@ -838,49 +857,92 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             return;
         }
 
-        Context context = headerViewHolder.itemView.getContext();
-        bindHeaderSummaryContent(headerViewHolder, context, true);
-        if (!completed) {
-            return;
+        pendingHeaderSummary = story.summary;
+        if (completed) {
+            headerSummaryCompletionPending = true;
         }
-
-        AutoTransition transition = new AutoTransition();
-        transition.setDuration(HEADER_SUMMARY_COMPLETION_DURATION_MS);
-        TransitionManager.beginDelayedTransition(headerViewHolder.actionsContainer, transition);
-        bindHeaderSummaryAction(headerViewHolder, context);
+        processPendingHeaderSummary(headerViewHolder);
     }
 
-    private void animateHeaderSummaryHeight(LinearLayout container, int startHeight) {
-        int width = container.getWidth();
-        if (width <= 0) {
-            resetHeaderSummaryHeight(container);
+    private void processPendingHeaderSummary(HeaderViewHolder headerViewHolder) {
+        if (headerViewHolder != boundHeaderViewHolder
+                || !ViewCompat.isAttachedToWindow(headerViewHolder.itemView)
+                || headerSummaryHeightAnimator != null
+                || headerSummaryCompletionTransitionRunning
+                || headerSummaryCompletionScheduled) {
             return;
         }
 
-        container.measure(
+        String nextSummary = pendingHeaderSummary;
+        if (nextSummary != null) {
+            pendingHeaderSummary = null;
+            if (!TextUtils.equals(displayedHeaderSummary, nextSummary)) {
+                applyStreamedHeaderSummary(headerViewHolder, nextSummary);
+                return;
+            }
+        }
+
+        if (headerSummaryCompletionPending) {
+            scheduleHeaderSummaryCompletion(headerViewHolder);
+        }
+    }
+
+    private void applyStreamedHeaderSummary(HeaderViewHolder headerViewHolder,
+                                            String nextSummary) {
+        Context context = headerViewHolder.itemView.getContext();
+        LinearLayout summaryContainer = headerViewHolder.summaryContainer;
+        int width = summaryContainer.getWidth();
+        if (width <= 0 || TextUtils.isEmpty(nextSummary)) {
+            commitStreamedHeaderSummary(headerViewHolder, nextSummary, null);
+            return;
+        }
+
+        disableHeaderSummaryLayoutTransition(summaryContainer);
+        int startHeight = summaryContainer.getVisibility() == VISIBLE
+                ? summaryContainer.getHeight()
+                : 0;
+        int startHeaderItemHeight = headerViewHolder.itemView.getHeight();
+        CharSequence currentText = headerViewHolder.summary.getText();
+
+        if (currentHeaderContentBackgroundColor != null) {
+            summaryContainer.setBackgroundColor(currentHeaderContentBackgroundColor);
+        }
+        summaryContainer.setVisibility(VISIBLE);
+        headerViewHolder.summaryContentContainer.setVisibility(VISIBLE);
+        headerViewHolder.summaryContentContainer.setAlpha(1f);
+        renderHeaderSummaryMarkdown(headerViewHolder.summary, context, nextSummary);
+
+        summaryContainer.measure(
                 View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-        int targetHeight = container.getMeasuredHeight();
-        if (headerSummaryHeightAnimator != null
-                && headerSummaryHeightAnimationTarget == targetHeight) {
+        int targetHeight = summaryContainer.getMeasuredHeight();
+        CharSequence renderedText = new SpannableStringBuilder(
+                headerViewHolder.summary.getText());
+        headerViewHolder.summary.setText(currentText);
+
+        if (targetHeight <= startHeight || startHeaderItemHeight <= 0) {
+            commitStreamedHeaderSummary(headerViewHolder, nextSummary, renderedText);
             return;
         }
 
-        cancelHeaderSummaryHeightAnimation();
-        if (startHeight == targetHeight) {
-            setHeaderSummaryHeight(container, ViewGroup.LayoutParams.WRAP_CONTENT);
-            return;
-        }
-
-        setHeaderSummaryHeight(container, startHeight);
+        headerSummaryAnimationSummary = nextSummary;
+        headerSummaryAnimationText = renderedText;
+        headerViewHolder.summaryContentContainer.setAlpha(startHeight == 0 ? 0f : 1f);
+        setHeaderSummaryHeight(summaryContainer, startHeight);
+        setHeaderSummaryHeight(headerViewHolder.itemView, startHeaderItemHeight);
         ValueAnimator animator = ValueAnimator.ofInt(startHeight, targetHeight);
         headerSummaryHeightAnimator = animator;
-        headerSummaryHeightAnimationTarget = targetHeight;
         animator.setDuration(HEADER_SUMMARY_HEIGHT_DURATION_MS);
         animator.setInterpolator(new DecelerateInterpolator());
         animator.addUpdateListener(valueAnimator -> {
             if (headerSummaryHeightAnimator == valueAnimator) {
-                setHeaderSummaryHeight(container, (Integer) valueAnimator.getAnimatedValue());
+                int animatedHeight = (Integer) valueAnimator.getAnimatedValue();
+                int animatedHeaderItemHeight = startHeaderItemHeight
+                        + animatedHeight
+                        - startHeight;
+                setHeaderSummaryHeight(summaryContainer, animatedHeight);
+                setHeaderSummaryHeight(headerViewHolder.itemView, animatedHeaderItemHeight);
+                ViewCompat.postInvalidateOnAnimation(headerViewHolder.itemView);
             }
         });
         animator.addListener(new AnimatorListenerAdapter() {
@@ -890,28 +952,263 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     return;
                 }
                 headerSummaryHeightAnimator = null;
-                headerSummaryHeightAnimationTarget = -1;
-                setHeaderSummaryHeight(container, ViewGroup.LayoutParams.WRAP_CONTENT);
+                String animatedSummary = headerSummaryAnimationSummary;
+                CharSequence animatedText = headerSummaryAnimationText;
+                headerSummaryAnimationSummary = null;
+                headerSummaryAnimationText = null;
+                setHeaderSummaryHeight(summaryContainer, ViewGroup.LayoutParams.WRAP_CONTENT);
+                setHeaderSummaryHeight(
+                        headerViewHolder.itemView,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                if (animatedSummary != null) {
+                    headerViewHolder.summary.setText(animatedText);
+                    displayedHeaderSummary = animatedSummary;
+                }
+                headerViewHolder.summaryContentContainer.setAlpha(1f);
+                restoreHeaderSummaryLayoutTransition(summaryContainer);
+                postProcessPendingHeaderSummary(headerViewHolder);
             }
         });
         animator.start();
     }
 
-    private void resetHeaderSummaryHeight(LinearLayout container) {
+    private void commitStreamedHeaderSummary(HeaderViewHolder headerViewHolder,
+                                             @Nullable String summary,
+                                             @Nullable CharSequence renderedText) {
+        boolean hasSummary = !TextUtils.isEmpty(summary);
+        headerViewHolder.summaryContainer.setVisibility(hasSummary ? VISIBLE : GONE);
+        headerViewHolder.summaryContentContainer.setVisibility(hasSummary ? VISIBLE : GONE);
+        headerViewHolder.summaryContentContainer.setAlpha(1f);
+        if (hasSummary) {
+            if (renderedText != null) {
+                headerViewHolder.summary.setText(renderedText);
+            } else {
+                renderHeaderSummaryMarkdown(
+                        headerViewHolder.summary,
+                        headerViewHolder.itemView.getContext(),
+                        summary);
+            }
+        } else {
+            headerViewHolder.summary.setText(null);
+        }
+        displayedHeaderSummary = summary;
+        setHeaderSummaryHeight(
+                headerViewHolder.summaryContainer,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        setHeaderSummaryHeight(
+                headerViewHolder.itemView,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        restoreHeaderSummaryLayoutTransition(headerViewHolder.summaryContainer);
+        postProcessPendingHeaderSummary(headerViewHolder);
+    }
+
+    private void renderHeaderSummaryMarkdown(TextView summaryView,
+                                             Context context,
+                                             String summary) {
+        int bulletWidth = Math.max(1, Math.round(summaryView.getTextSize() * 0.28f));
+        Markwon markwon = Markwon.builder(context)
+                .usePlugin(new AbstractMarkwonPlugin() {
+                    @Override
+                    public void configureTheme(@NonNull MarkwonTheme.Builder builder) {
+                        builder.bulletWidth(bulletWidth);
+                    }
+                })
+                .build();
+        markwon.setMarkdown(summaryView, summary);
+    }
+
+    private void postProcessPendingHeaderSummary(HeaderViewHolder headerViewHolder) {
+        headerViewHolder.itemView.postOnAnimation(() ->
+                processPendingHeaderSummary(headerViewHolder));
+    }
+
+    private void scheduleHeaderSummaryCompletion(HeaderViewHolder headerViewHolder) {
+        if (headerSummaryCompletionScheduled) {
+            return;
+        }
+        headerSummaryCompletionScheduled = true;
+        headerViewHolder.actionsContainer.postOnAnimation(() -> {
+            headerSummaryCompletionScheduled = false;
+            if (headerViewHolder != boundHeaderViewHolder
+                    || !ViewCompat.isAttachedToWindow(headerViewHolder.itemView)) {
+                headerSummaryCompletionPending = false;
+                return;
+            }
+            if (headerSummaryHeightAnimator != null || pendingHeaderSummary != null) {
+                processPendingHeaderSummary(headerViewHolder);
+                return;
+            }
+            if (!headerSummaryCompletionPending) {
+                return;
+            }
+            headerSummaryCompletionPending = false;
+            animateHeaderSummaryActionRemoval(headerViewHolder);
+        });
+    }
+
+    private void animateHeaderSummaryActionRemoval(HeaderViewHolder headerViewHolder) {
+        if (!story.summaryGeneratedSuccessfully) {
+            bindHeaderSummaryAction(headerViewHolder, headerViewHolder.itemView.getContext());
+            return;
+        }
+
+        View summarizeParent = headerViewHolder.summarizeButtonParent;
+        if (summarizeParent.getVisibility() != VISIBLE) {
+            bindHeaderSummaryAction(headerViewHolder, headerViewHolder.itemView.getContext());
+            return;
+        }
+
+        Map<View, Float> startCenters = new HashMap<>();
+        for (int i = 0; i < headerViewHolder.actionsContainer.getChildCount(); i++) {
+            View child = headerViewHolder.actionsContainer.getChildAt(i);
+            if (child != summarizeParent && child.getVisibility() == VISIBLE) {
+                startCenters.put(child, child.getX() + child.getWidth() / 2f);
+            }
+        }
+
+        headerSummaryCompletionTransitionRunning = true;
+        summarizeParent.animate().cancel();
+        summarizeParent.animate()
+                .alpha(0f)
+                .scaleX(HEADER_ACTION_ICON_SWAP_MIN_SCALE)
+                .scaleY(HEADER_ACTION_ICON_SWAP_MIN_SCALE)
+                .setDuration(HEADER_ACTION_ICON_SWAP_OUT_DURATION_MS)
+                .withEndAction(() -> {
+                    if (headerViewHolder != boundHeaderViewHolder
+                            || !ViewCompat.isAttachedToWindow(headerViewHolder.itemView)) {
+                        resetHeaderSummaryActionTransform(summarizeParent);
+                        headerSummaryCompletionTransitionRunning = false;
+                        return;
+                    }
+                    bindHeaderSummaryAction(
+                            headerViewHolder,
+                            headerViewHolder.itemView.getContext());
+                    resetHeaderSummaryActionTransform(summarizeParent);
+                    animateHeaderSummaryActionReflow(headerViewHolder, startCenters);
+                })
+                .start();
+    }
+
+    private void animateHeaderSummaryActionReflow(HeaderViewHolder headerViewHolder,
+                                                  Map<View, Float> startCenters) {
+        LinearLayout actionsContainer = headerViewHolder.actionsContainer;
+        actionsContainer.getViewTreeObserver().addOnPreDrawListener(
+                new ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        ViewTreeObserver observer = actionsContainer.getViewTreeObserver();
+                        if (observer.isAlive()) {
+                            observer.removeOnPreDrawListener(this);
+                        }
+                        if (headerViewHolder != boundHeaderViewHolder
+                                || !ViewCompat.isAttachedToWindow(headerViewHolder.itemView)) {
+                            headerSummaryCompletionTransitionRunning = false;
+                            return true;
+                        }
+                        if (!headerSummaryCompletionTransitionRunning) {
+                            return true;
+                        }
+
+                        Map<View, Float> startTranslations = new HashMap<>();
+                        for (Map.Entry<View, Float> entry : startCenters.entrySet()) {
+                            View child = entry.getKey();
+                            if (child.getVisibility() != VISIBLE) {
+                                continue;
+                            }
+                            float endCenter = child.getX() + child.getWidth() / 2f;
+                            float translation = entry.getValue() - endCenter;
+                            child.setTranslationX(translation);
+                            startTranslations.put(child, translation);
+                        }
+                        startHeaderSummaryActionReflowAnimator(
+                                headerViewHolder,
+                                startTranslations);
+                        return true;
+                    }
+                });
+        actionsContainer.requestLayout();
+    }
+
+    private void startHeaderSummaryActionReflowAnimator(
+            HeaderViewHolder headerViewHolder,
+            Map<View, Float> startTranslations) {
+        if (startTranslations.isEmpty()) {
+            headerSummaryCompletionTransitionRunning = false;
+            return;
+        }
+
+        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        headerSummaryActionReflowAnimator = animator;
+        animator.setDuration(HEADER_SUMMARY_COMPLETION_DURATION_MS);
+        animator.setInterpolator(new DecelerateInterpolator());
+        animator.addUpdateListener(valueAnimator -> {
+            if (headerSummaryActionReflowAnimator != valueAnimator) {
+                return;
+            }
+            float progress = (Float) valueAnimator.getAnimatedValue();
+            for (Map.Entry<View, Float> entry : startTranslations.entrySet()) {
+                entry.getKey().setTranslationX(entry.getValue() * (1f - progress));
+            }
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (headerSummaryActionReflowAnimator != animation) {
+                    return;
+                }
+                headerSummaryActionReflowAnimator = null;
+                for (View child : startTranslations.keySet()) {
+                    child.setTranslationX(0f);
+                }
+                headerSummaryCompletionTransitionRunning = false;
+            }
+        });
+        animator.start();
+    }
+
+    private void cancelHeaderSummaryCompletionAnimation(HeaderViewHolder headerViewHolder) {
+        headerSummaryCompletionTransitionRunning = false;
+        resetHeaderSummaryActionTransform(headerViewHolder.summarizeButtonParent);
+
+        ValueAnimator animator = headerSummaryActionReflowAnimator;
+        headerSummaryActionReflowAnimator = null;
+        if (animator != null) {
+            animator.cancel();
+        }
+        for (int i = 0; i < headerViewHolder.actionsContainer.getChildCount(); i++) {
+            headerViewHolder.actionsContainer.getChildAt(i).setTranslationX(0f);
+        }
+    }
+
+    private void resetHeaderSummaryActionTransform(View summarizeParent) {
+        summarizeParent.animate().cancel();
+        summarizeParent.setAlpha(1f);
+        summarizeParent.setScaleX(1f);
+        summarizeParent.setScaleY(1f);
+    }
+
+    private void resetHeaderSummaryHeight(HeaderViewHolder headerViewHolder) {
         cancelHeaderSummaryHeightAnimation();
-        setHeaderSummaryHeight(container, ViewGroup.LayoutParams.WRAP_CONTENT);
+        setHeaderSummaryHeight(
+                headerViewHolder.summaryContainer,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        setHeaderSummaryHeight(
+                headerViewHolder.itemView,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        restoreHeaderSummaryLayoutTransition(headerViewHolder.summaryContainer);
     }
 
     private void cancelHeaderSummaryHeightAnimation() {
         ValueAnimator animator = headerSummaryHeightAnimator;
         headerSummaryHeightAnimator = null;
-        headerSummaryHeightAnimationTarget = -1;
+        headerSummaryAnimationSummary = null;
+        headerSummaryAnimationText = null;
         if (animator != null) {
             animator.cancel();
         }
     }
 
-    private void setHeaderSummaryHeight(LinearLayout container, int height) {
+    private void setHeaderSummaryHeight(View container, int height) {
         ViewGroup.LayoutParams layoutParams = container.getLayoutParams();
         if (layoutParams.height == height) {
             return;
@@ -919,6 +1216,24 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         layoutParams.height = height;
         container.setLayoutParams(layoutParams);
     }
+
+    private void disableHeaderSummaryLayoutTransition(LinearLayout summaryContainer) {
+        LayoutTransition layoutTransition = summaryContainer.getLayoutTransition();
+        if (layoutTransition == null) {
+            return;
+        }
+        headerSummaryLayoutTransition = layoutTransition;
+        summaryContainer.setLayoutTransition(null);
+    }
+
+    private void restoreHeaderSummaryLayoutTransition(LinearLayout summaryContainer) {
+        if (headerSummaryLayoutTransition == null) {
+            return;
+        }
+        summaryContainer.setLayoutTransition(headerSummaryLayoutTransition);
+        headerSummaryLayoutTransition = null;
+    }
+
 
     private void configureSummaryTitleIcon(TextView title) {
         Drawable icon = ContextCompat.getDrawable(title.getContext(), R.drawable.ic_auto_awesome);
