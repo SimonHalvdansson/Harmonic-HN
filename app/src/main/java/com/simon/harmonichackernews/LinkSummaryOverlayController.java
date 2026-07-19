@@ -1117,12 +1117,11 @@ final class LinkSummaryOverlayController {
         StringBuilder meta = new StringBuilder()
                 .append(story.score)
                 .append(story.score == 1 ? " point" : " points");
+        FaviconLoader.loadFavicon(story.url, content.storyLinkFavicon, context,
+                SettingsUtils.getPreferredFaviconProvider(context));
         if (story.isLink) {
             meta.append(" • ").append(safeDomain(story.url));
-            FaviconLoader.loadFavicon(story.url, content.storyLinkFavicon, context,
-                    SettingsUtils.getPreferredFaviconProvider(context));
         } else {
-            content.storyLinkFavicon.setVisibility(View.GONE);
             if (!TextUtils.isEmpty(story.by)) {
                 meta.append(" • ").append(story.by);
             }
