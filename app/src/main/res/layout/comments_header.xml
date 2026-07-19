@@ -34,6 +34,7 @@
 
     <LinearLayout
         android:id="@+id/comment_sheet_buttons_container"
+        android:baselineAligned="false"
         android:paddingLeft="8dp"
         android:paddingRight="8dp"
         android:orientation="horizontal"
@@ -560,6 +561,7 @@
     <LinearLayout
         android:layout_marginBottom="6dp"
         android:id="@+id/comments_header_actions_container"
+        android:baselineAligned="false"
         android:paddingLeft="@dimen/comments_header_action_padding"
         android:paddingRight="@dimen/comments_header_action_padding"
         android:paddingTop="2dp"

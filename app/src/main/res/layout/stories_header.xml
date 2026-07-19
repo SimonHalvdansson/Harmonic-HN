@@ -18,6 +18,7 @@
         android:id="@+id/stories_header_toolbar_row"
         android:layout_width="match_parent"
         android:layout_height="56dp"
+        android:baselineAligned="false"
         android:gravity="center_vertical">
 
         <LinearLayout
