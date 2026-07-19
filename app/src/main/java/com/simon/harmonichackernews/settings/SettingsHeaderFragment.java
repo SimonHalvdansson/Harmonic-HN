@@ -135,7 +135,6 @@ public class SettingsHeaderFragment extends BaseSettingsFragment {
             View child = listView.getChildAt(i);
             int position = listView.getChildAdapterPosition(child);
             child.setActivated(position == selectedIndex);
-            styleSegmentedListChild(child);
         }
     }
 }

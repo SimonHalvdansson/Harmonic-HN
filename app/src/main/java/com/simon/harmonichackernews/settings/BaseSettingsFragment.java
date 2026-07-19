@@ -253,7 +253,7 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
         updateSegmentedListPadding(child, true);
 
         child.setBackground(createSegmentedItemBackground(
-                firstInSegment, lastInSegment, child.isActivated(), preference));
+                firstInSegment, lastInSegment, preference));
     }
 
     private void registerSegmentedListObserver() {
@@ -361,16 +361,20 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
     private Drawable createSegmentedItemBackground(
             boolean firstInSegment,
             boolean lastInSegment,
-            boolean activated,
             @Nullable Preference preference) {
         boolean mainToggle = preference instanceof AiSummaryEnabledPreference;
         GradientDrawable content = createSegmentedShape(firstInSegment, lastInSegment, mainToggle);
-        content.setColor(resolveThemeColor(
-                activated && mainToggle
-                        ? R.attr.settingsMainToggleColor
-                        : activated
-                                ? R.attr.settingsHeaderSelectedColor
-                                : R.attr.settingsSegmentColor));
+        content.setColor(new ColorStateList(
+                new int[][]{
+                        new int[]{android.R.attr.state_activated},
+                        new int[0]
+                },
+                new int[]{
+                        resolveThemeColor(mainToggle
+                                ? R.attr.settingsMainToggleColor
+                                : R.attr.settingsHeaderSelectedColor),
+                        resolveThemeColor(R.attr.settingsSegmentColor)
+                }));
 
         GradientDrawable mask = createSegmentedShape(firstInSegment, lastInSegment, mainToggle);
         mask.setColor(0xffffffff);
