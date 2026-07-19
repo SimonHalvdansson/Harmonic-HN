@@ -18,7 +18,8 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
-            android:visibility="gone">
+            android:visibility="gone"
+            tools:ignore="UseCompoundDrawables">
 
             <ImageView
                 android:layout_width="48dp"

@@ -1,5 +1,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
     android:id="@+id/comments_header_arxiv_container"
     android:layout_width="match_parent"
@@ -19,7 +20,8 @@
         android:paddingTop="10dp"
         android:orientation="horizontal"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        tools:ignore="UseCompoundDrawables">
 
         <ImageView
             android:layout_marginRight="4dp"
@@ -42,7 +44,8 @@
         android:paddingTop="2dp"
         android:orientation="horizontal"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        tools:ignore="UseCompoundDrawables">
 
         <ImageView
             android:layout_marginRight="4dp"
@@ -66,7 +69,8 @@
         android:paddingTop="2dp"
         android:orientation="horizontal"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        tools:ignore="UseCompoundDrawables">
 
         <ImageView
             android:layout_marginRight="4dp"
