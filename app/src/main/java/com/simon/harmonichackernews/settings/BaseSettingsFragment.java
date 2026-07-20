@@ -82,6 +82,10 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
         return true;
     }
 
+    protected boolean showNavigationIconInTwoPane() {
+        return false;
+    }
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View preferenceView = super.onCreateView(inflater, container, savedInstanceState);
@@ -107,7 +111,7 @@ public abstract class BaseSettingsFragment extends PreferenceFragmentCompat {
         SettingsCallback callback = getSettingsCallback();
         boolean twoPane = callback != null && callback.isTwoPane();
 
-        if (!twoPane && showNavigationIcon()) {
+        if (showNavigationIcon() && (!twoPane || showNavigationIconInTwoPane())) {
             toolbar.setNavigationIcon(R.drawable.ic_arrow_back);
             toolbar.setNavigationOnClickListener(v -> {
                 if (getActivity() != null) {

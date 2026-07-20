@@ -31,6 +31,11 @@ public class SettingsHeaderFragment extends BaseSettingsFragment {
     }
 
     @Override
+    protected boolean showNavigationIconInTwoPane() {
+        return true;
+    }
+
+    @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.preferences_main, rootKey);
 
