@@ -106,6 +106,34 @@
         <TextView
             android:paddingTop="3dp"
             android:paddingBottom="3dp"
+            android:text="• ML Kit GenAI APIs by Google - ML Kit Terms of Service"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• LiteRT-LM by Google - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• llama.cpp and ggml by ggml-org - MIT"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="• Kotlin and kotlinx.coroutines by JetBrains - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
             android:text="• HtmlTextView by SufficientlySecure - Apache 2.0"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>

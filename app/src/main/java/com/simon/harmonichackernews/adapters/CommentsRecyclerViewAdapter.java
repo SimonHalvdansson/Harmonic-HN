@@ -43,6 +43,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.FragmentManager;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.AutoTransition;
 import androidx.transition.TransitionManager;
@@ -799,6 +800,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         } else {
             headerViewHolder.summary.setText(null);
         }
+        bindHeaderSummaryDebugInfo(headerViewHolder, ctx);
         displayedHeaderSummary = story.summary;
         resetHeaderSummaryHeight(headerViewHolder);
     }
@@ -825,6 +827,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             storySummaryLoading = true;
             storySummaryReceivedProgress = false;
+            story.summaryDebugInfo = null;
+            headerViewHolder.summaryDebugInfo.setVisibility(GONE);
             pendingHeaderSummary = null;
             headerSummaryAnimationSummary = null;
             headerSummaryAnimationText = null;
@@ -858,6 +862,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             notifyItemChanged(0, HEADER_SUMMARY_UPDATE_PAYLOAD);
             return;
         }
+
+        bindHeaderSummaryDebugInfo(
+                headerViewHolder, headerViewHolder.itemView.getContext());
 
         pendingHeaderSummary = story.summary;
         if (completed) {
@@ -1017,6 +1024,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 })
                 .build();
         markwon.setMarkdown(summaryView, summary);
+    }
+
+    private void bindHeaderSummaryDebugInfo(HeaderViewHolder headerViewHolder,
+                                            Context context) {
+        boolean showDebugInfo = PreferenceManager.getDefaultSharedPreferences(context)
+                .getBoolean("pref_debug_show_llm_summary_info", false);
+        boolean visible = showDebugInfo && !TextUtils.isEmpty(story.summaryDebugInfo);
+        headerViewHolder.summaryDebugInfo.setText(visible ? story.summaryDebugInfo : null);
+        headerViewHolder.summaryDebugInfo.setVisibility(visible ? VISIBLE : GONE);
     }
 
     private void postProcessPendingHeaderSummary(HeaderViewHolder headerViewHolder) {
@@ -3415,6 +3431,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout summaryContentContainer;
         public final TextView summary;
         public final TextView summaryTitle;
+        public final TextView summaryDebugInfo;
         public final ImageButton moreButton;
         public final RelativeLayout userButtonParent;
         public final RelativeLayout moreButtonParent;
@@ -3567,6 +3584,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             summaryContentContainer = binding.commentsHeaderSummaryContentContainer;
             summary = binding.commentsHeaderSummary;
             summaryTitle = binding.commentsHeaderSummaryTitle;
+            summaryDebugInfo = binding.commentsHeaderSummaryDebugInfo;
             configureSummaryTitleIcon(summaryTitle);
             moreButton = binding.commentsHeaderButtonMore;
             userButtonParent = binding.commentsHeaderButtonUserParent;

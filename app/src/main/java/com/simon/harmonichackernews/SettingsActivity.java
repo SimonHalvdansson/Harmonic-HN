@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
@@ -70,6 +71,14 @@ public class SettingsActivity extends AppCompatActivity implements
     public final static String EXTRA_DETAIL_KEY = "EXTRA_DETAIL_KEY";
     public final static String EXTRA_RELAUNCH_DETAIL = "EXTRA_RELAUNCH_DETAIL";
     public final static String EXTRA_DETAIL_SCROLL_STATE = "EXTRA_DETAIL_SCROLL_STATE";
+
+    public static Intent createAiSummaryIntent(@NonNull Context context) {
+        return new Intent(context, SettingsActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra(EXTRA_DETAIL_CLASS, AiSummaryPreferenceFragment.class.getName())
+                .putExtra(EXTRA_DETAIL_KEY, "pref_header_ai_summary")
+                .putExtra(EXTRA_RELAUNCH_DETAIL, true);
+    }
 
     private boolean needsRestart = false;
     private boolean isTwoPane = false;

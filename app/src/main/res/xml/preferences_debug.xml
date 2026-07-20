@@ -12,6 +12,13 @@
             app:singleLineTitle="false"
             app:title="Always show tap to refresh" />
 
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_info"
+            app:key="pref_debug_show_llm_summary_info"
+            app:singleLineTitle="false"
+            app:title="Additional AI summary debug info" />
+
         <com.simon.harmonichackernews.settings.DebugHnIdPreference
             app:icon="@drawable/ic_open_in_new"
             app:key="pref_debug_open_hn_id"

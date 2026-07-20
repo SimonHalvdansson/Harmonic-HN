@@ -3166,6 +3166,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if ("local".equals(mode)) {
             SummaryManager.SummaryCallback callback = new SummaryManager.SummaryCallback() {
                 @Override
+                public void onDebugInfo(String debugInfo) {
+                    story.summaryDebugInfo = debugInfo;
+                    onUpdate.run();
+                }
+
+                @Override
                 public void onProgress(String summary) {
                     story.summary = summary;
                     onUpdate.run();
@@ -3192,6 +3198,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
         } else {
             SummaryManager.SummaryCallback callback = new SummaryManager.SummaryCallback() {
+                @Override
+                public void onDebugInfo(String debugInfo) {
+                    story.summaryDebugInfo = debugInfo;
+                    onUpdate.run();
+                }
+
                 @Override
                 public void onProgress(String summary) {
                     story.summary = summary;

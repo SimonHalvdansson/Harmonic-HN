@@ -37,6 +37,8 @@ coil = "io.coil-kt:coil:2.7.0"
 coil-svg = "io.coil-kt:coil-svg:2.7.0"
 
 mlkit-genai-summarization = "com.google.mlkit:genai-summarization:1.0.0-beta1"
+litertlm = "com.google.ai.edge.litertlm:litertlm-android:0.14.0"
+androidx-work = "androidx.work:work-runtime:2.11.2"
 
 markwon-core = "io.noties.markwon:core:4.6.2"
 markwon-ext-latex = "io.noties.markwon:ext-latex:4.6.2"

@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network;
 
 import android.content.Context;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
@@ -19,6 +20,8 @@ import com.google.mlkit.genai.summarization.SummarizationRequest;
 import com.google.mlkit.genai.summarization.SummarizationResult;
 import com.google.mlkit.genai.summarization.Summarizer;
 import com.google.mlkit.genai.summarization.SummarizerOptions;
+import com.simon.harmonichackernews.summary.local.LocalModelInference;
+import com.simon.harmonichackernews.summary.local.LocalModelManager;
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore;
 
 import org.json.JSONArray;
@@ -35,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -55,9 +59,13 @@ public class SummaryManager {
     private static final String PREF_STREAM_RESPONSES = "pref_ai_summary_stream_responses";
     private static final String DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant that is an expert on summarizing articles into an information-dense, concise and brief bullet-point list. Focus on key takeaways and most important/note-worthy points in the article. Keep the summary under 500 characters where possible. Respond in markdown format. Respond with only the summarized content - nothing else before or after.";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
+    private static volatile int cachedLocalFeatureStatus = Integer.MIN_VALUE;
 
     public interface SummaryCallback {
         default void onProgress(String summary) {
+        }
+
+        default void onDebugInfo(String debugInfo) {
         }
 
         void onSuccess(String summary);
@@ -65,7 +73,8 @@ public class SummaryManager {
     }
 
     public interface LocalSummaryAvailabilityCallback {
-        void onResult(boolean available, String statusMessage);
+        void onResult(boolean available, boolean downloadableFallbackRequired,
+                      String statusMessage);
     }
 
     public static void fetchModels(Context ctx, RequestQueue queue, SummaryCallback callback) {
@@ -121,7 +130,8 @@ public class SummaryManager {
 
     public static void checkLocalSummaryAvailability(Context ctx, LocalSummaryAvailabilityCallback callback) {
         if (!canAttemptLocalSummarization()) {
-            postLocalAvailability(callback, false, "Gemini Nano requires Android 8.0 or newer");
+            postLocalAvailability(callback, false, false,
+                    "Gemini Nano requires Android 8.0 or newer");
             return;
         }
 
@@ -131,17 +141,20 @@ public class SummaryManager {
             try {
                 summarizer = Summarization.getClient(createLocalSummarizerOptions(appContext));
                 int featureStatus = summarizer.checkFeatureStatus().get();
-                postLocalAvailability(callback, isLocalFeatureUsable(featureStatus),
-                        getLocalFeatureStatusMessage(featureStatus));
+                cachedLocalFeatureStatus = featureStatus;
+                postResolvedLocalAvailability(callback, featureStatus);
             } catch (ExecutionException e) {
                 Log.w(TAG, "Gemini Nano availability check failed", e.getCause());
-                postLocalAvailability(callback, false, getLocalAvailabilityFailureMessage());
+                cachedLocalFeatureStatus = FeatureStatus.UNAVAILABLE;
+                postDownloadableModelAvailability(callback);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                postLocalAvailability(callback, false, "Gemini Nano availability check was interrupted");
+                postLocalAvailability(callback, false, false,
+                        "Gemini Nano availability check was interrupted");
             } catch (Exception e) {
                 Log.w(TAG, "Gemini Nano availability check failed", e);
-                postLocalAvailability(callback, false, getLocalAvailabilityFailureMessage());
+                cachedLocalFeatureStatus = FeatureStatus.UNAVAILABLE;
+                postDownloadableModelAvailability(callback);
             } finally {
                 if (summarizer != null) {
                     summarizer.close();
@@ -159,14 +172,16 @@ public class SummaryManager {
         Context appContext = ctx.getApplicationContext();
         new Thread(() -> {
             try {
-                summarizePreparedLocalText(appContext, prepareLocalSummaryInput(extractMainContent(articleUrl)), callback);
+                summarizePreparedTextLocally(appContext,
+                        prepareLocalSummaryInput(extractMainContent(articleUrl)), callback);
             } catch (ExecutionException e) {
-                postFailure(callback, "Gemini Nano failed: " + getThrowableMessage(e.getCause()));
+                postFailure(callback, "Local summarization failed: "
+                        + getThrowableMessage(e.getCause()));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                postFailure(callback, "Gemini Nano summarization was interrupted");
+                postFailure(callback, "Local summarization was interrupted");
             } catch (Exception e) {
-                postFailure(callback, "Gemini Nano failed: " + getThrowableMessage(e));
+                postFailure(callback, "Local summarization failed: " + getThrowableMessage(e));
             }
         }).start();
     }
@@ -180,16 +195,33 @@ public class SummaryManager {
         Context appContext = ctx.getApplicationContext();
         new Thread(() -> {
             try {
-                summarizePreparedLocalText(appContext, prepareLocalSummaryInput(text), callback);
+                summarizePreparedTextLocally(appContext, prepareLocalSummaryInput(text), callback);
             } catch (ExecutionException e) {
-                postFailure(callback, "Gemini Nano failed: " + getThrowableMessage(e.getCause()));
+                postFailure(callback, "Local summarization failed: "
+                        + getThrowableMessage(e.getCause()));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                postFailure(callback, "Gemini Nano summarization was interrupted");
+                postFailure(callback, "Local summarization was interrupted");
             } catch (Exception e) {
-                postFailure(callback, "Gemini Nano failed: " + getThrowableMessage(e));
+                postFailure(callback, "Local summarization failed: " + getThrowableMessage(e));
             }
         }).start();
+    }
+
+    public static boolean isLocalSummaryReady(Context context) {
+        LocalModelManager.ModelInfo selected =
+                LocalModelManager.getSelectedModel(context);
+        if (LocalModelManager.MODEL_GEMINI_NANO.equals(selected.id)) {
+            return isLocalFeatureUsable(cachedLocalFeatureStatus);
+        }
+        return LocalModelManager.isSelectedModelDownloaded(context);
+    }
+
+    public static boolean isLocalSummaryConfigurationKnown(Context context) {
+        LocalModelManager.ModelInfo selected =
+                LocalModelManager.getSelectedModel(context);
+        return !LocalModelManager.MODEL_GEMINI_NANO.equals(selected.id)
+                || cachedLocalFeatureStatus != Integer.MIN_VALUE;
     }
 
     public static String extractMainContent(String url) throws IOException {
@@ -207,6 +239,73 @@ public class SummaryManager {
                 .setOutputType(SummarizerOptions.OutputType.THREE_BULLETS)
                 .setLanguage(SummarizerOptions.Language.ENGLISH)
                 .build();
+    }
+
+    private static void summarizePreparedTextLocally(Context appContext,
+                                                     String content,
+                                                     SummaryCallback callback)
+            throws ExecutionException, InterruptedException {
+        LocalModelManager.ModelInfo selected =
+                LocalModelManager.getSelectedModel(appContext);
+        if (!LocalModelManager.MODEL_GEMINI_NANO.equals(selected.id)) {
+            summarizeWithDownloadedLocalModel(appContext, content, callback);
+            return;
+        }
+        postDebugInfo(callback, "Gemini Nano · load —");
+
+        Summarizer availabilityChecker = null;
+        try {
+            availabilityChecker = Summarization.getClient(createLocalSummarizerOptions(appContext));
+            int featureStatus = availabilityChecker.checkFeatureStatus().get();
+            cachedLocalFeatureStatus = featureStatus;
+            if (isLocalFeatureUsable(featureStatus)) {
+                summarizePreparedLocalText(appContext, content, callback);
+                return;
+            }
+        } catch (ExecutionException e) {
+            cachedLocalFeatureStatus = FeatureStatus.UNAVAILABLE;
+            throw e;
+        } catch (RuntimeException e) {
+            cachedLocalFeatureStatus = FeatureStatus.UNAVAILABLE;
+            throw e;
+        } finally {
+            if (availabilityChecker != null) {
+                availabilityChecker.close();
+            }
+        }
+
+        postFailure(callback,
+                "Gemini Nano is unavailable. Select another local model in AI summarization settings.");
+    }
+
+    private static void summarizeWithDownloadedLocalModel(Context appContext,
+                                                           String content,
+                                                           SummaryCallback callback) {
+        if (!LocalModelManager.isSupported()) {
+            postFailure(callback, "Downloadable local models require Android 12 or newer");
+            return;
+        }
+        if (!LocalModelManager.isSelectedModelDownloaded(appContext)) {
+            postFailure(callback, "Download the selected local model before using it");
+            return;
+        }
+        if (content.length() < LOCAL_SUMMARY_MIN_CHARS) {
+            postFailure(callback, "Article is too short for local summarization");
+            return;
+        }
+
+        try {
+            LocalModelManager.ModelInfo selected =
+                    LocalModelManager.getSelectedModel(appContext);
+            postSuccess(callback, LocalModelInference.summarize(
+                    appContext,
+                    content,
+                    summary -> postProgress(callback, summary),
+                    loadMillis -> postDebugInfo(
+                            callback, formatLoadInfo(selected.displayName, loadMillis))));
+        } catch (Exception e) {
+            postFailure(callback, "Local model failed: " + getThrowableMessage(e));
+        }
     }
 
     private static void summarizePreparedLocalText(Context appContext, String content, SummaryCallback callback)
@@ -329,8 +428,25 @@ public class SummaryManager {
         }
     }
 
-    private static String getLocalAvailabilityFailureMessage() {
-        return "Gemini Nano not available on this device";
+    private static void postResolvedLocalAvailability(LocalSummaryAvailabilityCallback callback,
+                                                      int featureStatus) {
+        if (isLocalFeatureUsable(featureStatus)) {
+            postLocalAvailability(callback, true, false,
+                    getLocalFeatureStatusMessage(featureStatus));
+        } else {
+            postDownloadableModelAvailability(callback);
+        }
+    }
+
+    private static void postDownloadableModelAvailability(
+            LocalSummaryAvailabilityCallback callback) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            postLocalAvailability(callback, true, true,
+                    "Gemini Nano isn't available on this device");
+        } else {
+            postLocalAvailability(callback, false, false,
+                    "Gemini Nano is unavailable; downloadable models require Android 12 or newer");
+        }
     }
 
     private static String getThrowableMessage(Throwable throwable) {
@@ -354,6 +470,7 @@ public class SummaryManager {
             postFailure(callback, "Model missing. Open AI summarization settings and choose a model.");
             return;
         }
+        postDebugInfo(callback, model + " · load —");
 
         String prompt = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_system_prompt", DEFAULT_SYSTEM_PROMPT);
         boolean streamResponses = PreferenceManager.getDefaultSharedPreferences(ctx)
@@ -668,13 +785,28 @@ public class SummaryManager {
         MAIN_HANDLER.post(() -> callback.onProgress(summary));
     }
 
+    private static void postDebugInfo(SummaryCallback callback, String debugInfo) {
+        MAIN_HANDLER.post(() -> callback.onDebugInfo(debugInfo));
+    }
+
+    private static String formatLoadInfo(String modelName, long loadMillis) {
+        if (loadMillis < 1000L) {
+            return modelName + " · " + loadMillis + " ms load";
+        }
+        return modelName + " · "
+                + String.format(Locale.US, "%.1f s", loadMillis / 1000d)
+                + " load";
+    }
+
     private static void postFailure(SummaryCallback callback, String error) {
         MAIN_HANDLER.post(() -> callback.onFailure(error));
     }
 
     private static void postLocalAvailability(LocalSummaryAvailabilityCallback callback,
                                               boolean available,
+                                              boolean downloadableFallbackRequired,
                                               String statusMessage) {
-        MAIN_HANDLER.post(() -> callback.onResult(available, statusMessage));
+        MAIN_HANDLER.post(() -> callback.onResult(
+                available, downloadableFallbackRequired, statusMessage));
     }
 }

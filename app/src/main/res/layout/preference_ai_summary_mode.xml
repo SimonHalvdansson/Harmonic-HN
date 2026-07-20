@@ -33,9 +33,9 @@
             android:layout_weight="1"
             android:checkable="true"
             android:fontFamily="@font/product_sans_bold"
+            android:text="Local"
             android:textAllCaps="false"
-            app:icon="@drawable/ic_phone_android"
-            android:text="Local" />
+            app:icon="@drawable/ic_phone_android" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/ai_summary_mode_cloud"
@@ -45,20 +45,26 @@
             android:layout_weight="1"
             android:checkable="true"
             android:fontFamily="@font/product_sans_bold"
+            android:text="Cloud"
             android:textAllCaps="false"
-            app:icon="@drawable/ic_cloud"
-            android:text="Cloud" />
+            app:icon="@drawable/ic_cloud" />
 
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
-    <TextView
-        android:id="@+id/ai_summary_mode_status"
+    <LinearLayout
+        android:id="@+id/ai_summary_local_model_panel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:fontFamily="@font/product_sans"
-        android:textSize="13sp"
-        android:textColor="?attr/secondaryTextColor"
-        android:visibility="gone" />
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/ai_summary_local_model_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </LinearLayout>
 
 </LinearLayout>

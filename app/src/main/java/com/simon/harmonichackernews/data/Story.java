@@ -72,6 +72,7 @@ public class Story {
     public int parentId;  // Direct parent ID (for comments)
     public String summary;
     public transient boolean summaryGeneratedSuccessfully;
+    public transient String summaryDebugInfo;
 
     public Story() {}
 

@@ -12,6 +12,8 @@ import androidx.preference.SwitchPreferenceCompat;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.network.AiModelCatalog;
 import com.simon.harmonichackernews.network.AiSummaryProviders;
+import com.simon.harmonichackernews.summary.local.LocalModelManager;
+import com.simon.harmonichackernews.network.SummaryManager;
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -89,7 +91,12 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         if (modePreference != null) {
             modePreference.setOnPreferenceChangeListener((preference, newValue) -> {
                 updateDependentPreferenceStates((String) newValue);
+                updateEnablePreferenceAvailability((String) newValue);
                 return true;
+            });
+            modePreference.setLocalConfigurationChangedListener(() -> {
+                updateEnablePreferenceAvailability();
+                updateDependentPreferenceStates();
             });
         }
 
@@ -191,6 +198,8 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
         } else if (PREF_SYSTEM_PROMPT.equals(key)) {
             updateSystemPromptSummary();
             updateEnablePreferenceAvailability();
+        } else if (LocalModelManager.PREF_SELECTED_MODEL.equals(key)) {
+            updateEnablePreferenceAvailability();
         }
     }
 
@@ -213,18 +222,36 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
     }
 
     private void updateEnablePreferenceAvailability() {
+        String mode = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                .getString(PREF_MODE, AiSummaryModePreference.MODE_CLOUD);
+        updateEnablePreferenceAvailability(mode);
+    }
+
+    private void updateEnablePreferenceAvailability(String mode) {
         if (enablePreference == null || getContext() == null) {
             return;
         }
 
-        boolean configurationComplete = isConfigurationComplete();
-        if (!configurationComplete && enablePreference.isChecked()) {
+        boolean configurationComplete = isConfigurationComplete(mode);
+        boolean configurationKnown = !AiSummaryModePreference.MODE_LOCAL.equals(mode)
+                || SummaryManager.isLocalSummaryConfigurationKnown(requireContext());
+        if (!configurationComplete && configurationKnown && enablePreference.isChecked()) {
             enablePreference.setChecked(false);
         }
         enablePreference.setEnabled(configurationComplete);
     }
 
     private boolean isConfigurationComplete() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        String mode = prefs.getString(PREF_MODE, AiSummaryModePreference.MODE_CLOUD);
+        return isConfigurationComplete(mode);
+    }
+
+    private boolean isConfigurationComplete(String mode) {
+        if (AiSummaryModePreference.MODE_LOCAL.equals(mode)) {
+            return SummaryManager.isLocalSummaryReady(requireContext());
+        }
+
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
         String baseUrl = prefs.getString(PREF_BASE_URL, DEFAULT_BASE_URL);
         String apiKey = AiSummaryApiKeyStore.getApiKey(requireContext());
