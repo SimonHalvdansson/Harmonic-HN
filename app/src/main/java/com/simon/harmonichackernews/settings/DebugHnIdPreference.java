@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.settings;
 
 import android.content.Context;
+import android.os.SystemClock;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -17,12 +18,15 @@ import com.simon.harmonichackernews.databinding.PreferenceDebugHnIdBinding;
 
 public class DebugHnIdPreference extends Preference {
 
+    private static final long OPEN_DEBOUNCE_MILLIS = 500;
+
     public interface OnOpenIdListener {
         void onOpenId(int id);
     }
 
     private String inputValue = "";
     private OnOpenIdListener onOpenIdListener;
+    private long lastOpenTimeMillis;
 
     public DebugHnIdPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -106,6 +110,11 @@ public class DebugHnIdPreference extends Preference {
 
         binding.debugHnIdInputLayout.setError(null);
         if (onOpenIdListener != null) {
+            long now = SystemClock.elapsedRealtime();
+            if (now - lastOpenTimeMillis < OPEN_DEBOUNCE_MILLIS) {
+                return;
+            }
+            lastOpenTimeMillis = now;
             onOpenIdListener.onOpenId(id);
         }
     }
