@@ -766,9 +766,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 updateHeaderSpacerForCurrentSheetOffset();
 
                 Insets cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
-                horizontalInsetLeft = Math.max(cutoutInsets.left, systemInsets.left);
-                horizontalInsetRight = Math.max(cutoutInsets.right, systemInsets.right);
-                updateCommentsStatusBarAppearance();
                 int contentPaddingLeft = 0;
                 int contentPaddingRight = 0;
                 if (Utils.isTablet(getResources())) {
@@ -782,6 +779,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
                 int leftPadding = Math.max(Math.max(cutoutInsets.left, systemInsets.left), contentPaddingLeft);
                 int rightPadding = Math.max(Math.max(cutoutInsets.right, systemInsets.right), contentPaddingRight);
+                // Header rows already bleed through the recycler's end padding. Extend the
+                // separate start-side tint protection through the standalone wide-screen margin.
+                horizontalInsetLeft = leftPadding;
+                horizontalInsetRight = Math.max(cutoutInsets.right, systemInsets.right);
+                updateCommentsStatusBarAppearance();
                 bottomSheet.setPadding(0, 0, 0, 0);
                 setCommentsRecyclerSidePadding(leftPadding, rightPadding);
 
@@ -1102,14 +1104,20 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         FrameLayout.LayoutParams tintLayoutParams = (FrameLayout.LayoutParams) tint.getLayoutParams();
         FrameLayout.LayoutParams fadeLayoutParams = (FrameLayout.LayoutParams) fade.getLayoutParams();
+        boolean insetLayoutChanged;
         if (!horizontalInsetFadeAvailable) {
-            tintLayoutParams.height = horizontalInsetHeaderPassed
+            int tintHeight = horizontalInsetHeaderPassed
                     ? 0
                     : ViewGroup.LayoutParams.MATCH_PARENT;
+            insetLayoutChanged = tintLayoutParams.height != tintHeight;
+            tintLayoutParams.height = tintHeight;
             fade.setVisibility(View.GONE);
         } else {
             int fadeTop = horizontalInsetFadeTop;
             int fadeHeight = Math.max(0, horizontalInsetFadeBottom - fadeTop);
+            insetLayoutChanged = tintLayoutParams.height != fadeTop
+                    || fadeLayoutParams.topMargin != fadeTop
+                    || fadeLayoutParams.height != fadeHeight;
             tintLayoutParams.height = Math.max(0, fadeTop);
             fadeLayoutParams.topMargin = fadeTop;
             fadeLayoutParams.height = fadeHeight;
@@ -1127,6 +1135,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         tint.setLayoutParams(tintLayoutParams);
         fade.setLayoutParams(fadeLayoutParams);
+        if (insetLayoutChanged) {
+            // Header content can finish resizing from inside RecyclerView's layout pass. Queue a
+            // fresh parent layout so the protection does not retain an earlier loading height.
+            protection.post(protection::requestLayout);
+        }
         protection.setVisibility(enabled && width > 0 ? View.VISIBLE : View.GONE);
     }
 
