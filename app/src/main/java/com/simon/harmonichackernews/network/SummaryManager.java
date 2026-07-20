@@ -214,7 +214,8 @@ public class SummaryManager {
         if (LocalModelManager.MODEL_GEMINI_NANO.equals(selected.id)) {
             return isLocalFeatureUsable(cachedLocalFeatureStatus);
         }
-        return LocalModelManager.isSelectedModelDownloaded(context);
+        return LocalModelManager.isModelSupported(selected)
+                && LocalModelManager.isSelectedModelDownloaded(context);
     }
 
     public static boolean isLocalSummaryConfigurationKnown(Context context) {
@@ -281,8 +282,10 @@ public class SummaryManager {
     private static void summarizeWithDownloadedLocalModel(Context appContext,
                                                            String content,
                                                            SummaryCallback callback) {
-        if (!LocalModelManager.isSupported()) {
-            postFailure(callback, "Downloadable local models require Android 12 or newer");
+        LocalModelManager.ModelInfo selected =
+                LocalModelManager.getSelectedModel(appContext);
+        if (!LocalModelManager.isModelSupported(selected)) {
+            postFailure(callback, LocalModelManager.getModelUnsupportedReason(selected));
             return;
         }
         if (!LocalModelManager.isSelectedModelDownloaded(appContext)) {
@@ -295,8 +298,6 @@ public class SummaryManager {
         }
 
         try {
-            LocalModelManager.ModelInfo selected =
-                    LocalModelManager.getSelectedModel(appContext);
             postSuccess(callback, LocalModelInference.summarize(
                     appContext,
                     content,

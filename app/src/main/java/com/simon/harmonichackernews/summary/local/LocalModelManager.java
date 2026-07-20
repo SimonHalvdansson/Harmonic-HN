@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.summary.local;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.os.Build;
+import android.os.Process;
 
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
@@ -263,6 +264,24 @@ public final class LocalModelManager {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S;
     }
 
+    public static boolean isModelSupported(ModelInfo model) {
+        if (!model.downloadable) {
+            return true;
+        }
+        return isSupported()
+                && (model.runtime != Runtime.LITERT_LM || Process.is64Bit());
+    }
+
+    public static String getModelUnsupportedReason(ModelInfo model) {
+        if (!model.downloadable || isModelSupported(model)) {
+            return "";
+        }
+        if (!isSupported()) {
+            return "Requires Android 12 or newer";
+        }
+        return "Requires a 64-bit Android device";
+    }
+
     public static List<ModelInfo> getModels() {
         return MODELS;
     }
@@ -284,7 +303,8 @@ public final class LocalModelManager {
 
     public static void selectModel(Context context, String modelId) {
         ModelInfo model = getModel(modelId);
-        if (model.downloadable && !isModelDownloaded(context, model)) {
+        if (!isModelSupported(model)
+                || (model.downloadable && !isModelDownloaded(context, model))) {
             return;
         }
         PreferenceManager.getDefaultSharedPreferences(context)
@@ -372,6 +392,9 @@ public final class LocalModelManager {
         ModelInfo model = getModel(modelId);
         if (!model.downloadable) {
             return model.displayName + " is built into supported devices.";
+        }
+        if (!isModelSupported(model)) {
+            return getModelUnsupportedReason(model) + ".";
         }
         File finalFile = getModelFile(context, model.id, model.fileName);
         File partialFile = getPartialModelFile(context, model.id, model.fileName);

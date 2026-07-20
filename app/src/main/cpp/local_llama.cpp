@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdarg>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -62,29 +63,66 @@ void release_model() {
     pending_utf8.clear();
 }
 
-bool is_valid_utf8(const std::string & value) {
-    const auto * bytes = reinterpret_cast<const unsigned char *>(value.c_str());
-    while (*bytes != 0) {
-        int length;
-        if ((*bytes & 0x80) == 0) {
+enum class Utf8Status {
+    VALID,
+    INCOMPLETE,
+    INVALID,
+};
+
+Utf8Status decode_utf8(const std::string & value, std::vector<jchar> & output) {
+    output.clear();
+    size_t offset = 0;
+    while (offset < value.size()) {
+        const auto first = static_cast<unsigned char>(value[offset]);
+        uint32_t code_point;
+        uint32_t minimum;
+        size_t length;
+        if ((first & 0x80U) == 0) {
+            code_point = first;
+            minimum = 0;
             length = 1;
-        } else if ((*bytes & 0xE0) == 0xC0) {
+        } else if ((first & 0xE0U) == 0xC0U) {
+            code_point = first & 0x1FU;
+            minimum = 0x80U;
             length = 2;
-        } else if ((*bytes & 0xF0) == 0xE0) {
+        } else if ((first & 0xF0U) == 0xE0U) {
+            code_point = first & 0x0FU;
+            minimum = 0x800U;
             length = 3;
-        } else if ((*bytes & 0xF8) == 0xF0) {
+        } else if ((first & 0xF8U) == 0xF0U) {
+            code_point = first & 0x07U;
+            minimum = 0x10000U;
             length = 4;
         } else {
-            return false;
+            return Utf8Status::INVALID;
         }
-        bytes++;
-        for (int i = 1; i < length; i++, bytes++) {
-            if ((*bytes & 0xC0) != 0x80) {
-                return false;
+
+        if (value.size() - offset < length) {
+            return Utf8Status::INCOMPLETE;
+        }
+        for (size_t index = 1; index < length; index++) {
+            const auto continuation =
+                    static_cast<unsigned char>(value[offset + index]);
+            if ((continuation & 0xC0U) != 0x80U) {
+                return Utf8Status::INVALID;
             }
+            code_point = (code_point << 6U) | (continuation & 0x3FU);
         }
+        if (code_point < minimum || code_point > 0x10FFFFU
+                || (code_point >= 0xD800U && code_point <= 0xDFFFU)) {
+            return Utf8Status::INVALID;
+        }
+
+        if (code_point <= 0xFFFFU) {
+            output.push_back(static_cast<jchar>(code_point));
+        } else {
+            code_point -= 0x10000U;
+            output.push_back(static_cast<jchar>(0xD800U + (code_point >> 10U)));
+            output.push_back(static_cast<jchar>(0xDC00U + (code_point & 0x3FFU)));
+        }
+        offset += length;
     }
-    return true;
+    return Utf8Status::VALID;
 }
 
 std::string apply_chat_template(const std::string & system_prompt,
@@ -256,12 +294,22 @@ Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeStart(
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeNextToken(
         JNIEnv * env, jobject) {
-    if (context == nullptr || sampler == nullptr || generated_tokens >= max_generated_tokens) {
+    if (context == nullptr || sampler == nullptr) {
+        set_error("No GGUF generation is active");
+        return nullptr;
+    }
+    if (generated_tokens >= max_generated_tokens) {
+        if (!pending_utf8.empty()) {
+            set_error("GGUF model ended with incomplete UTF-8");
+        }
         return nullptr;
     }
 
     llama_token token = llama_sampler_sample(sampler, context, -1);
     if (llama_vocab_is_eog(vocab, token)) {
+        if (!pending_utf8.empty()) {
+            set_error("GGUF model ended with incomplete UTF-8");
+        }
         return nullptr;
     }
     llama_batch batch = llama_batch_get_one(&token, 1);
@@ -271,10 +319,19 @@ Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeNextToken(
     }
     generated_tokens++;
     pending_utf8 += token_to_piece(token);
-    if (!is_valid_utf8(pending_utf8)) {
-        return env->NewStringUTF("");
+    std::vector<jchar> decoded;
+    Utf8Status utf8_status = decode_utf8(pending_utf8, decoded);
+    if (utf8_status == Utf8Status::INCOMPLETE) {
+        const jchar empty = 0;
+        return env->NewString(&empty, 0);
     }
-    jstring result = env->NewStringUTF(pending_utf8.c_str());
+    if (utf8_status == Utf8Status::INVALID) {
+        set_error("GGUF model produced invalid UTF-8");
+        return nullptr;
+    }
+    const jchar empty = 0;
+    jstring result = env->NewString(decoded.empty() ? &empty : decoded.data(),
+                                    static_cast<jsize>(decoded.size()));
     pending_utf8.clear();
     return result;
 }

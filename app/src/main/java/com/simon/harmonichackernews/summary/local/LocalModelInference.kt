@@ -18,6 +18,7 @@ import kotlin.math.min
 
 /** Streaming text summarization using the selected downloaded local model. */
 object LocalModelInference {
+  private val inferenceLock = Any()
   private const val LOW_MEMORY_THRESHOLD_BYTES = 8L * 1024L * 1024L * 1024L
   private const val LOW_MEMORY_MAX_WORDS = 500
   private const val DEFAULT_MAX_WORDS = 1500
@@ -41,6 +42,15 @@ object LocalModelInference {
 
   @JvmStatic
   fun summarize(
+    context: Context,
+    text: String,
+    progressCallback: ProgressCallback,
+    loadCallback: LoadCallback,
+  ): String = synchronized(inferenceLock) {
+    summarizeLocked(context, text, progressCallback, loadCallback)
+  }
+
+  private fun summarizeLocked(
     context: Context,
     text: String,
     progressCallback: ProgressCallback,

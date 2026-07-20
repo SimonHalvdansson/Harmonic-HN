@@ -42,6 +42,9 @@ object GgufInference {
           }
         }
       }
+      nativeLastError().takeIf { it.isNotBlank() }?.let {
+        throw IllegalStateException(it)
+      }
       val summary = visibleSummary(response.toString())?.trim().orEmpty()
       if (summary.isEmpty()) {
         throw IllegalStateException(nativeError("The local model returned an empty summary"))

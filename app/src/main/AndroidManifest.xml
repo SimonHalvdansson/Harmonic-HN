@@ -27,6 +27,7 @@
     </queries>
 
     <application
+        android:name=".HarmonicApplication"
         android:enableOnBackInvokedCallback="true"
         android:usesCleartextTraffic="true"
         android:resizeableActivity="true"
@@ -162,6 +163,9 @@
           android:authorities="${applicationId}.androidx-startup"
           android:exported="false"
           tools:node="merge">
+            <meta-data
+              android:name="androidx.work.WorkManagerInitializer"
+              tools:node="remove" />
             <meta-data
               android:name="com.simon.harmonichackernews.utils.FoldableSplitInitializer"
               android:value="androidx.startup" />

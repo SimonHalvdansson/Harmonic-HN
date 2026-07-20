@@ -292,6 +292,20 @@ public class AiSummaryModePreference extends Preference {
                 continue;
             }
 
+            if (!LocalModelManager.isModelSupported(model)) {
+                row.availability.setText(
+                        LocalModelManager.getModelUnsupportedReason(model));
+                row.availability.setVisibility(View.VISIBLE);
+                setModelRowEnabled(row, false, false);
+                setModelRowSelected(row, false);
+                row.action.setVisibility(View.INVISIBLE);
+                row.progress.setVisibility(View.GONE);
+                row.status.setVisibility(View.GONE);
+                setModelRowDetailsVisible(row, false);
+                continue;
+            }
+            row.availability.setVisibility(View.GONE);
+
             LocalModelManager.Status status =
                     LocalModelManager.getStatus(getContext(), model);
             boolean downloaded = status.state == LocalModelManager.State.DOWNLOADED;
@@ -625,7 +639,8 @@ public class AiSummaryModePreference extends Preference {
                 LocalModelManager.getSelectedModel(getContext());
         boolean ready = LocalModelManager.MODEL_GEMINI_NANO.equals(model.id)
                 ? nanoAvailable
-                : LocalModelManager.isModelDownloaded(getContext(), model);
+                : LocalModelManager.isModelSupported(model)
+                        && LocalModelManager.isModelDownloaded(getContext(), model);
         if (lastLocalConfigurationReady != null
                 && lastLocalConfigurationReady == ready) {
             return;
@@ -687,7 +702,7 @@ public class AiSummaryModePreference extends Preference {
 
     private void selectFirstDownloadedModelOrClear() {
         for (LocalModelManager.ModelInfo model : LocalModelManager.getModels()) {
-            if (model.downloadable
+            if (model.downloadable && LocalModelManager.isModelSupported(model)
                     && LocalModelManager.isModelDownloaded(getContext(), model)) {
                 LocalModelManager.selectModel(getContext(), model.id);
                 return;

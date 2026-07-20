@@ -84,6 +84,16 @@ public class LocalModelDownloadWorker extends Worker {
         if (partialFile.length() > expectedBytes && !partialFile.delete()) {
             return failure("Could not replace the invalid partial download");
         }
+        if (partialFile.length() == expectedBytes) {
+            if (outputFile.exists() && !outputFile.delete()) {
+                return failure("Could not replace the existing model");
+            }
+            if (!partialFile.renameTo(outputFile)) {
+                return failure("Could not finish installing the model");
+            }
+            publishProgress(modelName, expectedBytes, expectedBytes);
+            return Result.success();
+        }
 
         long downloadedBytes = partialFile.length();
         try {
