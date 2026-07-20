@@ -408,7 +408,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             int actionContainerPadding = Math.round(headerViewHolder.actionsContainer.getResources().getDimension(R.dimen.comments_header_action_padding));
             headerViewHolder.actionsContainer.setPadding(actionContainerPadding, 0, actionContainerPadding, 0);
-            applyHeaderEndBleed(headerViewHolder);
+            applyHeaderHorizontalBleed(headerViewHolder);
 
             headerViewHolder.favicon.setVisibility(showThumbnail ? View.VISIBLE : GONE);
             headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
@@ -2133,7 +2133,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         currentHeaderContentBackgroundColor = color;
         int visibleColor = ColorUtils.blendARGB(normalColor, targetColor, getEffectiveHeaderTintProgress());
         boolean hasTint = shouldTintHeader();
-        applyHeaderEndBleed(headerViewHolder);
+        applyHeaderHorizontalBleed(headerViewHolder);
         headerViewHolder.itemView.setBackgroundColor(normalColor);
         headerViewHolder.spacer.setBackgroundColor(visibleColor);
         headerViewHolder.sheetHandleContainer.setBackgroundColor(visibleColor);
@@ -2196,16 +2196,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         headerViewHolder.tintFade.setBackground(fade);
     }
 
-    private void applyHeaderEndBleed(HeaderViewHolder headerViewHolder) {
-        headerViewHolder.setHeaderEndBleed(getRecyclerViewEndPadding(headerViewHolder.itemView));
-    }
-
-    private int getRecyclerViewEndPadding(View itemView) {
-        ViewParent parent = itemView.getParent();
+    private void applyHeaderHorizontalBleed(HeaderViewHolder headerViewHolder) {
+        ViewParent parent = headerViewHolder.itemView.getParent();
         if (parent instanceof RecyclerView) {
-            return ((RecyclerView) parent).getPaddingRight();
+            RecyclerView recyclerView = (RecyclerView) parent;
+            headerViewHolder.setHeaderHorizontalBleed(
+                    recyclerView.getPaddingLeft(),
+                    recyclerView.getPaddingRight());
+        } else {
+            headerViewHolder.setHeaderHorizontalBleed(0, 0);
         }
-        return 0;
     }
 
     private int getNormalHeaderBackgroundColor(View view) {
@@ -3589,6 +3589,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final LinearLayout pollLayout;
         public final LinearLayout headerView;
         public final int headerBasePaddingTop;
+        private final Map<View, Integer> baseLeftPaddings = new HashMap<>();
         private final Map<View, Integer> baseRightPaddings = new HashMap<>();
         private final Map<View, ValueAnimator> statusRowHeightAnimators = new HashMap<>();
         private final Map<View, Boolean> statusRowVisibilityTargets = new HashMap<>();
@@ -3900,50 +3901,83 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
         }
 
-        private void setHeaderEndBleed(int endBleed) {
-            int safeEndBleed = Math.max(0, endBleed);
-            setItemViewWidthForEndBleed(safeEndBleed);
-            setEndPaddingForBleed(sheetHandleContainer, safeEndBleed);
-            setEndPaddingForBleed(sheetButtonsContainer, safeEndBleed);
-            setEndPaddingForBleed(headerView, safeEndBleed);
-            setEndPaddingForBleed(summaryContainer, safeEndBleed);
-            setEndPaddingForBleed(actionsContainer, safeEndBleed);
+        private void setHeaderHorizontalBleed(int leftBleed, int rightBleed) {
+            int safeLeftBleed = Math.max(0, leftBleed);
+            int safeRightBleed = Math.max(0, rightBleed);
+            // Let the real header backgrounds and fade paint through RecyclerView padding while
+            // keeping every piece of header content aligned with the comments below it.
+            setItemViewHorizontalBleed(safeLeftBleed, safeRightBleed);
+            setHorizontalPaddingForBleed(sheetHandleContainer, safeLeftBleed, safeRightBleed);
+            setHorizontalPaddingForBleed(sheetButtonsContainer, safeLeftBleed, safeRightBleed);
+            setHorizontalPaddingForBleed(headerView, safeLeftBleed, safeRightBleed);
+            setHorizontalPaddingForBleed(summaryContainer, safeLeftBleed, safeRightBleed);
+            setHorizontalPaddingForBleed(actionsContainer, safeLeftBleed, safeRightBleed);
+            setHorizontalPaddingForBleed(opFilterContainer, safeLeftBleed, safeRightBleed);
+            setHorizontalPaddingForBleed(loadingContainer, safeLeftBleed, safeRightBleed);
+            setHorizontalPaddingForBleed(refreshPrompt, safeLeftBleed, safeRightBleed);
+            setHorizontalPaddingForBleed(loadingFailedContainer, safeLeftBleed, safeRightBleed);
+            setHorizontalPaddingForBleed(emptyContainer, safeLeftBleed, safeRightBleed);
         }
 
-        private void setItemViewWidthForEndBleed(int endBleed) {
+        private void setItemViewHorizontalBleed(int leftBleed, int rightBleed) {
             int targetWidth = ViewGroup.LayoutParams.MATCH_PARENT;
-            if (endBleed > 0) {
+            if (leftBleed > 0 || rightBleed > 0) {
                 ViewParent parent = itemView.getParent();
                 if (parent instanceof RecyclerView) {
                     RecyclerView recyclerView = (RecyclerView) parent;
                     int parentWidth = recyclerView.getWidth();
-                    int leftPadding = recyclerView.getPaddingLeft();
-                    if (parentWidth > leftPadding) {
-                        targetWidth = parentWidth - leftPadding;
+                    if (parentWidth > 0) {
+                        targetWidth = parentWidth;
                     }
                 }
             }
 
             ViewGroup.LayoutParams layoutParams = itemView.getLayoutParams();
-            if (layoutParams != null && layoutParams.width != targetWidth) {
-                layoutParams.width = targetWidth;
+            if (layoutParams == null) {
+                return;
+            }
+            boolean layoutChanged = layoutParams.width != targetWidth;
+            layoutParams.width = targetWidth;
+            if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
+                ViewGroup.MarginLayoutParams marginLayoutParams =
+                        (ViewGroup.MarginLayoutParams) layoutParams;
+                int targetLeftMargin = -leftBleed;
+                int targetRightMargin = -rightBleed;
+                layoutChanged = layoutChanged
+                        || marginLayoutParams.leftMargin != targetLeftMargin
+                        || marginLayoutParams.rightMargin != targetRightMargin;
+                marginLayoutParams.leftMargin = targetLeftMargin;
+                marginLayoutParams.rightMargin = targetRightMargin;
+            }
+            if (layoutChanged) {
                 itemView.setLayoutParams(layoutParams);
             }
         }
 
-        private void setEndPaddingForBleed(View view, int endBleed) {
+        private void setHorizontalPaddingForBleed(View view, int leftBleed, int rightBleed) {
             if (view == null) {
                 return;
             }
 
-            int targetRightPadding = getBaseRightPadding(view) + endBleed;
-            if (view.getPaddingRight() != targetRightPadding) {
+            int targetLeftPadding = getBaseLeftPadding(view) + leftBleed;
+            int targetRightPadding = getBaseRightPadding(view) + rightBleed;
+            if (view.getPaddingLeft() != targetLeftPadding
+                    || view.getPaddingRight() != targetRightPadding) {
                 view.setPadding(
-                        view.getPaddingLeft(),
+                        targetLeftPadding,
                         view.getPaddingTop(),
                         targetRightPadding,
                         view.getPaddingBottom());
             }
+        }
+
+        private int getBaseLeftPadding(View view) {
+            Integer baseLeftPadding = baseLeftPaddings.get(view);
+            if (baseLeftPadding == null) {
+                baseLeftPadding = view.getPaddingLeft();
+                baseLeftPaddings.put(view, baseLeftPadding);
+            }
+            return baseLeftPadding;
         }
 
         private int getBaseRightPadding(View view) {

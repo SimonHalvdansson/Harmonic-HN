@@ -11,7 +11,6 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.PointF;
-import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -367,21 +366,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean originalStatusBarColorCaptured = false;
     private int commentsPaneStatusBarColor = Color.TRANSPARENT;
     private int commentsHeaderStatusBarColor = Color.TRANSPARENT;
-    private int horizontalInsetLeft;
-    private int horizontalInsetRight;
-    private int horizontalInsetFadeTop = -1;
-    private int horizontalInsetFadeBottom = -1;
-    private boolean horizontalInsetFadeAvailable;
-    private boolean horizontalInsetHeaderPassed;
-    private boolean appliedHorizontalInsetProtectionKnown;
-    private int appliedHorizontalInsetLeft;
-    private int appliedHorizontalInsetRight;
-    private int appliedHorizontalInsetColor = Color.TRANSPARENT;
-    private int appliedHorizontalInsetFadeTop = -1;
-    private int appliedHorizontalInsetFadeBottom = -1;
-    private boolean appliedHorizontalInsetProtectionEnabled;
-    private boolean appliedHorizontalInsetFadeAvailable;
-    private boolean appliedHorizontalInsetHeaderPassed;
     private boolean appliedStatusBarProtectionKnown = false;
     private boolean appliedStatusBarProtectionEnabled = false;
     private int appliedStatusBarProtectionColor = Color.TRANSPARENT;
@@ -567,7 +551,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         commentsPaneStatusBarColor = StatusBarProtectionUtils.getPaneBackgroundColor(requireContext());
         commentsHeaderStatusBarColor = commentsPaneStatusBarColor;
         appliedStatusBarProtectionKnown = false;
-        appliedHorizontalInsetProtectionKnown = false;
         updateCommentsStatusBarAppearance();
 
         integratedWebview = prefIntegratedWebview && story.isLink;
@@ -779,11 +762,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
                 int leftPadding = Math.max(Math.max(cutoutInsets.left, systemInsets.left), contentPaddingLeft);
                 int rightPadding = Math.max(Math.max(cutoutInsets.right, systemInsets.right), contentPaddingRight);
-                // Header rows already bleed through the recycler's end padding. Extend the
-                // separate start-side tint protection through the standalone wide-screen margin.
-                horizontalInsetLeft = leftPadding;
-                horizontalInsetRight = Math.max(cutoutInsets.right, systemInsets.right);
-                updateCommentsStatusBarAppearance();
                 bottomSheet.setPadding(0, 0, 0, 0);
                 setCommentsRecyclerSidePadding(leftPadding, rightPadding);
 
@@ -1027,29 +1005,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             appliedStatusBarProtectionEnabled = statusBarProtectionEnabled;
             appliedStatusBarProtectionColor = statusBarProtectionEnabled ? statusBarColor : Color.TRANSPARENT;
         }
-        updateHorizontalInsetFadeRange();
-        if (shouldApplyHorizontalInsetProtection(
-                statusBarProtectionEnabled,
-                commentsHeaderStatusBarColor)) {
-            updateHorizontalInsetProtection(
-                    binding.commentsHorizontalInsetLeft,
-                    binding.commentsHorizontalInsetLeftTint,
-                    binding.commentsHorizontalInsetLeftFade,
-                    horizontalInsetLeft,
-                    statusBarProtectionEnabled,
-                    commentsHeaderStatusBarColor);
-            updateHorizontalInsetProtection(
-                    binding.commentsHorizontalInsetRight,
-                    binding.commentsHorizontalInsetRightTint,
-                    binding.commentsHorizontalInsetRightFade,
-                    horizontalInsetRight,
-                    statusBarProtectionEnabled,
-                    commentsHeaderStatusBarColor);
-            recordAppliedHorizontalInsetProtection(
-                    statusBarProtectionEnabled,
-                    commentsHeaderStatusBarColor);
-        }
-
         if (getActivity() == null) {
             return;
         }
@@ -1059,112 +1014,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (requireActivity().getWindow().getStatusBarColor() != windowStatusBarColor) {
             requireActivity().getWindow().setStatusBarColor(windowStatusBarColor);
         }
-    }
-
-    private boolean shouldApplyHorizontalInsetProtection(boolean enabled, int color) {
-        return !appliedHorizontalInsetProtectionKnown
-                || appliedHorizontalInsetLeft != horizontalInsetLeft
-                || appliedHorizontalInsetRight != horizontalInsetRight
-                || appliedHorizontalInsetColor != color
-                || appliedHorizontalInsetProtectionEnabled != enabled
-                || appliedHorizontalInsetFadeAvailable != horizontalInsetFadeAvailable
-                || appliedHorizontalInsetHeaderPassed != horizontalInsetHeaderPassed
-                || appliedHorizontalInsetFadeTop != horizontalInsetFadeTop
-                || appliedHorizontalInsetFadeBottom != horizontalInsetFadeBottom;
-    }
-
-    private void recordAppliedHorizontalInsetProtection(boolean enabled, int color) {
-        appliedHorizontalInsetProtectionKnown = true;
-        appliedHorizontalInsetLeft = horizontalInsetLeft;
-        appliedHorizontalInsetRight = horizontalInsetRight;
-        appliedHorizontalInsetColor = color;
-        appliedHorizontalInsetProtectionEnabled = enabled;
-        appliedHorizontalInsetFadeAvailable = horizontalInsetFadeAvailable;
-        appliedHorizontalInsetHeaderPassed = horizontalInsetHeaderPassed;
-        appliedHorizontalInsetFadeTop = horizontalInsetFadeTop;
-        appliedHorizontalInsetFadeBottom = horizontalInsetFadeBottom;
-    }
-
-    private void updateHorizontalInsetProtection(@NonNull View protection,
-                                                  @NonNull View tint,
-                                                  @NonNull View fade,
-                                                  int width,
-                                                  boolean enabled,
-                                                  int color) {
-        ViewGroup.LayoutParams layoutParams = protection.getLayoutParams();
-        if (layoutParams.width != width) {
-            layoutParams.width = width;
-            protection.setLayoutParams(layoutParams);
-        }
-        int normalColor = ContextCompat.getColor(
-                requireContext(),
-                ThemeUtils.getBackgroundColorResource(requireContext()));
-        protection.setBackgroundColor(normalColor);
-        tint.setBackgroundColor(color);
-
-        FrameLayout.LayoutParams tintLayoutParams = (FrameLayout.LayoutParams) tint.getLayoutParams();
-        FrameLayout.LayoutParams fadeLayoutParams = (FrameLayout.LayoutParams) fade.getLayoutParams();
-        boolean insetLayoutChanged;
-        if (!horizontalInsetFadeAvailable) {
-            int tintHeight = horizontalInsetHeaderPassed
-                    ? 0
-                    : ViewGroup.LayoutParams.MATCH_PARENT;
-            insetLayoutChanged = tintLayoutParams.height != tintHeight;
-            tintLayoutParams.height = tintHeight;
-            fade.setVisibility(View.GONE);
-        } else {
-            int fadeTop = horizontalInsetFadeTop;
-            int fadeHeight = Math.max(0, horizontalInsetFadeBottom - fadeTop);
-            insetLayoutChanged = tintLayoutParams.height != fadeTop
-                    || fadeLayoutParams.topMargin != fadeTop
-                    || fadeLayoutParams.height != fadeHeight;
-            tintLayoutParams.height = Math.max(0, fadeTop);
-            fadeLayoutParams.topMargin = fadeTop;
-            fadeLayoutParams.height = fadeHeight;
-            GradientDrawable fadeBackground;
-            if (fade.getBackground() instanceof GradientDrawable) {
-                fadeBackground = (GradientDrawable) fade.getBackground();
-                fadeBackground.setColors(new int[]{color, normalColor});
-            } else {
-                fadeBackground = new GradientDrawable(
-                        GradientDrawable.Orientation.TOP_BOTTOM,
-                        new int[]{color, normalColor});
-                fade.setBackground(fadeBackground);
-            }
-            fade.setVisibility(fadeHeight > 0 ? View.VISIBLE : View.GONE);
-        }
-        tint.setLayoutParams(tintLayoutParams);
-        fade.setLayoutParams(fadeLayoutParams);
-        if (insetLayoutChanged) {
-            // Header content can finish resizing from inside RecyclerView's layout pass. Queue a
-            // fresh parent layout so the protection does not retain an earlier loading height.
-            protection.post(protection::requestLayout);
-        }
-        protection.setVisibility(enabled && width > 0 ? View.VISIBLE : View.GONE);
-    }
-
-    private void updateHorizontalInsetFadeRange() {
-        horizontalInsetFadeAvailable = false;
-        horizontalInsetHeaderPassed = false;
-        horizontalInsetFadeTop = -1;
-        horizontalInsetFadeBottom = -1;
-        if (recyclerView == null) {
-            return;
-        }
-        RecyclerView.ViewHolder headerHolder = recyclerView.findViewHolderForAdapterPosition(0);
-        if (headerHolder == null) {
-            horizontalInsetHeaderPassed = layoutManager != null
-                    && layoutManager.findFirstVisibleItemPosition() > 0;
-            return;
-        }
-        View tintFade = headerHolder.itemView.findViewById(R.id.comments_header_tint_fade);
-        if (tintFade == null || tintFade.getVisibility() != View.VISIBLE) {
-            return;
-        }
-        int headerTop = headerHolder.itemView.getTop();
-        horizontalInsetFadeTop = headerTop + tintFade.getTop();
-        horizontalInsetFadeBottom = headerTop + tintFade.getBottom();
-        horizontalInsetFadeAvailable = true;
     }
 
     private boolean shouldShowCommentsStatusBarProtection() {
@@ -2030,7 +1879,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         bottomSheet = null;
         headerSpacer = null;
         appliedStatusBarProtectionKnown = false;
-        appliedHorizontalInsetProtectionKnown = false;
         lastHeaderSpacerSlideOffset = Float.NaN;
         if (webViewController != null) {
             webViewController.clearViewReferences();
