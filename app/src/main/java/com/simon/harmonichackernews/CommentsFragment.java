@@ -2203,23 +2203,31 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
                 Log.d(TAG, "Loaded comments from fallback path for storyId=" + id
                         + ", loadedCount=" + loadedComments.size());
-                // Add all comments at once in proper tree order
-                allComments.addAll(loadedComments);
-                updateDefaultCommentSortOrder(allComments);
-                CommentSorter.sort(allComments, getCurrentCommentSorting());
-                applyDisplayedComments(getDisplayedCommentsForCurrentFilter(allComments));
-                adapter.commentsLoaded = true;
-                setCommentsRefreshInProgress(false);
-                updateNavigationVisibility();
-                notifyHeaderChanged();
-                swipeRefreshLayout.setRefreshing(false);
-                recyclerView.post(() -> {
+                Runnable revealComments = () -> {
                     if (!isCommentsViewActive()) {
                         return;
                     }
-                    scrollToTargetComment();
-                    commentActionOverlayController.restorePending();
-                });
+                    // Add all comments at once in proper tree order. Keeping this mutation after
+                    // the loading row's relayout lets DiffUtil drive the RecyclerView insert
+                    // animation from the header's final height.
+                    allComments.addAll(loadedComments);
+                    updateDefaultCommentSortOrder(allComments);
+                    CommentSorter.sort(allComments, getCurrentCommentSorting());
+                    applyDisplayedComments(getDisplayedCommentsForCurrentFilter(allComments));
+                    completeCommentsLoad(false);
+                    setCommentsRefreshInProgress(false);
+                    swipeRefreshLayout.setRefreshing(false);
+                };
+
+                boolean shouldAnimateInitialComments = oldCachedResponse == null
+                        && !adapter.commentsLoaded
+                        && comments.size() <= 1
+                        && !loadedComments.isEmpty();
+                if (shouldAnimateInitialComments
+                        && adapter.fadeInitialLoadingIndicatorOutThen(revealComments)) {
+                    return;
+                }
+                revealComments.run();
             }
         });
 
@@ -2342,8 +2350,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         int oldCommentCount = getAllCommentsSource().size();
-        boolean updateHeaderAfterLoad = false;
-
         // This is what we get if the Algolia API has not indexed the post,
         // we should attempt to show the user an option to switch API:s in this
         // server error case
@@ -2358,12 +2364,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         try {
             JSONParser.AlgoliaCommentsResponse parsedResponse = JSONParser.parseAlgoliaCommentsResponse(response, story.kids, filteredUsers);
-            applyParsedComments(parsedResponse.comments);
 
             boolean storyChanged = parsedResponse.updateStoryInformation(story, forceHeaderRefresh, oldCommentCount);
-            if (storyChanged || forceHeaderRefresh) {
-                updateHeaderAfterLoad = true;
-            }
+            boolean updateHeaderAfterLoad = storyChanged || forceHeaderRefresh;
             maybeLoadPollOptions();
 
             integratedWebview = prefIntegratedWebview && story.isLink;
@@ -2381,19 +2384,41 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             // Seems like loading went well, lets cache the result
             if (cache) {
                 Utils.cacheStory(getContext(), id, response);
-            } else if (restoreScroll) {
-                // If we're not caching the result, this means we just loaded an old cache.
-                // Let's see if we can recover the scroll position.
-                if (MainActivity.commentsScrollProgresses != null && !MainActivity.commentsScrollProgresses.isEmpty()) {
-                    // We check all of the caches to see if one has the same story ID
-                    for (CommentsScrollProgress scrollProgress : MainActivity.commentsScrollProgresses) {
-                        if (scrollProgress.storyId == story.id) {
-                            // Jackpot! Let's restore the state
-                            restoreScrollProgress(scrollProgress);
+            }
+
+            Runnable revealComments = () -> {
+                if (!isCommentsViewActive()) {
+                    return;
+                }
+                applyParsedComments(parsedResponse.comments);
+
+                if (!cache && restoreScroll) {
+                    // If we're not caching the result, this means we just loaded an old cache.
+                    // Let's see if we can recover the scroll position.
+                    if (MainActivity.commentsScrollProgresses != null && !MainActivity.commentsScrollProgresses.isEmpty()) {
+                        // We check all of the caches to see if one has the same story ID
+                        for (CommentsScrollProgress scrollProgress : MainActivity.commentsScrollProgresses) {
+                            if (scrollProgress.storyId == story.id) {
+                                // Jackpot! Let's restore the state
+                                restoreScrollProgress(scrollProgress);
+                            }
                         }
                     }
                 }
+
+                completeCommentsLoad(updateHeaderAfterLoad);
+            };
+
+            boolean shouldAnimateInitialComments = cache
+                    && forceHeaderRefresh
+                    && !adapter.commentsLoaded
+                    && comments.size() <= 1
+                    && !parsedResponse.comments.isEmpty();
+            if (shouldAnimateInitialComments
+                    && adapter.fadeInitialLoadingIndicatorOutThen(revealComments)) {
+                return;
             }
+            revealComments.run();
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -2402,8 +2427,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.loadingFailedServerError = false;
             notifyHeaderChanged();
             swipeRefreshLayout.setRefreshing(false);
+            completeCommentsLoad(false);
         }
+    }
 
+    private void completeCommentsLoad(boolean updateHeaderAfterLoad) {
+        if (!isCommentsViewActive()) {
+            return;
+        }
         adapter.commentsLoaded = true;
         notifyHeaderChanged();
         if (updateHeaderAfterLoad) {

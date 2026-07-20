@@ -195,6 +195,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     @Nullable
     private CharSequence headerSummaryAnimationText;
     private float headerSlideOffset = 1f;
+    private boolean initialCommentsRevealPending = false;
     @Nullable
     private Integer currentHeaderContentBackgroundColor;
     @Nullable
@@ -1392,9 +1393,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void bindHeaderLoadingState(HeaderViewHolder headerViewHolder, Context ctx) {
-        boolean showLoadingIndicator = !loadingFailed
+        boolean showLoadingIndicator = !initialCommentsRevealPending
+                && !loadingFailed
                 && (!commentsLoaded || commentsRefreshInProgress);
-        boolean showEmptyState = !loadingFailed
+        boolean showEmptyState = !initialCommentsRevealPending
+                && !loadingFailed
                 && commentsLoaded
                 && story.descendants <= 0
                 && comments.size() <= 1;
@@ -1493,6 +1496,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void fadeLoadingIndicatorOut(HeaderViewHolder headerViewHolder) {
+        fadeLoadingIndicatorOut(headerViewHolder, null);
+    }
+
+    private void fadeLoadingIndicatorOut(
+            HeaderViewHolder headerViewHolder,
+            @Nullable Runnable afterHeaderRelayout) {
         FrameLayout loadingContainer = headerViewHolder.loadingContainer;
         View loadingContent = loadingContainer.getChildAt(0);
 
@@ -1513,9 +1522,70 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                         return;
                     }
                     loadingContainer.setVisibility(GONE);
+                    setHeaderStatusRowContainerHeight(
+                            loadingContainer,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
                     loadingContent.setAlpha(1f);
+                    if (afterHeaderRelayout != null) {
+                        runAfterHeaderRelayout(headerViewHolder, afterHeaderRelayout);
+                    }
                 })
                 .start();
+    }
+
+    /**
+     * Fades and removes the initial loading row, then waits for the shorter header to be laid out
+     * before allowing the first comment insert notifications to run.
+     */
+    public boolean fadeInitialLoadingIndicatorOutThen(@NonNull Runnable afterHeaderRelayout) {
+        HeaderViewHolder headerViewHolder = boundHeaderViewHolder;
+        if (headerViewHolder == null
+                || !ViewCompat.isAttachedToWindow(headerViewHolder.itemView)
+                || !headerViewHolder.statusRowsInitialized
+                || headerViewHolder.loadingContainer.getVisibility() != VISIBLE
+                || !Boolean.TRUE.equals(headerViewHolder.statusRowVisibilityTargets.get(
+                headerViewHolder.loadingContainer))) {
+            return false;
+        }
+
+        initialCommentsRevealPending = true;
+        fadeLoadingIndicatorOut(headerViewHolder, () -> {
+            try {
+                afterHeaderRelayout.run();
+            } finally {
+                // applyDisplayedComments() refreshes the bound header before the fragment marks
+                // commentsLoaded. Keep suppressing the loading row through that refresh so it
+                // cannot briefly animate back in and push the newly inserted comments down.
+                initialCommentsRevealPending = false;
+            }
+        });
+        return true;
+    }
+
+    private void runAfterHeaderRelayout(
+            HeaderViewHolder headerViewHolder,
+            @NonNull Runnable afterHeaderRelayout) {
+        View headerItem = headerViewHolder.itemView;
+        ViewTreeObserver viewTreeObserver = headerItem.getViewTreeObserver();
+        if (!viewTreeObserver.isAlive()) {
+            headerItem.post(afterHeaderRelayout);
+            return;
+        }
+
+        viewTreeObserver.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                ViewTreeObserver currentObserver = headerItem.getViewTreeObserver();
+                if (currentObserver.isAlive()) {
+                    currentObserver.removeOnPreDrawListener(this);
+                }
+                // RecyclerView may still be completing this layout pass. Queue the adapter
+                // insertions after it, with the collapsed header geometry already committed.
+                headerItem.post(afterHeaderRelayout);
+                return true;
+            }
+        });
+        headerItem.requestLayout();
     }
 
     private void fadeLoadingIndicatorToEmptyState(HeaderViewHolder headerViewHolder) {
