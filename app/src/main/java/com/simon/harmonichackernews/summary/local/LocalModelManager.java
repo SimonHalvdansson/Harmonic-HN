@@ -49,7 +49,7 @@ public final class LocalModelManager {
     private static final long STORAGE_BUFFER_BYTES = 256L * 1024L * 1024L;
 
     private static final ModelInfo GEMINI_NANO = new ModelInfo(
-            MODEL_GEMINI_NANO, "Gemini Nano", "System managed", "",
+            MODEL_GEMINI_NANO, "Gemini Nano (experimental)", "System managed", "",
             R.drawable.model_logo_google, "", "", 0L, false,
             Runtime.GEMINI_NANO, 0);
     private static final ModelInfo E2B = new ModelInfo(

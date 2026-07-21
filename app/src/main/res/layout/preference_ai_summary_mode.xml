@@ -65,6 +65,17 @@
             android:layout_height="wrap_content"
             android:orientation="vertical" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="4dp"
+            android:fontFamily="@font/product_sans"
+            android:text="Models are loaded in when the AI summarization button is clicked, leading to a noticable delay especially on older devices. The model weights are not kept in memory after the summary is complete. Inference speed varies considerably by model and device."
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="11sp" />
+
     </LinearLayout>
 
 </LinearLayout>
