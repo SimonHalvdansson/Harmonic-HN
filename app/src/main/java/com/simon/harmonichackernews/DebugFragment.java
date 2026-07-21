@@ -1,7 +1,9 @@
 package com.simon.harmonichackernews;
 
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -16,6 +18,8 @@ import com.simon.harmonichackernews.utils.Utils;
 
 public class DebugFragment extends BaseSettingsFragment {
 
+    private static final int COULOMB_GAS_TAP_COUNT = 5;
+    private static final long COULOMB_GAS_MAX_TAP_INTERVAL_MS = 800L;
     private static final String PREF_APP_VERSION = "pref_debug_app_version";
     private static final String PREF_APP_BUILD = "pref_debug_app_build";
     private static final String PREF_BUILD_VERSION = "pref_debug_build_version";
@@ -30,6 +34,9 @@ public class DebugFragment extends BaseSettingsFragment {
     private static final String PREF_CHANGELOG = "pref_debug_changelog";
     private static final String PREF_NOTIFICATIONS = "pref_debug_notifications";
     private static final String PREF_OPEN_HN_ID = "pref_debug_open_hn_id";
+
+    private int appVersionTapCount;
+    private long lastAppVersionTapTime;
 
     @Override
     protected String getToolbarTitle() {
@@ -58,6 +65,25 @@ public class DebugFragment extends BaseSettingsFragment {
         setSummary(PREF_BUILD_VERSION, BuildConfig.BUILD_TYPE);
         setSummary(PREF_ANDROID_VERSION,
                 Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
+
+        Preference appVersion = findPreference(PREF_APP_VERSION);
+        if (appVersion != null) {
+            appVersion.setOnPreferenceClickListener(preference -> {
+                long tapTime = SystemClock.elapsedRealtime();
+                if (tapTime - lastAppVersionTapTime < COULOMB_GAS_MAX_TAP_INTERVAL_MS) {
+                    appVersionTapCount++;
+                } else {
+                    appVersionTapCount = 1;
+                }
+                lastAppVersionTapTime = tapTime;
+                if (appVersionTapCount == COULOMB_GAS_TAP_COUNT) {
+                    appVersionTapCount = 0;
+                    lastAppVersionTapTime = 0L;
+                    startActivity(new Intent(requireContext(), CoulombGasActivity.class));
+                }
+                return true;
+            });
+        }
 
         setLinkPreference(PREF_LINK_POST, "https://news.ycombinator.com/item?id=47938725");
         setLinkPreference(PREF_REFERENCE_LINKS_POST, "https://news.ycombinator.com/item?id=48352939");

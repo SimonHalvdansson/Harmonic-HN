@@ -67,6 +67,10 @@
             android:name=".DebugActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout" />
         <activity
+            android:name=".CoulombGasActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
+            android:exported="false" />
+        <activity
             android:name=".DialogHostActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
             android:theme="@style/ThemeDialogHost" />

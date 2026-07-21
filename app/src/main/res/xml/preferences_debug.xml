@@ -100,7 +100,7 @@
         <Preference
             app:icon="@drawable/ic_deployed_code"
             app:key="pref_debug_app_version"
-            app:selectable="false"
+            app:selectable="true"
             app:singleLineTitle="false"
             app:title="App version" />
 
