@@ -16,6 +16,7 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:fontFamily="@font/product_sans"
+        android:textStyle="bold"
         android:textColor="?attr/storyColorNormal"
         android:textSize="17sp" />
 
