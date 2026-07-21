@@ -373,6 +373,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyViewHolder.commentLayoutView.setVisibility(storyViewHolder.story.isFrontpageLink ? View.GONE : View.VISIBLE);
             applyStoryClickedState(storyViewHolder, storyViewHolder.story);
             applyPreviewPagingAlpha(storyViewHolder, storyViewHolder.story);
+
+            // RecyclerView can remeasure a recycled row while descendants with unchanged
+            // measure specs still reuse cached dimensions from the previous story. Mark the
+            // whole row dirty so wrapping title/meta text is measured as one consistent tree.
+            forceLayoutRecursively(storyViewHolder.itemView);
         } else if (holder instanceof CommentViewHolder) {
             final CommentViewHolder commentViewHolder = (CommentViewHolder) holder;
 
@@ -1775,6 +1780,18 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         if (previewImage.getVisibility() != visibility) {
             previewImage.setVisibility(visibility);
             storyViewHolder.itemView.requestLayout();
+        }
+    }
+
+    private static void forceLayoutRecursively(View view) {
+        view.forceLayout();
+        if (!(view instanceof ViewGroup)) {
+            return;
+        }
+
+        ViewGroup viewGroup = (ViewGroup) view;
+        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+            forceLayoutRecursively(viewGroup.getChildAt(i));
         }
     }
 
