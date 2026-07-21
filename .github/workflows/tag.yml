@@ -21,6 +21,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+      - name: Install native build tools
+        run: sdkmanager "ndk;29.0.13113456" "cmake;3.22.1"
       - uses: gradle/gradle-build-action@v3
         with:
           arguments: build --warning-mode all

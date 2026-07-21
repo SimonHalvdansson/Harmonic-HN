@@ -15,6 +15,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+      - name: Install native build tools
+        run: sdkmanager "ndk;29.0.13113456" "cmake;3.22.1"
       - name: Build with Gradle
         run: ./gradlew build --warning-mode all --no-daemon --parallel
       - uses: actions/upload-artifact@v7
