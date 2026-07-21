@@ -510,7 +510,7 @@ public final class LocalModelManager {
         if (bytes >= 1_000_000L) {
             return String.format(java.util.Locale.US, "%.1f MB", bytes / 1_000_000d);
         }
-        return bytes + " bytes";
+        return String.format(java.util.Locale.US, "%.1f kB", bytes / 1_000d);
     }
 
     static File getModelFile(Context context, String modelId, String fileName) {
