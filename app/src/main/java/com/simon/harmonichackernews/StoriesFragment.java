@@ -1355,6 +1355,7 @@ public class StoriesFragment extends Fragment {
         Context ctx = getContext();
         if (ctx == null) return;
 
+        updateSwipeRefreshEnabled();
         beginHeaderTransition(animateSearchTransition);
 
         updateLastUpdatedHeader(ctx);
@@ -4827,7 +4828,7 @@ public class StoriesFragment extends Fragment {
             ((MainActivity) getActivity()).setSearchBackEnabled(searching);
         }
 
-        swipeRefreshLayout.setEnabled(!searching);
+        updateSwipeRefreshEnabled();
 
         if (searching) {
             useMainStoryList();
@@ -5083,7 +5084,7 @@ public class StoriesFragment extends Fragment {
         loadingFailedRateLimited = false;
         queue.cancelAll(requestTag);
 
-        swipeRefreshLayout.setEnabled(!searching);
+        updateSwipeRefreshEnabled();
         swipeRefreshLayout.setRefreshing(!searching && showSwipeRefreshIndicator);
         if (searching && !stories.isEmpty()) {
             clearStories();
@@ -5716,6 +5717,12 @@ public class StoriesFragment extends Fragment {
         loadingFailedServerError = false;
         loadingFailedRateLimited = false;
         updateHeader();
+    }
+
+    private void updateSwipeRefreshEnabled() {
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setEnabled(!searching && !showingCached);
+        }
     }
 
     private void hideUpdateButton() {
