@@ -41,6 +41,7 @@ public class SettingsActivity extends AppCompatActivity implements
         SettingsCallback {
 
     private static final int TWO_PANE_SPACER_DP = 16;
+    private static final int FOLDABLE_TWO_PANE_SPACER_DP = 12;
     private static final int TWO_PANE_LIST_WEIGHT = 2;
     private static final int TWO_PANE_DETAIL_WEIGHT = 3;
     private static final int FOLDABLE_TWO_PANE_WEIGHT = 1;
@@ -191,14 +192,19 @@ public class SettingsActivity extends AppCompatActivity implements
             if (spacer != null) {
                 spacer.setVisibility(View.VISIBLE);
                 ViewGroup.LayoutParams spacerParams = spacer.getLayoutParams();
-                spacerParams.width = Math.round(TWO_PANE_SPACER_DP * density);
+                int spacerDp = useEqualPaneWeights
+                        ? FOLDABLE_TWO_PANE_SPACER_DP
+                        : TWO_PANE_SPACER_DP;
+                spacerParams.width = Math.round(spacerDp * density);
                 spacer.setLayoutParams(spacerParams);
             }
 
             settingsPane.setLayoutParams(new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, listWeight));
 
-            int padding = getResources().getDimensionPixelSize(R.dimen.settings_extra_pane_padding);
+            int padding = useEqualPaneWeights
+                    ? 0
+                    : getResources().getDimensionPixelSize(R.dimen.settings_extra_pane_padding);
             root.setPadding(padding, 0, padding, 0);
 
         } else {
