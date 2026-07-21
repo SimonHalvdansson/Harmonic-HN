@@ -17,7 +17,7 @@
         android:layout_weight="1"
         android:fontFamily="@font/product_sans"
         android:textStyle="bold"
-        android:textColor="?attr/storyColorNormal"
+        android:textColor="?attr/settingsMainToggleTextColor"
         android:textSize="17sp" />
 
     <FrameLayout

@@ -18,7 +18,7 @@
     <dimen name="settings_list_first_segment_top_margin">24dp</dimen>
     <dimen name="settings_list_segment_bottom_margin">12dp</dimen>
     <dimen name="settings_list_segment_internal_gap">1dp</dimen>
-    <dimen name="settings_list_segment_corner_radius">28dp</dimen>
+    <dimen name="settings_list_segment_corner_radius">24dp</dimen>
     <dimen name="settings_list_main_toggle_corner_radius">36dp</dimen>
     <dimen name="settings_list_segment_vertical_padding_extra">2dp</dimen>
     <dimen name="story_preview_image_corner_radius">6dp</dimen>

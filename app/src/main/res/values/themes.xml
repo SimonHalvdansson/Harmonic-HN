@@ -46,6 +46,7 @@
         <item name="storyCardBackgroundColor">@color/material_you_neutral_variant20</item>
         <item name="settingsHeaderSelectedColor">@color/material_you_neutral_variant20</item>
         <item name="settingsMainToggleColor">@color/material_you_tertiary30</item>
+        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_material_dark</item>
         <item name="settingsSegmentColor">@color/material_you_neutral_variant20</item>
 
         <item name="popupMenuBackgroundColor">@color/material_you_neutral_800</item>
@@ -89,6 +90,7 @@
         <item name="storyCardBackgroundColor">@color/darkStoryCardBackground</item>
         <item name="settingsHeaderSelectedColor">@color/darkerBackground</item>
         <item name="settingsMainToggleColor">@color/colorPrimaryDark</item>
+        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_dark</item>
         <item name="settingsSegmentColor">@color/settings_segment_dark</item>
 
         <item name="android:windowBackground">@color/background</item>
@@ -123,6 +125,7 @@
         <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
         <item name="settingsHeaderSelectedColor">@color/settings_header_selected_black</item>
         <item name="settingsMainToggleColor">@color/settings_header_selected_black</item>
+        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_amoled</item>
         <item name="settingsSegmentColor">@color/settings_segment_amoled</item>
         <item name="overlayButtonColor">@android:color/black</item>
         <item name="overlayButtonOutlineColor">#33FFFFFF</item>
@@ -171,6 +174,7 @@
         <item name="storyCardBackgroundColor">@color/hackerSurfaceContainer</item>
         <item name="settingsHeaderSelectedColor">@color/hackerSurfaceContainerSelected</item>
         <item name="settingsMainToggleColor">@color/hackerAccentContainer</item>
+        <item name="settingsMainToggleTextColor">@color/hackerTextColor</item>
         <item name="settingsSegmentColor">@color/settings_segment_hacker</item>
         <item name="popupMenuBackgroundColor">@color/hackerBackground</item>
         <item name="popupMenuBackground">@drawable/popup_menu_background</item>
@@ -194,6 +198,7 @@
         <item name="storyCardBackgroundColor">@color/grayStoryCardBackground</item>
         <item name="settingsHeaderSelectedColor">@color/grayBackground</item>
         <item name="settingsMainToggleColor">@color/grayStoryCardBackground</item>
+        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_gray</item>
         <item name="settingsSegmentColor">@color/settings_segment_gray</item>
     </style>
 
@@ -225,6 +230,7 @@
         <item name="storyCardBackgroundColor">@color/lightBackground</item>
         <item name="settingsHeaderSelectedColor">@color/settings_header_selected_light</item>
         <item name="settingsMainToggleColor">@color/settings_main_toggle_light</item>
+        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_light</item>
         <item name="settingsSegmentColor">@color/settings_segment_light</item>
 
         <item name="android:windowBackground">@color/lightBackground</item>
@@ -263,6 +269,7 @@
         <item name="colorPrimaryDark">@color/material_you_third_700</item>
         <item name="settingsHeaderSelectedColor">@color/settings_header_selected_material_light</item>
         <item name="settingsMainToggleColor">@color/material_you_primary_200</item>
+        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_material_light</item>
         <item name="settingsSegmentColor">@color/material_you_neutral_100</item>
 
         <item name="android:windowBackground">@color/material_you_neutral_50</item>
@@ -299,6 +306,7 @@
         <item name="storyCardBackgroundColor">@color/hackerNewsSurfaceContainer</item>
         <item name="settingsHeaderSelectedColor">@color/hackerNewsSurfaceContainer</item>
         <item name="settingsMainToggleColor">@color/hackerNewsAccentContainer</item>
+        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_hacker_news</item>
         <item name="settingsSegmentColor">@color/settings_segment_hacker_news</item>
         <item name="materialSwitchStyle">@style/Widget.Harmonic.MaterialSwitch.HackerNews</item>
 
@@ -315,6 +323,7 @@
         <item name="storyCardBackgroundColor">@color/whiteBackground</item>
         <item name="settingsHeaderSelectedColor">@color/settings_header_selected_white</item>
         <item name="settingsMainToggleColor">@color/settings_main_toggle_white</item>
+        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_light</item>
         <item name="settingsSegmentColor">@color/settings_segment_white</item>
 
         <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>

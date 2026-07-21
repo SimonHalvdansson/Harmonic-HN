@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:fontFamily="@font/product_sans_bold"
-    android:paddingLeft="16dp"
+    android:paddingLeft="26dp"
     android:paddingTop="20dp"
     android:paddingBottom="4dp"
     android:textSize="14sp"
