@@ -1,7 +1,11 @@
 ﻿# Version 3.1
+Version 3.1 is packed with additional fixes and refinements since 3.0 packages through more than 250 commits, most of which are not mentioned in the changelog below. 
+
 - Added ability to show extra HN frontpages in Settings → Stories → Behavior
 - Added optional non-automatic AI summarization of posts (configure in Settings → AI summarization, thanks uukelele!)
 - Redesigned the submit and new comment screens to be more Material 3
+- Added rich story preview dialogs
+- Added long-press preview dialogs for comment links
 - Added translucent status bar (thanks Hao Lu!)
 - Updated settings UI with segmented lists
 - Added setting to reset all settings
@@ -9,10 +13,9 @@
 - Updated dropdown header font size for smaller screens
 - Fixed behavior of 'Hide clicked posts'
 - Added ability to clear history from history screen
-- Added rich story preview dialogs with quick actions, images, metadata, and predictive back animations
-- Added long-press preview dialogs for links collected from comments
 - Improved comment scrolling performance
 - Improved text selection and link colors to match each app theme
+- Fixed several different uncommon crash modes
 
 # Version 3.0
 This version is the to-date most comprehensive redesign and quality of life release, consisting of more than 200 commits. If you don't like the design updated, you are able to revert all big changes in the settings but I encourage you to give them a try!
