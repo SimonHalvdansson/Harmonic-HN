@@ -32,6 +32,14 @@
 -dontwarn org.openjsse.net.ssl.OpenJSSE
 -dontwarn com.google.re2j.**
 
+# Runtime implementations are instantiated after their on-demand feature is installed.
+-keep class com.simon.harmonichackernews.localai.llama.LlamaInferenceEngine {
+    public <init>();
+}
+-keep class com.simon.harmonichackernews.localai.litert.LiteRtInferenceEngine {
+    public <init>();
+}
+
 # Settings headers reference these fragments by class name from preference XML.
 -keep class com.simon.harmonichackernews.settings.*PreferenceFragment
 

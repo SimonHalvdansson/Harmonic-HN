@@ -22,6 +22,7 @@ import com.google.mlkit.genai.summarization.Summarizer;
 import com.google.mlkit.genai.summarization.SummarizerOptions;
 import com.simon.harmonichackernews.summary.local.LocalModelInference;
 import com.simon.harmonichackernews.summary.local.LocalModelManager;
+import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager;
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore;
 
 import org.json.JSONArray;
@@ -215,7 +216,8 @@ public class SummaryManager {
             return isLocalFeatureUsable(cachedLocalFeatureStatus);
         }
         return LocalModelManager.isModelSupported(selected)
-                && LocalModelManager.isSelectedModelDownloaded(context);
+                && LocalModelManager.isSelectedModelDownloaded(context)
+                && LocalAiRuntimeManager.isRuntimeInstalled(context, selected.runtime);
     }
 
     public static boolean isLocalSummaryConfigurationKnown(Context context) {
@@ -290,6 +292,10 @@ public class SummaryManager {
         }
         if (!LocalModelManager.isSelectedModelDownloaded(appContext)) {
             postFailure(callback, "Download the selected local model before using it");
+            return;
+        }
+        if (!LocalAiRuntimeManager.isRuntimeInstalled(appContext, selected.runtime)) {
+            postFailure(callback, "Install the selected model runtime before using it");
             return;
         }
         if (content.length() < LOCAL_SUMMARY_MIN_CHARS) {

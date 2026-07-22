@@ -1,0 +1,57 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+
+plugins {
+    alias(libs.plugins.android.dynamic.feature)
+}
+
+android {
+    namespace = "com.simon.harmonichackernews.localai.runtime"
+    compileSdk = 37
+    ndkVersion = "29.0.13113456"
+
+    defaultConfig {
+        minSdk = 26
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DCMAKE_BUILD_TYPE=Release"
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    buildTypes {
+        debugFast {
+            initWith(release)
+            matchingFallbacks.add("release")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("../app/src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        languageVersion = KotlinVersion.KOTLIN_2_0
+    }
+}
+
+dependencies {
+    implementation project(":app")
+    implementation(libs.litertlm)
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}

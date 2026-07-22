@@ -38,6 +38,7 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.network.SummaryManager;
+import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager;
 import com.simon.harmonichackernews.summary.local.LocalModelManager;
 
 import java.util.LinkedHashMap;
@@ -56,6 +57,10 @@ public class AiSummaryModePreference extends Preference {
 
     private final Map<String, ModelRow> modelRows = new LinkedHashMap<>();
     private final LocalModelManager.StatusListener modelStatusListener = status -> {
+        renderLocalPanel();
+        notifyLocalConfigurationIfChanged();
+    };
+    private final LocalAiRuntimeManager.StatusListener runtimeStatusListener = () -> {
         renderLocalPanel();
         notifyLocalConfigurationIfChanged();
     };
@@ -100,12 +105,14 @@ public class AiSummaryModePreference extends Preference {
     public void onAttached() {
         super.onAttached();
         LocalModelManager.addStatusListener(getContext(), modelStatusListener);
+        LocalAiRuntimeManager.addStatusListener(getContext(), runtimeStatusListener);
     }
 
     @Override
     public void onDetached() {
         availabilityCheckGeneration++;
         LocalModelManager.removeStatusListener(modelStatusListener);
+        LocalAiRuntimeManager.removeStatusListener(runtimeStatusListener);
         super.onDetached();
     }
 
@@ -248,7 +255,8 @@ public class AiSummaryModePreference extends Preference {
             return;
         }
         if (model.downloadable
-                && !LocalModelManager.isModelDownloaded(getContext(), model)) {
+                && (!LocalModelManager.isModelDownloaded(getContext(), model)
+                || !LocalAiRuntimeManager.isRuntimeInstalled(getContext(), model.runtime))) {
             renderLocalPanel();
             return;
         }
@@ -308,19 +316,55 @@ public class AiSummaryModePreference extends Preference {
 
             LocalModelManager.Status status =
                     LocalModelManager.getStatus(getContext(), model);
+            LocalAiRuntimeManager.Status runtimeStatus =
+                    LocalAiRuntimeManager.getStatus(getContext(), model.runtime);
             boolean downloaded = status.state == LocalModelManager.State.DOWNLOADED;
-            boolean selectable = enabled && downloaded;
+            boolean runtimeInstalled = LocalAiRuntimeManager.isRuntimeInstalled(
+                    getContext(), model.runtime);
+            boolean runtimeActiveForModel = runtimeStatus.isActive()
+                    && model.id.equals(runtimeStatus.pendingModelId);
+            boolean runtimeActiveForAnotherModel = runtimeStatus.isActive()
+                    && !runtimeActiveForModel;
+            boolean selectable = enabled && downloaded && runtimeInstalled;
             setModelRowEnabled(row, enabled, selectable);
-            setModelRowSelected(row, downloaded && model.id.equals(selected.id));
-            boolean activeRow = status.state == LocalModelManager.State.WAITING
+            setModelRowSelected(row, selectable && model.id.equals(selected.id));
+            boolean modelDownloadActive = status.state == LocalModelManager.State.WAITING
                     || status.state == LocalModelManager.State.DOWNLOADING;
             row.action.setVisibility(View.VISIBLE);
-            row.actionEnabled = enabled;
-            row.action.setEnabled(enabled && !row.actionIconAnimating);
+            row.actionEnabled = enabled && !runtimeActiveForAnotherModel;
+            row.action.setEnabled(row.actionEnabled && !row.actionIconAnimating);
             boolean showProgress = false;
             boolean showStatus = false;
 
-            if (activeRow) {
+            if (runtimeActiveForModel) {
+                setModelActionIcon(row, R.drawable.ic_close,
+                        "Cancel " + LocalAiRuntimeManager.getRuntimeLabel(model.runtime)
+                                + " download",
+                        "Cancel runtime download");
+                showProgress = true;
+                showStatus = true;
+                boolean indeterminate = runtimeStatus.state
+                        != LocalAiRuntimeManager.State.DOWNLOADING
+                        || runtimeStatus.totalBytes <= 0L;
+                row.progress.setIndeterminate(indeterminate);
+                if (indeterminate) {
+                    row.status.setText(runtimeStatus.state
+                            == LocalAiRuntimeManager.State.INSTALLING
+                            ? "Installing "
+                                    + LocalAiRuntimeManager.getRuntimeLabel(model.runtime)
+                                    + "…"
+                            : "Preparing "
+                                    + LocalAiRuntimeManager.getRuntimeLabel(model.runtime)
+                                    + " download…");
+                } else {
+                    row.progress.setProgressCompat(runtimeStatus.getProgressPercent(), true);
+                    row.status.setText(LocalModelManager.formatBytes(
+                                    runtimeStatus.bytesDownloaded)
+                            + " of " + LocalModelManager.formatBytes(runtimeStatus.totalBytes)
+                            + " · installing "
+                            + LocalAiRuntimeManager.getRuntimeLabel(model.runtime));
+                }
+            } else if (modelDownloadActive) {
                 setModelActionIcon(row, R.drawable.ic_close,
                         "Cancel " + model.displayName + " download", "Cancel download");
                 showProgress = true;
@@ -335,13 +379,21 @@ public class AiSummaryModePreference extends Preference {
                 } else {
                     row.status.setText("Waiting for a network connection…");
                 }
-            } else if (status.state == LocalModelManager.State.DOWNLOADED) {
+            } else if (downloaded && runtimeInstalled) {
                 setModelActionIcon(row, R.drawable.ic_delete,
                         "Delete " + model.displayName, "Delete model");
             } else {
                 setModelActionIcon(row, R.drawable.ic_file_download,
                         "Download " + model.displayName, "Download model");
-                if (status.state == LocalModelManager.State.PARTIALLY_DOWNLOADED) {
+                if (runtimeStatus.state == LocalAiRuntimeManager.State.FAILED
+                        && model.id.equals(runtimeStatus.pendingModelId)) {
+                    row.status.setText(runtimeStatus.error + " · tap to retry");
+                    showStatus = true;
+                } else if (downloaded) {
+                    row.status.setText(LocalAiRuntimeManager.getRuntimeLabel(model.runtime)
+                            + " required · tap to install");
+                    showStatus = true;
+                } else if (status.state == LocalModelManager.State.PARTIALLY_DOWNLOADED) {
                     row.status.setText(LocalModelManager.formatBytes(status.receivedBytes)
                             + " downloaded · tap to resume");
                     showStatus = true;
@@ -362,13 +414,19 @@ public class AiSummaryModePreference extends Preference {
     private void handleModelAction(LocalModelManager.ModelInfo model) {
         LocalModelManager.Status status =
                 LocalModelManager.getStatus(getContext(), model);
-        if (status.state == LocalModelManager.State.DOWNLOADING
+        LocalAiRuntimeManager.Status runtimeStatus =
+                LocalAiRuntimeManager.getStatus(getContext(), model.runtime);
+        if (runtimeStatus.isActive() && model.id.equals(runtimeStatus.pendingModelId)) {
+            LocalAiRuntimeManager.cancelRuntimeInstall(getContext(), model.runtime);
+        } else if (status.state == LocalModelManager.State.DOWNLOADING
                 || status.state == LocalModelManager.State.WAITING) {
             LocalModelManager.cancelDownload(getContext(), model.id);
-        } else if (status.state == LocalModelManager.State.DOWNLOADED) {
+        } else if (status.state == LocalModelManager.State.DOWNLOADED
+                && LocalAiRuntimeManager.isRuntimeInstalled(getContext(), model.runtime)) {
             LocalModelManager.removeModel(getContext(), model.id);
         } else {
-            String error = LocalModelManager.downloadModel(getContext(), model.id);
+            String error = LocalAiRuntimeManager.requestRuntimeAndModelDownload(
+                    getContext(), model.id);
             if (!TextUtils.isEmpty(error)) {
                 Toast.makeText(getContext(), error, Toast.LENGTH_LONG).show();
             }
@@ -640,7 +698,9 @@ public class AiSummaryModePreference extends Preference {
         boolean ready = LocalModelManager.MODEL_GEMINI_NANO.equals(model.id)
                 ? nanoAvailable
                 : LocalModelManager.isModelSupported(model)
-                        && LocalModelManager.isModelDownloaded(getContext(), model);
+                        && LocalModelManager.isModelDownloaded(getContext(), model)
+                        && LocalAiRuntimeManager.isRuntimeInstalled(
+                                getContext(), model.runtime);
         if (lastLocalConfigurationReady != null
                 && lastLocalConfigurationReady == ready) {
             return;
@@ -703,7 +763,9 @@ public class AiSummaryModePreference extends Preference {
     private void selectFirstDownloadedModelOrClear() {
         for (LocalModelManager.ModelInfo model : LocalModelManager.getModels()) {
             if (model.downloadable && LocalModelManager.isModelSupported(model)
-                    && LocalModelManager.isModelDownloaded(getContext(), model)) {
+                    && LocalModelManager.isModelDownloaded(getContext(), model)
+                    && LocalAiRuntimeManager.isRuntimeInstalled(
+                            getContext(), model.runtime)) {
                 LocalModelManager.selectModel(getContext(), model.id);
                 return;
             }

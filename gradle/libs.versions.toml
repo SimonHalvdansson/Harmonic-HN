@@ -3,6 +3,7 @@ agp = "9.3.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-dynamic-feature = { id = "com.android.dynamic-feature", version.ref = "agp" }
 
 [libraries]
 androidx-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.11.0"
@@ -38,6 +39,7 @@ coil-svg = "io.coil-kt:coil-svg:2.7.0"
 
 mlkit-genai-summarization = "com.google.mlkit:genai-summarization:1.0.0-beta1"
 litertlm = "com.google.ai.edge.litertlm:litertlm-android:0.14.0"
+play-feature-delivery = "com.google.android.play:feature-delivery:2.1.0"
 androidx-work = "androidx.work:work-runtime:2.11.2"
 
 markwon-core = "io.noties.markwon:core:4.6.2"
