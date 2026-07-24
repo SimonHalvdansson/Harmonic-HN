@@ -2557,6 +2557,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         boolean hasAccountDetails = AccountUtils.hasAccountDetails(ctx);
         boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
+        popup.getMenu().findItem(R.id.menu_refresh).setVisible(hasAccountDetails);
         MenuItem bookmarkItem = popup.getMenu().findItem(R.id.menu_bookmark);
         bookmarkItem.setVisible(hasAccountDetails && bookmarksEnabled);
         if (bookmarksEnabled && story != null) {
