@@ -1050,6 +1050,23 @@ public class StoriesFragment extends Fragment {
 
     private LinearLayoutManager createStoryLayoutManager() {
         return new LinearLayoutManager(getContext()) {
+            @Nullable
+            private RecyclerView attachedRecyclerView;
+
+            @Override
+            public void onAttachedToWindow(RecyclerView view) {
+                super.onAttachedToWindow(view);
+                attachedRecyclerView = view;
+            }
+
+            @Override
+            public void onDetachedFromWindow(RecyclerView view, RecyclerView.Recycler recycler) {
+                if (attachedRecyclerView == view) {
+                    attachedRecyclerView = null;
+                }
+                super.onDetachedFromWindow(view, recycler);
+            }
+
             @Override
             public boolean canScrollVertically() {
                 return !shouldLockRecyclerScroll() && super.canScrollVertically();
@@ -1066,22 +1083,49 @@ public class StoriesFragment extends Fragment {
                 try {
                     super.onLayoutChildren(recycler, state);
                 } catch (IllegalArgumentException exception) {
-                    String message = exception.getMessage();
-                    if (message == null
-                            || !message.startsWith("Called attach on a child which is not detached")) {
+                    if (!isStaleDetachedStoryHolderException(exception)) {
                         throw exception;
                     }
 
-                    // RecyclerView can occasionally leave a holder in its scrap list after its
-                    // temporary-detached flag has already been cleared. Discard that one layout's
-                    // scrap state and retry with fully recycled holders instead of crashing.
                     Log.w(TAG, "Recovering from stale detached story holder", exception);
                     removeAndRecycleAllViews(recycler);
                     recycler.clear();
                     super.onLayoutChildren(recycler, state);
                 }
             }
+
+            @Override
+            public int scrollVerticallyBy(int dy, RecyclerView.Recycler recycler,
+                                          RecyclerView.State state) {
+                try {
+                    return super.scrollVerticallyBy(dy, recycler, state);
+                } catch (IllegalArgumentException exception) {
+                    if (!isStaleDetachedStoryHolderException(exception)) {
+                        throw exception;
+                    }
+
+                    // RecyclerView increments its layout/scroll counter before asking the layout
+                    // manager to fill rows. Recover here so the call can return normally and
+                    // RecyclerView gets a chance to decrement that counter.
+                    Log.w(TAG, "Recovering from stale detached story holder while scrolling",
+                            exception);
+                    removeAndRecycleAllViews(recycler);
+                    recycler.clear();
+                    RecyclerView currentRecyclerView = attachedRecyclerView;
+                    if (currentRecyclerView != null) {
+                        currentRecyclerView.post(currentRecyclerView::requestLayout);
+                    }
+                    return 0;
+                }
+            }
         };
+    }
+
+    private boolean isStaleDetachedStoryHolderException(
+            @NonNull IllegalArgumentException exception) {
+        String message = exception.getMessage();
+        return message != null
+                && message.startsWith("Called attach on a child which is not detached");
     }
 
     private void setupStoryRecyclerView(@NonNull RecyclerView targetRecyclerView,
@@ -3780,14 +3824,14 @@ public class StoriesFragment extends Fragment {
                             requestPreviewImagePrefetch(context, story);
                         }
 
-                        adapter.notifyItemChanged(index);
+                        notifyLoadedStoryChangedWhenIdle(story, loadGeneration);
                     } catch (JSONException e) {
                         e.printStackTrace();
                         Utils.log("Failed to load story with id: " + story.id);
                         story.loadingFailed = true;
                         finishPaginationLoadMoreStory(story, loadGeneration);
                         updatePreviewImagePrefetchRampCompletion();
-                        adapter.notifyItemChanged(index);
+                        notifyLoadedStoryChangedWhenIdle(story, loadGeneration);
                     }
                 }, error -> {
             if (!isCurrentStoryLoad(story, startedAt)) {
@@ -3808,13 +3852,67 @@ public class StoriesFragment extends Fragment {
             updatePreviewImagePrefetchRampCompletion();
             int index = stories.indexOf(story);
             if (index >= 0) {
-                adapter.notifyItemChanged(index);
+                notifyLoadedStoryChangedWhenIdle(story, loadGeneration);
                 loadStory(story, attempt + 1, loadGeneration);
             }
         });
 
         stringRequest.setTag(requestTag);
         queue.add(stringRequest);
+    }
+
+    private void notifyLoadedStoryChangedWhenIdle(Story story, int loadGeneration) {
+        notifyLoadedStoryChangedWhenIdle(
+                story,
+                loadGeneration,
+                stories,
+                adapter,
+                recyclerView,
+                0);
+    }
+
+    private void notifyLoadedStoryChangedWhenIdle(
+            Story story,
+            int loadGeneration,
+            List<Story> expectedStories,
+            StoryRecyclerViewAdapter expectedAdapter,
+            RecyclerView expectedRecyclerView,
+            int deferredFrameCount) {
+        if (!isCurrentStoryListGeneration(loadGeneration)
+                || stories != expectedStories
+                || adapter != expectedAdapter
+                || recyclerView != expectedRecyclerView
+                || expectedAdapter == null
+                || expectedRecyclerView == null
+                || expectedRecyclerView.getAdapter() != expectedAdapter) {
+            return;
+        }
+
+        int index = expectedStories.indexOf(story);
+        if (index < 0 || index >= expectedAdapter.getItemCount()) {
+            return;
+        }
+
+        if (expectedRecyclerView.isComputingLayout()) {
+            if (deferredFrameCount >= 3) {
+                // The Story object is already updated. Avoid crashing if RecyclerView retained a
+                // poisoned layout counter; a later bind will still display the current data.
+                Log.w(TAG, "Skipping story row notification while RecyclerView remains in layout");
+                return;
+            }
+
+            expectedRecyclerView.postOnAnimation(() ->
+                    notifyLoadedStoryChangedWhenIdle(
+                            story,
+                            loadGeneration,
+                            expectedStories,
+                            expectedAdapter,
+                            expectedRecyclerView,
+                            deferredFrameCount + 1));
+            return;
+        }
+
+        expectedAdapter.notifyItemChanged(index);
     }
 
     public void moreClick(View view) {

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews;
 
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -14,6 +15,7 @@ import com.simon.harmonichackernews.utils.ViewUtils;
 
 public class BaseActivity extends AppCompatActivity {
 
+    private static final String TAG = "BaseActivity";
     private int navBarHeight = 0;
 
     @Override
@@ -49,7 +51,18 @@ public class BaseActivity extends AppCompatActivity {
         }
         try {
             return super.dispatchTouchEvent(ev);
-        } catch (Exception e) {
+        } catch (IllegalArgumentException exception) {
+            String message = exception.getMessage();
+            if (message == null
+                    || (!message.contains("pointerIndex")
+                    && !message.contains("pointer index"))) {
+                throw exception;
+            }
+
+            // Some Android versions can deliver an inconsistent multi-touch pointer sequence.
+            // This is safe to abandon, unlike exceptions thrown from inside a RecyclerView
+            // layout/scroll, which must propagate so RecyclerView state is not silently poisoned.
+            Log.w(TAG, "Ignoring invalid touch pointer sequence", exception);
             return false;
         }
     }
