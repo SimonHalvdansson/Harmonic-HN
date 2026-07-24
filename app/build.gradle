@@ -150,12 +150,60 @@ def generateAdblocklist = tasks.register("generateAdblocklist", GenerateAdblockl
 }
 
 androidComponents {
+    beforeVariants(selector().all()) { variantBuilder ->
+        boolean isDebugBuild = variantBuilder.buildType == "debug"
+                || variantBuilder.buildType == "debugFast"
+        boolean isPlayDistribution = variantBuilder.productFlavors.any { flavor ->
+            flavor.second == "play"
+        }
+        if (isDebugBuild && isPlayDistribution) {
+            variantBuilder.enable = false
+        }
+    }
+
     onVariants(selector().all()) { variant ->
         variant.sources.res.addGeneratedSourceDirectory(generateAdblocklist) {
             it.outputDirectory
         }
+
+        if (variant.buildType == "debug" || variant.buildType == "debugFast") {
+            String apkName = variant.buildType == "debug"
+                    ? "app-debug.apk"
+                    : "app-debugFast.apk"
+            variant.outputs.each { output ->
+                output.outputFileName.set(apkName)
+            }
+        }
     }
 }
+
+def registerGenericDebugApk = { String buildType, String taskSuffix ->
+    def flavoredOutput = layout.buildDirectory.dir("outputs/apk/foss/${buildType}")
+    def genericOutput = layout.buildDirectory.dir("outputs/apk/${buildType}")
+    def playOutput = layout.buildDirectory.dir("outputs/apk/play/${buildType}")
+
+    def publishTask = tasks.register("publish${taskSuffix}Apk", Sync) {
+        group = "build"
+        description = "Moves the sole ${buildType} APK to the generic debug output directory."
+        from(flavoredOutput)
+        into(genericOutput)
+    }
+    def cleanupTask = tasks.register("cleanup${taskSuffix}FlavorApks", Delete) {
+        delete(flavoredOutput, playOutput)
+    }
+    publishTask.configure {
+        finalizedBy(cleanupTask)
+    }
+
+    tasks.matching { task ->
+        task.name == "assemble${taskSuffix}"
+    }.configureEach {
+        finalizedBy(publishTask)
+    }
+}
+
+registerGenericDebugApk("debug", "Debug")
+registerGenericDebugApk("debugFast", "DebugFast")
 
 kotlin {
     compilerOptions {
