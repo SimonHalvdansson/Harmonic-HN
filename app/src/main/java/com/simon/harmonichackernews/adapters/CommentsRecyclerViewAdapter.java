@@ -221,6 +221,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private static final int HEADER_ACTION_ICON_SWAP_IN_DURATION_MS = 150;
     private static final float HEADER_ACTION_ICON_SWAP_MIN_SCALE = 0.72f;
     private static final int HEADER_READER_BUTTON_VISIBILITY_DURATION_MS = 160;
+    private static final int HEADER_OP_FILTER_VISIBILITY_DURATION_MS = 220;
+    private static final float HEADER_OP_FILTER_HIDDEN_SCALE = 0.96f;
+    private static final int HEADER_OP_FILTER_HIDDEN_TRANSLATION_Y_DP = 8;
     private static final int HEADER_SUMMARY_HEIGHT_DURATION_MS = 220;
     private static final int HEADER_SUMMARY_COMPLETION_DURATION_MS = 180;
     private static final int HEADER_FAVORITE_LOADING_SIZE_DP = 28;
@@ -442,7 +445,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
 
             headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
-            headerViewHolder.opFilterContainer.setVisibility(commentsByOpFilterActive ? VISIBLE : GONE);
+            setHeaderOpFilterVisibleImmediately(
+                    headerViewHolder, commentsByOpFilterActive);
             headerViewHolder.bookmarkButtonParent.setVisibility(bookmarksEnabled && !hasAccountDetails ? VISIBLE : GONE);
             bindHeaderAccountActionVisibility(headerViewHolder);
 
@@ -1807,6 +1811,107 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             content.setTranslationY(0f);
         }
         container.setLayoutParams(layoutParams);
+    }
+
+    private void setHeaderOpFilterVisibleImmediately(
+            HeaderViewHolder headerViewHolder,
+            boolean visible) {
+        ValueAnimator animator = headerViewHolder.opFilterVisibilityAnimator;
+        headerViewHolder.opFilterVisibilityAnimator = null;
+        if (animator != null) {
+            animator.cancel();
+        }
+
+        LinearLayout container = headerViewHolder.opFilterContainer;
+        ViewGroup.LayoutParams layoutParams = container.getLayoutParams();
+        layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        container.setLayoutParams(layoutParams);
+        container.setVisibility(visible ? VISIBLE : GONE);
+        container.setAlpha(1f);
+        container.setScaleX(1f);
+        container.setScaleY(1f);
+        container.setTranslationY(0f);
+        headerViewHolder.opFilterResetButton.setEnabled(visible);
+    }
+
+    private void animateHeaderOpFilterVisible(
+            HeaderViewHolder headerViewHolder,
+            boolean visible) {
+        LinearLayout container = headerViewHolder.opFilterContainer;
+        ValueAnimator previousAnimator = headerViewHolder.opFilterVisibilityAnimator;
+        headerViewHolder.opFilterVisibilityAnimator = null;
+        if (previousAnimator != null) {
+            previousAnimator.cancel();
+        }
+
+        int startHeight = container.getVisibility() == VISIBLE
+                ? container.getHeight()
+                : 0;
+        float startAlpha = container.getVisibility() == VISIBLE
+                ? container.getAlpha()
+                : 0f;
+        float startScale = container.getVisibility() == VISIBLE
+                ? container.getScaleX()
+                : HEADER_OP_FILTER_HIDDEN_SCALE;
+        int hiddenTranslationY = Utils.pxFromDpInt(
+                container.getResources(),
+                HEADER_OP_FILTER_HIDDEN_TRANSLATION_Y_DP);
+        float startTranslationY = container.getVisibility() == VISIBLE
+                ? container.getTranslationY()
+                : hiddenTranslationY;
+        int endHeight = visible ? measureHeaderOpFilterHeight(headerViewHolder) : 0;
+
+        if (visible) {
+            container.setVisibility(VISIBLE);
+        }
+        headerViewHolder.opFilterResetButton.setEnabled(visible);
+
+        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        headerViewHolder.opFilterVisibilityAnimator = animator;
+        animator.setDuration(HEADER_OP_FILTER_VISIBILITY_DURATION_MS);
+        animator.setInterpolator(new DecelerateInterpolator());
+        animator.addUpdateListener(animation -> {
+            float progress = (float) animation.getAnimatedValue();
+            ViewGroup.LayoutParams layoutParams = container.getLayoutParams();
+            layoutParams.height = Math.round(startHeight + (endHeight - startHeight) * progress);
+            container.setLayoutParams(layoutParams);
+            container.setAlpha(startAlpha + ((visible ? 1f : 0f) - startAlpha) * progress);
+            float targetScale = visible ? 1f : HEADER_OP_FILTER_HIDDEN_SCALE;
+            float scale = startScale + (targetScale - startScale) * progress;
+            container.setScaleX(scale);
+            container.setScaleY(scale);
+            float targetTranslationY = visible ? 0f : -hiddenTranslationY;
+            container.setTranslationY(
+                    startTranslationY + (targetTranslationY - startTranslationY) * progress);
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (headerViewHolder.opFilterVisibilityAnimator != animator) {
+                    return;
+                }
+                headerViewHolder.opFilterVisibilityAnimator = null;
+                setHeaderOpFilterVisibleImmediately(headerViewHolder, visible);
+            }
+        });
+        animator.start();
+    }
+
+    private int measureHeaderOpFilterHeight(HeaderViewHolder headerViewHolder) {
+        LinearLayout container = headerViewHolder.opFilterContainer;
+        ViewGroup.MarginLayoutParams layoutParams =
+                (ViewGroup.MarginLayoutParams) container.getLayoutParams();
+        int availableWidth = headerViewHolder.itemView.getWidth();
+        if (availableWidth <= 0) {
+            availableWidth = container.getResources().getDisplayMetrics().widthPixels;
+        }
+        int containerWidth = Math.max(
+                0,
+                availableWidth - layoutParams.leftMargin - layoutParams.rightMargin);
+        container.measure(
+                View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        return container.getMeasuredHeight();
     }
 
     private int measureHeaderStatusRowHeight(FrameLayout container) {
@@ -3594,6 +3699,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         private final Map<View, ValueAnimator> statusRowHeightAnimators = new HashMap<>();
         private final Map<View, Boolean> statusRowVisibilityTargets = new HashMap<>();
         private ValueAnimator refreshPromptHeightAnimator;
+        @Nullable
+        private ValueAnimator opFilterVisibilityAnimator;
         private boolean statusRowsInitialized;
         private boolean sheetSlideOffsetApplied;
         private float lastAppliedSheetSlideOffset;
@@ -4143,7 +4250,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public void setCommentsByOpFilterActive(boolean active) {
         if (commentsByOpFilterActive != active) {
             commentsByOpFilterActive = active;
-            notifyItemChanged(0);
+            if (boundHeaderViewHolder != null
+                    && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.itemView)) {
+                animateHeaderOpFilterVisible(boundHeaderViewHolder, active);
+            }
         }
     }
 
