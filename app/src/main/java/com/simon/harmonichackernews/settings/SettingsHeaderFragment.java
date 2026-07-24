@@ -41,7 +41,9 @@ public class SettingsHeaderFragment extends BaseSettingsFragment {
 
         Preference debugPref = findPreference(DEBUG_KEY);
         if (debugPref != null) {
-            debugPref.setVisible(BuildConfig.DEBUG || "debugFast".equals(BuildConfig.BUILD_TYPE));
+            debugPref.setVisible(BuildConfig.DEBUG
+                    || "debugFast".equals(BuildConfig.BUILD_TYPE)
+                    || "debugLLMFast".equals(BuildConfig.BUILD_TYPE));
             debugPref.setOnPreferenceClickListener(preference -> {
                 if (getActivity() instanceof SettingsActivity) {
                     ((SettingsActivity) getActivity()).showDebug();

@@ -30,6 +30,16 @@ android {
             matchingFallbacks.add("release")
         }
 
+        debugLLM {
+            initWith(debug)
+            matchingFallbacks.add("debug")
+        }
+
+        debugLLMFast {
+            initWith(debugFast)
+            matchingFallbacks.add("release")
+        }
+
         fossRelease {
             initWith(release)
             matchingFallbacks.add("release")
@@ -42,6 +52,12 @@ android {
     }
 
     sourceSets {
+        debugLLM {
+            java.srcDirs += "src/play/java"
+        }
+        debugLLMFast {
+            java.srcDirs += "src/play/java"
+        }
         playRelease {
             java.srcDirs += "src/play/java"
         }
@@ -69,6 +85,8 @@ kotlin {
 
 dependencies {
     implementation project(":app")
+    debugLLMImplementation(libs.litertlm)
+    debugLLMFastImplementation(libs.litertlm)
     playReleaseImplementation(libs.litertlm)
 }
 

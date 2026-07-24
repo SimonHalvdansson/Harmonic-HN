@@ -125,6 +125,16 @@ android {
             matchingFallbacks.add("release")
         }
 
+        debugLLM {
+            initWith(debug)
+            matchingFallbacks.add("debug")
+        }
+
+        debugLLMFast {
+            initWith(debugFast)
+            matchingFallbacks.add("release")
+        }
+
         fossRelease {
             initWith(release)
             matchingFallbacks.add("release")
@@ -144,6 +154,14 @@ android {
         debugFast {
             java.srcDirs += "src/foss/java"
             res.srcDirs += "src/foss/res"
+        }
+        debugLLM {
+            java.srcDirs += "src/play/java"
+            res.srcDirs += "src/play/res"
+        }
+        debugLLMFast {
+            java.srcDirs += "src/play/java"
+            res.srcDirs += "src/play/res"
         }
         fossRelease {
             java.srcDirs += "src/foss/java"
@@ -215,6 +233,10 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.coil.svg)
     implementation(libs.jsoup)
+    debugLLMImplementation(libs.mlkit.genai.summarization)
+    debugLLMImplementation(libs.play.feature.delivery)
+    debugLLMFastImplementation(libs.mlkit.genai.summarization)
+    debugLLMFastImplementation(libs.play.feature.delivery)
     playReleaseImplementation(libs.mlkit.genai.summarization)
     playReleaseImplementation(libs.play.feature.delivery)
     implementation(libs.androidx.work)
