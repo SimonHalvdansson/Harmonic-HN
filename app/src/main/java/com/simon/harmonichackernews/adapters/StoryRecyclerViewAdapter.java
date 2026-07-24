@@ -52,6 +52,7 @@ import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.PreviewImageLayoutUtils;
 import com.simon.harmonichackernews.utils.PreviewImageFailureAnimator;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.StoryMetaPlacementUtils;
 import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache;
 import com.simon.harmonichackernews.utils.TextSizeImageSpan;
 import com.simon.harmonichackernews.utils.ThemeUtils;
@@ -753,6 +754,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private void bindPreviewContent(final StoryViewHolder storyViewHolder, final Story story) {
+        StoryMetaPlacementUtils.placeForSummary(
+                storyViewHolder.titleView,
+                storyViewHolder.summaryView,
+                storyViewHolder.metaContainer,
+                showSummary);
         bindStorySummary(storyViewHolder, story, false);
 
         boolean loadPreviewImage = shouldLoadPreviewImage(story);
