@@ -91,14 +91,17 @@ final class LinkSummaryOverlayController {
     static final class StorySharedElements {
         @Nullable final ImageView image;
         @Nullable final View title;
+        @Nullable final View summary;
         @Nullable final View meta;
 
         StorySharedElements(
                 @Nullable ImageView image,
                 @Nullable View title,
+                @Nullable View summary,
                 @Nullable View meta) {
             this.image = image;
             this.title = title;
+            this.summary = summary;
             this.meta = meta;
         }
     }
@@ -505,9 +508,11 @@ final class LinkSummaryOverlayController {
     private LinkPositionSourceView linkPositionSourceView;
     private ImageView storyImageSourceView;
     private View storyTitleSourceView;
+    private View storySummarySourceView;
     private View storyMetaSourceView;
     private float storyImageSourceAlpha = 1f;
     private float storyTitleSourceAlpha = 1f;
+    private float storySummarySourceAlpha = 1f;
     private float storyMetaSourceAlpha = 1f;
     private LinkSummaryLoader.SummaryRequest summaryRequest;
     private int visibleStoryId = NO_STORY_ID;
@@ -873,9 +878,11 @@ final class LinkSummaryOverlayController {
                 ? null : host.findLinkSummarySourceView(visibleStoryId);
         storyImageSourceView = null;
         storyTitleSourceView = null;
+        storySummarySourceView = null;
         storyMetaSourceView = null;
         storyImageSourceAlpha = 1f;
         storyTitleSourceAlpha = 1f;
+        storySummarySourceAlpha = 1f;
         storyMetaSourceAlpha = 1f;
         if (visibleStoryId != NO_STORY_ID) {
             captureStorySharedElements(
@@ -920,6 +927,11 @@ final class LinkSummaryOverlayController {
             storyTitleSourceView = sharedElements.title;
             storyTitleSourceAlpha = sharedElements.title.getAlpha();
         }
+        if ((!onlyMissing || !isUsableTransitionView(storySummarySourceView))
+                && isUsableStorySharedSource(sharedElements.summary)) {
+            storySummarySourceView = sharedElements.summary;
+            storySummarySourceAlpha = sharedElements.summary.getAlpha();
+        }
         if ((!onlyMissing || !isUsableTransitionView(storyMetaSourceView))
                 && isUsableStorySharedSource(sharedElements.meta)) {
             storyMetaSourceView = sharedElements.meta;
@@ -931,6 +943,7 @@ final class LinkSummaryOverlayController {
         if (visibleStoryId == NO_STORY_ID
                 || (isUsableTransitionView(storyImageSourceView)
                 && isUsableTransitionView(storyTitleSourceView)
+                && isUsableTransitionView(storySummarySourceView)
                 && isUsableTransitionView(storyMetaSourceView))) {
             return;
         }
@@ -2278,6 +2291,7 @@ final class LinkSummaryOverlayController {
                 setSourceVisible(sourceView, false);
                 setSourceVisible(storyImageSourceView, false);
                 setSourceVisible(storyTitleSourceView, false);
+                setSourceVisible(storySummarySourceView, false);
                 setSourceVisible(storyMetaSourceView, false);
                 card.setVisibility(View.VISIBLE);
             } else {
@@ -2288,6 +2302,7 @@ final class LinkSummaryOverlayController {
                 setSourceVisible(sourceView, false);
                 setSourceVisible(storyImageSourceView, false);
                 setSourceVisible(storyTitleSourceView, false);
+                setSourceVisible(storySummarySourceView, false);
                 setSourceVisible(storyMetaSourceView, false);
                 card.setVisibility(View.VISIBLE);
                 finishStoryPagerEnter();
@@ -2307,6 +2322,7 @@ final class LinkSummaryOverlayController {
         setSourceVisible(sourceView, true);
         setSourceVisible(storyImageSourceView, true);
         setSourceVisible(storyTitleSourceView, true);
+        setSourceVisible(storySummarySourceView, true);
         setSourceVisible(storyMetaSourceView, true);
         storyPager.setUserInputEnabled(true);
         finishPendingStoryPreviewHides();
@@ -2486,6 +2502,7 @@ final class LinkSummaryOverlayController {
         boolean entering = direction == MaterialContainerTransform.TRANSITION_DIRECTION_ENTER;
         ImageView dialogImage = getStoryPreviewView();
         View dialogTitle = getStoryTitleView();
+        View dialogSummary = getStorySummaryView();
         View dialogMeta = getStoryMetaView();
 
         ImageView imageStart = entering ? storyImageSourceView : dialogImage;
@@ -2506,6 +2523,11 @@ final class LinkSummaryOverlayController {
                 snapshotDrawing,
                 entering ? storyTitleSourceView : dialogTitle,
                 entering ? dialogTitle : storyTitleSourceView,
+                0f, 0f, 0f, 0f);
+        addStorySharedElementSnapshot(
+                snapshotDrawing,
+                entering ? storySummarySourceView : dialogSummary,
+                entering ? dialogSummary : storySummarySourceView,
                 0f, 0f, 0f, 0f);
         addStorySharedElementSnapshot(
                 snapshotDrawing,
@@ -2765,6 +2787,11 @@ final class LinkSummaryOverlayController {
                     MaterialContainerTransform.TRANSITION_DIRECTION_RETURN);
             cardTransform.addTarget(end);
             Transition transition = cardTransform;
+            if (storyBinding != null) {
+                // The divider sits at the bottom edge of the shrinking dialog card and otherwise
+                // becomes a dark one-frame stripe as the card reaches the taller summary row.
+                storyBinding.storyLinkActionsDivider.setVisibility(View.INVISIBLE);
+            }
             prepareStorySharedElementSnapshotAnimation(
                     overlayHost,
                     transition,
@@ -2787,6 +2814,7 @@ final class LinkSummaryOverlayController {
             setSourceVisible(end, true);
             setSourceVisible(storyImageSourceView, true);
             setSourceVisible(storyTitleSourceView, true);
+            setSourceVisible(storySummarySourceView, true);
             setSourceVisible(storyMetaSourceView, true);
             card.setVisibility(View.INVISIBLE);
         } else if (!animate) {
@@ -2825,6 +2853,7 @@ final class LinkSummaryOverlayController {
         setSourceVisible(sourceView, true);
         setSourceVisible(storyImageSourceView, true);
         setSourceVisible(storyTitleSourceView, true);
+        setSourceVisible(storySummarySourceView, true);
         setSourceVisible(storyMetaSourceView, true);
         restoreStorySharedElementAlphas();
         if (overlay.getParent() instanceof ViewGroup) ((ViewGroup) overlay.getParent()).removeView(overlay);
@@ -2837,8 +2866,10 @@ final class LinkSummaryOverlayController {
         storyPagerAdapter = null; currentStoryPage = null;
         referenceBinding = null; imageBinding = null;
         sourceView = null; storyImageSourceView = null; storyTitleSourceView = null;
+        storySummarySourceView = null;
         storyMetaSourceView = null;
         storyImageSourceAlpha = 1f; storyTitleSourceAlpha = 1f;
+        storySummarySourceAlpha = 1f;
         storyMetaSourceAlpha = 1f;
         visibleStoryId = NO_STORY_ID; visibleStoryPosition = -1;
         visibleUrl = null; fallbackTitle = null; dismissing = false;
@@ -2917,6 +2948,10 @@ final class LinkSummaryOverlayController {
         return storyBinding == null ? null : storyBinding.storyLinkTitle;
     }
 
+    @Nullable private View getStorySummaryView() {
+        return storyBinding == null ? null : storyBinding.storyLinkDescription;
+    }
+
     @Nullable private View getStoryMetaView() {
         return storyBinding == null ? null : storyBinding.storyLinkMetaContainer;
     }
@@ -2955,6 +2990,9 @@ final class LinkSummaryOverlayController {
         }
         if (storyTitleSourceView != null) {
             storyTitleSourceView.setAlpha(storyTitleSourceAlpha);
+        }
+        if (storySummarySourceView != null) {
+            storySummarySourceView.setAlpha(storySummarySourceAlpha);
         }
         if (storyMetaSourceView != null) {
             storyMetaSourceView.setAlpha(storyMetaSourceAlpha);

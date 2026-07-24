@@ -26,6 +26,9 @@ public class Story {
     public transient boolean previewImageLoaded;
     public transient boolean previewImageLoading;
     public transient boolean previewImageLoadFailed;
+    public transient String linkSummaryDescription;
+    public transient boolean linkSummaryLoaded;
+    public transient boolean linkSummaryLoading;
     public transient int previewImageTintColor;
     public transient boolean previewImageTintColorLoaded;
     public transient String previewImageTintSourceUrl;

@@ -43,6 +43,13 @@
             app:title="Compact stories" />
 
         <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:icon="@drawable/ic_subject"
+            app:key="pref_show_story_summary"
+            app:singleLineTitle="false"
+            app:title="Show summary" />
+
+        <SwitchPreferenceCompat
             app:singleLineTitle="false"
             app:defaultValue="true"
             app:key="pref_thumbnails"

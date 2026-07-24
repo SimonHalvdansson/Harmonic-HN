@@ -64,127 +64,165 @@
 
     <LinearLayout
         android:id="@+id/story_link_layout"
-        android:background="?selectableItemBackground"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
-        android:paddingRight="12dp"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:baselineAligned="true"
-        android:orientation="horizontal">
+        android:background="?selectableItemBackground"
+        android:baselineAligned="false"
+        android:orientation="vertical"
+        android:paddingTop="10dp"
+        android:paddingRight="12dp"
+        android:paddingBottom="10dp">
 
-        <TextView
-            android:visibility="gone"
-            android:layout_marginLeft="-7dp"
-            android:layout_marginRight="-15dp"
-            android:id="@+id/story_index"
-            android:textColor="?attr/storyColorNormal"
-            android:layout_width="43dp"
-            android:gravity="center"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="16dp"
-            android:text="3." />
-
-        <com.simon.harmonichackernews.utils.StoryTitleBaselineLayout
-            android:orientation="vertical"
-            android:paddingLeft="4dp"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content">
-
-            <com.facebook.shimmer.ShimmerFrameLayout
-                android:layout_width="wrap_content"
-                app:shimmer_duration="2000"
-                app:shimmer_base_color="?attr/drawableColor"
-                app:shimmer_base_alpha="0.15"
-                app:shimmer_highlight_alpha="0.17"
-                android:layout_height="wrap_content">
-
-                <LinearLayout
-                    android:visibility="gone"
-                    android:id="@+id/story_title_shimmer"
-                    android:orientation="vertical"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <View
-                        android:layout_marginBottom="4dp"
-                        android:layout_width="230dp"
-                        android:background="@drawable/smooth_rectangle_drawable"
-                        android:layout_height="22dp"/>
-
-                    <View
-                        android:layout_marginTop="1dp"
-                        android:id="@+id/story_title_shimmer_meta"
-                        android:layout_width="135dp"
-                        android:background="@drawable/smooth_rectangle_drawable"
-                        android:layout_height="15dp"/>
-
-                </LinearLayout>
-
-            </com.facebook.shimmer.ShimmerFrameLayout>
+            android:baselineAligned="true"
+            android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/story_title"
-                android:layout_width="match_parent"
-                android:text="Algorithm breaks speed limit for solving linear equations"
+                android:id="@+id/story_index"
+                android:layout_width="43dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="2dp"
-                android:textSize="17.5sp"
+                android:layout_marginLeft="-7dp"
+                android:layout_marginRight="-15dp"
+                android:gravity="center"
+                android:text="3."
                 android:textColor="?attr/storyColorNormal"
-                android:fontFamily="@font/product_sans"
-                android:textStyle="bold" />
+                android:textSize="16dp"
+                android:visibility="gone" />
 
             <LinearLayout
-                android:layout_marginTop="2dp"
-                android:id="@+id/story_meta_container"
-                android:orientation="horizontal"
-                android:baselineAligned="false"
-                android:gravity="center_vertical"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                tools:ignore="UseCompoundDrawables">
+                android:layout_weight="1"
+                android:baselineAlignedChildIndex="0"
+                android:orientation="vertical">
 
-                <ImageView
-                    android:id="@+id/story_meta_favicon"
-                    android:background="@drawable/favicon_thumbnail_background"
-                    android:clipToOutline="true"
-                    android:src="@drawable/ic_public"
-                    android:contentDescription="@null"
-                    android:importantForAccessibility="no"
-                    android:layout_marginRight="4dp"
-                    android:layout_width="17dp"
-                    android:layout_height="17dp"    />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:baselineAligned="true"
+                    android:orientation="horizontal">
+
+            <com.simon.harmonichackernews.utils.StoryTitleBaselineLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingLeft="4dp">
+
+                <com.facebook.shimmer.ShimmerFrameLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:shimmer_base_alpha="0.15"
+                    app:shimmer_base_color="?attr/drawableColor"
+                    app:shimmer_duration="2000"
+                    app:shimmer_highlight_alpha="0.17">
+
+                    <LinearLayout
+                        android:id="@+id/story_title_shimmer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <View
+                            android:layout_width="230dp"
+                            android:layout_height="22dp"
+                            android:layout_marginBottom="4dp"
+                            android:background="@drawable/smooth_rectangle_drawable" />
+
+                        <View
+                            android:id="@+id/story_title_shimmer_meta"
+                            android:layout_width="135dp"
+                            android:layout_height="15dp"
+                            android:layout_marginTop="1dp"
+                            android:background="@drawable/smooth_rectangle_drawable" />
+                    </LinearLayout>
+                </com.facebook.shimmer.ShimmerFrameLayout>
 
                 <TextView
-                    android:id="@+id/story_meta"
-                    android:layout_width="0dp"
+                    android:id="@+id/story_title"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textColor="?attr/textColorDefault"
-                    android:text="53 points • science.org • 2h"
+                    android:layout_marginEnd="2dp"
                     android:fontFamily="@font/product_sans"
-                    android:textSize="13sp" />
+                    android:text="Algorithm breaks speed limit for solving linear equations"
+                    android:textColor="?attr/storyColorNormal"
+                    android:textSize="17.5sp"
+                    android:textStyle="bold" />
+            </com.simon.harmonichackernews.utils.StoryTitleBaselineLayout>
 
-            </LinearLayout>
-        </com.simon.harmonichackernews.utils.StoryTitleBaselineLayout>
+            <ImageView
+                android:id="@+id/story_preview_image_small"
+                android:layout_width="72dp"
+                android:layout_height="52dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/story_preview_image_background"
+                android:clipToOutline="true"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                tools:src="@drawable/web_preview"
+                tools:visibility="visible" />
+        </LinearLayout>
 
-        <ImageView
-            android:id="@+id/story_preview_image_small"
-            android:layout_width="72dp"
-            android:layout_height="52dp"
-            android:layout_gravity="center_vertical"
-            android:layout_marginStart="8dp"
+        <TextView
+            android:id="@+id/story_summary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="3dp"
             android:layout_marginEnd="2dp"
-            android:background="@drawable/story_preview_image_background"
-            android:clipToOutline="true"
-            android:contentDescription="@null"
-            android:importantForAccessibility="no"
-            android:scaleType="centerCrop"
+            android:ellipsize="end"
+            android:fontFamily="@font/product_sans"
+            android:lineSpacingExtra="1dp"
+            android:maxLines="3"
+            android:textColor="?attr/textColorDefault"
+            android:textSize="14sp"
             android:visibility="gone"
-            tools:src="@drawable/web_preview"
+            tools:text="A concise description extracted from the linked page, shown beneath the story title."
             tools:visibility="visible" />
+
+        <LinearLayout
+            android:id="@+id/story_meta_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="3dp"
+            android:layout_marginEnd="2dp"
+            android:baselineAligned="false"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            tools:ignore="UseCompoundDrawables">
+
+            <ImageView
+                android:id="@+id/story_meta_favicon"
+                android:layout_width="17dp"
+                android:layout_height="17dp"
+                android:layout_marginRight="4dp"
+                android:background="@drawable/favicon_thumbnail_background"
+                android:clipToOutline="true"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_public" />
+
+            <TextView
+                android:id="@+id/story_meta"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/product_sans"
+                android:text="53 points • science.org • 2h"
+                android:textColor="?attr/textColorDefault"
+                android:textSize="13sp" />
+        </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 
     </LinearLayout>

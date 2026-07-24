@@ -3183,9 +3183,12 @@ public class StoriesFragment extends Fragment {
         }
         View title = isVisibleStorySharedElement(storyHolder.titleView)
                 ? storyHolder.titleView : null;
+        View summary = isVisibleStorySharedElement(storyHolder.summaryView)
+                ? storyHolder.summaryView : null;
         View meta = isVisibleStorySharedElement(storyHolder.metaContainer)
                 ? storyHolder.metaContainer : null;
-        return new LinkSummaryOverlayController.StorySharedElements(image, title, meta);
+        return new LinkSummaryOverlayController.StorySharedElements(
+                image, title, summary, meta);
     }
 
     private boolean isVisibleStoryPreviewImage(@Nullable ImageView image) {
@@ -3331,6 +3334,7 @@ public class StoriesFragment extends Fragment {
         }
 
         adapter.previewImageMode = previewImageMode;
+        adapter.showSummary = SettingsUtils.shouldShowStorySummary(getContext());
         adapter.tintCardUsingPreview = tintCardUsingPreview;
         adapter.font = preferredFont;
 

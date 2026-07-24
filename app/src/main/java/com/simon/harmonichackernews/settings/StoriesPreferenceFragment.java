@@ -114,6 +114,14 @@ public class StoriesPreferenceFragment extends BaseSettingsFragment implements S
             return true;
         });
 
+        findPreference(SettingsUtils.PREF_SHOW_STORY_SUMMARY)
+                .setOnPreferenceChangeListener((preference, newValue) -> {
+                    if (previewView != null) {
+                        previewView.updateSummary((boolean) newValue);
+                    }
+                    return true;
+                });
+
         if (borderlessLargePreviewImagePreference != null) {
             borderlessLargePreviewImagePreference.setOnPreferenceChangeListener((preference, newValue) -> {
                 if (previewView != null) {

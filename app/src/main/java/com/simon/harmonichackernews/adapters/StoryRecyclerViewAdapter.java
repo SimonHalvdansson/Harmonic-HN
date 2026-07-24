@@ -43,6 +43,7 @@ import com.simon.harmonichackernews.databinding.StoryListItemLeftBinding;
 import com.simon.harmonichackernews.databinding.SubmissionsCommentBinding;
 import com.simon.harmonichackernews.databinding.SubmissionsCommentCardBinding;
 import com.simon.harmonichackernews.network.FaviconLoader;
+import com.simon.harmonichackernews.network.LinkSummaryLoader;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import com.simon.harmonichackernews.utils.AccessibilityTextUtils;
@@ -115,6 +116,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public boolean thumbnails;
     public String previewImageMode;
     public boolean borderlessLargePreviewImage;
+    public boolean showSummary;
     public float storyTextSize;
     public boolean showIndex;
     public boolean compactHeader;
@@ -150,6 +152,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     boolean shouldShowThumbnails,
                                     String preferredPreviewImageMode,
                                     boolean shouldUseBorderlessLargePreviewImage,
+                                    boolean shouldShowSummary,
                                     float preferredStoryTextSize,
                                     boolean shouldShowIndex,
                                     boolean shouldUseCompactHeader,
@@ -173,6 +176,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         thumbnails = shouldShowThumbnails;
         previewImageMode = preferredPreviewImageMode;
         borderlessLargePreviewImage = shouldUseBorderlessLargePreviewImage;
+        showSummary = shouldShowSummary;
         storyTextSize = SettingsUtils.clampStoryTextSize(preferredStoryTextSize);
         showIndex = shouldShowIndex;
         compactHeader = shouldUseCompactHeader;
@@ -327,7 +331,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     FaviconLoader.loadFavicon(storyViewHolder.story.url, storyViewHolder.metaFavicon, ctx, faviconProvider, true);
                 }
 
-                bindPreviewImage(storyViewHolder, storyViewHolder.story);
+                bindPreviewContent(storyViewHolder, storyViewHolder.story);
                 bindStoryCardTintFallback(storyViewHolder, storyViewHolder.story);
 
                 storyViewHolder.commentsIcon.setImageResource(hotness > 0 && storyViewHolder.story.score + storyViewHolder.story.descendants > hotness ? R.drawable.ic_whatshot : R.drawable.ic_comment);
@@ -359,6 +363,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.metaShimmer.setVisibility(compactView ? View.GONE : View.VISIBLE);
                 storyViewHolder.titleView.setVisibility(View.GONE);
                 storyViewHolder.metaContainer.setVisibility(View.GONE);
+                storyViewHolder.summaryView.setVisibility(View.GONE);
                 storyViewHolder.commentsView.setText(null);
                 storyViewHolder.commentsView.setContentDescription(null);
                 storyViewHolder.metaView.setContentDescription(null);
@@ -747,24 +752,56 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         storyViewHolder.titleView.setText(story.title);
     }
 
-    private void bindPreviewImage(final StoryViewHolder storyViewHolder, final Story story) {
-        if (!shouldLoadPreviewImage(story)) {
+    private void bindPreviewContent(final StoryViewHolder storyViewHolder, final Story story) {
+        bindStorySummary(storyViewHolder, story, false);
+
+        boolean loadPreviewImage = shouldLoadPreviewImage(story);
+        boolean loadSummary = shouldLoadStorySummary(story);
+        if (!loadPreviewImage && !loadSummary) {
             return;
         }
 
-        if (!TextUtils.isEmpty(story.previewImageUrl)) {
+        if (loadPreviewImage && !TextUtils.isEmpty(story.previewImageUrl)) {
             loadPreviewImage(storyViewHolder, story);
             refreshPreviewImageUrlIfNeeded(storyViewHolder.itemView.getContext(), story);
-            return;
-        }
-
-        if (story.previewImageUrlLoaded) {
+        } else if (loadPreviewImage && !story.previewImageUrlLoaded) {
+            reservePendingPreviewImageSpace(storyViewHolder);
+        } else if (loadPreviewImage) {
             refreshPreviewImageUrlIfNeeded(storyViewHolder.itemView.getContext(), story);
+        }
+
+        boolean needsPreviewImageMetadata = loadPreviewImage && !story.previewImageUrlLoaded;
+        boolean needsSummaryMetadata = loadSummary && !story.linkSummaryLoaded;
+        if (needsPreviewImageMetadata || needsSummaryMetadata) {
+            loadPreviewContentUrl(
+                    storyViewHolder.itemView.getContext(),
+                    story,
+                    needsSummaryMetadata);
+        }
+    }
+
+    private void bindStorySummary(StoryViewHolder holder, Story story, boolean animate) {
+        holder.summaryView.animate().cancel();
+        if (!shouldLoadStorySummary(story)
+                || TextUtils.isEmpty(story.linkSummaryDescription)) {
+            holder.summaryView.setText(null);
+            holder.summaryView.setAlpha(1f);
+            holder.summaryView.setVisibility(View.GONE);
             return;
         }
 
-        reservePendingPreviewImageSpace(storyViewHolder);
-        loadPreviewImageUrl(storyViewHolder.itemView.getContext(), story);
+        holder.summaryView.setText(story.linkSummaryDescription);
+        holder.summaryView.setVisibility(View.VISIBLE);
+        if (animate && isVisibleOnScreen(holder.itemView)) {
+            holder.summaryView.setAlpha(0f);
+            holder.summaryView.animate()
+                    .alpha(1f)
+                    .setDuration(PREVIEW_IMAGE_FADE_IN_DURATION_MS)
+                    .setListener(null)
+                    .start();
+        } else {
+            holder.summaryView.setAlpha(1f);
+        }
     }
 
     public void prefetchPreviewImage(Context context, Story story) {
@@ -799,6 +836,106 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 && (!story.previewImageLoadFailed || story.previewImageUrlNeedsRefresh);
     }
 
+    private boolean shouldLoadStorySummary(Story story) {
+        return showSummary
+                && story.loaded
+                && !story.loadingFailed
+                && !story.isComment
+                && story.isLink
+                && !TextUtils.isEmpty(story.url);
+    }
+
+    private void loadPreviewContentUrl(
+            @Nullable Context context,
+            Story story,
+            boolean requireSummary) {
+        if (previewImageUrlRequests.containsKey(story)
+                || story.previewImageUrlLoading
+                || story.linkSummaryLoading) {
+            return;
+        }
+
+        boolean needsPreviewImage = shouldLoadPreviewImage(story)
+                && !story.previewImageUrlLoaded;
+        story.previewImageUrlLoading = needsPreviewImage;
+        story.linkSummaryLoading = requireSummary;
+        Context appContext = context == null ? null : context.getApplicationContext();
+        int storyCardBackgroundColor = getDefaultStoryCardBackgroundColor(context);
+        StoryPreviewImageLoader.PreviewImageRequest request =
+                StoryPreviewImageLoader.loadPreviewContent(
+                        appContext,
+                        story.id,
+                        story.url,
+                        requireSummary,
+                        (imageUrl, summary) -> {
+                            previewImageUrlRequests.remove(story);
+                            story.previewImageUrlLoading = false;
+                            story.linkSummaryLoading = false;
+                            boolean previewImageFailed =
+                                    needsPreviewImage && TextUtils.isEmpty(imageUrl);
+
+                            if (needsPreviewImage) {
+                                story.previewImageUrlLoaded = true;
+                                if (previewImageFailed) {
+                                    story.previewImageLoadFailed = true;
+                                    PreviewImageTintUtils.clearStoryPreviewImageTintColor(story);
+                                    showPreviewImageFailure(story);
+                                } else {
+                                    setPreviewImageUrl(story, imageUrl);
+                                    story.previewImageLoadFailed = false;
+                                    prefetchPreviewImageDrawable(
+                                            appContext,
+                                            story,
+                                            storyCardBackgroundColor);
+                                }
+                            } else if (!TextUtils.isEmpty(imageUrl)
+                                    && TextUtils.isEmpty(story.previewImageUrl)) {
+                                setPreviewImageUrl(story, imageUrl);
+                                story.previewImageUrlLoaded = true;
+                            }
+
+                            if (requireSummary) {
+                                story.linkSummaryLoaded = true;
+                                story.linkSummaryDescription =
+                                        summary == null ? null : summary.description;
+                            }
+
+                            cachePreviewState(appContext, story);
+                            StoryViewHolder visibleHolder = findVisibleStoryHolder(story);
+                            if (visibleHolder != null) {
+                                if (requireSummary) {
+                                    bindStorySummary(visibleHolder, story, true);
+                                }
+                                if (needsPreviewImage && !previewImageFailed) {
+                                    notifyStoryChanged(story);
+                                } else {
+                                    forceLayoutRecursively(visibleHolder.itemView);
+                                }
+                            } else if (!previewImageFailed) {
+                                notifyStoryChanged(story);
+                            }
+                        });
+        previewImageUrlRequests.put(story, request);
+    }
+
+    @Nullable
+    private StoryViewHolder findVisibleStoryHolder(Story story) {
+        if (recyclerView == null) {
+            return null;
+        }
+        int position = stories.indexOf(story);
+        if (position < 0) {
+            return null;
+        }
+        RecyclerView.ViewHolder holder =
+                recyclerView.findViewHolderForAdapterPosition(position);
+        if (holder instanceof StoryViewHolder
+                && ((StoryViewHolder) holder).story == story) {
+            return (StoryViewHolder) holder;
+        }
+        return null;
+    }
+
     private void loadPreviewImageUrl(@Nullable Context context, Story story) {
         if (story.previewImageUrlLoaded || story.previewImageUrlLoading) {
             return;
@@ -811,6 +948,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             previewImageUrlRequests.remove(story);
             story.previewImageUrlLoading = false;
             story.previewImageUrlLoaded = true;
+            hydrateCachedLinkSummary(appContext, story);
             if (TextUtils.isEmpty(imageUrl)) {
                 story.previewImageLoadFailed = true;
                 PreviewImageTintUtils.clearStoryPreviewImageTintColor(story);
@@ -824,7 +962,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             cachePreviewState(appContext, story);
             prefetchPreviewImageDrawable(appContext, story, storyCardBackgroundColor);
             int index = stories.indexOf(story);
-            if (index >= 0 && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)) {
+            if (index >= 0
+                    && (!SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                    || showSummary)) {
                 notifyItemChanged(index);
             }
         });
@@ -887,7 +1027,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public void hydrateCachedPreviewState(@Nullable Context context, Story story) {
         if (context == null
                 || story == null
-                || SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                || (SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
+                && !showSummary)
                 || !story.loaded
                 || story.loadingFailed
                 || story.isComment
@@ -912,8 +1053,34 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             }
         }
 
-        hydrateCachedPreviewTintColor(context, story);
-        hydrateCachedFaviconTintColor(context, story);
+        hydrateCachedLinkSummary(context, story);
+
+        if (!SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)) {
+            hydrateCachedPreviewTintColor(context, story);
+            hydrateCachedFaviconTintColor(context, story);
+        }
+    }
+
+    private void hydrateCachedLinkSummary(@Nullable Context context, Story story) {
+        if (!showSummary
+                || context == null
+                || story == null
+                || story.linkSummaryLoaded
+                || TextUtils.isEmpty(story.url)) {
+            return;
+        }
+        LinkSummaryLoader.Result cachedSummary =
+                StoryPreviewImageLoader.getCachedLinkSummary(context, story.url);
+        if (cachedSummary == null) {
+            return;
+        }
+        story.linkSummaryDescription = cachedSummary.description;
+        story.linkSummaryLoaded = true;
+        if (TextUtils.isEmpty(story.previewImageUrl)
+                && !TextUtils.isEmpty(cachedSummary.imageUrl)) {
+            setPreviewImageUrl(story, cachedSummary.imageUrl);
+            story.previewImageUrlLoaded = true;
+        }
     }
 
     private void hydrateCachedPreviewTintColor(Context context, Story story) {
@@ -1013,6 +1180,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         for (Map.Entry<Story, StoryPreviewImageLoader.PreviewImageRequest> entry : previewImageUrlRequests.entrySet()) {
             entry.getValue().cancel();
             entry.getKey().previewImageUrlLoading = false;
+            entry.getKey().linkSummaryLoading = false;
         }
         previewImageUrlRequests.clear();
     }
@@ -1692,6 +1860,11 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
     private void applyStoryTextSizes(StoryViewHolder storyViewHolder) {
         FontUtils.setStoryTitleTypeface(storyViewHolder.titleView, storyTextSize);
+        FontUtils.setTypefaceForFont(
+                storyViewHolder.summaryView,
+                font,
+                false,
+                Math.max(12f, storyTextSize - 3.5f));
         FontUtils.setStoryMetaTypeface(storyViewHolder.metaView, storyTextSize);
         FontUtils.setStoryCommentCountTypeface(storyViewHolder.commentsView, storyTextSize);
     }
@@ -1850,6 +2023,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public class StoryViewHolder extends RecyclerView.ViewHolder {
         public final View mView;
         public final TextView titleView;
+        public final TextView summaryView;
         public final TextView metaView;
         public final TextView commentsView;
         public final LinearLayout linkLayoutView;
@@ -1880,6 +2054,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             this(
                     binding.getRoot(),
                     binding.storyTitle,
+                    binding.storySummary,
                     binding.storyMeta,
                     binding.storyMetaContainer,
                     binding.storyComments,
@@ -1899,6 +2074,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             this(
                     binding.getRoot(),
                     binding.storyTitle,
+                    binding.storySummary,
                     binding.storyMeta,
                     binding.storyMetaContainer,
                     binding.storyComments,
@@ -1918,6 +2094,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             this(
                     binding.getRoot(),
                     binding.storyContainer.storyTitle,
+                    binding.storyContainer.storySummary,
                     binding.storyContainer.storyMeta,
                     binding.storyContainer.storyMetaContainer,
                     binding.storyContainer.storyComments,
@@ -1937,6 +2114,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             this(
                     binding.getRoot(),
                     binding.storyContainer.storyTitle,
+                    binding.storyContainer.storySummary,
                     binding.storyContainer.storyMeta,
                     binding.storyContainer.storyMetaContainer,
                     binding.storyContainer.storyComments,
@@ -1955,6 +2133,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         @SuppressLint("ClickableViewAccessibility")
         private StoryViewHolder(View view,
                                 TextView title,
+                                TextView summary,
                                 TextView meta,
                                 LinearLayout metaLayout,
                                 TextView comments,
@@ -1971,6 +2150,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             super(view);
             mView = view;
             titleView = title;
+            summaryView = summary;
             metaView = meta;
             metaContainer = metaLayout;
             commentsView = comments;

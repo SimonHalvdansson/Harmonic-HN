@@ -13,6 +13,7 @@ import android.graphics.Outline;
 import android.graphics.Path;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -50,6 +51,8 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     private static final int LARGE_PREVIEW_IMAGE_HEIGHT_DP = 176;
     private static final int MIN_STABLE_PREVIEW_WIDTH_DP = 240;
     private static final String PREVIEW_STORY_TITLE = "Algorithm breaks speed limit for solving linear equations";
+    private static final String PREVIEW_STORY_SUMMARY =
+            "A faster method uses a new approach to solve large linear systems more efficiently.";
     private static final String PREVIEW_STORY_COMMENTS = "18";
 
     private ViewGroup previewRoot;
@@ -65,6 +68,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     private ImageView largePreviewImage;
     private MaterialCardView storyCard;
     private TextView storyTitle;
+    private TextView storySummary;
     private TextView storyIndex;
     private TextView storyMeta;
     private TextView comments;
@@ -75,6 +79,9 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     private ValueAnimator cardTintAnimator;
     private ValueAnimator cardAppearanceAnimator;
     private ValueAnimator previewHeightAnimator;
+    private ValueAnimator summaryLayoutAnimator;
+    private ValueAnimator storyIndexLayoutAnimator;
+    private ValueAnimator commentAlignmentAnimator;
     private ValueAnimator largePreviewImageHeightAnimator;
     private ValueAnimator largePreviewImageMarginAnimator;
     private Integer currentCardBackgroundColor;
@@ -84,6 +91,16 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     private int previewImageAnimationToken;
     private int metaAnimationToken;
     private int commentCountAnimationToken;
+    private int summaryAnimationToken;
+    private boolean summaryAnimationTargetVisible;
+    private int storySummaryNaturalTopMargin;
+    private boolean storyIndexAnimationTargetVisible;
+    private int storyIndexNaturalWidth;
+    private int storyIndexNaturalLeftMargin;
+    private int storyIndexNaturalRightMargin;
+    private Boolean storyIndexMeasurementVisibleOverride;
+    private ViewGroup pendingCommentAlignmentRow;
+    private ViewTreeObserver.OnPreDrawListener pendingCommentAlignmentPreDrawListener;
     private ArrayList<SuspendedLayoutTransition> suspendedStoryLayoutTransitions;
     private final View.OnLayoutChangeListener previewContainerLayoutChangeListener =
             (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
@@ -200,6 +217,158 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         applyTextSize(parseTextSize(textSize), true);
     }
 
+    public void updateSummary(boolean showSummary) {
+        if (storySummary == null) {
+            return;
+        }
+        int targetVisibility = showSummary ? View.VISIBLE : View.GONE;
+        if (summaryLayoutAnimator != null && summaryAnimationTargetVisible == showSummary) {
+            return;
+        }
+        if (summaryLayoutAnimator == null && storySummary.getVisibility() == targetVisibility) {
+            return;
+        }
+
+        int animationToken = ++summaryAnimationToken;
+        cancelSummaryLayoutAnimator();
+        storySummary.animate().cancel();
+        if (!ViewCompat.isLaidOut(previewItemContainer)
+                || !(storySummary.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)) {
+            storySummary.setAlpha(1f);
+            setVisibilityWithoutLayoutTransition(storySummary, targetVisibility);
+            restoreSummaryLayoutParams();
+            resumeStoryLayoutTransitions();
+            requestPreviewRemeasure();
+            return;
+        }
+
+        int naturalHeight = measureStorySummaryNaturalHeight();
+        if (naturalHeight <= 0) {
+            storySummary.setAlpha(1f);
+            setVisibilityWithoutLayoutTransition(storySummary, targetVisibility);
+            restoreSummaryLayoutParams();
+            syncPreviewContainerHeight(getCurrentPreviewImageMode(), true);
+            resumeStoryLayoutTransitions();
+            return;
+        }
+
+        suspendStoryLayoutTransitions();
+        ViewGroup.MarginLayoutParams params =
+                (ViewGroup.MarginLayoutParams) storySummary.getLayoutParams();
+        int startHeight = storySummary.getVisibility() == View.VISIBLE
+                ? Math.max(0, storySummary.getHeight())
+                : 0;
+        int startTopMargin = storySummary.getVisibility() == View.VISIBLE
+                ? params.topMargin
+                : 0;
+        float startAlpha = storySummary.getVisibility() == View.VISIBLE
+                ? storySummary.getAlpha()
+                : 0f;
+        int targetHeight = showSummary ? naturalHeight : 0;
+        int targetTopMargin = showSummary ? storySummaryNaturalTopMargin : 0;
+        float targetAlpha = showSummary ? 1f : 0f;
+
+        params.height = startHeight;
+        params.topMargin = startTopMargin;
+        storySummary.setLayoutParams(params);
+        storySummary.setAlpha(startAlpha);
+        setVisibilityWithoutLayoutTransition(storySummary, View.VISIBLE);
+
+        PreviewHeights targetHeights = calculateActualPreviewHeights(
+                getCurrentPreviewImageMode(), showSummary);
+        if (targetHeights.isValid()) {
+            applyPreviewHeights(targetHeights, true);
+        }
+
+        summaryAnimationTargetVisible = showSummary;
+        summaryLayoutAnimator = ValueAnimator.ofFloat(0f, 1f);
+        summaryLayoutAnimator.setDuration(PREVIEW_ANIMATION_DURATION_MS);
+        summaryLayoutAnimator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        summaryLayoutAnimator.addUpdateListener(animation -> {
+            if (storySummary == null) {
+                animation.cancel();
+                return;
+            }
+            float progress = (float) animation.getAnimatedValue();
+            ViewGroup.LayoutParams layoutParams = storySummary.getLayoutParams();
+            if (!(layoutParams instanceof ViewGroup.MarginLayoutParams)) {
+                return;
+            }
+            ViewGroup.MarginLayoutParams marginParams =
+                    (ViewGroup.MarginLayoutParams) layoutParams;
+            marginParams.height = lerp(startHeight, targetHeight, progress);
+            marginParams.topMargin = lerp(startTopMargin, targetTopMargin, progress);
+            storySummary.setLayoutParams(marginParams);
+            storySummary.setAlpha(startAlpha + (targetAlpha - startAlpha) * progress);
+        });
+        summaryLayoutAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (summaryLayoutAnimator != animation
+                        || animationToken != summaryAnimationToken
+                        || storySummary == null) {
+                    return;
+                }
+                summaryLayoutAnimator = null;
+                restoreSummaryLayoutParams();
+                storySummary.setAlpha(1f);
+                setVisibilityWithoutLayoutTransition(storySummary, targetVisibility);
+                if (targetHeights.isValid()) {
+                    setPreviewHeights(targetHeights);
+                }
+                resumeStoryLayoutTransitions();
+                requestPreviewRemeasure();
+            }
+        });
+        summaryLayoutAnimator.start();
+    }
+
+    private void cancelSummaryLayoutAnimator() {
+        if (summaryLayoutAnimator == null) {
+            return;
+        }
+        summaryLayoutAnimator.removeAllUpdateListeners();
+        summaryLayoutAnimator.removeAllListeners();
+        summaryLayoutAnimator.cancel();
+        summaryLayoutAnimator = null;
+    }
+
+    private int measureStorySummaryNaturalHeight() {
+        if (storySummary == null
+                || !(storySummary.getParent() instanceof View)
+                || !(storySummary.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)) {
+            return 0;
+        }
+        View parent = (View) storySummary.getParent();
+        ViewGroup.MarginLayoutParams params =
+                (ViewGroup.MarginLayoutParams) storySummary.getLayoutParams();
+        int availableWidth = parent.getWidth()
+                - params.getMarginStart()
+                - params.getMarginEnd();
+        if (availableWidth <= 0) {
+            availableWidth = storySummary.getWidth();
+        }
+        if (availableWidth <= 0) {
+            return 0;
+        }
+        storySummary.measure(
+                View.MeasureSpec.makeMeasureSpec(availableWidth, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        return storySummary.getMeasuredHeight();
+    }
+
+    private void restoreSummaryLayoutParams() {
+        if (storySummary == null
+                || !(storySummary.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)) {
+            return;
+        }
+        ViewGroup.MarginLayoutParams params =
+                (ViewGroup.MarginLayoutParams) storySummary.getLayoutParams();
+        params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        params.topMargin = storySummaryNaturalTopMargin;
+        storySummary.setLayoutParams(params);
+    }
+
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -222,6 +391,13 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         if (commentsIcon != null) {
             commentsIcon.animate().cancel();
         }
+        if (storySummary != null) {
+            summaryAnimationToken++;
+            storySummary.animate().cancel();
+        }
+        cancelSummaryLayoutAnimator();
+        cancelStoryIndexLayoutAnimator();
+        cancelCommentAlignmentAnimation();
         cancelCardTintAnimator();
         cancelCardAppearanceAnimator();
         cancelPreviewHeightAnimator();
@@ -244,12 +420,14 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         largePreviewImage = null;
         storyCard = null;
         storyTitle = null;
+        storySummary = null;
         storyIndex = null;
         storyMeta = null;
         comments = null;
         tintCardUsingPreview = false;
         borderlessLargePreviewImage = false;
         displayStyleOverride = null;
+        storyIndexMeasurementVisibleOverride = null;
     }
 
     @Override
@@ -287,6 +465,11 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
 
         if (SettingsUtils.PREF_STORY_TEXT_SIZE.equals(key)) {
             applyTextSize(SettingsUtils.getPreferredStoryTextSize(getContext()), true);
+            return;
+        }
+
+        if (SettingsUtils.PREF_SHOW_STORY_SUMMARY.equals(key)) {
+            updateSummary(sharedPreferences.getBoolean(key, false));
             return;
         }
 
@@ -328,7 +511,21 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         largePreviewImage = binding.largePreviewImage;
         storyCard = binding.storyCard;
         storyTitle = binding.storyTitle;
+        storySummary = binding.storySummary;
+        if (storySummary != null
+                && storySummary.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            storySummaryNaturalTopMargin =
+                    ((ViewGroup.MarginLayoutParams) storySummary.getLayoutParams()).topMargin;
+        }
         storyIndex = binding.storyIndex;
+        if (storyIndex != null
+                && storyIndex.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams indexParams =
+                    (ViewGroup.MarginLayoutParams) storyIndex.getLayoutParams();
+            storyIndexNaturalWidth = indexParams.width;
+            storyIndexNaturalLeftMargin = indexParams.leftMargin;
+            storyIndexNaturalRightMargin = indexParams.rightMargin;
+        }
         storyMeta = binding.storyMeta;
         comments = binding.comments;
         applyLargePreviewImageAppearance(largePreviewImage, borderlessLargePreviewImage);
@@ -337,6 +534,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 : null;
 
         disablePreviewTextScrolling(storyTitle);
+        disablePreviewTextScrolling(storySummary);
         disablePreviewTextScrolling(storyIndex);
         disablePreviewTextScrolling(storyMeta);
         disablePreviewTextScrolling(comments);
@@ -467,6 +665,13 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         if (storyTitle != null) {
             storyTitle.setText(PREVIEW_STORY_TITLE);
         }
+        if (storySummary != null) {
+            storySummary.setText(PREVIEW_STORY_SUMMARY);
+            storySummary.setVisibility(
+                    SettingsUtils.shouldShowStorySummary(getContext())
+                            ? View.VISIBLE
+                            : View.GONE);
+        }
         if (storyIndex != null) {
             storyIndex.setText("3.");
             storyIndex.setContentDescription("Story 3");
@@ -586,6 +791,12 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     private void applyTextSize(float textSize, boolean animate) {
         float clampedTextSize = SettingsUtils.clampStoryTextSize(textSize);
         applyStoryTypefacesAndTextSizes(storyTitle, storyMeta, storyIndex, comments, clampedTextSize);
+        if (storySummary != null) {
+            storySummary.setTypeface(FontUtils.activeRegular);
+            storySummary.setTextSize(
+                    TypedValue.COMPLEX_UNIT_SP,
+                    Math.max(12f, clampedTextSize - 3.5f));
+        }
         syncPreviewContainerHeight(getCurrentPreviewImageMode(), animate);
     }
 
@@ -768,6 +979,12 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     }
 
     private PreviewHeights calculatePreviewHeights(String previewImageMode) {
+        return calculatePreviewHeights(previewImageMode, null);
+    }
+
+    private PreviewHeights calculatePreviewHeights(
+            String previewImageMode,
+            Boolean showSummaryOverride) {
         if (previewItemContainer == null || previewItemContainer.getChildCount() == 0 || previewRoot == null) {
             return PreviewHeights.invalid();
         }
@@ -780,7 +997,8 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             return PreviewHeights.invalid();
         }
 
-        int targetContentHeight = measureReservedPreviewItemHeight(containerWidth, previewImageMode);
+        int targetContentHeight = measureReservedPreviewItemHeight(
+                containerWidth, previewImageMode, showSummaryOverride);
         int targetContainerHeight = targetContentHeight
                 + previewItemContainer.getPaddingTop()
                 + previewItemContainer.getPaddingBottom();
@@ -791,7 +1009,14 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
     }
 
     private PreviewHeights calculateActualPreviewHeights(String previewImageMode) {
-        PreviewHeights reservedHeights = calculatePreviewHeights(previewImageMode);
+        return calculateActualPreviewHeights(previewImageMode, null);
+    }
+
+    private PreviewHeights calculateActualPreviewHeights(
+            String previewImageMode,
+            Boolean showSummaryOverride) {
+        PreviewHeights reservedHeights = calculatePreviewHeights(
+                previewImageMode, showSummaryOverride);
         if (!reservedHeights.isValid() || previewItemContainer == null) {
             return reservedHeights;
         }
@@ -801,7 +1026,8 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 - previewItemContainer.getPaddingRight();
         int actualContentHeight = measureCurrentPreviewItemHeight(
                 containerWidth,
-                previewImageMode);
+                previewImageMode,
+                showSummaryOverride);
         return new PreviewHeights(
                 actualContentHeight,
                 reservedHeights.containerHeight,
@@ -812,37 +1038,58 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         return containerWidth >= Utils.pxFromDpInt(previewItemContainer.getResources(), MIN_STABLE_PREVIEW_WIDTH_DP);
     }
 
-    private int measureReservedPreviewItemHeight(int containerWidth, String previewImageMode) {
+    private int measureReservedPreviewItemHeight(
+            int containerWidth,
+            String previewImageMode,
+            Boolean showSummaryOverride) {
         if (SettingsUtils.STORY_PREVIEW_IMAGE_LARGE.equals(previewImageMode)) {
-            return measureCurrentPreviewItemHeight(containerWidth, previewImageMode);
+            return measureCurrentPreviewItemHeight(
+                    containerWidth, previewImageMode, showSummaryOverride);
         }
 
         int offHeight = measureCurrentPreviewItemHeight(
-                containerWidth,
-                SettingsUtils.STORY_PREVIEW_IMAGE_OFF);
+                containerWidth, SettingsUtils.STORY_PREVIEW_IMAGE_OFF, showSummaryOverride);
         int smallHeight = measureCurrentPreviewItemHeight(
-                containerWidth,
-                SettingsUtils.STORY_PREVIEW_IMAGE_SMALL);
+                containerWidth, SettingsUtils.STORY_PREVIEW_IMAGE_SMALL, showSummaryOverride);
         return Math.max(offHeight, smallHeight);
     }
 
     private int measureCurrentPreviewItemHeight(int containerWidth, String previewImageMode) {
+        return measureCurrentPreviewItemHeight(containerWidth, previewImageMode, null);
+    }
+
+    private int measureCurrentPreviewItemHeight(
+            int containerWidth,
+            String previewImageMode,
+            Boolean showSummaryOverride) {
         if (previewItemContainer == null || previewItemContainer.getChildCount() == 0) {
             return 0;
         }
         PreviewStoryItemBinding binding =
                 inflatePreviewStoryItemBinding(leftAligned);
         View itemView = binding.root;
-        bindCurrentPreviewItemForMeasurement(binding, previewImageMode);
+        bindCurrentPreviewItemForMeasurement(
+                binding, previewImageMode, showSummaryOverride);
         int widthSpec = View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
         itemView.measure(widthSpec, heightSpec);
         return PreviewPreferenceViewUtils.getMeasuredOuterHeight(itemView);
     }
 
-    private void bindCurrentPreviewItemForMeasurement(PreviewStoryItemBinding binding, String previewImageMode) {
+    private void bindCurrentPreviewItemForMeasurement(
+            PreviewStoryItemBinding binding,
+            String previewImageMode,
+            Boolean showSummaryOverride) {
         PreviewPreferenceViewUtils.copyTextViewForMeasurement(storyTitle, binding.storyTitle);
+        PreviewPreferenceViewUtils.copyTextViewForMeasurement(storySummary, binding.storySummary);
+        if (showSummaryOverride != null && binding.storySummary != null) {
+            binding.storySummary.setVisibility(showSummaryOverride ? View.VISIBLE : View.GONE);
+        }
         PreviewPreferenceViewUtils.copyTextViewForMeasurement(storyIndex, binding.storyIndex);
+        if (storyIndexMeasurementVisibleOverride != null && binding.storyIndex != null) {
+            binding.storyIndex.setVisibility(
+                    storyIndexMeasurementVisibleOverride ? View.VISIBLE : View.GONE);
+        }
         PreviewPreferenceViewUtils.copyTextViewForMeasurement(storyMeta, binding.storyMeta);
         PreviewPreferenceViewUtils.copyTextViewForMeasurement(comments, binding.comments);
         PreviewPreferenceViewUtils.copyViewVisibilityForMeasurement(metaContainer, binding.metaContainer);
@@ -1101,6 +1348,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 binding.getRoot(),
                 binding.storyContainer.getRoot(),
                 binding.storyContainer.storyTitle,
+                binding.storyContainer.storySummary,
                 binding.storyContainer.storyMeta,
                 binding.storyContainer.storyMetaContainer,
                 binding.storyContainer.storyComments,
@@ -1127,8 +1375,6 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             return;
         }
 
-        applyStoryLinkPaddingForCommentAlignment(targetStoryLinkLayout, leftAlign);
-
         ViewGroup row = (ViewGroup) targetCommentLayout.getParent();
         int commentIndex = row.indexOfChild(targetCommentLayout);
         int storyIndex = row.indexOfChild(targetStoryLinkLayout);
@@ -1137,64 +1383,226 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         }
 
         boolean currentlyLeftAligned = commentIndex < storyIndex;
-        if (currentlyLeftAligned == leftAlign) {
+        boolean isLivePreviewRow = targetStoryLinkLayout == storyLinkLayout
+                && targetCommentLayout == commentLayout;
+        boolean alignmentAnimationActive = isLivePreviewRow
+                && (commentAlignmentAnimator != null
+                    || pendingCommentAlignmentPreDrawListener != null);
+        if (currentlyLeftAligned == leftAlign && !alignmentAnimationActive) {
+            applyStoryLinkPaddingForCommentAlignment(targetStoryLinkLayout, leftAlign);
             return;
         }
-
-        targetCommentLayout.animate().cancel();
-        targetStoryLinkLayout.animate().cancel();
-        int oldCommentLeft = targetCommentLayout.getLeft();
-        int oldStoryLeft = targetStoryLinkLayout.getLeft();
-
-        row.removeView(targetCommentLayout);
-        row.addView(targetCommentLayout, leftAlign ? 0 : row.getChildCount());
-        row.requestLayout();
 
         if (!animate || !ViewCompat.isLaidOut(row)) {
+            if (isLivePreviewRow) {
+                cancelCommentAlignmentAnimation();
+                targetCommentLayout.animate().cancel();
+                targetStoryLinkLayout.animate().cancel();
+            }
+            row.removeView(targetCommentLayout);
+            row.addView(targetCommentLayout, leftAlign ? 0 : row.getChildCount());
+            applyStoryLinkPaddingForCommentAlignment(targetStoryLinkLayout, leftAlign);
             targetCommentLayout.setTranslationX(0f);
             targetStoryLinkLayout.setTranslationX(0f);
+            row.requestLayout();
+            if (isLivePreviewRow) {
+                resumeStoryLayoutTransitions();
+            }
             return;
         }
 
-        row.post(() -> {
-            if (targetCommentLayout.getParent() != row) {
-                return;
-            }
+        cancelCommentAlignmentAnimation();
+        targetCommentLayout.animate().cancel();
+        targetStoryLinkLayout.animate().cancel();
+        float startCommentTranslation = targetCommentLayout.getTranslationX();
+        float startStoryTranslation = targetStoryLinkLayout.getTranslationX();
+        int rowStart = row.getPaddingLeft();
+        int targetCommentLeft = leftAlign
+                ? rowStart
+                : row.getWidth() - row.getPaddingRight() - targetCommentLayout.getWidth();
+        int targetStoryLeft = leftAlign
+                ? rowStart + targetCommentLayout.getWidth()
+                : rowStart;
+        float targetCommentTranslation =
+                targetCommentLeft - targetCommentLayout.getLeft();
+        float targetStoryTranslation =
+                targetStoryLeft - targetStoryLinkLayout.getLeft();
+        int startLinkPadding = targetStoryLinkLayout.getPaddingStart();
+        int startLinkEndPadding = targetStoryLinkLayout.getPaddingEnd();
+        View title = targetStoryLinkLayout.findViewById(R.id.story_title);
+        View titleParent = title != null && title.getParent() instanceof View
+                ? (View) title.getParent()
+                : null;
+        View summary = targetStoryLinkLayout.findViewById(R.id.story_summary);
+        View meta = targetStoryLinkLayout.findViewById(R.id.story_meta_container);
+        int startTitlePadding = titleParent == null ? 0 : titleParent.getPaddingStart();
+        int startSummaryMargin = getStartMargin(summary);
+        int startMetaMargin = getStartMargin(meta);
+        int targetLinkPadding = leftAlign ? 0 : dpToPx(6);
+        int targetLinkEndPadding = leftAlign ? dpToPx(12) : 0;
+        int targetContentSpacing = dpToPx(leftAlign ? 4 : 10);
 
-            int newCommentLeft = targetCommentLayout.getLeft();
-            int newStoryLeft = targetStoryLinkLayout.getLeft();
-            targetCommentLayout.setTranslationX(oldCommentLeft - newCommentLeft);
-            targetStoryLinkLayout.setTranslationX(oldStoryLeft - newStoryLeft);
-            targetCommentLayout.animate()
-                    .translationX(0f)
-                    .setDuration(PREVIEW_ANIMATION_DURATION_MS)
-                    .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                    .start();
-            targetStoryLinkLayout.animate()
-                    .translationX(0f)
-                    .setDuration(PREVIEW_ANIMATION_DURATION_MS)
-                    .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                    .start();
+        suspendStoryLayoutTransitions();
+        commentAlignmentAnimator = ValueAnimator.ofFloat(0f, 1f);
+        commentAlignmentAnimator.setDuration(PREVIEW_ANIMATION_DURATION_MS);
+        commentAlignmentAnimator.setInterpolator(
+                new PathInterpolator(0.2f, 0f, 0f, 1f));
+        commentAlignmentAnimator.addUpdateListener(animation -> {
+            float progress = (float) animation.getAnimatedValue();
+            targetCommentLayout.setTranslationX(
+                    lerp(startCommentTranslation, targetCommentTranslation, progress));
+            targetStoryLinkLayout.setTranslationX(
+                    lerp(startStoryTranslation, targetStoryTranslation, progress));
+            applyStoryLinkSpacing(
+                    targetStoryLinkLayout,
+                    titleParent,
+                    summary,
+                    meta,
+                    lerp(startLinkPadding, targetLinkPadding, progress),
+                    lerp(startLinkEndPadding, targetLinkEndPadding, progress),
+                    lerp(startTitlePadding, targetContentSpacing, progress),
+                    lerp(startSummaryMargin, targetContentSpacing, progress),
+                    lerp(startMetaMargin, targetContentSpacing, progress));
         });
+        commentAlignmentAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (commentAlignmentAnimator != animation) {
+                    return;
+                }
+                commentAlignmentAnimator = null;
+                if (targetCommentLayout.getParent() != row) {
+                    resumeStoryLayoutTransitions();
+                    return;
+                }
+
+                int currentCommentIndex = row.indexOfChild(targetCommentLayout);
+                int currentStoryIndex = row.indexOfChild(targetStoryLinkLayout);
+                boolean orderMatchesTarget = leftAlign
+                        ? currentCommentIndex < currentStoryIndex
+                        : currentCommentIndex > currentStoryIndex;
+                if (orderMatchesTarget) {
+                    targetCommentLayout.setTranslationX(0f);
+                    targetStoryLinkLayout.setTranslationX(0f);
+                    applyStoryLinkPaddingForCommentAlignment(
+                            targetStoryLinkLayout, leftAlign);
+                    resumeStoryLayoutTransitions();
+                    return;
+                }
+
+                row.removeView(targetCommentLayout);
+                row.addView(targetCommentLayout, leftAlign ? 0 : row.getChildCount());
+                row.requestLayout();
+                pendingCommentAlignmentRow = row;
+                pendingCommentAlignmentPreDrawListener =
+                        new ViewTreeObserver.OnPreDrawListener() {
+                            @Override
+                            public boolean onPreDraw() {
+                                removePendingCommentAlignmentPreDrawListener();
+                                if (targetCommentLayout.getParent() == row) {
+                                    targetCommentLayout.setTranslationX(0f);
+                                    targetStoryLinkLayout.setTranslationX(0f);
+                                    applyStoryLinkPaddingForCommentAlignment(
+                                            targetStoryLinkLayout, leftAlign);
+                                }
+                                resumeStoryLayoutTransitions();
+                                return true;
+                            }
+                        };
+                row.getViewTreeObserver().addOnPreDrawListener(
+                        pendingCommentAlignmentPreDrawListener);
+            }
+        });
+        commentAlignmentAnimator.start();
+    }
+
+    private void cancelCommentAlignmentAnimation() {
+        removePendingCommentAlignmentPreDrawListener();
+        if (commentAlignmentAnimator == null) {
+            return;
+        }
+        commentAlignmentAnimator.removeAllUpdateListeners();
+        commentAlignmentAnimator.removeAllListeners();
+        commentAlignmentAnimator.cancel();
+        commentAlignmentAnimator = null;
+    }
+
+    private void removePendingCommentAlignmentPreDrawListener() {
+        if (pendingCommentAlignmentRow != null
+                && pendingCommentAlignmentPreDrawListener != null) {
+            ViewTreeObserver observer =
+                    pendingCommentAlignmentRow.getViewTreeObserver();
+            if (observer.isAlive()) {
+                observer.removeOnPreDrawListener(
+                        pendingCommentAlignmentPreDrawListener);
+            }
+        }
+        pendingCommentAlignmentRow = null;
+        pendingCommentAlignmentPreDrawListener = null;
     }
 
     private void applyStoryLinkPaddingForCommentAlignment(View storyLinkLayout, boolean leftAlign) {
         int linkStartPadding = leftAlign ? 0 : dpToPx(6);
         int linkEndPadding = leftAlign ? dpToPx(12) : 0;
+        int contentStartMargin = dpToPx(leftAlign ? 4 : 10);
+        View title = storyLinkLayout.findViewById(R.id.story_title);
+        View titleParent = title != null && title.getParent() instanceof View
+                ? (View) title.getParent()
+                : null;
+        applyStoryLinkSpacing(
+                storyLinkLayout,
+                titleParent,
+                storyLinkLayout.findViewById(R.id.story_summary),
+                storyLinkLayout.findViewById(R.id.story_meta_container),
+                linkStartPadding,
+                linkEndPadding,
+                contentStartMargin,
+                contentStartMargin,
+                contentStartMargin);
+    }
+
+    private void applyStoryLinkSpacing(
+            View storyLinkLayout,
+            View titleParent,
+            View summary,
+            View meta,
+            int linkStartPadding,
+            int linkEndPadding,
+            int titleStartPadding,
+            int summaryStartMargin,
+            int metaStartMargin) {
         storyLinkLayout.setPaddingRelative(
                 linkStartPadding,
                 storyLinkLayout.getPaddingTop(),
                 linkEndPadding,
                 storyLinkLayout.getPaddingBottom());
+        if (titleParent != null) {
+            titleParent.setPaddingRelative(
+                    titleStartPadding,
+                    titleParent.getPaddingTop(),
+                    titleParent.getPaddingEnd(),
+                    titleParent.getPaddingBottom());
+        }
+        updateStartMargin(summary, summaryStartMargin);
+        updateStartMargin(meta, metaStartMargin);
+    }
 
-        View titleContainer = storyLinkLayout.findViewById(R.id.story_title);
-        if (titleContainer != null && titleContainer.getParent() instanceof View) {
-            View parent = (View) titleContainer.getParent();
-            parent.setPaddingRelative(
-                    dpToPx(leftAlign ? 4 : 10),
-                    parent.getPaddingTop(),
-                    parent.getPaddingEnd(),
-                    parent.getPaddingBottom());
+    private int getStartMargin(View view) {
+        if (view == null || !(view.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)) {
+            return 0;
+        }
+        return ((ViewGroup.MarginLayoutParams) view.getLayoutParams()).getMarginStart();
+    }
+
+    private void updateStartMargin(View view, int marginStart) {
+        if (view == null || !(view.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)) {
+            return;
+        }
+        ViewGroup.MarginLayoutParams params =
+                (ViewGroup.MarginLayoutParams) view.getLayoutParams();
+        if (params.getMarginStart() != marginStart) {
+            params.setMarginStart(marginStart);
+            view.setLayoutParams(params);
         }
     }
 
@@ -1206,6 +1614,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         final View root;
         final ViewGroup storyContainer;
         final TextView storyTitle;
+        final TextView storySummary;
         final TextView storyMeta;
         final View metaContainer;
         final TextView comments;
@@ -1222,6 +1631,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 View root,
                 ViewGroup storyContainer,
                 TextView storyTitle,
+                TextView storySummary,
                 TextView storyMeta,
                 View metaContainer,
                 TextView comments,
@@ -1236,6 +1646,7 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             this.root = root;
             this.storyContainer = storyContainer;
             this.storyTitle = storyTitle;
+            this.storySummary = storySummary;
             this.storyMeta = storyMeta;
             this.metaContainer = metaContainer;
             this.comments = comments;
@@ -1493,7 +1904,111 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             return;
         }
 
-        updateVisibilityWithLayoutTransition(storyIndex, showIndex, animate);
+        int targetVisibility = showIndex ? View.VISIBLE : View.GONE;
+        if (storyIndexLayoutAnimator != null
+                && storyIndexAnimationTargetVisible == showIndex) {
+            return;
+        }
+        if (storyIndexLayoutAnimator == null
+                && storyIndex.getVisibility() == targetVisibility) {
+            return;
+        }
+
+        cancelStoryIndexLayoutAnimator();
+        if (!(storyIndex.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)
+                || !animate
+                || !ViewCompat.isLaidOut(previewItemContainer)) {
+            restoreStoryIndexLayoutParams();
+            storyIndex.setAlpha(1f);
+            setVisibilityWithoutLayoutTransition(storyIndex, targetVisibility);
+            storyIndexMeasurementVisibleOverride = null;
+            resumeStoryLayoutTransitions();
+            return;
+        }
+
+        suspendStoryLayoutTransitions();
+        ViewGroup.MarginLayoutParams params =
+                (ViewGroup.MarginLayoutParams) storyIndex.getLayoutParams();
+        boolean currentlyVisible = storyIndex.getVisibility() == View.VISIBLE;
+        int startWidth = currentlyVisible ? Math.max(0, params.width) : 0;
+        int startLeftMargin = currentlyVisible ? params.leftMargin : 0;
+        int startRightMargin = currentlyVisible ? params.rightMargin : 0;
+        float startAlpha = currentlyVisible ? storyIndex.getAlpha() : 0f;
+        int targetWidth = showIndex ? storyIndexNaturalWidth : 0;
+        int targetLeftMargin = showIndex ? storyIndexNaturalLeftMargin : 0;
+        int targetRightMargin = showIndex ? storyIndexNaturalRightMargin : 0;
+        float targetAlpha = showIndex ? 1f : 0f;
+
+        params.width = startWidth;
+        params.leftMargin = startLeftMargin;
+        params.rightMargin = startRightMargin;
+        storyIndex.setLayoutParams(params);
+        storyIndex.setAlpha(startAlpha);
+        setVisibilityWithoutLayoutTransition(storyIndex, View.VISIBLE);
+
+        storyIndexAnimationTargetVisible = showIndex;
+        storyIndexMeasurementVisibleOverride = showIndex;
+        storyIndexLayoutAnimator = ValueAnimator.ofFloat(0f, 1f);
+        storyIndexLayoutAnimator.setDuration(PREVIEW_ANIMATION_DURATION_MS);
+        storyIndexLayoutAnimator.setInterpolator(
+                new PathInterpolator(0.2f, 0f, 0f, 1f));
+        storyIndexLayoutAnimator.addUpdateListener(animation -> {
+            if (storyIndex == null
+                    || !(storyIndex.getLayoutParams()
+                    instanceof ViewGroup.MarginLayoutParams)) {
+                animation.cancel();
+                return;
+            }
+            float progress = (float) animation.getAnimatedValue();
+            ViewGroup.MarginLayoutParams frameParams =
+                    (ViewGroup.MarginLayoutParams) storyIndex.getLayoutParams();
+            frameParams.width = lerp(startWidth, targetWidth, progress);
+            frameParams.leftMargin = lerp(
+                    startLeftMargin, targetLeftMargin, progress);
+            frameParams.rightMargin = lerp(
+                    startRightMargin, targetRightMargin, progress);
+            storyIndex.setLayoutParams(frameParams);
+            storyIndex.setAlpha(startAlpha + (targetAlpha - startAlpha) * progress);
+        });
+        storyIndexLayoutAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (storyIndexLayoutAnimator != animation || storyIndex == null) {
+                    return;
+                }
+                storyIndexLayoutAnimator = null;
+                restoreStoryIndexLayoutParams();
+                storyIndex.setAlpha(1f);
+                setVisibilityWithoutLayoutTransition(storyIndex, targetVisibility);
+                storyIndexMeasurementVisibleOverride = null;
+                resumeStoryLayoutTransitions();
+                requestPreviewRemeasure();
+            }
+        });
+        storyIndexLayoutAnimator.start();
+    }
+
+    private void cancelStoryIndexLayoutAnimator() {
+        if (storyIndexLayoutAnimator == null) {
+            return;
+        }
+        storyIndexLayoutAnimator.removeAllUpdateListeners();
+        storyIndexLayoutAnimator.removeAllListeners();
+        storyIndexLayoutAnimator.cancel();
+        storyIndexLayoutAnimator = null;
+    }
+
+    private void restoreStoryIndexLayoutParams() {
+        if (storyIndex == null
+                || !(storyIndex.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)) {
+            return;
+        }
+        ViewGroup.MarginLayoutParams params =
+                (ViewGroup.MarginLayoutParams) storyIndex.getLayoutParams();
+        params.width = storyIndexNaturalWidth;
+        params.leftMargin = storyIndexNaturalLeftMargin;
+        params.rightMargin = storyIndexNaturalRightMargin;
+        storyIndex.setLayoutParams(params);
     }
 
     private void updateVisibilityWithLayoutTransition(View view, boolean visible, boolean animate) {

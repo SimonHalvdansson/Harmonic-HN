@@ -36,6 +36,12 @@ public class StoryPreviewImageLoader {
         void onPreviewImageUrlLoaded(String imageUrl);
     }
 
+    public interface PreviewContentCallback {
+        void onPreviewContentLoaded(
+                String imageUrl,
+                @Nullable LinkSummaryLoader.Result summary);
+    }
+
     public interface PreviewImageRequest {
         void cancel();
 
@@ -75,12 +81,15 @@ public class StoryPreviewImageLoader {
     private static class PendingPreviewImageRequest implements PreviewImageRequest {
         final Context context;
         final int storyId;
-        final PreviewImageCallback callback;
+        final PreviewContentCallback callback;
         private boolean cancelled;
         private String pageUrl;
         private PendingPreviewImageBatch batch;
 
-        PendingPreviewImageRequest(Context context, int storyId, PreviewImageCallback callback) {
+        PendingPreviewImageRequest(
+                Context context,
+                int storyId,
+                PreviewContentCallback callback) {
             this.context = context;
             this.storyId = storyId;
             this.callback = callback;
@@ -138,11 +147,45 @@ public class StoryPreviewImageLoader {
     }
 
     public static PreviewImageRequest loadPreviewImageUrl(Context context, int storyId, String pageUrl, boolean forceRefresh, PreviewImageCallback callback) {
+        return loadPreviewContent(
+                context,
+                storyId,
+                pageUrl,
+                false,
+                forceRefresh,
+                (imageUrl, summary) -> callback.onPreviewImageUrlLoaded(imageUrl));
+    }
+
+    public static PreviewImageRequest loadPreviewContent(
+            Context context,
+            int storyId,
+            String pageUrl,
+            boolean requireSummary,
+            PreviewContentCallback callback) {
+        return loadPreviewContent(
+                context,
+                storyId,
+                pageUrl,
+                requireSummary,
+                false,
+                callback);
+    }
+
+    private static PreviewImageRequest loadPreviewContent(
+            Context context,
+            int storyId,
+            String pageUrl,
+            boolean requireSummary,
+            boolean forceRefresh,
+            PreviewContentCallback callback) {
         Context appContext = context == null ? null : context.getApplicationContext();
-        PendingPreviewImageRequest previewImageRequest = new PendingPreviewImageRequest(appContext, storyId, callback);
+        PendingPreviewImageRequest previewImageRequest = new PendingPreviewImageRequest(
+                appContext,
+                storyId,
+                callback);
         String normalizedPageUrl = normalizeHttpUrl(pageUrl);
         if (TextUtils.isEmpty(normalizedPageUrl)) {
-            postResult(previewImageRequest, null);
+            postResult(previewImageRequest, null, null);
             return previewImageRequest;
         }
 
@@ -152,15 +195,25 @@ public class StoryPreviewImageLoader {
                     appContext,
                     previewImageCacheEntryId,
                     true);
-            if (cachedDiskImageUrl.loaded) {
-                postResult(previewImageRequest, cachedDiskImageUrl.imageUrl);
+            LinkSummaryLoader.Result cachedSummary = requireSummary
+                    ? getCachedLinkSummary(appContext, normalizedPageUrl)
+                    : null;
+            if (cachedSummary != null) {
+                String cachedImageUrl = TextUtils.isEmpty(cachedSummary.imageUrl)
+                        ? cachedDiskImageUrl.imageUrl
+                        : cachedSummary.imageUrl;
+                postResult(previewImageRequest, cachedImageUrl, cachedSummary);
+                return previewImageRequest;
+            }
+            if (!requireSummary && cachedDiskImageUrl.loaded) {
+                postResult(previewImageRequest, cachedDiskImageUrl.imageUrl, null);
                 return previewImageRequest;
             }
         }
 
         if (isLikelyImageUrl(normalizedPageUrl)) {
             saveCachedPreviewImageUrl(appContext, previewImageCacheEntryId, normalizedPageUrl);
-            postResult(previewImageRequest, normalizedPageUrl);
+            postResult(previewImageRequest, normalizedPageUrl, null);
             return previewImageRequest;
         }
 
@@ -175,14 +228,14 @@ public class StoryPreviewImageLoader {
         synchronized (StoryPreviewImageLoader.class) {
             if (!forceRefresh) {
                 String cachedImageUrl = IMAGE_CACHE.get(normalizedPageUrl);
-                if (!TextUtils.isEmpty(cachedImageUrl)) {
+                if (!requireSummary && !TextUtils.isEmpty(cachedImageUrl)) {
                     saveCachedPreviewImageUrl(appContext, previewImageCacheEntryId, cachedImageUrl);
-                    postResult(previewImageRequest, cachedImageUrl);
+                    postResult(previewImageRequest, cachedImageUrl, null);
                     return previewImageRequest;
                 }
 
-                if (MISS_CACHE.contains(normalizedPageUrl)) {
-                    postResult(previewImageRequest, null);
+                if (!requireSummary && MISS_CACHE.contains(normalizedPageUrl)) {
+                    postResult(previewImageRequest, null, null);
                     return previewImageRequest;
                 }
             }
@@ -372,16 +425,19 @@ public class StoryPreviewImageLoader {
         MAIN_HANDLER.post(() -> {
             for (PendingPreviewImageRequest pendingRequest : pendingRequests) {
                 if (!pendingRequest.isCancelled()) {
-                    pendingRequest.callback.onPreviewImageUrlLoaded(imageUrl);
+                    pendingRequest.callback.onPreviewContentLoaded(imageUrl, summary);
                 }
             }
         });
     }
 
-    private static void postResult(PendingPreviewImageRequest request, String imageUrl) {
+    private static void postResult(
+            PendingPreviewImageRequest request,
+            String imageUrl,
+            @Nullable LinkSummaryLoader.Result summary) {
         MAIN_HANDLER.post(() -> {
             if (!request.isCancelled()) {
-                request.callback.onPreviewImageUrlLoaded(imageUrl);
+                request.callback.onPreviewContentLoaded(imageUrl, summary);
             }
         });
     }

@@ -33,6 +33,7 @@ public class SettingsUtils {
     public static final String PREF_STORY_DISPLAY_STYLE = "pref_story_display_style";
     public static final String PREF_STORY_PREVIEW_IMAGE_MODE = "pref_story_preview_image_mode";
     public static final String PREF_STORY_PREVIEW_IMAGE_BORDERLESS = "pref_story_preview_image_borderless";
+    public static final String PREF_SHOW_STORY_SUMMARY = "pref_show_story_summary";
     public static final String PREF_TINT_CARD_USING_PREVIEW = "pref_tint_card_using_preview";
     public static final String PREF_PALETTE_TINT_MODE = "pref_palette_tint_mode";
     public static final String PREF_PALETTE_TINT_STRENGTH = "pref_palette_tint_strength";
@@ -237,6 +238,10 @@ public class SettingsUtils {
 
     public static boolean shouldUseBorderlessLargeStoryPreviewImage(Context ctx) {
         return getBooleanPref(PREF_STORY_PREVIEW_IMAGE_BORDERLESS, false, ctx);
+    }
+
+    public static boolean shouldShowStorySummary(Context ctx) {
+        return getBooleanPref(PREF_SHOW_STORY_SUMMARY, false, ctx);
     }
 
     public static boolean shouldCollapseParent(Context ctx) {
