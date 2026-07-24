@@ -9,6 +9,16 @@ android {
     compileSdk = 37
     ndkVersion = "29.0.13113456"
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        foss {
+            dimension = "distribution"
+        }
+        play {
+            dimension = "distribution"
+        }
+    }
+
     defaultConfig {
         minSdk = 26
 
@@ -47,7 +57,7 @@ kotlin {
 
 dependencies {
     implementation project(":app")
-    implementation(libs.litertlm)
+    playImplementation(libs.litertlm)
 }
 
 java {

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <com.simon.harmonichackernews.settings.AiSummaryEnabledPreference
+        app:key="pref_ai_summary_enabled"
+        android:layout="@layout/preference_ai_summary_enabled"
+        app:title="Use AI summarization"
+        app:singleLineTitle="false" />
+
+    <PreferenceCategory
+        android:layout="@layout/preference_main_toggle_break" />
+
+    <Preference
+        app:title="Base URL"
+        app:key="pref_ai_summary_base_url"
+        app:icon="@drawable/ic_link"
+        app:singleLineTitle="false" />
+
+    <Preference
+        app:title="API Key"
+        app:key="pref_ai_summary_api_key"
+        app:icon="@drawable/ic_key"
+        app:singleLineTitle="false" />
+
+    <Preference
+        app:title="Model"
+        app:key="pref_ai_summary_model"
+        app:icon="@drawable/ic_hard_drive"
+        app:singleLineTitle="false" />
+
+    <com.simon.harmonichackernews.settings.AiSummarySystemPromptPreference
+        app:title="System prompt"
+        app:key="pref_ai_summary_system_prompt"
+        app:icon="@drawable/ic_subject"
+        app:singleLineTitle="false" />
+
+    <SwitchPreferenceCompat
+        app:defaultValue="true"
+        app:icon="@drawable/ic_stream"
+        app:key="pref_ai_summary_stream_responses"
+        app:singleLineTitle="false"
+        app:title="Stream responses" />
+</PreferenceScreen>

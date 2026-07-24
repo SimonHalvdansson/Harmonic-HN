@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 /** LiteRT-LM implementation loaded after the local-AI runtime feature is installed. */
+/** LiteRT-LM implementation included only in Play-capable distributions. */
 class LiteRtInferenceEngine : LocalInferenceEngine {
   override fun summarize(
     context: Context,

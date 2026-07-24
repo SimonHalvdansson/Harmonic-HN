@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-/** Installs local-AI runtime features before their corresponding model download starts. */
+/** Installs Play-delivered local-AI runtimes before their model download starts. */
 public final class LocalAiRuntimeManager {
     private static final String MODULE_RUNTIME = "local_ai_runtime";
     private static final String ENGINE_LLAMA =

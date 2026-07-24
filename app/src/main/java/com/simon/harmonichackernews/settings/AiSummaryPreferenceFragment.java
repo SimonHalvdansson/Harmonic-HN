@@ -45,6 +45,11 @@ public class AiSummaryPreferenceFragment extends BaseSettingsFragment implements
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        if (!SummaryManager.canAttemptLocalSummarization()) {
+            prefs.edit()
+                    .putString(PREF_MODE, AiSummaryModePreference.MODE_CLOUD)
+                    .apply();
+        }
         AiModelCatalog.ensureInitialDefault(requireContext());
         boolean hadEnablePreference = prefs.contains(PREF_ENABLED);
         boolean defaultEnabled = isConfigurationComplete();

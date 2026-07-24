@@ -11,9 +11,9 @@ jobs:
     env:
       BUNDLETOOL_VERSION: '1.18.3'
       BUNDLETOOL_SHA256: 'A099CFA1543F55593BC2ED16A70A7C67FE54B1747BB7301F37FDFD6D91028E29'
-      RELEASE_BUNDLE: app/build/outputs/bundle/release/app-release.aab
-      CI_LLM_APKS: app/build/outputs/apk/release/app-release-llm-ci.apks
-      CI_LLM_APK: app/build/outputs/apk/release/app-release-llm-ci.apk
+      RELEASE_BUNDLE: app/build/outputs/bundle/playRelease/app-play-release.aab
+      CI_LLM_APKS: app/build/outputs/apk/play/release/app-release-llm-ci.apks
+      CI_LLM_APK: app/build/outputs/apk/play/release/app-release-llm-ci.apk
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
@@ -26,7 +26,16 @@ jobs:
       - name: Install native build tools
         run: sdkmanager "ndk;29.0.13113456" "cmake;3.22.1"
       - name: Build with Gradle
-        run: ./gradlew build :app:bundleRelease --warning-mode all --no-daemon --parallel
+        run: >-
+          ./gradlew
+          :app:assembleFossRelease
+          :app:bundlePlayRelease
+          :app:lintFossRelease
+          :app:lintPlayRelease
+          :app:verifyFossDependencies
+          --warning-mode all
+          --no-daemon
+          --parallel
       - name: Build fused LLM APK
         run: |
           set -euo pipefail
@@ -69,4 +78,4 @@ jobs:
           name: apks
           path: |
             app/build/outputs/apk
-            app/build/outputs/bundle/release/app-release.aab
+            app/build/outputs/bundle/playRelease/app-play-release.aab

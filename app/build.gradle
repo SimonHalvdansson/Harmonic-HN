@@ -84,6 +84,16 @@ android {
     ndkVersion = "29.0.13113456"
     dynamicFeatures = [":local_ai_runtime"]
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        foss {
+            dimension = "distribution"
+        }
+        play {
+            dimension = "distribution"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.simon.harmonichackernews"
         minSdk = 26
@@ -182,13 +192,53 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.coil.svg)
     implementation(libs.jsoup)
-    implementation(libs.mlkit.genai.summarization)
-    implementation(libs.play.feature.delivery)
+    playImplementation(libs.mlkit.genai.summarization)
+    playImplementation(libs.play.feature.delivery)
     implementation(libs.androidx.work)
 
     implementation(libs.markwon.core)
     implementation(libs.markwon.ext.latex)
     implementation(libs.markwon.inline.parser)
+}
+
+afterEvaluate {
+    def fossReleaseRuntimeClasspath = configurations.named("fossReleaseRuntimeClasspath")
+    def forbiddenFossGroupPrefixes = [
+            "com.google.ai.edge",
+            "com.google.android.datatransport",
+            "com.google.android.gms",
+            "com.google.android.play",
+            "com.google.firebase",
+            "com.google.mlkit"
+    ] as Set<String>
+    def forbiddenFossDependencies = fossReleaseRuntimeClasspath.map { configuration ->
+        configuration.resolvedConfiguration.resolvedArtifacts
+                .collect { artifact ->
+                    "${artifact.moduleVersion.id.group}:${artifact.name}:${artifact.moduleVersion.id.version}"
+                }
+                .findAll { dependency ->
+                    forbiddenFossGroupPrefixes.any { prefix ->
+                        dependency.startsWith(prefix + ":")
+                    }
+                }
+                .sort()
+    }
+
+    tasks.register("verifyFossDependencies") {
+        group = "verification"
+        description =
+                "Fails if the FOSS release resolves proprietary local-AI or Play libraries."
+        inputs.property("forbiddenDependencies", forbiddenFossDependencies)
+
+        doLast {
+            List<String> resolvedForbiddenDependencies = forbiddenFossDependencies.get()
+            if (!resolvedForbiddenDependencies.isEmpty()) {
+                throw new GradleException(
+                        "FOSS release contains forbidden dependencies:\n"
+                                + resolvedForbiddenDependencies.join("\n"))
+            }
+        }
+    }
 }
 java {
     toolchain {
