@@ -659,6 +659,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         storyViewHolder.titleView.setTextColor(storyColor);
+        storyViewHolder.summaryView.setTextColor(textColor);
         storyViewHolder.commentsIcon.setAlpha(iconAlpha);
         storyViewHolder.metaFavicon.setAlpha(iconAlpha);
         storyViewHolder.commentsView.setTextColor(textColor);
@@ -678,6 +679,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         final int startTitleColor = storyViewHolder.titleView.getCurrentTextColor();
         final int startIndexColor = storyViewHolder.indexTextView.getCurrentTextColor();
+        final int startSummaryColor = storyViewHolder.summaryView.getCurrentTextColor();
         final int startCommentsColor = storyViewHolder.commentsView.getCurrentTextColor();
         final int startMetaColor = storyViewHolder.metaView.getCurrentTextColor();
         final float startCommentsIconAlpha = storyViewHolder.commentsIcon.getAlpha();
@@ -695,6 +697,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             if (showIndex) {
                 storyViewHolder.indexTextView.setTextColor((int) argbEvaluator.evaluate(fraction, startIndexColor, targetStoryColor));
             }
+            storyViewHolder.summaryView.setTextColor((int) argbEvaluator.evaluate(fraction, startSummaryColor, targetTextColor));
             storyViewHolder.commentsView.setTextColor((int) argbEvaluator.evaluate(fraction, startCommentsColor, targetTextColor));
             storyViewHolder.metaView.setTextColor((int) argbEvaluator.evaluate(fraction, startMetaColor, targetTextColor));
             storyViewHolder.commentsIcon.setAlpha(lerp(startCommentsIconAlpha, targetIconAlpha, fraction));
