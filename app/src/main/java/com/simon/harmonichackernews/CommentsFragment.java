@@ -2585,7 +2585,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 item.setVisible(false);
             }
 
-            if (item.getItemId() == R.id.menu_comments_by_op && !hasCommentsByOp()) {
+            if (item.getItemId() == R.id.menu_comments_by_op
+                    && (commentsByOpFilterActive || !hasCommentsByOp())) {
                 item.setVisible(false);
             }
 
