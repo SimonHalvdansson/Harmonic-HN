@@ -1823,10 +1823,19 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         LinearLayout container = headerViewHolder.opFilterContainer;
-        ViewGroup.LayoutParams layoutParams = container.getLayoutParams();
+        ViewGroup.MarginLayoutParams layoutParams =
+                (ViewGroup.MarginLayoutParams) container.getLayoutParams();
+        if (!visible) {
+            // The collapse animation has already reduced the margin to zero. Remove the view
+            // before restoring its XML margin so the parent never sees an unanimated gap.
+            container.setVisibility(GONE);
+        }
         layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        layoutParams.bottomMargin = headerViewHolder.opFilterBaseBottomMargin;
         container.setLayoutParams(layoutParams);
-        container.setVisibility(visible ? VISIBLE : GONE);
+        if (visible) {
+            container.setVisibility(VISIBLE);
+        }
         container.setAlpha(1f);
         container.setScaleX(1f);
         container.setScaleY(1f);
@@ -1860,8 +1869,19 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 ? container.getTranslationY()
                 : hiddenTranslationY;
         int endHeight = visible ? measureHeaderOpFilterHeight(headerViewHolder) : 0;
+        ViewGroup.MarginLayoutParams initialLayoutParams =
+                (ViewGroup.MarginLayoutParams) container.getLayoutParams();
+        int startBottomMargin = container.getVisibility() == VISIBLE
+                ? initialLayoutParams.bottomMargin
+                : 0;
+        int endBottomMargin = visible
+                ? headerViewHolder.opFilterBaseBottomMargin
+                : 0;
 
         if (visible) {
+            initialLayoutParams.height = startHeight;
+            initialLayoutParams.bottomMargin = startBottomMargin;
+            container.setLayoutParams(initialLayoutParams);
             container.setVisibility(VISIBLE);
         }
         headerViewHolder.opFilterResetButton.setEnabled(visible);
@@ -1872,8 +1892,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         animator.setInterpolator(new DecelerateInterpolator());
         animator.addUpdateListener(animation -> {
             float progress = (float) animation.getAnimatedValue();
-            ViewGroup.LayoutParams layoutParams = container.getLayoutParams();
+            ViewGroup.MarginLayoutParams layoutParams =
+                    (ViewGroup.MarginLayoutParams) container.getLayoutParams();
             layoutParams.height = Math.round(startHeight + (endHeight - startHeight) * progress);
+            layoutParams.bottomMargin = Math.round(
+                    startBottomMargin
+                            + (endBottomMargin - startBottomMargin) * progress);
             container.setLayoutParams(layoutParams);
             container.setAlpha(startAlpha + ((visible ? 1f : 0f) - startAlpha) * progress);
             float targetScale = visible ? 1f : HEADER_OP_FILTER_HIDDEN_SCALE;
@@ -3701,6 +3725,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         private ValueAnimator refreshPromptHeightAnimator;
         @Nullable
         private ValueAnimator opFilterVisibilityAnimator;
+        private final int opFilterBaseBottomMargin;
         private boolean statusRowsInitialized;
         private boolean sheetSlideOffsetApplied;
         private float lastAppliedSheetSlideOffset;
@@ -3778,6 +3803,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             openInBrowserButton = binding.commentsHeaderOpenInBrowser;
             opFilterContainer = binding.commentsHeaderOpFilter;
             opFilterResetButton = binding.commentsHeaderOpFilterReset;
+            opFilterBaseBottomMargin =
+                    ((ViewGroup.MarginLayoutParams) opFilterContainer.getLayoutParams())
+                            .bottomMargin;
             pollLayout = binding.commentsHeaderPollLayout;
             sheetRefreshButton = binding.commentsSheetLayoutRefresh;
             sheetExpandButton = binding.commentsSheetLayoutExpand;
