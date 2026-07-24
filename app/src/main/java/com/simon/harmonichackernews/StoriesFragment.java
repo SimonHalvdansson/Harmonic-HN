@@ -1052,6 +1052,7 @@ public class StoriesFragment extends Fragment {
         return new LinearLayoutManager(getContext()) {
             @Nullable
             private RecyclerView attachedRecyclerView;
+            private boolean staleHolderResetPosted;
 
             @Override
             public void onAttachedToWindow(RecyclerView view) {
@@ -1064,6 +1065,7 @@ public class StoriesFragment extends Fragment {
                 if (attachedRecyclerView == view) {
                     attachedRecyclerView = null;
                 }
+                staleHolderResetPosted = false;
                 super.onDetachedFromWindow(view, recycler);
             }
 
@@ -1090,7 +1092,9 @@ public class StoriesFragment extends Fragment {
                     Log.w(TAG, "Recovering from stale detached story holder", exception);
                     removeAndRecycleAllViews(recycler);
                     recycler.clear();
-                    super.onLayoutChildren(recycler, state);
+                    // Finish this layout pass normally, then reset the adapter after RecyclerView
+                    // has decremented its layout counter. Retrying here can reuse the same holder.
+                    postStaleHolderAdapterReset();
                 }
             }
 
@@ -1111,12 +1115,41 @@ public class StoriesFragment extends Fragment {
                             exception);
                     removeAndRecycleAllViews(recycler);
                     recycler.clear();
-                    RecyclerView currentRecyclerView = attachedRecyclerView;
-                    if (currentRecyclerView != null) {
-                        currentRecyclerView.post(currentRecyclerView::requestLayout);
-                    }
+                    postStaleHolderAdapterReset();
                     return 0;
                 }
+            }
+
+            private void postStaleHolderAdapterReset() {
+                RecyclerView currentRecyclerView = attachedRecyclerView;
+                if (currentRecyclerView == null || staleHolderResetPosted) {
+                    return;
+                }
+
+                staleHolderResetPosted = true;
+                currentRecyclerView.post(() -> {
+                    staleHolderResetPosted = false;
+                    if (attachedRecyclerView != currentRecyclerView
+                            || currentRecyclerView.getLayoutManager() != this) {
+                        return;
+                    }
+
+                    RecyclerView.Adapter<?> currentAdapter = currentRecyclerView.getAdapter();
+                    if (currentAdapter == null) {
+                        currentRecyclerView.requestLayout();
+                        return;
+                    }
+
+                    RecyclerView.ItemAnimator itemAnimator =
+                            currentRecyclerView.getItemAnimator();
+                    if (itemAnimator != null) {
+                        itemAnimator.endAnimations();
+                    }
+                    currentRecyclerView.stopScroll();
+                    currentRecyclerView.setAdapter(null);
+                    currentRecyclerView.getRecycledViewPool().clear();
+                    currentRecyclerView.setAdapter(currentAdapter);
+                });
             }
         };
     }
@@ -2348,7 +2381,10 @@ public class StoriesFragment extends Fragment {
 
     private void replaceStories(List<Story> newStories, boolean notifyDataSetChanged, boolean showLoadMoreButton) {
         resetPreviewImagePrefetchRamp();
-        if (notifyDataSetChanged) {
+        // A full remove followed immediately by an insert can leave disappearing holders in
+        // RecyclerView's hidden-child list while item animations are still running. Detach for
+        // non-empty replacements so those holders are fully recycled before the new list binds.
+        if (notifyDataSetChanged || adapter.getItemCount() > 0) {
             boolean detachedAdapter = detachAdapterForHardSwap();
             stories.clear();
             resetPaginationState();
