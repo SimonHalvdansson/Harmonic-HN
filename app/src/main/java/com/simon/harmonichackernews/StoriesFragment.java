@@ -2382,9 +2382,9 @@ public class StoriesFragment extends Fragment {
     private void replaceStories(List<Story> newStories, boolean notifyDataSetChanged, boolean showLoadMoreButton) {
         resetPreviewImagePrefetchRamp();
         // A full remove followed immediately by an insert can leave disappearing holders in
-        // RecyclerView's hidden-child list while item animations are still running. Detach for
-        // non-empty replacements so those holders are fully recycled before the new list binds.
-        if (notifyDataSetChanged || adapter.getItemCount() > 0) {
+        // RecyclerView's hidden-child list while item animations are still running. Detach only
+        // when the caller explicitly requests a hard replacement.
+        if (notifyDataSetChanged) {
             boolean detachedAdapter = detachAdapterForHardSwap();
             stories.clear();
             resetPaginationState();
