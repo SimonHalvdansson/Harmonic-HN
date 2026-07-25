@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews;
 
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -9,11 +11,14 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.preference.Preference;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.settings.BaseSettingsFragment;
 import com.simon.harmonichackernews.settings.DebugHnIdPreference;
+import com.simon.harmonichackernews.utils.Changelog;
 import com.simon.harmonichackernews.utils.Utils;
 
 public class DebugFragment extends BaseSettingsFragment {
@@ -103,7 +108,7 @@ public class DebugFragment extends BaseSettingsFragment {
         Preference changelog = findPreference(PREF_CHANGELOG);
         if (changelog != null) {
             changelog.setOnPreferenceClickListener(preference -> {
-                DialogHostActivity.showChangelog(requireContext());
+                showChangelogDialog();
                 return true;
             });
         }
@@ -121,6 +126,23 @@ public class DebugFragment extends BaseSettingsFragment {
             hnIdPreference.setOnOpenIdListener(id ->
                     Utils.openCommentsActivity(id, -1, requireContext()));
         }
+    }
+
+    private void showChangelogDialog() {
+        AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Changelog")
+                .setMessage(Changelog.getFormatted(requireContext()))
+                .setNeutralButton("GitHub", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setData(Uri.parse("https://github.com/SimonHalvdansson/Harmonic-HN"));
+                        startActivity(intent);
+                    }
+                })
+                .setNegativeButton("Done", null)
+                .create();
+        dialog.show();
     }
 
     private void setLinkPreference(String key, String url) {
