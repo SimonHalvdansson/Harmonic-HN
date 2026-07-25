@@ -14,12 +14,12 @@ jobs:
     env:
       BUNDLETOOL_VERSION: '1.18.3'
       BUNDLETOOL_SHA256: 'A099CFA1543F55593BC2ED16A70A7C67FE54B1747BB7301F37FDFD6D91028E29'
-      RELEASE_UNSIGNED_APK: app/build/outputs/apk/foss/release/app-foss-release-unsigned.apk
-      RELEASE_ALIGNED_APK: app/build/outputs/apk/foss/release/app-release-aligned.apk
-      RELEASE_SIGNED_APK: app/build/outputs/apk/foss/release/app-release.apk
-      RELEASE_BUNDLE: app/build/outputs/bundle/playRelease/app-play-release.aab
-      RELEASE_LLM_APKS: app/build/outputs/apk/play/release/app-release-llm.apks
-      RELEASE_LLM_APK: app/build/outputs/apk/play/release/app-release-llm.apk
+      RELEASE_UNSIGNED_APK: app/build/outputs/apk/fossRelease/app-fossRelease-unsigned.apk
+      RELEASE_ALIGNED_APK: app/build/outputs/apk/fossRelease/app-release-aligned.apk
+      RELEASE_SIGNED_APK: app/build/outputs/apk/fossRelease/app-release.apk
+      RELEASE_BUNDLE: app/build/outputs/bundle/playRelease/app-playRelease.aab
+      RELEASE_LLM_APKS: app/build/outputs/apk/playRelease/app-release-llm.apks
+      RELEASE_LLM_APK: app/build/outputs/apk/playRelease/app-release-llm.apk
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
@@ -97,7 +97,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
-            app/build/outputs/apk/foss/release/app-release.apk
-            app/build/outputs/apk/play/release/app-release-llm.apk
+            app/build/outputs/apk/fossRelease/app-release.apk
+            app/build/outputs/apk/playRelease/app-release-llm.apk
           draft: false
           prerelease: false
