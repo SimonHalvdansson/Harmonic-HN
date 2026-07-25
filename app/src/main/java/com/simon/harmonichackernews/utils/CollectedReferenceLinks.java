@@ -441,7 +441,7 @@ public final class CollectedReferenceLinks {
             }
 
             String label = trimTrailingUrlPunctuation(normalizedText.substring(urlStart, position));
-            String url = normalizeUrl(label);
+            String url = normalizeBareUrl(label);
             if (!isUsableUrl(url)) {
                 return Collections.emptyList();
             }
@@ -474,7 +474,7 @@ public final class CollectedReferenceLinks {
             }
 
             String label = trimTrailingUrlPunctuation(normalizedText.substring(urlStart, position));
-            String url = normalizeUrl(label);
+            String url = normalizeBareUrl(label);
             if (!isUsableUrl(url)) {
                 return Collections.emptyList();
             }
@@ -572,6 +572,16 @@ public final class CollectedReferenceLinks {
             return "https://" + url;
         }
         return url;
+    }
+
+    private static String normalizeBareUrl(String value) {
+        String url = trimTrailingUrlPunctuation(Jsoup.parse(value == null ? "" : value).text().trim()
+                .replace("&#x2F;", "/")
+                .replace("&#47;", "/"));
+        if (url.startsWith("/") && !url.startsWith("//")) {
+            return url;
+        }
+        return normalizeUrl(url);
     }
 
     private static String trimTrailingUrlPunctuation(String value) {
