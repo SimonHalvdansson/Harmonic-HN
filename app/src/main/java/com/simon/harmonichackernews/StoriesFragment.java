@@ -1052,7 +1052,7 @@ public class StoriesFragment extends Fragment {
         return new LinearLayoutManager(getContext()) {
             @Nullable
             private RecyclerView attachedRecyclerView;
-            private boolean staleHolderResetPosted;
+            private boolean recoveryLayoutPosted;
 
             @Override
             public void onAttachedToWindow(RecyclerView view) {
@@ -1065,7 +1065,7 @@ public class StoriesFragment extends Fragment {
                 if (attachedRecyclerView == view) {
                     attachedRecyclerView = null;
                 }
-                staleHolderResetPosted = false;
+                recoveryLayoutPosted = false;
                 super.onDetachedFromWindow(view, recycler);
             }
 
@@ -1092,9 +1092,10 @@ public class StoriesFragment extends Fragment {
                     Log.w(TAG, "Recovering from stale detached story holder", exception);
                     removeAndRecycleAllViews(recycler);
                     recycler.clear();
-                    // Finish this layout pass normally, then reset the adapter after RecyclerView
-                    // has decremented its layout counter. Retrying here can reuse the same holder.
-                    postStaleHolderAdapterReset();
+                    // Let RecyclerView finish unwinding this layout before asking for a clean one.
+                    // Retrying here can pick up the same bad holder; resetting the adapter causes
+                    // a visible flash.
+                    postRecoveryLayout();
                 }
             }
 
@@ -1115,40 +1116,25 @@ public class StoriesFragment extends Fragment {
                             exception);
                     removeAndRecycleAllViews(recycler);
                     recycler.clear();
-                    postStaleHolderAdapterReset();
+                    postRecoveryLayout();
                     return 0;
                 }
             }
 
-            private void postStaleHolderAdapterReset() {
+            private void postRecoveryLayout() {
                 RecyclerView currentRecyclerView = attachedRecyclerView;
-                if (currentRecyclerView == null || staleHolderResetPosted) {
+                if (currentRecyclerView == null || recoveryLayoutPosted) {
                     return;
                 }
 
-                staleHolderResetPosted = true;
+                recoveryLayoutPosted = true;
                 currentRecyclerView.post(() -> {
-                    staleHolderResetPosted = false;
+                    recoveryLayoutPosted = false;
                     if (attachedRecyclerView != currentRecyclerView
                             || currentRecyclerView.getLayoutManager() != this) {
                         return;
                     }
-
-                    RecyclerView.Adapter<?> currentAdapter = currentRecyclerView.getAdapter();
-                    if (currentAdapter == null) {
-                        currentRecyclerView.requestLayout();
-                        return;
-                    }
-
-                    RecyclerView.ItemAnimator itemAnimator =
-                            currentRecyclerView.getItemAnimator();
-                    if (itemAnimator != null) {
-                        itemAnimator.endAnimations();
-                    }
-                    currentRecyclerView.stopScroll();
-                    currentRecyclerView.setAdapter(null);
-                    currentRecyclerView.getRecycledViewPool().clear();
-                    currentRecyclerView.setAdapter(currentAdapter);
+                    currentRecyclerView.requestLayout();
                 });
             }
         };
@@ -2381,9 +2367,6 @@ public class StoriesFragment extends Fragment {
 
     private void replaceStories(List<Story> newStories, boolean notifyDataSetChanged, boolean showLoadMoreButton) {
         resetPreviewImagePrefetchRamp();
-        // A full remove followed immediately by an insert can leave disappearing holders in
-        // RecyclerView's hidden-child list while item animations are still running. Detach only
-        // when the caller explicitly requests a hard replacement.
         if (notifyDataSetChanged) {
             boolean detachedAdapter = detachAdapterForHardSwap();
             stories.clear();
@@ -3864,14 +3847,14 @@ public class StoriesFragment extends Fragment {
                             requestPreviewImagePrefetch(context, story);
                         }
 
-                        notifyLoadedStoryChangedWhenIdle(story, loadGeneration);
+                        adapter.notifyItemChanged(index);
                     } catch (JSONException e) {
                         e.printStackTrace();
                         Utils.log("Failed to load story with id: " + story.id);
                         story.loadingFailed = true;
                         finishPaginationLoadMoreStory(story, loadGeneration);
                         updatePreviewImagePrefetchRampCompletion();
-                        notifyLoadedStoryChangedWhenIdle(story, loadGeneration);
+                        adapter.notifyItemChanged(index);
                     }
                 }, error -> {
             if (!isCurrentStoryLoad(story, startedAt)) {
@@ -3892,67 +3875,13 @@ public class StoriesFragment extends Fragment {
             updatePreviewImagePrefetchRampCompletion();
             int index = stories.indexOf(story);
             if (index >= 0) {
-                notifyLoadedStoryChangedWhenIdle(story, loadGeneration);
+                adapter.notifyItemChanged(index);
                 loadStory(story, attempt + 1, loadGeneration);
             }
         });
 
         stringRequest.setTag(requestTag);
         queue.add(stringRequest);
-    }
-
-    private void notifyLoadedStoryChangedWhenIdle(Story story, int loadGeneration) {
-        notifyLoadedStoryChangedWhenIdle(
-                story,
-                loadGeneration,
-                stories,
-                adapter,
-                recyclerView,
-                0);
-    }
-
-    private void notifyLoadedStoryChangedWhenIdle(
-            Story story,
-            int loadGeneration,
-            List<Story> expectedStories,
-            StoryRecyclerViewAdapter expectedAdapter,
-            RecyclerView expectedRecyclerView,
-            int deferredFrameCount) {
-        if (!isCurrentStoryListGeneration(loadGeneration)
-                || stories != expectedStories
-                || adapter != expectedAdapter
-                || recyclerView != expectedRecyclerView
-                || expectedAdapter == null
-                || expectedRecyclerView == null
-                || expectedRecyclerView.getAdapter() != expectedAdapter) {
-            return;
-        }
-
-        int index = expectedStories.indexOf(story);
-        if (index < 0 || index >= expectedAdapter.getItemCount()) {
-            return;
-        }
-
-        if (expectedRecyclerView.isComputingLayout()) {
-            if (deferredFrameCount >= 3) {
-                // The Story object is already updated. Avoid crashing if RecyclerView retained a
-                // poisoned layout counter; a later bind will still display the current data.
-                Log.w(TAG, "Skipping story row notification while RecyclerView remains in layout");
-                return;
-            }
-
-            expectedRecyclerView.postOnAnimation(() ->
-                    notifyLoadedStoryChangedWhenIdle(
-                            story,
-                            loadGeneration,
-                            expectedStories,
-                            expectedAdapter,
-                            expectedRecyclerView,
-                            deferredFrameCount + 1));
-            return;
-        }
-
-        expectedAdapter.notifyItemChanged(index);
     }
 
     public void moreClick(View view) {
