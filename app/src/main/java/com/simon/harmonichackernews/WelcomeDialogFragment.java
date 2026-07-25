@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.app.Dialog;
@@ -9,8 +11,6 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.transition.AutoTransition;
-import android.transition.TransitionManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
@@ -30,6 +30,7 @@ import com.simon.harmonichackernews.utils.DialogWindowUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.StoryMetaPlacementUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 public class WelcomeDialogFragment extends AppCompatDialogFragment {
@@ -40,6 +41,7 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
     private static final String FONT_EXPRESSIVE = "googlesansflexrounded";
     private static final String FONT_CLEAN = "productsans";
     private static final long PRESET_TRANSITION_DURATION_MS = 180L;
+    private ValueAnimator previewContentAnimator;
     private ValueAnimator previewTintAnimator;
     private Integer currentPreviewBackgroundColor;
     private int reservedPreviewWidth;
@@ -108,6 +110,7 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
 
     @Override
     public void onDestroyView() {
+        cancelPreviewContentAnimator();
         cancelPreviewTintAnimator();
         super.onDestroyView();
     }
@@ -157,23 +160,81 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
         story.storyPreviewImageSmall.setImageResource(R.drawable.palette1);
         story.storyPreviewImageLarge.setVisibility(View.GONE);
         story.storyIndex.setVisibility(View.GONE);
+        StoryMetaPlacementUtils.placeForSummary(
+                story.storyTitle,
+                story.storySummary,
+                story.storyMetaContainer,
+                false);
     }
 
     private void updatePresetPreview(WelcomeDialogBinding binding, boolean expressive, boolean animate) {
         if (animate && ViewCompat.isLaidOut(binding.getRoot())) {
-            AutoTransition transition = new AutoTransition();
-            transition.setDuration(PRESET_TRANSITION_DURATION_MS);
-            TransitionManager.beginDelayedTransition(binding.getRoot(), transition);
+            animatePreviewContent(binding, expressive);
+        } else {
+            cancelPreviewContentAnimator();
+            applyPreviewContent(binding, expressive);
+            binding.welcomeDialogStoryPreview.getRoot().setAlpha(1f);
         }
 
-        setPreviewFont(binding, expressive ? FONT_EXPRESSIVE : FONT_CLEAN);
-
-        StoryListItemBinding story = binding.welcomeDialogStoryPreview;
-        story.storyPreviewImageSmall.setVisibility(expressive ? View.VISIBLE : View.GONE);
         setPreviewBackgroundColor(
                 binding,
                 expressive ? getPalettedPreviewTintColor() : Color.TRANSPARENT,
                 animate);
+    }
+
+    private void animatePreviewContent(WelcomeDialogBinding binding, boolean expressive) {
+        cancelPreviewContentAnimator();
+        View preview = binding.welcomeDialogStoryPreview.getRoot();
+        float startingAlpha = preview.getAlpha();
+        boolean[] contentApplied = {false};
+
+        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        previewContentAnimator = animator;
+        animator.setDuration(PRESET_TRANSITION_DURATION_MS);
+        animator.addUpdateListener(animation -> {
+            float progress = (float) animation.getAnimatedValue();
+            if (progress < 0.5f) {
+                preview.setAlpha(startingAlpha * (1f - (progress * 2f)));
+                return;
+            }
+
+            if (!contentApplied[0]) {
+                applyPreviewContent(binding, expressive);
+                contentApplied[0] = true;
+            }
+            preview.setAlpha((progress - 0.5f) * 2f);
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (previewContentAnimator != animation) {
+                    return;
+                }
+                if (!contentApplied[0]) {
+                    applyPreviewContent(binding, expressive);
+                }
+                preview.setAlpha(1f);
+                previewContentAnimator = null;
+            }
+        });
+        animator.start();
+    }
+
+    private void applyPreviewContent(WelcomeDialogBinding binding, boolean expressive) {
+        setPreviewFont(binding, expressive ? FONT_EXPRESSIVE : FONT_CLEAN);
+        binding.welcomeDialogStoryPreview.storyPreviewImageSmall.setVisibility(
+                expressive ? View.VISIBLE : View.GONE);
+    }
+
+    private void cancelPreviewContentAnimator() {
+        if (previewContentAnimator == null) {
+            return;
+        }
+
+        previewContentAnimator.removeAllUpdateListeners();
+        previewContentAnimator.removeAllListeners();
+        previewContentAnimator.cancel();
+        previewContentAnimator = null;
     }
 
     private void setPreviewFont(WelcomeDialogBinding binding, String font) {
