@@ -50,8 +50,7 @@ final class CommentDividerItemDecoration extends RecyclerView.ItemDecoration {
             View child = parent.getChildAt(index);
             int position = parent.getChildAdapterPosition(child);
             if (position == RecyclerView.NO_POSITION
-                    || !CommentsRecyclerViewAdapter.isCommentViewType(adapter.getItemViewType(position))
-                    || !hasFollowingVisibleComment(position)) {
+                    || !CommentsRecyclerViewAdapter.isCommentViewType(adapter.getItemViewType(position))) {
                 continue;
             }
 
