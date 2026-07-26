@@ -641,6 +641,18 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         return true;
     }
 
+    public boolean updateBoundHeaderLoadingState() {
+        if (boundHeaderViewHolder == null
+                || !ViewCompat.isAttachedToWindow(boundHeaderViewHolder.itemView)) {
+            return false;
+        }
+
+        bindHeaderLoadingState(
+                boundHeaderViewHolder,
+                boundHeaderViewHolder.itemView.getContext());
+        return true;
+    }
+
     public void setReaderModeEnabled(boolean enabled) {
         if (readerModeEnabled == enabled) {
             return;
@@ -1480,7 +1492,17 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                         headerViewHolder,
                         headerViewHolder.emptyContainer,
                         showEmptyState);
-                fadeLoadingIndicatorOut(headerViewHolder);
+                if (commentsLoaded && comments.size() > 1) {
+                    // Existing comments were pushed down as this refresh row expanded. Collapse
+                    // the same row through its height so they move directly up to their final
+                    // positions instead of jumping when the row abruptly becomes GONE.
+                    setHeaderStatusRowVisible(
+                            headerViewHolder,
+                            headerViewHolder.loadingContainer,
+                            false);
+                } else {
+                    fadeLoadingIndicatorOut(headerViewHolder);
+                }
             }
             return;
         }
@@ -1704,11 +1726,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 HEADER_STATUS_ROW_HIDDEN_TRANSLATION_Y_DP);
 
         if (visible) {
+            int startHeight = container.getHeight();
             if (container.getVisibility() != VISIBLE) {
                 ViewGroup.LayoutParams layoutParams = container.getLayoutParams();
                 layoutParams.height = 0;
                 container.setLayoutParams(layoutParams);
                 container.setVisibility(VISIBLE);
+                // getHeight() still reports the row's last laid-out height until the next layout
+                // pass. Use the height we just assigned so the first reveal animates from zero,
+                // just like subsequent reveals after a completed collapse.
+                startHeight = 0;
                 content.setAlpha(0f);
                 content.setScaleX(HEADER_STATUS_ROW_HIDDEN_SCALE);
                 content.setScaleY(HEADER_STATUS_ROW_HIDDEN_SCALE);
@@ -1726,7 +1753,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             animateHeaderStatusRowHeight(
                     headerViewHolder,
                     container,
-                    container.getHeight(),
+                    startHeight,
                     measureHeaderStatusRowHeight(container),
                     true);
             return;

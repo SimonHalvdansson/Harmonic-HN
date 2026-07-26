@@ -729,7 +729,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), backPressedCallback);
 
-        swipeRefreshLayout.setOnRefreshListener(this::onRetry);
+        swipeRefreshLayout.setOnRefreshListener(() -> retryComments(true));
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout,
                 Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_PROGRESS_START_OFFSET_DP),
                 Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_PROGRESS_END_OFFSET_DP));
@@ -1892,16 +1892,23 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     @Override
     public void onRetry() {
-        if (!isCommentsViewActive() || adapter.story == null) {
+        retryComments(false);
+    }
+
+    private void retryComments(boolean showSwipeRefreshIndicator) {
+        if (!isCommentsViewActive() || adapter == null || adapter.story == null) {
             Log.w(TAG, "Retry ignored: commentsViewActive=" + isCommentsViewActive()
                     + ", adapterPresent=" + (adapter != null)
                     + ", storyPresent=" + (adapter != null && adapter.story != null));
+            if (swipeRefreshLayout != null) {
+                swipeRefreshLayout.setRefreshing(false);
+            }
             return;
         }
-        Log.d(TAG, "Retry requested for storyId=" + adapter.story.id);
-        adapter.commentsRefreshInProgress = true;
-        notifyHeaderChanged();
-        if (swipeRefreshLayout != null) {
+        Log.d(TAG, "Retry requested for storyId=" + adapter.story.id
+                + ", showSwipeRefreshIndicator=" + showSwipeRefreshIndicator);
+        setCommentsRefreshInProgress(true);
+        if (showSwipeRefreshIndicator && swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(true);
         }
         loadStoryAndComments(adapter.story.id, null);
@@ -2105,7 +2112,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
         adapter.commentsRefreshInProgress = refreshInProgress;
-        notifyHeaderChanged();
+        if (!adapter.updateBoundHeaderLoadingState()) {
+            notifyHeaderChanged();
+        }
     }
 
     private void maybeLoadPollOptions() {
@@ -2283,8 +2292,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (!isCommentsViewActive()) {
             return;
         }
+        boolean commentsWereLoaded = adapter.commentsLoaded;
         adapter.commentsLoaded = true;
-        notifyHeaderChanged();
+        if (!commentsWereLoaded) {
+            notifyHeaderChanged();
+        }
         if (updateHeaderAfterLoad) {
             refreshHeaderAfterStoryLoad();
         }
