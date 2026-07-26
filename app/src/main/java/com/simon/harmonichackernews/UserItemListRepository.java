@@ -45,8 +45,9 @@ class UserItemListRepository {
         }
 
         ArrayList<Bookmark> items = loadCache(context, source);
+        Set<Integer> seenItemIds = new HashSet<>(items.size());
         for (Bookmark item : items) {
-            if (!itemIds.contains(item.id)) {
+            if (seenItemIds.add(item.id)) {
                 itemIds.add(item.id);
             }
         }
@@ -108,9 +109,10 @@ class UserItemListRepository {
 
     @NonNull
     private static ArrayList<Integer> normalizeItemIds(@NonNull List<Integer> itemIds) {
-        ArrayList<Integer> normalizedItemIds = new ArrayList<>();
+        ArrayList<Integer> normalizedItemIds = new ArrayList<>(itemIds.size());
+        Set<Integer> seenItemIds = new HashSet<>(itemIds.size());
         for (int id : itemIds) {
-            if (!normalizedItemIds.contains(id)) {
+            if (seenItemIds.add(id)) {
                 normalizedItemIds.add(id);
             }
         }
