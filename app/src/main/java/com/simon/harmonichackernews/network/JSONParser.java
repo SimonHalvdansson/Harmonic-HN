@@ -18,7 +18,10 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class JSONParser {
@@ -298,120 +301,6 @@ public class JSONParser {
                 && value.regionMatches(true, value.length() - suffix.length(), suffix, 0, suffix.length());
     }
 
-    public static boolean updateStoryInformation(Story story, JSONObject item, boolean forceRefresh, int oldCommentCount, int newCommentCount) throws JSONException {
-        boolean changed;
-        String newTitle = item.getString("title");
-        String oldFormattedTime = story.getTimeFormatted();
-
-        int newScore = item.optInt("points", 0);
-
-        if (TextUtils.isEmpty(story.title)) {
-            changed = true;
-        } else {
-            changed = (!newTitle.equals(story.title) ||
-                    newScore != story.score ||
-                    !oldFormattedTime.equals(story.getTimeFormatted()) ||
-                    oldCommentCount != newCommentCount);
-        }
-
-        story.time = item.getInt("created_at_i");
-
-        if (item.getString("type").equals("comment")) {
-            story.title = "Comment by " + item.getString("author");
-            story.isLink = false;
-            story.url = "https://news.ycombinator.com/item?id=" + item.getString("story_id");
-            story.isComment = true;
-            story.parentId = item.optInt("parent_id", 0);
-            story.commentMasterId = item.optInt("story_id", 0);
-            story.commentMasterTitle = item.optString("story_title", "");
-        } else {
-            story.title = item.getString("title");
-            story.isLink = item.has("url") && !item.getString("url").equals(JSON_NULL_LITERAL) && !item.getString("url").equals("");
-
-            if (story.isLink) {
-                story.url = item.getString("url");
-            } else {
-                story.url = "https://news.ycombinator.com/item?id=" + story.id;
-            }
-
-            updateTitleBadgeProperties(story);
-        }
-
-        if (item.has("text") && !item.getString("text").equals(JSON_NULL_LITERAL)) {
-            updateStoryText(story, item.getString("text"));
-        }
-
-        story.descendants = newCommentCount - 1; // -1 for header
-        story.id = item.getInt("id");
-        story.score = item.optInt("points", 0);
-        story.by = item.getString("author");
-        story.loaded = true;
-
-        if (forceRefresh) {
-            StoryUpdate.updateStory(story);
-        }
-
-        return changed;
-    }
-
-    public static List<Comment> parseAlgoliaComments(JSONArray children, int[] prioTop, Set<String> filteredUsers) throws JSONException {
-        List<Comment> topLevelComments = new ArrayList<>();
-
-        for (int i = 0; i < children.length(); i++) {
-            Comment comment = parseAlgoliaComment(children.getJSONObject(i), 0, filteredUsers);
-            if (comment != null) {
-                topLevelComments.add(comment);
-            }
-        }
-
-        if (prioTop != null) {
-            Collections.sort(topLevelComments, (a, b) -> Integer.compare(priorityIndex(a.id, prioTop), priorityIndex(b.id, prioTop)));
-        }
-
-        List<Comment> flatComments = new ArrayList<>();
-        flattenComments(topLevelComments, flatComments);
-        return flatComments;
-    }
-
-    private static Comment parseAlgoliaComment(JSONObject child, int depth, Set<String> filteredUsers) throws JSONException {
-        String rawText = child.optString("text", "").trim();
-        if (rawText.isEmpty() || JSON_NULL_LITERAL.equalsIgnoreCase(rawText)) {
-            return null;
-        }
-
-        String author = child.optString("author", "").trim();
-        if (filteredUsers != null && filteredUsers.contains(author.toLowerCase())) {
-            return null;
-        }
-
-        JSONArray childrenArr = child.optJSONArray("children");
-        int childCount = (childrenArr == null ? 0 : childrenArr.length());
-
-        Comment comment = new Comment();
-        comment.depth = depth;
-        comment.parent = child.getInt("parent_id");
-        comment.expanded = true;
-        comment.by = author;
-        comment.text = preprocessHtml(rawText);
-        comment.time = child.getInt("created_at_i");
-        comment.id = child.getInt("id");
-        comment.children = childCount;
-        comment.childComments = new ArrayList<>();
-
-        if (childrenArr != null) {
-            for (int i = 0; i < childrenArr.length(); i++) {
-                Comment childComment = parseAlgoliaComment(childrenArr.getJSONObject(i), depth + 1, filteredUsers);
-                if (childComment != null) {
-                    comment.childComments.add(childComment);
-                }
-            }
-
-            Collections.sort(comment.childComments, (a, b) -> Integer.compare(b.children, a.children));
-        }
-
-        return comment;
-    }
-
     public static AlgoliaCommentsResponse parseAlgoliaCommentsResponse(String response, int[] prioTop, Set<String> filteredUsers) throws IOException {
         JsonReader reader = new JsonReader(new StringReader(response));
         AlgoliaCommentsResponse result = new AlgoliaCommentsResponse();
@@ -473,7 +362,7 @@ public class JSONParser {
         reader.close();
 
         if (prioTop != null) {
-            Collections.sort(topLevelComments, (a, b) -> Integer.compare(priorityIndex(a.id, prioTop), priorityIndex(b.id, prioTop)));
+            sortTopLevelComments(topLevelComments, prioTop);
         }
 
         flattenComments(topLevelComments, result.comments);
@@ -545,7 +434,7 @@ public class JSONParser {
         comment.childComments = childComments;
 
         if (!comment.childComments.isEmpty()) {
-            Collections.sort(comment.childComments, (a, b) -> Integer.compare(b.children, a.children));
+            comment.childComments.sort((a, b) -> Integer.compare(b.children, a.children));
         }
 
         return comment;
@@ -653,13 +542,13 @@ public class JSONParser {
         }
     }
 
-    private static int priorityIndex(int commentId, int[] prioTop) {
+    private static void sortTopLevelComments(List<Comment> comments, int[] prioTop) {
+        int mapCapacity = Math.max(16, (int) (prioTop.length / 0.75f) + 1);
+        Map<Integer, Integer> priorityById = new HashMap<>(mapCapacity);
         for (int i = 0; i < prioTop.length; i++) {
-            if (prioTop[i] == commentId) {
-                return i;
-            }
+            priorityById.putIfAbsent(prioTop[i], i);
         }
-        return prioTop.length;
+        Collections.sort(comments, Comparator.comparingInt(a -> priorityById.getOrDefault(a.id, prioTop.length)));
     }
 
     private static void flattenComments(List<Comment> source, List<Comment> destination) {
