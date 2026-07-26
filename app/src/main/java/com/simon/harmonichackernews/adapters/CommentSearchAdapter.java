@@ -1,8 +1,14 @@
 package com.simon.harmonichackernews.adapters;
 
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.RippleDrawable;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -24,6 +30,8 @@ import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
+import org.sufficientlysecure.htmltextview.HtmlFormatter;
+import org.sufficientlysecure.htmltextview.HtmlFormatterBuilder;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 
 import java.util.ArrayList;
@@ -41,7 +49,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     private static final Object SEARCH_TERM_CHANGED_PAYLOAD = new Object();
     private final List<Comment> comments;
     private final List<Comment> visibleComments = new ArrayList<>();
-    private final Map<Comment, NormalizedCommentText> normalizedCommentTexts =
+    private final Map<Comment, RenderedCommentText> renderedCommentTexts =
             new IdentityHashMap<>();
     private final boolean cardStyle;
     private final boolean cardBorder;
@@ -53,7 +61,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     private Pattern searchHighlightPattern;
     public ItemClickListener itemClickListener;
 
-    private String markedColor;
+    private int markedColor;
 
     public CommentSearchAdapter(List<Comment> comments,
                                 boolean shouldUseCardStyle,
@@ -66,7 +74,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         highlightCommentMeta = shouldHighlightCommentMeta;
         preferredTextSize = prefTextSize;
         for (Comment comment : this.comments) {
-            getNormalizedCommentText(comment);
+            getRenderedCommentText(comment);
         }
         visibleComments.addAll(this.comments);
         setHasStableIds(true);
@@ -83,7 +91,9 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         String nextNormalizedSearchTerm = nextSearchTerm.toLowerCase(Locale.ROOT);
         Pattern nextHighlightPattern = TextUtils.isEmpty(nextSearchTerm)
                 ? null
-                : Pattern.compile("(?i)" + Pattern.quote(nextSearchTerm));
+                : Pattern.compile(
+                        Pattern.quote(nextSearchTerm),
+                        Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
         List<Comment> previousVisibleComments = new ArrayList<>(visibleComments);
         List<Comment> filterSource =
                 !TextUtils.isEmpty(previousNormalizedSearchTerm)
@@ -209,7 +219,8 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
             itemView.setOnClickListener(clickListener);
             clickTarget.setOnClickListener(clickListener);
 
-            markedColor = ThemeUtils.isDarkMode(view.getContext()) ? "#fce205" : "#cc7722";
+            markedColor = Color.parseColor(
+                    ThemeUtils.isDarkMode(view.getContext()) ? "#fce205" : "#cc7722");
 
             // this is illegal according to some but works according to all
             // the issue is that HtmlTextView hijacks clicks heavily
@@ -322,22 +333,26 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     private void bindHighlightedCommentText(
             CommentViewHolder commentViewHolder,
             Comment comment) {
-        String text = Utils.expandShortenedAnchorText(comment.text == null ? "" : comment.text);
+        RenderedCommentText renderedCommentText = getRenderedCommentText(comment);
+        SpannableStringBuilder text = new SpannableStringBuilder(
+                renderedCommentText == null ? "" : renderedCommentText.renderedText);
 
         Pattern highlightPattern = searchHighlightPattern;
         if (highlightPattern != null) {
             Matcher matcher = highlightPattern.matcher(text);
-            StringBuffer highlightedText = new StringBuffer(text.length());
 
             while (matcher.find()) {
-                // Retains the original case of the matching substring and adds the red color
-                String replacement = "<b><font color='" + markedColor + "'>" + matcher.group() + "</font></b>";
-                matcher.appendReplacement(highlightedText, Matcher.quoteReplacement(replacement));
+                text.setSpan(
+                        new ForegroundColorSpan(markedColor),
+                        matcher.start(),
+                        matcher.end(),
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                text.setSpan(
+                        new StyleSpan(Typeface.BOLD),
+                        matcher.start(),
+                        matcher.end(),
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
-
-            // Append the remainder of the string
-            matcher.appendTail(highlightedText);
-            text = highlightedText.toString();
         }
 
         commentViewHolder.commentText.setHtml(text);
@@ -466,32 +481,38 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         if (comment == null || comment.text == null) {
             return false;
         }
-        String normalizedCommentText = getNormalizedCommentText(comment);
-        return normalizedCommentText != null
-                && normalizedCommentText.contains(normalizedSearchTerm);
+        RenderedCommentText renderedCommentText = getRenderedCommentText(comment);
+        return renderedCommentText != null
+                && renderedCommentText.normalizedText.contains(normalizedSearchTerm);
     }
 
-    private String getNormalizedCommentText(Comment comment) {
+    private RenderedCommentText getRenderedCommentText(Comment comment) {
         if (comment == null || comment.text == null) {
             return null;
         }
 
-        NormalizedCommentText cachedText = normalizedCommentTexts.get(comment);
+        RenderedCommentText cachedText = renderedCommentTexts.get(comment);
         if (cachedText == null || !TextUtils.equals(cachedText.sourceText, comment.text)) {
-            cachedText = new NormalizedCommentText(
+            String expandedText = Utils.expandShortenedAnchorText(comment.text);
+            Spanned renderedText = HtmlFormatter.formatHtml(
+                    new HtmlFormatterBuilder().setHtml(expandedText));
+            cachedText = new RenderedCommentText(
                     comment.text,
-                    comment.text.toLowerCase(Locale.ROOT));
-            normalizedCommentTexts.put(comment, cachedText);
+                    renderedText,
+                    renderedText.toString().toLowerCase(Locale.ROOT));
+            renderedCommentTexts.put(comment, cachedText);
         }
-        return cachedText.normalizedText;
+        return cachedText;
     }
 
-    private static final class NormalizedCommentText {
+    private static final class RenderedCommentText {
         final String sourceText;
+        final Spanned renderedText;
         final String normalizedText;
 
-        NormalizedCommentText(String sourceText, String normalizedText) {
+        RenderedCommentText(String sourceText, Spanned renderedText, String normalizedText) {
             this.sourceText = sourceText;
+            this.renderedText = renderedText;
             this.normalizedText = normalizedText;
         }
     }
