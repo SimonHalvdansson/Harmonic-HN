@@ -3706,19 +3706,16 @@ public class StoriesFragment extends Fragment {
         }
 
         if (filterDomains != null && story.url != null) {
-            for (String phrase : filterDomains) {
-                if (TextUtils.isEmpty(phrase)) {
-                    continue;
-                }
-
-                try {
-                    String domain = Utils.getDomainName(story.url);
-                    if (domain.toLowerCase().contains(phrase.toLowerCase())) {
+            try {
+                String domain = Utils.getDomainName(story.url).toLowerCase();
+                for (String phrase : filterDomains) {
+                    if (!TextUtils.isEmpty(phrase)
+                            && domain.contains(phrase.toLowerCase())) {
                         return true;
                     }
-                } catch (Exception e) {
-                    // Nothing
                 }
+            } catch (Exception ignored) {
+                // Invalid URLs cannot match a domain filter.
             }
         }
 
