@@ -2029,6 +2029,13 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         return hasLoadMoreButton() && position == getVisibleItemCount();
     }
 
+    private int getValidStoryPosition(RecyclerView.ViewHolder holder) {
+        int position = holder.getAbsoluteAdapterPosition();
+        return position >= 0 && position < stories.size()
+                ? position
+                : RecyclerView.NO_POSITION;
+    }
+
     public class StoryViewHolder extends RecyclerView.ViewHolder {
         public final View mView;
         public final TextView titleView;
@@ -2175,10 +2182,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyCard = card;
             ViewCompat.setAccessibilityHeading(titleView, true);
 
-            linkLayoutView.setOnClickListener(v -> linkClickListener.onItemClick(getAbsoluteAdapterPosition()));
-            commentLayoutView.setOnClickListener(v -> commentClickListener.onItemClick(getAbsoluteAdapterPosition()));
+            linkLayoutView.setOnClickListener(v -> dispatchClick(linkClickListener));
+            commentLayoutView.setOnClickListener(v -> dispatchClick(commentClickListener));
             if (largePreviewImage != null) {
-                largePreviewImage.setOnClickListener(v -> linkClickListener.onItemClick(getAbsoluteAdapterPosition()));
+                largePreviewImage.setOnClickListener(v -> dispatchClick(linkClickListener));
             }
 
             if (longClickListener != null) {
@@ -2191,7 +2198,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     }
                 });
 
-                linkLayoutView.setOnLongClickListener(v -> longClickListener.onLongClick(v, getAbsoluteAdapterPosition(), touchX, touchY));
+                linkLayoutView.setOnLongClickListener(v ->
+                        dispatchLongClick(v, touchX, touchY));
                 if (largePreviewImage != null) {
                     largePreviewImage.setOnTouchListener(new View.OnTouchListener() {
                         @Override
@@ -2201,9 +2209,28 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                             return false;
                         }
                     });
-                    largePreviewImage.setOnLongClickListener(v -> longClickListener.onLongClick(v, getAbsoluteAdapterPosition(), touchX, touchY));
+                    largePreviewImage.setOnLongClickListener(v ->
+                            dispatchLongClick(v, touchX, touchY));
                 }
             }
+        }
+
+        private void dispatchClick(@Nullable ClickListener listener) {
+            int position = getValidAdapterPosition();
+            if (position != RecyclerView.NO_POSITION && listener != null) {
+                listener.onItemClick(position);
+            }
+        }
+
+        private boolean dispatchLongClick(View view, int x, int y) {
+            int position = getValidAdapterPosition();
+            return position != RecyclerView.NO_POSITION
+                    && longClickListener != null
+                    && longClickListener.onLongClick(view, position, x, y);
+        }
+
+        private int getValidAdapterPosition() {
+            return getValidStoryPosition(this);
         }
 
         void setPreviewImageRequest(ImageView previewImage, Story story, Disposable disposable) {
@@ -2316,9 +2343,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             storyButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    int pos = getAbsoluteAdapterPosition();
-                    if (pos != RecyclerView.NO_POSITION) {
-                        commentStoryClickListener.onItemClick(getAbsoluteAdapterPosition());
+                    int position = getValidStoryPosition(CommentViewHolder.this);
+                    if (position != RecyclerView.NO_POSITION
+                            && commentStoryClickListener != null) {
+                        commentStoryClickListener.onItemClick(position);
                     }
                 }
             });
@@ -2326,9 +2354,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             repliesButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    int pos = getAbsoluteAdapterPosition();
-                    if (pos != RecyclerView.NO_POSITION) {
-                        commentRepliesClickListener.onItemClick(getAbsoluteAdapterPosition());
+                    int position = getValidStoryPosition(CommentViewHolder.this);
+                    if (position != RecyclerView.NO_POSITION
+                            && commentRepliesClickListener != null) {
+                        commentRepliesClickListener.onItemClick(position);
                     }
                 }
             });

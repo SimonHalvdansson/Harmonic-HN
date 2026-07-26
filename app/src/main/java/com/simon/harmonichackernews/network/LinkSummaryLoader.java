@@ -353,7 +353,7 @@ public final class LinkSummaryLoader {
         }
     }
 
-    private static String readBoundedBody(ResponseBody body) throws IOException {
+    static String readBoundedBody(ResponseBody body) throws IOException {
         long contentLength = body.contentLength();
         if (contentLength > MAX_RESPONSE_BYTES) {
             throw new IOException("The page is too large to preview");

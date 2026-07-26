@@ -291,7 +291,8 @@ public class StoryPreviewImageLoader {
                         return;
                     }
 
-                    String responseBody = closeableResponse.body().string();
+                    String responseBody =
+                            LinkSummaryLoader.readBoundedBody(closeableResponse.body());
                     if (youtubeOEmbedRequest) {
                         LinkSummaryLoader.Result summary = LinkSummaryLoader.extractYoutubeOEmbedSummary(
                                 responseBody,

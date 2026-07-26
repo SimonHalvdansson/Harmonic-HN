@@ -1512,15 +1512,12 @@ public class Utils {
         if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
             // Validate the host and path
             if ("news.ycombinator.com".equalsIgnoreCase(uri.getHost()) && "/item".equals(uri.getPath())) {
-                String sId = uri.getQueryParameter("id");
-
-                // Check if id parameter is valid
-                if (sId != null && !sId.isEmpty() && TextUtils.isDigitsOnly(sId)) {
-                    int id = Integer.parseInt(sId);
+                int id = parseHackerNewsItemId(uri.getQueryParameter("id"));
+                if (id > 0) {
                     int scrollToCommentId = -1;
-                    String fragment = uri.getFragment();
-                    if (fragment != null && !fragment.isEmpty() && TextUtils.isDigitsOnly(fragment)) {
-                        scrollToCommentId = Integer.parseInt(fragment);
+                    int parsedFragment = parseHackerNewsItemId(uri.getFragment());
+                    if (parsedFragment > 0) {
+                        scrollToCommentId = parsedFragment;
                     }
                     openCommentsActivity(id, scrollToCommentId, context);
                     return;
@@ -1529,6 +1526,19 @@ public class Utils {
         }
 
         Utils.launchCustomTab(context, href);
+    }
+
+    private static int parseHackerNewsItemId(String value) {
+        if (TextUtils.isEmpty(value) || !TextUtils.isDigitsOnly(value)) {
+            return -1;
+        }
+
+        try {
+            int id = Integer.parseInt(value);
+            return id > 0 ? id : -1;
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
     }
 
     public static Uri getHackerNewsItemUriFromText(String text) {
