@@ -131,6 +131,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         queue = NetworkComponent.getRequestQueueInstance(this);
 
         linearLayoutManager = new LinearLayoutManager(this);
+        recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(linearLayoutManager);
 
         adapter = StoryDisplaySettings.from(this)

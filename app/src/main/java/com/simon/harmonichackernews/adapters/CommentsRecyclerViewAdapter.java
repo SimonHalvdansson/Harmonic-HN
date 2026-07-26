@@ -3749,6 +3749,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         private final Map<View, Integer> baseRightPaddings = new HashMap<>();
         private final Map<View, ValueAnimator> statusRowHeightAnimators = new HashMap<>();
         private final Map<View, Boolean> statusRowVisibilityTargets = new HashMap<>();
+        final Map<Float, Markwon> linkPreviewLatexRenderers = new HashMap<>();
         private ValueAnimator refreshPromptHeightAnimator;
         @Nullable
         private ValueAnimator opFilterVisibilityAnimator;

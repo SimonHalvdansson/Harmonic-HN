@@ -14,7 +14,6 @@ import androidx.annotation.Nullable;
 import com.simon.harmonichackernews.databinding.SpinnerItemLayoutBinding;
 import com.simon.harmonichackernews.databinding.SpinnerTopLayoutBinding;
 import com.simon.harmonichackernews.utils.FontUtils;
-import com.simon.harmonichackernews.utils.SettingsUtils;
 
 import java.util.ArrayList;
 
@@ -51,21 +50,26 @@ class StoryTypeSpinnerAdapter extends ArrayAdapter<CharSequence> {
 
     @Override
     public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-        SpinnerItemLayoutBinding binding = SpinnerItemLayoutBinding.inflate(
-                LayoutInflater.from(parent.getContext()),
-                parent,
-                false);
-        bindText(binding.selectionDropdownItemTextview, position, false);
-        return binding.getRoot();
+        View row = convertView;
+        TextView textView = null;
+        if (row instanceof ViewGroup) {
+            textView = row.findViewById(R.id.selection_dropdown_item_textview);
+        }
+        if (textView == null) {
+            SpinnerItemLayoutBinding binding = SpinnerItemLayoutBinding.inflate(
+                    LayoutInflater.from(parent.getContext()),
+                    parent,
+                    false);
+            row = binding.getRoot();
+            textView = binding.selectionDropdownItemTextview;
+        }
+        bindText(textView, position, false);
+        return row;
     }
 
     private void bindText(TextView textView, int position, boolean selectedView) {
         textView.setText(selectedView && selectedTitle != null ? selectedTitle : getItem(position));
 
-        String preferredFont = SettingsUtils.getPreferredFont(getContext());
-        if (FontUtils.activeBold == null || TextUtils.isEmpty(FontUtils.font) || !FontUtils.font.equals(preferredFont)) {
-            FontUtils.init(getContext());
-        }
         if (selectedView) {
             FontUtils.setStoriesDropdownSelectedTypeface(textView);
         } else {

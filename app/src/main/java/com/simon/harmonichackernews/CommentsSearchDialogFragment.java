@@ -93,6 +93,7 @@ public class CommentsSearchDialogFragment extends AppCompatDialogFragment {
                 SettingsUtils.shouldShowCommentCardBorder(requireContext()),
                 SettingsUtils.shouldHighlightCommentMeta(requireContext()),
                 SettingsUtils.getPreferredCommentTextSize(requireContext()));
+        recyclerView.setHasFixedSize(true);
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 

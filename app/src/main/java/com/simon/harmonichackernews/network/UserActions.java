@@ -6,6 +6,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -81,9 +82,6 @@ private static final String CREATING_TRUE = "t";
 private static final String DEFAULT_FNOP = "submit-page";
 private static final String TRUE_VALUE = "t";
 private static final String DEFAULT_SUBMIT_REDIRECT = "newest";
-private static final String REGEX_INPUT = "<\\s*input[^>]*>";
-private static final String REGEX_VALUE = "value[^\"]*\"([^\"]*)\"";
-private static final String REGEX_CREATE_ERROR_BODY = "<body>([^<]*)";
 private static final String HEADER_LOCATION = "location";
 private static final String HEADER_COOKIE = "cookie";
 private static final String HEADER_SET_COOKIE = "set-cookie";
@@ -91,6 +89,9 @@ private static final String CAPTCHA_VALIDATION_TEXT = "Validation required. If t
 private static final String CAPTCHA_RESPONSE_PARAM = "g-recaptcha-response";
 private static final long MAX_RESPONSE_PREVIEW_BYTES = 1024 * 1024;
 private static final int MAX_USER_ITEM_LIST_PAGES = 50;
+private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
+private static final Pattern FNID_INPUT_PATTERN = Pattern.compile(
+        "<input[^>]*name=\"fnid\"[^>]*value=\"([^\"]+)\"");
 private static final String[] HACKER_NEWS_LIST_PATHS = {
         "front",
         "pool",
@@ -260,7 +261,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
             return;
         }
 
-        Handler main = new Handler(ctx.getMainLooper());
+        Handler main = MAIN_HANDLER;
         fetchStoryListPage(
                 NetworkComponent.getOkHttpClientInstance(),
                 buildStoryListUrl(path, day),
@@ -280,7 +281,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
             return;
         }
 
-        Handler main = new Handler(ctx.getMainLooper());
+        Handler main = MAIN_HANDLER;
         fetchStoryListPage(
                 NetworkComponent.getOkHttpClientInstance(),
                 url,
@@ -305,7 +306,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
     }
 
     public static void fetchHackerNewsListLinks(Context ctx, StoryRowsCallback cb) {
-        Handler main = new Handler(ctx.getMainLooper());
+        Handler main = MAIN_HANDLER;
         Request request = new Request.Builder()
                 .url(buildStoryListUrl("lists"))
                 .build();
@@ -456,7 +457,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
             return;
         }
 
-        Handler main = new Handler(ctx.getMainLooper());
+        Handler main = MAIN_HANDLER;
         Runnable fetch = () -> {
             OkHttpClient client = loginRequired
                     ? NetworkComponent.getOkHttpClientInstanceWithCookies()
@@ -643,7 +644,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
     }
 
     private static void fetchFavoriteActionLink(Context ctx, int id, boolean favorite, ActionCallback cb) {
-        Handler main = new Handler(ctx.getMainLooper());
+        Handler main = MAIN_HANDLER;
         HttpUrl url = Objects.requireNonNull(HttpUrl.parse(BASE_WEB_URL))
                 .newBuilder()
                 .addPathSegment(ITEM_PATH)
@@ -739,7 +740,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
     }
 
     private static void verifyFavoriteState(Context ctx, int id, boolean favorite, ActionCallback cb) {
-        Handler main = new Handler(ctx.getMainLooper());
+        Handler main = MAIN_HANDLER;
         HttpUrl url = Objects.requireNonNull(HttpUrl.parse(BASE_WEB_URL))
                 .newBuilder()
                 .addPathSegment(ITEM_PATH)
@@ -936,7 +937,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
     }
 
     private static void executeLoginRequest(Context ctx, Request request, ActionCallback cb) {
-        Handler main = new Handler(ctx.getMainLooper());
+        Handler main = MAIN_HANDLER;
         OkHttpClient client = NetworkComponent.getOkHttpClientInstanceWithCookies();
         client.newCall(request).enqueue(new Callback() {
             @Override
@@ -953,9 +954,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
                 try {
                     // Peek at a small part of the body to find fnid without consuming full stream
                     String preview = response.peekBody(MAX_RESPONSE_PREVIEW_BYTES).string();
-                    Matcher matcher = Pattern.compile(
-                            "<input[^>]*name=\\\"fnid\\\"[^>]*value=\\\"([^\\\"]+)\\\""
-                    ).matcher(preview);
+                    Matcher matcher = FNID_INPUT_PATTERN.matcher(preview);
                     if (preview.contains("Bad login.")) {
                         main.post(() -> cb.onFailure("Bad login", "Your credentials are invalid."));
                     } else if (isCaptchaRequired(preview)) {
@@ -990,7 +989,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
                               String url,
                               Context ctx,
                               ActionCallback cb) {
-        Handler main = new Handler(ctx.getMainLooper());
+        Handler main = MAIN_HANDLER;
 
         // Login first (will check credentials and readiness of submit page)
         login(ctx, new ActionCallback() {
@@ -1049,9 +1048,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
             cb.onFailure("Error reading login response", e.getMessage());
             return;
         }
-        Matcher m = Pattern.compile(
-                "<input[^>]*name=\"fnid\"[^>]*value=\"([^\"]+)\""
-        ).matcher(html);
+        Matcher m = FNID_INPUT_PATTERN.matcher(html);
         if (!m.find()) {
             cb.onFailure("HN submit form parsing error", "No fnid found on /submit");
             return;
@@ -1085,7 +1082,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
         }
 
         client.newCall(request).enqueue(new Callback() {
-            final Handler mainHandler = new Handler(ctx.getMainLooper());
+            final Handler mainHandler = MAIN_HANDLER;
 
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) {

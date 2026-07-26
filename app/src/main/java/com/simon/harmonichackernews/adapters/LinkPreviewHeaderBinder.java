@@ -26,6 +26,15 @@ final class LinkPreviewHeaderBinder {
 
     private static final Pattern SINGLE_DOLLAR_LATEX_PATTERN =
             Pattern.compile("(?s)(?<!\\$)\\$(?![\\s$])(.+?)(?<![\\s$])\\$(?!\\$)");
+    private static final Pattern SINGLE_DOLLAR_NORMALIZATION_PATTERN =
+            Pattern.compile("(?<!\\$)\\$(?!\\$)");
+    private static final Pattern LATEX_BOLD_PATTERN =
+            Pattern.compile("\\\\textbf\\{(.*?)\\}");
+    private static final Pattern LATEX_ITALIC_PATTERN =
+            Pattern.compile("\\\\textit\\{(.*?)\\}");
+    private static final Pattern LATEX_EMPHASIS_PATTERN =
+            Pattern.compile("\\\\emph\\{(.*?)\\}");
+    private static final String DOUBLE_DOLLAR_REPLACEMENT = Matcher.quoteReplacement("$$");
 
     private LinkPreviewHeaderBinder() {
     }
@@ -80,7 +89,7 @@ final class LinkPreviewHeaderBinder {
 
         FontUtils.setTypeface(holder.arxivAbstract, false, 14);
 
-        setLatexMarkdown(ctx, holder.arxivAbstract, story.arxivInfo.arxivAbstract);
+        setLatexMarkdown(ctx, holder, holder.arxivAbstract, story.arxivInfo.arxivAbstract);
 
         holder.arxivBy.setText(story.arxivInfo.concatNames());
         holder.arxivDate.setText(story.arxivInfo.formatDate());
@@ -143,8 +152,8 @@ final class LinkPreviewHeaderBinder {
         holder.stackExchangeContainer.setVisibility(View.VISIBLE);
         holder.infoHeader.setVisibility(VISIBLE);
         holder.infoHeader.setText("STACK EXCHANGE:");
-        setStackExchangeText(ctx, holder.stackExchangeTitle, story.stackExchangeInfo.title);
-        setStackExchangeText(ctx, holder.stackExchangeBy, story.stackExchangeInfo.formatBy());
+        setStackExchangeText(ctx, holder, holder.stackExchangeTitle, story.stackExchangeInfo.title);
+        setStackExchangeText(ctx, holder, holder.stackExchangeBy, story.stackExchangeInfo.formatBy());
         holder.stackExchangeScore.setText(story.stackExchangeInfo.formatScore());
         holder.stackExchangeAnswers.setText(story.stackExchangeInfo.formatAnswerCount());
         holder.stackExchangeViews.setText(story.stackExchangeInfo.formatViewCount());
@@ -154,9 +163,13 @@ final class LinkPreviewHeaderBinder {
         holder.stackExchangeTagsContainer.setVisibility(TextUtils.isEmpty(story.stackExchangeInfo.formatTags()) ? GONE : View.VISIBLE);
     }
 
-    private static void setStackExchangeText(Context ctx, TextView textView, String text) {
+    private static void setStackExchangeText(
+            Context ctx,
+            CommentsRecyclerViewAdapter.HeaderViewHolder holder,
+            TextView textView,
+            String text) {
         if (containsLatex(text)) {
-            setLatexMarkdown(ctx, textView, text);
+            setLatexMarkdown(ctx, holder, textView, text);
         } else {
             textView.setText(text);
         }
@@ -170,11 +183,22 @@ final class LinkPreviewHeaderBinder {
                 || SINGLE_DOLLAR_LATEX_PATTERN.matcher(text).find());
     }
 
-    private static void setLatexMarkdown(Context ctx, TextView textView, String text) {
-        Markwon markwon = Markwon.builder(ctx)
-                .usePlugin(MarkwonInlineParserPlugin.create())
-                .usePlugin(JLatexMathPlugin.create(textView.getTextSize(), builder -> builder.inlinesEnabled(true)))
-                .build();
+    private static void setLatexMarkdown(
+            Context ctx,
+            CommentsRecyclerViewAdapter.HeaderViewHolder holder,
+            TextView textView,
+            String text) {
+        float textSize = textView.getTextSize();
+        Markwon markwon = holder.linkPreviewLatexRenderers.get(textSize);
+        if (markwon == null) {
+            markwon = Markwon.builder(ctx)
+                    .usePlugin(MarkwonInlineParserPlugin.create())
+                    .usePlugin(JLatexMathPlugin.create(
+                            textSize,
+                            builder -> builder.inlinesEnabled(true)))
+                    .build();
+            holder.linkPreviewLatexRenderers.put(textSize, markwon);
+        }
 
         markwon.setMarkdown(textView, normalizeLatexMarkdown(text));
     }
@@ -184,15 +208,16 @@ final class LinkPreviewHeaderBinder {
             return "";
         }
 
-        return text
+        String normalized = text
                 .replace("\\(", "$$")
                 .replace("\\)", "$$")
                 .replace("\\[", "$$")
-                .replace("\\]", "$$")
-                .replaceAll("(?<!\\$)\\$(?!\\$)", Matcher.quoteReplacement("$$"))
-                .replaceAll("\\\\textbf\\{(.*?)\\}", "**$1**")
-                .replaceAll("\\\\textit\\{(.*?)\\}", "*$1*")
-                .replaceAll("\\\\emph\\{(.*?)\\}", "*$1*");
+                .replace("\\]", "$$");
+        normalized = SINGLE_DOLLAR_NORMALIZATION_PATTERN.matcher(normalized)
+                .replaceAll(DOUBLE_DOLLAR_REPLACEMENT);
+        normalized = LATEX_BOLD_PATTERN.matcher(normalized).replaceAll("**$1**");
+        normalized = LATEX_ITALIC_PATTERN.matcher(normalized).replaceAll("*$1*");
+        return LATEX_EMPHASIS_PATTERN.matcher(normalized).replaceAll("*$1*");
     }
 
     private static void bindWikipediaPreview(CommentsRecyclerViewAdapter.HeaderViewHolder holder, Story story) {
