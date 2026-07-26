@@ -1594,25 +1594,29 @@ public class Utils {
     }
 
     public static boolean canProvideSummary(Context ctx) {
-        if (!isAiSummaryEnabled(ctx)) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        if (prefs.contains("pref_ai_summary_enabled")
+                && !prefs.getBoolean("pref_ai_summary_enabled", false)) {
             return false;
         }
-        String mode = PreferenceManager.getDefaultSharedPreferences(ctx).getString("pref_ai_summary_mode", "cloud");
+        String mode = prefs.getString("pref_ai_summary_mode", "cloud");
         if ("local".equals(mode)) {
             return SummaryManager.canAttemptLocalSummarization();
         }
-        String apiKey = AiSummaryApiKeyStore.getApiKey(ctx);
-        return !apiKey.isEmpty();
+        return AiSummaryApiKeyStore.hasApiKey(ctx);
     }
 
     public static boolean isAiSummaryEnabled(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getBoolean("pref_ai_summary_enabled", isAiSummaryEnabledByDefault(ctx));
+        if (prefs.contains("pref_ai_summary_enabled")) {
+            return prefs.getBoolean("pref_ai_summary_enabled", false);
+        }
+        return isAiSummaryEnabledByDefault(ctx);
     }
 
     private static boolean isAiSummaryEnabledByDefault(Context ctx) {
         return SummaryManager.canAttemptLocalSummarization()
-                || !AiSummaryApiKeyStore.getApiKey(ctx).isEmpty();
+                || AiSummaryApiKeyStore.hasApiKey(ctx);
     }
 
     public static boolean isNetworkAvailable(Context context) {

@@ -12,6 +12,7 @@ import com.simon.harmonichackernews.utils.Utils;
 
 import coil.Coil;
 import coil.request.ImageRequest;
+import coil.target.ImageViewTarget;
 
 import java.util.Objects;
 
@@ -24,12 +25,17 @@ public class FaviconLoader {
     public static void loadFavicon(String url, ImageView into, Context ctx, String faviconProvider, boolean fadeIn) {
         try {
             String host = Utils.getDomainName(url);
+            String faviconUrl = getFaviconUrlForHost(host, faviconProvider);
+            if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
+                return;
+            }
             int faviconSize = Utils.pxFromDpInt(ctx.getResources(), 17);
             Drawable webDrawable = Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_public));
             applyFaviconThumbnailShape(into);
+            into.setTag(R.id.favicon_request_url, faviconUrl);
 
             ImageRequest request = new ImageRequest.Builder(ctx)
-                    .data(getFaviconUrlForHost(host, faviconProvider))
+                    .data(faviconUrl)
                     .size(faviconSize, faviconSize)
                     // Metadata shared-element snapshots draw the favicon and text together onto
                     // a software bitmap. A crossfade around a hardware bitmap makes that capture
@@ -39,7 +45,29 @@ public class FaviconLoader {
                     .error(webDrawable)
                     .fallback(webDrawable)
                     .crossfade(fadeIn)
-                    .target(into)
+                    .target(new ImageViewTarget(into) {
+                        @Override
+                        public void onStart(Drawable placeholder) {
+                            if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
+                                super.onStart(placeholder);
+                            }
+                        }
+
+                        @Override
+                        public void onError(Drawable error) {
+                            if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
+                                into.setTag(R.id.favicon_request_url, null);
+                                super.onError(error);
+                            }
+                        }
+
+                        @Override
+                        public void onSuccess(Drawable result) {
+                            if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
+                                super.onSuccess(result);
+                            }
+                        }
+                    })
                     .build();
 
             Coil.imageLoader(ctx).enqueue(request);

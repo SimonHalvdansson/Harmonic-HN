@@ -37,6 +37,7 @@ public class CommentDisplaySettings {
     public final boolean highlightCommentMeta;
     public final boolean collectReferenceLinks;
     public final boolean hasAccountDetails;
+    public final boolean canProvideSummary;
 
     private CommentDisplaySettings(boolean collapseParent,
                                    boolean showThumbnail,
@@ -58,7 +59,8 @@ public class CommentDisplaySettings {
                                    boolean showDividers,
                                    boolean highlightCommentMeta,
                                    boolean collectReferenceLinks,
-                                   boolean hasAccountDetails) {
+                                   boolean hasAccountDetails,
+                                   boolean canProvideSummary) {
         this.collapseParent = collapseParent;
         this.showThumbnail = showThumbnail;
         this.showHeaderPreviewImage = showHeaderPreviewImage;
@@ -80,13 +82,15 @@ public class CommentDisplaySettings {
         this.highlightCommentMeta = highlightCommentMeta;
         this.collectReferenceLinks = collectReferenceLinks;
         this.hasAccountDetails = hasAccountDetails;
+        this.canProvideSummary = canProvideSummary;
     }
 
     @NonNull
     public static CommentDisplaySettings from(@NonNull Context context,
                                               boolean showInvert,
                                               boolean isTablet,
-                                              boolean hasAccountDetails) {
+                                              boolean hasAccountDetails,
+                                              boolean canProvideSummary) {
         return new CommentDisplaySettings(
                 SettingsUtils.shouldCollapseParent(context),
                 SettingsUtils.shouldShowThumbnails(context),
@@ -108,7 +112,8 @@ public class CommentDisplaySettings {
                 SettingsUtils.shouldShowCommentDividers(context),
                 SettingsUtils.shouldHighlightCommentMeta(context),
                 SettingsUtils.shouldCollectLinksInComments(context),
-                hasAccountDetails
+                hasAccountDetails,
+                canProvideSummary
         );
     }
 
@@ -144,6 +149,10 @@ public class CommentDisplaySettings {
         }
         if (adapter.showThumbnail != showThumbnail) {
             adapter.showThumbnail = showThumbnail;
+            updateHeader = true;
+        }
+        if (adapter.canProvideSummary != canProvideSummary) {
+            adapter.canProvideSummary = canProvideSummary;
             updateHeader = true;
         }
         if (adapter.showHeaderPreviewImage != showHeaderPreviewImage) {

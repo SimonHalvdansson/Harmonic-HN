@@ -369,6 +369,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean appliedStatusBarProtectionKnown = false;
     private boolean appliedStatusBarProtectionEnabled = false;
     private int appliedStatusBarProtectionColor = Color.TRANSPARENT;
+    private final int[] statusBarRootLocation = new int[2];
+    private final int[] statusBarHeaderLocation = new int[2];
     private String currentCommentSorting;
     private float lastHeaderSpacerSlideOffset = Float.NaN;
 
@@ -1046,12 +1048,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         View headerView = headerHolder.itemView;
-        int[] rootLocation = new int[2];
-        int[] headerLocation = new int[2];
-        binding.listProtection.getLocationOnScreen(rootLocation);
-        headerView.getLocationOnScreen(headerLocation);
+        binding.listProtection.getLocationOnScreen(statusBarRootLocation);
+        headerView.getLocationOnScreen(statusBarHeaderLocation);
 
-        int headerTop = headerLocation[1] - rootLocation[1];
+        int headerTop = statusBarHeaderLocation[1] - statusBarRootLocation[1];
         int headerBottom = headerTop + headerView.getHeight();
         int overlap = Math.min(headerBottom, topInset) - Math.max(headerTop, 0);
         if (overlap <= 0) {
@@ -1417,7 +1417,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 context,
                 shouldShowInvertAction(),
                 Utils.isTablet(getResources()),
-                AccountUtils.hasAccountDetails(context));
+                AccountUtils.hasAccountDetails(context),
+                story != null && story.isLink && Utils.canProvideSummary(context));
     }
 
     private boolean shouldShowInvertAction() {
@@ -2315,7 +2316,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
 
-        adapter.updateBoundHeaderStoryViews();
+        adapter.refreshCanProvideSummary(requireContext());
+        if (!adapter.updateBoundHeaderStoryViews()) {
+            notifyHeaderChanged();
+        }
     }
 
     private boolean isCommentsViewActive() {

@@ -13,6 +13,8 @@ public final class AiSummaryApiKeyStore {
     private static final String ENCRYPTED_PREFS_NAME = "HARMONIC_AI_SUMMARY_ENCRYPTED_PREFS";
     private static final String MASTER_KEY_ALIAS =
             "_androidx_security_master_key_harmonic_ai_summary_";
+    private static volatile SharedPreferences encryptedPreferences;
+    private static volatile Boolean cachedHasApiKey;
 
     private AiSummaryApiKeyStore() {
     }
@@ -28,7 +30,9 @@ public final class AiSummaryApiKeyStore {
             if (encryptedPreferences.contains(PREF_API_KEY)) {
                 String encryptedValue = encryptedPreferences.getString(PREF_API_KEY, "");
                 removeLegacyValue(legacyPreferences);
-                return encryptedValue == null ? "" : encryptedValue;
+                String resolvedValue = encryptedValue == null ? "" : encryptedValue;
+                cachedHasApiKey = !resolvedValue.isEmpty();
+                return resolvedValue;
             }
 
             if (legacyValue != null
@@ -41,7 +45,17 @@ public final class AiSummaryApiKeyStore {
             Log.e(TAG, "Unable to read the encrypted AI summary API key", e);
         }
 
-        return legacyValue == null ? "" : legacyValue;
+        String resolvedValue = legacyValue == null ? "" : legacyValue;
+        cachedHasApiKey = !resolvedValue.isEmpty();
+        return resolvedValue;
+    }
+
+    public static boolean hasApiKey(Context context) {
+        Boolean cachedValue = cachedHasApiKey;
+        if (cachedValue != null) {
+            return cachedValue;
+        }
+        return !getApiKey(context).isEmpty();
     }
 
     public static boolean setApiKey(Context context, String apiKey) {
@@ -53,6 +67,7 @@ public final class AiSummaryApiKeyStore {
                     .commit();
             if (saved) {
                 removeLegacyValue(PreferenceManager.getDefaultSharedPreferences(appContext));
+                cachedHasApiKey = apiKey != null && !apiKey.isEmpty();
             }
             return saved;
         } catch (Exception e) {
@@ -73,14 +88,25 @@ public final class AiSummaryApiKeyStore {
             Log.e(TAG, "Unable to clear the encrypted AI summary API key", e);
         }
         removeLegacyValue(PreferenceManager.getDefaultSharedPreferences(appContext));
+        cachedHasApiKey = cleared ? Boolean.FALSE : null;
         return cleared;
     }
 
     private static SharedPreferences getEncryptedPreferences(Context context) throws Exception {
-        return EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(
-                context,
-                ENCRYPTED_PREFS_NAME,
-                MASTER_KEY_ALIAS);
+        SharedPreferences cachedPreferences = encryptedPreferences;
+        if (cachedPreferences != null) {
+            return cachedPreferences;
+        }
+        synchronized (AiSummaryApiKeyStore.class) {
+            if (encryptedPreferences == null) {
+                encryptedPreferences =
+                        EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(
+                                context.getApplicationContext(),
+                                ENCRYPTED_PREFS_NAME,
+                                MASTER_KEY_ALIAS);
+            }
+            return encryptedPreferences;
+        }
     }
 
     private static void removeLegacyValue(SharedPreferences legacyPreferences) {

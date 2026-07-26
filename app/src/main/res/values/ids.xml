@@ -4,4 +4,5 @@
     <item name="settings_segment_original_padding_top" type="id" />
     <item name="settings_segment_original_padding_end" type="id" />
     <item name="settings_segment_original_padding_bottom" type="id" />
+    <item name="favicon_request_url" type="id" />
 </resources>

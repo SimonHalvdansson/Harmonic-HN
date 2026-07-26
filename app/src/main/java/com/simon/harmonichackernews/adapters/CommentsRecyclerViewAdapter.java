@@ -156,6 +156,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean highlightCommentMeta;
     public boolean collectReferenceLinks;
     public boolean hasAccountDetails;
+    public boolean canProvideSummary;
     private boolean readerModeAvailable = false;
     private boolean readerModeEnabled = false;
     private boolean commentsByOpFilterActive = false;
@@ -202,6 +203,44 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private HeaderViewHolder boundHeaderViewHolder;
     @Nullable
     private StoryPreviewImageLoader.PreviewImageRequest headerPreviewImageUrlRequest;
+    private long headerBindingGeneration;
+    // Payloads can be dropped while an item is off-screen. Track every adapter update that can
+    // affect position zero so a pooled header only takes the fast path when its state is current.
+    private final RecyclerView.AdapterDataObserver headerBindingObserver =
+            new RecyclerView.AdapterDataObserver() {
+                @Override
+                public void onChanged() {
+                    headerBindingGeneration++;
+                }
+
+                @Override
+                public void onItemRangeChanged(int positionStart, int itemCount) {
+                    if (positionStart == 0 && itemCount > 0) {
+                        headerBindingGeneration++;
+                    }
+                }
+
+                @Override
+                public void onItemRangeInserted(int positionStart, int itemCount) {
+                    if (positionStart == 0 && itemCount > 0) {
+                        headerBindingGeneration++;
+                    }
+                }
+
+                @Override
+                public void onItemRangeRemoved(int positionStart, int itemCount) {
+                    if (positionStart == 0 && itemCount > 0) {
+                        headerBindingGeneration++;
+                    }
+                }
+
+                @Override
+                public void onItemRangeMoved(int fromPosition, int toPosition, int itemCount) {
+                    if (itemCount > 0 && (fromPosition == 0 || toPosition == 0)) {
+                        headerBindingGeneration++;
+                    }
+                }
+            };
 
     public static final int TYPE_HEADER = 0;
     public static final int TYPE_COMMENT = 1;
@@ -268,6 +307,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         isTablet = displaySettings.isTablet;
         displaySettings.applyToAdapter(this);
         summaryCallback = requestSummaryCallback;
+        registerAdapterDataObserver(headerBindingObserver);
     }
 
     @NotNull
@@ -295,7 +335,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 && holder instanceof HeaderViewHolder
                 && payloads.size() == 1
                 && payloads.get(0) == HEADER_SUMMARY_UPDATE_PAYLOAD) {
-            bindHeaderSummary((HeaderViewHolder) holder, holder.itemView.getContext());
+            HeaderViewHolder headerViewHolder = (HeaderViewHolder) holder;
+            bindHeaderSummary(headerViewHolder, holder.itemView.getContext());
+            markHeaderBindingCurrent(headerViewHolder);
             return;
         }
         onBindViewHolder(holder, position);
@@ -309,6 +351,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             final HeaderViewHolder headerViewHolder = (HeaderViewHolder) holder;
             boundHeaderViewHolder = headerViewHolder;
             setHeaderSlideOffset(getCurrentHeaderSlideOffset());
+            if (isHeaderBindingCurrent(headerViewHolder)) {
+                bindHeaderReattachmentState(headerViewHolder, ctx);
+                return;
+            }
 
             if (story.isLink && story.url != null) {
                 try {
@@ -405,7 +451,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             bindHeaderLoadingState(headerViewHolder, ctx);
 
-            headerViewHolder.spacer.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, spacerHeight));
+            bindHeaderSpacer(headerViewHolder);
 
             headerViewHolder.setRefreshButtonVisible(showUpdate);
 
@@ -422,33 +468,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             bindHeaderSummary(headerViewHolder, ctx);
 
-            boolean isUpvoted = Utils.isUpvoted(ctx, story.id, story.isComment);
-            if (storyVoteLoading) {
-                showHeaderVoteLoading(headerViewHolder.voteButton, storyVoteLoadingTarget, false);
-            } else {
-                showHeaderVoteButton(headerViewHolder.voteButton, isUpvoted, false);
-            }
-
-            boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
-            if (bookmarksEnabled) {
-                boolean isBookmarked = Utils.isBookmarked(ctx, story.id);
-                bindStoryBookmarkButton(headerViewHolder.bookmarkButton, isBookmarked);
-            } else {
-                headerViewHolder.bookmarkButton.setOnClickListener(null);
-            }
-
-            boolean isFavorited = Utils.isFavorited(ctx, story.id);
-            if (storyFavoriteLoading) {
-                showHeaderFavoriteLoading(headerViewHolder.favoriteButton, storyFavoriteLoadingTarget, false);
-            } else {
-                showHeaderFavoriteButton(headerViewHolder.favoriteButton, isFavorited, false);
-            }
-
-            headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
-            setHeaderOpFilterVisibleImmediately(
-                    headerViewHolder, commentsByOpFilterActive);
-            headerViewHolder.bookmarkButtonParent.setVisibility(bookmarksEnabled && !hasAccountDetails ? VISIBLE : GONE);
-            bindHeaderAccountActionVisibility(headerViewHolder);
+            bindHeaderActions(headerViewHolder, ctx);
+            markHeaderBindingCurrent(headerViewHolder);
 
         } else if (holder instanceof ItemViewHolder) {
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
@@ -641,6 +662,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         return true;
     }
 
+    public void refreshCanProvideSummary(Context ctx) {
+        canProvideSummary = story != null
+                && story.isLink
+                && Utils.canProvideSummary(ctx);
+    }
+
     public boolean updateBoundHeaderLoadingState() {
         if (boundHeaderViewHolder == null
                 || !ViewCompat.isAttachedToWindow(boundHeaderViewHolder.itemView)) {
@@ -786,6 +813,68 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         bindHeaderTint(headerViewHolder);
     }
 
+    private boolean isHeaderBindingCurrent(HeaderViewHolder headerViewHolder) {
+        return headerViewHolder.boundStory == story
+                && headerViewHolder.headerBindingGeneration == headerBindingGeneration;
+    }
+
+    private void markHeaderBindingCurrent(HeaderViewHolder headerViewHolder) {
+        headerViewHolder.boundStory = story;
+        headerViewHolder.headerBindingGeneration = headerBindingGeneration;
+    }
+
+    private void bindHeaderReattachmentState(
+            HeaderViewHolder headerViewHolder,
+            Context ctx) {
+        bindHeaderSpacer(headerViewHolder);
+        bindReaderModeButton(headerViewHolder);
+        applyHeaderPreviewImageSuppression(headerViewHolder);
+        bindHeaderActions(headerViewHolder, ctx);
+    }
+
+    private void bindHeaderSpacer(HeaderViewHolder headerViewHolder) {
+        ViewGroup.LayoutParams layoutParams = headerViewHolder.spacer.getLayoutParams();
+        if (layoutParams != null && layoutParams.height == spacerHeight) {
+            return;
+        }
+        headerViewHolder.spacer.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                spacerHeight));
+    }
+
+    private void bindHeaderActions(HeaderViewHolder headerViewHolder, Context ctx) {
+        boolean isUpvoted = Utils.isUpvoted(ctx, story.id, story.isComment);
+        if (storyVoteLoading) {
+            showHeaderVoteLoading(headerViewHolder.voteButton, storyVoteLoadingTarget, false);
+        } else {
+            showHeaderVoteButton(headerViewHolder.voteButton, isUpvoted, false);
+        }
+
+        boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
+        if (bookmarksEnabled) {
+            boolean isBookmarked = Utils.isBookmarked(ctx, story.id);
+            bindStoryBookmarkButton(headerViewHolder.bookmarkButton, isBookmarked);
+        } else {
+            headerViewHolder.bookmarkButton.setOnClickListener(null);
+        }
+
+        boolean isFavorited = Utils.isFavorited(ctx, story.id);
+        if (storyFavoriteLoading) {
+            showHeaderFavoriteLoading(
+                    headerViewHolder.favoriteButton,
+                    storyFavoriteLoadingTarget,
+                    false);
+        } else {
+            showHeaderFavoriteButton(headerViewHolder.favoriteButton, isFavorited, false);
+        }
+
+        headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
+        setHeaderOpFilterVisibleImmediately(headerViewHolder, commentsByOpFilterActive);
+        headerViewHolder.bookmarkButtonParent.setVisibility(
+                bookmarksEnabled && !hasAccountDetails ? VISIBLE : GONE);
+        bindHeaderAccountActionVisibility(headerViewHolder);
+    }
+
     private void bindHeaderSummary(HeaderViewHolder headerViewHolder, Context ctx) {
         bindHeaderSummaryContent(headerViewHolder, ctx);
         bindHeaderSummaryAction(headerViewHolder, ctx);
@@ -824,7 +913,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     private void bindHeaderSummaryAction(HeaderViewHolder headerViewHolder, Context ctx) {
         boolean canSummarize = story.isLink
-                && Utils.canProvideSummary(ctx)
+                && canProvideSummary
                 && !story.summaryGeneratedSuccessfully;
         if (!headerSummaryCompletionTransitionRunning) {
             resetHeaderSummaryActionTransform(headerViewHolder.summarizeButtonParent);
@@ -2213,6 +2302,20 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private void resetHeaderPreviewImage(HeaderViewHolder headerViewHolder) {
         ImageView previewImage = headerViewHolder.previewImage;
         if (previewImage == null) {
+            return;
+        }
+        int defaultHeight = Utils.pxFromDpInt(
+                previewImage.getResources(),
+                HEADER_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP);
+        ViewGroup.LayoutParams layoutParams = previewImage.getLayoutParams();
+        boolean hasDefaultHeight = layoutParams == null || layoutParams.height == defaultHeight;
+        if (previewImage.getVisibility() == GONE
+                && previewImage.getTag() == null
+                && previewImage.getDrawable() == null
+                && Float.compare(previewImage.getAlpha(), 1f) == 0
+                && hasDefaultHeight
+                && headerViewHolder.headerView.getPaddingTop()
+                == headerViewHolder.headerBasePaddingTop) {
             return;
         }
 
@@ -3757,6 +3860,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         private boolean statusRowsInitialized;
         private boolean sheetSlideOffsetApplied;
         private float lastAppliedSheetSlideOffset;
+        @Nullable
+        private Story boundStory;
+        private long headerBindingGeneration = -1;
 
         public HeaderViewHolder(CommentsHeaderBinding binding) {
             super(binding.getRoot());
@@ -4275,10 +4381,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 || !ViewCompat.isAttachedToWindow(boundHeaderViewHolder.previewImage)) {
             return;
         }
-        ImageView previewImage = boundHeaderViewHolder.previewImage;
-        if (suppressed && previewImage.getVisibility() == VISIBLE) {
+        applyHeaderPreviewImageSuppression(boundHeaderViewHolder);
+    }
+
+    private void applyHeaderPreviewImageSuppression(HeaderViewHolder headerViewHolder) {
+        ImageView previewImage = headerViewHolder.previewImage;
+        if (headerPreviewImageSuppressed && previewImage.getVisibility() == VISIBLE) {
             previewImage.setVisibility(View.INVISIBLE);
-        } else if (!suppressed && previewImage.getVisibility() == View.INVISIBLE
+        } else if (!headerPreviewImageSuppressed
+                && previewImage.getVisibility() == View.INVISIBLE
                 && previewImage.getDrawable() != null) {
             previewImage.setVisibility(VISIBLE);
         }
