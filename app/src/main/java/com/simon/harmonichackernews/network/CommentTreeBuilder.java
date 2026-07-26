@@ -52,13 +52,21 @@ public class CommentTreeBuilder {
         
         // Sort children by the order they appear in parent's kidsIds if available
         if (parent.kidsIds != null && parent.kidsIds.length > 0) {
-            List<Comment> orderedChildren = new ArrayList<>();
+            Map<Integer, Comment> childrenById = new HashMap<>(children.size());
+            for (Comment child : children) {
+                // Match the previous nested search, which selected the first child
+                // with a given ID if duplicate objects were ever added.
+                if (!childrenById.containsKey(child.id)) {
+                    childrenById.put(child.id, child);
+                }
+            }
+
+            List<Comment> orderedChildren =
+                    new ArrayList<>(Math.min(children.size(), parent.kidsIds.length));
             for (int childId : parent.kidsIds) {
-                for (Comment child : children) {
-                    if (child.id == childId) {
-                        orderedChildren.add(child);
-                        break;
-                    }
+                Comment child = childrenById.get(childId);
+                if (child != null) {
+                    orderedChildren.add(child);
                 }
             }
             children = orderedChildren;
