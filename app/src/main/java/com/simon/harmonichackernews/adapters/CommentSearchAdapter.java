@@ -27,8 +27,10 @@ import com.simon.harmonichackernews.utils.Utils;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,12 +41,16 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     private static final Object SEARCH_TERM_CHANGED_PAYLOAD = new Object();
     private final List<Comment> comments;
     private final List<Comment> visibleComments = new ArrayList<>();
+    private final Map<Comment, NormalizedCommentText> normalizedCommentTexts =
+            new IdentityHashMap<>();
     private final boolean cardStyle;
     private final boolean cardBorder;
     private final boolean highlightCommentMeta;
     private final float preferredTextSize;
 
     private String searchTerm = "";
+    private String normalizedSearchTerm = "";
+    private Pattern searchHighlightPattern;
     public ItemClickListener itemClickListener;
 
     private String markedColor;
@@ -59,6 +65,9 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         cardBorder = shouldShowCardBorder;
         highlightCommentMeta = shouldHighlightCommentMeta;
         preferredTextSize = prefTextSize;
+        for (Comment comment : this.comments) {
+            getNormalizedCommentText(comment);
+        }
         visibleComments.addAll(this.comments);
         setHasStableIds(true);
     }
@@ -66,10 +75,27 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
     public void setSearchTerm(String searchTerm) {
         String previousSearchTerm = this.searchTerm;
         String nextSearchTerm = searchTerm == null ? "" : searchTerm;
+        if (nextSearchTerm.equals(previousSearchTerm)) {
+            return;
+        }
+
+        String previousNormalizedSearchTerm = normalizedSearchTerm;
+        String nextNormalizedSearchTerm = nextSearchTerm.toLowerCase(Locale.ROOT);
+        Pattern nextHighlightPattern = TextUtils.isEmpty(nextSearchTerm)
+                ? null
+                : Pattern.compile("(?i)" + Pattern.quote(nextSearchTerm));
         List<Comment> previousVisibleComments = new ArrayList<>(visibleComments);
-        List<Comment> nextVisibleComments = filterComments(nextSearchTerm);
+        List<Comment> filterSource =
+                !TextUtils.isEmpty(previousNormalizedSearchTerm)
+                        && nextNormalizedSearchTerm.startsWith(previousNormalizedSearchTerm)
+                        ? previousVisibleComments
+                        : comments;
+        List<Comment> nextVisibleComments =
+                filterComments(filterSource, nextNormalizedSearchTerm);
 
         this.searchTerm = nextSearchTerm;
+        normalizedSearchTerm = nextNormalizedSearchTerm;
+        searchHighlightPattern = nextHighlightPattern;
         visibleComments.clear();
         visibleComments.addAll(nextVisibleComments);
 
@@ -100,7 +126,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
             public Object getChangePayload(int oldItemPosition, int newItemPosition) {
                 return SEARCH_TERM_CHANGED_PAYLOAD;
             }
-        }).dispatchUpdatesTo(this);
+        }, false).dispatchUpdatesTo(this);
     }
 
     public int getVisibleCommentCount() {
@@ -244,7 +270,26 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position, @NonNull List<Object> payloads) {
+        if (holder instanceof CommentViewHolder
+                && hasOnlySearchTermChangedPayloads(payloads)) {
+            bindHighlightedCommentText(
+                    (CommentViewHolder) holder,
+                    visibleComments.get(position));
+            return;
+        }
         bindCommentViewHolder(holder, position);
+    }
+
+    private static boolean hasOnlySearchTermChangedPayloads(List<Object> payloads) {
+        if (payloads.isEmpty()) {
+            return false;
+        }
+        for (Object payload : payloads) {
+            if (payload != SEARCH_TERM_CHANGED_PAYLOAD) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void bindCommentViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
@@ -260,26 +305,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         applyCommentMetaHighlight(commentViewHolder);
         commentViewHolder.commentIndentIndicator.setVisibility(View.GONE);
 
-        String text = Utils.expandShortenedAnchorText(comment.text == null ? "" : comment.text);
-
-        StringBuffer sb = new StringBuffer(); // To hold the modified string
-
-        if (!TextUtils.isEmpty(searchTerm)) {
-            Pattern pattern = Pattern.compile("(?i)" + Pattern.quote(searchTerm));
-            Matcher matcher = pattern.matcher(text);
-
-            while (matcher.find()) {
-                // Retains the original case of the matching substring and adds the red color
-                String replacement = "<b><font color='" + markedColor + "'>" + matcher.group() + "</font></b>";
-                matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
-            }
-
-            // Append the remainder of the string
-            matcher.appendTail(sb);
-            text = sb.toString();
-        }
-
-        commentViewHolder.commentText.setHtml(text);
+        bindHighlightedCommentText(commentViewHolder, comment);
         commentViewHolder.commentBy.setText(comment.by);
         commentViewHolder.commentByTime.setText(comment.getTimeFormatted());
         commentViewHolder.commentBy.setContentDescription("Comment by " + comment.by);
@@ -291,6 +317,30 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         FontUtils.setCommentTextTypeface(commentViewHolder.commentText, preferredTextSize);
         commentViewHolder.commentBy.setTypeface(FontUtils.activeBold);
         commentViewHolder.commentByTime.setTypeface(FontUtils.activeRegular);
+    }
+
+    private void bindHighlightedCommentText(
+            CommentViewHolder commentViewHolder,
+            Comment comment) {
+        String text = Utils.expandShortenedAnchorText(comment.text == null ? "" : comment.text);
+
+        Pattern highlightPattern = searchHighlightPattern;
+        if (highlightPattern != null) {
+            Matcher matcher = highlightPattern.matcher(text);
+            StringBuffer highlightedText = new StringBuffer(text.length());
+
+            while (matcher.find()) {
+                // Retains the original case of the matching substring and adds the red color
+                String replacement = "<b><font color='" + markedColor + "'>" + matcher.group() + "</font></b>";
+                matcher.appendReplacement(highlightedText, Matcher.quoteReplacement(replacement));
+            }
+
+            // Append the remainder of the string
+            matcher.appendTail(highlightedText);
+            text = highlightedText.toString();
+        }
+
+        commentViewHolder.commentText.setHtml(text);
     }
 
     private void applyCommentMetaHighlight(CommentViewHolder commentViewHolder) {
@@ -397,24 +447,53 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
         return visibleComments.get(position).id;
     }
 
-    private List<Comment> filterComments(String searchTerm) {
-        List<Comment> filteredComments = new ArrayList<>();
-        for (Comment comment : comments) {
-            if (matchesSearchTerm(comment, searchTerm)) {
+    private List<Comment> filterComments(
+            List<Comment> sourceComments,
+            String normalizedSearchTerm) {
+        List<Comment> filteredComments = new ArrayList<>(sourceComments.size());
+        for (Comment comment : sourceComments) {
+            if (matchesSearchTerm(comment, normalizedSearchTerm)) {
                 filteredComments.add(comment);
             }
         }
         return filteredComments;
     }
 
-    private boolean matchesSearchTerm(Comment comment, String searchTerm) {
-        if (TextUtils.isEmpty(searchTerm)) {
+    private boolean matchesSearchTerm(Comment comment, String normalizedSearchTerm) {
+        if (TextUtils.isEmpty(normalizedSearchTerm)) {
             return true;
         }
         if (comment == null || comment.text == null) {
             return false;
         }
-        return comment.text.toLowerCase(Locale.ROOT).contains(searchTerm.toLowerCase(Locale.ROOT));
+        String normalizedCommentText = getNormalizedCommentText(comment);
+        return normalizedCommentText != null
+                && normalizedCommentText.contains(normalizedSearchTerm);
+    }
+
+    private String getNormalizedCommentText(Comment comment) {
+        if (comment == null || comment.text == null) {
+            return null;
+        }
+
+        NormalizedCommentText cachedText = normalizedCommentTexts.get(comment);
+        if (cachedText == null || !TextUtils.equals(cachedText.sourceText, comment.text)) {
+            cachedText = new NormalizedCommentText(
+                    comment.text,
+                    comment.text.toLowerCase(Locale.ROOT));
+            normalizedCommentTexts.put(comment, cachedText);
+        }
+        return cachedText.normalizedText;
+    }
+
+    private static final class NormalizedCommentText {
+        final String sourceText;
+        final String normalizedText;
+
+        NormalizedCommentText(String sourceText, String normalizedText) {
+            this.sourceText = sourceText;
+            this.normalizedText = normalizedText;
+        }
     }
 
     public interface ItemClickListener {
