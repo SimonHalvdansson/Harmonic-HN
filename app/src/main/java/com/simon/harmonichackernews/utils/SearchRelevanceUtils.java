@@ -5,7 +5,9 @@ import android.text.TextUtils;
 import com.simon.harmonichackernews.data.Story;
 
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SearchRelevanceUtils {
 
@@ -15,9 +17,14 @@ public class SearchRelevanceUtils {
             return;
         }
 
+        Map<Story, Integer> relevanceScores = new IdentityHashMap<>(stories.size());
+        for (Story story : stories) {
+            relevanceScores.put(story, score(story, normalizedQuery));
+        }
+
         Collections.sort(stories, (left, right) -> {
-            int leftScore = score(left, normalizedQuery);
-            int rightScore = score(right, normalizedQuery);
+            int leftScore = relevanceScores.get(left);
+            int rightScore = relevanceScores.get(right);
 
             if (leftScore != rightScore) {
                 return Integer.compare(rightScore, leftScore);
