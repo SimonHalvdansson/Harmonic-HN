@@ -10,10 +10,15 @@ object HistoriesUtils {
     fun init(context: Context) {
         histories.clear()
         histories.addAll(loadHistories(context, true))
+        historyIds.clear()
+        for (history in histories) {
+            historyIds.add(history.id)
+        }
         changeVersion++
     }
 
     private val histories = mutableListOf<History>()
+    private val historyIds = mutableSetOf<Int>()
     private var changeVersion = 0L
 
     fun size() = histories.size
@@ -21,7 +26,7 @@ object HistoriesUtils {
     fun getChangeVersion() = changeVersion
 
     fun addHistory(context: Context, id: Int) {
-        if (isHistoryExist(id).not()) {
+        if (historyIds.add(id)) {
             val now = System.currentTimeMillis()
             histories.add(History(id, now))
             addHistoryToStorage(context, id, now)
@@ -36,6 +41,9 @@ object HistoriesUtils {
     fun removeHistoryById(context: Context, id: Int) {
         histories.find { it.id == id }?.let {
             histories.remove(it)
+            if (histories.none { history -> history.id == id }) {
+                historyIds.remove(id)
+            }
             changeVersion++
         }
         removeHistoryFromStorage(context, id)
@@ -43,6 +51,7 @@ object HistoriesUtils {
 
     fun clearHistories(context: Context) {
         histories.clear()
+        historyIds.clear()
         SettingsUtils.saveStringToSharedPreferences(
             context,
             KEY_SHARED_PREFERENCES_HISTORIES,
@@ -52,7 +61,7 @@ object HistoriesUtils {
     }
 
     fun isHistoryExist(id: Int): Boolean {
-        return histories.any { it.id == id }
+        return historyIds.contains(id)
     }
 
     fun loadHistories(ctx: Context, sorted: Boolean): MutableList<History> {
