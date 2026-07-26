@@ -17,11 +17,6 @@
         android:title="Open top level" />
 
     <item
-        android:id="@+id/menu_adblock"
-        android:icon="@drawable/ic_block"
-        android:title="Disable AdBlock" />
-
-    <item
         android:id="@+id/menu_bookmark"
         android:icon="@drawable/ic_bookmark"
         android:title="Bookmark" />
@@ -45,6 +40,11 @@
         android:id="@+id/menu_comments_browser"
         android:icon="@drawable/ic_open_in_browser"
         android:title="Open in browser" />
+
+    <item
+        android:id="@+id/menu_adblock"
+        android:icon="@drawable/ic_block"
+        android:title="Disable AdBlock" />
 
     <item
         android:id="@+id/menu_archive"
