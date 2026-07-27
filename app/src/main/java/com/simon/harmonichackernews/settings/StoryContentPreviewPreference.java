@@ -19,6 +19,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
+import android.view.ViewParent;
 import android.view.ViewTreeObserver;
 import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
@@ -245,16 +246,63 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         int animationToken = ++summaryAnimationToken;
         cancelSummaryLayoutAnimator();
         storySummary.animate().cancel();
+        boolean shouldAnimateSmallPreview =
+                SettingsUtils.STORY_PREVIEW_IMAGE_SMALL.equals(getCurrentPreviewImageMode())
+                && smallPreviewImage != null
+                && smallPreviewImage.getVisibility() == View.VISIBLE;
+        float currentSmallPreviewTop = Float.NaN;
+        float currentSmallPreviewVisualTop = currentSmallPreviewTop;
+        float targetSmallPreviewTop = Float.NaN;
+        if (shouldAnimateSmallPreview) {
+            View previewItem = previewItemContainer != null
+                    && previewItemContainer.getChildCount() > 0
+                    ? previewItemContainer.getChildAt(0)
+                    : null;
+            currentSmallPreviewTop =
+                    getDescendantTop(previewItem, smallPreviewImage);
+            currentSmallPreviewVisualTop = currentSmallPreviewTop;
+            currentSmallPreviewVisualTop += smallPreviewImage.getTranslationY();
+            targetSmallPreviewTop = measureSmallPreviewImageTop(showSummary);
+        }
+        boolean animateSmallPreviewPosition =
+                shouldAnimateSmallPreview
+                && !Float.isNaN(currentSmallPreviewTop)
+                && !Float.isNaN(targetSmallPreviewTop);
+        float startSmallPreviewTranslation = 0f;
+        float targetSmallPreviewTranslation = 0f;
+        if (animateSmallPreviewPosition) {
+            if (showSummary) {
+                startSmallPreviewTranslation =
+                        currentSmallPreviewVisualTop - targetSmallPreviewTop;
+            } else {
+                startSmallPreviewTranslation =
+                        currentSmallPreviewVisualTop - currentSmallPreviewTop;
+                targetSmallPreviewTranslation =
+                        targetSmallPreviewTop - currentSmallPreviewTop;
+            }
+            smallPreviewImage.setTranslationY(startSmallPreviewTranslation);
+        } else if (smallPreviewImage != null) {
+            smallPreviewImage.setTranslationY(0f);
+        }
+        final float animatedStartSmallPreviewTranslation =
+                startSmallPreviewTranslation;
+        final float animatedTargetSmallPreviewTranslation =
+                targetSmallPreviewTranslation;
+        ImageView animatedSmallPreviewImage = smallPreviewImage;
         int[] startingMetaLocation = new int[2];
         metaContainer.getLocationInWindow(startingMetaLocation);
         cancelMetaPlacementAnimator();
         metaContainer.setTranslationY(0f);
         suspendStoryLayoutTransitions();
-        boolean placementChanged = StoryMetaPlacementUtils.placeForSummary(
-                storyTitle,
-                storySummary,
-                metaContainer,
-                showSummary);
+        // Keep the meta row after the summary while it collapses so it follows the
+        // shrinking summary upward. Reparenting it before the collapse makes it
+        // jump to the compact layout and animate independently from the summary.
+        boolean placementChanged = showSummary
+                && StoryMetaPlacementUtils.placeForSummary(
+                        storyTitle,
+                        storySummary,
+                        metaContainer,
+                        true);
         if (placementChanged && ViewCompat.isLaidOut(metaContainer)) {
             animateMetaPlacementFrom(startingMetaLocation[1], animationToken);
         }
@@ -263,6 +311,14 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             storySummary.setAlpha(1f);
             setVisibilityWithoutLayoutTransition(storySummary, targetVisibility);
             restoreSummaryLayoutParams();
+            StoryMetaPlacementUtils.placeForSummary(
+                    storyTitle,
+                    storySummary,
+                    metaContainer,
+                    showSummary);
+            if (animatedSmallPreviewImage != null) {
+                animatedSmallPreviewImage.setTranslationY(0f);
+            }
             resumeStoryLayoutTransitions();
             requestPreviewRemeasure();
             return;
@@ -273,6 +329,14 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             storySummary.setAlpha(1f);
             setVisibilityWithoutLayoutTransition(storySummary, targetVisibility);
             restoreSummaryLayoutParams();
+            StoryMetaPlacementUtils.placeForSummary(
+                    storyTitle,
+                    storySummary,
+                    metaContainer,
+                    showSummary);
+            if (animatedSmallPreviewImage != null) {
+                animatedSmallPreviewImage.setTranslationY(0f);
+            }
             syncPreviewContainerHeight(getCurrentPreviewImageMode(), true);
             resumeStoryLayoutTransitions();
             return;
@@ -325,6 +389,13 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
             marginParams.topMargin = lerp(startTopMargin, targetTopMargin, progress);
             storySummary.setLayoutParams(marginParams);
             storySummary.setAlpha(startAlpha + (targetAlpha - startAlpha) * progress);
+            if (animateSmallPreviewPosition
+                    && smallPreviewImage == animatedSmallPreviewImage) {
+                animatedSmallPreviewImage.setTranslationY(
+                        animatedStartSmallPreviewTranslation
+                                + (animatedTargetSmallPreviewTranslation
+                                - animatedStartSmallPreviewTranslation) * progress);
+            }
         });
         summaryLayoutAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
@@ -338,6 +409,15 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
                 restoreSummaryLayoutParams();
                 storySummary.setAlpha(1f);
                 setVisibilityWithoutLayoutTransition(storySummary, targetVisibility);
+                StoryMetaPlacementUtils.placeForSummary(
+                        storyTitle,
+                        storySummary,
+                        metaContainer,
+                        showSummary);
+                if (smallPreviewImage == animatedSmallPreviewImage
+                        && animatedSmallPreviewImage != null) {
+                    animatedSmallPreviewImage.setTranslationY(0f);
+                }
                 if (targetHeights.isValid()) {
                     setPreviewHeights(targetHeights);
                 }
@@ -1156,6 +1236,55 @@ public class StoryContentPreviewPreference extends FrameLayout implements Shared
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
         itemView.measure(widthSpec, heightSpec);
         return PreviewPreferenceViewUtils.getMeasuredOuterHeight(itemView);
+    }
+
+    private float measureSmallPreviewImageTop(boolean showSummary) {
+        if (previewItemContainer == null || previewItemContainer.getChildCount() == 0) {
+            return Float.NaN;
+        }
+        int containerWidth = previewItemContainer.getWidth()
+                - previewItemContainer.getPaddingLeft()
+                - previewItemContainer.getPaddingRight();
+        if (!isStablePreviewWidth(containerWidth)) {
+            return Float.NaN;
+        }
+
+        PreviewStoryItemBinding binding =
+                inflatePreviewStoryItemBinding(leftAligned);
+        bindCurrentPreviewItemForMeasurement(
+                binding,
+                SettingsUtils.STORY_PREVIEW_IMAGE_SMALL,
+                showSummary);
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(
+                containerWidth,
+                View.MeasureSpec.EXACTLY);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(
+                0,
+                View.MeasureSpec.UNSPECIFIED);
+        binding.root.measure(widthSpec, heightSpec);
+        binding.root.layout(
+                0,
+                0,
+                binding.root.getMeasuredWidth(),
+                binding.root.getMeasuredHeight());
+        return getDescendantTop(binding.root, binding.smallPreviewImage);
+    }
+
+    private static float getDescendantTop(View ancestor, View descendant) {
+        if (ancestor == null || descendant == null) {
+            return Float.NaN;
+        }
+        int top = 0;
+        View current = descendant;
+        while (current != ancestor) {
+            top += current.getTop();
+            ViewParent parent = current.getParent();
+            if (!(parent instanceof View)) {
+                return Float.NaN;
+            }
+            current = (View) parent;
+        }
+        return top;
     }
 
     private void bindCurrentPreviewItemForMeasurement(
