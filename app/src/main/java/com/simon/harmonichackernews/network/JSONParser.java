@@ -45,8 +45,7 @@ public class JSONParser {
     private static final String KEY_FAVICON_TINT_MODE = "favicon_tint_mode";
 
     private static boolean hasOnlyTwoTopLevelFields(JSONObject jsonObject) {
-        JSONArray names = jsonObject.names();
-        return names != null && names.length() == 2;
+        return jsonObject.length() == 2;
     }
 
     public static List<Story> algoliaJsonToStories(String response) throws JSONException {
@@ -134,7 +133,8 @@ public class JSONParser {
             return false;
         }
 
-        if (jsonObject.has("type") && jsonObject.getString("type").equals("comment")) {
+        String type = jsonObject.has("type") ? jsonObject.getString("type") : null;
+        if ("comment".equals(type)) {
             return updateStoryWithHNCommentJson(jsonObject, story);
         }
 
@@ -152,14 +152,15 @@ public class JSONParser {
             story.descendants = 0;
         }
 
-        if (jsonObject.has("type") && jsonObject.getString("type").equals("job")) {
+        if ("job".equals(type)) {
             story.isJob = true;
         }
 
-        if (jsonObject.has("type") && jsonObject.getString("type").equals("poll") && jsonObject.has("parts")) {
+        if ("poll".equals(type) && jsonObject.has("parts")) {
             JSONArray pollOptionsJson = jsonObject.getJSONArray("parts");
-            int[] pollOptions = new int[pollOptionsJson.length()];
-            for (int i = 0; i < pollOptionsJson.length(); i++) {
+            int pollOptionCount = pollOptionsJson.length();
+            int[] pollOptions = new int[pollOptionCount];
+            for (int i = 0; i < pollOptionCount; i++) {
                 pollOptions[i] = pollOptionsJson.getInt(i);
             }
 
@@ -168,9 +169,10 @@ public class JSONParser {
 
         if (jsonObject.has("kids")) {
             JSONArray kidsJsonArray = jsonObject.getJSONArray("kids");
-            int[] kids = new int[kidsJsonArray.length()];
+            int kidCount = kidsJsonArray.length();
+            int[] kids = new int[kidCount];
 
-            for (int i = 0; i < kidsJsonArray.length(); i++) {
+            for (int i = 0; i < kidCount; i++) {
                 kids[i] = kidsJsonArray.getInt(i);
             }
 
@@ -232,33 +234,35 @@ public class JSONParser {
             return false;
         }
 
+        String by = jsonObject.getString("by");
+        int id = jsonObject.getInt("id");
+        int time = jsonObject.getInt("time");
+
         // setting the score to -1 means it doesn't get shown
         story.update(
-                jsonObject.getString("by"),
-                jsonObject.getInt("id"),
+                by,
+                id,
                 0,
-                jsonObject.getInt("time"),
-                "Comment by " + jsonObject.getString("by")
+                time,
+                "Comment by " + by
         );
 
         story.isComment = true;
         story.parentId = jsonObject.optInt("parent", 0);
 
         if (jsonObject.has("kids")) {
-            story.descendants = jsonObject.getJSONArray("kids").length();
-        } else {
-            story.descendants = 0;
-        }
-
-        if (jsonObject.has("kids")) {
             JSONArray kidsJsonArray = jsonObject.getJSONArray("kids");
-            int[] kids = new int[kidsJsonArray.length()];
+            int kidCount = kidsJsonArray.length();
+            story.descendants = kidCount;
+            int[] kids = new int[kidCount];
 
-            for (int i = 0; i < kidsJsonArray.length(); i++) {
+            for (int i = 0; i < kidCount; i++) {
                 kids[i] = kidsJsonArray.getInt(i);
             }
 
             story.kids = kids;
+        } else {
+            story.descendants = 0;
         }
 
         story.url = "https://news.ycombinator.com/item?id=" + story.id;
@@ -281,29 +285,28 @@ public class JSONParser {
         story.pdfTitle = null;
         story.videoTitle = null;
 
-        if (endsWithIgnoreCase(story.url, ".pdf") || hasTitleSuffix(story.title, PDF_SUFFIXES)) {
-            story.pdfTitle = stripTitleSuffix(story.title, PDF_SUFFIXES);
-        } else if (hasTitleSuffix(story.title, VIDEO_SUFFIXES)) {
-            story.videoTitle = stripTitleSuffix(story.title, VIDEO_SUFFIXES);
+        char lastTitleCharacter = story.title.charAt(story.title.length() - 1);
+        boolean mayHaveTitleSuffix = lastTitleCharacter == ']' || lastTitleCharacter == ')';
+        String pdfTitle = mayHaveTitleSuffix
+                ? stripTitleSuffixOrNull(story.title, PDF_SUFFIXES)
+                : null;
+
+        if (endsWithIgnoreCase(story.url, ".pdf")) {
+            story.pdfTitle = pdfTitle == null ? story.title : pdfTitle;
+        } else if (pdfTitle != null) {
+            story.pdfTitle = pdfTitle;
+        } else if (mayHaveTitleSuffix) {
+            story.videoTitle = stripTitleSuffixOrNull(story.title, VIDEO_SUFFIXES);
         }
     }
 
-    private static boolean hasTitleSuffix(String title, String[] suffixes) {
-        for (String suffix : suffixes) {
-            if (endsWithIgnoreCase(title, suffix)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static String stripTitleSuffix(String title, String[] suffixes) {
+    private static String stripTitleSuffixOrNull(String title, String[] suffixes) {
         for (String suffix : suffixes) {
             if (endsWithIgnoreCase(title, suffix)) {
                 return title.substring(0, title.length() - suffix.length());
             }
         }
-        return title;
+        return null;
     }
 
     private static boolean endsWithIgnoreCase(String value, String suffix) {
@@ -315,6 +318,9 @@ public class JSONParser {
         JsonReader reader = new JsonReader(new StringReader(response));
         AlgoliaCommentsResponse result = new AlgoliaCommentsResponse();
         List<Comment> topLevelComments = new ArrayList<>();
+        Set<String> activeFilteredUsers = filteredUsers != null && !filteredUsers.isEmpty()
+                ? filteredUsers
+                : null;
 
         reader.beginObject();
         while (reader.hasNext()) {
@@ -356,7 +362,7 @@ public class JSONParser {
                 case "children":
                     reader.beginArray();
                     while (reader.hasNext()) {
-                        Comment comment = parseAlgoliaComment(reader, 0, filteredUsers);
+                        Comment comment = parseAlgoliaComment(reader, 0, activeFilteredUsers);
                         if (comment != null) {
                             topLevelComments.add(comment);
                         }
@@ -371,7 +377,7 @@ public class JSONParser {
         reader.endObject();
         reader.close();
 
-        if (prioTop != null) {
+        if (prioTop != null && prioTop.length > 0 && topLevelComments.size() > 1) {
             sortTopLevelComments(topLevelComments, prioTop);
         }
 
@@ -562,7 +568,9 @@ public class JSONParser {
     }
 
     private static void flattenComments(List<Comment> source, List<Comment> destination) {
-        for (Comment comment : source) {
+        int sourceSize = source.size();
+        for (int i = 0; i < sourceSize; i++) {
+            Comment comment = source.get(i);
             destination.add(comment);
             if (comment.childComments != null && !comment.childComments.isEmpty()) {
                 flattenComments(comment.childComments, destination);
@@ -853,8 +861,9 @@ public class JSONParser {
             return 0;
         }
 
-        int count = children.length();
-        for (int i = 0; i < children.length(); i++) {
+        int childCount = children.length();
+        int count = childCount;
+        for (int i = 0; i < childCount; i++) {
             JSONObject child = children.optJSONObject(i);
             if (child == null) {
                 continue;
@@ -892,6 +901,8 @@ public class JSONParser {
 
         if (input.contains("<pre>")) {
             input = escapePreBlockWhitespace(input);
+        }
+        if (input.contains("pre>")) {
             input = input.replace("<pre>", "<div><tt>")
                     .replace("</pre>", "</tt></div>");
         }
@@ -900,20 +911,21 @@ public class JSONParser {
     }
 
     private static String escapePreBlockWhitespace(String input) {
-        StringBuilder output = new StringBuilder(input.length());
+        int inputLength = input.length();
+        StringBuilder output = new StringBuilder(inputLength);
         boolean insidePreBlock = false;
 
-        for (int i = 0; i < input.length(); i++) {
-            if (input.startsWith("<pre>", i)) {
+        for (int i = 0; i < inputLength; i++) {
+            char current = input.charAt(i);
+            if (current == '<' && input.startsWith("<pre>", i)) {
                 insidePreBlock = true;
                 output.append("<pre>");
                 i += "<pre>".length() - 1;
-            } else if (input.startsWith("</pre>", i)) {
+            } else if (current == '<' && input.startsWith("</pre>", i)) {
                 insidePreBlock = false;
                 output.append("</pre>");
                 i += "</pre>".length() - 1;
             } else {
-                char current = input.charAt(i);
                 if (insidePreBlock && current == ' ') {
                     output.append("&nbsp;");
                 } else if (insidePreBlock && current == '\n') {
@@ -948,7 +960,8 @@ public class JSONParser {
             story.title = jsonObject.optString("title", story.title);
             story.descendants = jsonObject.optInt("descendants", 0);
 
-            if (jsonObject.has("type") && jsonObject.getString("type").equals("comment")) {
+            String type = jsonObject.has("type") ? jsonObject.getString("type") : null;
+            if ("comment".equals(type)) {
                 story.isComment = true;
                 story.parentId = jsonObject.optInt("parent", 0);
                 if (TextUtils.isEmpty(story.title)) {
@@ -964,14 +977,15 @@ public class JSONParser {
                 story.title = "[deleted]";
             }
 
-            if (jsonObject.has("type") && jsonObject.getString("type").equals("job")) {
+            if ("job".equals(type)) {
                 story.isJob = true;
             }
 
-            if (jsonObject.has("type") && jsonObject.getString("type").equals("poll") && jsonObject.has("parts")) {
+            if ("poll".equals(type) && jsonObject.has("parts")) {
                 JSONArray pollOptionsJson = jsonObject.getJSONArray("parts");
-                int[] pollOptions = new int[pollOptionsJson.length()];
-                for (int i = 0; i < pollOptionsJson.length(); i++) {
+                int pollOptionCount = pollOptionsJson.length();
+                int[] pollOptions = new int[pollOptionCount];
+                for (int i = 0; i < pollOptionCount; i++) {
                     pollOptions[i] = pollOptionsJson.getInt(i);
                 }
 
@@ -980,8 +994,9 @@ public class JSONParser {
 
             if (jsonObject.has("kids")) {
                 JSONArray kidsArray = jsonObject.getJSONArray("kids");
-                story.kids = new int[kidsArray.length()];
-                for (int i = 0; i < kidsArray.length(); i++) {
+                int kidCount = kidsArray.length();
+                story.kids = new int[kidCount];
+                for (int i = 0; i < kidCount; i++) {
                     story.kids[i] = kidsArray.getInt(i);
                 }
             }
@@ -1033,10 +1048,11 @@ public class JSONParser {
 
         if (jsonObject.has("kids")) {
             JSONArray kidsArray = jsonObject.getJSONArray("kids");
-            comment.children = kidsArray.length();
+            int kidCount = kidsArray.length();
+            comment.children = kidCount;
             // Store kids for later loading
-            comment.kidsIds = new int[kidsArray.length()];
-            for (int i = 0; i < kidsArray.length(); i++) {
+            comment.kidsIds = new int[kidCount];
+            for (int i = 0; i < kidCount; i++) {
                 comment.kidsIds[i] = kidsArray.getInt(i);
             }
         } else {
