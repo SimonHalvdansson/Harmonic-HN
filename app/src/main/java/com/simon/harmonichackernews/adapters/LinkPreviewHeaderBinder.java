@@ -3,10 +3,17 @@ package com.simon.harmonichackernews.adapters;
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.animation.PathInterpolator;
 import android.widget.TextView;
+
+import androidx.core.view.ViewCompat;
 
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Story;
@@ -24,6 +31,10 @@ import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin;
 
 final class LinkPreviewHeaderBinder {
 
+    private static final long HEIGHT_ANIMATION_DURATION_MS = 220L;
+    private static final long CONTENT_FADE_DURATION_MS = 160L;
+    private static final PathInterpolator EMPHASIZED_DECELERATE =
+            new PathInterpolator(0.2f, 0f, 0f, 1f);
     private static final Pattern SINGLE_DOLLAR_LATEX_PATTERN =
             Pattern.compile("(?s)(?<!\\$)\\$(?![\\s$])(.+?)(?<![\\s$])\\$(?!\\$)");
     private static final Pattern SINGLE_DOLLAR_NORMALIZATION_PATTERN =
@@ -42,16 +53,31 @@ final class LinkPreviewHeaderBinder {
     static void bind(Context ctx,
                      CommentsRecyclerViewAdapter.HeaderViewHolder holder,
                      Story story) {
+        boolean wasShowingLoading = holder.hasLinkPreviewViews()
+                && holder.infoContainer.getVisibility() == VISIBLE
+                && holder.linkPreviewLoadingContainer.getVisibility() == VISIBLE
+                && ViewCompat.isLaidOut(holder.infoContainer)
+                && holder.infoContainer.getHeight() > 0;
+        int loadingHeight = wasShowingLoading ? holder.infoContainer.getHeight() : 0;
         boolean needsLinkPreviewViews = story.hasExtraInfo() || story.linkPreviewLoading;
         if (!needsLinkPreviewViews && !holder.hasLinkPreviewViews()) {
             return;
         }
         holder.ensureLinkPreviewViews();
-        holder.infoContainer.setVisibility(story.hasExtraInfo() ? View.VISIBLE : GONE);
         boolean hasLoadedLinkPreview = story.hasLoadedLinkPreview();
         boolean showLinkPreviewLoading = story.linkPreviewLoading && !hasLoadedLinkPreview;
+        boolean animateLoadedPreview = wasShowingLoading && hasLoadedLinkPreview;
+        boolean continueLoadedTransition = hasLoadedLinkPreview
+                && holder.linkPreviewContentContainer.getVisibility() == VISIBLE
+                && (holder.linkPreviewHeightAnimator != null
+                || holder.linkPreviewContentContainer.getAlpha() < 1f);
+        if (!continueLoadedTransition) {
+            cancelTransition(holder);
+        }
+        holder.infoContainer.setVisibility(story.hasExtraInfo() ? View.VISIBLE : GONE);
         holder.infoHeader.setVisibility(hasLoadedLinkPreview ? VISIBLE : GONE);
         holder.linkPreviewLoadingContainer.setVisibility(showLinkPreviewLoading ? VISIBLE : GONE);
+        holder.linkPreviewContentContainer.setVisibility(hasLoadedLinkPreview ? VISIBLE : GONE);
         holder.arxivContainer.setVisibility(GONE);
         holder.githubContainer.setVisibility(GONE);
         holder.gitLabContainer.setVisibility(GONE);
@@ -84,6 +110,97 @@ final class LinkPreviewHeaderBinder {
 
         if (story.nitterInfo != null) {
             bindNitterPreview(ctx, holder, story);
+        }
+
+        if (animateLoadedPreview) {
+            animateLoadedPreview(holder, loadingHeight);
+        } else if (!continueLoadedTransition) {
+            resetTransitionProperties(holder);
+        }
+    }
+
+    private static void animateLoadedPreview(
+            CommentsRecyclerViewAdapter.HeaderViewHolder holder,
+            int startHeight) {
+        ViewGroup.LayoutParams params = holder.infoContainer.getLayoutParams();
+        if (params == null || holder.infoContainer.getWidth() <= 0) {
+            resetTransitionProperties(holder);
+            return;
+        }
+
+        holder.linkPreviewContentContainer.setAlpha(0f);
+        holder.infoContainer.measure(
+                View.MeasureSpec.makeMeasureSpec(
+                        holder.infoContainer.getWidth(), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        int targetHeight = holder.infoContainer.getMeasuredHeight();
+        if (targetHeight <= 0) {
+            resetTransitionProperties(holder);
+            return;
+        }
+
+        int generation = ++holder.linkPreviewAnimationGeneration;
+        params.height = startHeight;
+        holder.infoContainer.setLayoutParams(params);
+        holder.linkPreviewHeightAnimator = ValueAnimator.ofInt(startHeight, targetHeight);
+        holder.linkPreviewHeightAnimator.setDuration(HEIGHT_ANIMATION_DURATION_MS);
+        holder.linkPreviewHeightAnimator.setInterpolator(EMPHASIZED_DECELERATE);
+        holder.linkPreviewHeightAnimator.addUpdateListener(animation -> {
+            if (generation != holder.linkPreviewAnimationGeneration) {
+                return;
+            }
+            ViewGroup.LayoutParams animatedParams = holder.infoContainer.getLayoutParams();
+            if (animatedParams != null) {
+                animatedParams.height = (int) animation.getAnimatedValue();
+                holder.infoContainer.setLayoutParams(animatedParams);
+            }
+        });
+        holder.linkPreviewHeightAnimator.addListener(new AnimatorListenerAdapter() {
+            private boolean cancelled;
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                cancelled = true;
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (cancelled || generation != holder.linkPreviewAnimationGeneration) {
+                    return;
+                }
+                holder.linkPreviewHeightAnimator = null;
+                ViewGroup.LayoutParams endParams = holder.infoContainer.getLayoutParams();
+                if (endParams != null) {
+                    endParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                    holder.infoContainer.setLayoutParams(endParams);
+                }
+                holder.linkPreviewContentContainer.animate()
+                        .alpha(1f)
+                        .setDuration(CONTENT_FADE_DURATION_MS)
+                        .setInterpolator(EMPHASIZED_DECELERATE)
+                        .start();
+            }
+        });
+        holder.linkPreviewHeightAnimator.start();
+    }
+
+    private static void cancelTransition(
+            CommentsRecyclerViewAdapter.HeaderViewHolder holder) {
+        holder.linkPreviewAnimationGeneration++;
+        if (holder.linkPreviewHeightAnimator != null) {
+            holder.linkPreviewHeightAnimator.cancel();
+            holder.linkPreviewHeightAnimator = null;
+        }
+        holder.linkPreviewContentContainer.animate().cancel();
+    }
+
+    private static void resetTransitionProperties(
+            CommentsRecyclerViewAdapter.HeaderViewHolder holder) {
+        holder.linkPreviewContentContainer.setAlpha(1f);
+        ViewGroup.LayoutParams params = holder.infoContainer.getLayoutParams();
+        if (params != null && params.height != ViewGroup.LayoutParams.WRAP_CONTENT) {
+            params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            holder.infoContainer.setLayoutParams(params);
         }
     }
 

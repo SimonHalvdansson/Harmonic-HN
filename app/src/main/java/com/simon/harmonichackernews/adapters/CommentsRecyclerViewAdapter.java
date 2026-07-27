@@ -3735,6 +3735,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         public TextView infoHeader;
         public LinearLayout linkPreviewLoadingContainer;
+        public LinearLayout linkPreviewContentContainer;
+        public ValueAnimator linkPreviewHeightAnimator;
+        public int linkPreviewAnimationGeneration;
         public final LinearLayout emptyView;
         public final TextView emptyViewText;
         public final LoadingIndicator loadingIndicator;
@@ -4088,6 +4091,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             infoContainer = linkPreviewBinding.commentsHeaderInfoContainer;
             infoHeader = linkPreviewBinding.commentsHeaderInfoHeader;
             linkPreviewLoadingContainer = linkPreviewBinding.commentsHeaderLinkPreviewLoading;
+            linkPreviewContentContainer = linkPreviewBinding.commentsHeaderLinkPreviewContent;
             arxivAbstract = arxivBinding.commentsHeaderArxivAbstract;
             githubContainer = githubBinding.commentsHeaderGithubContainer;
             gitLabContainer = gitLabBinding.commentsHeaderGitlabContainer;
