@@ -61,11 +61,47 @@
             app:singleLineTitle="false"
             app:title="Internal HN link" />
 
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/preference_category"
+        app:title="Link previews">
+
+        <Preference
+            app:icon="@drawable/ic_link_preview_arxiv"
+            app:key="pref_debug_link_preview_arxiv"
+            app:singleLineTitle="false"
+            app:title="arXiv" />
+
+        <Preference
+            app:icon="@drawable/ic_link_preview_github"
+            app:key="pref_debug_link_preview_github"
+            app:singleLineTitle="false"
+            app:title="GitHub" />
+
+        <Preference
+            app:icon="@drawable/ic_link_preview_gitlab"
+            app:key="pref_debug_link_preview_gitlab"
+            app:singleLineTitle="false"
+            app:title="GitLab" />
+
+        <Preference
+            app:icon="@drawable/ic_link_preview_stack_exchange"
+            app:key="pref_debug_link_preview_stack_exchange"
+            app:singleLineTitle="false"
+            app:title="Stack Exchange" />
+
+        <Preference
+            app:icon="@drawable/ic_link_preview_wikipedia"
+            app:key="pref_debug_link_preview_wikipedia"
+            app:singleLineTitle="false"
+            app:title="Wikipedia" />
+
         <Preference
             app:icon="@drawable/ic_link_preview_x"
             app:key="pref_debug_nitter_video"
             app:singleLineTitle="false"
-            app:title="Nitter video" />
+            app:title="Twitter/X" />
 
     </PreferenceCategory>
 
