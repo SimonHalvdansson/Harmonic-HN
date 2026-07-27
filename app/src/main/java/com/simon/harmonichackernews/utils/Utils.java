@@ -76,6 +76,13 @@ public class Utils {
     private static final Pattern HN_ITEM_URL_PATTERN = Pattern.compile(
             "https?://news\\.ycombinator\\.com/item\\?[^\\s<>\"']+",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern LINKIFY_ANCHOR_PATTERN =
+            Pattern.compile("(?is)<a\\b[^>]*>.*?</a>");
+    private static final Pattern LINKIFY_URL_PATTERN = Pattern.compile(
+            "(https?:(?:/{1}|(?:&#x2F;)|(?:&#47;))"
+                    + "(?:/{1}|(?:&#x2F;)|(?:&#47;))"
+                    + "(?=[^\\s<>\"]*\\.)[^\\s<>\"]+)");
+    private static final String LINKIFY_TRAILING_PUNCTUATION = ".,;:!?)";
 
     private static final long SECOND_MILLIS = 1000;
     private static final long MINUTE_MILLIS = 60 * SECOND_MILLIS;
@@ -1635,28 +1642,18 @@ public class Utils {
         if (input == null || input.isEmpty()) return input;
 
         // Existing <a>...</a> blocks: keep as-is
-        Pattern aTag = Pattern.compile("(?is)<a\\b[^>]*>.*?</a>");
-
-        // Accept http(s) with either // or HTML-escaped slashes (&#x2F; or &#47;)
-        // Require a dot in the host. Stop at spaces or angle/quote chars.
-        String slash = "(?:/{1}|(?:&#x2F;)|(?:&#47;))";
-        Pattern url = Pattern.compile(
-                "(https?:" + slash + slash + "(?=[^\\s<>\"]*\\.)[^\\s<>\"]+)"
-        );
-
-        String trailing = ".,;:!?)";
         StringBuilder out = new StringBuilder(input.length());
-        Matcher a = aTag.matcher(input);
+        Matcher a = LINKIFY_ANCHOR_PATTERN.matcher(input);
         int idx = 0;
 
         // Helper-like inline blocks only
         while (a.find()) {
             String segment = input.substring(idx, a.start());
-            Matcher m = url.matcher(segment);
+            Matcher m = LINKIFY_URL_PATTERN.matcher(segment);
             StringBuffer sb = new StringBuffer(segment.length());
 
             while (m.find()) {
-                String rep = getString(m, trailing);
+                String rep = getString(m, LINKIFY_TRAILING_PUNCTUATION);
                 m.appendReplacement(sb, Matcher.quoteReplacement(rep));
             }
             m.appendTail(sb);
@@ -1669,10 +1666,10 @@ public class Utils {
 
         // Tail after last <a>
         String segment = input.substring(idx);
-        Matcher m = url.matcher(segment);
+        Matcher m = LINKIFY_URL_PATTERN.matcher(segment);
         StringBuffer sb = new StringBuffer(segment.length());
         while (m.find()) {
-            String rep = getString(m, trailing);
+            String rep = getString(m, LINKIFY_TRAILING_PUNCTUATION);
             m.appendReplacement(sb, Matcher.quoteReplacement(rep));
         }
         m.appendTail(sb);

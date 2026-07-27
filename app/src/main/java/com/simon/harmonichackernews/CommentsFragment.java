@@ -2248,7 +2248,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (!isCommentsViewActive()) {
                     return;
                 }
-                applyParsedComments(parsedResponse.comments);
+                applyParsedComments(
+                        parsedResponse.comments,
+                        updateHeaderAfterLoad);
 
                 if (!cache && restoreScroll) {
                     // If we're not caching the result, this means we just loaded an old cache.
@@ -2331,7 +2333,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 && allComments != null;
     }
 
-    private void applyParsedComments(List<Comment> parsedComments) {
+    private void applyParsedComments(
+            List<Comment> parsedComments,
+            boolean headerRefreshWillFollow) {
         List<Comment> oldComments = CommentListDiff.copyForDiff(comments);
         Map<Integer, Comment> existingCommentsById = new HashMap<>();
         List<Comment> sourceComments = getAllCommentsSource();
@@ -2365,7 +2369,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         allComments.clear();
         allComments.addAll(nextComments);
-        applyDisplayedComments(getDisplayedCommentsForCurrentFilter(allComments), oldComments);
+        applyDisplayedComments(
+                getDisplayedCommentsForCurrentFilter(allComments),
+                oldComments,
+                !headerRefreshWillFollow);
     }
 
     private List<Comment> getAllCommentsSource() {
@@ -2445,14 +2452,34 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void applyDisplayedComments(List<Comment> nextComments, List<Comment> oldComments) {
-        androidx.recyclerview.widget.DiffUtil.DiffResult diffResult = CommentListDiff.calculateDiff(oldComments, nextComments);
+        applyDisplayedComments(nextComments, oldComments, true);
+    }
+
+    private void applyDisplayedComments(
+            List<Comment> nextComments,
+            List<Comment> oldComments,
+            boolean updateBoundHeader) {
+        boolean initialInsert = oldComments.size() == 1 && !nextComments.isEmpty();
+        androidx.recyclerview.widget.DiffUtil.DiffResult diffResult =
+                initialInsert
+                        ? null
+                        : CommentListDiff.calculateDiff(oldComments, nextComments);
 
         comments.clear();
         comments.addAll(nextComments);
         if (adapter != null) {
             adapter.invalidateCommentLookup();
-            diffResult.dispatchUpdatesTo(adapter);
-            adapter.updateBoundHeaderStoryViews();
+            if (initialInsert) {
+                int insertedCount = nextComments.size() - 1;
+                if (insertedCount > 0) {
+                    adapter.notifyItemRangeInserted(1, insertedCount);
+                }
+            } else {
+                diffResult.dispatchUpdatesTo(adapter);
+            }
+            if (updateBoundHeader) {
+                adapter.updateBoundHeaderStoryViews();
+            }
         }
         updateNavigationVisibility();
     }

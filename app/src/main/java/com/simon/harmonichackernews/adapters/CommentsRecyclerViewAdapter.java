@@ -1668,9 +1668,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             try {
                 afterHeaderRelayout.run();
             } finally {
-                // applyDisplayedComments() refreshes the bound header before the fragment marks
-                // commentsLoaded. Keep suppressing the loading row through that refresh so it
-                // cannot briefly animate back in and push the newly inserted comments down.
+                // Keep suppressing the loading row until comment application and its completion
+                // updates have both run, so an intermediate header refresh cannot briefly animate
+                // the row back in and push the newly inserted comments down.
                 initialCommentsRevealPending = false;
             }
         });

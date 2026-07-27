@@ -593,6 +593,7 @@ public class StoryPreviewImageLoader {
 
     private static List<String> readCacheOrder(SharedPreferences preferences, String orderKey) {
         List<String> orderedIds = new ArrayList<>();
+        Set<String> seenIds = new HashSet<>();
         String order = preferences.getString(orderKey, "");
         if (TextUtils.isEmpty(order)) {
             return orderedIds;
@@ -600,7 +601,7 @@ public class StoryPreviewImageLoader {
 
         String[] storyIds = order.split(",");
         for (String storyId : storyIds) {
-            if (!TextUtils.isEmpty(storyId) && !orderedIds.contains(storyId)) {
+            if (!TextUtils.isEmpty(storyId) && seenIds.add(storyId)) {
                 orderedIds.add(storyId);
             }
         }
