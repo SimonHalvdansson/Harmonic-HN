@@ -38,17 +38,6 @@ public class FontUtils {
     private static final FontSizes LINK_SUMMARY_META_SIZES = STORY_META_SIZES;
     private static final FontSizes LINK_SUMMARY_BODY_SIZES = COMMENT_TEXT_SIZES;
     private static final FontSizes LINK_SUMMARY_ERROR_SIZES = COMMENT_TEXT_SIZES.plus(-1f);
-    private static final FontSizes LINK_SUMMARY_BUTTON_SIZES = new FontSizes(
-            14,
-            13.5f,
-            14,
-            14,
-            13,
-            13,
-            13,
-            14,
-            14);
-
     public static Typeface activeRegular;
     public static Typeface activeBold;
 
@@ -188,10 +177,6 @@ public class FontUtils {
 
     public static void setLinkSummaryErrorTypeface(TextView textView) {
         setTypeface(textView, false, LINK_SUMMARY_ERROR_SIZES);
-    }
-
-    public static void setLinkSummaryButtonTypeface(TextView textView) {
-        setTypeface(textView, true, LINK_SUMMARY_BUTTON_SIZES);
     }
 
     private static void setMultipleTypefaces(boolean bold, FontSizes sizes, TextView... textViews) {

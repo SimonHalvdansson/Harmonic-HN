@@ -1031,8 +1031,6 @@ final class LinkSummaryOverlayController {
         FontUtils.setLinkSummaryBodyTypeface(referenceBinding.referenceLinkDescription);
         FontUtils.setLinkSummaryReferenceTitleTypeface(referenceBinding.referenceLinkErrorTitle);
         FontUtils.setLinkSummaryErrorTypeface(referenceBinding.referenceLinkError);
-        FontUtils.setLinkSummaryButtonTypeface(referenceBinding.referenceLinkRetry);
-        FontUtils.setLinkSummaryButtonTypeface(referenceBinding.referenceLinkOpen);
     }
 
     @SuppressLint("ClickableViewAccessibility")
