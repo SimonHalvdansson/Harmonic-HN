@@ -326,6 +326,19 @@ final class LinkSummaryOverlayController {
         default @Nullable View findLinkSummaryImageSourceView() { return null; }
         default @Nullable Integer getLinkSummaryImageBackgroundColor() { return null; }
         default void setLinkSummaryImageSourceSuppressed(boolean suppressed) { }
+        default int resolveLinkSummarySourceColor(@Nullable View source) {
+            View current = source;
+            while (current != null) {
+                if (current instanceof MaterialCardView) {
+                    return ((MaterialCardView) current)
+                            .getCardBackgroundColor()
+                            .getDefaultColor();
+                }
+                ViewParent parent = current.getParent();
+                current = parent instanceof View ? (View) parent : null;
+            }
+            return PreviewImageTintUtils.getTintBaseColor(requireLinkSummaryContext());
+        }
         default int resolveStoryCardBackgroundColor(Story story) {
             return PreviewImageTintUtils.getTintBaseColor(requireLinkSummaryContext());
         }
@@ -505,6 +518,7 @@ final class LinkSummaryOverlayController {
     private ReferenceLinkSummaryContentBinding referenceBinding;
     private ImageOnlyOverlayContentBinding imageBinding;
     private View sourceView;
+    @Nullable private Integer sourceContainerColorOverride;
     private LinkPositionSourceView linkPositionSourceView;
     private ImageView storyImageSourceView;
     private View storyTitleSourceView;
@@ -975,7 +989,8 @@ final class LinkSummaryOverlayController {
     @SuppressLint("ClickableViewAccessibility")
     void showReference(CollectedReferenceLinks.ReferenceLink link, @Nullable View source) {
         Context context = host.getLinkSummaryContext();
-        if (context == null || link == null || TextUtils.isEmpty(link.getUrl()) || !prepareOverlay(source)) {
+        if (context == null || link == null || TextUtils.isEmpty(link.getUrl())
+                || !prepareOverlay(source, null, true)) {
             return;
         }
         visibleUrl = link.getUrl();
@@ -1002,7 +1017,7 @@ final class LinkSummaryOverlayController {
             @Nullable RectF sourceBounds) {
         Context context = host.getLinkSummaryContext();
         if (context == null || TextUtils.isEmpty(url)
-                || !prepareOverlay(source, sourceBounds)) {
+                || !prepareOverlay(source, sourceBounds, sourceBounds == null)) {
             return;
         }
         visibleUrl = url;
@@ -1142,22 +1157,27 @@ final class LinkSummaryOverlayController {
 
     @SuppressLint("ClickableViewAccessibility")
     private boolean prepareOverlay(@Nullable View source) {
-        return prepareOverlay(source, null);
+        return prepareOverlay(source, null, false);
     }
 
     @SuppressLint("ClickableViewAccessibility")
     private boolean prepareOverlay(
             @Nullable View source,
-            @Nullable RectF sourceBounds) {
+            @Nullable RectF sourceBounds,
+            boolean useContextualSourceColor) {
         Context context = host.getLinkSummaryContext();
         ViewGroup overlayHost = host.getLinkSummaryOverlayHost();
         if (context == null || overlayHost == null) {
             return false;
         }
         removeNow();
+        int backgroundColor = resolveDialogBackground(context, source);
         LinkPositionSourceView linkSource = createLinkPositionSource(
                 overlayHost, source, sourceBounds);
         sourceView = linkSource == null ? source : linkSource;
+        sourceContainerColorOverride = useContextualSourceColor
+                ? host.resolveLinkSummarySourceColor(source)
+                : null;
         dismissing = false;
         enterTransitionStarted = false;
         enterTransitionComplete = false;
@@ -1168,7 +1188,7 @@ final class LinkSummaryOverlayController {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         cancelCurrentListTouch(overlayHost);
         card = binding.linkSummaryCard;
-        card.setCardBackgroundColor(resolveDialogBackground(context, source));
+        card.setCardBackgroundColor(backgroundColor);
         card.setStrokeWidth(0);
         card.setStrokeColor(Color.TRANSPARENT);
         configureOverlayInsets(binding.linkSummaryContent);
@@ -2765,6 +2785,9 @@ final class LinkSummaryOverlayController {
     }
 
     private int getContainerColor(View view) {
+        if (sourceContainerColorOverride != null && view == sourceView) {
+            return sourceContainerColorOverride;
+        }
         return view instanceof LinkPositionSourceView
                 ? Color.TRANSPARENT
                 : view instanceof MaterialCardView
@@ -2847,6 +2870,7 @@ final class LinkSummaryOverlayController {
         }
         if (overlay == null) {
             removeLinkPositionSource();
+            sourceContainerColorOverride = null;
             return;
         }
         boolean wasShowingImage = imageBinding != null;
@@ -2867,7 +2891,8 @@ final class LinkSummaryOverlayController {
         storyPager = null; storyPagerRecyclerView = null;
         storyPagerAdapter = null; currentStoryPage = null;
         referenceBinding = null; imageBinding = null;
-        sourceView = null; storyImageSourceView = null; storyTitleSourceView = null;
+        sourceView = null; sourceContainerColorOverride = null;
+        storyImageSourceView = null; storyTitleSourceView = null;
         storySummarySourceView = null;
         storyMetaSourceView = null;
         storyImageSourceAlpha = 1f; storyTitleSourceAlpha = 1f;

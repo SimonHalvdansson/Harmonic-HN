@@ -4382,6 +4382,21 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         return currentHeaderContentBackgroundColor;
     }
 
+    public boolean isBoundHeaderView(@Nullable View view) {
+        if (view == null || boundHeaderViewHolder == null) {
+            return false;
+        }
+        View current = view;
+        while (current != null) {
+            if (current == boundHeaderViewHolder.itemView) {
+                return true;
+            }
+            ViewParent parent = current.getParent();
+            current = parent instanceof View ? (View) parent : null;
+        }
+        return false;
+    }
+
     public void setHeaderPreviewImageSuppressed(boolean suppressed) {
         headerPreviewImageSuppressed = suppressed;
         if (boundHeaderViewHolder == null

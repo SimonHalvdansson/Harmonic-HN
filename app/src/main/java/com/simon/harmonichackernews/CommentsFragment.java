@@ -313,6 +313,20 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
 
                 @Override
+                public int resolveLinkSummarySourceColor(@Nullable View source) {
+                    if (adapter != null && adapter.isBoundHeaderView(source)) {
+                        Integer headerColor = adapter.getCurrentHeaderContentBackgroundColor();
+                        if (headerColor != null) {
+                            return headerColor;
+                        }
+                    }
+                    Context context = requireLinkSummaryContext();
+                    return ContextCompat.getColor(
+                            context,
+                            ThemeUtils.getBackgroundColorResource(context));
+                }
+
+                @Override
                 public void stopLinkSummaryListScroll() {
                     if (recyclerView != null) {
                         recyclerView.stopScroll();
