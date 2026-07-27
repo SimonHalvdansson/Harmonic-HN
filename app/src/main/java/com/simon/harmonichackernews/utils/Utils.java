@@ -1640,6 +1640,7 @@ public class Utils {
 
     public static String linkify(String input) {
         if (input == null || input.isEmpty()) return input;
+        if (!input.contains("http:") && !input.contains("https:")) return input;
 
         // Existing <a>...</a> blocks: keep as-is
         StringBuilder out = new StringBuilder(input.length());
