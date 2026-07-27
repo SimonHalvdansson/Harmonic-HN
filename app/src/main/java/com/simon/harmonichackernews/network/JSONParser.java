@@ -6,7 +6,6 @@ import android.util.JsonToken;
 
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.Story;
-import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.StoryUpdate;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -37,13 +36,11 @@ public class JSONParser {
     private static final String KEY_PREVIEW_IMAGE_TINT_SOURCE_URL = "preview_image_tint_source_url";
     private static final String KEY_PREVIEW_IMAGE_TINT_BASE_COLOR = "preview_image_tint_base_color";
     private static final String KEY_PREVIEW_IMAGE_TINT_MODE = "preview_image_tint_mode";
-    private static final String KEY_PREVIEW_IMAGE_TINT_VERSION = "preview_image_tint_version";
     private static final String KEY_FAVICON_TINT_COLOR = "favicon_tint_color";
     private static final String KEY_FAVICON_TINT_COLOR_LOADED = "favicon_tint_color_loaded";
     private static final String KEY_FAVICON_TINT_SOURCE_URL = "favicon_tint_source_url";
     private static final String KEY_FAVICON_TINT_BASE_COLOR = "favicon_tint_base_color";
     private static final String KEY_FAVICON_TINT_MODE = "favicon_tint_mode";
-    private static final String KEY_FAVICON_TINT_VERSION = "favicon_tint_version";
 
     private static boolean hasOnlyTwoTopLevelFields(JSONObject jsonObject) {
         JSONArray names = jsonObject.names();
@@ -658,7 +655,6 @@ public class JSONParser {
 
             if (story.previewImageTintColorLoaded && !TextUtils.isEmpty(story.previewImageTintSourceUrl)) {
                 summary.put(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, true);
-                summary.put(KEY_PREVIEW_IMAGE_TINT_VERSION, PreviewImageTintUtils.TINT_ALGORITHM_VERSION);
                 summary.put(KEY_PREVIEW_IMAGE_TINT_COLOR, story.previewImageTintColor);
                 summary.put(KEY_PREVIEW_IMAGE_TINT_SOURCE_URL, story.previewImageTintSourceUrl);
                 summary.put(KEY_PREVIEW_IMAGE_TINT_BASE_COLOR, story.previewImageTintBaseColor);
@@ -673,12 +669,10 @@ public class JSONParser {
                 summary.remove(KEY_PREVIEW_IMAGE_TINT_SOURCE_URL);
                 summary.remove(KEY_PREVIEW_IMAGE_TINT_BASE_COLOR);
                 summary.remove(KEY_PREVIEW_IMAGE_TINT_MODE);
-                summary.remove(KEY_PREVIEW_IMAGE_TINT_VERSION);
             }
 
             if (story.faviconTintColorLoaded && !TextUtils.isEmpty(story.faviconTintSourceUrl)) {
                 summary.put(KEY_FAVICON_TINT_COLOR_LOADED, true);
-                summary.put(KEY_FAVICON_TINT_VERSION, PreviewImageTintUtils.TINT_ALGORITHM_VERSION);
                 summary.put(KEY_FAVICON_TINT_COLOR, story.faviconTintColor);
                 summary.put(KEY_FAVICON_TINT_SOURCE_URL, story.faviconTintSourceUrl);
                 summary.put(KEY_FAVICON_TINT_BASE_COLOR, story.faviconTintBaseColor);
@@ -693,7 +687,6 @@ public class JSONParser {
                 summary.remove(KEY_FAVICON_TINT_SOURCE_URL);
                 summary.remove(KEY_FAVICON_TINT_BASE_COLOR);
                 summary.remove(KEY_FAVICON_TINT_MODE);
-                summary.remove(KEY_FAVICON_TINT_VERSION);
             }
 
             return summary.toString();
@@ -773,7 +766,6 @@ public class JSONParser {
         copyString(source, destination, KEY_PREVIEW_IMAGE_TINT_SOURCE_URL);
         copyInt(source, destination, KEY_PREVIEW_IMAGE_TINT_BASE_COLOR);
         copyString(source, destination, KEY_PREVIEW_IMAGE_TINT_MODE);
-        copyInt(source, destination, KEY_PREVIEW_IMAGE_TINT_VERSION);
     }
 
     private static void copyFaviconTintSummaryFields(JSONObject source, JSONObject destination) throws JSONException {
@@ -782,7 +774,6 @@ public class JSONParser {
         copyString(source, destination, KEY_FAVICON_TINT_SOURCE_URL);
         copyInt(source, destination, KEY_FAVICON_TINT_BASE_COLOR);
         copyString(source, destination, KEY_FAVICON_TINT_MODE);
-        copyInt(source, destination, KEY_FAVICON_TINT_VERSION);
     }
 
     private static void applyPreviewImageSummaryFields(Story story, JSONObject item) {
@@ -798,9 +789,7 @@ public class JSONParser {
                     TextUtils.isEmpty(story.previewImageUrl));
         }
 
-        if (item.optInt(KEY_PREVIEW_IMAGE_TINT_VERSION, 0)
-                == PreviewImageTintUtils.TINT_ALGORITHM_VERSION
-                && item.optBoolean(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, false)
+        if (item.optBoolean(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, false)
                 && !TextUtils.isEmpty(story.previewImageUrl)) {
             String tintSourceUrl = item.optString(KEY_PREVIEW_IMAGE_TINT_SOURCE_URL, story.previewImageUrl);
             story.previewImageTintColor = item.optInt(KEY_PREVIEW_IMAGE_TINT_COLOR, story.previewImageTintColor);
@@ -812,9 +801,7 @@ public class JSONParser {
     }
 
     private static void applyFaviconTintSummaryFields(Story story, JSONObject item) {
-        if (item.optInt(KEY_FAVICON_TINT_VERSION, 0)
-                != PreviewImageTintUtils.TINT_ALGORITHM_VERSION
-                || !item.optBoolean(KEY_FAVICON_TINT_COLOR_LOADED, false)) {
+        if (!item.optBoolean(KEY_FAVICON_TINT_COLOR_LOADED, false)) {
             return;
         }
 

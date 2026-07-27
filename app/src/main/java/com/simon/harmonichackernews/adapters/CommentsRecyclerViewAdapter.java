@@ -2622,8 +2622,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 context,
                 story.id,
                 faviconUrl,
-                baseColor,
-                paletteTintMode);
+                baseColor);
         if (tintColor == null) {
             return;
         }
@@ -2650,7 +2649,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     story.id,
                     story.previewImageTintSourceUrl,
                     story.previewImageTintBaseColor,
-                    story.previewImageTintMode,
                     story.previewImageTintColor);
         }
         if (story.faviconTintColorLoaded && !TextUtils.isEmpty(story.faviconTintSourceUrl)) {
@@ -2659,7 +2657,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     story.id,
                     story.faviconTintSourceUrl,
                     story.faviconTintBaseColor,
-                    story.faviconTintMode,
                     story.faviconTintColor);
         }
     }
@@ -2728,8 +2725,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 context,
                 story.id,
                 story.previewImageUrl,
-                baseColor,
-                paletteTintMode);
+                baseColor);
         return tintColor != null
                 && PreviewImageTintUtils.applyCachedStoryPreviewImageTintColor(
                         story,

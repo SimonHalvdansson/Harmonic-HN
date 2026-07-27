@@ -34,7 +34,7 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        app:title="History"
+        app:title="Storage"
         android:layout="@layout/preference_category">
 
         <Preference
@@ -48,6 +48,12 @@
             app:key="pref_clear_post_cache"
             app:title="Clear post cache"
             app:icon="@drawable/ic_cached" />
+
+        <Preference
+            app:singleLineTitle="false"
+            app:key="pref_clear_tint_cache"
+            app:title="Clear tint cache"
+            app:icon="@drawable/ic_palette" />
 
     </PreferenceCategory>
 

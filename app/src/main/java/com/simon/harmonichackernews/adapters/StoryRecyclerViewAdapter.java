@@ -1106,8 +1106,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 context,
                 story.id,
                 story.previewImageUrl,
-                baseColor,
-                paletteTintMode);
+                baseColor);
         if (tintColor != null) {
             PreviewImageTintUtils.applyCachedStoryPreviewImageTintColor(
                     story,
@@ -1137,8 +1136,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 context,
                 story.id,
                 faviconUrl,
-                baseColor,
-                paletteTintMode);
+                baseColor);
         if (tintColor == null) {
             return;
         }
@@ -1164,7 +1162,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     story.id,
                     story.previewImageTintSourceUrl,
                     story.previewImageTintBaseColor,
-                    story.previewImageTintMode,
                     story.previewImageTintColor);
         }
         if (story.faviconTintColorLoaded && !TextUtils.isEmpty(story.faviconTintSourceUrl)) {
@@ -1173,7 +1170,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     story.id,
                     story.faviconTintSourceUrl,
                     story.faviconTintBaseColor,
-                    story.faviconTintMode,
                     story.faviconTintColor);
         }
     }

@@ -19,9 +19,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
+import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
+import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -47,6 +49,7 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
     private Preference importBookmarksPreference;
     private Preference clearClickedStoriesPreference;
     private Preference clearPostCachePreference;
+    private Preference clearTintCachePreference;
     private boolean overwriteBookmarksOnImport = true;
 
     @Override
@@ -126,6 +129,7 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
         importBookmarksPreference = findPreference("pref_import_bookmarks");
         clearClickedStoriesPreference = findPreference("pref_clear_clicked_stories");
         clearPostCachePreference = findPreference("pref_clear_post_cache");
+        clearTintCachePreference = findPreference("pref_clear_tint_cache");
 
         if (enableBookmarksPreference != null) {
             enableBookmarksPreference.setOnPreferenceChangeListener((preference, newValue) -> {
@@ -206,6 +210,13 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
                         requireContext());
             }
 
+            return false;
+        });
+
+        clearTintCachePreference.setOnPreferenceClickListener(preference -> {
+            PreviewImageTintUtils.clearTintColorCaches(requireContext());
+            updateDataSummaries();
+            Utils.toast("Tint cache cleared", requireContext());
             return false;
         });
 
@@ -306,7 +317,8 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
     private void updateDataSummaries() {
         if (getContext() == null
                 || clearClickedStoriesPreference == null
-                || clearPostCachePreference == null) {
+                || clearPostCachePreference == null
+                || clearTintCachePreference == null) {
             return;
         }
 
@@ -314,6 +326,11 @@ public class DataStoragePreferenceFragment extends BaseSettingsFragment {
         clearClickedStoriesPreference.setSummary(null);
         clearPostCachePreference.setTitle("Clear post cache (" + Utils.getCachedPostCount(requireContext()) + ")");
         clearPostCachePreference.setSummary(null);
+        clearTintCachePreference.setTitle(
+                "Clear tint cache ("
+                        + StoryPreviewImageLoader.getCachedPreviewImageTintColorCount(requireContext())
+                        + ")");
+        clearTintCachePreference.setSummary(null);
     }
 
     private int getClickedStoryCount() {

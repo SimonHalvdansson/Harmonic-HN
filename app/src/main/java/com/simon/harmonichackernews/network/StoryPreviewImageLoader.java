@@ -10,8 +10,6 @@ import androidx.annotation.Nullable;
 
 import org.json.JSONObject;
 
-import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
-import com.simon.harmonichackernews.utils.SettingsUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -50,6 +48,7 @@ public class StoryPreviewImageLoader {
 
     private static final int MAX_CACHE_SIZE = 300;
     private static final int MAX_DISK_CACHE_SIZE = 1000;
+    private static final int LEGACY_TINT_CACHE_KEYS_REMOVED_PER_SAVE = 8;
     private static final String PREVIEW_IMAGE_CACHE_PREFERENCES =
             "com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES";
     private static final String KEY_PREVIEW_IMAGE_CACHE_ORDER =
@@ -524,7 +523,6 @@ public class StoryPreviewImageLoader {
             int storyId,
             String imageUrl,
             int baseColor,
-            String paletteTintMode,
             int tintColor) {
         if (context == null || storyId <= 0 || TextUtils.isEmpty(imageUrl)) {
             return;
@@ -532,13 +530,25 @@ public class StoryPreviewImageLoader {
 
         synchronized (StoryPreviewImageLoader.class) {
             SharedPreferences preferences = getPreviewImageCachePreferences(context);
-            String tintColorKey = getPreviewImageTintColorKey(storyId, imageUrl, baseColor, paletteTintMode);
+            String tintColorKey = getPreviewImageTintColorKey(storyId, imageUrl, baseColor);
             List<String> orderedKeys = readPreviewImageTintCacheOrder(preferences);
+            SharedPreferences.Editor editor = preferences.edit();
+            int legacyKeysRemoved = 0;
+            for (java.util.Iterator<String> iterator = orderedKeys.iterator(); iterator.hasNext();) {
+                if (legacyKeysRemoved >= LEGACY_TINT_CACHE_KEYS_REMOVED_PER_SAVE) {
+                    break;
+                }
+                String orderedKey = iterator.next();
+                if (!isCurrentPreviewImageTintColorKey(orderedKey)) {
+                    iterator.remove();
+                    editor.remove(orderedKey);
+                    legacyKeysRemoved++;
+                }
+            }
             orderedKeys.remove(tintColorKey);
             orderedKeys.add(tintColorKey);
 
-            SharedPreferences.Editor editor = preferences.edit()
-                    .putInt(tintColorKey, tintColor);
+            editor.putInt(tintColorKey, tintColor);
             while (orderedKeys.size() > MAX_DISK_CACHE_SIZE) {
                 editor.remove(orderedKeys.remove(0));
             }
@@ -551,15 +561,14 @@ public class StoryPreviewImageLoader {
             Context context,
             int storyId,
             String imageUrl,
-            int baseColor,
-            String paletteTintMode) {
+            int baseColor) {
         if (context == null || storyId <= 0 || TextUtils.isEmpty(imageUrl)) {
             return null;
         }
 
         synchronized (StoryPreviewImageLoader.class) {
             SharedPreferences preferences = getPreviewImageCachePreferences(context);
-            String key = getPreviewImageTintColorKey(storyId, imageUrl, baseColor, paletteTintMode);
+            String key = getPreviewImageTintColorKey(storyId, imageUrl, baseColor);
             if (!preferences.contains(key)) {
                 return null;
             }
@@ -617,6 +626,39 @@ public class StoryPreviewImageLoader {
                 .apply();
     }
 
+    public static void clearCachedPreviewImageTintColors(Context context) {
+        if (context == null) {
+            return;
+        }
+
+        synchronized (StoryPreviewImageLoader.class) {
+            SharedPreferences preferences = getPreviewImageCachePreferences(context);
+            if (!preferences.contains(KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER)) {
+                return;
+            }
+
+            SharedPreferences.Editor editor = preferences.edit()
+                    .remove(KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER);
+            for (String key : preferences.getAll().keySet()) {
+                if (key.startsWith(KEY_PREVIEW_IMAGE_TINT_COLOR)) {
+                    editor.remove(key);
+                }
+            }
+            editor.apply();
+        }
+    }
+
+    public static int getCachedPreviewImageTintColorCount(Context context) {
+        if (context == null) {
+            return 0;
+        }
+
+        synchronized (StoryPreviewImageLoader.class) {
+            return readPreviewImageTintCacheOrder(
+                    getPreviewImageCachePreferences(context)).size();
+        }
+    }
+
     private static SharedPreferences getPreviewImageCachePreferences(Context context) {
         return context.getSharedPreferences(PREVIEW_IMAGE_CACHE_PREFERENCES, Context.MODE_PRIVATE);
     }
@@ -643,10 +685,9 @@ public class StoryPreviewImageLoader {
     private static String getPreviewImageTintColorKey(
             int storyId,
             String imageUrl,
-            int baseColor,
-            String paletteTintMode) {
+            int baseColor) {
         return KEY_PREVIEW_IMAGE_TINT_COLOR
-                + getPreviewImageTintColorCacheId(storyId, imageUrl, baseColor, paletteTintMode);
+                + getPreviewImageTintColorCacheId(storyId, imageUrl, baseColor);
     }
 
     public static LinkSummaryLoader.Result getCachedLinkSummary(
@@ -757,18 +798,32 @@ public class StoryPreviewImageLoader {
     private static String getPreviewImageTintColorCacheId(
             int storyId,
             String imageUrl,
-            int baseColor,
-            String paletteTintMode) {
+            int baseColor) {
         return ""
                 + storyId
                 + ":"
-                + PreviewImageTintUtils.TINT_ALGORITHM_VERSION
-                + ":"
                 + baseColor
                 + ":"
-                + SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
-                + ":"
                 + sha256Hex(imageUrl);
+    }
+
+    private static boolean isCurrentPreviewImageTintColorKey(String key) {
+        if (TextUtils.isEmpty(key) || !key.startsWith(KEY_PREVIEW_IMAGE_TINT_COLOR)) {
+            return false;
+        }
+
+        String cacheId = key.substring(KEY_PREVIEW_IMAGE_TINT_COLOR.length());
+        String[] parts = cacheId.split(":", -1);
+        if (parts.length != 3 || TextUtils.isEmpty(parts[2])) {
+            return false;
+        }
+        try {
+            Integer.parseInt(parts[0]);
+            Integer.parseInt(parts[1]);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private static String sha256Hex(String value) {

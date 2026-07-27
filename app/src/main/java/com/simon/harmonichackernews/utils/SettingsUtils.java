@@ -280,10 +280,20 @@ public class SettingsUtils {
     }
 
     public static void setPreferredPaletteTintMode(Context ctx, String mode) {
+        String previousConfig = getPreferredPaletteTintConfigKey(ctx);
+        String sanitizedMode = sanitizePaletteTintMode(mode);
         PreferenceManager.getDefaultSharedPreferences(ctx)
                 .edit()
-                .putString(PREF_PALETTE_TINT_MODE, sanitizePaletteTintMode(mode))
+                .putString(PREF_PALETTE_TINT_MODE, sanitizedMode)
                 .apply();
+        String updatedConfig = buildPaletteTintConfigKey(
+                sanitizedMode,
+                getPreferredPaletteTintStrength(ctx),
+                getPreferredPaletteTintColorfulness(ctx),
+                getPreferredPaletteTintTone(ctx));
+        if (!TextUtils.equals(previousConfig, updatedConfig)) {
+            PreviewImageTintUtils.clearTintColorCaches(ctx);
+        }
     }
 
     public static void setPreferredPaletteTintSettings(
@@ -292,6 +302,8 @@ public class SettingsUtils {
             int strength,
             int colorfulness,
             int tone) {
+        String previousConfig = getPreferredPaletteTintConfigKey(ctx);
+        String updatedConfig = buildPaletteTintConfigKey(mode, strength, colorfulness, tone);
         PreferenceManager.getDefaultSharedPreferences(ctx)
                 .edit()
                 .putString(PREF_PALETTE_TINT_MODE, sanitizePaletteTintMode(mode))
@@ -299,9 +311,13 @@ public class SettingsUtils {
                 .putInt(PREF_PALETTE_TINT_COLORFULNESS, clampPaletteTintColorfulness(colorfulness))
                 .putInt(PREF_PALETTE_TINT_TONE, clampPaletteTintTone(tone))
                 .apply();
+        if (!TextUtils.equals(previousConfig, updatedConfig)) {
+            PreviewImageTintUtils.clearTintColorCaches(ctx);
+        }
     }
 
     public static void clearPreferredPaletteTintMode(Context ctx) {
+        String previousConfig = getPreferredPaletteTintConfigKey(ctx);
         PreferenceManager.getDefaultSharedPreferences(ctx)
                 .edit()
                 .remove(PREF_PALETTE_TINT_MODE)
@@ -309,6 +325,14 @@ public class SettingsUtils {
                 .remove(PREF_PALETTE_TINT_COLORFULNESS)
                 .remove(PREF_PALETTE_TINT_TONE)
                 .apply();
+        String defaultConfig = buildPaletteTintConfigKey(
+                PALETTE_TINT_DEFAULT,
+                DEFAULT_PALETTE_TINT_STRENGTH,
+                DEFAULT_PALETTE_TINT_COLORFULNESS,
+                DEFAULT_PALETTE_TINT_TONE);
+        if (!TextUtils.equals(previousConfig, defaultConfig)) {
+            PreviewImageTintUtils.clearTintColorCaches(ctx);
+        }
     }
 
     public static int getPreferredPaletteTintStrength(Context ctx) {

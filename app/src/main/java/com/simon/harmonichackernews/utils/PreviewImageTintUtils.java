@@ -14,9 +14,9 @@ import androidx.palette.graphics.Palette;
 import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 
 public class PreviewImageTintUtils {
-    public static final int TINT_ALGORITHM_VERSION = 2;
     private static final int TINT_SAMPLE_SIZE = 96;
     private static final float MIN_CHROMATIC_SOURCE_SATURATION = 0.05f;
     private static final float CARD_TINT_ALPHA_LIGHT = 0.24f;
@@ -44,6 +44,11 @@ public class PreviewImageTintUtils {
                         context,
                         com.google.android.material.R.attr.colorSurfaceContainerHigh,
                         Color.TRANSPARENT));
+    }
+
+    public static void clearTintColorCaches(Context context) {
+        StoryPreviewImageMemoryCache.clearTintColors();
+        StoryPreviewImageLoader.clearCachedPreviewImageTintColors(context);
     }
 
     public static int calculateCardTint(int baseColor, Drawable drawable) {
@@ -121,8 +126,7 @@ public class PreviewImageTintUtils {
         Integer cachedTintColor = StoryPreviewImageMemoryCache.getTintColor(
                 story.id,
                 imageUrl,
-                baseColor,
-                safePaletteTintMode);
+                baseColor);
         if (cachedTintColor != null) {
             return setCurrentStoryPreviewImageTintColor(
                     story,
@@ -134,7 +138,7 @@ public class PreviewImageTintUtils {
 
         try {
             int tintColor = calculateCardTint(baseColor, drawable, safePaletteTintMode);
-            StoryPreviewImageMemoryCache.putTintColor(story.id, imageUrl, baseColor, safePaletteTintMode, tintColor);
+            StoryPreviewImageMemoryCache.putTintColor(story.id, imageUrl, baseColor, tintColor);
             return setCurrentStoryPreviewImageTintColor(
                     story,
                     imageUrl,
@@ -166,8 +170,7 @@ public class PreviewImageTintUtils {
         Integer cachedTintColor = StoryPreviewImageMemoryCache.getTintColor(
                 story.id,
                 story.previewImageUrl,
-                baseColor,
-                safePaletteTintMode);
+                baseColor);
         if (cachedTintColor == null) {
             return false;
         }
@@ -192,7 +195,7 @@ public class PreviewImageTintUtils {
         }
 
         String safePaletteTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode);
-        StoryPreviewImageMemoryCache.putTintColor(story.id, imageUrl, baseColor, safePaletteTintMode, tintColor);
+        StoryPreviewImageMemoryCache.putTintColor(story.id, imageUrl, baseColor, tintColor);
         return setCurrentStoryPreviewImageTintColor(
                 story,
                 imageUrl,
