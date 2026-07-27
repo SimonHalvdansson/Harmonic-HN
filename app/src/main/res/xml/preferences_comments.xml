@@ -94,7 +94,7 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        app:title="Interaction"
+        app:title="Interactions"
         android:layout="@layout/preference_category">
 
         <SwitchPreferenceCompat
@@ -110,14 +110,10 @@
             app:icon="@drawable/ic_minimize"
             app:title="Auto-collapse top level comments" />
 
-        <SwitchPreferenceCompat
-            app:singleLineTitle="false"
+        <com.simon.harmonichackernews.settings.CommentTapActionPreference
             app:key="pref_comments_swap_long"
             app:defaultValue="false"
-            app:summaryOn="Current: Tap for options"
-            app:summaryOff="Current: Tap to hide/expand"
-            app:icon="@drawable/ic_touch_app"
-            app:title="Swap tap/long press behavior" />
+            app:title="Comment tap action" />
 
         <SwitchPreferenceCompat
             app:singleLineTitle="false"
