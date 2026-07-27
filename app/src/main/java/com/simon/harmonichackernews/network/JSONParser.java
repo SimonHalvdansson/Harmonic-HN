@@ -27,6 +27,8 @@ public class JSONParser {
 
     public final static String ALGOLIA_ERROR_STRING = "{\"status\":404,\"error\":\"Not Found\"}";
     private static final String JSON_NULL_LITERAL = "null";
+    private static final String[] PDF_SUFFIXES = {" [pdf]", "[pdf]", " (pdf)", "(pdf)"};
+    private static final String[] VIDEO_SUFFIXES = {" [video]", "[video]", " (video)", "(video)"};
     private static final int CACHED_STORY_SUMMARY_VERSION = 1;
     private static final String KEY_PREVIEW_IMAGE_URL = "preview_image_url";
     private static final String KEY_PREVIEW_IMAGE_URL_LOADED = "preview_image_url_loaded";
@@ -48,13 +50,12 @@ public class JSONParser {
     }
 
     public static List<Story> algoliaJsonToStories(String response) throws JSONException {
-        List<Story> stories = new ArrayList<>();
-
         JSONObject parentObject = new JSONObject(response);
-
         JSONArray hits = parentObject.getJSONArray("hits");
+        int hitCount = hits.length();
+        List<Story> stories = new ArrayList<>(hitCount);
 
-        for (int i = 0; i < hits.length(); i++) {
+        for (int i = 0; i < hitCount; i++) {
             JSONObject hit = hits.getJSONObject(i);
 
             Story story = new Story();
@@ -71,16 +72,25 @@ public class JSONParser {
             story.loadingFailed = false;
             story.clicked = false;
 
-            if (hit.has("url") && !hit.getString("url").equals(JSON_NULL_LITERAL) && !hit.getString("url").isEmpty()) {
-                story.url = hit.getString("url");
-                story.isLink = true;
+            if (hit.has("url")) {
+                String url = hit.getString("url");
+                if (!url.equals(JSON_NULL_LITERAL) && !url.isEmpty()) {
+                    story.url = url;
+                    story.isLink = true;
+                } else {
+                    story.url = "https://news.ycombinator.com/item?id=" + story.id;
+                    story.isLink = false;
+                }
             } else {
                 story.url = "https://news.ycombinator.com/item?id=" + story.id;
                 story.isLink = false;
             }
 
-            if (hit.has("story_text") && !hit.getString("story_text").equals(JSON_NULL_LITERAL)) {
-                updateStoryText(story, hit.getString("story_text"));
+            if (hit.has("story_text")) {
+                String storyText = hit.getString("story_text");
+                if (!storyText.equals(JSON_NULL_LITERAL)) {
+                    updateStoryText(story, storyText);
+                }
             }
 
             if (isComment) {
@@ -89,9 +99,14 @@ public class JSONParser {
                 story.commentMasterTitle = hit.getString("story_title");
                 story.commentMasterId = hit.getInt("story_id");
                 story.parentId = hit.optInt("parent_id", 0);
-                if (hit.has("story_url") && !hit.getString("story_url").equals(JSON_NULL_LITERAL)) {
-                    story.commentMasterUrl = hit.getString("story_url");
-                    story.isLink = true;
+                if (hit.has("story_url")) {
+                    String storyUrl = hit.getString("story_url");
+                    if (!storyUrl.equals(JSON_NULL_LITERAL)) {
+                        story.commentMasterUrl = storyUrl;
+                        story.isLink = true;
+                    } else {
+                        story.isLink = false;
+                    }
                 } else {
                     story.isLink = false;
                 }
@@ -266,12 +281,10 @@ public class JSONParser {
         story.pdfTitle = null;
         story.videoTitle = null;
 
-        String[] pdfSuffixes = {" [pdf]", "[pdf]", " (pdf)", "(pdf)"};
-        String[] videoSuffixes = {" [video]", "[video]", " (video)", "(video)"};
-        if (endsWithIgnoreCase(story.url, ".pdf") || hasTitleSuffix(story.title, pdfSuffixes)) {
-            story.pdfTitle = stripTitleSuffix(story.title, pdfSuffixes);
-        } else if (hasTitleSuffix(story.title, videoSuffixes)) {
-            story.videoTitle = stripTitleSuffix(story.title, videoSuffixes);
+        if (endsWithIgnoreCase(story.url, ".pdf") || hasTitleSuffix(story.title, PDF_SUFFIXES)) {
+            story.pdfTitle = stripTitleSuffix(story.title, PDF_SUFFIXES);
+        } else if (hasTitleSuffix(story.title, VIDEO_SUFFIXES)) {
+            story.videoTitle = stripTitleSuffix(story.title, VIDEO_SUFFIXES);
         }
     }
 
@@ -866,21 +879,22 @@ public class JSONParser {
         if (input == null || input.isEmpty()) {
             return input;
         }
-
         // Linkify first, so we don't have to deal with &nbsp; from escapePreBlockWhitespace
         input = Utils.linkify(input);
 
         // Standardize code blocks: handle <pre><code> first, then standalone <code>
-        input = input.replace("<pre><code>", "<pre><small>")
-                .replace("</code></pre>", "</small></pre>")
-                .replace("<code>", "<pre><small>")
-                .replace("</code>", "</small></pre>");
+        if (input.contains("code>")) {
+            input = input.replace("<pre><code>", "<pre><small>")
+                    .replace("</code></pre>", "</small></pre>")
+                    .replace("<code>", "<pre><small>")
+                    .replace("</code>", "</small></pre>");
+        }
 
         if (input.contains("<pre>")) {
             input = escapePreBlockWhitespace(input);
+            input = input.replace("<pre>", "<div><tt>")
+                    .replace("</pre>", "</tt></div>");
         }
-
-        input = input.replace("<pre>", "<div><tt>").replace("</pre>", "</tt></div>");
 
         return input;
     }
