@@ -170,6 +170,9 @@ public class SettingsDetailActivity extends AppCompatActivity implements Setting
         if (AboutFragment.class.getName().equals(fragmentClassName)) {
             return new AboutFragment();
         }
+        if (LicensesFragment.class.getName().equals(fragmentClassName)) {
+            return new LicensesFragment();
+        }
         return SettingsFragmentFactory.create(
                 getSupportFragmentManager(), getClassLoader(), fragmentClassName);
     }

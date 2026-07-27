@@ -72,7 +72,6 @@ public class AboutFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         ViewCompat.setAccessibilityHeading(binding.aboutTitle, true);
-        ViewCompat.setAccessibilityHeading(binding.aboutLicensesHeader, true);
 
         boolean isSettingsTwoPane = getActivity() instanceof SettingsCallback
                 && ((SettingsCallback) getActivity()).isTwoPane();
@@ -82,10 +81,12 @@ public class AboutFragment extends Fragment {
                 ? String.format("Version %s (%s)", BuildConfig.VERSION_NAME, BuildConfig.BUILD_TYPE)
                 : "Version " + BuildConfig.VERSION_NAME;
         binding.aboutVersion.setText(versionText);
+        binding.aboutFeedbackGithubIcon.setImageAlpha(Math.round(255 * 0.9f));
 
         binding.aboutGithub.setOnClickListener(v -> openGithub());
         binding.aboutChangelog.setOnClickListener(v -> openChangelog());
         binding.aboutPrivacy.setOnClickListener(v -> openPrivacy());
+        binding.aboutLicenses.setOnClickListener(v -> openLicenses());
     }
 
     @Override
@@ -160,5 +161,14 @@ public class AboutFragment extends Fragment {
 
     private void openPrivacy() {
         Utils.launchCustomTab(requireActivity(), "https://simonhalvdansson.github.io/harmonic_privacy.html");
+    }
+
+    private void openLicenses() {
+        if (getActivity() instanceof SettingsActivity
+                && ((SettingsActivity) getActivity()).isTwoPane()) {
+            ((SettingsActivity) getActivity()).showLicenses();
+        } else {
+            startActivity(new Intent(requireContext(), LicensesActivity.class));
+        }
     }
 }

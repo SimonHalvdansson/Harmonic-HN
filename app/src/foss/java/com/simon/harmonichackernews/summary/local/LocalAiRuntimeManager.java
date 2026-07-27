@@ -14,6 +14,10 @@ public final class LocalAiRuntimeManager {
     private LocalAiRuntimeManager() {
     }
 
+    public static boolean isLocalAiIncluded() {
+        return false;
+    }
+
     public interface StatusListener {
         void onRuntimeStatusChanged();
     }

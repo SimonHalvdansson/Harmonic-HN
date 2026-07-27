@@ -66,6 +66,9 @@
             android:name=".AboutActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout" />
         <activity
+            android:name=".LicensesActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout" />
+        <activity
             android:name=".DebugActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout" />
         <activity

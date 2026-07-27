@@ -63,6 +63,7 @@ public class SettingsActivity extends AppCompatActivity implements
         FRAGMENT_TO_KEY.put(AiSummaryPreferenceFragment.class.getName(), "pref_header_ai_summary");
         FRAGMENT_TO_KEY.put(DebugFragment.class.getName(), SettingsHeaderFragment.DEBUG_KEY);
         FRAGMENT_TO_KEY.put(AboutFragment.class.getName(), SettingsHeaderFragment.ABOUT_KEY);
+        FRAGMENT_TO_KEY.put(LicensesFragment.class.getName(), SettingsHeaderFragment.ABOUT_KEY);
     }
 
     private static boolean requestFullRestart = false;
@@ -334,6 +335,26 @@ public class SettingsActivity extends AppCompatActivity implements
         }
     }
 
+    public void showLicenses() {
+        currentDetailClassName = LicensesFragment.class.getName();
+        currentDetailKey = SettingsHeaderFragment.ABOUT_KEY;
+
+        if (isTwoPane) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+                    .replace(R.id.settings_detail, new LicensesFragment())
+                    .commit();
+
+            Fragment headerFragment = getSupportFragmentManager().findFragmentById(R.id.settings);
+            if (headerFragment instanceof SettingsHeaderFragment) {
+                ((SettingsHeaderFragment) headerFragment).setSelectedKey(currentDetailKey);
+            }
+        } else {
+            startActivity(new Intent(this, LicensesActivity.class));
+        }
+    }
+
     public void showDebug() {
         currentDetailClassName = DebugFragment.class.getName();
         currentDetailKey = SettingsHeaderFragment.DEBUG_KEY;
@@ -460,6 +481,9 @@ public class SettingsActivity extends AppCompatActivity implements
         }
         if (AboutFragment.class.getName().equals(currentDetailClassName)) {
             return new AboutFragment();
+        }
+        if (LicensesFragment.class.getName().equals(currentDetailClassName)) {
+            return new LicensesFragment();
         }
         return SettingsFragmentFactory.create(
                 getSupportFragmentManager(), getClassLoader(), currentDetailClassName);

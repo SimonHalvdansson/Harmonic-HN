@@ -41,6 +41,11 @@
   <ActivityRule
     window:alwaysExpand="true">
     <ActivityFilter
+      window:activityName=".LicensesActivity"/>
+  </ActivityRule>
+  <ActivityRule
+    window:alwaysExpand="true">
+    <ActivityFilter
       window:activityName=".DebugActivity"/>
   </ActivityRule>
   <ActivityRule
