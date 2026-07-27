@@ -42,6 +42,11 @@ final class LinkPreviewHeaderBinder {
     static void bind(Context ctx,
                      CommentsRecyclerViewAdapter.HeaderViewHolder holder,
                      Story story) {
+        boolean needsLinkPreviewViews = story.hasExtraInfo() || story.linkPreviewLoading;
+        if (!needsLinkPreviewViews && !holder.hasLinkPreviewViews()) {
+            return;
+        }
+        holder.ensureLinkPreviewViews();
         holder.infoContainer.setVisibility(story.hasExtraInfo() ? View.VISIBLE : GONE);
         boolean hasLoadedLinkPreview = story.hasLoadedLinkPreview();
         boolean showLinkPreviewLoading = story.linkPreviewLoading && !hasLoadedLinkPreview;

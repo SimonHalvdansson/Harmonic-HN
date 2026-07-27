@@ -322,75 +322,11 @@
             android:visibility="gone"
             tools:visibility="visible" />
 
-        <LinearLayout
-            android:id="@+id/comments_header_info_container"
+        <ViewStub
+            android:id="@+id/comments_header_link_preview_stub"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="16dp"
-            android:layout_marginRight="16dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp"
-            android:background="@drawable/abstract_background"
-            android:orientation="vertical"
-            android:paddingLeft="16dp"
-            android:paddingTop="12dp"
-            android:paddingRight="16dp"
-            android:paddingBottom="12dp"
-            android:visibility="visible">
-
-            <TextView
-                android:id="@+id/comments_header_info_header"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/product_sans"
-                android:text="Abstract:"
-                android:textAllCaps="true"
-                android:textColor="?attr/textColorHighlighted"
-                android:textSize="13dp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:id="@+id/comments_header_link_preview_loading"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:orientation="vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="8dp"
-                android:visibility="gone">
-
-                <com.google.android.material.loadingindicator.LoadingIndicator
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:indeterminate="true" />
-
-            </LinearLayout>
-
-            <include
-                android:id="@+id/comments_header_wikipedia_container"
-                layout="@layout/link_preview_wikipedia" />
-
-            <include
-                android:id="@+id/comments_header_arxiv_container"
-                layout="@layout/link_preview_arxiv" />
-
-            <include
-                android:id="@+id/comments_header_github_container"
-                layout="@layout/link_preview_github" />
-
-            <include
-                android:id="@+id/comments_header_gitlab_container"
-                layout="@layout/link_preview_gitlab" />
-
-            <include
-                android:id="@+id/comments_header_stack_exchange_container"
-                layout="@layout/link_preview_stack_exchange" />
-
-            <include
-                android:id="@+id/comments_header_nitter_container"
-                layout="@layout/link_preview_nitter" />
-
-        </LinearLayout>
+            android:layout="@layout/comments_header_link_preview" />
 
         <LinearLayout
             android:id="@+id/comments_header_poll_layout"

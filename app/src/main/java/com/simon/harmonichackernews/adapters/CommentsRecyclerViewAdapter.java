@@ -61,6 +61,7 @@ import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.databinding.CommentsHeaderBinding;
+import com.simon.harmonichackernews.databinding.CommentsHeaderLinkPreviewBinding;
 import com.simon.harmonichackernews.databinding.CommentsItemBinding;
 import com.simon.harmonichackernews.databinding.CommentsItemCardBinding;
 import com.simon.harmonichackernews.databinding.LinkPreviewArxivBinding;
@@ -3708,12 +3709,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     public class HeaderViewHolder extends RecyclerView.ViewHolder {
         public final CommentsHeaderBinding headerBinding;
-        public final LinkPreviewArxivBinding arxivBinding;
-        public final LinkPreviewGithubBinding githubBinding;
-        public final LinkPreviewGitlabBinding gitLabBinding;
-        public final LinkPreviewNitterBinding nitterBinding;
-        public final LinkPreviewStackExchangeBinding stackExchangeBinding;
-        public final LinkPreviewWikipediaBinding wikiBinding;
+        public LinkPreviewArxivBinding arxivBinding;
+        public LinkPreviewGithubBinding githubBinding;
+        public LinkPreviewGitlabBinding gitLabBinding;
+        public LinkPreviewNitterBinding nitterBinding;
+        public LinkPreviewStackExchangeBinding stackExchangeBinding;
+        public LinkPreviewWikipediaBinding wikiBinding;
         public final View mView;
         public final TextView titleView;
         public final LinearLayout titleShimmer;
@@ -3727,17 +3728,17 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView urlView;
         public final HtmlTextView textView;
         public final LinearLayout referenceLinksContainer;
-        public final LinearLayout infoContainer;
-        public final TextView arxivAbstract;
-        public final LinearLayout githubContainer;
-        public final LinearLayout gitLabContainer;
-        public final LinearLayout arxivContainer;
-        public final LinearLayout stackExchangeContainer;
-        public final LinearLayout wikiContainer;
-        public final LinearLayout nitterContainer;
+        public LinearLayout infoContainer;
+        public TextView arxivAbstract;
+        public LinearLayout githubContainer;
+        public LinearLayout gitLabContainer;
+        public LinearLayout arxivContainer;
+        public LinearLayout stackExchangeContainer;
+        public LinearLayout wikiContainer;
+        public LinearLayout nitterContainer;
 
-        public final TextView infoHeader;
-        public final LinearLayout linkPreviewLoadingContainer;
+        public TextView infoHeader;
+        public LinearLayout linkPreviewLoadingContainer;
         public final LinearLayout emptyView;
         public final TextView emptyViewText;
         public final LoadingIndicator loadingIndicator;
@@ -3772,58 +3773,58 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final View divider;
         public final View tintFade;
         public final View spacer;
-        public final TextView githubAbout;
-        public final HtmlTextView githubWebsite;
-        public final TextView githubLicense;
-        public final TextView githubLanguage;
-        public final TextView githubStars;
-        public final TextView githubWatching;
-        public final TextView githubForks;
-        public final LinearLayout githubWebsiteContainer;
-        public final LinearLayout githubLicenseContainer;
-        public final LinearLayout githubLanguageContainer;
+        public TextView githubAbout;
+        public HtmlTextView githubWebsite;
+        public TextView githubLicense;
+        public TextView githubLanguage;
+        public TextView githubStars;
+        public TextView githubWatching;
+        public TextView githubForks;
+        public LinearLayout githubWebsiteContainer;
+        public LinearLayout githubLicenseContainer;
+        public LinearLayout githubLanguageContainer;
 
-        public final TextView gitLabDescription;
-        public final HtmlTextView gitLabWebsite;
-        public final TextView gitLabVisibility;
-        public final TextView gitLabLanguage;
-        public final TextView gitLabStars;
-        public final TextView gitLabForks;
-        public final LinearLayout gitLabWebsiteContainer;
-        public final LinearLayout gitLabVisibilityContainer;
-        public final LinearLayout gitLabLanguageContainer;
+        public TextView gitLabDescription;
+        public HtmlTextView gitLabWebsite;
+        public TextView gitLabVisibility;
+        public TextView gitLabLanguage;
+        public TextView gitLabStars;
+        public TextView gitLabForks;
+        public LinearLayout gitLabWebsiteContainer;
+        public LinearLayout gitLabVisibilityContainer;
+        public LinearLayout gitLabLanguageContainer;
 
-        public final TextView stackExchangeTitle;
-        public final TextView stackExchangeBy;
-        public final TextView stackExchangeScore;
-        public final TextView stackExchangeAnswers;
-        public final TextView stackExchangeViews;
-        public final TextView stackExchangeAnswerState;
-        public final TextView stackExchangeAuthor;
-        public final TextView stackExchangeTags;
-        public final LinearLayout stackExchangeTagsContainer;
+        public TextView stackExchangeTitle;
+        public TextView stackExchangeBy;
+        public TextView stackExchangeScore;
+        public TextView stackExchangeAnswers;
+        public TextView stackExchangeViews;
+        public TextView stackExchangeAnswerState;
+        public TextView stackExchangeAuthor;
+        public TextView stackExchangeTags;
+        public LinearLayout stackExchangeTagsContainer;
 
-        public final TextView arxivBy;
-        public final TextView arxivDate;
-        public final TextView arxivSubjects;
-        public final ImageView arxivByIcon;
-        public final Button arxivDownloadButton;
+        public TextView arxivBy;
+        public TextView arxivDate;
+        public TextView arxivSubjects;
+        public ImageView arxivByIcon;
+        public Button arxivDownloadButton;
 
-        public final HtmlTextView wikiSummary;
+        public HtmlTextView wikiSummary;
 
-        public final HtmlTextView nitterText;
-        public final Button nitterButton;
-        public final TextView nitterDate;
-        public final TextView nitterReplyCount;
-        public final TextView nitterReposts;
-        public final TextView nitterLikes;
-        public final ImageView nitterLikesImageView;
-        public final ImageView nitterRetweetImageView;
-        public final ImageView nitterReplyImageView;
+        public HtmlTextView nitterText;
+        public Button nitterButton;
+        public TextView nitterDate;
+        public TextView nitterReplyCount;
+        public TextView nitterReposts;
+        public TextView nitterLikes;
+        public ImageView nitterLikesImageView;
+        public ImageView nitterRetweetImageView;
+        public ImageView nitterReplyImageView;
 
-        public final FrameLayout nitterMediaContainer;
-        public final ImageView nitterImage;
-        public final TextView nitterVideoLabel;
+        public FrameLayout nitterMediaContainer;
+        public ImageView nitterImage;
+        public TextView nitterVideoLabel;
 
         public final ImageView favicon;
         public final ImageView previewImage;
@@ -3867,12 +3868,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public HeaderViewHolder(CommentsHeaderBinding binding) {
             super(binding.getRoot());
             headerBinding = binding;
-            arxivBinding = binding.commentsHeaderArxivContainer;
-            githubBinding = binding.commentsHeaderGithubContainer;
-            gitLabBinding = binding.commentsHeaderGitlabContainer;
-            nitterBinding = binding.commentsHeaderNitterContainer;
-            stackExchangeBinding = binding.commentsHeaderStackExchangeContainer;
-            wikiBinding = binding.commentsHeaderWikipediaContainer;
             View view = binding.getRoot();
             mView = view;
             titleView = binding.commentsHeaderTitle;
@@ -3887,10 +3882,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             urlView = binding.commentsHeaderUrl;
             textView = binding.commentsHeaderText;
             referenceLinksContainer = binding.commentsHeaderReferenceLinksContainer;
-            arxivAbstract = arxivBinding.commentsHeaderArxivAbstract;
-            infoContainer = binding.commentsHeaderInfoContainer;
-            infoHeader = binding.commentsHeaderInfoHeader;
-            linkPreviewLoadingContainer = binding.commentsHeaderLinkPreviewLoading;
             emptyView = binding.commentsHeaderEmpty;
             emptyViewText = binding.commentsHeaderEmptyText;
             headerView = binding.commentsHeader;
@@ -3952,61 +3943,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetButtonsContainer = binding.commentSheetButtonsContainer;
             actionsContainer = binding.commentsHeaderActionsContainer;
             spacer = binding.commentsHeaderSpacer;
-            githubContainer = githubBinding.commentsHeaderGithubContainer;
-            gitLabContainer = gitLabBinding.commentsHeaderGitlabContainer;
-            arxivContainer = arxivBinding.commentsHeaderArxivContainer;
-            stackExchangeContainer = stackExchangeBinding.commentsHeaderStackExchangeContainer;
-            wikiContainer = wikiBinding.commentsHeaderWikipediaContainer;
-            wikiSummary = wikiBinding.commentsHeaderWikipediaSummary;
-            githubAbout = githubBinding.commentsHeaderGithubAbout;
-            githubWebsite = githubBinding.commentsHeaderGithubWebsite;
-            githubLicense = githubBinding.commentsHeaderGithubLicense;
-            githubLanguage = githubBinding.commentsHeaderGithubLanguage;
-            githubStars = githubBinding.commentsHeaderGithubStars;
-            githubWatching = githubBinding.commentsHeaderGithubWatching;
-            githubForks = githubBinding.commentsHeaderGithubForks;
-            githubWebsiteContainer = githubBinding.commentsHeaderGithubWebsiteContainer;
-            githubLicenseContainer = githubBinding.commentsHeaderGithubLicenseContainer;
-            githubLanguageContainer = githubBinding.commentsHeaderGithubLanguageContainer;
-            gitLabDescription = gitLabBinding.commentsHeaderGitlabDescription;
-            gitLabWebsite = gitLabBinding.commentsHeaderGitlabWebsite;
-            gitLabVisibility = gitLabBinding.commentsHeaderGitlabVisibility;
-            gitLabLanguage = gitLabBinding.commentsHeaderGitlabLanguage;
-            gitLabStars = gitLabBinding.commentsHeaderGitlabStars;
-            gitLabForks = gitLabBinding.commentsHeaderGitlabForks;
-            gitLabWebsiteContainer = gitLabBinding.commentsHeaderGitlabWebsiteContainer;
-            gitLabVisibilityContainer = gitLabBinding.commentsHeaderGitlabVisibilityContainer;
-            gitLabLanguageContainer = gitLabBinding.commentsHeaderGitlabLanguageContainer;
-            stackExchangeTitle = stackExchangeBinding.commentsHeaderStackExchangeTitle;
-            stackExchangeBy = stackExchangeBinding.commentsHeaderStackExchangeBy;
-            stackExchangeScore = stackExchangeBinding.commentsHeaderStackExchangeScore;
-            stackExchangeAnswers = stackExchangeBinding.commentsHeaderStackExchangeAnswers;
-            stackExchangeViews = stackExchangeBinding.commentsHeaderStackExchangeViews;
-            stackExchangeAnswerState = stackExchangeBinding.commentsHeaderStackExchangeAnswerState;
-            stackExchangeAuthor = stackExchangeBinding.commentsHeaderStackExchangeAuthor;
-            stackExchangeTags = stackExchangeBinding.commentsHeaderStackExchangeTags;
-            stackExchangeTagsContainer = stackExchangeBinding.commentsHeaderStackExchangeTagsContainer;
-            arxivBy = arxivBinding.commentsHeaderArxivBy;
-            arxivDate = arxivBinding.commentsHeaderArxivDate;
-            arxivSubjects = arxivBinding.commentsHeaderArxivSubjects;
-            arxivByIcon = arxivBinding.commentsHeaderArxivByIcon;
-            arxivDownloadButton = arxivBinding.commentsHeaderArxivDownload;
 
             final int SHEET_ITEM_HEIGHT = Utils.pxFromDpInt(view.getResources(), 56);
-
-            nitterContainer = nitterBinding.commentsHeaderNitterContainer;
-            nitterText = nitterBinding.commentsHeaderNitterText;
-            nitterDate = nitterBinding.commentsHeaderNitterDate;
-            nitterButton = nitterBinding.commentsHeaderNitterButtonOpen;
-            nitterReplyCount = nitterBinding.commentsHeaderNitterReplyCount;
-            nitterReposts = nitterBinding.commentsHeaderNitterReposts;
-            nitterLikes = nitterBinding.commentsHeaderNitterLikes;
-            nitterLikesImageView = nitterBinding.commentsHeaderNitterLikesImage;
-            nitterRetweetImageView = nitterBinding.commentsHeaderNitterRepostsImage;
-            nitterReplyImageView = nitterBinding.commentsHeaderNitterReplyImage;
-            nitterMediaContainer = nitterBinding.commentsHeaderNitterMediaContainer;
-            nitterImage = nitterBinding.commentsHeaderNitterImage;
-            nitterVideoLabel = nitterBinding.commentsHeaderNitterVideoLabel;
 
             retryButton.setOnClickListener((v) -> retryListener.onRetry());
             openInBrowserButton.setOnClickListener((v) -> retryListener.onOpenInBrowser());
@@ -4016,10 +3954,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 showUpdate = false;
                 setRefreshButtonVisible(false);
                 retryListener.onRetry();
-            });
-
-            arxivDownloadButton.setOnClickListener((v) -> {
-                Utils.downloadPDF(v.getContext(), story.arxivInfo.getPDFURL());
             });
 
             userButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_USER, null));
@@ -4050,7 +3984,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             TooltipCompat.setTooltipText(headerRefreshButton, "Refresh");
             TooltipCompat.setTooltipText(moreButton, "More");
             ViewCompat.setAccessibilityHeading(titleView, true);
-            ViewCompat.setAccessibilityHeading(infoHeader, true);
             ViewCompat.setAccessibilityHeading(summaryTitle, true);
             ViewCompat.setAccessibilityHeading(emptyViewText, true);
             ViewCompat.setAccessibilityHeading(loadingFailedText, true);
@@ -4086,39 +4019,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     referenceLinkLongClickListener.onLongClick(
                             href, spannedText, widget, sourceBounds);
                     return true;
-                }
-            });
-
-            githubWebsite.setOnClickATagListener(new OnClickATagListener() {
-                @Override
-                public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                    Utils.launchCustomTab(view.getContext(), story.repoInfo.website);
-                    return false;
-                }
-            });
-
-            gitLabWebsite.setOnClickATagListener(new OnClickATagListener() {
-                @Override
-                public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                    Utils.launchCustomTab(view.getContext(), story.gitLabInfo.website);
-                    return false;
-                }
-            });
-
-            nitterText.setOnClickATagListener(new OnClickATagListener() {
-                @Override
-                public boolean onClick(View widget, String spannedText, @Nullable String href) {
-                    if (TextUtils.isEmpty(href)) {
-                        return false;
-                    }
-                    if (spannedText.startsWith("#") && href.startsWith("/search?q=")) {
-                        Utils.launchCustomTab(widget.getContext(), "https://www.x.com/" + href);
-                    } else if (spannedText.startsWith("@") && href.startsWith("/")) {
-                        Utils.launchCustomTab(widget.getContext(), "https://www.x.com/" + href);
-                    } else {
-                        Utils.launchCustomTab(widget.getContext(), href);
-                    }
-                    return false;
                 }
             });
 
@@ -4168,6 +4068,113 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 sheetButtonsContainer.setVisibility(GONE);
                 binding.commentsSheetHandle.setVisibility(GONE);
             }
+        }
+
+        boolean hasLinkPreviewViews() {
+            return infoContainer != null;
+        }
+
+        void ensureLinkPreviewViews() {
+            if (hasLinkPreviewViews()) {
+                return;
+            }
+
+            CommentsHeaderLinkPreviewBinding linkPreviewBinding =
+                    CommentsHeaderLinkPreviewBinding.bind(
+                            headerBinding.commentsHeaderLinkPreviewStub.inflate());
+            arxivBinding = linkPreviewBinding.commentsHeaderArxivContainer;
+            githubBinding = linkPreviewBinding.commentsHeaderGithubContainer;
+            gitLabBinding = linkPreviewBinding.commentsHeaderGitlabContainer;
+            nitterBinding = linkPreviewBinding.commentsHeaderNitterContainer;
+            stackExchangeBinding = linkPreviewBinding.commentsHeaderStackExchangeContainer;
+            wikiBinding = linkPreviewBinding.commentsHeaderWikipediaContainer;
+
+            infoContainer = linkPreviewBinding.commentsHeaderInfoContainer;
+            infoHeader = linkPreviewBinding.commentsHeaderInfoHeader;
+            linkPreviewLoadingContainer = linkPreviewBinding.commentsHeaderLinkPreviewLoading;
+            arxivAbstract = arxivBinding.commentsHeaderArxivAbstract;
+            githubContainer = githubBinding.commentsHeaderGithubContainer;
+            gitLabContainer = gitLabBinding.commentsHeaderGitlabContainer;
+            arxivContainer = arxivBinding.commentsHeaderArxivContainer;
+            stackExchangeContainer = stackExchangeBinding.commentsHeaderStackExchangeContainer;
+            wikiContainer = wikiBinding.commentsHeaderWikipediaContainer;
+            nitterContainer = nitterBinding.commentsHeaderNitterContainer;
+            wikiSummary = wikiBinding.commentsHeaderWikipediaSummary;
+
+            githubAbout = githubBinding.commentsHeaderGithubAbout;
+            githubWebsite = githubBinding.commentsHeaderGithubWebsite;
+            githubLicense = githubBinding.commentsHeaderGithubLicense;
+            githubLanguage = githubBinding.commentsHeaderGithubLanguage;
+            githubStars = githubBinding.commentsHeaderGithubStars;
+            githubWatching = githubBinding.commentsHeaderGithubWatching;
+            githubForks = githubBinding.commentsHeaderGithubForks;
+            githubWebsiteContainer = githubBinding.commentsHeaderGithubWebsiteContainer;
+            githubLicenseContainer = githubBinding.commentsHeaderGithubLicenseContainer;
+            githubLanguageContainer = githubBinding.commentsHeaderGithubLanguageContainer;
+
+            gitLabDescription = gitLabBinding.commentsHeaderGitlabDescription;
+            gitLabWebsite = gitLabBinding.commentsHeaderGitlabWebsite;
+            gitLabVisibility = gitLabBinding.commentsHeaderGitlabVisibility;
+            gitLabLanguage = gitLabBinding.commentsHeaderGitlabLanguage;
+            gitLabStars = gitLabBinding.commentsHeaderGitlabStars;
+            gitLabForks = gitLabBinding.commentsHeaderGitlabForks;
+            gitLabWebsiteContainer = gitLabBinding.commentsHeaderGitlabWebsiteContainer;
+            gitLabVisibilityContainer = gitLabBinding.commentsHeaderGitlabVisibilityContainer;
+            gitLabLanguageContainer = gitLabBinding.commentsHeaderGitlabLanguageContainer;
+
+            stackExchangeTitle = stackExchangeBinding.commentsHeaderStackExchangeTitle;
+            stackExchangeBy = stackExchangeBinding.commentsHeaderStackExchangeBy;
+            stackExchangeScore = stackExchangeBinding.commentsHeaderStackExchangeScore;
+            stackExchangeAnswers = stackExchangeBinding.commentsHeaderStackExchangeAnswers;
+            stackExchangeViews = stackExchangeBinding.commentsHeaderStackExchangeViews;
+            stackExchangeAnswerState = stackExchangeBinding.commentsHeaderStackExchangeAnswerState;
+            stackExchangeAuthor = stackExchangeBinding.commentsHeaderStackExchangeAuthor;
+            stackExchangeTags = stackExchangeBinding.commentsHeaderStackExchangeTags;
+            stackExchangeTagsContainer = stackExchangeBinding.commentsHeaderStackExchangeTagsContainer;
+
+            arxivBy = arxivBinding.commentsHeaderArxivBy;
+            arxivDate = arxivBinding.commentsHeaderArxivDate;
+            arxivSubjects = arxivBinding.commentsHeaderArxivSubjects;
+            arxivByIcon = arxivBinding.commentsHeaderArxivByIcon;
+            arxivDownloadButton = arxivBinding.commentsHeaderArxivDownload;
+
+            nitterText = nitterBinding.commentsHeaderNitterText;
+            nitterDate = nitterBinding.commentsHeaderNitterDate;
+            nitterButton = nitterBinding.commentsHeaderNitterButtonOpen;
+            nitterReplyCount = nitterBinding.commentsHeaderNitterReplyCount;
+            nitterReposts = nitterBinding.commentsHeaderNitterReposts;
+            nitterLikes = nitterBinding.commentsHeaderNitterLikes;
+            nitterLikesImageView = nitterBinding.commentsHeaderNitterLikesImage;
+            nitterRetweetImageView = nitterBinding.commentsHeaderNitterRepostsImage;
+            nitterReplyImageView = nitterBinding.commentsHeaderNitterReplyImage;
+            nitterMediaContainer = nitterBinding.commentsHeaderNitterMediaContainer;
+            nitterImage = nitterBinding.commentsHeaderNitterImage;
+            nitterVideoLabel = nitterBinding.commentsHeaderNitterVideoLabel;
+
+            ViewCompat.setAccessibilityHeading(infoHeader, true);
+            arxivDownloadButton.setOnClickListener(v ->
+                    Utils.downloadPDF(v.getContext(), story.arxivInfo.getPDFURL()));
+            githubWebsite.setOnClickATagListener((widget, spannedText, href) -> {
+                Utils.launchCustomTab(mView.getContext(), story.repoInfo.website);
+                return false;
+            });
+            gitLabWebsite.setOnClickATagListener((widget, spannedText, href) -> {
+                Utils.launchCustomTab(mView.getContext(), story.gitLabInfo.website);
+                return false;
+            });
+            nitterText.setOnClickATagListener((widget, spannedText, href) -> {
+                if (TextUtils.isEmpty(href)) {
+                    return false;
+                }
+                if (spannedText.startsWith("#") && href.startsWith("/search?q=")) {
+                    Utils.launchCustomTab(widget.getContext(), "https://www.x.com/" + href);
+                } else if (spannedText.startsWith("@") && href.startsWith("/")) {
+                    Utils.launchCustomTab(widget.getContext(), "https://www.x.com/" + href);
+                } else {
+                    Utils.launchCustomTab(widget.getContext(), href);
+                }
+                return false;
+            });
         }
 
         private void setHeaderHorizontalBleed(int leftBleed, int rightBleed) {
