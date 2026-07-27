@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Derived content that can be recreated or downloaded again. -->
+        <exclude domain="file" path="story_cache" />
+        <exclude domain="file" path="article_cache" />
+        <exclude domain="external" path="local_ai_models" />
+        <exclude
+            domain="sharedpref"
+            path="com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES.xml" />
+
+        <!-- Android Keystore keys are not restored with their encrypted values. -->
+        <exclude domain="sharedpref" path="HARMONIC_ENCRYPTED_PREFS.xml" />
+        <exclude
+            domain="sharedpref"
+            path="HARMONIC_AI_SUMMARY_ENCRYPTED_PREFS.xml" />
+    </cloud-backup>
+
+    <device-transfer>
+        <exclude domain="file" path="story_cache" />
+        <exclude domain="file" path="article_cache" />
+        <exclude domain="external" path="local_ai_models" />
+        <exclude
+            domain="sharedpref"
+            path="com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES.xml" />
+        <exclude domain="sharedpref" path="HARMONIC_ENCRYPTED_PREFS.xml" />
+        <exclude
+            domain="sharedpref"
+            path="HARMONIC_AI_SUMMARY_ENCRYPTED_PREFS.xml" />
+    </device-transfer>
+</data-extraction-rules>
