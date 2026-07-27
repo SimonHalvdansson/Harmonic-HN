@@ -37,23 +37,23 @@
                 android:orientation="vertical">
 
                 <TextView
+                    android:layout_marginTop="-2dp"
                     android:id="@+id/about_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/google_sans_flex_rounded"
+                    android:fontFamily="@font/google_sans_flex_rounded_bold"
                     android:text="Harmonic"
                     android:textColor="?attr/storyColorNormal"
-                    android:textSize="32dp"
-                    android:textStyle="bold" />
+                    android:textSize="29dp" />
 
                 <TextView
+                    android:textSize="13dp"
                     android:id="@+id/about_version"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="-4dp"
-                    android:fontFamily="@font/google_sans_flex_rounded"
+                    android:layout_marginTop="-8dp"
+                    android:fontFamily="@font/google_sans_flex_rounded_bold"
                     android:textColor="?attr/storyColorDisabled"
-                    android:textStyle="bold"
                     tools:text="Version 1.3.3.7" />
 
             </LinearLayout>
