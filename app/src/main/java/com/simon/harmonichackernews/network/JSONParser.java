@@ -71,25 +71,18 @@ public class JSONParser {
             story.loadingFailed = false;
             story.clicked = false;
 
-            if (hit.has("url")) {
-                String url = hit.getString("url");
-                if (!url.equals(JSON_NULL_LITERAL) && !url.isEmpty()) {
-                    story.url = url;
-                    story.isLink = true;
-                } else {
-                    story.url = "https://news.ycombinator.com/item?id=" + story.id;
-                    story.isLink = false;
-                }
+            String url = optStringOrNull(hit, "url");
+            if (url != null && !url.equals(JSON_NULL_LITERAL) && !url.isEmpty()) {
+                story.url = url;
+                story.isLink = true;
             } else {
                 story.url = "https://news.ycombinator.com/item?id=" + story.id;
                 story.isLink = false;
             }
 
-            if (hit.has("story_text")) {
-                String storyText = hit.getString("story_text");
-                if (!storyText.equals(JSON_NULL_LITERAL)) {
-                    updateStoryText(story, storyText);
-                }
+            String storyText = optStringOrNull(hit, "story_text");
+            if (storyText != null && !storyText.equals(JSON_NULL_LITERAL)) {
+                updateStoryText(story, storyText);
             }
 
             if (isComment) {
@@ -98,14 +91,10 @@ public class JSONParser {
                 story.commentMasterTitle = hit.getString("story_title");
                 story.commentMasterId = hit.getInt("story_id");
                 story.parentId = hit.optInt("parent_id", 0);
-                if (hit.has("story_url")) {
-                    String storyUrl = hit.getString("story_url");
-                    if (!storyUrl.equals(JSON_NULL_LITERAL)) {
-                        story.commentMasterUrl = storyUrl;
-                        story.isLink = true;
-                    } else {
-                        story.isLink = false;
-                    }
+                String storyUrl = optStringOrNull(hit, "story_url");
+                if (storyUrl != null && !storyUrl.equals(JSON_NULL_LITERAL)) {
+                    story.commentMasterUrl = storyUrl;
+                    story.isLink = true;
                 } else {
                     story.isLink = false;
                 }
@@ -129,17 +118,22 @@ public class JSONParser {
 
         JSONObject jsonObject = new JSONObject(response);
 
-        if (hasOnlyTwoTopLevelFields(jsonObject) || !jsonObject.has("by")) {
+        if (hasOnlyTwoTopLevelFields(jsonObject)) {
             return false;
         }
 
-        String type = jsonObject.has("type") ? jsonObject.getString("type") : null;
+        String by = optStringOrNull(jsonObject, "by");
+        if (by == null) {
+            return false;
+        }
+
+        String type = optStringOrNull(jsonObject, "type");
         if ("comment".equals(type)) {
             return updateStoryWithHNCommentJson(jsonObject, story);
         }
 
         story.update(
-                jsonObject.getString("by"),
+                by,
                 jsonObject.getInt("id"),
                 jsonObject.getInt("score"),
                 isHistory ? story.time : jsonObject.getInt("time"),
@@ -179,16 +173,18 @@ public class JSONParser {
             story.kids = kids;
         }
 
-        if (jsonObject.has("url")) {
-            story.url = jsonObject.getString("url");
+        String url = optStringOrNull(jsonObject, "url");
+        if (url != null) {
+            story.url = url;
             story.isLink = true;
         } else {
             story.url = "https://news.ycombinator.com/item?id=" + story.id;
             story.isLink = false;
         }
 
-        if (jsonObject.has("text")) {
-            updateStoryText(story, jsonObject.getString("text"));
+        String text = optStringOrNull(jsonObject, "text");
+        if (text != null) {
+            updateStoryText(story, text);
         }
 
         updateTitleBadgeProperties(story);
@@ -220,8 +216,9 @@ public class JSONParser {
         story.commentMasterScore = jsonObject.optInt("score", story.commentMasterScore);
         story.commentMasterTime = jsonObject.optInt("time", story.commentMasterTime);
         story.commentMasterDescendants = jsonObject.optInt("descendants", story.commentMasterDescendants);
-        if (jsonObject.has("url")) {
-            story.commentMasterUrl = jsonObject.getString("url");
+        String url = optStringOrNull(jsonObject, "url");
+        if (url != null) {
+            story.commentMasterUrl = url;
         } else {
             story.commentMasterUrl = "https://news.ycombinator.com/item?id=" + id;
         }
@@ -267,8 +264,9 @@ public class JSONParser {
 
         story.url = "https://news.ycombinator.com/item?id=" + story.id;
         story.isLink = false;
-        if (jsonObject.has("text")) {
-            updateStoryText(story, jsonObject.getString("text"));
+        String text = optStringOrNull(jsonObject, "text");
+        if (text != null) {
+            updateStoryText(story, text);
         }
 
         story.loaded = true;
@@ -757,8 +755,9 @@ public class JSONParser {
                 story.isJob = "job".equals(type);
             }
 
-            if (item.has("text")) {
-                updateStoryText(story, item.optString("text", ""));
+            String text = optStringOrNull(item, "text");
+            if (text != null) {
+                updateStoryText(story, text);
             }
 
             applyPreviewImageSummaryFields(story, item);
@@ -821,12 +820,12 @@ public class JSONParser {
         }
     }
 
-    private static void applyFaviconTintSummaryFields(Story story, JSONObject item) {
+    private static void applyFaviconTintSummaryFields(Story story, JSONObject item) throws JSONException {
         if (!item.optBoolean(KEY_FAVICON_TINT_COLOR_LOADED, false)) {
             return;
         }
 
-        String tintSourceUrl = item.optString(KEY_FAVICON_TINT_SOURCE_URL, null);
+        String tintSourceUrl = optStringOrNull(item, KEY_FAVICON_TINT_SOURCE_URL);
         if (TextUtils.isEmpty(tintSourceUrl)) {
             return;
         }
@@ -838,9 +837,19 @@ public class JSONParser {
         story.faviconTintMode = item.optString(KEY_FAVICON_TINT_MODE, story.faviconTintMode);
     }
 
+    private static String optStringOrNull(JSONObject object, String key) throws JSONException {
+        Object value = object.opt(key);
+        if (value == null) {
+            return null;
+        }
+
+        return String.valueOf(value);
+    }
+
     private static void copyString(JSONObject source, JSONObject destination, String key) throws JSONException {
-        if (source.has(key)) {
-            putNonNullString(destination, key, source.optString(key, ""));
+        String value = optStringOrNull(source, key);
+        if (value != null) {
+            putNonNullString(destination, key, value);
         }
     }
 
@@ -949,18 +958,19 @@ public class JSONParser {
             JSONObject jsonObject = new JSONObject(response);
             
             // Check if this is a valid story response
-            if (!jsonObject.has("by") || hasOnlyTwoTopLevelFields(jsonObject)) {
+            String by = optStringOrNull(jsonObject, "by");
+            if (by == null || hasOnlyTwoTopLevelFields(jsonObject)) {
                 return false;
             }
 
-            story.by = jsonObject.optString("by", "");
+            story.by = by;
             story.id = jsonObject.optInt("id", story.id);
             story.score = jsonObject.optInt("score", 0);
             story.time = jsonObject.optInt("time", story.time);
             story.title = jsonObject.optString("title", story.title);
             story.descendants = jsonObject.optInt("descendants", 0);
 
-            String type = jsonObject.has("type") ? jsonObject.getString("type") : null;
+            String type = optStringOrNull(jsonObject, "type");
             if ("comment".equals(type)) {
                 story.isComment = true;
                 story.parentId = jsonObject.optInt("parent", 0);
@@ -1001,16 +1011,18 @@ public class JSONParser {
                 }
             }
 
-            if (jsonObject.has("url")) {
-                story.url = jsonObject.getString("url");
+            String url = optStringOrNull(jsonObject, "url");
+            if (url != null) {
+                story.url = url;
                 story.isLink = true;
             } else {
                 story.url = "https://news.ycombinator.com/item?id=" + story.id;
                 story.isLink = false;
             }
 
-            if (jsonObject.has("text")) {
-                updateStoryText(story, jsonObject.getString("text"));
+            String text = optStringOrNull(jsonObject, "text");
+            if (text != null) {
+                updateStoryText(story, text);
             }
 
             updateTitleBadgeProperties(story);
@@ -1040,11 +1052,8 @@ public class JSONParser {
         comment.parent = jsonObject.optInt("parent", 0);
         comment.expanded = true;
 
-        if (jsonObject.has("text")) {
-            comment.text = preprocessHtml(jsonObject.getString("text"));
-        } else {
-            comment.text = "";
-        }
+        String text = optStringOrNull(jsonObject, "text");
+        comment.text = text == null ? "" : preprocessHtml(text);
 
         if (jsonObject.has("kids")) {
             JSONArray kidsArray = jsonObject.getJSONArray("kids");
