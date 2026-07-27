@@ -10,6 +10,7 @@ import androidx.annotation.Nullable;
 
 import com.simon.harmonichackernews.data.WikipediaInfo;
 import com.simon.harmonichackernews.linkpreview.WikipediaGetter;
+import com.simon.harmonichackernews.utils.Utils;
 
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
@@ -21,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -33,6 +35,10 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 public final class LinkSummaryLoader {
+    private static final String HACKER_NEWS_ITEM_CONTENT_TYPE =
+            "application/vnd.hacker-news.item+json";
+    private static final String HACKER_NEWS_ITEM_API =
+            "https://hacker-news.firebaseio.com/v0/item/";
     private static final int MAX_DESCRIPTION_CHARS = 600;
     private static final int MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
     private static final String YOUTUBE_OEMBED_ENDPOINT = "https://www.youtube.com/oembed";
@@ -111,6 +117,8 @@ public final class LinkSummaryLoader {
         }
 
         String normalizedPageUrl = parsedUrl.toString();
+        String hackerNewsItemId = getHackerNewsItemId(parsedUrl);
+        boolean hackerNewsItemRequest = !TextUtils.isEmpty(hackerNewsItemId);
         boolean wikipediaSummaryRequest = WikipediaGetter.isValidWikipediaUrl(normalizedPageUrl);
         String youtubeOEmbedUrl = buildYoutubeOEmbedUrl(normalizedPageUrl);
         boolean youtubeOEmbedRequest = !TextUtils.isEmpty(youtubeOEmbedUrl);
@@ -119,10 +127,20 @@ public final class LinkSummaryLoader {
         boolean oEmbedRequest = youtubeOEmbedRequest || redditOEmbedRequest;
         Result cached = StoryPreviewImageLoader.getCachedLinkSummary(context, normalizedPageUrl);
         if (cached != null
+                && (!hackerNewsItemRequest || isHackerNewsItemResult(cached))
                 && (!oEmbedRequest || "application/json".equals(cached.contentType))
                 && (!wikipediaSummaryRequest || "application/json".equals(cached.contentType))) {
             MAIN_HANDLER.post(() -> callback.onSuccess(cached));
             return () -> { };
+        }
+
+        if (hackerNewsItemRequest) {
+            return loadHackerNewsItem(
+                    context,
+                    normalizedPageUrl,
+                    hackerNewsItemId,
+                    fallbackTitle,
+                    callback);
         }
 
         if (wikipediaSummaryRequest) {
@@ -206,6 +224,178 @@ public final class LinkSummaryLoader {
             }
         });
         return call::cancel;
+    }
+
+    public static boolean isHackerNewsItemResult(@Nullable Result result) {
+        return result != null
+                && HACKER_NEWS_ITEM_CONTENT_TYPE.equals(result.contentType);
+    }
+
+    @Nullable
+    private static String getHackerNewsItemId(@NonNull HttpUrl url) {
+        if (!"news.ycombinator.com".equalsIgnoreCase(url.host())
+                || !"/item".equals(url.encodedPath())) {
+            return null;
+        }
+
+        String id = url.queryParameter("id");
+        if (TextUtils.isEmpty(id)) {
+            return null;
+        }
+        for (int index = 0; index < id.length(); index++) {
+            if (!Character.isDigit(id.charAt(index))) {
+                return null;
+            }
+        }
+        try {
+            return Integer.parseInt(id) > 0 ? id : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private static SummaryRequest loadHackerNewsItem(
+            @Nullable Context context,
+            @NonNull String pageUrl,
+            @NonNull String itemId,
+            @Nullable String fallbackTitle,
+            @NonNull Callback callback) {
+        Request request = new Request.Builder()
+                .url(HACKER_NEWS_ITEM_API + itemId + ".json")
+                .header("Accept", "application/json")
+                .get()
+                .build();
+        Call call = NetworkComponent.getOkHttpClientInstance().newCall(request);
+        call.enqueue(new okhttp3.Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                if (!call.isCanceled()) {
+                    postFailure(callback, getFailureMessage(e));
+                }
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try (Response closeableResponse = response) {
+                    if (!closeableResponse.isSuccessful()) {
+                        postFailure(callback,
+                                "Hacker News returned HTTP " + closeableResponse.code());
+                        return;
+                    }
+                    if (closeableResponse.body() == null) {
+                        postFailure(callback, "Hacker News did not return this item");
+                        return;
+                    }
+
+                    Result result = extractHackerNewsItem(
+                            readBoundedBody(closeableResponse.body()),
+                            pageUrl,
+                            fallbackTitle);
+                    if (result == null) {
+                        postFailure(callback, "Hacker News did not return this item");
+                        return;
+                    }
+                    StoryPreviewImageLoader.saveCachedLinkSummary(context, pageUrl, result);
+                    MAIN_HANDLER.post(() -> callback.onSuccess(result));
+                } catch (Exception e) {
+                    if (!call.isCanceled()) {
+                        postFailure(callback, getFailureMessage(e));
+                    }
+                }
+            }
+        });
+        return call::cancel;
+    }
+
+    @Nullable
+    private static Result extractHackerNewsItem(
+            @Nullable String json,
+            @NonNull String pageUrl,
+            @Nullable String fallbackTitle) {
+        if (TextUtils.isEmpty(json) || "null".equals(json.trim())) {
+            return null;
+        }
+
+        try {
+            JSONObject item = new JSONObject(json);
+            if (item.optBoolean("deleted") || item.optBoolean("dead")) {
+                return null;
+            }
+
+            String type = item.optString("type", "");
+            boolean comment = "comment".equals(type);
+            String author = clean(item.optString("by", ""));
+            String title = comment
+                    ? "Comment by " + firstNonEmpty(author, "unknown")
+                    : firstNonEmpty(clean(item.optString("title", "")), fallbackTitle);
+            if (TextUtils.isEmpty(title)) {
+                return null;
+            }
+
+            String metadata = buildHackerNewsMetadata(item, comment, author);
+            String body = cleanHackerNewsText(item.optString("text", ""));
+            String description = TextUtils.isEmpty(body)
+                    ? metadata
+                    : TextUtils.isEmpty(metadata) ? body : metadata + " — " + body;
+
+            return new Result(
+                    title,
+                    comment ? "Hacker News · comment" : "Hacker News · story",
+                    author,
+                    item.optInt("time", 0) > 0
+                            ? Utils.getTimeAgo(item.optInt("time"))
+                            : "",
+                    "en",
+                    HACKER_NEWS_ITEM_CONTENT_TYPE,
+                    truncate(description, MAX_DESCRIPTION_CHARS),
+                    "",
+                    pageUrl);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static String buildHackerNewsMetadata(
+            @NonNull JSONObject item,
+            boolean comment,
+            @NonNull String author) {
+        List<String> parts = new ArrayList<>();
+        if (!comment && item.has("score")) {
+            int score = item.optInt("score", 0);
+            parts.add(formatCount(score, "point", "points"));
+        }
+        if (!TextUtils.isEmpty(author)) {
+            parts.add("by " + author);
+        }
+        int time = item.optInt("time", 0);
+        if (time > 0) {
+            parts.add(Utils.getTimeAgo(time));
+        }
+        if (comment) {
+            int replies = item.optJSONArray("kids") == null
+                    ? 0
+                    : item.optJSONArray("kids").length();
+            if (replies > 0) {
+                parts.add(formatCount(replies, "reply", "replies"));
+            }
+        } else if (item.has("descendants")) {
+            int comments = item.optInt("descendants", 0);
+            parts.add(formatCount(comments, "comment", "comments"));
+        }
+        return TextUtils.join(" · ", parts);
+    }
+
+    @NonNull
+    private static String formatCount(int count, @NonNull String singular, @NonNull String plural) {
+        return count + " " + (count == 1 ? singular : plural);
+    }
+
+    @NonNull
+    private static String cleanHackerNewsText(@Nullable String html) {
+        if (TextUtils.isEmpty(html)) {
+            return "";
+        }
+        return clean(Jsoup.parseBodyFragment(html).body().text());
     }
 
     private static SummaryRequest loadWikipediaSummary(

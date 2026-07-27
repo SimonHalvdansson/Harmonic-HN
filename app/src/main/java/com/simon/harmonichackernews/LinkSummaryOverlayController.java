@@ -1890,6 +1890,10 @@ final class LinkSummaryOverlayController {
     private void bindReferenceResult(LinkSummaryLoader.Result result) {
         if (!TextUtils.isEmpty(result.finalUrl)) visibleUrl = result.finalUrl;
         referenceBinding.referenceLinkErrorContainer.setVisibility(View.GONE);
+        if (LinkSummaryLoader.isHackerNewsItemResult(result)
+                && !TextUtils.isEmpty(result.siteName)) {
+            referenceBinding.referenceLinkDomain.setText(result.siteName);
+        }
         referenceBinding.referenceLinkTitleShimmer.stopShimmer();
         referenceBinding.referenceLinkTitleShimmer.setVisibility(View.GONE);
         referenceBinding.referenceLinkTitle.setAlpha(1f);
