@@ -19,6 +19,9 @@ import java.util.regex.Pattern;
 
 public class WikipediaGetter {
 
+    private static final String UNSUPPORTED_PREVIEW_ELEMENTS =
+            "script, style, svg, wiki-chart, table, figure, iframe, canvas, noscript, object, embed";
+
     public static boolean isValidWikipediaUrl(String url) {
         String regex = "^(https|http)://en.wikipedia.org/wiki/.+";
         Pattern pattern = Pattern.compile(regex);
@@ -41,18 +44,11 @@ public class WikipediaGetter {
                             String summary = pages.getJSONObject(pageId).optString("extract");
 
                             if (!TextUtils.isEmpty(summary)) {
-                                Document doc = Jsoup.parse(summary);
+                                Document doc = sanitizeSummaryHtml(summary);
 
-                                // Remove empty <ul> elements
-                                for (Element ul : doc.select("ul")) {
-                                    if (!ul.hasText()) {
-                                        ul.remove();
-                                    }
-                                }
-
-                                if (doc.hasText()) {
+                                if (doc.body().hasText()) {
                                     WikipediaInfo wikiInfo = new WikipediaInfo();
-                                    wikiInfo.summary = doc.html();
+                                    wikiInfo.summary = doc.body().html();
                                     callback.onSuccess(wikiInfo);
                                 } else {
                                     callback.onFailure("Wikipedia did not return a visible summary");
@@ -79,6 +75,29 @@ public class WikipediaGetter {
             callback.onFailure("Invalid Wikipedia URL");
             return null;
         }
+    }
+
+    private static Document sanitizeSummaryHtml(String summaryHtml) {
+        Document document = Jsoup.parseBodyFragment(summaryHtml);
+
+        // HtmlTextView cannot render rich MediaWiki content such as charts or tables. Remove
+        // these elements with their contents so embedded SVG labels and CSS are not shown as
+        // flattened preview text.
+        document.select(UNSUPPORTED_PREVIEW_ELEMENTS).remove();
+
+        // HtmlTextView gives blockquotes a hard-coded white background. Keep the quoted text and
+        // inline formatting, but render it as ordinary preview content.
+        for (Element blockquote : document.select("blockquote")) {
+            blockquote.unwrap();
+        }
+
+        for (Element element : document.select("p, ul, ol")) {
+            if (!element.hasText()) {
+                element.remove();
+            }
+        }
+
+        return document;
     }
 
     public static String getFirstParagraphText(String summaryHtml) {
