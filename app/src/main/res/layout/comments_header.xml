@@ -326,6 +326,10 @@
             android:id="@+id/comments_header_link_preview_stub"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginRight="16dp"
+            android:layout_marginBottom="8dp"
             android:layout="@layout/comments_header_link_preview" />
 
         <LinearLayout
