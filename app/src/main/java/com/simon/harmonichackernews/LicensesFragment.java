@@ -42,7 +42,7 @@ public class LicensesFragment extends Fragment {
     };
 
     private static final String[][] COMMON_LICENSES_AFTER_LOCAL_AI = {
-            {"Kotlin", "JetBrains", "Apache License 2.0", "https://kotlinlang.org/"},
+            {"Kotlin standard library", "JetBrains", "Apache License 2.0", "https://kotlinlang.org/"},
             {"kotlinx.coroutines", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.coroutines"},
             {"HtmlTextView", "SufficientlySecure", "Apache License 2.0", "https://github.com/SufficientlySecure/html-textview"},
             {"OkHttp", "Square", "Apache License 2.0", "https://square.github.io/okhttp/"},
