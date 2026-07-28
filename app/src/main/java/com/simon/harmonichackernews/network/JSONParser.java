@@ -390,7 +390,7 @@ public class JSONParser {
         int createdAt = 0;
         int id = 0;
         int childCount = 0;
-        List<Comment> childComments = new ArrayList<>();
+        List<Comment> childComments = null;
 
         reader.beginObject();
         while (reader.hasNext()) {
@@ -417,6 +417,9 @@ public class JSONParser {
                         childCount++;
                         Comment childComment = parseAlgoliaComment(reader, depth + 1, filteredUsers);
                         if (childComment != null) {
+                            if (childComments == null) {
+                                childComments = new ArrayList<>();
+                            }
                             childComments.add(childComment);
                         }
                     }
@@ -445,7 +448,9 @@ public class JSONParser {
         comment.time = createdAt;
         comment.id = id;
         comment.children = childCount;
-        comment.childComments = childComments;
+        comment.childComments = childComments == null
+                ? Collections.emptyList()
+                : childComments;
 
         if (!comment.childComments.isEmpty()) {
             comment.childComments.sort((a, b) -> Integer.compare(b.children, a.children));
@@ -572,6 +577,7 @@ public class JSONParser {
             destination.add(comment);
             if (comment.childComments != null && !comment.childComments.isEmpty()) {
                 flattenComments(comment.childComments, destination);
+                comment.childComments = Collections.emptyList();
             }
         }
     }

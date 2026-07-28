@@ -6,7 +6,7 @@ import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.Utils;
 
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Comment implements Serializable {
@@ -26,7 +26,7 @@ public class Comment implements Serializable {
     public int children;
     public int totalReplies;
 
-    public List<Comment> childComments = new ArrayList<>();
+    public List<Comment> childComments = Collections.emptyList();
     public int sortOrder;
     public int[] kidsIds; // For official HN API fallback - stores child comment IDs
 
