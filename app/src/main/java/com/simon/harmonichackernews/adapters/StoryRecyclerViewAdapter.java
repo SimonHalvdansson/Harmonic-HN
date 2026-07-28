@@ -31,6 +31,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.facebook.shimmer.ShimmerFrameLayout;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
@@ -306,6 +307,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             bindStoryIndex(storyViewHolder, position, storyViewHolder.story);
 
             if (storyViewHolder.story.loaded || storyViewHolder.story.loadingFailed) {
+                storyViewHolder.titleShimmerContainer.stopShimmer();
                 setStoryTitleText(storyViewHolder, storyViewHolder.story, useClickedEffects);
 
                 final String commentCountText;
@@ -392,6 +394,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 storyViewHolder.commentLayoutView.setEnabled(!storyViewHolder.story.loadingFailed);
                 storyViewHolder.commentLayoutView.setClickable(!storyViewHolder.story.loadingFailed);
             } else {
+                storyViewHolder.titleShimmerContainer.startShimmer();
                 storyViewHolder.commentsIcon.setImageResource(R.drawable.ic_comment);
                 storyViewHolder.titleShimmer.setVisibility(View.VISIBLE);
                 storyViewHolder.metaShimmer.setVisibility(compactView ? View.GONE : View.VISIBLE);
@@ -2265,6 +2268,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final LinearLayout linkLayoutView;
         public final LinearLayout commentLayoutView;
         public final ImageView commentsIcon;
+        public final ShimmerFrameLayout titleShimmerContainer;
         public final LinearLayout titleShimmer;
         public final View metaShimmer;
         public final LinearLayout metaContainer;
@@ -2297,6 +2301,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     binding.storyLinkLayout,
                     binding.storyCommentLayout,
                     binding.storyCommentsIcon,
+                    binding.storyTitleShimmerContainer,
                     binding.storyTitleShimmer,
                     binding.storyTitleShimmerMeta,
                     binding.storyMetaFavicon,
@@ -2317,6 +2322,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     binding.storyLinkLayout,
                     binding.storyCommentLayout,
                     binding.storyCommentsIcon,
+                    binding.storyTitleShimmerContainer,
                     binding.storyTitleShimmer,
                     binding.storyTitleShimmerMeta,
                     binding.storyMetaFavicon,
@@ -2337,6 +2343,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     binding.storyContainer.storyLinkLayout,
                     binding.storyContainer.storyCommentLayout,
                     binding.storyContainer.storyCommentsIcon,
+                    binding.storyContainer.storyTitleShimmerContainer,
                     binding.storyContainer.storyTitleShimmer,
                     binding.storyContainer.storyTitleShimmerMeta,
                     binding.storyContainer.storyMetaFavicon,
@@ -2357,6 +2364,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     binding.storyContainer.storyLinkLayout,
                     binding.storyContainer.storyCommentLayout,
                     binding.storyContainer.storyCommentsIcon,
+                    binding.storyContainer.storyTitleShimmerContainer,
                     binding.storyContainer.storyTitleShimmer,
                     binding.storyContainer.storyTitleShimmerMeta,
                     binding.storyContainer.storyMetaFavicon,
@@ -2376,6 +2384,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                 LinearLayout linkLayout,
                                 LinearLayout commentLayout,
                                 ImageView commentIcon,
+                                ShimmerFrameLayout shimmerContainer,
                                 LinearLayout shimmerTitle,
                                 View shimmerMeta,
                                 ImageView favicon,
@@ -2393,6 +2402,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             linkLayoutView = linkLayout;
             commentLayoutView = commentLayout;
             commentsIcon = commentIcon;
+            titleShimmerContainer = shimmerContainer;
             titleShimmer = shimmerTitle;
             metaShimmer = shimmerMeta;
             metaFavicon = favicon;

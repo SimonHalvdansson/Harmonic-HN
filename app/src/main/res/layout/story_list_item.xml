@@ -83,8 +83,10 @@
                 android:paddingLeft="10dp">
 
                 <com.facebook.shimmer.ShimmerFrameLayout
+                    android:id="@+id/story_title_shimmer_container"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    app:shimmer_auto_start="false"
                     app:shimmer_base_alpha="0.15"
                     app:shimmer_base_color="?attr/drawableColor"
                     app:shimmer_duration="2000"

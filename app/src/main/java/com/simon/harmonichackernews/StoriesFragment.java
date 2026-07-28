@@ -1225,6 +1225,10 @@ public class StoriesFragment extends Fragment {
 
     private RecyclerView.OnScrollListener createStoryScrollListener(@NonNull StoryRecyclerViewAdapter sourceAdapter) {
         return new RecyclerView.OnScrollListener() {
+            private int lastPrefetchGeneration = -1;
+            private int lastPrefetchFirstVisibleItem = RecyclerView.NO_POSITION;
+            private int lastPrefetchLastVisibleItem = RecyclerView.NO_POSITION;
+
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
@@ -1244,7 +1248,15 @@ public class StoriesFragment extends Fragment {
 
                 int firstVisibleItem = linearLayoutManager.findFirstVisibleItemPosition();
                 int lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
-                prefetchLoadedPreviewImagesNearViewport(firstVisibleItem, lastVisibleItem);
+                int currentGeneration = storyListGeneration;
+                if (currentGeneration != lastPrefetchGeneration
+                        || firstVisibleItem != lastPrefetchFirstVisibleItem
+                        || lastVisibleItem != lastPrefetchLastVisibleItem) {
+                    prefetchLoadedPreviewImagesNearViewport(firstVisibleItem, lastVisibleItem);
+                    lastPrefetchGeneration = currentGeneration;
+                    lastPrefetchFirstVisibleItem = firstVisibleItem;
+                    lastPrefetchLastVisibleItem = lastVisibleItem;
+                }
 
                 // Only enable infinite scroll if pagination mode is OFF
                 if (!searching && adapter != null && !adapter.paginationMode && !currentTypeIsAlgolia()) {
