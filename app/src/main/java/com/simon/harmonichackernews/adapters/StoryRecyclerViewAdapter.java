@@ -65,9 +65,11 @@ import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import coil.Coil;
 import coil.request.Disposable;
@@ -142,9 +144,23 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public int visibleStoryCount = 30;
     private final Map<Story, StoryPreviewImageLoader.PreviewImageRequest> previewImageUrlRequests = new IdentityHashMap<>();
     private final SparseArray<Float> previewPagingAlphas = new SparseArray<>();
+    private final Set<Story> pendingStoryChanges =
+            Collections.newSetFromMap(new IdentityHashMap<>());
+    private boolean pendingStoryChangesPosted;
     @Nullable
     private RecyclerView recyclerView;
     private final PreviewImageTintExtractor tintExtractor = new PreviewImageTintExtractor();
+    private final RecyclerView.OnScrollListener pendingStoryChangeScrollListener =
+            new RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrollStateChanged(
+                        @NotNull RecyclerView recyclerView,
+                        int newState) {
+                    if (newState != RecyclerView.SCROLL_STATE_SETTLING) {
+                        flushPendingStoryChanges();
+                    }
+                }
+            };
 
     public StoryRecyclerViewAdapter(List<Story> items,
                                     boolean shouldShowPoints,
@@ -463,13 +479,17 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public void onAttachedToRecyclerView(@NotNull RecyclerView recyclerView) {
         super.onAttachedToRecyclerView(recyclerView);
         this.recyclerView = recyclerView;
+        recyclerView.addOnScrollListener(pendingStoryChangeScrollListener);
         tintExtractor.attach();
     }
 
     @Override
     public void onDetachedFromRecyclerView(@NotNull RecyclerView recyclerView) {
+        recyclerView.removeOnScrollListener(pendingStoryChangeScrollListener);
         tintExtractor.detach();
         cancelPreviewImageUrlRequests();
+        pendingStoryChanges.clear();
+        pendingStoryChangesPosted = false;
         if (this.recyclerView == recyclerView) {
             this.recyclerView = null;
         }
@@ -894,9 +914,6 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                 } else {
                                     setPreviewImageUrl(story, imageUrl);
                                     story.previewImageLoadFailed = false;
-                                    prefetchPreviewImageDrawable(
-                                            appContext,
-                                            story);
                                 }
                             } else if (!TextUtils.isEmpty(imageUrl)
                                     && TextUtils.isEmpty(story.previewImageUrl)) {
@@ -917,11 +934,15 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                     bindStorySummary(visibleHolder, story, true);
                                 }
                                 if (needsPreviewImage && !previewImageFailed) {
-                                    notifyStoryChanged(story);
+                                    loadPreviewImage(visibleHolder, story);
+                                    forceLayoutRecursively(visibleHolder.itemView);
                                 } else {
                                     forceLayoutRecursively(visibleHolder.itemView);
                                 }
                             } else if (!previewImageFailed) {
+                                if (needsPreviewImage) {
+                                    prefetchPreviewImageDrawable(appContext, story);
+                                }
                                 notifyStoryChanged(story);
                             }
                         });
@@ -969,12 +990,18 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             setPreviewImageUrl(story, imageUrl);
             story.previewImageLoadFailed = false;
             cachePreviewState(appContext, story);
-            prefetchPreviewImageDrawable(appContext, story);
             int index = stories.indexOf(story);
             if (index >= 0
                     && (!SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)
                     || showSummary)) {
-                notifyItemChanged(index);
+                StoryViewHolder visibleHolder = findVisibleStoryHolder(story);
+                if (visibleHolder != null) {
+                    loadPreviewImage(visibleHolder, story);
+                    forceLayoutRecursively(visibleHolder.itemView);
+                } else {
+                    prefetchPreviewImageDrawable(appContext, story);
+                    notifyStoryChanged(story);
+                }
             }
         });
         previewImageUrlRequests.put(story, request);
@@ -1021,8 +1048,14 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                         setPreviewImageUrl(story, imageUrl);
                         story.previewImageLoadFailed = false;
                         cachePreviewState(appContext, story);
-                        prefetchPreviewImageDrawable(appContext, story);
-                        notifyStoryChangedIfPreviewEnabled(story);
+                        StoryViewHolder visibleHolder = findVisibleStoryHolder(story);
+                        if (visibleHolder != null) {
+                            loadPreviewImage(visibleHolder, story);
+                            forceLayoutRecursively(visibleHolder.itemView);
+                        } else {
+                            prefetchPreviewImageDrawable(appContext, story);
+                            notifyStoryChangedIfPreviewEnabled(story);
+                        }
                         return;
                     }
 
@@ -1182,7 +1215,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private void notifyStoryChangedIfPreviewEnabled(Story story) {
         int index = stories.indexOf(story);
         if (index >= 0 && !SettingsUtils.STORY_PREVIEW_IMAGE_OFF.equals(previewImageMode)) {
-            notifyItemChanged(index);
+            notifyStoryChanged(story);
         }
     }
 
@@ -1424,7 +1457,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return;
         }
 
-        notifyItemChanged(index);
+        notifyStoryChanged(story);
     }
 
     private void animatePreviewImageFailure(
@@ -1843,9 +1876,64 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private void notifyStoryChanged(Story story) {
-        int index = stories.indexOf(story);
-        if (index >= 0) {
-            notifyItemChanged(index);
+        if (stories.indexOf(story) < 0) {
+            return;
+        }
+
+        pendingStoryChanges.add(story);
+        postPendingStoryChangesIfNotSettling();
+    }
+
+    private void postPendingStoryChangesIfNotSettling() {
+        RecyclerView currentRecyclerView = recyclerView;
+        if (currentRecyclerView == null
+                || currentRecyclerView.getScrollState() == RecyclerView.SCROLL_STATE_SETTLING
+                || pendingStoryChangesPosted) {
+            return;
+        }
+
+        pendingStoryChangesPosted = true;
+        currentRecyclerView.postOnAnimation(() -> {
+            pendingStoryChangesPosted = false;
+            if (recyclerView == currentRecyclerView) {
+                flushPendingStoryChanges();
+            }
+        });
+    }
+
+    private void flushPendingStoryChanges() {
+        RecyclerView currentRecyclerView = recyclerView;
+        if (currentRecyclerView == null
+                || currentRecyclerView.getAdapter() != this
+                || currentRecyclerView.getScrollState() == RecyclerView.SCROLL_STATE_SETTLING) {
+            return;
+        }
+
+        if (currentRecyclerView.isComputingLayout()) {
+            postPendingStoryChangesIfNotSettling();
+            return;
+        }
+
+        int visibleStoryCount = getVisibleItemCount();
+        int rangeStart = RecyclerView.NO_POSITION;
+        int previousPosition = RecyclerView.NO_POSITION;
+        for (int position = 0; position < visibleStoryCount; position++) {
+            if (!pendingStoryChanges.contains(stories.get(position))) {
+                continue;
+            }
+
+            if (rangeStart == RecyclerView.NO_POSITION) {
+                rangeStart = position;
+            } else if (position != previousPosition + 1) {
+                notifyItemRangeChanged(rangeStart, previousPosition - rangeStart + 1);
+                rangeStart = position;
+            }
+            previousPosition = position;
+        }
+        pendingStoryChanges.clear();
+
+        if (rangeStart != RecyclerView.NO_POSITION) {
+            notifyItemRangeChanged(rangeStart, previousPosition - rangeStart + 1);
         }
     }
 

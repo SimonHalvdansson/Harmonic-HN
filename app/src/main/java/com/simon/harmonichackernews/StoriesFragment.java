@@ -353,6 +353,9 @@ public class StoriesFragment extends Fragment {
     private String lastSearch = "";
     private int algoliaRequestGeneration = 0;
     private int storyListGeneration = 0;
+    private final Map<Integer, Integer> pendingStoryRowChangeGenerations = new HashMap<>();
+    private final Map<Integer, PendingStoryRemoval> pendingStoryRemovals = new HashMap<>();
+    private boolean pendingStoryAdapterUpdatePosted = false;
     private boolean algoliaLoading = false;
     private String activeAlgoliaUrl = null;
     private boolean algoliaLoadMoreInProgress = false;
@@ -383,6 +386,16 @@ public class StoriesFragment extends Fragment {
     private static final long STORY_LOAD_STALE_TIMEOUT_MS = 30_000L;
     private static final int PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE = 10;
     private static final long PREVIEW_IMAGE_PREFETCH_RAMP_DELAY_MS = 450L;
+
+    private static final class PendingStoryRemoval {
+        final int generation;
+        boolean updateHeader;
+
+        PendingStoryRemoval(int generation, boolean updateHeader) {
+            this.generation = generation;
+            this.updateHeader = updateHeader;
+        }
+    }
     private int algoliaHitsPerPage = StorySearchController.ALGOLIA_HITS_INCREMENT;
     private int lastAlgoliaTopStoriesStartTime = 0;
     private final Handler previewImagePrefetchHandler = new Handler(Looper.getMainLooper());
@@ -1053,6 +1066,9 @@ public class StoriesFragment extends Fragment {
             @Nullable
             private RecyclerView attachedRecyclerView;
             private boolean recoveryLayoutPosted;
+            private int recoveryAnchorPosition = RecyclerView.NO_POSITION;
+            private long recoveryAnchorItemId = RecyclerView.NO_ID;
+            private int recoveryAnchorOffset;
 
             @Override
             public void onAttachedToWindow(RecyclerView view) {
@@ -1066,6 +1082,8 @@ public class StoriesFragment extends Fragment {
                     attachedRecyclerView = null;
                 }
                 recoveryLayoutPosted = false;
+                recoveryAnchorPosition = RecyclerView.NO_POSITION;
+                recoveryAnchorItemId = RecyclerView.NO_ID;
                 super.onDetachedFromWindow(view, recycler);
             }
 
@@ -1082,6 +1100,7 @@ public class StoriesFragment extends Fragment {
             @Override
             public void onLayoutChildren(@NonNull RecyclerView.Recycler recycler,
                                          @NonNull RecyclerView.State state) {
+                captureRecoveryAnchor();
                 try {
                     super.onLayoutChildren(recycler, state);
                 } catch (IllegalArgumentException exception) {
@@ -1102,6 +1121,7 @@ public class StoriesFragment extends Fragment {
             @Override
             public int scrollVerticallyBy(int dy, RecyclerView.Recycler recycler,
                                           RecyclerView.State state) {
+                captureRecoveryAnchor();
                 try {
                     return super.scrollVerticallyBy(dy, recycler, state);
                 } catch (IllegalArgumentException exception) {
@@ -1121,6 +1141,28 @@ public class StoriesFragment extends Fragment {
                 }
             }
 
+            private void captureRecoveryAnchor() {
+                int firstVisiblePosition = findFirstVisibleItemPosition();
+                if (firstVisiblePosition == RecyclerView.NO_POSITION) {
+                    return;
+                }
+
+                recoveryAnchorPosition = firstVisiblePosition;
+                RecyclerView currentRecyclerView = attachedRecyclerView;
+                RecyclerView.Adapter<?> currentAdapter = currentRecyclerView == null
+                        ? null
+                        : currentRecyclerView.getAdapter();
+                if (currentAdapter != null
+                        && currentAdapter.hasStableIds()
+                        && firstVisiblePosition < currentAdapter.getItemCount()) {
+                    recoveryAnchorItemId = currentAdapter.getItemId(firstVisiblePosition);
+                }
+                View anchorView = findViewByPosition(firstVisiblePosition);
+                recoveryAnchorOffset = anchorView == null
+                        ? 0
+                        : getDecoratedTop(anchorView) - getPaddingTop();
+            }
+
             private void postRecoveryLayout() {
                 RecyclerView currentRecyclerView = attachedRecyclerView;
                 if (currentRecyclerView == null || recoveryLayoutPosted) {
@@ -1134,8 +1176,30 @@ public class StoriesFragment extends Fragment {
                             || currentRecyclerView.getLayoutManager() != this) {
                         return;
                     }
+
+                    currentRecyclerView.stopScroll();
+                    RecyclerView.Adapter<?> currentAdapter = currentRecyclerView.getAdapter();
+                    if (recoveryAnchorPosition != RecyclerView.NO_POSITION
+                            && currentAdapter != null
+                            && currentAdapter.getItemCount() > 0) {
+                        int restoredPosition = findRecoveryAnchorPosition(currentAdapter);
+                        scrollToPositionWithOffset(restoredPosition, recoveryAnchorOffset);
+                    }
                     currentRecyclerView.requestLayout();
                 });
+            }
+
+            private int findRecoveryAnchorPosition(
+                    @NonNull RecyclerView.Adapter<?> currentAdapter) {
+                if (currentAdapter.hasStableIds()
+                        && recoveryAnchorItemId != RecyclerView.NO_ID) {
+                    for (int position = 0; position < currentAdapter.getItemCount(); position++) {
+                        if (currentAdapter.getItemId(position) == recoveryAnchorItemId) {
+                            return position;
+                        }
+                    }
+                }
+                return Math.min(recoveryAnchorPosition, currentAdapter.getItemCount() - 1);
             }
         };
     }
@@ -1162,6 +1226,15 @@ public class StoriesFragment extends Fragment {
     private RecyclerView.OnScrollListener createStoryScrollListener(@NonNull StoryRecyclerViewAdapter sourceAdapter) {
         return new RecyclerView.OnScrollListener() {
             @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if (adapter == sourceAdapter
+                        && newState != RecyclerView.SCROLL_STATE_SETTLING) {
+                    flushPendingStoryAdapterUpdates();
+                }
+            }
+
+            @Override
             public void onScrolled(@NotNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
 
@@ -1181,6 +1254,135 @@ public class StoriesFragment extends Fragment {
                 }
             }
         };
+    }
+
+    private void enqueueStoryRowChange(@NonNull Story story, int loadGeneration) {
+        if (!isCurrentStoryListGeneration(loadGeneration)) {
+            return;
+        }
+
+        // Story requests frequently finish during a fling. Keep the model update, but coalesce
+        // the adapter notifications until holders are no longer rapidly moving through scrap.
+        pendingStoryRowChangeGenerations.put(story.id, loadGeneration);
+        postPendingStoryAdapterUpdateIfNotSettling();
+    }
+
+    private void enqueueStoryRemoval(
+            @NonNull Story story,
+            int loadGeneration,
+            boolean updateHeader) {
+        if (!isCurrentStoryListGeneration(loadGeneration)) {
+            return;
+        }
+
+        PendingStoryRemoval pendingRemoval = pendingStoryRemovals.get(story.id);
+        if (pendingRemoval == null || pendingRemoval.generation != loadGeneration) {
+            pendingStoryRemovals.put(
+                    story.id,
+                    new PendingStoryRemoval(loadGeneration, updateHeader));
+        } else {
+            pendingRemoval.updateHeader |= updateHeader;
+        }
+        pendingStoryRowChangeGenerations.remove(story.id);
+        postPendingStoryAdapterUpdateIfNotSettling();
+    }
+
+    private void postPendingStoryAdapterUpdateIfNotSettling() {
+        RecyclerView currentRecyclerView = recyclerView;
+        if (currentRecyclerView == null
+                || currentRecyclerView.getScrollState() == RecyclerView.SCROLL_STATE_SETTLING
+                || pendingStoryAdapterUpdatePosted) {
+            return;
+        }
+
+        pendingStoryAdapterUpdatePosted = true;
+        currentRecyclerView.postOnAnimation(() -> {
+            pendingStoryAdapterUpdatePosted = false;
+            if (recyclerView == currentRecyclerView) {
+                flushPendingStoryAdapterUpdates();
+            }
+        });
+    }
+
+    private void flushPendingStoryAdapterUpdates() {
+        RecyclerView currentRecyclerView = recyclerView;
+        StoryRecyclerViewAdapter currentAdapter = adapter;
+        if (currentRecyclerView == null
+                || currentAdapter == null
+                || stories == null
+                || currentRecyclerView.getAdapter() != currentAdapter
+                || currentRecyclerView.getScrollState() == RecyclerView.SCROLL_STATE_SETTLING) {
+            return;
+        }
+
+        if (currentRecyclerView.isComputingLayout()) {
+            postPendingStoryAdapterUpdateIfNotSettling();
+            return;
+        }
+
+        // Structural removals go first so changed positions are calculated against the final
+        // list. The normal item animator remains installed for these non-fling updates.
+        int currentGeneration = storyListGeneration;
+        ArrayList<Integer> removalPositions = new ArrayList<>();
+        boolean shouldUpdateHeader = false;
+        for (Map.Entry<Integer, PendingStoryRemoval> entry : pendingStoryRemovals.entrySet()) {
+            PendingStoryRemoval pendingRemoval = entry.getValue();
+            if (pendingRemoval.generation != currentGeneration) {
+                continue;
+            }
+
+            int position = findStoryPositionById(entry.getKey());
+            if (position != RecyclerView.NO_POSITION) {
+                removalPositions.add(position);
+                shouldUpdateHeader |= pendingRemoval.updateHeader;
+            }
+        }
+        pendingStoryRemovals.clear();
+
+        if (!removalPositions.isEmpty()) {
+            removalPositions.sort((first, second) -> Integer.compare(second, first));
+            for (int position : removalPositions) {
+                if (position < 0 || position >= stories.size()) {
+                    continue;
+                }
+                pendingStoryRowChangeGenerations.remove(stories.get(position).id);
+                removeStoryAt(position, currentGeneration, false);
+            }
+            loadVisibleStories(currentGeneration);
+            if (shouldUpdateHeader) {
+                updateHeader();
+            }
+        }
+
+        int visibleStoryCount = currentAdapter.getVisibleStoryItemCount();
+        ArrayList<Integer> changedPositions = new ArrayList<>();
+        for (int position = 0; position < visibleStoryCount && position < stories.size(); position++) {
+            Story story = stories.get(position);
+            Integer changeGeneration = pendingStoryRowChangeGenerations.get(story.id);
+            if (changeGeneration != null && changeGeneration == currentGeneration) {
+                changedPositions.add(position);
+            }
+        }
+        pendingStoryRowChangeGenerations.clear();
+
+        int rangeStart = RecyclerView.NO_POSITION;
+        int previousPosition = RecyclerView.NO_POSITION;
+        for (int position : changedPositions) {
+            if (rangeStart == RecyclerView.NO_POSITION) {
+                rangeStart = position;
+            } else if (position != previousPosition + 1) {
+                currentAdapter.notifyItemRangeChanged(
+                        rangeStart,
+                        previousPosition - rangeStart + 1);
+                rangeStart = position;
+            }
+            previousPosition = position;
+        }
+        if (rangeStart != RecyclerView.NO_POSITION) {
+            currentAdapter.notifyItemRangeChanged(
+                    rangeStart,
+                    previousPosition - rangeStart + 1);
+        }
     }
 
     private void syncActiveStoryListToSearchState() {
@@ -3490,6 +3692,9 @@ public class StoriesFragment extends Fragment {
             queue.cancelAll(requestTag);
         }
 
+        pendingStoryRowChangeGenerations.clear();
+        pendingStoryRemovals.clear();
+        pendingStoryAdapterUpdatePosted = false;
         clearViewReferences();
 
         super.onDestroyView();
@@ -3787,10 +3992,15 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
+        PendingStoryRemoval pendingRemoval = pendingStoryRemovals.get(story.id);
+        if (pendingRemoval != null && pendingRemoval.generation == loadGeneration) {
+            return;
+        }
+
         if (story.loaded) {
             int index = stories.indexOf(story);
             if (index >= 0 && shouldFilterLoadedStory(story)) {
-                removeStoryAt(index, loadGeneration, true);
+                enqueueStoryRemoval(story, loadGeneration, false);
             }
             return;
         }
@@ -3818,7 +4028,7 @@ public class StoriesFragment extends Fragment {
                     }
                     try {
                         if (!JSONParser.updateStoryWithHNJson(response, story, isHistoryType(adapter.type))) {
-                            removeStoryAt(index, loadGeneration, true);
+                            enqueueStoryRemoval(story, loadGeneration, false);
                             return;
                         }
 
@@ -3829,13 +4039,12 @@ public class StoriesFragment extends Fragment {
                         }
 
                         if (currentTypeUsesSavedItemFilter() && !shouldShowStoryForSavedItemFilter(story)) {
-                            removeStoryAt(index, loadGeneration, true);
-                            updateHeader();
+                            enqueueStoryRemoval(story, loadGeneration, true);
                             return;
                         }
 
                         if (shouldFilterLoadedStory(story)) {
-                            removeStoryAt(index, loadGeneration, true);
+                            enqueueStoryRemoval(story, loadGeneration, false);
                             return;
                         }
 
@@ -3844,14 +4053,14 @@ public class StoriesFragment extends Fragment {
                             requestPreviewImagePrefetch(context, story);
                         }
 
-                        adapter.notifyItemChanged(index);
+                        enqueueStoryRowChange(story, loadGeneration);
                     } catch (JSONException e) {
                         e.printStackTrace();
                         Utils.log("Failed to load story with id: " + story.id);
                         story.loadingFailed = true;
                         finishPaginationLoadMoreStory(story, loadGeneration);
                         updatePreviewImagePrefetchRampCompletion();
-                        adapter.notifyItemChanged(index);
+                        enqueueStoryRowChange(story, loadGeneration);
                     }
                 }, error -> {
             if (!isCurrentStoryLoad(story, startedAt)) {
@@ -3872,7 +4081,7 @@ public class StoriesFragment extends Fragment {
             updatePreviewImagePrefetchRampCompletion();
             int index = stories.indexOf(story);
             if (index >= 0) {
-                adapter.notifyItemChanged(index);
+                enqueueStoryRowChange(story, loadGeneration);
                 loadStory(story, attempt + 1, loadGeneration);
             }
         });
@@ -4485,7 +4694,7 @@ public class StoriesFragment extends Fragment {
 
                         int index = stories.indexOf(story);
                         if (index >= 0) {
-                            adapter.notifyItemChanged(index);
+                            enqueueStoryRowChange(story, loadGeneration);
                         }
                     } catch (JSONException e) {
                         e.printStackTrace();
