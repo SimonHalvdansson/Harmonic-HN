@@ -128,6 +128,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private final Map<Integer, Boolean> commentVisibilityById = new HashMap<>();
     private final Map<Integer, String> hackerNewsReferenceTitlesByItemId = new HashMap<>();
     private final Set<Integer> requestedHackerNewsReferenceTitleItemIds = new HashSet<>();
+    private final CommentSubtreeIndex commentSubtreeIndex = new CommentSubtreeIndex();
     private int commentLookupSize = -1;
     private Map<String, String> userTagsByUser = new HashMap<>();
     private String userTagsJson;
@@ -602,7 +603,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             itemViewHolder.referenceLinksContainer.setVisibility((itemViewHolder.referenceLinksVisible && !commentTextCollapsed) ? View.VISIBLE : GONE);
             itemViewHolder.commentHiddenText.setVisibility((!comment.expanded && collapseParent) ? View.VISIBLE : GONE);
 
-            int subCommentCount = getIndexOfLastChild(comment.depth, position) - position;
+            int subCommentCount = getIndexOfLastChild(position) - position;
             itemViewHolder.commentHiddenCount.animate().cancel();
             itemViewHolder.commentHiddenCount.setAlpha(1f);
             if (subCommentCount > 0) {
@@ -4526,16 +4527,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         void onLongClick(String imageUrl, ImageView view);
     }
 
-    public int getIndexOfLastChild(int commentDepth, int pos) {
-        int lastChildIndex = pos;
-        for (int i = pos + 1; i < comments.size(); i++) {
-            if (comments.get(i).depth > commentDepth) {
-                lastChildIndex = i;
-            } else {
-                return lastChildIndex;
-            }
-        }
-        return lastChildIndex;
+    public int getIndexOfLastChild(int pos) {
+        return commentSubtreeIndex.getLastChildIndex(comments, pos);
     }
 
     private boolean shouldShow(Comment comment) {
@@ -4580,6 +4573,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public void invalidateCommentLookup() {
         commentsById.clear();
         commentVisibilityById.clear();
+        commentSubtreeIndex.invalidate();
         commentLookupSize = -1;
     }
 

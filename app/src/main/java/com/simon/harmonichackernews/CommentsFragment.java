@@ -1117,7 +1117,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.invalidateCommentVisibility();
 
             int offset = 0;
-            int lastChildIndex = adapter.getIndexOfLastChild(comment.depth, index);
+            int lastChildIndex = adapter.getIndexOfLastChild(index);
             if (index == lastChildIndex && !adapter.collapseParent) {
                 return;
             }
