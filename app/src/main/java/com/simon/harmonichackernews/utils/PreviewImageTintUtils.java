@@ -56,12 +56,24 @@ public class PreviewImageTintUtils {
     }
 
     public static int calculateCardTint(int baseColor, Drawable drawable, String paletteTintMode) {
-        String paletteTintConfigKey = SettingsUtils.getPaletteTintConfigKey(paletteTintMode);
         Bitmap bitmap = renderDrawableToSampleBitmap(drawable);
         if (bitmap == null) {
             return baseColor;
         }
 
+        try {
+            return calculateCardTint(baseColor, bitmap, paletteTintMode);
+        } finally {
+            bitmap.recycle();
+        }
+    }
+
+    static int calculateCardTint(int baseColor, Bitmap bitmap, String paletteTintMode) {
+        if (bitmap == null) {
+            return baseColor;
+        }
+
+        String paletteTintConfigKey = SettingsUtils.getPaletteTintConfigKey(paletteTintMode);
         Palette palette = Palette.from(bitmap)
                 .maximumColorCount(16)
                 .generate();
@@ -306,7 +318,11 @@ public class PreviewImageTintUtils {
         return Math.max(min, Math.min(max, value));
     }
 
-    private static Bitmap renderDrawableToSampleBitmap(Drawable drawable) {
+    static Bitmap renderDrawableToSampleBitmap(Drawable drawable) {
+        if (drawable == null) {
+            return null;
+        }
+
         int width = Math.max(1, drawable.getIntrinsicWidth());
         int height = Math.max(1, drawable.getIntrinsicHeight());
         float scale = Math.min((float) TINT_SAMPLE_SIZE / width, (float) TINT_SAMPLE_SIZE / height);
@@ -316,9 +332,15 @@ public class PreviewImageTintUtils {
         Bitmap bitmap = Bitmap.createBitmap(sampleWidth, sampleHeight, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         Rect oldBounds = new Rect(drawable.getBounds());
-        drawable.setBounds(0, 0, sampleWidth, sampleHeight);
-        drawable.draw(canvas);
-        drawable.setBounds(oldBounds);
+        try {
+            drawable.setBounds(0, 0, sampleWidth, sampleHeight);
+            drawable.draw(canvas);
+        } catch (RuntimeException e) {
+            bitmap.recycle();
+            throw e;
+        } finally {
+            drawable.setBounds(oldBounds);
+        }
         return bitmap;
     }
 }
