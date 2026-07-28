@@ -50,6 +50,37 @@ public class FontUtils {
         activeBold = getBoldTypeface(ctx, font);
     }
 
+    public static Typography resolveTypography(Context context,
+                                               String preferredFont,
+                                               float storyTextSize,
+                                               float commentTextSize) {
+        String resolvedFont = SettingsUtils.sanitizeFont(preferredFont);
+        float clampedStoryTextSize = SettingsUtils.clampStoryTextSize(storyTextSize);
+        float clampedCommentTextSize = SettingsUtils.clampCommentTextSize(commentTextSize);
+        float storyTextDelta =
+                clampedStoryTextSize - SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
+        float storyTextScale =
+                clampedStoryTextSize / SettingsUtils.DEFAULT_STORY_TEXT_SIZE;
+        float commentTextDelta =
+                clampedCommentTextSize - SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE;
+        boolean adjustExplicitSizes = "googlesansflexrounded".equals(resolvedFont);
+
+        return new Typography(
+                getRegularTypeface(context, resolvedFont),
+                getBoldTypeface(context, resolvedFont),
+                adjustExplicitSizes,
+                STORY_TITLE_SIZES.get(resolvedFont) + storyTextDelta,
+                adjustExplicitSizes
+                        ? adjustedGoogleSansFlexRoundedSize(
+                                Math.max(12f, clampedStoryTextSize - 3.5f))
+                        : Math.max(12f, clampedStoryTextSize - 3.5f),
+                STORY_META_SIZES.get(resolvedFont) * storyTextScale,
+                STORY_COMMENT_COUNT_SIZES.get(resolvedFont) * storyTextScale,
+                COMMENT_TEXT_SIZES.get(resolvedFont) + commentTextDelta,
+                COMMENTS_HEADER_META_SIZES.get(resolvedFont),
+                COMMENTS_HEADER_TITLE_SIZES.get(resolvedFont));
+    }
+
     public static Typeface getRegularTypeface(Context ctx, String font) {
         switch (SettingsUtils.sanitizeFont(font)) {
             case "productsans":
@@ -216,6 +247,99 @@ public class FontUtils {
             return adjustedGoogleSansFlexRoundedSize(size);
         }
         return size;
+    }
+
+    public static final class Typography {
+
+        private final Typeface regular;
+        private final Typeface bold;
+        private final boolean adjustExplicitSizes;
+        private final float storyTitleSize;
+        private final float storySummarySize;
+        private final float storyMetaSize;
+        private final float storyCommentCountSize;
+        private final float commentTextSize;
+        private final float commentsHeaderMetaSize;
+        private final float commentsHeaderTitleSize;
+
+        private Typography(Typeface regular,
+                           Typeface bold,
+                           boolean adjustExplicitSizes,
+                           float storyTitleSize,
+                           float storySummarySize,
+                           float storyMetaSize,
+                           float storyCommentCountSize,
+                           float commentTextSize,
+                           float commentsHeaderMetaSize,
+                           float commentsHeaderTitleSize) {
+            this.regular = regular;
+            this.bold = bold;
+            this.adjustExplicitSizes = adjustExplicitSizes;
+            this.storyTitleSize = storyTitleSize;
+            this.storySummarySize = storySummarySize;
+            this.storyMetaSize = storyMetaSize;
+            this.storyCommentCountSize = storyCommentCountSize;
+            this.commentTextSize = commentTextSize;
+            this.commentsHeaderMetaSize = commentsHeaderMetaSize;
+            this.commentsHeaderTitleSize = commentsHeaderTitleSize;
+        }
+
+        public void applyStoryTitle(TextView textView) {
+            apply(textView, bold, storyTitleSize);
+        }
+
+        public void applyStorySummary(TextView textView) {
+            apply(textView, regular, storySummarySize);
+        }
+
+        public void applyStoryMeta(TextView textView) {
+            apply(textView, regular, storyMetaSize);
+        }
+
+        public void applyStoryCommentCount(TextView textView) {
+            apply(textView, bold, storyCommentCountSize);
+        }
+
+        public void applyCommentText(TextView textView) {
+            apply(textView, regular, commentTextSize);
+        }
+
+        public void applyCommentsHeaderMeta(TextView... textViews) {
+            for (TextView textView : textViews) {
+                apply(textView, regular, commentsHeaderMetaSize);
+            }
+        }
+
+        public void applyCommentsHeaderTitle(TextView textView) {
+            apply(textView, bold, commentsHeaderTitleSize);
+        }
+
+        public void applyRegular(TextView textView) {
+            textView.setTypeface(regular);
+        }
+
+        public void applyBold(TextView textView) {
+            textView.setTypeface(bold);
+        }
+
+        public void applyRegular(TextView textView, float size) {
+            apply(textView, regular, adjustExplicitSize(size));
+        }
+
+        public void applyBold(TextView textView, float size) {
+            apply(textView, bold, adjustExplicitSize(size));
+        }
+
+        private float adjustExplicitSize(float size) {
+            return adjustExplicitSizes
+                    ? adjustedGoogleSansFlexRoundedSize(size)
+                    : size;
+        }
+
+        private static void apply(TextView textView, Typeface typeface, float size) {
+            textView.setTypeface(typeface);
+            textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, size);
+        }
     }
 
     private static class FontSizes {

@@ -169,6 +169,7 @@ public class CommentDisplaySettings {
         }
         if (Float.compare(adapter.preferredTextSize, preferredTextSize) != 0) {
             adapter.preferredTextSize = preferredTextSize;
+            adapter.invalidateTypography();
             updateHeader = true;
             updateComments = true;
         }
@@ -182,6 +183,7 @@ public class CommentDisplaySettings {
         }
         if (!Objects.equals(adapter.font, font)) {
             adapter.font = font;
+            adapter.invalidateTypography();
             updateHeader = true;
             updateComments = true;
         }

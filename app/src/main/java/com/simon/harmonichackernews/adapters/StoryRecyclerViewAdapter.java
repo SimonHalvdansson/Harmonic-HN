@@ -148,6 +148,8 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             Collections.newSetFromMap(new IdentityHashMap<>());
     private boolean pendingStoryChangesPosted;
     @Nullable
+    private FontUtils.Typography typography;
+    @Nullable
     private RecyclerView recyclerView;
     private final PreviewImageTintExtractor tintExtractor = new PreviewImageTintExtractor();
     private final RecyclerView.OnScrollListener pendingStoryChangeScrollListener =
@@ -479,6 +481,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public void onAttachedToRecyclerView(@NotNull RecyclerView recyclerView) {
         super.onAttachedToRecyclerView(recyclerView);
         this.recyclerView = recyclerView;
+        getTypography(recyclerView.getContext());
         recyclerView.addOnScrollListener(pendingStoryChangeScrollListener);
         tintExtractor.attach();
     }
@@ -2057,14 +2060,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private void applyStoryTextSizes(StoryViewHolder storyViewHolder) {
-        FontUtils.setStoryTitleTypeface(storyViewHolder.titleView, storyTextSize);
-        FontUtils.setTypefaceForFont(
-                storyViewHolder.summaryView,
-                font,
-                false,
-                Math.max(12f, storyTextSize - 3.5f));
-        FontUtils.setStoryMetaTypeface(storyViewHolder.metaView, storyTextSize);
-        FontUtils.setStoryCommentCountTypeface(storyViewHolder.commentsView, storyTextSize);
+        FontUtils.Typography resolvedTypography =
+                getTypography(storyViewHolder.itemView.getContext());
+        resolvedTypography.applyStoryTitle(storyViewHolder.titleView);
+        resolvedTypography.applyStorySummary(storyViewHolder.summaryView);
+        resolvedTypography.applyStoryMeta(storyViewHolder.metaView);
+        resolvedTypography.applyStoryCommentCount(storyViewHolder.commentsView);
     }
 
     private void bindCommentRowText(CommentViewHolder commentViewHolder, Story story) {
@@ -2137,10 +2138,27 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private void applyCommentRowTypefaces(CommentViewHolder commentViewHolder) {
-        FontUtils.setTypefaceForFont(commentViewHolder.headerText, font, true, 13);
-        FontUtils.setTypefaceForFont(commentViewHolder.headerLoadingPrefix, font, true, 13);
-        FontUtils.setTypefaceForFont(commentViewHolder.headerTime, font, true, 12);
-        FontUtils.setCommentTextTypefaceForFont(commentViewHolder.bodyText, font, commentTextSize);
+        FontUtils.Typography resolvedTypography =
+                getTypography(commentViewHolder.itemView.getContext());
+        resolvedTypography.applyBold(commentViewHolder.headerText, 13);
+        resolvedTypography.applyBold(commentViewHolder.headerLoadingPrefix, 13);
+        resolvedTypography.applyBold(commentViewHolder.headerTime, 12);
+        resolvedTypography.applyCommentText(commentViewHolder.bodyText);
+    }
+
+    private FontUtils.Typography getTypography(Context context) {
+        if (typography == null) {
+            typography = FontUtils.resolveTypography(
+                    context,
+                    font,
+                    storyTextSize,
+                    commentTextSize);
+        }
+        return typography;
+    }
+
+    void invalidateTypography() {
+        typography = null;
     }
 
     private static boolean isCurrentPreviewTarget(ImageView previewImage, String imageUrl) {

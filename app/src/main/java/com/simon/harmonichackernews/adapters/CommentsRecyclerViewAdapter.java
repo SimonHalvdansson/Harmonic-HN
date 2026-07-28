@@ -131,6 +131,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private int commentLookupSize = -1;
     private Map<String, String> userTagsByUser = new HashMap<>();
     private String userTagsJson;
+    @Nullable
+    private FontUtils.Typography typography;
 
     public LinearLayout bottomSheet;
     public FragmentManager fragmentManager;
@@ -440,15 +442,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.metaVotes.setVisibility(story.isComment ? GONE : View.VISIBLE);
             headerViewHolder.metaVotesIcon.setVisibility(story.isComment ? GONE : View.VISIBLE);
 
-            FontUtils.setCommentsHeaderMetaTypefaces(
+            FontUtils.Typography resolvedTypography = getTypography(ctx);
+            resolvedTypography.applyCommentsHeaderMeta(
                     headerViewHolder.urlView,
                     headerViewHolder.metaVotes,
                     headerViewHolder.metaComments,
                     headerViewHolder.metaTime,
                     headerViewHolder.metaBy);
 
-            FontUtils.setCommentsHeaderTitleTypeface(headerViewHolder.titleView);
-            FontUtils.setCommentTextTypeface(headerViewHolder.textView, preferredTextSize);
+            resolvedTypography.applyCommentsHeaderTitle(headerViewHolder.titleView);
+            resolvedTypography.applyCommentText(headerViewHolder.textView);
 
             bindHeaderLoadingState(headerViewHolder, ctx);
 
@@ -555,10 +558,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     itemViewHolder.commentByTime,
                     highlightCommentMeta ? R.attr.storyColorNormal : R.attr.storyColorDisabled));
 
-            itemViewHolder.commentBy.setTypeface(FontUtils.activeBold);
-            itemViewHolder.commentByTime.setTypeface(FontUtils.activeRegular);
+            FontUtils.Typography resolvedTypography = getTypography(ctx);
+            resolvedTypography.applyBold(itemViewHolder.commentBy);
+            resolvedTypography.applyRegular(itemViewHolder.commentByTime);
             if (collapseParent) {
-                itemViewHolder.commentHiddenText.setTypeface(FontUtils.activeRegular);
+                resolvedTypography.applyRegular(itemViewHolder.commentHiddenText);
             }
 
             boolean commentTextCollapsed = !comment.expanded && collapseParent;
@@ -2136,6 +2140,12 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     @Override
+    public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
+        super.onAttachedToRecyclerView(recyclerView);
+        getTypography(recyclerView.getContext());
+    }
+
+    @Override
     public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
         cancelHeaderPreviewImageUrlRequest();
         super.onDetachedFromRecyclerView(recyclerView);
@@ -2822,7 +2832,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentBody.setHtml(bodyHtml);
                 comment.spannedText = (Spanned) itemViewHolder.commentBody.getText();
             }
-            FontUtils.setCommentTextTypeface(itemViewHolder.commentBody, preferredTextSize);
+            getTypography(itemViewHolder.itemView.getContext())
+                    .applyCommentText(itemViewHolder.commentBody);
         } else {
             itemViewHolder.commentBody.setText("");
         }
@@ -2847,7 +2858,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             itemViewHolder.commentBodyHasText = !TextUtils.isEmpty(bodyHtml);
             if (itemViewHolder.commentBodyHasText) {
                 itemViewHolder.commentBody.setHtml(bodyHtml);
-                FontUtils.setCommentTextTypeface(itemViewHolder.commentBody, preferredTextSize);
+                getTypography(itemViewHolder.itemView.getContext())
+                        .applyCommentText(itemViewHolder.commentBody);
             } else {
                 itemViewHolder.commentBody.setText("");
             }
@@ -2879,7 +2891,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         body.setTextColor(MaterialColors.getColor(itemViewHolder.referenceLinksContainer, R.attr.storyColorNormal));
         configureCommentBodyInteractions(itemViewHolder, body);
         body.setHtml(bodyHtml);
-        FontUtils.setCommentTextTypeface(body, preferredTextSize);
+        getTypography(context).applyCommentText(body);
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -4571,6 +4583,21 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             return "1 hidden reply";
         }
         return count + " hidden replies";
+    }
+
+    private FontUtils.Typography getTypography(Context context) {
+        if (typography == null) {
+            typography = FontUtils.resolveTypography(
+                    context,
+                    font,
+                    SettingsUtils.DEFAULT_STORY_TEXT_SIZE,
+                    preferredTextSize);
+        }
+        return typography;
+    }
+
+    void invalidateTypography() {
+        typography = null;
     }
 
     public interface RequestSummaryCallback {

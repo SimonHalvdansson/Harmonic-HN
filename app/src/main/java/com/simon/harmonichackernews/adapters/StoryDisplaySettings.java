@@ -210,10 +210,12 @@ public class StoryDisplaySettings {
         }
         if (Float.compare(adapter.storyTextSize, storyTextSize) != 0) {
             adapter.storyTextSize = storyTextSize;
+            adapter.invalidateTypography();
             itemsChanged = true;
         }
         if (Float.compare(adapter.commentTextSize, commentTextSize) != 0) {
             adapter.commentTextSize = commentTextSize;
+            adapter.invalidateTypography();
             itemsChanged = true;
         }
         if (adapter.showIndex != showIndex) {
@@ -247,6 +249,7 @@ public class StoryDisplaySettings {
         }
         if (!Objects.equals(adapter.font, font)) {
             adapter.font = font;
+            adapter.invalidateTypography();
             fontChanged = true;
             itemsChanged = true;
         }
@@ -295,6 +298,7 @@ public class StoryDisplaySettings {
         targetAdapter.faviconProvider = sourceAdapter.faviconProvider;
         targetAdapter.font = sourceAdapter.font;
         targetAdapter.commentTextSize = sourceAdapter.commentTextSize;
+        targetAdapter.invalidateTypography();
     }
 
     public static class UpdateResult {
