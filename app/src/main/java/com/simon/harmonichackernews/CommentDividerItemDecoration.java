@@ -13,6 +13,8 @@ import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
 import com.simon.harmonichackernews.utils.Utils;
 
+import java.util.Objects;
+
 final class CommentDividerItemDecoration extends RecyclerView.ItemDecoration {
 
     private static final int HORIZONTAL_INSET_DP = 4;
@@ -20,6 +22,12 @@ final class CommentDividerItemDecoration extends RecyclerView.ItemDecoration {
 
     private final CommentsRecyclerViewAdapter adapter;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private int cachedDensityDpi = -1;
+    private int cachedUiMode = -1;
+    private String cachedTheme;
+    private int horizontalInset;
+    private int cardShadowPadding;
+    private int interCommentSpacing;
 
     CommentDividerItemDecoration(CommentsRecyclerViewAdapter adapter) {
         this.adapter = adapter;
@@ -34,17 +42,9 @@ final class CommentDividerItemDecoration extends RecyclerView.ItemDecoration {
             return;
         }
 
-        paint.setColor(MaterialColors.getColor(
-                parent,
-                R.attr.commentDividerColor,
-                Color.TRANSPARENT));
-        paint.setStrokeWidth(Utils.pxFromDpInt(parent.getResources(), 1));
-
-        int horizontalInset = Utils.pxFromDpInt(
-                parent.getResources(),
-                HORIZONTAL_INSET_DP);
+        ensureStyle(parent);
         int cardInset = adapter.cardStyle
-                ? parent.getResources().getDimensionPixelSize(R.dimen.comment_card_shadow_padding)
+                ? cardShadowPadding
                 : 0;
         for (int index = 0; index < parent.getChildCount(); index++) {
             View child = parent.getChildAt(index);
@@ -82,10 +82,36 @@ final class CommentDividerItemDecoration extends RecyclerView.ItemDecoration {
                 && position != RecyclerView.NO_POSITION
                 && CommentsRecyclerViewAdapter.isCommentViewType(adapter.getItemViewType(position))
                 && hasFollowingVisibleComment(position)) {
-            outRect.bottom = Utils.pxFromDpInt(
-                    parent.getResources(),
-                    INTER_COMMENT_SPACING_DP);
+            ensureStyle(parent);
+            outRect.bottom = interCommentSpacing;
         }
+    }
+
+    private void ensureStyle(@NonNull RecyclerView parent) {
+        int densityDpi = parent.getResources().getConfiguration().densityDpi;
+        int uiMode = parent.getResources().getConfiguration().uiMode;
+        if (densityDpi == cachedDensityDpi
+                && uiMode == cachedUiMode
+                && Objects.equals(cachedTheme, adapter.theme)) {
+            return;
+        }
+
+        cachedDensityDpi = densityDpi;
+        cachedUiMode = uiMode;
+        cachedTheme = adapter.theme;
+        paint.setColor(MaterialColors.getColor(
+                parent,
+                R.attr.commentDividerColor,
+                Color.TRANSPARENT));
+        paint.setStrokeWidth(Utils.pxFromDpInt(parent.getResources(), 1));
+        horizontalInset = Utils.pxFromDpInt(
+                parent.getResources(),
+                HORIZONTAL_INSET_DP);
+        cardShadowPadding = parent.getResources().getDimensionPixelSize(
+                R.dimen.comment_card_shadow_padding);
+        interCommentSpacing = Utils.pxFromDpInt(
+                parent.getResources(),
+                INTER_COMMENT_SPACING_DP);
     }
 
     private View findNextAttachedComment(
