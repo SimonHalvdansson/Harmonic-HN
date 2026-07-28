@@ -18,6 +18,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -47,6 +49,7 @@ public class StoryPreviewImageLoader {
     }
 
     private static final int MAX_CACHE_SIZE = 300;
+    private static final int MAX_MISS_CACHE_SIZE = 1000;
     private static final int MAX_DISK_CACHE_SIZE = 1000;
     private static final int LEGACY_TINT_CACHE_KEYS_REMOVED_PER_SAVE = 8;
     private static final String PREVIEW_IMAGE_CACHE_PREFERENCES =
@@ -69,7 +72,7 @@ public class StoryPreviewImageLoader {
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
     private static final Map<String, String> IMAGE_CACHE = new HashMap<>();
     private static final Map<String, LinkSummaryLoader.Result> LINK_SUMMARY_CACHE = new HashMap<>();
-    private static final Set<String> MISS_CACHE = new HashSet<>();
+    private static final Set<String> MISS_CACHE = new LinkedHashSet<>();
     private static final Map<String, PendingPreviewImageBatch> PENDING_CALLBACKS = new HashMap<>();
     private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
     private static class PendingPreviewImageBatch {
@@ -396,7 +399,7 @@ public class StoryPreviewImageLoader {
                 pendingRequest.detach(batch);
             }
             if (TextUtils.isEmpty(imageUrl)) {
-                MISS_CACHE.add(pageUrl);
+                cacheMiss(pageUrl);
             } else {
                 if (IMAGE_CACHE.size() >= MAX_CACHE_SIZE) {
                     IMAGE_CACHE.clear();
@@ -429,6 +432,16 @@ public class StoryPreviewImageLoader {
                 }
             }
         });
+    }
+
+    private static void cacheMiss(String pageUrl) {
+        MISS_CACHE.remove(pageUrl);
+        MISS_CACHE.add(pageUrl);
+        while (MISS_CACHE.size() > MAX_MISS_CACHE_SIZE) {
+            Iterator<String> iterator = MISS_CACHE.iterator();
+            iterator.next();
+            iterator.remove();
+        }
     }
 
     private static void postResult(
