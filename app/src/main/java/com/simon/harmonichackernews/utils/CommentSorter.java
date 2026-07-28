@@ -18,6 +18,9 @@ public class CommentSorter {
     public static void sort(List<Comment> comments, String sortType) {
         switch (sortType) {
             case "Default":
+                if (isInDefaultOrder(comments)) {
+                    return;
+                }
                 sortComments(comments, new Comparator<Comment>() {
                     @Override
                     public int compare(Comment c1, Comment c2) {
@@ -50,6 +53,23 @@ public class CommentSorter {
                 }, false);
                 break;
         }
+    }
+
+    private static boolean isInDefaultOrder(List<Comment> comments) {
+        int size = comments.size();
+        if (size < 3) {
+            return true;
+        }
+
+        int previousSortOrder = comments.get(1).sortOrder;
+        for (int i = 2; i < size; i++) {
+            int currentSortOrder = comments.get(i).sortOrder;
+            if (previousSortOrder > currentSortOrder) {
+                return false;
+            }
+            previousSortOrder = currentSortOrder;
+        }
+        return true;
     }
 
     private static void sortComments(List<Comment> comments, Comparator<Comment> comparator, boolean updateReplyCounts) {
