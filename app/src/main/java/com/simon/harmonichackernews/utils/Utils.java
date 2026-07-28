@@ -153,12 +153,156 @@ public class Utils {
     }
 
     public static String getDomainName(String url) throws Exception {
+        String commonHttpDomain = getCommonHttpDomain(url);
+        if (commonHttpDomain != null) {
+            return commonHttpDomain;
+        }
+
         if (url.endsWith("#")) {
             url = url.substring(0, url.length()-1);
         }
         URI uri = new URI(url);
         String domain = uri.getHost();
         return domain.startsWith("www.") ? domain.substring(4) : domain;
+    }
+
+    private static String getCommonHttpDomain(String url) {
+        // Story URLs overwhelmingly use this shape. Keep uncommon authorities and malformed
+        // URLs on the URI parser so the fast path does not broaden the accepted input.
+        if (url == null) {
+            return null;
+        }
+
+        final int hostStart;
+        if (url.startsWith("https://")) {
+            hostStart = 8;
+        } else if (url.startsWith("http://")) {
+            hostStart = 7;
+        } else {
+            return null;
+        }
+
+        int length = url.length();
+        if (hostStart >= length || !hasOnlyCommonUriCharacters(url)) {
+            return null;
+        }
+
+        int authorityEnd = length;
+        for (int i = hostStart; i < length; i++) {
+            char character = url.charAt(i);
+            if (character == '/' || character == '?' || character == '#') {
+                authorityEnd = i;
+                break;
+            }
+        }
+        if (authorityEnd <= hostStart) {
+            return null;
+        }
+
+        int hostEnd = authorityEnd;
+        for (int i = hostStart; i < authorityEnd; i++) {
+            char character = url.charAt(i);
+            if (character == '@' || character == '[' || character == ']') {
+                return null;
+            }
+            if (character == ':') {
+                hostEnd = i;
+                if (i + 1 >= authorityEnd) {
+                    return null;
+                }
+                for (int portIndex = i + 1; portIndex < authorityEnd; portIndex++) {
+                    char portCharacter = url.charAt(portIndex);
+                    if (portCharacter < '0' || portCharacter > '9') {
+                        return null;
+                    }
+                }
+                break;
+            }
+        }
+        if (hostEnd <= hostStart) {
+            return null;
+        }
+
+        int labelStart = hostStart;
+        boolean containsLetter = false;
+        for (int i = hostStart; i < hostEnd; i++) {
+            char character = url.charAt(i);
+            if (character == '.') {
+                if (i == labelStart || url.charAt(i - 1) == '-') {
+                    return null;
+                }
+                labelStart = i + 1;
+                continue;
+            }
+
+            boolean isLetter = (character >= 'a' && character <= 'z')
+                    || (character >= 'A' && character <= 'Z');
+            boolean isDigit = character >= '0' && character <= '9';
+            if (!isLetter && !isDigit && character != '-') {
+                return null;
+            }
+            if (i == labelStart && character == '-') {
+                return null;
+            }
+            containsLetter |= isLetter;
+        }
+
+        char finalHostCharacter = url.charAt(hostEnd - 1);
+        if (finalHostCharacter == '-' || !containsLetter) {
+            return null;
+        }
+
+        String domain = url.substring(hostStart, hostEnd);
+        return domain.startsWith("www.") ? domain.substring(4) : domain;
+    }
+
+    private static boolean hasOnlyCommonUriCharacters(String url) {
+        boolean sawFragment = false;
+        for (int i = 0; i < url.length(); i++) {
+            char character = url.charAt(i);
+            boolean unreserved = (character >= 'a' && character <= 'z')
+                    || (character >= 'A' && character <= 'Z')
+                    || (character >= '0' && character <= '9')
+                    || character == '-'
+                    || character == '.'
+                    || character == '_'
+                    || character == '~';
+            if (unreserved
+                    || character == ':'
+                    || character == '/'
+                    || character == '?'
+                    || character == '@'
+                    || character == '!'
+                    || character == '$'
+                    || character == '&'
+                    || character == '\''
+                    || character == '('
+                    || character == ')'
+                    || character == '*'
+                    || character == '+'
+                    || character == ','
+                    || character == ';'
+                    || character == '=') {
+                continue;
+            }
+            if (character == '#' && !sawFragment) {
+                sawFragment = true;
+                continue;
+            }
+            if (character != '%' || i + 2 >= url.length()
+                    || !isHexDigit(url.charAt(i + 1))
+                    || !isHexDigit(url.charAt(i + 2))) {
+                return false;
+            }
+            i += 2;
+        }
+        return true;
+    }
+
+    private static boolean isHexDigit(char character) {
+        return (character >= '0' && character <= '9')
+                || (character >= 'a' && character <= 'f')
+                || (character >= 'A' && character <= 'F');
     }
 
     public static String formatDomainNameForDisplay(String domain, boolean includeTopLevelDomain) {
