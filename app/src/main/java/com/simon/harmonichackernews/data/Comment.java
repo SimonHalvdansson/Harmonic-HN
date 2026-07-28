@@ -14,6 +14,8 @@ public class Comment implements Serializable {
     public int id;
     public int parent;
     public String text;
+    private transient String cachedExpandedAnchorTextSource;
+    private transient String cachedExpandedAnchorText;
     public transient Spanned spannedText;
     public transient String collectedReferenceLinksSource;
     public transient CollectedReferenceLinks.Result collectedReferenceLinks;
@@ -34,6 +36,20 @@ public class Comment implements Serializable {
 
     public String getTimeFormatted() {
         return Utils.getTimeAgo(this.time);
+    }
+
+    public String getExpandedAnchorText() {
+        String currentText = text;
+        if (currentText == cachedExpandedAnchorTextSource
+                || (currentText != null
+                && currentText.equals(cachedExpandedAnchorTextSource))) {
+            return cachedExpandedAnchorText;
+        }
+
+        String expandedText = Utils.expandShortenedAnchorText(currentText);
+        cachedExpandedAnchorTextSource = currentText;
+        cachedExpandedAnchorText = expandedText;
+        return expandedText;
     }
 
     public int getTime() {

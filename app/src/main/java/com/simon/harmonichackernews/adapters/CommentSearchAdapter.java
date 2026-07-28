@@ -494,7 +494,7 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
 
         RenderedCommentText cachedText = renderedCommentTexts.get(comment);
         if (cachedText == null || !TextUtils.equals(cachedText.sourceText, comment.text)) {
-            String expandedText = Utils.expandShortenedAnchorText(comment.text);
+            String expandedText = comment.getExpandedAnchorText();
             Spanned renderedText = HtmlFormatter.formatHtml(
                     new HtmlFormatterBuilder().setHtml(expandedText));
             cachedText = new RenderedCommentText(

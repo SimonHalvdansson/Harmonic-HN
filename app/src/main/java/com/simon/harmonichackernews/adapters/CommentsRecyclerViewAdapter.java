@@ -2835,7 +2835,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             return;
         }
 
-        String expandedCommentText = Utils.expandShortenedAnchorText(comment.text);
+        String expandedCommentText = comment.getExpandedAnchorText();
         CollectedReferenceLinks.Result referenceLinks = null;
         if (collectReferenceLinks) {
             referenceLinks = getCommentReferenceLinks(comment);
@@ -3050,7 +3050,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (!TextUtils.equals(comment.collectedReferenceLinksSource, comment.text)
                 || comment.collectedReferenceLinks == null) {
             comment.collectedReferenceLinksSource = comment.text;
-            comment.collectedReferenceLinks = CollectedReferenceLinks.parse(Utils.expandShortenedAnchorText(comment.text));
+            comment.collectedReferenceLinks =
+                    CollectedReferenceLinks.parse(comment.getExpandedAnchorText());
             comment.collectedReferenceLinksSpannedText = null;
         }
         return comment.collectedReferenceLinks;

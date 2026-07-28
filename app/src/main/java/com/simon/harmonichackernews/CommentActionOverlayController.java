@@ -323,7 +323,10 @@ final class CommentActionOverlayController {
                 performAction(ACTION_VIEW_USER, comment, oldBookmarked, oldFavorited));
 
         HtmlTextView commentText = binding.commentActionText;
-        String text = Utils.expandShortenedAnchorText(comment.text == null ? "" : comment.text);
+        String text = comment.getExpandedAnchorText();
+        if (text == null) {
+            text = "";
+        }
         commentText.setHtml(text);
         commentText.setTextIsSelectable(true);
         commentText.setOnClickATagListener((widget, spannedText, href) -> {
