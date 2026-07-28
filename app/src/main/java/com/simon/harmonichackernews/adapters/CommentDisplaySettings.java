@@ -235,6 +235,9 @@ public class CommentDisplaySettings {
             updateHeader = true;
         }
 
+        if (updateComments) {
+            adapter.invalidateCommentViewStyle();
+        }
         return new UpdateResult(updateHeader, updateComments, themeChanged);
     }
 

@@ -208,6 +208,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     @Nullable
     private StoryPreviewImageLoader.PreviewImageRequest headerPreviewImageUrlRequest;
     private long headerBindingGeneration;
+    private int commentViewStyleGeneration;
     // Payloads can be dropped while an item is off-screen. Track every adapter update that can
     // affect position zero so a pooled header only takes the fast path when its state is current.
     private final RecyclerView.AdapterDataObserver headerBindingObserver =
@@ -482,8 +483,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         } else if (holder instanceof ItemViewHolder) {
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
             Comment comment = comments.get(position);
-            applyCommentCardChrome(itemViewHolder);
-            applyCommentMetaHighlight(itemViewHolder);
+            applyCommentViewStyle(itemViewHolder);
             itemViewHolder.comment = comment;
             applyCommentHighlight(itemViewHolder, comment.id == highlightedCommentId);
 
@@ -572,30 +572,21 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             if (!TextUtils.isEmpty(cTag)) {
                 displayName += " (" + cTag + ")";
             }
-            int opCommentColor = MaterialColors.getColor(itemViewHolder.commentBy, R.attr.opCommentColor);
-            itemViewHolder.commentBy.setText(getCommentByWithOpBadge(ctx, displayName, byOp, opCommentColor));
+            itemViewHolder.commentBy.setText(getCommentByWithOpBadge(
+                    ctx,
+                    displayName,
+                    byOp,
+                    itemViewHolder.opCommentColor));
             itemViewHolder.commentBy.setContentDescription(
                     "Comment by " + comment.by + (byOp ? ", original poster" : ""));
             itemViewHolder.commentByTime.setContentDescription("Posted " + formattedTime);
 
             if (byUser) {
-                itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.selfCommentColor));
+                itemViewHolder.commentBy.setTextColor(itemViewHolder.selfCommentColor);
             } else if (byOp) {
-                itemViewHolder.commentBy.setTextColor(opCommentColor);
+                itemViewHolder.commentBy.setTextColor(itemViewHolder.opCommentColor);
             } else {
-                itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(
-                        itemViewHolder.commentBy,
-                        highlightCommentMeta ? R.attr.storyColorNormal : R.attr.storyColorDisabled));
-            }
-            itemViewHolder.commentByTime.setTextColor(MaterialColors.getColor(
-                    itemViewHolder.commentByTime,
-                    highlightCommentMeta ? R.attr.storyColorNormal : R.attr.storyColorDisabled));
-
-            FontUtils.Typography resolvedTypography = getTypography(ctx);
-            resolvedTypography.applyBold(itemViewHolder.commentBy);
-            resolvedTypography.applyRegular(itemViewHolder.commentByTime);
-            if (collapseParent) {
-                resolvedTypography.applyRegular(itemViewHolder.commentHiddenText);
+                itemViewHolder.commentBy.setTextColor(itemViewHolder.defaultCommentMetaColor);
             }
 
             boolean commentTextCollapsed = !comment.expanded && collapseParent;
@@ -632,6 +623,52 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 verticalPadding,
                 horizontalPadding,
                 verticalPadding);
+    }
+
+    private void applyCommentViewStyle(@NonNull ItemViewHolder itemViewHolder) {
+        if (itemViewHolder.commentViewStyleGeneration == commentViewStyleGeneration) {
+            return;
+        }
+
+        applyCommentCardChrome(itemViewHolder);
+        applyCommentMetaHighlight(itemViewHolder);
+
+        FontUtils.Typography resolvedTypography =
+                getTypography(itemViewHolder.itemView.getContext());
+        resolvedTypography.applyCommentText(itemViewHolder.commentBody);
+        resolvedTypography.applyBold(itemViewHolder.commentBy);
+        resolvedTypography.applyRegular(itemViewHolder.commentByTime);
+        resolvedTypography.applyRegular(itemViewHolder.commentHiddenText);
+
+        itemViewHolder.opCommentColor =
+                MaterialColors.getColor(itemViewHolder.commentBy, R.attr.opCommentColor);
+        itemViewHolder.selfCommentColor =
+                MaterialColors.getColor(itemViewHolder.commentBy, R.attr.selfCommentColor);
+        itemViewHolder.defaultCommentMetaColor = MaterialColors.getColor(
+                itemViewHolder.commentBy,
+                highlightCommentMeta ? R.attr.storyColorNormal : R.attr.storyColorDisabled);
+        itemViewHolder.commentByTime.setTextColor(itemViewHolder.defaultCommentMetaColor);
+
+        View commentBackgroundView = itemViewHolder.itemView;
+        if (itemViewHolder.commentCard instanceof MaterialCardView) {
+            MaterialCardView card = (MaterialCardView) itemViewHolder.commentCard;
+            commentBackgroundView = card;
+            itemViewHolder.defaultCommentBackgroundColor = MaterialColors.getColor(
+                    card,
+                    com.google.android.material.R.attr.colorSurfaceContainerHigh,
+                    Color.TRANSPARENT);
+            itemViewHolder.itemView.setBackgroundColor(Color.TRANSPARENT);
+        } else {
+            itemViewHolder.defaultCommentBackgroundColor = MaterialColors.getColor(
+                    itemViewHolder.itemView,
+                    android.R.attr.colorBackground,
+                    Color.TRANSPARENT);
+        }
+        itemViewHolder.highlightedCommentBackgroundColor = getCommentHighlightColor(
+                commentBackgroundView,
+                itemViewHolder.defaultCommentBackgroundColor);
+        itemViewHolder.commentHighlightInitialized = false;
+        itemViewHolder.commentViewStyleGeneration = commentViewStyleGeneration;
     }
 
     public void setHeaderSlideOffset(float slideOffset) {
@@ -2868,8 +2905,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentBody.setHtml(bodyHtml);
                 comment.spannedText = (Spanned) itemViewHolder.commentBody.getText();
             }
-            getTypography(itemViewHolder.itemView.getContext())
-                    .applyCommentText(itemViewHolder.commentBody);
         } else {
             itemViewHolder.commentBody.setText("");
         }
@@ -2894,8 +2929,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             itemViewHolder.commentBodyHasText = !TextUtils.isEmpty(bodyHtml);
             if (itemViewHolder.commentBodyHasText) {
                 itemViewHolder.commentBody.setHtml(bodyHtml);
-                getTypography(itemViewHolder.itemView.getContext())
-                        .applyCommentText(itemViewHolder.commentBody);
             } else {
                 itemViewHolder.commentBody.setText("");
             }
@@ -3259,20 +3292,23 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void applyCommentHighlight(@NonNull ItemViewHolder itemViewHolder, boolean highlighted) {
+        if (itemViewHolder.commentHighlightInitialized
+                && itemViewHolder.commentHighlighted == highlighted) {
+            return;
+        }
+
         if (itemViewHolder.commentCard instanceof MaterialCardView) {
             MaterialCardView card = (MaterialCardView) itemViewHolder.commentCard;
-            int baseColor = MaterialColors.getColor(card, com.google.android.material.R.attr.colorSurfaceContainerHigh, Color.TRANSPARENT);
-            int cardBackgroundColor = highlighted ? getCommentHighlightColor(card, baseColor) : baseColor;
-            card.setCardBackgroundColor(cardBackgroundColor);
-            itemViewHolder.itemView.setBackgroundColor(Color.TRANSPARENT);
+            card.setCardBackgroundColor(highlighted
+                    ? itemViewHolder.highlightedCommentBackgroundColor
+                    : itemViewHolder.defaultCommentBackgroundColor);
         } else {
-            int baseColor = MaterialColors.getColor(
-                    itemViewHolder.itemView,
-                    android.R.attr.colorBackground,
-                    Color.TRANSPARENT);
-            int highlightColor = getCommentHighlightColor(itemViewHolder.itemView, baseColor);
-            itemViewHolder.itemView.setBackgroundColor(highlighted ? highlightColor : Color.TRANSPARENT);
+            itemViewHolder.itemView.setBackgroundColor(highlighted
+                    ? itemViewHolder.highlightedCommentBackgroundColor
+                    : Color.TRANSPARENT);
         }
+        itemViewHolder.commentHighlighted = highlighted;
+        itemViewHolder.commentHighlightInitialized = true;
     }
 
     private void applyCommentCardChrome(@NonNull ItemViewHolder itemViewHolder) {
@@ -3638,6 +3674,14 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public boolean commentBodyHasText = true;
         public boolean referenceLinksVisible = false;
         public Comment comment;
+        private int commentViewStyleGeneration = -1;
+        private int opCommentColor;
+        private int selfCommentColor;
+        private int defaultCommentMetaColor;
+        private int defaultCommentBackgroundColor;
+        private int highlightedCommentBackgroundColor;
+        private boolean commentHighlightInitialized;
+        private boolean commentHighlighted;
 
         public ItemViewHolder(CommentsItemBinding binding) {
             this(
@@ -4634,6 +4678,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     void invalidateTypography() {
         typography = null;
+    }
+
+    void invalidateCommentViewStyle() {
+        commentViewStyleGeneration++;
     }
 
     public interface RequestSummaryCallback {
