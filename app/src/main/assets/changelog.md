@@ -1,13 +1,14 @@
 ﻿# Version 3.1
-Version 3.1 is packed with additional fixes and refinements since 3.0 packages through more than 250 commits, most of which are not mentioned in the changelog below. 
+Version 3.1 is packed with additional fixes and refinements since 3.0 packages through more than 300 commits, most of which are not mentioned in the changelog below. 
 
-- Added ability to show extra HN frontpages in Settings → Stories → Behavior
+- Substantial performance improvements
 - Added optional non-automatic AI summarization of posts (configure in Settings → AI summarization, thanks uukelele for intial version!)
 - Redesigned the submit and new comment screens to be more Material 3
 - Added rich story preview dialogs
 - Added long-press preview dialogs for comment links
 - Added translucent status bar (thanks Hao Lu!)
-- Updated settings UI
+- Added ability to show extra HN frontpages in Settings → Stories → Behavior
+- Redesigned settings UI
 - Updated icons to rounded Material symbols
 - Added new story display options in Settings → Stories → Layout
 - Added setting to reset all settings
