@@ -78,12 +78,25 @@ object HistoriesUtils {
             return loadedHistories
         }
 
-        val pairs = historyString.split("-".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-        for (pair in pairs) {
-            val info = pair.split("q".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-            if (info.size == 2) {
-                loadedHistories.add(History(info[0].toInt(), info[1].toLong()))
+        var pairStart = 0
+        while (pairStart < historyString.length) {
+            val delimiterIndex = historyString.indexOf('-', pairStart)
+            val pairEnd = if (delimiterIndex == -1) historyString.length else delimiterIndex
+            val valueSeparator = historyString.indexOf('q', pairStart)
+
+            if (valueSeparator in pairStart..<pairEnd && valueSeparator + 1 < pairEnd) {
+                val extraSeparator = historyString.indexOf('q', valueSeparator + 1)
+                if (extraSeparator == -1 || extraSeparator >= pairEnd) {
+                    loadedHistories.add(
+                        History(
+                            historyString.substring(pairStart, valueSeparator).toInt(),
+                            historyString.substring(valueSeparator + 1, pairEnd).toLong()
+                        )
+                    )
+                }
             }
+
+            pairStart = pairEnd + 1
         }
 
         if (sorted) {
