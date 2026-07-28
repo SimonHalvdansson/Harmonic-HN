@@ -2101,6 +2101,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                 adapter.loadingFailed = false;
                 adapter.loadingFailedServerError = false;
+                if (linkPreviewController != null) {
+                    linkPreviewController.loadNetworkPreviews(context);
+                }
                 notifyHeaderChanged();
                 maybeLoadPollOptions();
             }
@@ -2363,6 +2366,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         boolean storyChanged =
                 parsedResponse.updateStoryInformation(story, forceHeaderRefresh, oldCommentCount);
         boolean updateHeaderAfterLoad = storyChanged || forceHeaderRefresh;
+        if (linkPreviewController != null) {
+            linkPreviewController.loadNetworkPreviews(getContext());
+        }
         maybeLoadPollOptions();
 
         integratedWebview = prefIntegratedWebview && story.isLink;
