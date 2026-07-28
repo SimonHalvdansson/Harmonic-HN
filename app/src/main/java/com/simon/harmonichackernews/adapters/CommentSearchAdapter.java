@@ -318,9 +318,10 @@ public class CommentSearchAdapter extends RecyclerView.Adapter<RecyclerView.View
 
         bindHighlightedCommentText(commentViewHolder, comment);
         commentViewHolder.commentBy.setText(comment.by);
-        commentViewHolder.commentByTime.setText(comment.getTimeFormatted());
+        String formattedTime = comment.getTimeFormatted();
+        commentViewHolder.commentByTime.setText(formattedTime);
         commentViewHolder.commentBy.setContentDescription("Comment by " + comment.by);
-        commentViewHolder.commentByTime.setContentDescription("Posted " + comment.getTimeFormatted());
+        commentViewHolder.commentByTime.setContentDescription("Posted " + formattedTime);
         commentViewHolder.commentHiddenCount.setVisibility(View.GONE);
         commentViewHolder.commentHiddenText.setVisibility(View.GONE);
         commentViewHolder.commentText.setVisibility(View.VISIBLE);

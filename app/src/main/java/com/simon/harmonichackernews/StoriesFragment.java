@@ -3912,7 +3912,7 @@ public class StoriesFragment extends Fragment {
 
         if (filterDomains != null && story.url != null) {
             try {
-                String domain = Utils.getDomainName(story.url).toLowerCase();
+                String domain = story.getDisplayDomain(true).toLowerCase();
                 for (String phrase : filterDomains) {
                     if (!TextUtils.isEmpty(phrase)
                             && domain.contains(phrase.toLowerCase())) {

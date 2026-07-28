@@ -270,9 +270,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         String meta = story.score + (story.score == 1 ? " pt" : " pts");
         if (story.url != null && story.isLink) {
             try {
-                String domain = Utils.getDomainName(story.url);
-                domain = Utils.formatDomainNameForDisplay(
-                        domain,
+                String domain = story.getDisplayDomain(
                         SettingsUtils.shouldIncludeTopLevelDomain(context));
                 meta += " \u00B7 " + domain;
             } catch (Exception ignored) {

@@ -1311,7 +1311,7 @@ final class LinkSummaryOverlayController {
         StringBuilder meta = new StringBuilder()
                 .append(story.score)
                 .append(story.score == 1 ? " point" : " points");
-        FaviconLoader.loadFavicon(story.url, content.storyLinkFavicon, context,
+        FaviconLoader.loadFavicon(story, content.storyLinkFavicon, context,
                 SettingsUtils.getPreferredFaviconProvider(context));
         if (story.isLink) {
             meta.append(" • ").append(safeDomain(story.url));

@@ -7,6 +7,7 @@ import android.widget.ImageView;
 import androidx.core.content.ContextCompat;
 
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -24,54 +25,86 @@ public class FaviconLoader {
 
     public static void loadFavicon(String url, ImageView into, Context ctx, String faviconProvider, boolean fadeIn) {
         try {
-            String host = Utils.getDomainName(url);
-            String faviconUrl = getFaviconUrlForHost(host, faviconProvider);
-            if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
-                return;
-            }
-            int faviconSize = Utils.pxFromDpInt(ctx.getResources(), 17);
-            Drawable webDrawable = Objects.requireNonNull(ContextCompat.getDrawable(ctx, R.drawable.ic_public));
-            applyFaviconThumbnailShape(into);
-            into.setTag(R.id.favicon_request_url, faviconUrl);
+            loadFaviconForHost(
+                    Utils.getDomainName(url), into, ctx, faviconProvider, fadeIn);
+        } catch (Exception ignored) {
+        }
+    }
 
-            ImageRequest request = new ImageRequest.Builder(ctx)
-                    .data(faviconUrl)
-                    .size(faviconSize, faviconSize)
-                    // Metadata shared-element snapshots draw the favicon and text together onto
-                    // a software bitmap. A crossfade around a hardware bitmap makes that capture
-                    // fail and causes the entire metadata row to be omitted from the transition.
-                    .allowHardware(false)
-                    .placeholder(webDrawable)
-                    .error(webDrawable)
-                    .fallback(webDrawable)
-                    .crossfade(fadeIn)
-                    .target(new ImageViewTarget(into) {
-                        @Override
-                        public void onStart(Drawable placeholder) {
-                            if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
-                                super.onStart(placeholder);
-                            }
+    public static void loadFavicon(
+            Story story,
+            ImageView into,
+            Context ctx,
+            String faviconProvider) {
+        loadFavicon(story, into, ctx, faviconProvider, false);
+    }
+
+    public static void loadFavicon(
+            Story story,
+            ImageView into,
+            Context ctx,
+            String faviconProvider,
+            boolean fadeIn) {
+        try {
+            loadFaviconForHost(
+                    story.getDisplayDomain(true), into, ctx, faviconProvider, fadeIn);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void loadFaviconForHost(
+            String host,
+            ImageView into,
+            Context ctx,
+            String faviconProvider,
+            boolean fadeIn) {
+        String faviconUrl = getFaviconUrlForHost(host, faviconProvider);
+        if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
+            return;
+        }
+        int faviconSize = Utils.pxFromDpInt(ctx.getResources(), 17);
+        Drawable webDrawable = Objects.requireNonNull(
+                ContextCompat.getDrawable(ctx, R.drawable.ic_public));
+        applyFaviconThumbnailShape(into);
+        into.setTag(R.id.favicon_request_url, faviconUrl);
+
+        ImageRequest request = new ImageRequest.Builder(ctx)
+                .data(faviconUrl)
+                .size(faviconSize, faviconSize)
+                // Metadata shared-element snapshots draw the favicon and text together onto
+                // a software bitmap. A crossfade around a hardware bitmap makes that capture
+                // fail and causes the entire metadata row to be omitted from the transition.
+                .allowHardware(false)
+                .placeholder(webDrawable)
+                .error(webDrawable)
+                .fallback(webDrawable)
+                .crossfade(fadeIn)
+                .target(new ImageViewTarget(into) {
+                    @Override
+                    public void onStart(Drawable placeholder) {
+                        if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
+                            super.onStart(placeholder);
                         }
+                    }
 
-                        @Override
-                        public void onError(Drawable error) {
-                            if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
-                                into.setTag(R.id.favicon_request_url, null);
-                                super.onError(error);
-                            }
+                    @Override
+                    public void onError(Drawable error) {
+                        if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
+                            into.setTag(R.id.favicon_request_url, null);
+                            super.onError(error);
                         }
+                    }
 
-                        @Override
-                        public void onSuccess(Drawable result) {
-                            if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
-                                super.onSuccess(result);
-                            }
+                    @Override
+                    public void onSuccess(Drawable result) {
+                        if (faviconUrl.equals(into.getTag(R.id.favicon_request_url))) {
+                            super.onSuccess(result);
                         }
-                    })
-                    .build();
+                    }
+                })
+                .build();
 
-            Coil.imageLoader(ctx).enqueue(request);
-        } catch (Exception ignored){};
+        Coil.imageLoader(ctx).enqueue(request);
     }
 
     private static void applyFaviconThumbnailShape(ImageView into) {

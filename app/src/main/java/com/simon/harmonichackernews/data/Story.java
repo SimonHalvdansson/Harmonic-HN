@@ -19,6 +19,9 @@ public class Story {
     public String pdfTitle;
     public String videoTitle;
     public String url;
+    private transient String cachedDomainUrl;
+    private transient String cachedDomainName;
+    private transient String cachedDomainNameWithoutTopLevelDomain;
     public transient String previewImageUrl;
     public transient boolean previewImageUrlLoaded;
     public transient boolean previewImageUrlLoading;
@@ -104,6 +107,31 @@ public class Story {
 
     public String getTimeFormatted() {
         return Utils.getTimeAgo(this.time);
+    }
+
+    public String getDisplayDomain(boolean includeTopLevelDomain) throws Exception {
+        String currentUrl = url;
+        if (currentUrl != null && currentUrl.equals(cachedDomainUrl)) {
+            if (includeTopLevelDomain) {
+                return cachedDomainName;
+            }
+            if (cachedDomainNameWithoutTopLevelDomain == null) {
+                cachedDomainNameWithoutTopLevelDomain =
+                        Utils.formatDomainNameForDisplay(cachedDomainName, false);
+            }
+            return cachedDomainNameWithoutTopLevelDomain;
+        }
+
+        String domainName = Utils.getDomainName(currentUrl);
+        cachedDomainName = domainName;
+        cachedDomainNameWithoutTopLevelDomain = null;
+        cachedDomainUrl = currentUrl;
+        if (includeTopLevelDomain) {
+            return domainName;
+        }
+        cachedDomainNameWithoutTopLevelDomain =
+                Utils.formatDomainNameForDisplay(domainName, false);
+        return cachedDomainNameWithoutTopLevelDomain;
     }
 
     @Override

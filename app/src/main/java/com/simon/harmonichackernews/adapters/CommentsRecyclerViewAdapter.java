@@ -361,7 +361,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             if (story.isLink && story.url != null) {
                 try {
-                    headerViewHolder.urlView.setText("(" + Utils.getDomainName(story.url) + ")");
+                    headerViewHolder.urlView.setText(
+                            "(" + story.getDisplayDomain(true) + ")");
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -427,12 +428,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             if (story.loaded) {
                 headerViewHolder.metaVotes.setText(String.valueOf(story.score));
                 headerViewHolder.metaComments.setText(String.valueOf(story.descendants));
-                headerViewHolder.metaTime.setText(story.getTimeFormatted());
+                String formattedTime = story.getTimeFormatted();
+                headerViewHolder.metaTime.setText(formattedTime);
                 String tag = getCachedUserTag(ctx, story.by);
                 headerViewHolder.metaBy.setText(TextUtils.isEmpty(tag) ? story.by : story.by + " (" + tag + ")");
                 headerViewHolder.metaVotes.setContentDescription(AccessibilityTextUtils.pointCountDescription(story.score));
                 headerViewHolder.metaComments.setContentDescription(AccessibilityTextUtils.commentCountDescription(story.descendants));
-                headerViewHolder.metaTime.setContentDescription("Posted " + story.getTimeFormatted());
+                headerViewHolder.metaTime.setContentDescription("Posted " + formattedTime);
                 headerViewHolder.metaBy.setContentDescription("Submitted by " + story.by);
                 headerViewHolder.userButton.setContentDescription("Open submitter " + story.by);
             }
@@ -467,7 +469,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
 
             if (showThumbnail && !TextUtils.isEmpty(story.url)) {
-                FaviconLoader.loadFavicon(story.url, headerViewHolder.favicon, ctx, faviconProvider);
+                FaviconLoader.loadFavicon(
+                        story, headerViewHolder.favicon, ctx, faviconProvider);
             }
 
             bindHeaderSummary(headerViewHolder, ctx);
@@ -554,7 +557,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             bindCommentText(itemViewHolder, comment);
 
-            itemViewHolder.commentByTime.setText(comment.getTimeFormatted());
+            String formattedTime = comment.getTimeFormatted();
+            itemViewHolder.commentByTime.setText(formattedTime);
 
             boolean byOp = TextUtils.equals(story.by, comment.by);
             boolean byUser = false;
@@ -571,7 +575,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             itemViewHolder.commentBy.setText(getCommentByWithOpBadge(ctx, displayName, byOp, opCommentColor));
             itemViewHolder.commentBy.setContentDescription(
                     "Comment by " + comment.by + (byOp ? ", original poster" : ""));
-            itemViewHolder.commentByTime.setContentDescription("Posted " + comment.getTimeFormatted());
+            itemViewHolder.commentByTime.setContentDescription("Posted " + formattedTime);
 
             if (byUser) {
                 itemViewHolder.commentBy.setTextColor(MaterialColors.getColor(itemViewHolder.commentBy, R.attr.selfCommentColor));
@@ -820,7 +824,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private void bindHeaderStoryViews(HeaderViewHolder headerViewHolder, Context ctx) {
         if (story.isLink && story.url != null) {
             try {
-                headerViewHolder.urlView.setText("(" + Utils.getDomainName(story.url) + ")");
+                headerViewHolder.urlView.setText(
+                        "(" + story.getDisplayDomain(true) + ")");
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -838,7 +843,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         headerViewHolder.favicon.setVisibility(showThumbnail ? View.VISIBLE : GONE);
         headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
         if (showThumbnail && !TextUtils.isEmpty(story.url)) {
-            FaviconLoader.loadFavicon(story.url, headerViewHolder.favicon, ctx, faviconProvider);
+            FaviconLoader.loadFavicon(
+                    story, headerViewHolder.favicon, ctx, faviconProvider);
         }
         bindHeaderSummary(headerViewHolder, ctx);
         headerViewHolder.emptyViewText.setText(story.isComment ? "No replies" : "No comments");
@@ -1514,12 +1520,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (story.loaded) {
             headerViewHolder.metaVotes.setText(String.valueOf(story.score));
             headerViewHolder.metaComments.setText(String.valueOf(story.descendants));
-            headerViewHolder.metaTime.setText(story.getTimeFormatted());
+            String formattedTime = story.getTimeFormatted();
+            headerViewHolder.metaTime.setText(formattedTime);
             String tag = getCachedUserTag(ctx, story.by);
             headerViewHolder.metaBy.setText(TextUtils.isEmpty(tag) ? story.by : story.by + " (" + tag + ")");
             headerViewHolder.metaVotes.setContentDescription(AccessibilityTextUtils.pointCountDescription(story.score));
             headerViewHolder.metaComments.setContentDescription(AccessibilityTextUtils.commentCountDescription(story.descendants));
-            headerViewHolder.metaTime.setContentDescription("Posted " + story.getTimeFormatted());
+            headerViewHolder.metaTime.setContentDescription("Posted " + formattedTime);
             headerViewHolder.metaBy.setContentDescription("Submitted by " + story.by);
             headerViewHolder.userButton.setContentDescription("Open submitter " + story.by);
         }

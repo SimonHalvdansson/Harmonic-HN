@@ -317,39 +317,52 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                     commentCountText = "";
                 }
                 storyViewHolder.commentsView.setText(commentCountText);
-                storyViewHolder.commentsView.setContentDescription(AccessibilityTextUtils.commentCountDescription(storyViewHolder.story.descendants));
+                String commentCountDescription =
+                        AccessibilityTextUtils.commentCountDescription(
+                                storyViewHolder.story.descendants);
+                storyViewHolder.commentsView.setContentDescription(commentCountDescription);
                 if (!showCommentsCount) {
                     storyViewHolder.commentsView.setText(null);
                     storyViewHolder.commentsView.setContentDescription(null);
                 }
-                storyViewHolder.commentLayoutView.setContentDescription(AccessibilityTextUtils.commentCountDescription(storyViewHolder.story.descendants));
+                storyViewHolder.commentLayoutView.setContentDescription(commentCountDescription);
 
                 String host = "";
                 try {
                     if (storyViewHolder.story.url != null) {
-                        host = Utils.getDomainName(storyViewHolder.story.url);
-                        host = Utils.formatDomainNameForDisplay(host, includeTopLevelDomain);
+                        host = storyViewHolder.story.getDisplayDomain(includeTopLevelDomain);
                     }
                 } catch (Exception e) {
                     host = "Unknown";
                 }
 
+                String formattedTime = storyViewHolder.story.getTimeFormatted();
                 if (showPoints && !storyViewHolder.story.isComment) {
+                    String pointCountDescription =
+                            AccessibilityTextUtils.pointCountDescription(
+                                    storyViewHolder.story.score);
                     String pointsText = compactPoints
                             ? "+" + storyViewHolder.story.score
-                            : AccessibilityTextUtils.pointCountDescription(storyViewHolder.story.score);
-                    storyViewHolder.metaView.setText(pointsText + " • " + host + " • " + storyViewHolder.story.getTimeFormatted());
+                            : pointCountDescription;
+                    storyViewHolder.metaView.setText(
+                            pointsText + " • " + host + " • " + formattedTime);
                     storyViewHolder.metaView.setContentDescription(
-                            AccessibilityTextUtils.pointCountDescription(storyViewHolder.story.score) + ", "
+                            pointCountDescription + ", "
                                     + host + ", "
-                                    + storyViewHolder.story.getTimeFormatted());
+                                    + formattedTime);
                 } else {
-                    storyViewHolder.metaView.setText(host + " • " + storyViewHolder.story.getTimeFormatted());
-                    storyViewHolder.metaView.setContentDescription(host + ", " + storyViewHolder.story.getTimeFormatted());
+                    storyViewHolder.metaView.setText(host + " • " + formattedTime);
+                    storyViewHolder.metaView.setContentDescription(
+                            host + ", " + formattedTime);
                 }
 
                 if (thumbnails) {
-                    FaviconLoader.loadFavicon(storyViewHolder.story.url, storyViewHolder.metaFavicon, ctx, faviconProvider, true);
+                    FaviconLoader.loadFavicon(
+                            storyViewHolder.story,
+                            storyViewHolder.metaFavicon,
+                            ctx,
+                            faviconProvider,
+                            true);
                 }
 
                 bindPreviewContent(storyViewHolder, storyViewHolder.story);
