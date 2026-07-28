@@ -62,7 +62,7 @@
             android:layout_marginTop="20dp"
             android:textSize="13sp"
             android:layout_marginBottom="4dp"
-            android:text="Your information is only saved locally and used for API calls."
+            android:text="Information is only saved locally and used for HN API."
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
 
@@ -85,13 +85,7 @@
 
             <TextView
                 android:textSize="13sp"
-                android:text="Since Hacker News does not supply an official API for actions which require login, this app can not authenticate once and obtain a secret token to use for the future. Instead, actions which require login are performed by sending HTTPS POST requests to Hacker News with your username and password in the request body, not in the URL."
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:textSize="13sp"
-                android:text="This means your password must be stored on your device. It is stored encrypted using AES-256 GCM with management carried out by Google's AndroidX Security library, and is ONLY used in HTTPS POST form bodies sent to news.ycombinator.com."
+                android:text="Since Hacker News does not supply an official API for actions which require login, this app can not authenticate once and obtain a secret token to use for the future. Instead, actions which require login are performed by sending HTTPS POST requests to Hacker News with your username and password in the request body. This means your password must be stored on your device. It is stored encrypted using AES-256 GCM with management carried out by Google's AndroidX Security library, and is ONLY used in HTTPS POST form bodies sent to news.ycombinator.com."
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
