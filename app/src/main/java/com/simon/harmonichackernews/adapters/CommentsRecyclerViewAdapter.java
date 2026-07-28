@@ -3736,6 +3736,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         private void tapped(Comment comment, int pos, View v) {
+            if (pos == RecyclerView.NO_POSITION) {
+                return;
+            }
             if (swapLongPressTap) {
                 commentLongClickListener.onItemClick(comment, pos, v);
             } else {
@@ -3744,6 +3747,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         private void longPressed(Comment comment, int pos, View v) {
+            if (pos == RecyclerView.NO_POSITION) {
+                return;
+            }
             if (swapLongPressTap) {
                 commentClickListener.onItemClick(comment, pos, v);
             } else {

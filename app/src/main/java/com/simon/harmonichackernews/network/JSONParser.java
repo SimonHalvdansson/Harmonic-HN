@@ -14,6 +14,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -384,6 +385,7 @@ public class JSONParser {
     }
 
     private static Comment parseAlgoliaComment(JsonReader reader, int depth, Set<String> filteredUsers) throws IOException {
+        throwIfInterrupted();
         String rawText = "";
         String author = "";
         int parentId = 0;
@@ -431,6 +433,7 @@ public class JSONParser {
             }
         }
         reader.endObject();
+        throwIfInterrupted();
 
         if (rawText.isEmpty() || JSON_NULL_LITERAL.equalsIgnoreCase(rawText)) {
             return null;
@@ -457,6 +460,12 @@ public class JSONParser {
         }
 
         return comment;
+    }
+
+    private static void throwIfInterrupted() throws InterruptedIOException {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedIOException("Comment parsing was cancelled");
+        }
     }
 
     private static String nextStringOrDefault(JsonReader reader, String defaultValue) throws IOException {

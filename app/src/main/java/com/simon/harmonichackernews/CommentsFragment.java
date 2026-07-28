@@ -68,6 +68,7 @@ import com.simon.harmonichackernews.databinding.FragmentCommentsBinding;
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController;
 import com.simon.harmonichackernews.network.AlgoliaFallbackManager;
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
+import com.simon.harmonichackernews.network.BackgroundJSONParser;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.SummaryManager;
@@ -91,6 +92,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
 import okhttp3.Response;
@@ -158,6 +160,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private List<Comment> allComments;
     private RequestQueue queue;
     private final Object requestTag = new Object();
+    private int commentsLoadGeneration = 0;
+    @Nullable private PendingCommentsParse pendingCommentsParse;
     private CommentsRecyclerViewAdapter adapter;
     private FragmentCommentsBinding binding;
     private SwipeRefreshLayout swipeRefreshLayout;
@@ -390,6 +394,23 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     // Clean fallback management
     private AlgoliaFallbackManager fallbackManager;
+
+    private static final class PendingCommentsParse {
+        final int loadGeneration;
+        final int storyId;
+        @Nullable Runnable completion;
+        @Nullable Runnable followUp;
+        @Nullable Future<?> future;
+
+        PendingCommentsParse(
+                int loadGeneration,
+                int storyId,
+                @Nullable Runnable completion) {
+            this.loadGeneration = loadGeneration;
+            this.storyId = storyId;
+            this.completion = completion;
+        }
+    }
 
     public CommentsFragment() {
     }
@@ -1838,6 +1859,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (queue != null) {
             queue.cancelAll(requestTag);
         }
+        commentsLoadGeneration++;
+        cancelPendingCommentsParse();
         fallbackManager = null;
         if (webViewController != null) {
             webViewController.onDestroyView(rootView);
@@ -1920,6 +1943,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
             return;
         }
+        if (pendingCommentsParse != null) {
+            Log.d(TAG, "Retry ignored while comments are still being parsed for storyId="
+                    + adapter.story.id);
+            if (swipeRefreshLayout != null) {
+                swipeRefreshLayout.setRefreshing(false);
+            }
+            return;
+        }
         Log.d(TAG, "Retry requested for storyId=" + adapter.story.id
                 + ", showSwipeRefreshIndicator=" + showSwipeRefreshIndicator);
         setCommentsRefreshInProgress(true);
@@ -1943,26 +1974,35 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         queue = NetworkComponent.getRequestQueueInstance(context);
         String cachedResponse = Utils.loadCachedStory(context, story.id);
 
-        loadStoryAndComments(story.id, cachedResponse);
+        int loadGeneration = loadStoryAndComments(story.id, cachedResponse);
 
         // if this isn't here, the addition of the text appears to scroll the recyclerview down a little
         recyclerView.scrollToPosition(0);
 
-        if (cachedResponse != null) {
-            handleJsonResponse(story.id, cachedResponse, false, false, restoreScrollFromCache);
+        if (cachedResponse != null && loadGeneration >= 0) {
+            handleJsonResponse(
+                    story.id,
+                    cachedResponse,
+                    false,
+                    false,
+                    restoreScrollFromCache,
+                    loadGeneration,
+                    null);
         }
     }
 
-    private void loadStoryAndComments(final int id, final String oldCachedResponse) {
+    private int loadStoryAndComments(final int id, final String oldCachedResponse) {
         Context context = getContext();
         if (context == null || queue == null || !isCommentsViewActive()) {
             Log.w(TAG, "Skipping comments load for storyId=" + id
                     + ": contextPresent=" + (context != null)
                     + ", queuePresent=" + (queue != null)
                     + ", commentsViewActive=" + isCommentsViewActive());
-            return;
+            return -1;
         }
 
+        final int loadGeneration = ++commentsLoadGeneration;
+        cancelPendingCommentsParse();
         Log.d(TAG, "Loading comments for storyId=" + id + ", hasCachedResponse=" + (oldCachedResponse != null));
         lastLoaded = System.currentTimeMillis();
         if (adapter != null) {
@@ -1977,23 +2017,39 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         fallbackManager = new AlgoliaFallbackManager(context, queue, requestTag, filteredUsers, new AlgoliaFallbackManager.FallbackListener() {
             @Override
             public void onAlgoliaSuccess(String response) {
-                if (!isCommentsViewActive()) {
-                    Log.w(TAG, "Ignoring Algolia success because comments view is inactive for storyId=" + id);
+                if (!isCurrentCommentsLoad(loadGeneration, id)) {
+                    Log.w(TAG, "Ignoring stale Algolia success for storyId=" + id);
                     return;
                 }
                 Log.d(TAG, "Algolia comments load succeeded for storyId=" + id
                         + ", responseLength=" + (response == null ? 0 : response.length()));
                 if (TextUtils.isEmpty(oldCachedResponse) || !oldCachedResponse.equals(response)) {
-                    handleJsonResponse(id, response, true, oldCachedResponse == null, false);
+                    Runnable parseLiveResponse = () -> handleJsonResponse(
+                            id,
+                            response,
+                            true,
+                            oldCachedResponse == null,
+                            false,
+                            loadGeneration,
+                            () -> finishCommentsRefresh(loadGeneration, id));
+                    if (!deferUntilPendingParseFinishes(
+                            loadGeneration,
+                            id,
+                            parseLiveResponse)) {
+                        parseLiveResponse.run();
+                    }
+                } else if (!attachCompletionToPendingParse(
+                        loadGeneration,
+                        id,
+                        () -> finishCommentsRefresh(loadGeneration, id))) {
+                    finishCommentsRefresh(loadGeneration, id);
                 }
-                setCommentsRefreshInProgress(false);
-                swipeRefreshLayout.setRefreshing(false);
             }
 
             @Override
             public void onAlgoliaFailed(boolean noInternet) {
-                if (!isCommentsViewActive()) {
-                    Log.w(TAG, "Ignoring Algolia failure because comments view is inactive for storyId=" + id);
+                if (!isCurrentCommentsLoad(loadGeneration, id)) {
+                    Log.w(TAG, "Ignoring stale Algolia failure for storyId=" + id);
                     return;
                 }
                 Log.w(TAG, "Algolia comments load failed for storyId=" + id + ", noInternet=" + noInternet);
@@ -2008,14 +2064,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public void onUsingFallback() {
                 Context context = getContext();
-                if (context != null && isCommentsViewActive()) {
+                if (context != null && isCurrentCommentsLoad(loadGeneration, id)) {
                     Toast.makeText(context, "Algolia API failed, using official HN API", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onHNAPIStoryLoaded(Story loadedStory) {
-                if (!isCommentsViewActive()) {
+                if (!isCurrentCommentsLoad(loadGeneration, id)) {
                     return;
                 }
                 // Update story data
@@ -2051,8 +2107,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onHNAPIFailed() {
-                if (!isCommentsViewActive()) {
-                    Log.w(TAG, "Ignoring HN API failure because comments view is inactive for storyId=" + id);
+                if (!isCurrentCommentsLoad(loadGeneration, id)) {
+                    Log.w(TAG, "Ignoring stale HN API failure for storyId=" + id);
                     return;
                 }
                 Log.w(TAG, "HN API comments load failed for storyId=" + id);
@@ -2066,15 +2122,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onAllCommentsLoaded(List<Comment> loadedComments) {
-                if (!isCommentsViewActive()) {
-                    Log.w(TAG, "Ignoring loaded comments because comments view is inactive for storyId=" + id
+                if (!isCurrentCommentsLoad(loadGeneration, id)) {
+                    Log.w(TAG, "Ignoring stale loaded comments for storyId=" + id
                             + ", loadedCount=" + (loadedComments == null ? 0 : loadedComments.size()));
                     return;
                 }
                 Log.d(TAG, "Loaded comments from fallback path for storyId=" + id
                         + ", loadedCount=" + loadedComments.size());
                 Runnable revealComments = () -> {
-                    if (!isCommentsViewActive()) {
+                    if (!isCurrentCommentsLoad(loadGeneration, id)) {
                         return;
                     }
                     // Add all comments at once in proper tree order. Keeping this mutation after
@@ -2108,6 +2164,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (linkPreviewController != null) {
             linkPreviewController.loadNetworkPreviews(context);
         }
+        return loadGeneration;
     }
 
     private void onLinkPreviewChanged() {
@@ -2216,12 +2273,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    private void handleJsonResponse(final int id, final String response, final boolean cache, final boolean forceHeaderRefresh, boolean restoreScroll) {
-        if (!isCommentsViewActive()) {
+    private void handleJsonResponse(
+            final int id,
+            final String response,
+            final boolean cache,
+            final boolean forceHeaderRefresh,
+            final boolean restoreScroll,
+            final int loadGeneration,
+            @Nullable final Runnable completion) {
+        if (!isCurrentCommentsLoad(loadGeneration, id)) {
             return;
         }
 
-        int oldCommentCount = getAllCommentsSource().size();
+        final int oldCommentCount = getAllCommentsSource().size();
         // This is what we get if the Algolia API has not indexed the post,
         // we should attempt to show the user an option to switch API:s in this
         // server error case
@@ -2234,74 +2298,197 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             swipeRefreshLayout.setRefreshing(false);
         }
 
-        try {
-            JSONParser.AlgoliaCommentsResponse parsedResponse = JSONParser.parseAlgoliaCommentsResponse(response, story.kids, filteredUsers);
+        final int[] topLevelCommentIds = story.kids == null ? null : story.kids.clone();
+        final Set<String> filteredUsersSnapshot =
+                filteredUsers == null ? null : new HashSet<>(filteredUsers);
+        cancelPendingCommentsParse();
+        PendingCommentsParse pendingParse =
+                new PendingCommentsParse(loadGeneration, id, completion);
+        pendingCommentsParse = pendingParse;
+        pendingParse.future = BackgroundJSONParser.parseAlgoliaCommentsJson(
+                response,
+                topLevelCommentIds,
+                filteredUsersSnapshot,
+                new BackgroundJSONParser.AlgoliaCommentsParseCallback() {
+                    @Override
+                    public void onParseSuccess(JSONParser.AlgoliaCommentsResponse parsedResponse) {
+                        if (!isCurrentPendingCommentsParse(pendingParse)) {
+                            return;
+                        }
+                        pendingCommentsParse = null;
+                        applyParsedJsonResponse(
+                                id,
+                                response,
+                                cache,
+                                forceHeaderRefresh,
+                                restoreScroll,
+                                loadGeneration,
+                                oldCommentCount,
+                                parsedResponse);
+                        runPendingParseCompletion(pendingParse);
+                        runPendingParseFollowUp(pendingParse);
+                    }
 
-            boolean storyChanged = parsedResponse.updateStoryInformation(story, forceHeaderRefresh, oldCommentCount);
-            boolean updateHeaderAfterLoad = storyChanged || forceHeaderRefresh;
-            maybeLoadPollOptions();
+                    @Override
+                    public void onParseError(IOException error) {
+                        if (!isCurrentPendingCommentsParse(pendingParse)) {
+                            return;
+                        }
+                        pendingCommentsParse = null;
+                        error.printStackTrace();
+                        adapter.loadingFailed = true;
+                        adapter.loadingFailedServerError = false;
+                        notifyHeaderChanged();
+                        swipeRefreshLayout.setRefreshing(false);
+                        completeCommentsLoad(false);
+                        runPendingParseCompletion(pendingParse);
+                        runPendingParseFollowUp(pendingParse);
+                    }
+                });
+    }
 
-            integratedWebview = prefIntegratedWebview && story.isLink;
+    private void applyParsedJsonResponse(
+            int id,
+            String response,
+            boolean cache,
+            boolean forceHeaderRefresh,
+            boolean restoreScroll,
+            int loadGeneration,
+            int oldCommentCount,
+            JSONParser.AlgoliaCommentsResponse parsedResponse) {
+        if (!isCurrentCommentsLoad(loadGeneration, id)) {
+            return;
+        }
 
-            if (integratedWebview && !adapter.integratedWebview) {
-                // It's the first time, so we need to re-initialize the recyclerview too
-                webViewController.setIntegratedWebview(true);
-                webViewController.initialize();
-                initializeRecyclerView();
+        boolean storyChanged =
+                parsedResponse.updateStoryInformation(story, forceHeaderRefresh, oldCommentCount);
+        boolean updateHeaderAfterLoad = storyChanged || forceHeaderRefresh;
+        maybeLoadPollOptions();
+
+        integratedWebview = prefIntegratedWebview && story.isLink;
+
+        if (integratedWebview && !adapter.integratedWebview) {
+            // It's the first time, so we need to re-initialize the recyclerview too
+            webViewController.setIntegratedWebview(true);
+            webViewController.initialize();
+            initializeRecyclerView();
+        }
+
+        adapter.loadingFailed = false;
+        adapter.loadingFailedServerError = false;
+
+        // Seems like loading went well, lets cache the result
+        if (cache) {
+            Utils.cacheStory(getContext(), id, response);
+        }
+
+        Runnable revealComments = () -> {
+            if (!isCurrentCommentsLoad(loadGeneration, id)) {
+                return;
             }
+            applyParsedComments(
+                    parsedResponse.comments,
+                    updateHeaderAfterLoad);
 
-            adapter.loadingFailed = false;
-            adapter.loadingFailedServerError = false;
-
-            // Seems like loading went well, lets cache the result
-            if (cache) {
-                Utils.cacheStory(getContext(), id, response);
-            }
-
-            Runnable revealComments = () -> {
-                if (!isCommentsViewActive()) {
-                    return;
-                }
-                applyParsedComments(
-                        parsedResponse.comments,
-                        updateHeaderAfterLoad);
-
-                if (!cache && restoreScroll) {
-                    // If we're not caching the result, this means we just loaded an old cache.
-                    // Let's see if we can recover the scroll position.
-                    if (MainActivity.commentsScrollProgresses != null && !MainActivity.commentsScrollProgresses.isEmpty()) {
-                        // We check all of the caches to see if one has the same story ID
-                        for (CommentsScrollProgress scrollProgress : MainActivity.commentsScrollProgresses) {
-                            if (scrollProgress.storyId == story.id) {
-                                // Jackpot! Let's restore the state
-                                restoreScrollProgress(scrollProgress);
-                            }
+            if (!cache && restoreScroll) {
+                // If we're not caching the result, this means we just loaded an old cache.
+                // Let's see if we can recover the scroll position.
+                if (MainActivity.commentsScrollProgresses != null && !MainActivity.commentsScrollProgresses.isEmpty()) {
+                    // We check all of the caches to see if one has the same story ID
+                    for (CommentsScrollProgress scrollProgress : MainActivity.commentsScrollProgresses) {
+                        if (scrollProgress.storyId == story.id) {
+                            // Jackpot! Let's restore the state
+                            restoreScrollProgress(scrollProgress);
                         }
                     }
                 }
-
-                completeCommentsLoad(updateHeaderAfterLoad);
-            };
-
-            boolean shouldAnimateInitialComments = cache
-                    && forceHeaderRefresh
-                    && !adapter.commentsLoaded
-                    && comments.size() <= 1
-                    && !parsedResponse.comments.isEmpty();
-            if (shouldAnimateInitialComments
-                    && adapter.fadeInitialLoadingIndicatorOutThen(revealComments)) {
-                return;
             }
-            revealComments.run();
 
-        } catch (IOException e) {
-            e.printStackTrace();
-            // Show some error, remove things?
-            adapter.loadingFailed = true;
-            adapter.loadingFailedServerError = false;
-            notifyHeaderChanged();
-            swipeRefreshLayout.setRefreshing(false);
-            completeCommentsLoad(false);
+            completeCommentsLoad(updateHeaderAfterLoad);
+        };
+
+        boolean shouldAnimateInitialComments = cache
+                && forceHeaderRefresh
+                && !adapter.commentsLoaded
+                && comments.size() <= 1
+                && !parsedResponse.comments.isEmpty();
+        if (shouldAnimateInitialComments
+                && adapter.fadeInitialLoadingIndicatorOutThen(revealComments)) {
+            return;
+        }
+        revealComments.run();
+    }
+
+    private boolean attachCompletionToPendingParse(
+            int loadGeneration,
+            int storyId,
+            Runnable completion) {
+        PendingCommentsParse pendingParse = pendingCommentsParse;
+        if (pendingParse == null
+                || pendingParse.loadGeneration != loadGeneration
+                || pendingParse.storyId != storyId) {
+            return false;
+        }
+        pendingParse.completion = completion;
+        return true;
+    }
+
+    private void runPendingParseCompletion(PendingCommentsParse pendingParse) {
+        Runnable completion = pendingParse.completion;
+        pendingParse.completion = null;
+        if (completion != null) {
+            completion.run();
+        }
+    }
+
+    private boolean deferUntilPendingParseFinishes(
+            int loadGeneration,
+            int storyId,
+            Runnable followUp) {
+        PendingCommentsParse pendingParse = pendingCommentsParse;
+        if (pendingParse == null
+                || pendingParse.loadGeneration != loadGeneration
+                || pendingParse.storyId != storyId) {
+            return false;
+        }
+        Runnable previousFollowUp = pendingParse.followUp;
+        pendingParse.followUp = previousFollowUp == null
+                ? followUp
+                : () -> {
+                    previousFollowUp.run();
+                    followUp.run();
+                };
+        return true;
+    }
+
+    private void runPendingParseFollowUp(PendingCommentsParse pendingParse) {
+        Runnable followUp = pendingParse.followUp;
+        pendingParse.followUp = null;
+        if (followUp != null
+                && isCurrentCommentsLoad(pendingParse.loadGeneration, pendingParse.storyId)) {
+            followUp.run();
+        }
+    }
+
+    private void finishCommentsRefresh(int loadGeneration, int storyId) {
+        if (!isCurrentCommentsLoad(loadGeneration, storyId)) {
+            return;
+        }
+        setCommentsRefreshInProgress(false);
+        swipeRefreshLayout.setRefreshing(false);
+    }
+
+    private boolean isCurrentPendingCommentsParse(PendingCommentsParse pendingParse) {
+        return pendingCommentsParse == pendingParse
+                && isCurrentCommentsLoad(pendingParse.loadGeneration, pendingParse.storyId);
+    }
+
+    private void cancelPendingCommentsParse() {
+        PendingCommentsParse pendingParse = pendingCommentsParse;
+        pendingCommentsParse = null;
+        if (pendingParse != null && pendingParse.future != null) {
+            pendingParse.future.cancel(true);
+            pendingParse.future = null;
         }
     }
 
@@ -2345,6 +2532,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 && recyclerView != null
                 && comments != null
                 && allComments != null;
+    }
+
+    private boolean isCurrentCommentsLoad(int loadGeneration, int storyId) {
+        return loadGeneration == commentsLoadGeneration
+                && story != null
+                && story.id == storyId
+                && isCommentsViewActive();
     }
 
     private void applyParsedComments(
