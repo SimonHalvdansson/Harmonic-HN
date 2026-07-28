@@ -92,8 +92,10 @@ public class Utils {
 
     public final static String KEY_SHARED_PREFERENCES_CACHED_STORY = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORY";
     public final static String KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL";
+    public final static String KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET";
     public final static String KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS";
     private static final int MAX_CACHED_STORIES = 200;
+    static final long MAX_CACHED_ARTICLE_BYTES = 5L * 1024L * 1024L;
     private static final String STORY_CACHE_DIR = "story_cache";
     private static final String STORY_CACHE_FULL_DIR = "full";
     private static final String STORY_CACHE_SUMMARY_DIR = "summary";
@@ -370,6 +372,8 @@ public class Utils {
             if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_STORY)) {
                 editor.remove(key);
             } else if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
+                editor.remove(key);
+            } else if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET)) {
                 editor.remove(key);
             }
         }
@@ -650,32 +654,6 @@ public class Utils {
         }
     }
 
-    public static void cacheArticleSnapshot(Context ctx, int id, String url, String html) {
-        if (ctx == null || id <= 0 || TextUtils.isEmpty(url) || TextUtils.isEmpty(html)) {
-            return;
-        }
-
-        FileOutputStream outputStream = null;
-        try {
-            File articleCacheDir = getArticleCacheDir(ctx);
-            if (!articleCacheDir.exists() && !articleCacheDir.mkdirs()) {
-                return;
-            }
-
-            outputStream = new FileOutputStream(getArticleCacheFile(ctx, id));
-            outputStream.write(html.getBytes("UTF-8"));
-            SettingsUtils.saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id, url);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (outputStream != null) {
-                try {
-                    outputStream.close();
-                } catch (IOException ignored) {}
-            }
-        }
-    }
-
     public static String loadCachedArticleSnapshot(Context ctx, int id) {
         if (ctx == null || id <= 0) {
             return null;
@@ -685,11 +663,22 @@ public class Utils {
         if (!cacheFile.exists()) {
             return null;
         }
+        if (cacheFile.length() <= 0L || cacheFile.length() > MAX_CACHED_ARTICLE_BYTES) {
+            deleteCachedArticleSnapshot(ctx, id);
+            return null;
+        }
+        cacheFile.setLastModified(System.currentTimeMillis());
 
         FileInputStream inputStream = null;
         try {
             inputStream = new FileInputStream(cacheFile);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
+            String charset = SettingsUtils.readStringFromSharedPreferences(
+                    ctx, KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id);
+            if (TextUtils.isEmpty(charset)) {
+                charset = "UTF-8";
+            }
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(inputStream, charset));
             StringBuilder builder = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
@@ -724,14 +713,18 @@ public class Utils {
         if (cacheFile.exists() && !cacheFile.delete()) {
             cacheFile.deleteOnExit();
         }
-        ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE).edit().remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id).apply();
+        ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id)
+                .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id)
+                .apply();
     }
 
-    private static File getArticleCacheDir(Context ctx) {
+    static File getArticleCacheDir(Context ctx) {
         return new File(ctx.getFilesDir(), "article_cache");
     }
 
-    private static File getArticleCacheFile(Context ctx, int id) {
+    static File getArticleCacheFile(Context ctx, int id) {
         return new File(getArticleCacheDir(ctx), id + ".html");
     }
 

@@ -3926,7 +3926,9 @@ public class StoriesFragment extends Fragment {
         menu.findItem(R.id.menu_submit).setVisible(loggedIn);
         //first only show cache button if we're not already looking at the cache
         boolean cacheInProgress = storyCacheController != null && storyCacheController.isCachingStories();
-        menu.findItem(R.id.menu_cache).setVisible(!showingCached && !cacheInProgress);
+        boolean hasVisibleStories = adapter != null && adapter.getVisibleStoryItemCount() > 0;
+        menu.findItem(R.id.menu_cache).setVisible(
+                hasVisibleStories && !showingCached && !cacheInProgress);
         menu.findItem(R.id.menu_clear_history).setVisible(isHistoryType(adapter.type) && HistoriesUtils.INSTANCE.size() > 0);
         //also if we don't have internet, no need to show at all
         if (getContext() != null) {

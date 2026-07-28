@@ -14,12 +14,19 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
+import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.ArrayDeque;
+import java.util.HashSet;
+import java.util.Set;
+
+import okhttp3.Call;
 
 class StoryCacheController {
     private static final long HEADER_LAYOUT_ANIMATION_DURATION_MS = 220;
@@ -30,6 +37,7 @@ class StoryCacheController {
     private static final String CACHE_PROGRESS_STATUS_FINISHED = "Finished";
     private static final String CACHE_PROGRESS_STATUS_FAILED = "Caching failed";
     private static final String CACHE_PROGRESS_STATUS_EMPTY = "No stories to cache";
+    private static final int MAX_CONCURRENT_ARTICLE_DOWNLOADS = 4;
 
     interface Callbacks {
         @Nullable
@@ -56,6 +64,11 @@ class StoryCacheController {
     private int cacheStoriesTotal = 1;
     private int cacheStoriesCompleted = 0;
     private String progressStatus = CACHE_PROGRESS_STATUS_CACHING;
+    private final ArrayDeque<ArticleDownload> pendingArticleDownloads = new ArrayDeque<>();
+    private final Set<Call> activeArticleDownloads = new HashSet<>();
+    @Nullable
+    private ArticleSnapshotDownloader articleSnapshotDownloader;
+    private int articleDownloadGeneration = 0;
 
     StoryCacheController(@NonNull Callbacks callbacks) {
         this.callbacks = callbacks;
@@ -68,6 +81,13 @@ class StoryCacheController {
     }
 
     void clearViewReferences() {
+        articleDownloadGeneration++;
+        pendingArticleDownloads.clear();
+        for (Call call : activeArticleDownloads) {
+            call.cancel();
+        }
+        activeArticleDownloads.clear();
+        articleSnapshotDownloader = null;
         progressAnimationGeneration++;
         if (progressIndicator != null) {
             progressIndicator.animate().cancel();
@@ -121,6 +141,9 @@ class StoryCacheController {
         int storiesToCache = SettingsUtils.getStoriesToCache(context);
         startProgress(storiesToCache);
         boolean cacheArticles = SettingsUtils.shouldUseIntegratedWebView(context);
+        articleSnapshotDownloader = cacheArticles
+                ? new ArticleSnapshotDownloader(context)
+                : null;
         StringRequest request = new StringRequest(Request.Method.GET, Utils.URL_TOP,
                 response -> {
                     try {
@@ -140,7 +163,7 @@ class StoryCacheController {
                                     storyResponse -> {
                                         Utils.cacheStory(context, id, storyResponse);
                                         if (cacheArticles) {
-                                            cacheStoryArticleSnapshot(context, id, storyResponse, articleFailures, () -> onCacheStoryFinished(remaining));
+                                            cacheStoryArticleSnapshot(id, storyResponse, articleFailures, () -> onCacheStoryFinished(remaining));
                                         } else {
                                             onCacheStoryFinished(remaining);
                                         }
@@ -305,13 +328,11 @@ class StoryCacheController {
         finishProgress();
     }
 
-    private void cacheStoryArticleSnapshot(Context context,
-                                           int id,
+    private void cacheStoryArticleSnapshot(int id,
                                            String storyJson,
                                            int[] articleFailures,
                                            Runnable onComplete) {
-        RequestQueue queue = callbacks.getRequestQueue();
-        if (queue == null) {
+        if (articleSnapshotDownloader == null) {
             onComplete.run();
             return;
         }
@@ -329,21 +350,72 @@ class StoryCacheController {
                 return;
             }
 
-            StringRequest articleRequest = new StringRequest(Request.Method.GET, articleUrl,
-                    html -> {
-                        Utils.cacheArticleSnapshot(context, id, articleUrl, html);
-                        onComplete.run();
-                    },
-                    error -> {
-                        articleFailures[0]++;
-                        onComplete.run();
-                    });
-            articleRequest.setTag(callbacks.getRequestTag());
-            queue.add(articleRequest);
+            pendingArticleDownloads.add(new ArticleDownload(
+                    id, articleUrl, articleFailures, onComplete, articleDownloadGeneration));
+            startPendingArticleDownloads();
         } catch (JSONException e) {
             e.printStackTrace();
             articleFailures[0]++;
             onComplete.run();
+        }
+    }
+
+    private void startPendingArticleDownloads() {
+        ArticleSnapshotDownloader downloader = articleSnapshotDownloader;
+        if (downloader == null) {
+            return;
+        }
+
+        while (activeArticleDownloads.size() < MAX_CONCURRENT_ARTICLE_DOWNLOADS
+                && !pendingArticleDownloads.isEmpty()) {
+            ArticleDownload download = pendingArticleDownloads.remove();
+            if (download.generation != articleDownloadGeneration) {
+                continue;
+            }
+
+            Call call = downloader.download(
+                    download.storyId,
+                    download.articleUrl,
+                    (completedCall, success) -> {
+                        if (download.generation != articleDownloadGeneration) {
+                            return;
+                        }
+                        activeArticleDownloads.remove(completedCall);
+                        if (!success) {
+                            download.articleFailures[0]++;
+                        }
+                        download.onComplete.run();
+                        startPendingArticleDownloads();
+                    });
+            if (call == null) {
+                download.articleFailures[0]++;
+                download.onComplete.run();
+                continue;
+            }
+            activeArticleDownloads.add(call);
+        }
+    }
+
+    private static final class ArticleDownload {
+        private final int storyId;
+        @NonNull
+        private final String articleUrl;
+        @NonNull
+        private final int[] articleFailures;
+        @NonNull
+        private final Runnable onComplete;
+        private final int generation;
+
+        private ArticleDownload(int storyId,
+                                @NonNull String articleUrl,
+                                @NonNull int[] articleFailures,
+                                @NonNull Runnable onComplete,
+                                int generation) {
+            this.storyId = storyId;
+            this.articleUrl = articleUrl;
+            this.articleFailures = articleFailures;
+            this.onComplete = onComplete;
+            this.generation = generation;
         }
     }
 }
