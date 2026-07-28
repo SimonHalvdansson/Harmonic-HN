@@ -483,8 +483,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             itemViewHolder.comment = comment;
             applyCommentHighlight(itemViewHolder, comment.id == highlightedCommentId);
 
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-
             int width = ctx.getResources().getDisplayMetrics().widthPixels;
             if (isTablet) {
                 width /= 2;
@@ -505,12 +503,42 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     : 0;
 
             // 16 is base padding, then add depth-based indentation for child comments.
-            params.setMargins(
-                    Math.max(0, horizontalStartMargin - cardShadowPadding),
-                    Math.max(-headerFadeOverlap, topMargin - cardShadowPadding - headerFadeOverlap),
-                    Math.max(0, Utils.pxFromDpInt(ctx.getResources(), 16) - cardShadowPadding),
-                    Math.max(0, bottomMargin - cardShadowPadding));
-            itemViewHolder.itemView.setLayoutParams(params);
+            int leftMargin = Math.max(0, horizontalStartMargin - cardShadowPadding);
+            int adjustedTopMargin =
+                    Math.max(-headerFadeOverlap, topMargin - cardShadowPadding - headerFadeOverlap);
+            int rightMargin =
+                    Math.max(0, Utils.pxFromDpInt(ctx.getResources(), 16) - cardShadowPadding);
+            int adjustedBottomMargin = Math.max(0, bottomMargin - cardShadowPadding);
+
+            ViewGroup.LayoutParams currentParams = itemViewHolder.itemView.getLayoutParams();
+            ViewGroup.MarginLayoutParams params;
+            boolean layoutParamsChanged;
+            if (currentParams instanceof ViewGroup.MarginLayoutParams) {
+                params = (ViewGroup.MarginLayoutParams) currentParams;
+                layoutParamsChanged =
+                        params.width != ViewGroup.LayoutParams.MATCH_PARENT
+                                || params.height != ViewGroup.LayoutParams.WRAP_CONTENT
+                                || params.leftMargin != leftMargin
+                                || params.topMargin != adjustedTopMargin
+                                || params.rightMargin != rightMargin
+                                || params.bottomMargin != adjustedBottomMargin;
+            } else {
+                params = new RecyclerView.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                layoutParamsChanged = true;
+            }
+
+            if (layoutParamsChanged) {
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT;
+                params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                params.setMargins(
+                        leftMargin,
+                        adjustedTopMargin,
+                        rightMargin,
+                        adjustedBottomMargin);
+                itemViewHolder.itemView.setLayoutParams(params);
+            }
 
             if (!CommentDepthIndicatorUtils.shouldShowIndicators(commentDepthIndicatorMode)) {
                 itemViewHolder.commentIndentIndicator.setVisibility(cardStyle ? View.INVISIBLE : GONE);
