@@ -82,15 +82,14 @@
                 android:orientation="vertical"
                 android:paddingLeft="10dp">
 
-                <com.facebook.shimmer.ShimmerFrameLayout
+                <com.simon.harmonichackernews.widget.BoxShimmerLayout
                     android:id="@+id/story_title_shimmer_container"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:shimmer_auto_start="false"
-                    app:shimmer_base_alpha="0.15"
-                    app:shimmer_base_color="?attr/drawableColor"
-                    app:shimmer_duration="2000"
-                    app:shimmer_highlight_alpha="0.17">
+                    app:boxShimmerAutoStart="false"
+                    app:boxShimmerBaseAlpha="0.15"
+                    app:boxShimmerDuration="2000"
+                    app:boxShimmerHighlightAlpha="0.17">
 
                     <LinearLayout
                         android:id="@+id/story_title_shimmer"
@@ -112,7 +111,7 @@
                             android:layout_marginTop="1dp"
                             android:background="@drawable/smooth_rectangle_drawable" />
                     </LinearLayout>
-                </com.facebook.shimmer.ShimmerFrameLayout>
+                </com.simon.harmonichackernews.widget.BoxShimmerLayout>
 
                 <TextView
                     android:id="@+id/story_title"

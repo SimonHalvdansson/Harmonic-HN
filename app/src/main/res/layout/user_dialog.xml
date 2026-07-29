@@ -66,15 +66,14 @@
                 android:layout_height="wrap_content"
                 tools:text="intrepidher"/>
 
-            <com.facebook.shimmer.ShimmerFrameLayout
+            <com.simon.harmonichackernews.widget.BoxShimmerLayout
                 android:id="@+id/user_loading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:importantForAccessibility="noHideDescendants"
-                app:shimmer_base_alpha="0.15"
-                app:shimmer_base_color="?attr/drawableColor"
-                app:shimmer_duration="2000"
-                app:shimmer_highlight_alpha="0.17">
+                app:boxShimmerBaseAlpha="0.15"
+                app:boxShimmerDuration="2000"
+                app:boxShimmerHighlightAlpha="0.17">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -101,7 +100,7 @@
 
                 </LinearLayout>
 
-            </com.facebook.shimmer.ShimmerFrameLayout>
+            </com.simon.harmonichackernews.widget.BoxShimmerLayout>
 
             <LinearLayout
                 android:id="@+id/user_details"

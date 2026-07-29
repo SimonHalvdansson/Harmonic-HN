@@ -35,7 +35,6 @@ import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
-import com.facebook.shimmer.ShimmerFrameLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
@@ -44,6 +43,7 @@ import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.RepliesChecker;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.Utils;
+import com.simon.harmonichackernews.widget.BoxShimmerLayout;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -75,7 +75,7 @@ public class UserDialogFragment extends AppCompatDialogFragment {
     private TextView notificationsExplanation;
     private LinearProgressIndicator notificationsLoading;
     private TextView notificationsStatus;
-    private ShimmerFrameLayout loadingProgress;
+    private BoxShimmerLayout loadingProgress;
     private LinearLayout errorLayout;
     private LinearLayout container;
     private LinearLayout detailsContainer;

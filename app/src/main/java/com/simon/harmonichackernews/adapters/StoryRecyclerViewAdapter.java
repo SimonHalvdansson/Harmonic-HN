@@ -30,7 +30,6 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.facebook.shimmer.ShimmerFrameLayout;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.simon.harmonichackernews.R;
@@ -59,6 +58,7 @@ import com.simon.harmonichackernews.utils.TextSizeImageSpan;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
+import com.simon.harmonichackernews.widget.BoxShimmerLayout;
 
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
@@ -2299,7 +2299,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         public final LinearLayout linkLayoutView;
         public final LinearLayout commentLayoutView;
         public final ImageView commentsIcon;
-        public final ShimmerFrameLayout titleShimmerContainer;
+        public final BoxShimmerLayout titleShimmerContainer;
         public final LinearLayout titleShimmer;
         public final View metaShimmer;
         public final LinearLayout metaContainer;
@@ -2415,7 +2415,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                                 LinearLayout linkLayout,
                                 LinearLayout commentLayout,
                                 ImageView commentIcon,
-                                ShimmerFrameLayout shimmerContainer,
+                                BoxShimmerLayout shimmerContainer,
                                 LinearLayout shimmerTitle,
                                 View shimmerMeta,
                                 ImageView favicon,

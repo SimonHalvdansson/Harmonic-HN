@@ -217,13 +217,12 @@
             tools:src="@drawable/web_preview"
             tools:visibility="visible" />
 
-        <com.facebook.shimmer.ShimmerFrameLayout
+        <com.simon.harmonichackernews.widget.BoxShimmerLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:shimmer_duration="2000"
-            app:shimmer_base_color="?attr/drawableColor"
-            app:shimmer_base_alpha="0.15"
-            app:shimmer_highlight_alpha="0.17">
+            app:boxShimmerBaseAlpha="0.15"
+            app:boxShimmerDuration="2000"
+            app:boxShimmerHighlightAlpha="0.17">
 
             <LinearLayout
                 android:id="@+id/comments_header_title_shimmer"
@@ -247,7 +246,7 @@
 
             </LinearLayout>
 
-        </com.facebook.shimmer.ShimmerFrameLayout>
+        </com.simon.harmonichackernews.widget.BoxShimmerLayout>
 
         <TextView
             android:id="@+id/comments_header_title"

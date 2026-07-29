@@ -217,7 +217,6 @@ dependencies {
 
     implementation(libs.volley)
     implementation(libs.bundles.okhttp)
-    implementation(libs.shimmer)
     implementation(libs.coil)
     implementation(libs.coil.svg)
     implementation(libs.jsoup)

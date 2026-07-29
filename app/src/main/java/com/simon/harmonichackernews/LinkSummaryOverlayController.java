@@ -78,6 +78,7 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.TextSizeImageSpan;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
+import com.simon.harmonichackernews.widget.BoxShimmerLayout;
 
 import coil.Coil;
 import coil.request.ImageRequest;
@@ -2304,12 +2305,12 @@ final class LinkSummaryOverlayController {
         });
     }
 
-    private void stopPreviewShimmer(com.facebook.shimmer.ShimmerFrameLayout shimmer) {
+    private void stopPreviewShimmer(BoxShimmerLayout shimmer) {
         shimmer.stopShimmer();
         shimmer.setVisibility(View.GONE);
     }
 
-    private void stopDescriptionShimmer(com.facebook.shimmer.ShimmerFrameLayout shimmer) {
+    private void stopDescriptionShimmer(BoxShimmerLayout shimmer) {
         shimmer.stopShimmer();
         shimmer.setVisibility(View.GONE);
     }

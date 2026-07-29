@@ -59,22 +59,21 @@
                     android:textSize="13sp"
                     android:textStyle="bold" />
 
-                <com.facebook.shimmer.ShimmerFrameLayout
+                <com.simon.harmonichackernews.widget.BoxShimmerLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
                     android:importantForAccessibility="no"
-                    app:shimmer_base_alpha="0.15"
-                    app:shimmer_base_color="?attr/drawableColor"
-                    app:shimmer_duration="2000"
-                    app:shimmer_highlight_alpha="0.17">
+                    app:boxShimmerBaseAlpha="0.15"
+                    app:boxShimmerDuration="2000"
+                    app:boxShimmerHighlightAlpha="0.17">
 
                     <View
                         android:layout_width="150dp"
                         android:layout_height="17dp"
                         android:background="@drawable/smooth_rectangle_drawable" />
 
-                </com.facebook.shimmer.ShimmerFrameLayout>
+                </com.simon.harmonichackernews.widget.BoxShimmerLayout>
 
             </LinearLayout>
 

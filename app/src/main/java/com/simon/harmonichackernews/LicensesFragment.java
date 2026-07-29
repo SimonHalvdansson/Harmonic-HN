@@ -47,7 +47,6 @@ public class LicensesFragment extends Fragment {
             {"HtmlTextView", "SufficientlySecure", "Apache License 2.0", "https://github.com/SufficientlySecure/html-textview"},
             {"OkHttp", "Square", "Apache License 2.0", "https://square.github.io/okhttp/"},
             {"Coil", "Instacart", "Apache License 2.0", "https://coil-kt.github.io/coil/"},
-            {"Shimmer", "Facebook", "BSD License", "https://github.com/facebookarchive/shimmer-android"},
             {"pdf.js", "Mozilla", "Apache License 2.0", "https://mozilla.github.io/pdf.js/"},
             {"Readability", "Mozilla", "Apache License 2.0", "https://github.com/mozilla/readability"},
             {"Materialistic", "Hidroh", "Apache License 2.0", "https://github.com/hidroh/materialistic"},
