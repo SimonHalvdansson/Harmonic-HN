@@ -318,6 +318,7 @@ final class LinkSummaryOverlayController {
         default int getLinkSummaryStoryPagingDistance(int firstStoryId, int secondStoryId) {
             return 0;
         }
+        default void setLinkSummaryStoryListExtraLayoutEnabled(boolean enabled) { }
         default void scrollLinkSummaryStoryListBy(int dy) { }
         default void setLinkSummaryStoryPagingAlphas(
                 int firstStoryId, float firstAlpha,
@@ -377,7 +378,9 @@ final class LinkSummaryOverlayController {
     private static final float INLINE_LINK_RETURN_FADE_START = 0.45f;
     private static final float INLINE_LINK_RETURN_FADE_END = 0.75f;
     private static final float STORY_PAGE_FADE_START = 0.75f;
-    private static final int STORY_PAGER_OFFSCREEN_PAGE_LIMIT = 2;
+    private static final int STORY_PAGER_ACTIVE_OFFSCREEN_PAGE_LIMIT = 2;
+    private static final int STORY_PAGER_PREWARM_OFFSCREEN_PAGE_LIMIT = 3;
+    private static final int STORY_PAGER_VIEW_CACHE_SIZE = 7;
     private static final int STORY_PAGER_SETTLE_RECOVERY_DELAY_MS = 450;
 
     private static final class StoryPageEntry {
@@ -514,7 +517,11 @@ final class LinkSummaryOverlayController {
     private StoryPageHolder currentStoryPage;
     private float lastStoryPagerPosition = Float.NaN;
     private float pendingStoryListScrollPixels;
+    private int cachedStoryPagingDistanceSegment = RecyclerView.NO_POSITION;
+    private int cachedStoryPagingDistance;
     private Runnable storyPagerSettleRecovery;
+    private boolean storyActionsHaveAccount;
+    private boolean storyBookmarksEnabled;
     private ReferenceLinkSummaryContentBinding referenceBinding;
     private ImageOnlyOverlayContentBinding imageBinding;
     private View sourceView;
@@ -572,6 +579,7 @@ final class LinkSummaryOverlayController {
             return;
         }
         captureStorySharedElements(sharedElements, false);
+        host.setLinkSummaryStoryListExtraLayoutEnabled(true);
         setupStoryPager(story, position);
     }
 
@@ -603,10 +611,10 @@ final class LinkSummaryOverlayController {
         // bound content draw before the posted page activation has prepared the enter transition.
         storyPager.setVisibility(View.INVISIBLE);
         storyPager.setOrientation(ViewPager2.ORIENTATION_VERTICAL);
-        // Keep the page after each immediate neighbor ready as well. When a user starts another
-        // swipe before the first one has settled, that page is the new adjacent page and must not
-        // be inflated and bound on the first frames of the gesture.
-        storyPager.setOffscreenPageLimit(STORY_PAGER_OFFSCREEN_PAGE_LIMIT);
+        // Prepare one extra page in each direction while input is disabled for the enter
+        // transition. The active limit is reduced when the transition completes, but the bounded
+        // RecyclerView cache retains these holders for the first paging gestures.
+        storyPager.setOffscreenPageLimit(STORY_PAGER_PREWARM_OFFSCREEN_PAGE_LIMIT);
         // Pages draw outside their bounds for card elevation, so hide adjacent cards at rest.
         storyPager.setPageTransformer((page, pagePosition) -> {
             float distanceFromSelectedPage = Math.min(1f, Math.abs(pagePosition));
@@ -616,18 +624,21 @@ final class LinkSummaryOverlayController {
             page.setAlpha(1f - fadeProgress);
         });
         storyPager.setUserInputEnabled(false);
+        Context context = binding.getRoot().getContext();
+        storyActionsHaveAccount = AccountUtils.hasAccountDetails(context);
+        storyBookmarksEnabled = SettingsUtils.shouldUseBookmarks(context);
         storyPagerAdapter = new StoryPagerAdapter(entries);
         storyPager.setAdapter(storyPagerAdapter);
         View pagerChild = storyPager.getChildAt(0);
         if (pagerChild instanceof RecyclerView) {
             storyPagerRecyclerView = (RecyclerView) pagerChild;
-            storyPagerRecyclerView.setItemViewCacheSize(
-                    STORY_PAGER_OFFSCREEN_PAGE_LIMIT * 2 + 1);
+            storyPagerRecyclerView.setItemViewCacheSize(STORY_PAGER_VIEW_CACHE_SIZE);
             configureStoryPagerSettleRecovery(storyPagerRecyclerView);
         }
         final int startingItem = initialItem;
         lastStoryPagerPosition = startingItem;
         pendingStoryListScrollPixels = 0f;
+        resetStoryPagingDistanceCache();
         storyPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageScrolled(int position, float positionOffset,
@@ -637,6 +648,9 @@ final class LinkSummaryOverlayController {
 
             @Override
             public void onPageScrollStateChanged(int state) {
+                if (state == ViewPager2.SCROLL_STATE_DRAGGING) {
+                    resetStoryPagingDistanceCache();
+                }
                 if (state == ViewPager2.SCROLL_STATE_SETTLING) {
                     scheduleStoryPagerSettleRecovery();
                 }
@@ -849,10 +863,19 @@ final class LinkSummaryOverlayController {
         }
         StoryPageEntry first = storyPagerAdapter.getEntry(segment);
         StoryPageEntry second = storyPagerAdapter.getEntry(segment + 1);
-        int distance = host.getLinkSummaryStoryPagingDistance(
-                first.story.id, second.story.id);
+        if (cachedStoryPagingDistanceSegment != segment) {
+            cachedStoryPagingDistanceSegment = segment;
+            cachedStoryPagingDistance = host.getLinkSummaryStoryPagingDistance(
+                    first.story.id, second.story.id);
+        }
+        int distance = cachedStoryPagingDistance;
         if (distance <= 0) return;
         pendingStoryListScrollPixels += pageDelta * distance;
+    }
+
+    private void resetStoryPagingDistanceCache() {
+        cachedStoryPagingDistanceSegment = RecyclerView.NO_POSITION;
+        cachedStoryPagingDistance = 0;
     }
 
     private void flushPendingStoryListScroll() {
@@ -1375,16 +1398,17 @@ final class LinkSummaryOverlayController {
             @NonNull Context context,
             @NonNull Story story) {
         StoryLinkSummaryContentBinding content = page.content;
-        boolean hasAccount = AccountUtils.hasAccountDetails(context);
-        setStoryCommentsButtonLabel(page, hasAccount
+        setStoryCommentsButtonLabel(page, storyActionsHaveAccount
                 ? String.valueOf(story.descendants)
-                : context.getString(R.string.link_summary_comments), hasAccount);
+                : context.getString(R.string.link_summary_comments), storyActionsHaveAccount);
         content.storyLinkComments.setContentDescription(
                 "Comments (" + story.descendants + ")");
-        content.storyLinkVoteSlot.setVisibility(hasAccount ? View.VISIBLE : View.GONE);
-        content.storyLinkFavoriteSlot.setVisibility(hasAccount ? View.VISIBLE : View.GONE);
+        content.storyLinkVoteSlot.setVisibility(
+                storyActionsHaveAccount ? View.VISIBLE : View.GONE);
+        content.storyLinkFavoriteSlot.setVisibility(
+                storyActionsHaveAccount ? View.VISIBLE : View.GONE);
         content.storyLinkBookmark.setVisibility(
-                SettingsUtils.shouldUseBookmarks(context) ? View.VISIBLE : View.GONE);
+                storyBookmarksEnabled ? View.VISIBLE : View.GONE);
         refreshStoryActionButtons(page, context, story);
 
         content.storyLinkVote.setOnClickListener(v -> {
@@ -2346,6 +2370,7 @@ final class LinkSummaryOverlayController {
         setSourceVisible(storyTitleSourceView, true);
         setSourceVisible(storySummarySourceView, true);
         setSourceVisible(storyMetaSourceView, true);
+        storyPager.setOffscreenPageLimit(STORY_PAGER_ACTIVE_OFFSCREEN_PAGE_LIMIT);
         storyPager.setUserInputEnabled(true);
         finishPendingStoryPreviewHides();
         finishPendingStoryStateChanges();
@@ -2859,6 +2884,10 @@ final class LinkSummaryOverlayController {
         cancelSummaryRequest();
         finishStorySharedElementSnapshotAnimation();
         host.clearLinkSummaryStoryPagingAlphas(false);
+        host.setLinkSummaryStoryListExtraLayoutEnabled(false);
+        resetStoryPagingDistanceCache();
+        storyActionsHaveAccount = false;
+        storyBookmarksEnabled = false;
         if (referenceBinding != null) {
             referenceBinding.referenceLinkMetadataContainer.animate().cancel();
         }

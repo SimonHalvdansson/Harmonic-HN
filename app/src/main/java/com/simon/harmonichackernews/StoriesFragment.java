@@ -115,6 +115,7 @@ public class StoriesFragment extends Fragment {
     private static final int SWIPE_REFRESH_PROGRESS_END_OFFSET_DP = -64;
     private static final int SWIPE_REFRESH_SLINGSHOT_DISTANCE_OFFSET_DP = -20;
     private static final int UPDATE_FAB_LOAD_MORE_CLEARANCE_DP = 8;
+    private static final int LINK_SUMMARY_STORY_EXTRA_LAYOUT_DP = 360;
     private static final int NO_PENDING_LINK_SUMMARY_STORY_ID = -1;
     private static final String STATE_LINK_SUMMARY_STORY_ID =
             "com.simon.harmonichackernews.STATE_LINK_SUMMARY_STORY_ID";
@@ -145,6 +146,7 @@ public class StoriesFragment extends Fragment {
     private OnBackPressedCallback linkSummaryBackCallback;
     private int pendingLinkSummaryStoryId = NO_PENDING_LINK_SUMMARY_STORY_ID;
     private final SparseIntArray linkSummaryStoryHeights = new SparseIntArray();
+    private boolean linkSummaryStoryListExtraLayoutEnabled;
     private final LinkSummaryOverlayController linkSummaryOverlayController =
             new LinkSummaryOverlayController(new LinkSummaryOverlayController.Host() {
                 @Nullable
@@ -198,6 +200,17 @@ public class StoriesFragment extends Fragment {
                         int firstStoryId, int secondStoryId) {
                     return StoriesFragment.this.getLinkSummaryStoryPagingDistance(
                             firstStoryId, secondStoryId);
+                }
+
+                @Override
+                public void setLinkSummaryStoryListExtraLayoutEnabled(boolean enabled) {
+                    if (linkSummaryStoryListExtraLayoutEnabled == enabled) {
+                        return;
+                    }
+                    linkSummaryStoryListExtraLayoutEnabled = enabled;
+                    if (recyclerView != null) {
+                        recyclerView.requestLayout();
+                    }
                 }
 
                 @Override
@@ -1095,6 +1108,23 @@ public class StoriesFragment extends Fragment {
             @Override
             public boolean supportsPredictiveItemAnimations() {
                 return false;
+            }
+
+            @Override
+            protected void calculateExtraLayoutSpace(
+                    @NonNull RecyclerView.State state,
+                    @NonNull int[] extraLayoutSpace) {
+                super.calculateExtraLayoutSpace(state, extraLayoutSpace);
+                RecyclerView currentRecyclerView = attachedRecyclerView;
+                if (!linkSummaryStoryListExtraLayoutEnabled
+                        || currentRecyclerView == null) {
+                    return;
+                }
+                int pagingRunway = Utils.pxFromDpInt(
+                        currentRecyclerView.getResources(),
+                        LINK_SUMMARY_STORY_EXTRA_LAYOUT_DP);
+                extraLayoutSpace[0] = Math.max(extraLayoutSpace[0], pagingRunway);
+                extraLayoutSpace[1] = Math.max(extraLayoutSpace[1], pagingRunway);
             }
 
             @Override

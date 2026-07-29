@@ -14,7 +14,6 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.text.Spanned;
 import android.text.TextUtils;
-import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -144,7 +143,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public static final int PAGINATION_PAGE_SIZE = 30;
     public int visibleStoryCount = 30;
     private final Map<Story, StoryPreviewImageLoader.PreviewImageRequest> previewImageUrlRequests = new IdentityHashMap<>();
-    private final SparseArray<Float> previewPagingAlphas = new SparseArray<>();
+    private int firstPreviewPagingStoryId = RecyclerView.NO_POSITION;
+    private float firstPreviewPagingAlpha = 1f;
+    private int secondPreviewPagingStoryId = RecyclerView.NO_POSITION;
+    private float secondPreviewPagingAlpha = 1f;
     private final Set<Story> pendingStoryChanges =
             Collections.newSetFromMap(new IdentityHashMap<>());
     private boolean pendingStoryChangesPosted;
@@ -533,11 +535,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public void setPreviewPagingAlphas(
             int firstStoryId, float firstAlpha,
             int secondStoryId, float secondAlpha) {
-        int previousFirstStoryId = previewPagingAlphas.size() > 0
-                ? previewPagingAlphas.keyAt(0) : RecyclerView.NO_POSITION;
-        int previousSecondStoryId = previewPagingAlphas.size() > 1
-                ? previewPagingAlphas.keyAt(1) : RecyclerView.NO_POSITION;
-        previewPagingAlphas.clear();
+        int previousFirstStoryId = firstPreviewPagingStoryId;
+        int previousSecondStoryId = secondPreviewPagingStoryId;
+        resetPreviewPagingAlphas();
         putPreviewPagingAlpha(firstStoryId, firstAlpha);
         putPreviewPagingAlpha(secondStoryId, secondAlpha);
         applyPreviewPagingAlphaToVisibleStory(previousFirstStoryId, false);
@@ -556,13 +556,12 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     public void clearPreviewPagingAlphas(boolean animate) {
-        ArrayList<Integer> affectedStoryIds = new ArrayList<>();
-        for (int index = 0; index < previewPagingAlphas.size(); index++) {
-            affectedStoryIds.add(previewPagingAlphas.keyAt(index));
-        }
-        previewPagingAlphas.clear();
-        for (Integer storyId : affectedStoryIds) {
-            applyPreviewPagingAlphaToVisibleStory(storyId, animate);
+        int previousFirstStoryId = firstPreviewPagingStoryId;
+        int previousSecondStoryId = secondPreviewPagingStoryId;
+        resetPreviewPagingAlphas();
+        applyPreviewPagingAlphaToVisibleStory(previousFirstStoryId, animate);
+        if (previousSecondStoryId != previousFirstStoryId) {
+            applyPreviewPagingAlphaToVisibleStory(previousSecondStoryId, animate);
         }
     }
 
@@ -571,9 +570,42 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             float alpha) {
         if (storyId < 0) return;
         float clampedAlpha = Math.max(0f, Math.min(1f, alpha));
-        if (clampedAlpha < 1f) {
-            previewPagingAlphas.put(storyId, clampedAlpha);
+        if (clampedAlpha >= 1f) {
+            return;
         }
+        if (firstPreviewPagingStoryId == storyId) {
+            firstPreviewPagingAlpha = clampedAlpha;
+        } else if (firstPreviewPagingStoryId == RecyclerView.NO_POSITION) {
+            firstPreviewPagingStoryId = storyId;
+            firstPreviewPagingAlpha = clampedAlpha;
+        } else if (secondPreviewPagingStoryId == storyId) {
+            secondPreviewPagingAlpha = clampedAlpha;
+        } else {
+            secondPreviewPagingStoryId = storyId;
+            secondPreviewPagingAlpha = clampedAlpha;
+        }
+    }
+
+    private void resetPreviewPagingAlphas() {
+        firstPreviewPagingStoryId = RecyclerView.NO_POSITION;
+        firstPreviewPagingAlpha = 1f;
+        secondPreviewPagingStoryId = RecyclerView.NO_POSITION;
+        secondPreviewPagingAlpha = 1f;
+    }
+
+    private boolean hasPreviewPagingAlpha(int storyId) {
+        return firstPreviewPagingStoryId == storyId
+                || secondPreviewPagingStoryId == storyId;
+    }
+
+    private float getPreviewPagingAlpha(int storyId) {
+        if (firstPreviewPagingStoryId == storyId) {
+            return firstPreviewPagingAlpha;
+        }
+        if (secondPreviewPagingStoryId == storyId) {
+            return secondPreviewPagingAlpha;
+        }
+        return 1f;
     }
 
     private void applyPreviewPagingAlphaToVisibleStory(int storyId, boolean animate) {
@@ -584,8 +616,7 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 recyclerView.findViewHolderForAdapterPosition(position);
         if (!(holder instanceof StoryViewHolder)) return;
         View itemView = holder.itemView;
-        Float alpha = previewPagingAlphas.get(storyId);
-        float targetAlpha = alpha == null ? 1f : alpha;
+        float targetAlpha = getPreviewPagingAlpha(storyId);
         if (animate) {
             itemView.animate().cancel();
             itemView.animate().alpha(targetAlpha)
@@ -599,9 +630,9 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
     }
 
     private void applyPreviewPagingAlpha(StoryViewHolder holder, Story story) {
-        Float alpha = previewPagingAlphas.get(story.id);
-        float targetAlpha = alpha == null ? 1f : alpha;
-        if (alpha != null || holder.itemView.getAlpha() != targetAlpha) {
+        boolean hasPagingAlpha = hasPreviewPagingAlpha(story.id);
+        float targetAlpha = getPreviewPagingAlpha(story.id);
+        if (hasPagingAlpha || holder.itemView.getAlpha() != targetAlpha) {
             holder.itemView.animate().cancel();
             holder.itemView.setAlpha(targetAlpha);
         }
