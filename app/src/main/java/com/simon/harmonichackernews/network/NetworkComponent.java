@@ -89,4 +89,15 @@ public class NetworkComponent {
         }
         return requestQueueInstance;
     }
+
+    public static void removeCachedStoryResponses(Context context, int storyId) {
+        if (context == null || storyId <= 0) {
+            return;
+        }
+
+        RequestQueue requestQueue = getRequestQueueInstance(context);
+        requestQueue.getCache().remove("https://hn.algolia.com/api/v1/items/" + storyId);
+        requestQueue.getCache().remove(
+                "https://hacker-news.firebaseio.com/v0/item/" + storyId + ".json");
+    }
 }

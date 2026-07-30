@@ -90,7 +90,6 @@ public class Utils {
     private static final long DAY_MILLIS = 24 * HOUR_MILLIS;
     private static final long YEAR_MILLIS = 365 * DAY_MILLIS;
 
-    public final static String KEY_SHARED_PREFERENCES_CACHED_STORY = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORY";
     public final static String KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL";
     public final static String KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET";
     public final static String KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS";
@@ -101,7 +100,6 @@ public class Utils {
     private static final String STORY_CACHE_SUMMARY_DIR = "summary";
     private static final String STORY_CACHE_FILE_SUFFIX = ".json";
     public final static String GLOBAL_SHARED_PREFERENCES_KEY = "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY";
-    private static boolean legacyStoryCacheMigrationScheduled = false;
 
     public final static String KEY_SHARED_PREFERENCES_BOOKMARKS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_BOOKMARKS";
     public final static String KEY_SHARED_PREFERENCES_USER_TAGS = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_USER_TAGS";
@@ -341,73 +339,6 @@ public class Utils {
         AsyncTask.execute(r);
     }
 
-    private static void scheduleLegacyStoryCacheMigration(Context ctx) {
-        if (ctx == null) {
-            return;
-        }
-
-        synchronized (Utils.class) {
-            if (legacyStoryCacheMigrationScheduled) {
-                return;
-            }
-            legacyStoryCacheMigrationScheduled = true;
-        }
-
-        Context appContext = ctx.getApplicationContext();
-        AsyncTask.execute(() -> migrateLegacyStoryCache(appContext));
-    }
-
-    private static void migrateLegacyStoryCache(Context ctx) {
-        if (ctx == null) {
-            return;
-        }
-
-        SharedPreferences sharedPreferences = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        Map<String, ?> existingValues = sharedPreferences.getAll();
-        Set<String> cachedStories = new HashSet<>();
-        Object cachedStoriesValue = existingValues.get(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
-        if (cachedStoriesValue instanceof Set) {
-            for (Object value : (Set<?>) cachedStoriesValue) {
-                if (value instanceof String) {
-                    cachedStories.add((String) value);
-                }
-            }
-        }
-
-        long now = System.currentTimeMillis();
-        int migratedCount = 0;
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        for (Map.Entry<String, ?> entry : existingValues.entrySet()) {
-            String key = entry.getKey();
-            if (!key.startsWith(KEY_SHARED_PREFERENCES_CACHED_STORY) || !(entry.getValue() instanceof String)) {
-                continue;
-            }
-
-            int id;
-            try {
-                id = Integer.parseInt(key.substring(KEY_SHARED_PREFERENCES_CACHED_STORY.length()));
-            } catch (NumberFormatException e) {
-                editor.remove(key);
-                continue;
-            }
-
-            String data = (String) entry.getValue();
-            if (!TextUtils.isEmpty(data) && !JSONParser.ALGOLIA_ERROR_STRING.equals(data)) {
-                writeCachedStoryFiles(ctx, id, data);
-                long existingTime = findCachedStoryIndexEntryTime(cachedStories, id);
-                addCachedStoryIndexEntry(cachedStories, id, existingTime >= 0 ? existingTime : now - migratedCount);
-                migratedCount++;
-            }
-            editor.remove(key);
-        }
-
-        if (migratedCount > 0) {
-            evictOldCachedStories(ctx, cachedStories);
-            editor.putStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS, cachedStories);
-        }
-        editor.apply();
-    }
-
     public static void cacheStory(Context ctx, int id, String data) {
         if (ctx == null || id <= 0 || TextUtils.isEmpty(data) || JSONParser.ALGOLIA_ERROR_STRING.equals(data)) {
             return;
@@ -425,7 +356,6 @@ public class Utils {
         evictOldCachedStories(ctx, cachedStories);
 
         sharedPreferences.edit()
-                .remove(KEY_SHARED_PREFERENCES_CACHED_STORY + id)
                 .putStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS, cachedStories)
                 .apply();
     }
@@ -435,17 +365,7 @@ public class Utils {
             return null;
         }
 
-        String cachedStory = readStringFromFile(getCachedStoryFullFile(ctx, id));
-        if (!TextUtils.isEmpty(cachedStory)) {
-            return cachedStory;
-        }
-
-        // Backward compatibility for caches written before story data moved out of global prefs.
-        cachedStory = SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_CACHED_STORY + id);
-        if (!TextUtils.isEmpty(cachedStory)) {
-            cacheStory(ctx, id, cachedStory);
-        }
-        return cachedStory;
+        return readStringFromFile(getCachedStoryFullFile(ctx, id));
     }
 
     public static boolean loadCachedStorySummary(Context ctx, Story story) {
@@ -513,9 +433,7 @@ public class Utils {
         SharedPreferences.Editor editor = sharedPreferences.edit();
 
         for (String key : sharedPreferences.getAll().keySet()) {
-            if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_STORY)) {
-                editor.remove(key);
-            } else if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
+            if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
                 editor.remove(key);
             } else if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET)) {
                 editor.remove(key);
@@ -530,6 +448,31 @@ public class Utils {
         StoryPreviewImageLoader.clearDiskCache(ctx);
 
         return cachedPostIds.size();
+    }
+
+    public static void removeStoryFromCaches(Context ctx, int id) {
+        if (ctx == null || id <= 0) {
+            return;
+        }
+
+        SharedPreferences sharedPreferences =
+                ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
+        Set<String> cachedStories = SettingsUtils.readStringSetFromSharedPreferences(
+                ctx, KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS);
+        removeCachedStoryIndexEntry(cachedStories, id);
+
+        sharedPreferences.edit()
+                .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id)
+                .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id)
+                .putStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS, cachedStories)
+                .apply();
+
+        deleteCachedStoryFiles(ctx, id);
+
+        File articleFile = getArticleCacheFile(ctx, id);
+        if (articleFile.exists() && !articleFile.delete()) {
+            articleFile.deleteOnExit();
+        }
     }
 
     private static Set<Integer> getCachedPostIds(Context ctx) {
@@ -547,9 +490,7 @@ public class Utils {
 
         SharedPreferences sharedPreferences = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
         for (String key : sharedPreferences.getAll().keySet()) {
-            if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_STORY)) {
-                addCachedPostId(cachedPostIds, key, KEY_SHARED_PREFERENCES_CACHED_STORY);
-            } else if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
+            if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
                 addCachedPostId(cachedPostIds, key, KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL);
             }
         }
@@ -615,10 +556,6 @@ public class Utils {
             if (oldestId > 0) {
                 deleteCachedStoryFiles(ctx, oldestId);
                 deleteCachedArticleSnapshot(ctx, oldestId);
-                ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-                        .edit()
-                        .remove(KEY_SHARED_PREFERENCES_CACHED_STORY + oldestId)
-                        .apply();
             }
         }
     }
@@ -645,19 +582,6 @@ public class Utils {
         } catch (NumberFormatException e) {
             return -1;
         }
-    }
-
-    private static long findCachedStoryIndexEntryTime(Set<String> cachedStories, int id) {
-        if (cachedStories == null) {
-            return -1;
-        }
-
-        for (String entry : cachedStories) {
-            if (getCachedStoryIndexEntryId(entry) == id) {
-                return getCachedStoryIndexEntryTime(entry);
-            }
-        }
-        return -1;
     }
 
     private static void addCachedPostIdsFromStoryCacheDir(Set<Integer> cachedPostIds, File cacheDir) {
@@ -1340,7 +1264,6 @@ public class Utils {
 
     public static boolean shouldShowWelcomeDialog(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        scheduleLegacyStoryCacheMigration(ctx);
         return !sharedPref.getBoolean(KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN, false);
     }
 
@@ -1356,7 +1279,6 @@ public class Utils {
 
     public static boolean justUpdated(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        scheduleLegacyStoryCacheMigration(ctx);
         if (BuildConfig.VERSION_CODE > sharedPref.getInt(KEY_SHARED_PREFERENCES_LAST_VERSION, -1)) {
             sharedPref.edit().putInt(KEY_SHARED_PREFERENCES_LAST_VERSION, BuildConfig.VERSION_CODE).apply();
             return true;

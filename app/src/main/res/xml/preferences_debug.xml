@@ -25,6 +25,12 @@
             app:singleLineTitle="false"
             app:title="Open HN item by ID" />
 
+        <Preference
+            app:icon="@drawable/ic_cached"
+            app:key="pref_debug_open_without_cache"
+            app:singleLineTitle="false"
+            app:title="Open without cache" />
+
     </PreferenceCategory>
 
     <PreferenceCategory

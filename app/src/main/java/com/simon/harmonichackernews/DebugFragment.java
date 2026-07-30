@@ -16,6 +16,7 @@ import androidx.preference.Preference;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.settings.BaseSettingsFragment;
 import com.simon.harmonichackernews.settings.DebugHnIdPreference;
 import com.simon.harmonichackernews.utils.Changelog;
@@ -46,6 +47,8 @@ public class DebugFragment extends BaseSettingsFragment {
     private static final String PREF_CHANGELOG = "pref_debug_changelog";
     private static final String PREF_NOTIFICATIONS = "pref_debug_notifications";
     private static final String PREF_OPEN_HN_ID = "pref_debug_open_hn_id";
+    private static final String PREF_OPEN_WITHOUT_CACHE = "pref_debug_open_without_cache";
+    private static final int OPEN_WITHOUT_CACHE_STORY_ID = 49089500;
 
     private int appVersionTapCount;
     private long lastAppVersionTapTime;
@@ -143,6 +146,18 @@ public class DebugFragment extends BaseSettingsFragment {
         if (hnIdPreference != null) {
             hnIdPreference.setOnOpenIdListener(id ->
                     Utils.openCommentsActivity(id, -1, requireContext()));
+        }
+
+        Preference openWithoutCache = findPreference(PREF_OPEN_WITHOUT_CACHE);
+        if (openWithoutCache != null) {
+            openWithoutCache.setOnPreferenceClickListener(preference -> {
+                Utils.removeStoryFromCaches(requireContext(), OPEN_WITHOUT_CACHE_STORY_ID);
+                NetworkComponent.removeCachedStoryResponses(
+                        requireContext(), OPEN_WITHOUT_CACHE_STORY_ID);
+                Utils.openCommentsActivity(
+                        OPEN_WITHOUT_CACHE_STORY_ID, -1, requireContext());
+                return true;
+            });
         }
     }
 
