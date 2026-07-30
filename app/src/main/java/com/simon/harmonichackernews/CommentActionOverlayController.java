@@ -8,7 +8,9 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.SystemClock;
 import android.text.Html;
@@ -145,6 +147,7 @@ final class CommentActionOverlayController {
     private CommentActionOverlayBinding binding;
     private MaterialCardView card;
     private View sourceView;
+    private View clippedSourceView;
     private int visibleCommentId = NO_COMMENT_ID;
     private int pendingCommentId = NO_COMMENT_ID;
     private boolean dismissing = false;
@@ -267,12 +270,26 @@ final class CommentActionOverlayController {
         }
 
         if (animate && isUsableTransition(overlayHost, sourceView, card)) {
+            View transitionSourceView = createViewportClippedSourceView(sourceView);
             MaterialContainerTransform transform = createTransform(
                     overlayHost,
-                    sourceView,
+                    transitionSourceView,
                     card,
                     MaterialContainerTransform.TRANSITION_DIRECTION_ENTER);
             transform.addTarget(card);
+            if (transitionSourceView == clippedSourceView) {
+                transform.addListener(new TransitionListenerAdapter() {
+                    @Override
+                    public void onTransitionEnd(@NonNull Transition transition) {
+                        hideClippedSourceAfterEnter(transitionSourceView);
+                    }
+
+                    @Override
+                    public void onTransitionCancel(@NonNull Transition transition) {
+                        hideClippedSourceAfterEnter(transitionSourceView);
+                    }
+                });
+            }
             TransitionManager.beginDelayedTransition(overlayHost, transform);
             scrim.animate().alpha(1f).setDuration(TRANSFORM_DURATION_MS).start();
             setSourceVisible(sourceView, false);
@@ -1241,6 +1258,7 @@ final class CommentActionOverlayController {
     }
 
     private ShapeAppearanceModel createShape(View view) {
+        view = getTransitionStyleView(view);
         int cornerRadiusDp;
         if (view == card) {
             cornerRadiusDp = CARD_CORNER_RADIUS_DP;
@@ -1255,6 +1273,7 @@ final class CommentActionOverlayController {
     }
 
     private int getContainerColor(View view) {
+        view = getTransitionStyleView(view);
         if (view instanceof MaterialCardView) {
             return ((MaterialCardView) view).getCardBackgroundColor().getDefaultColor();
         }
@@ -1269,6 +1288,7 @@ final class CommentActionOverlayController {
     }
 
     private float getContainerElevation(View view) {
+        view = getTransitionStyleView(view);
         if (view instanceof MaterialCardView) {
             return ((MaterialCardView) view).getCardElevation();
         }
@@ -1298,7 +1318,7 @@ final class CommentActionOverlayController {
         predictiveBackActive = false;
         ViewGroup overlayHost = host.getCommentActionOverlayHost();
         View scrim = binding.commentActionScrim;
-        View endView = resolveSourceView(visibleCommentId);
+        View endView = resolveTransitionSourceView(visibleCommentId);
 
         pendingCommentId = NO_COMMENT_ID;
         visibleCommentId = NO_COMMENT_ID;
@@ -1378,6 +1398,7 @@ final class CommentActionOverlayController {
         binding = null;
         card = null;
         sourceView = null;
+        clippedSourceView = null;
         visibleCommentId = NO_COMMENT_ID;
         dismissing = false;
         host.setCommentActionLinksDisabled(false);
@@ -1484,11 +1505,91 @@ final class CommentActionOverlayController {
     }
 
     @Nullable
+    private View resolveTransitionSourceView(int commentId) {
+        if (isUsableTransitionView(clippedSourceView)) {
+            return clippedSourceView;
+        }
+        return resolveSourceView(commentId);
+    }
+
+    @Nullable
     private View resolveSourceView(int commentId) {
         if (isUsableTransitionView(sourceView)) {
             return sourceView;
         }
         return host.findCommentActionSourceView(commentId);
+    }
+
+    @NonNull
+    private View createViewportClippedSourceView(@NonNull View source) {
+        if (overlay == null || source.getWidth() <= 0 || source.getHeight() <= 0) {
+            return source;
+        }
+
+        // MaterialContainerTransform uses the full laid-out bounds even when a RecyclerView
+        // clips most of a tall comment. Animate a lightweight rendering of the visible slice
+        // so the transform starts and returns within the current viewport.
+        Rect visibleBounds = new Rect();
+        if (!source.getLocalVisibleRect(visibleBounds)
+                || visibleBounds.width() <= 0
+                || visibleBounds.height() <= 0
+                || (visibleBounds.left == 0
+                && visibleBounds.top == 0
+                && visibleBounds.right == source.getWidth()
+                && visibleBounds.bottom == source.getHeight())) {
+            return source;
+        }
+
+        int[] sourceLocation = new int[2];
+        int[] overlayLocation = new int[2];
+        source.getLocationInWindow(sourceLocation);
+        overlay.getLocationInWindow(overlayLocation);
+
+        int left = sourceLocation[0] + visibleBounds.left - overlayLocation[0];
+        int top = sourceLocation[1] + visibleBounds.top - overlayLocation[1];
+        Rect clippedBounds = new Rect(
+                left,
+                top,
+                left + visibleBounds.width(),
+                top + visibleBounds.height());
+        if (!clippedBounds.intersect(0, 0, overlay.getWidth(), overlay.getHeight())) {
+            return source;
+        }
+
+        int sourceLeft = visibleBounds.left + clippedBounds.left - left;
+        int sourceTop = visibleBounds.top + clippedBounds.top - top;
+        ClippedSourceView clippedView = new ClippedSourceView(
+                source.getContext(),
+                source,
+                sourceLeft,
+                sourceTop);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                clippedBounds.width(),
+                clippedBounds.height());
+        params.leftMargin = clippedBounds.left;
+        params.topMargin = clippedBounds.top;
+        overlay.addView(clippedView, 0, params);
+        clippedView.layout(
+                clippedBounds.left,
+                clippedBounds.top,
+                clippedBounds.right,
+                clippedBounds.bottom);
+        clippedSourceView = clippedView;
+        return clippedView;
+    }
+
+    @NonNull
+    private View getTransitionStyleView(@NonNull View view) {
+        if (view instanceof ClippedSourceView) {
+            return ((ClippedSourceView) view).getSource();
+        }
+        return view;
+    }
+
+    private void hideClippedSourceAfterEnter(@NonNull View transitionSourceView) {
+        if (!dismissing && transitionSourceView == clippedSourceView) {
+            transitionSourceView.setVisibility(View.INVISIBLE);
+        }
     }
 
     private boolean isUsableTransitionView(@Nullable View view) {
@@ -1520,6 +1621,33 @@ final class CommentActionOverlayController {
             current = parent instanceof View ? (View) parent : null;
         }
         return false;
+    }
+
+    private static final class ClippedSourceView extends View {
+        private final View source;
+        private final int sourceLeft;
+        private final int sourceTop;
+
+        ClippedSourceView(Context context, View source, int sourceLeft, int sourceTop) {
+            super(context);
+            this.source = source;
+            this.sourceLeft = sourceLeft;
+            this.sourceTop = sourceTop;
+            setWillNotDraw(false);
+            setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        }
+
+        View getSource() {
+            return source;
+        }
+
+        @Override
+        protected void onDraw(@NonNull Canvas canvas) {
+            int saveCount = canvas.save();
+            canvas.translate(-sourceLeft, -sourceTop);
+            source.draw(canvas);
+            canvas.restoreToCount(saveCount);
+        }
     }
 
     private static class ActionItem {
