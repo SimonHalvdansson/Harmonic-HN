@@ -2388,6 +2388,7 @@ final class LinkSummaryOverlayController {
         });
     }
 
+    @SuppressLint("WrongConstant") // ViewPager2 accepts any offscreen page limit >= 1.
     private void finishStoryPagerEnter() {
         if (storyPager == null) return;
         updateStoryPagingProgress(storyPager.getCurrentItem(), 0f);
