@@ -17,6 +17,7 @@ import android.graphics.PixelFormat;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -1012,9 +1013,17 @@ final class LinkSummaryOverlayController {
 
     @SuppressLint("ClickableViewAccessibility")
     void showReference(CollectedReferenceLinks.ReferenceLink link, @Nullable View source) {
+        showReference(link, source, null);
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    void showReference(
+            CollectedReferenceLinks.ReferenceLink link,
+            @Nullable View source,
+            @Nullable RectF sourceBounds) {
         Context context = host.getLinkSummaryContext();
         if (context == null || link == null || TextUtils.isEmpty(link.getUrl())
-                || !prepareOverlay(source, null, true)) {
+                || !prepareOverlay(source, sourceBounds, true)) {
             return;
         }
         visibleUrl = link.getUrl();
@@ -1026,7 +1035,18 @@ final class LinkSummaryOverlayController {
         FaviconLoader.loadFavicon(link.getUrl(), referenceBinding.referenceLinkFavicon, context,
                 SettingsUtils.getPreferredFaviconProvider(context));
         referenceBinding.referenceLinkOpen.setOnClickListener(v -> Utils.openLinkMaybeHN(v.getContext(), visibleUrl));
-        loadReferenceSummary();
+        LinkSummaryLoader.Result cached =
+                StoryPreviewImageLoader.getCachedLinkSummary(context, link.getUrl());
+        boolean hackerNewsLink = Utils.isHackerNewsItemUri(Uri.parse(link.getUrl()));
+        if (cached != null
+                && (!hackerNewsLink || LinkSummaryLoader.isHackerNewsItemResult(cached))) {
+            bindReferenceResult(cached);
+        } else if (TextUtils.isEmpty(link.getResolvedTitle())) {
+            loadReferenceSummary();
+        } else {
+            bindReferenceFallbackContent();
+            loadReferenceSummary(false, true);
+        }
         startEnterTransition();
     }
 
@@ -1807,7 +1827,7 @@ final class LinkSummaryOverlayController {
     }
 
     private void loadReferenceSummary() {
-        loadReferenceSummary(false);
+        loadReferenceSummary(false, false);
     }
 
     private void retryReferenceSummary() {
@@ -1819,12 +1839,14 @@ final class LinkSummaryOverlayController {
             return;
         }
         setReferenceRetryLoading(true);
-        loadReferenceSummary(true);
+        loadReferenceSummary(true, false);
     }
 
-    private void loadReferenceSummary(boolean preserveErrorState) {
+    private void loadReferenceSummary(
+            boolean preserveErrorState,
+            boolean preservePrefetchedContent) {
         String requestedUrl = visibleUrl;
-        if (!preserveErrorState) {
+        if (!preserveErrorState && !preservePrefetchedContent) {
             showReferenceLoadingState();
         }
         summaryRequest = LinkSummaryLoader.load(host.getLinkSummaryContext(), requestedUrl, fallbackTitle,
@@ -1841,6 +1863,9 @@ final class LinkSummaryOverlayController {
                         setReferenceRetryLoading(false);
                         if (isPdfContentTypeError(message)) {
                             animateReferenceStateChange(() -> bindReferenceNoSummary());
+                            return;
+                        }
+                        if (preservePrefetchedContent) {
                             return;
                         }
                         if (preserveErrorState) {

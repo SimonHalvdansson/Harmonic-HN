@@ -48,8 +48,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.AutoTransition;
 import androidx.transition.TransitionManager;
 
-import com.android.volley.Request;
-import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
@@ -71,6 +69,7 @@ import com.simon.harmonichackernews.databinding.LinkPreviewNitterBinding;
 import com.simon.harmonichackernews.databinding.LinkPreviewStackExchangeBinding;
 import com.simon.harmonichackernews.databinding.LinkPreviewWikipediaBinding;
 import com.simon.harmonichackernews.network.FaviconLoader;
+import com.simon.harmonichackernews.network.LinkSummaryLoader;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader;
 import com.simon.harmonichackernews.network.UserActions;
@@ -91,8 +90,6 @@ import com.simon.harmonichackernews.utils.Utils;
 import io.noties.markwon.AbstractMarkwonPlugin;
 import io.noties.markwon.Markwon;
 import io.noties.markwon.core.MarkwonTheme;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.jetbrains.annotations.NotNull;
 import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
@@ -127,7 +124,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private final Map<Integer, Comment> commentsById = new HashMap<>();
     private final Map<Integer, Boolean> commentVisibilityById = new HashMap<>();
     private final Map<Integer, String> hackerNewsReferenceTitlesByItemId = new HashMap<>();
-    private final Set<Integer> requestedHackerNewsReferenceTitleItemIds = new HashSet<>();
+    private final Set<String> requestedHackerNewsReferenceUrls = new HashSet<>();
     private final CommentSubtreeIndex commentSubtreeIndex = new CommentSubtreeIndex();
     private int commentLookupSize = -1;
     private Map<String, String> userTagsByUser = new HashMap<>();
@@ -3021,7 +3018,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     return disableCommentATagClick;
                 }
                 referenceLinkLongClickListener.onLongClick(
-                        href, spannedText, widget, sourceBounds);
+                        href, spannedText, widget, sourceBounds, null);
                 return true;
             }
         });
@@ -3106,7 +3103,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private View createReferenceLinkRow(LinearLayout container, CollectedReferenceLinks.ReferenceLink link) {
-        loadHackerNewsReferenceTitleIfNeeded(container.getContext(), link);
+        prefetchHackerNewsReferenceIfNeeded(container.getContext(), link);
         View row = ReferenceLinkRowUtils.createReferenceLinkRow(
                 container,
                 link,
@@ -3120,7 +3117,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 return false;
             }
             referenceLinkLongClickListener.onLongClick(
-                    link.getUrl(), ReferenceLinkRowUtils.getReferenceLinkLabel(link), v, null);
+                    link.getUrl(),
+                    ReferenceLinkRowUtils.getReferenceLinkLabel(link),
+                    v,
+                    null,
+                    link);
             return true;
         });
         return row;
@@ -3134,10 +3135,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         return "Open link: " + label;
     }
 
-    private void loadHackerNewsReferenceTitleIfNeeded(
+    private void prefetchHackerNewsReferenceIfNeeded(
             Context context,
             CollectedReferenceLinks.ReferenceLink link) {
-        int itemId = getHackerNewsReferencePostCandidateId(link.getUrl());
+        int itemId = getHackerNewsReferenceItemId(link.getUrl());
         if (itemId <= 0) {
             return;
         }
@@ -3145,39 +3146,60 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         String cachedTitle = hackerNewsReferenceTitlesByItemId.get(itemId);
         if (!TextUtils.isEmpty(cachedTitle)) {
             link.setResolvedTitle(cachedTitle);
-            return;
         }
 
-        if (!requestedHackerNewsReferenceTitleItemIds.add(itemId)) {
-            return;
-        }
-
-        String url = "https://hacker-news.firebaseio.com/v0/item/" + itemId + ".json";
-        StringRequest request = new StringRequest(Request.Method.GET, url, response -> {
-            String title = parseHackerNewsItemTitle(response);
-            if (TextUtils.isEmpty(title)) {
-                return;
+        LinkSummaryLoader.Result cachedSummary =
+                StoryPreviewImageLoader.getCachedLinkSummary(context, link.getUrl());
+        if (LinkSummaryLoader.isHackerNewsItemResult(cachedSummary)) {
+            if (!LinkSummaryLoader.isHackerNewsCommentResult(cachedSummary)
+                    && !TextUtils.isEmpty(cachedSummary.title)) {
+                hackerNewsReferenceTitlesByItemId.put(itemId, cachedSummary.title);
+                link.setResolvedTitle(cachedSummary.title);
             }
+            return;
+        }
 
-            hackerNewsReferenceTitlesByItemId.put(itemId, title);
-            applyHackerNewsReferenceTitle(itemId, title);
-            notifyHackerNewsReferenceTitleChanged(itemId);
-        }, error -> {
-        });
-        NetworkComponent.getRequestQueueInstance(context).add(request);
+        if (!requestedHackerNewsReferenceUrls.add(link.getUrl())) {
+            return;
+        }
+
+        LinkSummaryLoader.load(
+                context,
+                link.getUrl(),
+                ReferenceLinkRowUtils.getReferenceLinkLabel(link),
+                new LinkSummaryLoader.Callback() {
+                    @Override
+                    public void onSuccess(@NonNull LinkSummaryLoader.Result result) {
+                        if (LinkSummaryLoader.isHackerNewsCommentResult(result)
+                                || TextUtils.isEmpty(result.title)) {
+                            return;
+                        }
+
+                        hackerNewsReferenceTitlesByItemId.put(itemId, result.title);
+                        applyHackerNewsReferenceTitle(itemId, result.title);
+                        notifyHackerNewsReferenceTitleChanged(itemId);
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull String message) {
+                    }
+                });
     }
 
-    private int getHackerNewsReferencePostCandidateId(String url) {
+    private int getHackerNewsReferenceItemId(String url) {
         if (TextUtils.isEmpty(url)) {
             return -1;
         }
 
         Uri uri = Uri.parse(url);
-        if (!Utils.isHackerNewsItemUri(uri) || !TextUtils.isEmpty(uri.getFragment())) {
+        if (!Utils.isHackerNewsItemUri(uri)) {
             return -1;
         }
 
-        String itemId = uri.getQueryParameter("id");
+        String fragment = uri.getFragment();
+        String itemId = !TextUtils.isEmpty(fragment) && TextUtils.isDigitsOnly(fragment)
+                ? fragment
+                : uri.getQueryParameter("id");
         if (TextUtils.isEmpty(itemId)) {
             return -1;
         }
@@ -3186,24 +3208,6 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             return Integer.parseInt(itemId);
         } catch (NumberFormatException e) {
             return -1;
-        }
-    }
-
-    private String parseHackerNewsItemTitle(String response) {
-        if (TextUtils.isEmpty(response)) {
-            return null;
-        }
-
-        try {
-            JSONObject item = new JSONObject(response);
-            if ("comment".equals(item.optString("type"))) {
-                return null;
-            }
-
-            String title = item.optString("title", "").replace('\n', ' ').replaceAll("\\s+", " ").trim();
-            return TextUtils.isEmpty(title) ? null : title;
-        } catch (JSONException e) {
-            return null;
         }
     }
 
@@ -3224,7 +3228,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             int itemId,
             String title) {
         for (CollectedReferenceLinks.ReferenceLink link : referenceLinks.getLinks()) {
-            if (getHackerNewsReferencePostCandidateId(link.getUrl()) == itemId) {
+            if (getHackerNewsReferenceItemId(link.getUrl()) == itemId) {
                 link.setResolvedTitle(title);
             }
         }
@@ -3248,7 +3252,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     private boolean hasHackerNewsReferenceLink(CollectedReferenceLinks.Result referenceLinks, int itemId) {
         for (CollectedReferenceLinks.ReferenceLink link : referenceLinks.getLinks()) {
-            if (getHackerNewsReferencePostCandidateId(link.getUrl()) == itemId) {
+            if (getHackerNewsReferenceItemId(link.getUrl()) == itemId) {
                 return true;
             }
         }
@@ -3769,7 +3773,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                         return disableCommentATagClick;
                     }
                     referenceLinkLongClickListener.onLongClick(
-                            href, spannedText, widget, sourceBounds);
+                            href, spannedText, widget, sourceBounds, null);
                     return true;
                 }
             });
@@ -4115,7 +4119,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                         return false;
                     }
                     referenceLinkLongClickListener.onLongClick(
-                            href, spannedText, widget, sourceBounds);
+                            href, spannedText, widget, sourceBounds, null);
                     return true;
                 }
             });
@@ -4571,7 +4575,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 String url,
                 String title,
                 View view,
-                @Nullable RectF sourceBounds);
+                @Nullable RectF sourceBounds,
+                @Nullable CollectedReferenceLinks.ReferenceLink referenceLink);
     }
 
     public interface HeaderPreviewLongClickListener {

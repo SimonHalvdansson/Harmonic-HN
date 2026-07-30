@@ -37,6 +37,10 @@ import okhttp3.ResponseBody;
 public final class LinkSummaryLoader {
     private static final String HACKER_NEWS_ITEM_CONTENT_TYPE =
             "application/vnd.hacker-news.item+json";
+    private static final String HACKER_NEWS_COMMENT_SITE_NAME =
+            "Hacker News · comment";
+    private static final String HACKER_NEWS_STORY_SITE_NAME =
+            "Hacker News · story";
     private static final String HACKER_NEWS_ITEM_API =
             "https://hacker-news.firebaseio.com/v0/item/";
     private static final int MAX_DESCRIPTION_CHARS = 600;
@@ -231,6 +235,11 @@ public final class LinkSummaryLoader {
                 && HACKER_NEWS_ITEM_CONTENT_TYPE.equals(result.contentType);
     }
 
+    public static boolean isHackerNewsCommentResult(@Nullable Result result) {
+        return isHackerNewsItemResult(result)
+                && HACKER_NEWS_COMMENT_SITE_NAME.equals(result.siteName);
+    }
+
     @Nullable
     private static String getHackerNewsItemId(@NonNull HttpUrl url) {
         if (!"news.ycombinator.com".equalsIgnoreCase(url.host())
@@ -238,19 +247,26 @@ public final class LinkSummaryLoader {
             return null;
         }
 
-        String id = url.queryParameter("id");
-        if (TextUtils.isEmpty(id)) {
-            return null;
+        String fragment = url.fragment();
+        String id = isPositiveInteger(fragment)
+                ? fragment
+                : url.queryParameter("id");
+        return isPositiveInteger(id) ? id : null;
+    }
+
+    private static boolean isPositiveInteger(@Nullable String value) {
+        if (TextUtils.isEmpty(value)) {
+            return false;
         }
-        for (int index = 0; index < id.length(); index++) {
-            if (!Character.isDigit(id.charAt(index))) {
-                return null;
+        for (int index = 0; index < value.length(); index++) {
+            if (!Character.isDigit(value.charAt(index))) {
+                return false;
             }
         }
         try {
-            return Integer.parseInt(id) > 0 ? id : null;
+            return Integer.parseInt(value) > 0;
         } catch (NumberFormatException ignored) {
-            return null;
+            return false;
         }
     }
 
@@ -340,7 +356,7 @@ public final class LinkSummaryLoader {
 
             return new Result(
                     title,
-                    comment ? "Hacker News · comment" : "Hacker News · story",
+                    comment ? HACKER_NEWS_COMMENT_SITE_NAME : HACKER_NEWS_STORY_SITE_NAME,
                     author,
                     item.optInt("time", 0) > 0
                             ? Utils.getTimeAgo(item.optInt("time"))
