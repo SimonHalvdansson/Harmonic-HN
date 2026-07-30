@@ -123,7 +123,7 @@ public class DebugFragment extends BaseSettingsFragment {
         Preference welcomeDialog = findPreference(PREF_WELCOME_DIALOG);
         if (welcomeDialog != null) {
             welcomeDialog.setOnPreferenceClickListener(preference -> {
-                WelcomeDialogFragment.show(getParentFragmentManager(), false);
+                WelcomeDialogFragment.show(getParentFragmentManager());
                 return true;
             });
         }

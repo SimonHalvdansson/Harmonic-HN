@@ -36,7 +36,6 @@ import com.simon.harmonichackernews.utils.Utils;
 public class WelcomeDialogFragment extends AppCompatDialogFragment {
 
     private static final String TAG = "WelcomeDialogFragment";
-    private static final String ARG_SHOW_VERSION_TITLE = "show_version_title";
     private static final String ARG_STYLE_CHOOSER = "style_chooser";
     private static final String FONT_EXPRESSIVE = "googlesansflexrounded";
     private static final String FONT_CLEAN = "productsans";
@@ -60,9 +59,7 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
             binding.welcomeDialogSettingsNote.setVisibility(View.GONE);
             binding.welcomeDialogGetStarted.setText("Apply");
         } else {
-            binding.welcomeDialogTitle.setText(shouldShowVersionTitle()
-                    ? "Welcome to Harmonic for Hacker News 3.0"
-                    : "Welcome to Harmonic for Hacker News");
+            binding.welcomeDialogTitle.setText("Welcome to Harmonic for Hacker News");
         }
         ViewCompat.setAccessibilityHeading(binding.welcomeDialogTitle, true);
         setupStoryPreview(binding);
@@ -129,11 +126,6 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
         if (getActivity() instanceof DismissListener) {
             ((DismissListener) getActivity()).onWelcomeDialogDismissed();
         }
-    }
-
-    private boolean shouldShowVersionTitle() {
-        Bundle args = getArguments();
-        return args != null && args.getBoolean(ARG_SHOW_VERSION_TITLE, false);
     }
 
     private boolean isStyleChooser() {
@@ -343,15 +335,12 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
         editor.apply();
     }
 
-    public static void show(FragmentManager fm, boolean showVersionTitle) {
+    public static void show(FragmentManager fm) {
         if (fm.findFragmentByTag(TAG) != null) {
             return;
         }
 
         WelcomeDialogFragment fragment = new WelcomeDialogFragment();
-        Bundle args = new Bundle();
-        args.putBoolean(ARG_SHOW_VERSION_TITLE, showVersionTitle);
-        fragment.setArguments(args);
         fragment.show(fm, TAG);
     }
 

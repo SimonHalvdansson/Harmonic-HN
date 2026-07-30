@@ -1280,11 +1280,6 @@ public class Utils {
         return !sharedPref.getBoolean(KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN, false);
     }
 
-    public static boolean hasLegacyWelcomePreference(Context ctx) {
-        SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-        return sharedPref.contains(KEY_SHARED_PREFERENCES_FIRST_TIME);
-    }
-
     public static void markWelcomeDialogShown(Context ctx) {
         SharedPreferences sharedPref = ctx.getSharedPreferences(GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
         sharedPref.edit().putBoolean(KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN, true).apply();

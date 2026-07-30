@@ -20,7 +20,6 @@ import com.simon.harmonichackernews.utils.ThemeUtils;
 public class DialogHostActivity extends AppCompatActivity implements WelcomeDialogFragment.DismissListener {
 
     private static final String EXTRA_DIALOG_TYPE = "dialog_type";
-    private static final String EXTRA_SHOW_VERSION_TITLE = "show_version_title";
     private static final String DIALOG_TYPE_WELCOME = "welcome";
     private static final String DIALOG_TYPE_CHANGELOG = "changelog";
 
@@ -37,9 +36,7 @@ public class DialogHostActivity extends AppCompatActivity implements WelcomeDial
 
         String dialogType = getIntent().getStringExtra(EXTRA_DIALOG_TYPE);
         if (DIALOG_TYPE_WELCOME.equals(dialogType)) {
-            WelcomeDialogFragment.show(
-                    getSupportFragmentManager(),
-                    getIntent().getBooleanExtra(EXTRA_SHOW_VERSION_TITLE, false));
+            WelcomeDialogFragment.show(getSupportFragmentManager());
         } else if (DIALOG_TYPE_CHANGELOG.equals(dialogType)) {
             showChangelogDialog();
         } else {
@@ -76,10 +73,9 @@ public class DialogHostActivity extends AppCompatActivity implements WelcomeDial
         overridePendingTransition(0, 0);
     }
 
-    public static void showWelcome(Context context, boolean showVersionTitle) {
+    public static void showWelcome(Context context) {
         Intent intent = new Intent(context, DialogHostActivity.class);
         intent.putExtra(EXTRA_DIALOG_TYPE, DIALOG_TYPE_WELCOME);
-        intent.putExtra(EXTRA_SHOW_VERSION_TITLE, showVersionTitle);
         context.startActivity(intent);
     }
 

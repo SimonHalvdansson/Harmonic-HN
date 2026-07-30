@@ -74,7 +74,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         boolean shouldShowWelcomeDialog = Utils.shouldShowWelcomeDialog(this);
         boolean justUpdated = Utils.justUpdated(this);
         if (shouldShowWelcomeDialog) {
-            showWelcomeDialog(Utils.hasLegacyWelcomePreference(this));
+            showWelcomeDialog();
         } else if (justUpdated && SettingsUtils.shouldShowChangelog(this)) {
             showUpdateDialog();
         }
@@ -341,13 +341,13 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         }
     }
 
-    private void showWelcomeDialog(boolean showVersionTitle) {
+    private void showWelcomeDialog() {
         if (shouldUseExpandedDialogHost()) {
-            DialogHostActivity.showWelcome(this, showVersionTitle);
+            DialogHostActivity.showWelcome(this);
             return;
         }
 
-        WelcomeDialogFragment.show(getSupportFragmentManager(), showVersionTitle);
+        WelcomeDialogFragment.show(getSupportFragmentManager());
     }
 
     private void showUpdateDialog() {
