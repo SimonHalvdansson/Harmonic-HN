@@ -51,14 +51,19 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
     private static final long TEXT_SIZE_ANIMATION_DURATION_MS = 120;
     private static final long DISPLAY_STYLE_ANIMATION_DURATION_MS = 180;
     private static final long META_HIGHLIGHT_ANIMATION_DURATION_MS = 180;
+    private static final long DIVIDER_ANIMATION_DURATION_MS = 180;
     private static final long COLLECT_LINKS_ANIMATION_DURATION_MS = 260;
     private static final int DISPLAY_STYLE_TRANSLATION_DP = 8;
+    private static final int DIVIDER_HORIZONTAL_INSET_DP = 4;
+    private static final int DIVIDER_SPACING_DP = 4;
     private static final int MIN_STABLE_PREVIEW_WIDTH_DP = 240;
     private static final String PREVIEW_COMMENT_BODY = "This reminds me of the old systems where the boring path was often the most durable one. The less hidden state there is, the easier it is to reason about. [0]<p>[0] <a href=\"https://example.com/reference\" rel=\"nofollow\">https://example.com/reference</a>";
     private static final String PREVIEW_INLINE_REFERENCE = "[0] <a href=\"https://example.com/reference\" rel=\"nofollow\">https://example.com/reference</a>";
 
     private ViewGroup previewRoot;
     private ViewGroup previewItemContainer;
+    private View dividerContainer;
+    private View divider;
     private HtmlTextView commentBody;
     private TextView commentBy;
     private TextView commentByTime;
@@ -74,9 +79,12 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
     private ValueAnimator cardAppearanceAnimator;
     private ValueAnimator displayStyleAnimator;
     private ValueAnimator metaHighlightAnimator;
+    private ValueAnimator dividerAnimator;
     private ValueAnimator textSizeAnimator;
     private boolean metaHighlight;
     private float metaHighlightProgress;
+    private boolean showDivider;
+    private float dividerProgress;
     private int collectLinksAnimationToken;
     private float textSizeTargetSp = -1;
     private final View.OnLayoutChangeListener previewContainerLayoutChangeListener =
@@ -109,12 +117,16 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
                 PreferenceCommentContentPreviewBinding.bind(itemView);
         previewRoot = binding.commentContentPreviewRoot;
         previewItemContainer = binding.commentContentPreviewItemContainer;
+        dividerContainer = binding.commentContentPreviewDividerContainer;
+        divider = binding.commentContentPreviewDivider;
         if (previewItemContainer != null) {
             previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
             previewItemContainer.addOnLayoutChangeListener(previewContainerLayoutChangeListener);
         }
         cardStyle = SettingsUtils.shouldUseCardCommentDisplayStyle(getContext());
         cardBorder = SettingsUtils.shouldShowCommentCardBorder(getContext());
+        updateDividerInsets();
+        applyDividers(SettingsUtils.shouldShowCommentDividers(getContext()), false);
         inflatePreviewItem();
         updatePreview();
         syncReservedPreviewHeight();
@@ -185,6 +197,11 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
             return;
         }
 
+        if (SettingsUtils.PREF_COMMENT_DIVIDERS.equals(key)) {
+            applyDividers(SettingsUtils.shouldShowCommentDividers(getContext()), true);
+            return;
+        }
+
         if (SettingsUtils.PREF_COLLECT_LINKS_IN_COMMENTS.equals(key)) {
             updateCollectedLinksPreview(true);
             return;
@@ -208,12 +225,15 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         cancelDisplayStyleAnimator();
         cancelCardAppearanceAnimator();
         cancelMetaHighlightAnimator();
+        cancelDividerAnimator();
         cancelTextSizeAnimator();
         if (previewItemContainer != null) {
             previewItemContainer.removeOnLayoutChangeListener(previewContainerLayoutChangeListener);
         }
         previewRoot = null;
         previewItemContainer = null;
+        dividerContainer = null;
+        divider = null;
         commentBody = null;
         commentBy = null;
         commentByTime = null;
@@ -226,6 +246,8 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         displayStyleOverride = null;
         metaHighlight = false;
         metaHighlightProgress = 0f;
+        showDivider = false;
+        dividerProgress = 0f;
         textSizeTargetSp = -1;
     }
 
@@ -244,6 +266,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
 
         cancelDisplayStyleAnimator();
         cardStyle = useCardStyle;
+        updateDividerInsets();
         inflatePreviewItem();
         updatePreview();
         syncReservedPreviewHeight();
@@ -302,6 +325,7 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         }
 
         cardStyle = useCardStyle;
+        updateDividerInsets();
         PreviewCommentItemBinding binding = inflatePreviewCommentItemBinding();
         View newItemView = binding.root;
         previewItemContainer.addView(newItemView, createPreviewItemLayoutParams());
@@ -312,7 +336,10 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         int targetContainerHeight = targetContentHeight
                 + previewItemContainer.getPaddingTop()
                 + previewItemContainer.getPaddingBottom();
-        int targetRootHeight = targetContainerHeight + previewRoot.getPaddingTop() + previewRoot.getPaddingBottom();
+        int targetRootHeight = targetContainerHeight
+                + getCurrentDividerHeight()
+                + previewRoot.getPaddingTop()
+                + previewRoot.getPaddingBottom();
 
         int translation = Utils.pxFromDpInt(getResources(), DISPLAY_STYLE_TRANSLATION_DP);
         newItemView.setAlpha(0f);
@@ -519,6 +546,85 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
 
         cardBorder = showBorder;
         configureCommentCardAppearance(animate);
+    }
+
+    private void applyDividers(boolean show, boolean animate) {
+        if (dividerContainer == null || divider == null) {
+            showDivider = show;
+            dividerProgress = show ? 1f : 0f;
+            return;
+        }
+
+        float targetProgress = show ? 1f : 0f;
+        if (showDivider == show
+                && (dividerAnimator != null
+                || Math.abs(dividerProgress - targetProgress) < 0.001f)) {
+            return;
+        }
+
+        showDivider = show;
+        if (!animate || !ViewCompat.isLaidOut(dividerContainer)) {
+            cancelDividerAnimator();
+            applyDividerProgress(targetProgress);
+            return;
+        }
+
+        float startProgress = dividerProgress;
+        cancelDividerAnimator();
+        dividerContainer.setVisibility(View.VISIBLE);
+        dividerAnimator = ValueAnimator.ofFloat(startProgress, targetProgress);
+        dividerAnimator.setDuration(Math.max(
+                1L,
+                Math.round(DIVIDER_ANIMATION_DURATION_MS
+                        * Math.abs(targetProgress - startProgress))));
+        dividerAnimator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        dividerAnimator.addUpdateListener(animation ->
+                applyDividerProgress((float) animation.getAnimatedValue()));
+        dividerAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (dividerAnimator != animation) {
+                    return;
+                }
+                dividerAnimator = null;
+                applyDividerProgress(targetProgress);
+            }
+        });
+        dividerAnimator.start();
+    }
+
+    private void applyDividerProgress(float progress) {
+        if (dividerContainer == null || divider == null) {
+            return;
+        }
+
+        dividerProgress = Math.max(0f, Math.min(1f, progress));
+        ViewGroup.LayoutParams layoutParams = dividerContainer.getLayoutParams();
+        layoutParams.height = Math.round(
+                Utils.pxFromDpInt(getResources(), DIVIDER_SPACING_DP) * dividerProgress);
+        dividerContainer.setLayoutParams(layoutParams);
+        divider.setAlpha(dividerProgress);
+        dividerContainer.setVisibility(
+                dividerProgress <= 0.001f ? View.GONE : View.VISIBLE);
+        syncReservedPreviewHeight();
+    }
+
+    private void updateDividerInsets() {
+        if (divider == null) {
+            return;
+        }
+
+        int inset = Utils.pxFromDpInt(getResources(), DIVIDER_HORIZONTAL_INSET_DP);
+        if (cardStyle) {
+            inset += getResources().getDimensionPixelSize(R.dimen.comment_card_shadow_padding);
+        }
+        ViewGroup.LayoutParams rawLayoutParams = divider.getLayoutParams();
+        if (rawLayoutParams instanceof FrameLayout.LayoutParams) {
+            FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) rawLayoutParams;
+            layoutParams.setMarginStart(inset);
+            layoutParams.setMarginEnd(inset);
+            divider.setLayoutParams(layoutParams);
+        }
     }
 
     private void configureCommentCardAppearance(boolean animate) {
@@ -867,6 +973,17 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
         metaHighlightAnimator = null;
     }
 
+    private void cancelDividerAnimator() {
+        if (dividerAnimator == null) {
+            return;
+        }
+
+        dividerAnimator.removeAllUpdateListeners();
+        dividerAnimator.removeAllListeners();
+        dividerAnimator.cancel();
+        dividerAnimator = null;
+    }
+
     private void cancelCardAppearanceAnimator() {
         if (cardAppearanceAnimator == null) {
             return;
@@ -1022,7 +1139,10 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
                 + previewItemContainer.getPaddingBottom();
         int rootHeight = previewRoot == null
                 ? reservedHeight
-                : reservedHeight + previewRoot.getPaddingTop() + previewRoot.getPaddingBottom();
+                : reservedHeight
+                + getCurrentDividerHeight()
+                + previewRoot.getPaddingTop()
+                + previewRoot.getPaddingBottom();
         setPreviewContainerHeight(reservedHeight, rootHeight, rootHeight);
         requestPreviewRemeasure();
     }
@@ -1038,6 +1158,14 @@ public class CommentContentPreviewPreference extends FrameLayout implements Shar
 
     private boolean isStablePreviewWidth(int containerWidth) {
         return containerWidth >= Utils.pxFromDpInt(previewItemContainer.getResources(), MIN_STABLE_PREVIEW_WIDTH_DP);
+    }
+
+    private int getCurrentDividerHeight() {
+        if (dividerContainer == null || dividerContainer.getVisibility() == View.GONE) {
+            return 0;
+        }
+        ViewGroup.LayoutParams layoutParams = dividerContainer.getLayoutParams();
+        return layoutParams == null ? dividerContainer.getHeight() : Math.max(0, layoutParams.height);
     }
 
     private int measureCurrentPreviewItemHeight(int containerWidth) {
