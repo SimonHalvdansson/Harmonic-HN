@@ -175,6 +175,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private RecyclerView.OnScrollListener recyclerViewScrollListener;
     private View.OnLayoutChangeListener recyclerViewLayoutChangeListener;
     private BottomSheetBehavior.BottomSheetCallback recyclerBottomSheetCallback;
+    private boolean collapseBottomSheetAfterScrollToTop;
     private ViewTreeObserver.OnPreDrawListener preDrawListener;
     private RecyclerView.SmoothScroller smoothScroller;
     private CommentNavigationController commentNavigationController;
@@ -1083,14 +1084,48 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         if (showWebsite) {
             webViewController.initialize();
-            BottomSheetBehavior.from(bottomSheet).setState(
-                    BottomSheetBehavior.STATE_COLLAPSED);
+            if (BottomSheetBehavior.from(bottomSheet).getState()
+                    != BottomSheetBehavior.STATE_COLLAPSED) {
+                scrollCommentsToTopThenCollapseBottomSheet();
+            }
         } else {
+            collapseBottomSheetAfterScrollToTop = false;
+            if (recyclerView != null) {
+                recyclerView.stopScroll();
+            }
             BottomSheetBehavior.from(bottomSheet).setState(
                     BottomSheetBehavior.STATE_EXPANDED);
             bottomSheet.setTranslationY(0f);
         }
         return true;
+    }
+
+    private void scrollCommentsToTopThenCollapseBottomSheet() {
+        if (recyclerView == null || layoutManager == null) {
+            collapseBottomSheetForWebsite();
+            return;
+        }
+
+        recyclerView.stopScroll();
+        if (!recyclerView.canScrollVertically(-1)) {
+            collapseBottomSheetForWebsite();
+            return;
+        }
+
+        collapseBottomSheetAfterScrollToTop = true;
+        if (commentNavigationController != null) {
+            commentNavigationController.startCommentSmoothScrollWithScaledSpeed(0);
+        } else {
+            recyclerView.smoothScrollToPosition(0);
+        }
+    }
+
+    private void collapseBottomSheetForWebsite() {
+        collapseBottomSheetAfterScrollToTop = false;
+        if (bottomSheet != null) {
+            BottomSheetBehavior.from(bottomSheet).setState(
+                    BottomSheetBehavior.STATE_COLLAPSED);
+        }
     }
 
     private int getCurrentCommentsStatusBarColor() {
@@ -1358,6 +1393,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
                 if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    if (collapseBottomSheetAfterScrollToTop) {
+                        collapseBottomSheetForWebsite();
+                    }
                     if (commentNavigationController != null) {
                         commentNavigationController.updateSearchedCommentScrollTopVisibility(true);
                         commentNavigationController.highlightPendingSearchedCommentIfReady();
@@ -1947,6 +1985,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerViewScrollListener = null;
         recyclerViewLayoutChangeListener = null;
         recyclerBottomSheetCallback = null;
+        collapseBottomSheetAfterScrollToTop = false;
         smoothScroller = null;
         commentNavigationController = null;
         scrollNavigation = null;
