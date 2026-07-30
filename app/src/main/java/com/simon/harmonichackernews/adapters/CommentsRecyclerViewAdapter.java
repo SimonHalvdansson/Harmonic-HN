@@ -95,6 +95,7 @@ import org.sufficientlysecure.htmltextview.HtmlTextView;
 import org.sufficientlysecure.htmltextview.OnClickATagListener;
 import org.sufficientlysecure.htmltextview.OnLongClickATagListener;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -199,6 +200,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private CharSequence headerSummaryAnimationText;
     private float headerSlideOffset = 1f;
     private boolean initialCommentsRevealPending = false;
+    private boolean storyHeaderLoading;
+    private boolean storyHeaderRevealPending;
     @Nullable
     private Integer currentHeaderContentBackgroundColor;
     @Nullable
@@ -207,6 +210,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private StoryPreviewImageLoader.PreviewImageRequest headerPreviewImageUrlRequest;
     private long headerBindingGeneration;
     private int commentViewStyleGeneration;
+    @Nullable
+    private ValueAnimator storyHeaderRevealHeightAnimator;
+    @Nullable
+    private HeaderViewHolder storyHeaderRevealViewHolder;
+    private final List<View> storyHeaderRevealViews = new ArrayList<>();
     private int headerContentInsetLeft;
     private int headerContentInsetRight;
     // Payloads can be dropped while an item is off-screen. Track every adapter update that can
@@ -257,6 +265,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private static final int HEADER_STATUS_ROW_DURATION_MS = 220;
     private static final int HEADER_STATUS_ROW_FADE_OUT_DURATION_MS = 100;
     private static final int HEADER_STATUS_ROW_FADE_IN_DURATION_MS = 160;
+    private static final int STORY_HEADER_REVEAL_DURATION_MS = 280;
+    private static final int STORY_HEADER_CONTENT_FADE_IN_DURATION_MS = 180;
     private static final float HEADER_STATUS_ROW_HIDDEN_SCALE = 0.9f;
     private static final int HEADER_STATUS_ROW_HIDDEN_TRANSLATION_Y_DP = 12;
     private static final int INITIAL_LOADING_TOP_MARGIN_DP = 44;
@@ -370,6 +380,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             setHeaderSlideOffset(getCurrentHeaderSlideOffset());
             if (isHeaderBindingCurrent(headerViewHolder)) {
                 bindHeaderReattachmentState(headerViewHolder, ctx);
+                schedulePendingStoryHeaderReveal(headerViewHolder);
                 return;
             }
 
@@ -383,7 +394,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
 
             headerViewHolder.headerView.setClickable(story.isLink);
-            headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : GONE);
+            headerViewHolder.linkImage.setVisibility(
+                    !storyHeaderLoading && story.isLink && !story.isComment
+                            ? View.VISIBLE : GONE);
             headerViewHolder.previewImage.setOnClickListener(v -> {
                 if (headerClickListener != null) {
                     headerClickListener.onItemClick(story);
@@ -405,9 +418,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             bindReaderModeButton(headerViewHolder);
             bindStoryText(headerViewHolder);
 
-            LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story);
+            if (!storyHeaderLoading) {
+                LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story);
+            }
 
-            if (story.pollOptionArrayList != null) {
+            if (!storyHeaderLoading && story.pollOptionArrayList != null) {
                 headerViewHolder.pollLayout.setVisibility(View.VISIBLE);
                 headerViewHolder.pollLayout.removeAllViews();
                 for (int i = 0; i < story.pollOptionArrayList.size(); i++) {
@@ -438,25 +453,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             }
 
             bindHeaderTitle(headerViewHolder, ctx);
-
-            if (story.loaded) {
-                headerViewHolder.metaVotes.setText(String.valueOf(story.score));
-                headerViewHolder.metaComments.setText(String.valueOf(story.descendants));
-                String formattedTime = story.getTimeFormatted();
-                headerViewHolder.metaTime.setText(formattedTime);
-                String tag = getCachedUserTag(ctx, story.by);
-                headerViewHolder.metaBy.setText(TextUtils.isEmpty(tag) ? story.by : story.by + " (" + tag + ")");
-                headerViewHolder.metaVotes.setContentDescription(AccessibilityTextUtils.pointCountDescription(story.score));
-                headerViewHolder.metaComments.setContentDescription(AccessibilityTextUtils.commentCountDescription(story.descendants));
-                headerViewHolder.metaTime.setContentDescription("Posted " + formattedTime);
-                headerViewHolder.metaBy.setContentDescription("Submitted by " + story.by);
-                headerViewHolder.userButton.setContentDescription("Open submitter " + story.by);
-            }
-
-            headerViewHolder.metaContainer.setVisibility(story.loaded ? View.VISIBLE : GONE);
-            headerViewHolder.urlView.setVisibility(story.isLink ? View.VISIBLE : GONE);
-            headerViewHolder.metaVotes.setVisibility(story.isComment ? GONE : View.VISIBLE);
-            headerViewHolder.metaVotesIcon.setVisibility(story.isComment ? GONE : View.VISIBLE);
+            bindHeaderMeta(headerViewHolder, ctx);
 
             FontUtils.Typography resolvedTypography = getTypography(ctx);
             resolvedTypography.applyCommentsHeaderMeta(
@@ -479,10 +476,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.actionsContainer.setPadding(actionContainerPadding, 0, actionContainerPadding, 0);
             applyHeaderContentSideInsets(headerViewHolder);
 
-            headerViewHolder.favicon.setVisibility(showThumbnail ? View.VISIBLE : GONE);
-            headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
+            headerViewHolder.favicon.setVisibility(
+                    !storyHeaderLoading && showThumbnail ? View.VISIBLE : GONE);
+            headerViewHolder.linkInfoContainer.setVisibility(
+                    !storyHeaderLoading && !story.isComment && story.isLink
+                            ? View.VISIBLE : View.GONE);
 
-            if (showThumbnail && !TextUtils.isEmpty(story.url)) {
+            if (!storyHeaderLoading && showThumbnail && !TextUtils.isEmpty(story.url)) {
                 FaviconLoader.loadFavicon(
                         story, headerViewHolder.favicon, ctx, faviconProvider);
             }
@@ -491,6 +491,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
             bindHeaderActions(headerViewHolder, ctx);
             markHeaderBindingCurrent(headerViewHolder);
+            schedulePendingStoryHeaderReveal(headerViewHolder);
 
         } else if (holder instanceof ItemViewHolder) {
             final ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
@@ -775,6 +776,155 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         return true;
     }
 
+    public void setStoryHeaderLoading(boolean loading) {
+        storyHeaderLoading = loading;
+        if (!loading) {
+            storyHeaderRevealPending = false;
+        }
+    }
+
+    public boolean revealLoadedStoryHeader() {
+        if (!storyHeaderLoading || story == null || !story.loaded) {
+            return false;
+        }
+
+        if (boundHeaderViewHolder == null
+                || !ViewCompat.isAttachedToWindow(boundHeaderViewHolder.itemView)) {
+            storyHeaderRevealPending = true;
+            notifyItemChanged(0);
+            return true;
+        }
+
+        storyHeaderLoading = false;
+        animateLoadedStoryHeaderReveal(
+                boundHeaderViewHolder,
+                boundHeaderViewHolder.itemView.getContext());
+        return true;
+    }
+
+    private void schedulePendingStoryHeaderReveal(HeaderViewHolder headerViewHolder) {
+        if (!storyHeaderRevealPending) {
+            return;
+        }
+
+        headerViewHolder.itemView.post(() -> {
+            if (!storyHeaderRevealPending
+                    || boundHeaderViewHolder != headerViewHolder
+                    || !ViewCompat.isAttachedToWindow(headerViewHolder.itemView)
+                    || story == null
+                    || !story.loaded) {
+                return;
+            }
+
+            storyHeaderRevealPending = false;
+            storyHeaderLoading = false;
+            animateLoadedStoryHeaderReveal(
+                    headerViewHolder,
+                    headerViewHolder.itemView.getContext());
+        });
+    }
+
+    private void animateLoadedStoryHeaderReveal(
+            HeaderViewHolder headerViewHolder,
+            Context ctx) {
+        cancelStoryHeaderRevealAnimation();
+
+        View headerItem = headerViewHolder.itemView;
+        int startHeight = headerItem.getHeight();
+        int width = headerItem.getWidth();
+
+        bindHeaderStoryViews(headerViewHolder, ctx);
+        bindHeaderPreviewImage(headerViewHolder);
+        markHeaderBindingCurrent(headerViewHolder);
+
+        if (startHeight <= 0 || width <= 0) {
+            return;
+        }
+
+        storyHeaderRevealViews.clear();
+        for (int index = 0; index < headerViewHolder.headerView.getChildCount(); index++) {
+            View child = headerViewHolder.headerView.getChildAt(index);
+            if (child.getVisibility() != VISIBLE) {
+                continue;
+            }
+            child.animate().cancel();
+            child.setAlpha(0f);
+            storyHeaderRevealViews.add(child);
+        }
+
+        ViewGroup.LayoutParams layoutParams = headerItem.getLayoutParams();
+        int originalLayoutHeight = layoutParams.height;
+        layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        headerItem.measure(widthSpec, heightSpec);
+        int targetHeight = headerItem.getMeasuredHeight();
+        layoutParams.height = startHeight;
+        headerItem.setLayoutParams(layoutParams);
+
+        storyHeaderRevealViewHolder = headerViewHolder;
+        ValueAnimator animator = ValueAnimator.ofInt(startHeight, targetHeight);
+        storyHeaderRevealHeightAnimator = animator;
+        animator.setDuration(STORY_HEADER_REVEAL_DURATION_MS);
+        animator.setInterpolator(new DecelerateInterpolator());
+        animator.addUpdateListener(animation -> {
+            if (storyHeaderRevealHeightAnimator != animator) {
+                return;
+            }
+            ViewGroup.LayoutParams animatedLayoutParams = headerItem.getLayoutParams();
+            animatedLayoutParams.height = (int) animation.getAnimatedValue();
+            headerItem.setLayoutParams(animatedLayoutParams);
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (storyHeaderRevealHeightAnimator != animator) {
+                    return;
+                }
+                storyHeaderRevealHeightAnimator = null;
+                finishStoryHeaderReveal(headerViewHolder, originalLayoutHeight);
+            }
+        });
+
+        for (View child : storyHeaderRevealViews) {
+            child.animate()
+                    .alpha(1f)
+                    .setStartDelay(30L)
+                    .setDuration(STORY_HEADER_CONTENT_FADE_IN_DURATION_MS)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
+        }
+        animator.start();
+    }
+
+    private void cancelStoryHeaderRevealAnimation() {
+        ValueAnimator animator = storyHeaderRevealHeightAnimator;
+        storyHeaderRevealHeightAnimator = null;
+        if (animator != null) {
+            animator.cancel();
+        }
+        if (storyHeaderRevealViewHolder != null) {
+            finishStoryHeaderReveal(
+                    storyHeaderRevealViewHolder,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+    }
+
+    private void finishStoryHeaderReveal(
+            HeaderViewHolder headerViewHolder,
+            int finalLayoutHeight) {
+        for (View child : storyHeaderRevealViews) {
+            child.animate().cancel();
+            child.setAlpha(1f);
+        }
+        storyHeaderRevealViews.clear();
+
+        ViewGroup.LayoutParams layoutParams = headerViewHolder.itemView.getLayoutParams();
+        layoutParams.height = finalLayoutHeight;
+        headerViewHolder.itemView.setLayoutParams(layoutParams);
+        storyHeaderRevealViewHolder = null;
+    }
+
     public void refreshCanProvideSummary(Context ctx) {
         canProvideSummary = story != null
                 && story.isLink
@@ -908,17 +1058,24 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         headerViewHolder.headerView.setClickable(story.isLink);
-        headerViewHolder.linkImage.setVisibility(story.isLink && !story.isComment ? View.VISIBLE : GONE);
+        headerViewHolder.linkImage.setVisibility(
+                !storyHeaderLoading && story.isLink && !story.isComment
+                        ? View.VISIBLE : GONE);
         bindStoryText(headerViewHolder);
-        LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story);
+        if (!storyHeaderLoading) {
+            LinkPreviewHeaderBinder.bind(ctx, headerViewHolder, story);
+        }
         bindHeaderTitle(headerViewHolder, ctx);
         bindHeaderMeta(headerViewHolder, ctx);
         bindHeaderLoadingState(headerViewHolder, ctx);
         bindReaderModeButton(headerViewHolder);
 
-        headerViewHolder.favicon.setVisibility(showThumbnail ? View.VISIBLE : GONE);
-        headerViewHolder.linkInfoContainer.setVisibility(!story.isComment && story.isLink ? View.VISIBLE : View.GONE);
-        if (showThumbnail && !TextUtils.isEmpty(story.url)) {
+        headerViewHolder.favicon.setVisibility(
+                !storyHeaderLoading && showThumbnail ? View.VISIBLE : GONE);
+        headerViewHolder.linkInfoContainer.setVisibility(
+                !storyHeaderLoading && !story.isComment && story.isLink
+                        ? View.VISIBLE : View.GONE);
+        if (!storyHeaderLoading && showThumbnail && !TextUtils.isEmpty(story.url)) {
             FaviconLoader.loadFavicon(
                     story, headerViewHolder.favicon, ctx, faviconProvider);
         }
@@ -1499,8 +1656,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     private void bindHeaderTitle(HeaderViewHolder headerViewHolder, Context ctx) {
         boolean hasTitle = !TextUtils.isEmpty(story.title);
-        if (!story.loaded && !loadingFailed && !hasTitle) {
+        if (!loadingFailed
+                && (storyHeaderLoading || (!story.loaded && !hasTitle))) {
             headerViewHolder.titleView.setVisibility(GONE);
+            headerViewHolder.titleShimmer.setAlpha(1f);
             headerViewHolder.titleShimmer.setVisibility(View.VISIBLE);
             return;
         }
@@ -1593,7 +1752,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void bindHeaderMeta(HeaderViewHolder headerViewHolder, Context ctx) {
-        if (story.loaded) {
+        boolean showLoadedStory = story.loaded && !storyHeaderLoading;
+        if (showLoadedStory) {
             headerViewHolder.metaVotes.setText(String.valueOf(story.score));
             headerViewHolder.metaComments.setText(String.valueOf(story.descendants));
             String formattedTime = story.getTimeFormatted();
@@ -1607,8 +1767,9 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             headerViewHolder.userButton.setContentDescription("Open submitter " + story.by);
         }
 
-        headerViewHolder.metaContainer.setVisibility(story.loaded ? View.VISIBLE : GONE);
-        headerViewHolder.urlView.setVisibility(story.isLink ? View.VISIBLE : GONE);
+        headerViewHolder.metaContainer.setVisibility(showLoadedStory ? View.VISIBLE : GONE);
+        headerViewHolder.urlView.setVisibility(
+                showLoadedStory && story.isLink ? View.VISIBLE : GONE);
         headerViewHolder.metaVotes.setVisibility(story.isComment ? GONE : View.VISIBLE);
         headerViewHolder.metaVotesIcon.setVisibility(story.isComment ? GONE : View.VISIBLE);
     }
@@ -2216,6 +2377,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     private boolean shouldLoadHeaderPreviewImage(Story story) {
         return showHeaderPreviewImage
+                && !storyHeaderLoading
                 && story != null
                 && story.loaded
                 && !story.loadingFailed
@@ -2258,6 +2420,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
     @Override
     public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+        storyHeaderRevealPending = false;
+        cancelStoryHeaderRevealAnimation();
         cancelHeaderPreviewImageUrlRequest();
         super.onDetachedFromRecyclerView(recyclerView);
     }
@@ -2859,6 +3023,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     private void bindStoryText(HeaderViewHolder headerViewHolder) {
+        if (storyHeaderLoading) {
+            headerViewHolder.textView.setVisibility(GONE);
+            bindReferenceLinks(headerViewHolder.referenceLinksContainer, null);
+            return;
+        }
         if (TextUtils.isEmpty(story.text)) {
             headerViewHolder.textView.setVisibility(GONE);
             bindReferenceLinks(headerViewHolder.referenceLinksContainer, null);

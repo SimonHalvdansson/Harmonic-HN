@@ -355,6 +355,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private int searchScrollTopFabBaseBottomMargin = 0;
     private boolean rootInsetsApplied = false;
     private boolean recyclerInsetsApplied = false;
+    private boolean uncachedStoryHeaderLoading;
     private LinearProgressIndicator progressIndicator;
     private LinearLayout bottomSheet;
     private View headerSpacer;
@@ -530,7 +531,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             if (id <= 0) return false;
 
             story.id = id;
-            story.title = "Loading...";
+            story.title = null;
             story.by = "";
             story.url = "";
             story.score = 0;
@@ -587,6 +588,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         prefIntegratedWebview = SettingsUtils.shouldUseIntegratedWebView(getContext());
         loadInitialStorySummaryFromCache();
+        uncachedStoryHeaderLoading = story.id > 0 && !story.loaded;
 
         commentsPaneStatusBarColor = StatusBarProtectionUtils.getPaneBackgroundColor(requireContext());
         commentsHeaderStatusBarColor = commentsPaneStatusBarColor;
@@ -638,7 +640,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         webViewController.bindViews(binding, bottomSheet, swipeRefreshLayout, progressIndicator);
         webViewController.configure(showWebsite, integratedWebview, preloadWebview, preloadWebviewMinimumBattery, matchWebviewTheme, readerModeEnabled, readerModeDefault, blockAds);
 
-        if (story.title == null) {
+        if (story.id <= 0 && story.title == null) {
             // Empty view for tablets
             binding.commentsEmpty.setVisibility(View.VISIBLE);
             bottomSheet.setVisibility(View.GONE);
@@ -1132,6 +1134,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.setReaderModeAvailable(webViewController.isReaderModeAvailable());
         }
         adapter.setHeaderBackgroundColorListener(this::updateHeaderStatusBarColor);
+        adapter.setStoryHeaderLoading(uncachedStoryHeaderLoading);
         adapter.setHeaderContentSideInsets(
                 commentsContentInsetLeft,
                 commentsContentInsetRight);
@@ -2101,6 +2104,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 story.pollOptions = loadedStory.pollOptions;
                 story.descendants = loadedStory.descendants;
                 story.parentId = loadedStory.parentId;
+                story.loaded = true;
 
                 // Reset comments
                 if (allComments != null && allComments.size() > 1) {
@@ -2118,7 +2122,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 if (linkPreviewController != null) {
                     linkPreviewController.loadNetworkPreviews(context);
                 }
-                notifyHeaderChanged();
+                refreshHeaderAfterStoryLoad();
                 maybeLoadPollOptions();
             }
 
@@ -2540,6 +2544,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         adapter.refreshCanProvideSummary(requireContext());
+        if (uncachedStoryHeaderLoading && story.loaded) {
+            uncachedStoryHeaderLoading = false;
+            if (adapter.revealLoadedStoryHeader()) {
+                return;
+            }
+        }
         if (!adapter.updateBoundHeaderStoryViews()) {
             notifyHeaderChanged();
         }
