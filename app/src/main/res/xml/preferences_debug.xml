@@ -57,6 +57,12 @@
 
         <Preference
             app:icon="@drawable/ic_comment"
+            app:key="pref_debug_very_long_comment"
+            app:singleLineTitle="false"
+            app:title="Very long comment" />
+
+        <Preference
+            app:icon="@drawable/ic_comment"
             app:key="pref_debug_poll"
             app:singleLineTitle="false"
             app:title="Poll" />
