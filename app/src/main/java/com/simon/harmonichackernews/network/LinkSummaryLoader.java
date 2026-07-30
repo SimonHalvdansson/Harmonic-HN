@@ -235,11 +235,6 @@ public final class LinkSummaryLoader {
                 && HACKER_NEWS_ITEM_CONTENT_TYPE.equals(result.contentType);
     }
 
-    public static boolean isHackerNewsCommentResult(@Nullable Result result) {
-        return isHackerNewsItemResult(result)
-                && HACKER_NEWS_COMMENT_SITE_NAME.equals(result.siteName);
-    }
-
     @Nullable
     private static String getHackerNewsItemId(@NonNull HttpUrl url) {
         if (!"news.ycombinator.com".equalsIgnoreCase(url.host())

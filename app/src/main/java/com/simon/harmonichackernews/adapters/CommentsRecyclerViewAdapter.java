@@ -3151,8 +3151,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         LinkSummaryLoader.Result cachedSummary =
                 StoryPreviewImageLoader.getCachedLinkSummary(context, link.getUrl());
         if (LinkSummaryLoader.isHackerNewsItemResult(cachedSummary)) {
-            if (!LinkSummaryLoader.isHackerNewsCommentResult(cachedSummary)
-                    && !TextUtils.isEmpty(cachedSummary.title)) {
+            if (!TextUtils.isEmpty(cachedSummary.title)) {
                 hackerNewsReferenceTitlesByItemId.put(itemId, cachedSummary.title);
                 link.setResolvedTitle(cachedSummary.title);
             }
@@ -3170,8 +3169,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 new LinkSummaryLoader.Callback() {
                     @Override
                     public void onSuccess(@NonNull LinkSummaryLoader.Result result) {
-                        if (LinkSummaryLoader.isHackerNewsCommentResult(result)
-                                || TextUtils.isEmpty(result.title)) {
+                        if (TextUtils.isEmpty(result.title)) {
                             return;
                         }
 
