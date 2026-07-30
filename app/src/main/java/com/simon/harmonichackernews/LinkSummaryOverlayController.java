@@ -347,6 +347,7 @@ final class LinkSummaryOverlayController {
         void syncLinkSummaryBackState();
 
         default boolean shouldKeepLinkSummaryOpenOnStoryNavigation() { return false; }
+        default boolean shouldAnimateLinkSummaryDismissOnStoryNavigation() { return false; }
         default void openStoryLinkSummary(Story story, int position, boolean showWebsite) { }
         default void toggleStoryVote(Story story, int position, boolean currentlyUpvoted,
                                      Runnable completion) { completion.run(); }
@@ -1509,6 +1510,10 @@ final class LinkSummaryOverlayController {
         }
         FrameLayout overlayToRemove = overlay;
         host.openStoryLinkSummary(story, position, showWebsite);
+        if (host.shouldAnimateLinkSummaryDismissOnStoryNavigation()) {
+            dismiss(true);
+            return;
+        }
         if (overlayToRemove != null) {
             overlayToRemove.postDelayed(() -> {
                 if (overlay == overlayToRemove) {
