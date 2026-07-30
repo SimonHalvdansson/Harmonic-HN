@@ -28,9 +28,23 @@ final class CommentDividerItemDecoration extends RecyclerView.ItemDecoration {
     private int horizontalInset;
     private int cardShadowPadding;
     private int interCommentSpacing;
+    private int contentInsetLeft;
+    private int contentInsetRight;
 
     CommentDividerItemDecoration(CommentsRecyclerViewAdapter adapter) {
         this.adapter = adapter;
+    }
+
+    boolean setContentSideInsets(int left, int right) {
+        int safeLeft = Math.max(0, left);
+        int safeRight = Math.max(0, right);
+        if (contentInsetLeft == safeLeft && contentInsetRight == safeRight) {
+            return false;
+        }
+
+        contentInsetLeft = safeLeft;
+        contentInsetRight = safeRight;
+        return true;
     }
 
     @Override
@@ -78,6 +92,10 @@ final class CommentDividerItemDecoration extends RecyclerView.ItemDecoration {
             @NonNull RecyclerView parent,
             @NonNull RecyclerView.State state) {
         int position = parent.getChildAdapterPosition(view);
+        if (position > 0) {
+            outRect.left = contentInsetLeft;
+            outRect.right = contentInsetRight;
+        }
         if (adapter.showDividers
                 && position != RecyclerView.NO_POSITION
                 && CommentsRecyclerViewAdapter.isCommentViewType(adapter.getItemViewType(position))

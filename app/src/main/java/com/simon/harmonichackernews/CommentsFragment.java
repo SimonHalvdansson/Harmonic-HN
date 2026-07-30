@@ -168,6 +168,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private RecyclerView recyclerView;
     private RecyclerView recyclerViewSwipe;
     private RecyclerView recyclerViewRegular;
+    @Nullable private CommentDividerItemDecoration commentItemDecoration;
+    private int commentsContentInsetLeft;
+    private int commentsContentInsetRight;
     private LinearLayoutManager layoutManager;
     private RecyclerView.OnScrollListener recyclerViewScrollListener;
     private View.OnLayoutChangeListener recyclerViewLayoutChangeListener;
@@ -800,7 +803,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 int leftPadding = Math.max(Math.max(cutoutInsets.left, systemInsets.left), contentPaddingLeft);
                 int rightPadding = Math.max(Math.max(cutoutInsets.right, systemInsets.right), contentPaddingRight);
                 bottomSheet.setPadding(0, 0, 0, 0);
-                setCommentsRecyclerSidePadding(leftPadding, rightPadding);
+                setCommentsContentSideInsets(leftPadding, rightPadding);
 
                 View emptyView = binding.commentsEmpty;
                 emptyView.setPadding(leftPadding, emptyView.getPaddingTop(), rightPadding, emptyView.getPaddingBottom());
@@ -1129,6 +1132,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.setReaderModeAvailable(webViewController.isReaderModeAvailable());
         }
         adapter.setHeaderBackgroundColorListener(this::updateHeaderStatusBarColor);
+        adapter.setHeaderContentSideInsets(
+                commentsContentInsetLeft,
+                commentsContentInsetRight);
         adapter.loadUserTags(requireContext());
 
         adapter.setOnHeaderClickListener(story1 -> Utils.launchCustomTab(getActivity(), story1.url));
@@ -1297,7 +1303,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(layoutManager);
-        recyclerView.addItemDecoration(new CommentDividerItemDecoration(adapter));
+        commentItemDecoration = new CommentDividerItemDecoration(adapter);
+        commentItemDecoration.setContentSideInsets(
+                commentsContentInsetLeft,
+                commentsContentInsetRight);
+        recyclerView.addItemDecoration(commentItemDecoration);
         recyclerViewScrollListener = new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -1423,32 +1433,30 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_HEADER, 1);
     }
 
-    private void setCommentsRecyclerSidePadding(int leftPadding, int rightPadding) {
-        boolean regularChanged = setRecyclerSidePadding(recyclerViewRegular, leftPadding, rightPadding);
-        boolean swipeChanged = setRecyclerSidePadding(recyclerViewSwipe, leftPadding, rightPadding);
-        if ((regularChanged || swipeChanged) && adapter != null) {
-            notifyHeaderChanged();
-        }
-    }
-
-    private boolean setRecyclerSidePadding(@Nullable RecyclerView targetRecyclerView,
-                                        int leftPadding,
-                                        int rightPadding) {
-        if (targetRecyclerView == null) {
-            return false;
+    private void setCommentsContentSideInsets(int leftInset, int rightInset) {
+        int safeLeftInset = Math.max(0, leftInset);
+        int safeRightInset = Math.max(0, rightInset);
+        if (commentsContentInsetLeft == safeLeftInset
+                && commentsContentInsetRight == safeRightInset) {
+            return;
         }
 
-        if (targetRecyclerView.getPaddingLeft() == leftPadding
-                && targetRecyclerView.getPaddingRight() == rightPadding) {
-            return false;
+        commentsContentInsetLeft = safeLeftInset;
+        commentsContentInsetRight = safeRightInset;
+
+        if (commentItemDecoration != null
+                && commentItemDecoration.setContentSideInsets(
+                        commentsContentInsetLeft,
+                        commentsContentInsetRight)
+                && recyclerView != null) {
+            recyclerView.invalidateItemDecorations();
         }
 
-        targetRecyclerView.setPadding(
-                leftPadding,
-                targetRecyclerView.getPaddingTop(),
-                rightPadding,
-                targetRecyclerView.getPaddingBottom());
-        return true;
+        if (adapter != null) {
+            adapter.setHeaderContentSideInsets(
+                    commentsContentInsetLeft,
+                    commentsContentInsetRight);
+        }
     }
 
     private CommentDisplaySettings createCommentDisplaySettings() {
@@ -1910,6 +1918,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         recyclerView = null;
         recyclerViewSwipe = null;
         recyclerViewRegular = null;
+        commentItemDecoration = null;
         layoutManager = null;
         recyclerViewScrollListener = null;
         recyclerViewLayoutChangeListener = null;
