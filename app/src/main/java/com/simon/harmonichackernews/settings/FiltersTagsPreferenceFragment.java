@@ -57,7 +57,7 @@ public class FiltersTagsPreferenceFragment extends BaseSettingsFragment {
             return;
         }
 
-        Map<String, String> tags = Utils.getUserTags(getContext());
+        Map<String, String> tags = Utils.getUserTagsWithOriginalUsernames(getContext());
         if (tags.isEmpty()) {
             removeTaggedUserPreferences(Collections.emptyList());
             if (tagsCategory.findPreference(UserTagPreference.EMPTY_KEY) == null) {

@@ -1210,6 +1210,14 @@ public class Utils {
     }
 
     public static Map<String, String> getUserTags(Context ctx) {
+        return readUserTags(ctx, true);
+    }
+
+    public static Map<String, String> getUserTagsWithOriginalUsernames(Context ctx) {
+        return readUserTags(ctx, false);
+    }
+
+    private static Map<String, String> readUserTags(Context ctx, boolean normalizeUsernames) {
         String jsonString = SettingsUtils.readStringFromSharedPreferences(ctx, KEY_SHARED_PREFERENCES_USER_TAGS);
         Map<String, String> map = new HashMap<>();
         if (!TextUtils.isEmpty(jsonString)) {
@@ -1219,7 +1227,8 @@ public class Utils {
                 while (keys.hasNext()) {
                     String key = keys.next();
                     String value = obj.optString(key, "");
-                    map.put(key.toLowerCase().trim(), value);
+                    String username = key.trim();
+                    map.put(normalizeUsernames ? username.toLowerCase() : username, value);
                 }
             } catch (JSONException e) {
                 // Invalid JSON in prefs; just start fresh
@@ -1238,12 +1247,16 @@ public class Utils {
 
     public static void setUserTag(Context ctx, String username, String tag) {
         if (TextUtils.isEmpty(username)) return;
-        // Load existing
-        Map<String, String> map = getUserTags(ctx);
-        String key = username.toLowerCase().trim();
-        if (TextUtils.isEmpty(tag)) {
-            map.remove(key);
-        } else {
+        Map<String, String> map = getUserTagsWithOriginalUsernames(ctx);
+        String key = username.trim();
+        Iterator<String> savedUsernames = map.keySet().iterator();
+        while (savedUsernames.hasNext()) {
+            String savedUsername = savedUsernames.next();
+            if (savedUsername.equalsIgnoreCase(key)) {
+                savedUsernames.remove();
+            }
+        }
+        if (!TextUtils.isEmpty(tag)) {
             map.put(key, tag.trim());
         }
         // Convert back to JSON
