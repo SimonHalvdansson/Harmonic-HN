@@ -110,6 +110,7 @@ import coil.util.CoilUtils;
 public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final Object HEADER_SUMMARY_UPDATE_PAYLOAD = new Object();
+    private static final Object COMMENT_USER_TAG_UPDATE_PAYLOAD = new Object();
 
     private final List<Comment> comments;
     private HeaderClickListener headerClickListener;
@@ -333,6 +334,18 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder,
                                  int position,
                                  @NonNull List<Object> payloads) {
+        if (holder instanceof ItemViewHolder
+                && payloads.size() == 1
+                && payloads.get(0) == COMMENT_USER_TAG_UPDATE_PAYLOAD) {
+            ItemViewHolder itemViewHolder = (ItemViewHolder) holder;
+            Comment comment = comments.get(position);
+            bindCommentAuthor(
+                    itemViewHolder,
+                    comment,
+                    holder.itemView.getContext(),
+                    TextUtils.equals(story.by, comment.by));
+            return;
+        }
         if (position == 0
                 && holder instanceof HeaderViewHolder
                 && payloads.size() == 1
@@ -564,18 +577,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 byUser = comment.by.equals(username);
             }
 
-            String cTag = getCachedUserTag(ctx, comment.by);
-            String displayName = comment.by;
-            if (!TextUtils.isEmpty(cTag)) {
-                displayName += " (" + cTag + ")";
-            }
-            itemViewHolder.commentBy.setText(getCommentByWithOpBadge(
-                    ctx,
-                    displayName,
-                    byOp,
-                    itemViewHolder.opCommentColor));
-            itemViewHolder.commentBy.setContentDescription(
-                    "Comment by " + comment.by + (byOp ? ", original poster" : ""));
+            bindCommentAuthor(itemViewHolder, comment, ctx, byOp);
             itemViewHolder.commentByTime.setContentDescription("Posted " + formattedTime);
 
             if (byUser) {
@@ -604,6 +606,28 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 itemViewHolder.commentHiddenCount.setContentDescription(null);
             }
         }
+    }
+
+    private void bindCommentAuthor(ItemViewHolder itemViewHolder,
+                                   Comment comment,
+                                   Context ctx,
+                                   boolean byOp) {
+        String tag = getCachedUserTag(ctx, comment.by);
+        String displayName = comment.by;
+        if (!TextUtils.isEmpty(tag)) {
+            displayName += " (" + tag + ")";
+        }
+        itemViewHolder.commentBy.setText(getCommentByWithOpBadge(
+                ctx,
+                displayName,
+                byOp,
+                itemViewHolder.opCommentColor));
+        itemViewHolder.commentBy.setContentDescription(
+                "Comment by " + comment.by + (byOp ? ", original poster" : ""));
+    }
+
+    public void notifyCommentUserTagChanged(int position) {
+        notifyItemChanged(position, COMMENT_USER_TAG_UPDATE_PAYLOAD);
     }
 
     private void applyCommentMetaHighlight(ItemViewHolder itemViewHolder) {

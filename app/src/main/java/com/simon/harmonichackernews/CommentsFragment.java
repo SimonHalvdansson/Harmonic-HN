@@ -3270,7 +3270,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             String by = comments.get(i).by;
             if (by != null) {
                 if (by.equals(changedUser)) {
-                    commentAdapter.notifyItemChanged(i);
+                    commentAdapter.notifyCommentUserTagChanged(i);
                 }
             }
         }
