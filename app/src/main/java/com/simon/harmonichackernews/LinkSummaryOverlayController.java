@@ -18,8 +18,6 @@ import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.SystemClock;
 import android.text.Html;
 import android.text.TextUtils;
@@ -348,6 +346,7 @@ final class LinkSummaryOverlayController {
         void stopLinkSummaryListScroll();
         void syncLinkSummaryBackState();
 
+        default boolean shouldKeepLinkSummaryOpenOnStoryNavigation() { return false; }
         default void openStoryLinkSummary(Story story, int position, boolean showWebsite) { }
         default void toggleStoryVote(Story story, int position, boolean currentlyUpvoted,
                                      Runnable completion) { completion.run(); }
@@ -1504,11 +1503,8 @@ final class LinkSummaryOverlayController {
     }
 
     private void navigateToStory(Story story, int position, boolean showWebsite) {
-        if (Utils.isTablet(host.requireLinkSummaryContext().getResources())) {
-            new Handler(Looper.getMainLooper()).postDelayed(
-                    () -> host.openStoryLinkSummary(story, position, showWebsite),
-                    TRANSFORM_DURATION_MS);
-            dismiss(true);
+        if (host.shouldKeepLinkSummaryOpenOnStoryNavigation()) {
+            host.openStoryLinkSummary(story, position, showWebsite);
             return;
         }
         FrameLayout overlayToRemove = overlay;

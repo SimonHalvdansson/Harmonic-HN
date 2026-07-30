@@ -19,8 +19,12 @@ import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.SplitChangeHandler;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
+import java.lang.ref.WeakReference;
+
 public class CommentsActivity extends BaseActivity implements CommentsFragment.BottomSheetFragmentCallback {
     public static String PREVENT_BACK = "PREVENT_BACK";
+    private static WeakReference<CommentsActivity> currentCommentsActivity =
+            new WeakReference<>(null);
     private boolean disableSwipeAtComments;
     private SwipeBackLayout swipeBackLayout;
     private SplitChangeHandler splitChangeHandler;
@@ -54,6 +58,7 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        currentCommentsActivity = new WeakReference<>(this);
 
         swipeBack = !SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext());
 
@@ -158,10 +163,24 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     protected void onDestroy() {
         translucentHandler.removeCallbacksAndMessages(null);
         MainActivity.removeSearchBackStateListener(searchBackStateListener);
+        if (currentCommentsActivity.get() == this) {
+            currentCommentsActivity.clear();
+        }
         super.onDestroy();
         if (splitChangeHandler != null) {
             splitChangeHandler.teardown();
         }
+    }
+
+    static boolean switchEmbeddedStoryViewIfMatching(int storyId, boolean showWebsite) {
+        CommentsActivity activity = currentCommentsActivity.get();
+        return activity != null
+                && !activity.isFinishing()
+                && !activity.isDestroyed()
+                && activity.splitChangeHandler != null
+                && activity.splitChangeHandler.isWithinSplit()
+                && activity.commentsFragment != null
+                && activity.commentsFragment.switchStoryViewIfMatching(storyId, showWebsite);
     }
 
     @Override

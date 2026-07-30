@@ -1072,6 +1072,27 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 && behavior.calculateSlideOffset() >= 0.9999f;
     }
 
+    public boolean switchStoryViewIfMatching(int storyId, boolean showWebsite) {
+        if (!isAdded()
+                || story == null
+                || story.id != storyId
+                || !integratedWebview
+                || bottomSheet == null
+                || webViewController == null) {
+            return false;
+        }
+        if (showWebsite) {
+            webViewController.initialize();
+            BottomSheetBehavior.from(bottomSheet).setState(
+                    BottomSheetBehavior.STATE_COLLAPSED);
+        } else {
+            BottomSheetBehavior.from(bottomSheet).setState(
+                    BottomSheetBehavior.STATE_EXPANDED);
+            bottomSheet.setTranslationY(0f);
+        }
+        return true;
+    }
+
     private int getCurrentCommentsStatusBarColor() {
         float headerCoverage = getHeaderStatusBarCoverage();
         return ColorUtils.blendARGB(commentsPaneStatusBarColor, commentsHeaderStatusBarColor, headerCoverage);

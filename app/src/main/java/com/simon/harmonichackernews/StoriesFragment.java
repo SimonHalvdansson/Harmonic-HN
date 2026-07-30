@@ -51,6 +51,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.window.embedding.ActivityEmbeddingController;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -261,6 +262,11 @@ public class StoriesFragment extends Fragment {
                     if (linkSummaryBackCallback != null) {
                         linkSummaryBackCallback.setEnabled(linkSummaryOverlayController.isShowing());
                     }
+                }
+
+                @Override
+                public boolean shouldKeepLinkSummaryOpenOnStoryNavigation() {
+                    return StoriesFragment.this.isTwoPaneLayout();
                 }
 
                 @Override
@@ -3104,6 +3110,19 @@ public class StoriesFragment extends Fragment {
             adapter.updateStoryClickedState(currentPosition);
         }
         openComments(story, currentPosition, showWebsite);
+    }
+
+    private boolean isTwoPaneLayout() {
+        if (!isAdded()) {
+            return false;
+        }
+        View commentsPane = requireActivity().findViewById(
+                R.id.main_fragment_comments_container);
+        if (commentsPane != null && commentsPane.getVisibility() == View.VISIBLE) {
+            return true;
+        }
+        return ActivityEmbeddingController.getInstance(requireContext())
+                .isActivityEmbedded(requireActivity());
     }
 
     private void toggleStoryRead(Story story, int position) {

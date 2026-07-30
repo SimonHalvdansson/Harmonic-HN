@@ -232,6 +232,11 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
     @Override
     public void openStory(Story story, int pos, boolean showWebsite) {
+        if (switchOpenStoryViewIfMatching(story, showWebsite)) {
+            lastPosition = pos;
+            return;
+        }
+
         Bundle bundle = story.toBundle();
 
         bundle.putInt(CommentsFragment.EXTRA_FORWARD, pos - lastPosition);
@@ -258,6 +263,21 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                 overridePendingTransition(R.anim.activity_in_animation, R.anim.hold);
             }
         }
+    }
+
+    private boolean switchOpenStoryViewIfMatching(Story story, boolean showWebsite) {
+        if (story == null) {
+            return false;
+        }
+        if (shouldOpenCommentsInMainPane()) {
+            CommentsFragment fragment = (CommentsFragment) getSupportFragmentManager()
+                    .findFragmentById(R.id.main_fragment_comments_container);
+            return fragment != null
+                    && fragment.switchStoryViewIfMatching(story.id, showWebsite);
+        }
+        return shouldUseFoldableActivityEmbedding()
+                && CommentsActivity.switchEmbeddedStoryViewIfMatching(
+                        story.id, showWebsite);
     }
 
     @Override
