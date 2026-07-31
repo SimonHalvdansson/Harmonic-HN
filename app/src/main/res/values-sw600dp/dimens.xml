@@ -3,4 +3,8 @@
     <dimen name="single_view_side_margin">100dp</dimen>
     <dimen name="comments_header_top_padding">32dp</dimen>
     <dimen name="comments_header_action_padding">64dp</dimen>
+    <dimen name="detail_toolbar_height">64dp</dimen>
+    <dimen name="compose_settings_toolbar_height">64dp</dimen>
+    <dimen name="detail_toolbar_navigation_height">64dp</dimen>
+    <dimen name="detail_toolbar_navigation_inset">8dp</dimen>
 </resources>

@@ -4162,7 +4162,11 @@ public class StoriesFragment extends Fragment {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 if (item.getItemId() == R.id.menu_settings) {
-                    requireActivity().startActivity(new Intent(requireActivity(), SettingsActivity.class));
+                    requireActivity().startActivity(
+                            new Intent(requireActivity(), ComposeSettingsActivity.class));
+                } else if (item.getItemId() == R.id.menu_settings_old) {
+                    requireActivity().startActivity(
+                            new Intent(requireActivity(), SettingsActivity.class));
                 } else if (item.getItemId() == R.id.menu_log) {
                     if (TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity()))) {
                         AccountUtils.showLoginPrompt(requireActivity().getSupportFragmentManager());

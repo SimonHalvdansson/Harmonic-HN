@@ -56,6 +56,11 @@
             android:name=".SettingsActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"/>
         <activity
+            android:name=".ComposeSettingsActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".SettingsDetailActivity"
             android:parentActivityName=".SettingsActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"/>
@@ -64,10 +69,12 @@
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"/>
         <activity
             android:name=".AboutActivity"
-            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout" />
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
+            android:exported="false" />
         <activity
             android:name=".LicensesActivity"
-            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout" />
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
+            android:exported="false" />
         <activity
             android:name=".DebugActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout" />

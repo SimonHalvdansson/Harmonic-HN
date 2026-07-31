@@ -64,6 +64,7 @@ abstract class GenerateAdblocklistTask extends DefaultTask {
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
@@ -87,8 +88,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     buildTypes {
@@ -163,6 +164,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        compose = true
         resValues = true
         viewBinding = true
     }
@@ -189,8 +191,7 @@ androidComponents {
 kotlin {
     compilerOptions {
         languageVersion = KotlinVersion.KOTLIN_2_0
-        // Optional: Set jvmTarget
-        // jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
     }
 }
 
@@ -198,6 +199,7 @@ dependencies {
     implementation(libs.bundles.androidx.lifecycle)
 
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.cardview)
@@ -231,6 +233,18 @@ dependencies {
     implementation(libs.markwon.core)
     implementation(libs.markwon.ext.latex)
     implementation(libs.markwon.inline.parser)
+
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.material3.adaptive)
+    implementation(libs.androidx.material3.adaptive.layout)
+    implementation(libs.androidx.material3.adaptive.navigation3)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 }
 
 afterEvaluate {

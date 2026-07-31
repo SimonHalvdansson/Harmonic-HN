@@ -36,6 +36,12 @@
   <ActivityRule
     window:alwaysExpand="true">
     <ActivityFilter
+      window:activityName=".ComposeSettingsActivity"/>
+  </ActivityRule>
+
+  <ActivityRule
+    window:alwaysExpand="true">
+    <ActivityFilter
       window:activityName=".AboutActivity"/>
   </ActivityRule>
   <ActivityRule
