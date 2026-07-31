@@ -38,12 +38,15 @@ data class HarmonicColors(
     val background: Color,
     val onSurface: Color,
     val textPrimary: Color,
+    val link: Color,
     val surfaceContainerHigh: Color,
+    val surfaceContainerHighest: Color,
     val secondaryContainer: Color,
     val onSecondaryContainer: Color,
     val storyNormal: Color,
     val storyDisabled: Color,
     val outlineVariant: Color,
+    val commentDivider: Color,
     val drawable: Color,
     val settingsSegment: Color,
     val settingsHeaderSelected: Color,
@@ -127,16 +130,22 @@ fun harmonicColors(context: Context): HarmonicColors {
         android.R.attr.colorBackground,
         fallbackScheme.background,
     )
+    val defaultTextView = AppCompatTextView(context)
     return HarmonicColors(
         background = background,
         onSurface = context.colorAttribute(
             MaterialR.attr.colorOnSurface,
             fallbackScheme.onSurface,
         ),
-        textPrimary = Color(AppCompatTextView(context).currentTextColor),
+        textPrimary = Color(defaultTextView.currentTextColor),
+        link = Color(defaultTextView.linkTextColors.defaultColor),
         surfaceContainerHigh = context.colorAttribute(
             MaterialR.attr.colorSurfaceContainerHigh,
             fallbackScheme.surfaceContainerHigh,
+        ),
+        surfaceContainerHighest = context.colorAttribute(
+            MaterialR.attr.colorSurfaceContainerHighest,
+            fallbackScheme.surfaceContainerHighest,
         ),
         secondaryContainer = context.colorAttribute(
             MaterialR.attr.colorSecondaryContainer,
@@ -153,6 +162,10 @@ fun harmonicColors(context: Context): HarmonicColors {
         ),
         outlineVariant = context.colorAttribute(
             MaterialR.attr.colorOutlineVariant,
+            fallbackScheme.outlineVariant,
+        ),
+        commentDivider = context.colorAttribute(
+            R.attr.commentDividerColor,
             fallbackScheme.outlineVariant,
         ),
         drawable = context.colorAttribute(R.attr.drawableColor, fallbackScheme.onSurface),

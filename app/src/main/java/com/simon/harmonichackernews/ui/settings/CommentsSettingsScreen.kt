@@ -1,44 +1,18 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.settings.CommentContentPreviewPreference
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.content.CommentItem
+import com.simon.harmonichackernews.ui.content.CommentItemStyle
+import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 
@@ -60,8 +34,11 @@ fun CommentsSettingsScreen(
     val showBorder = prefs.getBoolean(SettingsUtils.PREF_COMMENT_CARD_BORDER, true)
     val textSize = SettingsUtils.getPreferredCommentTextSize(context)
     val textSizeOffset = SettingsUtils.getCommentTextSizeOffset(textSize)
+    val collectLinks = prefs.getBoolean(SettingsUtils.PREF_COLLECT_LINKS_IN_COMMENTS, true)
     val emphasizeMeta = prefs.getBoolean(SettingsUtils.PREF_HIGHLIGHT_COMMENT_META, false)
     val depthMode = SettingsUtils.getPreferredCommentDepthIndicatorMode(context)
+    val showDividers = prefs.getBoolean(SettingsUtils.PREF_COMMENT_DIVIDERS, false)
+    val preferredFont = SettingsUtils.getPreferredFont(context)
     val storyTintEnabled = SettingsUtils.shouldTintCardUsingPreview(context)
     val storyPreviewEnabled =
         SettingsUtils.getPreferredStoryPreviewImageMode(context) !=
@@ -74,9 +51,18 @@ fun CommentsSettingsScreen(
         onBack = onBack,
         contentVersion = refresh,
         pinnedContent = {
-            AndroidView(
-                factory = { CommentContentPreviewPreference(it) },
-                modifier = Modifier.fillMaxWidth(),
+            CommentItem(
+                model = SettingsCommentPreviewModel,
+                style = CommentItemStyle(
+                    cardStyle = displayStyle == SettingsUtils.COMMENT_DISPLAY_STYLE_CARD,
+                    showCardBorder = showBorder,
+                    textSize = textSize,
+                    collectLinks = collectLinks,
+                    emphasizeMeta = emphasizeMeta,
+                    depthIndicatorMode = depthMode,
+                    showDivider = showDividers,
+                    preferredFont = preferredFont,
+                ),
             )
         },
     ) {
@@ -413,124 +399,5 @@ fun CommentsSettingsScreen(
         "thread_depth" -> ThreadDepthIndicatorsDialog(
             onDismiss = { dialog = null },
         )
-    }
-}
-
-@Composable
-private fun CommentSettingsPreview(
-    displayStyle: String,
-    showBorder: Boolean,
-    textSize: Float,
-    emphasizeMeta: Boolean,
-    depthMode: String,
-) {
-    val colors = HarmonicTheme.colors
-    val cardMode = displayStyle == SettingsUtils.COMMENT_DISPLAY_STYLE_CARD
-    val radius by animateDpAsState(if (cardMode) 20.dp else 4.dp, label = "comment corners")
-    val background by animateColorAsState(
-        if (cardMode) colors.surfaceContainerHigh else Color.Transparent,
-        label = "comment preview background",
-    )
-    val metaBackground by animateColorAsState(
-        if (emphasizeMeta) colors.secondaryContainer else Color.Transparent,
-        label = "comment preview meta",
-    )
-    val indicatorColor = when (depthMode) {
-        CommentDepthIndicatorUtils.MODE_NONE -> Color.Transparent
-        CommentDepthIndicatorUtils.MODE_MONOCHROME -> colors.storyDisabled
-        else -> androidx.compose.material3.MaterialTheme.colorScheme.primary
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 6.dp, vertical = 12.dp)
-            .clip(RoundedCornerShape(radius))
-            .background(background)
-            .then(
-                if (cardMode && showBorder) {
-                    Modifier.border(
-                        1.dp,
-                        colors.outlineVariant,
-                        RoundedCornerShape(radius),
-                    )
-                } else {
-                    Modifier
-                },
-            )
-            .padding(14.dp)
-            .animateContentSize(),
-    ) {
-        AnimatedVisibility(
-            visible = depthMode != CommentDepthIndicatorUtils.MODE_NONE,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(134.dp)
-                    .background(indicatorColor, RoundedCornerShape(2.dp)),
-            )
-        }
-        Spacer(modifier = Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(metaBackground)
-                        .padding(
-                            horizontal = if (emphasizeMeta) 8.dp else 0.dp,
-                            vertical = if (emphasizeMeta) 4.dp else 0.dp,
-                        )
-                        .animateContentSize(),
-                ) {
-                    Text(
-                        text = "pg",
-                        color = colors.textPrimary,
-                        fontFamily = ProductSansFontFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                    )
-                }
-                Text(
-                    text = " 1h",
-                    color = colors.storyDisabled,
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 13.sp,
-                )
-            }
-            Text(
-                text = "This reminds me of the old systems where the boring path was often " +
-                    "the most durable one. The less hidden state there is, the easier it is " +
-                    "to reason about. [0]",
-                modifier = Modifier.padding(top = 7.dp),
-                color = colors.textPrimary,
-                fontFamily = ProductSansFontFamily,
-                fontSize = textSize.sp,
-                lineHeight = (textSize + 4).sp,
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp)
-                    .border(
-                        1.dp,
-                        colors.outlineVariant,
-                        RoundedCornerShape(8.dp),
-                    )
-                    .padding(10.dp),
-            ) {
-                Text(
-                    text = "◉   [0]  https://example.com/reference",
-                    color = colors.textPrimary,
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 13.sp,
-                )
-            }
-        }
     }
 }

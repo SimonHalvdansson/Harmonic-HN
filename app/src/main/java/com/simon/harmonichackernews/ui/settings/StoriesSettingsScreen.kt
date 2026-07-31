@@ -2,55 +2,21 @@ package com.simon.harmonichackernews.ui.settings
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.graphics.Color
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoryType
-import com.simon.harmonichackernews.settings.StoryContentPreviewPreference
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
+import com.simon.harmonichackernews.ui.content.StoryItem
+import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.widget.StoriesRemoteViewsFactory
 import com.simon.harmonichackernews.widget.StoriesWidgetProvider
@@ -103,6 +69,7 @@ fun StoriesSettingsScreen(
             ?: emptySet(),
     )
     val hotness = prefs.getString("pref_hotness", "-1") ?: "-1"
+    val preferredFont = SettingsUtils.getPreferredFont(context)
 
     SettingsPage(
         title = "Stories",
@@ -110,30 +77,27 @@ fun StoriesSettingsScreen(
         onBack = onBack,
         contentVersion = refresh + localRefresh,
         pinnedContent = {
-            // The legacy preview owns several interdependent View animations. Treat it as an
-            // immutable snapshot so one Compose update cannot start overlapping setter animations.
-            key(
-                displayStyle,
-                leftAlign,
-                compact,
-                previewImageMode,
-                borderlessLarge,
-                showThumbnails,
-                showPoints,
-                compactPoints,
-                includeTld,
-                showComments,
-                showIndex,
-                hotness,
-                textSize,
-                showSummary,
-                tint,
-            ) {
-                AndroidView(
-                    factory = { StoryContentPreviewPreference(it) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+            StoryItem(
+                model = SettingsStoryPreviewModel,
+                style = StoryItemStyle(
+                    previewImageMode = previewImageMode,
+                    borderlessLargeImage = borderlessLarge,
+                    compact = compact,
+                    showSummary = showSummary,
+                    showFavicon = showThumbnails,
+                    showPoints = showPoints,
+                    compactPoints = compactPoints,
+                    includeTopLevelDomain = includeTld,
+                    showCommentCount = showComments,
+                    showIndex = showIndex,
+                    commentsOnLeft = leftAlign,
+                    tintCard = tint,
+                    cardStyle = displayStyle == SettingsUtils.STORY_DISPLAY_STYLE_CARD,
+                    useHotnessIcon = hotness != "-1",
+                    preferredFont = preferredFont,
+                    textSize = textSize,
+                ),
+            )
         },
     ) {
         item {
@@ -455,192 +419,6 @@ fun StoriesSettingsScreen(
             },
             onDismiss = { dialog = null },
         )
-    }
-}
-
-@Composable
-private fun StorySettingsPreview(
-    previewImageMode: String,
-    borderlessLarge: Boolean,
-    compact: Boolean,
-    showSummary: Boolean,
-    showThumbnails: Boolean,
-    showPoints: Boolean,
-    compactPoints: Boolean,
-    includeTld: Boolean,
-    showComments: Boolean,
-    showIndex: Boolean,
-    leftAlign: Boolean,
-    tint: Boolean,
-    displayStyle: String,
-    textSize: Float,
-) {
-    val colors = HarmonicTheme.colors
-    val shapeRadius by animateDpAsState(
-        if (displayStyle == SettingsUtils.STORY_DISPLAY_STYLE_CARD) 20.dp else 10.dp,
-        label = "story preview corners",
-    )
-    val shape = RoundedCornerShape(shapeRadius)
-    val background by animateColorAsState(
-        targetValue = if (tint) {
-            colors.secondaryContainer.copy(alpha = 0.42f)
-        } else {
-            colors.surfaceContainerHigh
-        },
-        label = "story preview tint",
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 12.dp)
-            .clip(shape)
-            .background(background)
-            .then(
-                if (displayStyle == SettingsUtils.STORY_DISPLAY_STYLE_CARD) {
-                    Modifier.border(1.dp, colors.outlineVariant, shape)
-                } else {
-                    Modifier
-                },
-            )
-            .animateContentSize(),
-    ) {
-        AnimatedVisibility(
-            visible = previewImageMode == SettingsUtils.STORY_PREVIEW_IMAGE_LARGE &&
-                showThumbnails &&
-                borderlessLarge,
-            enter = fadeIn(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Image(
-                painter = painterResource(R.drawable.web_preview),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(116.dp),
-                contentScale = ContentScale.Crop,
-            )
-        }
-
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (showIndex) {
-                Text(
-                    text = "3.",
-                    modifier = Modifier.padding(end = 8.dp),
-                    color = colors.textPrimary,
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 15.sp,
-                )
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Algorithm breaks speed limit for solving linear equations",
-                    color = colors.textPrimary,
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = textSize.sp,
-                    lineHeight = (textSize + 4).sp,
-                )
-                AnimatedVisibility(
-                    visible = showSummary,
-                    enter = fadeIn(),
-                    exit = fadeOut() + shrinkVertically(),
-                ) {
-                    Text(
-                        text = "A faster approach improves a classic linear algebra problem.",
-                        modifier = Modifier.padding(top = 5.dp),
-                        color = colors.storyDisabled,
-                        fontFamily = ProductSansFontFamily,
-                        fontSize = (textSize - 3).coerceAtLeast(11f).sp,
-                    )
-                }
-                AnimatedVisibility(
-                    visible = !compact,
-                    enter = fadeIn(),
-                    exit = fadeOut() + shrinkVertically(),
-                ) {
-                    Text(
-                        text = buildString {
-                            if (showPoints) {
-                                append(if (compactPoints) "53 ▲" else "53 points")
-                                append(" • ")
-                            }
-                            append(if (includeTld) "science.org" else "science")
-                            append(" • 2h")
-                        },
-                        modifier = Modifier.padding(top = 6.dp),
-                        color = colors.storyDisabled,
-                        fontFamily = ProductSansFontFamily,
-                        fontSize = SettingsUtils.getStoryMetaTextSize(textSize).sp,
-                    )
-                }
-            }
-
-            AnimatedVisibility(
-                visible = showThumbnails &&
-                    previewImageMode == SettingsUtils.STORY_PREVIEW_IMAGE_SMALL,
-                enter = fadeIn(),
-                exit = fadeOut(),
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.web_preview),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(start = 10.dp)
-                        .size(width = 86.dp, height = 60.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-
-            AnimatedVisibility(
-                visible = showComments,
-                enter = fadeIn(),
-                exit = fadeOut(),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(start = if (leftAlign) 4.dp else 12.dp)
-                        .width(34.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_comment),
-                        contentDescription = null,
-                        tint = colors.drawable,
-                    )
-                    Text(
-                        text = "18",
-                        color = colors.textPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                    )
-                }
-            }
-        }
-
-        AnimatedVisibility(
-            visible = previewImageMode == SettingsUtils.STORY_PREVIEW_IMAGE_LARGE &&
-                showThumbnails &&
-                !borderlessLarge,
-            enter = fadeIn(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Image(
-                painter = painterResource(R.drawable.web_preview),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(116.dp)
-                    .padding(start = 14.dp, end = 14.dp, bottom = 14.dp)
-                    .clip(RoundedCornerShape(10.dp)),
-                contentScale = ContentScale.Crop,
-            )
-        }
     }
 }
 
