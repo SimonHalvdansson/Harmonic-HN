@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import android.view.WindowManager
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -74,6 +75,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.semantics.Role
@@ -86,6 +88,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.R
@@ -124,6 +127,7 @@ internal fun SettingsAlertDialog(
     separateDismissButton: Boolean = false,
     properties: DialogProperties = DialogProperties(),
     scrollableContent: Boolean = false,
+    keepImeVisible: Boolean = false,
 ) {
     val configuration = LocalConfiguration.current
     val shortEdge = minOf(configuration.screenWidthDp, configuration.screenHeightDp)
@@ -149,6 +153,18 @@ internal fun SettingsAlertDialog(
             decorFitsSystemWindows = properties.decorFitsSystemWindows,
         ),
     ) {
+        val dialogView = LocalView.current
+        DisposableEffect(dialogView, keepImeVisible) {
+            val window = (dialogView.parent as? DialogWindowProvider)?.window
+            if (keepImeVisible) {
+                window?.addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+            }
+            onDispose {
+                if (keepImeVisible) {
+                    window?.clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+                }
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()

@@ -41,6 +41,10 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.simon.harmonichackernews.databinding.ActivityComposeBinding;
 import com.simon.harmonichackernews.network.UserActions;
+import com.simon.harmonichackernews.ui.editor.ComposeEditorController;
+import com.simon.harmonichackernews.ui.editor.ComposeEditorHost;
+import com.simon.harmonichackernews.ui.editor.ComposeEditorPreference;
+import com.simon.harmonichackernews.ui.editor.ComposeEditorSubmission;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
@@ -105,6 +109,8 @@ public class ComposeActivity extends AppCompatActivity {
     private int startBottomInset;
     private int endBottomInset;
     private boolean bottomInsetAnimationRunning;
+    private boolean composeUi;
+    private ComposeEditorController composeEditorController;
 
     private OnBackPressedCallback backPressedCallback;
 
@@ -113,6 +119,34 @@ public class ComposeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         ThemeUtils.setupTheme(this, false, false);
+
+        titleMaxLength = getResources().getInteger(R.integer.title_max_length);
+        Intent intent = getIntent();
+        id = intent.getIntExtra(EXTRA_ID, -1);
+        parentText = intent.getStringExtra(EXTRA_PARENT_TEXT);
+        postTitle = intent.getStringExtra(EXTRA_POST_TITLE);
+        user = intent.getStringExtra(EXTRA_USER);
+        type = intent.getIntExtra(EXTRA_TYPE, TYPE_POST);
+
+        if (type != TYPE_POST && id == -1) {
+            Toast.makeText(this, "Invalid comment id", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        composeUi = ComposeEditorPreference.shouldUseCompose(this);
+        if (composeUi) {
+            WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+            composeEditorController = ComposeEditorHost.install(
+                    this,
+                    type,
+                    parentText,
+                    postTitle,
+                    user,
+                    titleMaxLength,
+                    this::submitCompose);
+            return;
+        }
 
         ActivityComposeBinding binding = ActivityComposeBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -148,21 +182,6 @@ public class ComposeActivity extends AppCompatActivity {
         TooltipCompat.setTooltipText(submitButton, "Submit");
         setupSubmitButtonColors();
         setupFloatingControlElevation(binding.composeBottomToolbar);
-
-        titleMaxLength = getResources().getInteger(R.integer.title_max_length);
-
-        Intent intent = getIntent();
-        id = intent.getIntExtra(EXTRA_ID, -1);
-        parentText = intent.getStringExtra(EXTRA_PARENT_TEXT);
-        postTitle = intent.getStringExtra(EXTRA_POST_TITLE);
-        user = intent.getStringExtra(EXTRA_USER);
-        type = intent.getIntExtra(EXTRA_TYPE, TYPE_POST);
-
-
-        if (type != TYPE_POST && id == -1) {
-            Toast.makeText(this, "Invalid comment id", Toast.LENGTH_SHORT).show();
-            finish();
-        }
 
         switch (type) {
             case TYPE_TOP_COMMENT:
@@ -352,6 +371,9 @@ public class ComposeActivity extends AppCompatActivity {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        if (composeUi) {
+            return;
+        }
         updateReplyingPreviewHeight();
         if (composeContainer != null) {
             ViewCompat.requestApplyInsets(composeContainer);
@@ -644,6 +666,13 @@ public class ComposeActivity extends AppCompatActivity {
         }
 
         submitButtonLoading = loading;
+        if (composeUi) {
+            if (composeEditorController != null) {
+                composeEditorController.setSubmitting(loading);
+            }
+            return;
+        }
+
         submitButton.animate().cancel();
         submitLoadingIndicator.animate().cancel();
 
@@ -712,22 +741,58 @@ public class ComposeActivity extends AppCompatActivity {
             return;
         }
 
+        submitValues(
+                editTextTitle.getText().toString(),
+                editTextUrl.getText().toString(),
+                editTextText.getText().toString(),
+                editText.getText().toString());
+    }
+
+    private void submitCompose(@NonNull ComposeEditorSubmission submission) {
+        submitValues(
+                submission.getTitle(),
+                submission.getUrl(),
+                submission.getText(),
+                submission.getComment());
+    }
+
+    private void submitValues(@NonNull String submittedTitle,
+                              @NonNull String submittedUrl,
+                              @NonNull String submittedText,
+                              @NonNull String submittedComment) {
+        if (submitButtonLoading) {
+            return;
+        }
+
+        if (type == TYPE_POST) {
+            if (TextUtils.isEmpty(submittedTitle)
+                    || submittedTitle.length() > titleMaxLength
+                    || (TextUtils.isEmpty(submittedUrl) && TextUtils.isEmpty(submittedText))) {
+                return;
+            }
+        } else if (TextUtils.isEmpty(submittedComment)) {
+            return;
+        }
+
         if (!Utils.isNetworkAvailable(this)) {
-            showSubmissionFailure(null, null, getCommentDraft());
+            showSubmissionFailure(
+                    null,
+                    null,
+                    type == TYPE_POST ? null : submittedComment);
             return;
         }
 
         setSubmitLoading(true);
 
         if (type == TYPE_POST) {
-            final String postTitle = editTextTitle.getText().toString();
-            final String postText = editTextText.getText().toString();
-            final String postUrl = editTextUrl.getText().toString();
+            final String postTitle = submittedTitle;
+            final String postText = submittedText;
+            final String postUrl = submittedUrl;
 
-            UserActions.submit(postTitle, postText, postUrl, view.getContext(), new UserActions.ActionCallback() {
+            UserActions.submit(postTitle, postText, postUrl, this, new UserActions.ActionCallback() {
                 @Override
                 public void onSuccess(Response response) {
-                    Toast.makeText(view.getContext(), "Post submitted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ComposeActivity.this, "Post submitted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
                     finish();
                 }
 
@@ -753,18 +818,18 @@ public class ComposeActivity extends AppCompatActivity {
                         @Override
                         public void onCaptchaCancelled() {
                             resetSubmitButton();
-                            Toast.makeText(view.getContext(), "Post submission requires completing the HN captcha", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(ComposeActivity.this, "Post submission requires completing the HN captcha", Toast.LENGTH_SHORT).show();
                         }
                     });
                 }
             });
         } else {
-            final String commentText = editText.getText().toString();
+            final String commentText = submittedComment;
 
-            UserActions.comment(String.valueOf(id), commentText, view.getContext(), new UserActions.ActionCallback() {
+            UserActions.comment(String.valueOf(id), commentText, this, new UserActions.ActionCallback() {
                 @Override
                 public void onSuccess(Response response) {
-                    Toast.makeText(view.getContext(), "Comment posted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ComposeActivity.this, "Comment posted, it might take a minute to show up", Toast.LENGTH_SHORT).show();
                     finish();
                 }
 
@@ -786,17 +851,12 @@ public class ComposeActivity extends AppCompatActivity {
                         @Override
                         public void onCaptchaCancelled() {
                             resetSubmitButton();
-                            Toast.makeText(view.getContext(), "Comment posting requires completing the HN captcha", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(ComposeActivity.this, "Comment posting requires completing the HN captcha", Toast.LENGTH_SHORT).show();
                         }
                     });
                 }
             });
         }
-    }
-
-    @Nullable
-    private String getCommentDraft() {
-        return type == TYPE_POST ? null : editText.getText().toString();
     }
 
     private void showSubmissionFailure(@Nullable String summary,

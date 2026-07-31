@@ -36,8 +36,10 @@ val GoogleSansFlexRoundedFontFamily = FontFamily(
 @Immutable
 data class HarmonicColors(
     val background: Color,
+    val accent: Color,
     val onSurface: Color,
     val textPrimary: Color,
+    val textSecondary: Color,
     val link: Color,
     val surfaceContainerHigh: Color,
     val surfaceContainerHighest: Color,
@@ -52,6 +54,7 @@ data class HarmonicColors(
     val settingsHeaderSelected: Color,
     val settingsMainToggle: Color,
     val settingsMainToggleText: Color,
+    val overlayButton: Color,
 )
 
 private val LocalHarmonicColors = staticCompositionLocalOf<HarmonicColors> {
@@ -133,11 +136,19 @@ fun harmonicColors(context: Context): HarmonicColors {
     val defaultTextView = AppCompatTextView(context)
     return HarmonicColors(
         background = background,
+        accent = context.colorAttribute(
+            AppCompatR.attr.colorAccent,
+            fallbackScheme.primary,
+        ),
         onSurface = context.colorAttribute(
             MaterialR.attr.colorOnSurface,
             fallbackScheme.onSurface,
         ),
         textPrimary = Color(defaultTextView.currentTextColor),
+        textSecondary = context.colorAttribute(
+            R.attr.secondaryTextColor,
+            fallbackScheme.onSurfaceVariant,
+        ),
         link = Color(defaultTextView.linkTextColors.defaultColor),
         surfaceContainerHigh = context.colorAttribute(
             MaterialR.attr.colorSurfaceContainerHigh,
@@ -184,6 +195,10 @@ fun harmonicColors(context: Context): HarmonicColors {
         settingsMainToggleText = context.colorAttribute(
             R.attr.settingsMainToggleTextColor,
             fallbackScheme.onSecondaryContainer,
+        ),
+        overlayButton = context.colorAttribute(
+            R.attr.overlayButtonColor,
+            fallbackScheme.secondaryContainer,
         ),
     )
 }
