@@ -2,16 +2,21 @@ package com.simon.harmonichackernews.ui.settings
 
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.PathEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
@@ -23,22 +28,39 @@ import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberDecoratedNavEntries
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.scene.SceneInfo
+import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
+import androidx.navigationevent.compose.rememberNavigationEventState
 import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.Changelog
 import com.simon.harmonichackernews.utils.Utils
+import java.util.concurrent.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class SettingsSection(
     val route: String,
@@ -67,6 +89,11 @@ private data object SettingsListDestination : NavKey
 private data class SettingsDetailDestination(
     val section: SettingsSection,
 ) : NavKey
+
+private enum class SettingsNavigationDirection {
+    Forward,
+    Back,
+}
 
 private const val ActivityTransitionDurationMillis = 450
 private const val ActivityEnterAlphaDelayMillis = 50
@@ -105,7 +132,7 @@ private fun activityOpenTransition(offsetPx: Int): ContentTransform = ContentTra
     targetContentZIndex = 1f,
 )
 
-private fun activityCloseTransition(offsetPx: Int): ContentTransform = ContentTransform(
+private fun activityPopTransition(offsetPx: Int): ContentTransform = ContentTransform(
     targetContentEnter = slideInHorizontally(
         animationSpec = tween(
             durationMillis = ActivityTransitionDurationMillis,
@@ -149,14 +176,19 @@ fun SettingsShell(
     val selectedSection =
         (backStack.lastOrNull() as? SettingsDetailDestination)?.section
             ?: SettingsSection.Appearance
+    val detailPaneTransition = updateTransition(
+        targetState = selectedSection,
+        label = "Settings detail pane",
+    )
 
     LaunchedEffect(selectedSection) {
         onSectionChanged(selectedSection)
     }
 
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    val isFoldable = adaptiveInfo.windowPosture.hingeList.isNotEmpty() ||
+    val hasHingeAngleSensor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
         context.packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
+    val isFoldable = adaptiveInfo.windowPosture.hingeList.isNotEmpty() || hasHingeAngleSensor
     val directive = remember(adaptiveInfo) {
         calculatePaneScaffoldDirective(adaptiveInfo)
             .copy(horizontalPartitionSpacerSize = 12.dp)
@@ -170,23 +202,93 @@ fun SettingsShell(
         paneExpansionState = foldablePaneExpansionState.takeIf { isFoldable },
     )
     val showDetailNavigation = directive.maxHorizontalPartitions == 1
+    val showDetailNavigationState = rememberUpdatedState(showDetailNavigation)
     val activityTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
+    var detailNavigationDirection by remember {
+        mutableStateOf(SettingsNavigationDirection.Forward)
+    }
+    val backAnimationScope = rememberCoroutineScope()
+    var activeBackAnimation by remember {
+        mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
+    }
+    var isBackAnimationRunning by remember { mutableStateOf(false) }
 
     fun navigateTo(section: SettingsSection) {
         if ((backStack.lastOrNull() as? SettingsDetailDestination)?.section == section) {
             return
         }
-        if (backStack.lastOrNull() is SettingsDetailDestination) {
+        detailNavigationDirection = SettingsNavigationDirection.Forward
+        while (backStack.lastOrNull() is SettingsDetailDestination) {
             backStack.removeLastOrNull()
         }
         backStack.add(SettingsDetailDestination(section))
     }
 
-    fun navigateBack() {
+    fun popSettingsBackStack() {
         if (backStack.size > 1) {
+            detailNavigationDirection = SettingsNavigationDirection.Back
             backStack.removeLastOrNull()
         } else {
             onBackFromSettings()
+        }
+    }
+
+    fun navigateBack() {
+        if (backStack.size <= 1) {
+            onBackFromSettings()
+            return
+        }
+        if (isBackAnimationRunning) return
+        popSettingsBackStack()
+    }
+
+    PredictiveBackHandler(
+        enabled = (showDetailNavigation && backStack.size > 1) ||
+            (!showDetailNavigation && backStack.size > 2),
+    ) { events ->
+        if (!showDetailNavigation) {
+            try {
+                events.collect {}
+                popSettingsBackStack()
+            } catch (_: CancellationException) {
+                // A cancelled two-pane gesture leaves the selected detail unchanged.
+            }
+            return@PredictiveBackHandler
+        }
+
+        isBackAnimationRunning = true
+        var animation: DefaultActivityPredictiveBackAnimation? = null
+
+        try {
+            events.collect { event ->
+                val currentAnimation = animation
+                    ?: DefaultActivityPredictiveBackAnimation(event).also {
+                        animation = it
+                        activeBackAnimation = it
+                    }
+                backAnimationScope.launch {
+                    currentAnimation.animate(event)
+                }
+            }
+
+            val currentAnimation = animation
+            if (currentAnimation == null) {
+                isBackAnimationRunning = false
+                popSettingsBackStack()
+                return@PredictiveBackHandler
+            }
+            currentAnimation.finish()
+            popSettingsBackStack()
+            activeBackAnimation = null
+            isBackAnimationRunning = false
+        } catch (_: CancellationException) {
+            withContext(NonCancellable) {
+                animation?.cancel()
+                if (activeBackAnimation === animation) {
+                    activeBackAnimation = null
+                }
+                isBackAnimationRunning = false
+            }
         }
     }
 
@@ -194,139 +296,210 @@ fun SettingsShell(
         initialSection?.let(::navigateTo)
     }
 
+    val settingsEntryProvider = entryProvider<NavKey> {
+        entry<SettingsListDestination>(
+            metadata = ListDetailSceneStrategy.listPane(
+                detailPlaceholder = {
+                    AppearanceSettingsScreen(
+                        showNavigation = false,
+                        onBack = ::navigateBack,
+                        onNavigate = ::navigateTo,
+                        onThemeChanged = onThemeChanged,
+                    )
+                },
+            ),
+        ) {
+            SettingsListScreen(
+                selectedSection = selectedSection,
+                showSelection = !showDetailNavigationState.value,
+                onBack = onBackFromSettings,
+                onSectionSelected = ::navigateTo,
+            )
+        }
+
+        entry<SettingsDetailDestination>(
+            metadata = ListDetailSceneStrategy.detailPane(),
+        ) { destination ->
+            val singlePane = showDetailNavigationState.value
+            val detailContent: @Composable (SettingsSection) -> Unit = { section ->
+                when (section) {
+                    SettingsSection.Appearance -> AppearanceSettingsScreen(
+                        showNavigation = singlePane,
+                        onBack = ::navigateBack,
+                        onNavigate = ::navigateTo,
+                        onThemeChanged = onThemeChanged,
+                    )
+
+                    SettingsSection.Stories -> StoriesSettingsScreen(
+                        showNavigation = singlePane,
+                        onBack = ::navigateBack,
+                        onRequestRestart = onRequestRestart,
+                    )
+
+                    SettingsSection.Comments -> CommentsSettingsScreen(
+                        showNavigation = singlePane,
+                        onBack = ::navigateBack,
+                    )
+
+                    SettingsSection.WebLinks -> WebLinksSettingsScreen(
+                        showNavigation = singlePane,
+                        onBack = ::navigateBack,
+                    )
+
+                    SettingsSection.FiltersTags -> FiltersTagsSettingsScreen(
+                        showNavigation = singlePane,
+                        onBack = ::navigateBack,
+                    )
+
+                    SettingsSection.AiSummary -> AiSummarySettingsScreen(
+                        showNavigation = singlePane,
+                        onBack = ::navigateBack,
+                    )
+
+                    SettingsSection.Data -> DataSettingsScreen(
+                        showNavigation = singlePane,
+                        onBack = ::navigateBack,
+                        onRequestRestart = onRequestRestart,
+                    )
+
+                    SettingsSection.Debug -> DebugSettingsScreen(
+                        showNavigation = singlePane,
+                        onBack = ::navigateBack,
+                    )
+
+                    SettingsSection.About -> AboutScreen(
+                        onBack = ::navigateBack,
+                        onOpenGithub = {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    "https://github.com/SimonHalvdansson/Harmonic-HN".toUri(),
+                                ),
+                            )
+                        },
+                        onOpenChangelog = {
+                            SimpleMessageDialogController.show(
+                                title = "Changelog",
+                                message = Changelog.getFormatted(context).toString(),
+                            )
+                        },
+                        onOpenLicenses = {
+                            detailNavigationDirection = SettingsNavigationDirection.Forward
+                            backStack.add(
+                                SettingsDetailDestination(SettingsSection.Licenses),
+                            )
+                        },
+                        onOpenPrivacy = {
+                            Utils.launchCustomTab(
+                                context as androidx.fragment.app.FragmentActivity,
+                                "https://simonhalvdansson.github.io/harmonic_privacy.html",
+                            )
+                        },
+                        showNavigation = singlePane,
+                        singlePane = singlePane,
+                    )
+
+                    SettingsSection.Licenses -> LicensesScreen(
+                        onBack = ::navigateBack,
+                        onOpenLicense = { url ->
+                            Utils.launchCustomTab(
+                                context as androidx.fragment.app.FragmentActivity,
+                                url,
+                            )
+                        },
+                        singlePane = singlePane,
+                    )
+                }
+            }
+
+            if (singlePane) {
+                detailContent(destination.section)
+            } else {
+                detailPaneTransition.AnimatedContent(
+                    transitionSpec = {
+                        when (detailNavigationDirection) {
+                            SettingsNavigationDirection.Forward ->
+                                activityOpenTransition(activityTransitionOffsetPx)
+
+                            SettingsNavigationDirection.Back ->
+                                activityPopTransition(activityTransitionOffsetPx)
+                        }
+                    },
+                    content = { section ->
+                        detailContent(section)
+                    },
+                )
+            }
+        }
+    }
+    val decoratedEntries = rememberDecoratedNavEntries(
+        backStack = backStack,
+        entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
+        entryProvider = settingsEntryProvider,
+    )
+    val sceneState = rememberSceneState(
+        entries = decoratedEntries,
+        sceneStrategies = listOf(sceneStrategy),
+        onBack = ::navigateBack,
+    )
+    val navDisplayEventState = rememberNavigationEventState(
+        currentInfo = SceneInfo(sceneState.currentScene),
+    )
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(HarmonicTheme.colors.background),
     ) {
-        NavDisplay(
-            backStack = backStack,
-            onBack = ::navigateBack,
-            sceneStrategies = listOf(sceneStrategy),
-            transitionSpec = {
-                activityOpenTransition(activityTransitionOffsetPx)
-            },
-            popTransitionSpec = {
-                activityCloseTransition(activityTransitionOffsetPx)
-            },
-            predictivePopTransitionSpec = { _ ->
-                activityCloseTransition(activityTransitionOffsetPx)
-            },
-            entryProvider = entryProvider {
-                entry<SettingsListDestination>(
-                    metadata = ListDetailSceneStrategy.listPane(
-                        detailPlaceholder = {
-                            AppearanceSettingsScreen(
-                                showNavigation = false,
-                                onBack = ::navigateBack,
-                                onNavigate = ::navigateTo,
-                                onThemeChanged = onThemeChanged,
-                            )
-                        },
-                    ),
+        val animation = activeBackAnimation
+        val previousScene = sceneState.previousScenes.lastOrNull()
+
+        if (showDetailNavigation && animation != null && previousScene != null) {
+            key(previousScene.key) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(animation.enterModifier),
                 ) {
-                    SettingsListScreen(
-                        selectedSection = selectedSection,
-                        showSelection = !showDetailNavigation,
-                        onBack = onBackFromSettings,
-                        onSectionSelected = ::navigateTo,
-                    )
+                    previousScene.content()
                 }
-
-                entry<SettingsDetailDestination>(
-                    metadata = ListDetailSceneStrategy.detailPane(),
-                ) { destination ->
-                    when (destination.section) {
-                        SettingsSection.Appearance -> AppearanceSettingsScreen(
-                            showNavigation = showDetailNavigation,
-                            onBack = ::navigateBack,
-                            onNavigate = ::navigateTo,
-                            onThemeChanged = onThemeChanged,
-                        )
-
-                        SettingsSection.Stories -> StoriesSettingsScreen(
-                            showNavigation = showDetailNavigation,
-                            onBack = ::navigateBack,
-                            onRequestRestart = onRequestRestart,
-                        )
-
-                        SettingsSection.Comments -> CommentsSettingsScreen(
-                            showNavigation = showDetailNavigation,
-                            onBack = ::navigateBack,
-                        )
-
-                        SettingsSection.WebLinks -> WebLinksSettingsScreen(
-                            showNavigation = showDetailNavigation,
-                            onBack = ::navigateBack,
-                        )
-
-                        SettingsSection.FiltersTags -> FiltersTagsSettingsScreen(
-                            showNavigation = showDetailNavigation,
-                            onBack = ::navigateBack,
-                        )
-
-                        SettingsSection.AiSummary -> AiSummarySettingsScreen(
-                            showNavigation = showDetailNavigation,
-                            onBack = ::navigateBack,
-                        )
-
-                        SettingsSection.Data -> DataSettingsScreen(
-                            showNavigation = showDetailNavigation,
-                            onBack = ::navigateBack,
-                            onRequestRestart = onRequestRestart,
-                        )
-
-                        SettingsSection.Debug -> DebugSettingsScreen(
-                            showNavigation = showDetailNavigation,
-                            onBack = ::navigateBack,
-                        )
-
-                        SettingsSection.About -> AboutScreen(
-                            onBack = ::navigateBack,
-                            onOpenGithub = {
-                                context.startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
-                                        "https://github.com/SimonHalvdansson/Harmonic-HN".toUri(),
-                                    ),
-                                )
-                            },
-                            onOpenChangelog = {
-                                SimpleMessageDialogController.show(
-                                    title = "Changelog",
-                                    message = Changelog.getFormatted(context).toString(),
-                                )
-                            },
-                            onOpenLicenses = {
-                                backStack.add(
-                                    SettingsDetailDestination(SettingsSection.Licenses),
-                                )
-                            },
-                            onOpenPrivacy = {
-                                Utils.launchCustomTab(
-                                    context as androidx.fragment.app.FragmentActivity,
-                                    "https://simonhalvdansson.github.io/harmonic_privacy.html",
-                                )
-                            },
-                            showNavigation = showDetailNavigation,
-                            singlePane = showDetailNavigation,
-                        )
-
-                        SettingsSection.Licenses -> LicensesScreen(
-                            onBack = ::navigateBack,
-                            onOpenLicense = { url ->
-                                Utils.launchCustomTab(
-                                    context as androidx.fragment.app.FragmentActivity,
-                                    url,
-                                )
-                            },
-                            singlePane = showDetailNavigation,
-                        )
-
-                    }
+            }
+            key(sceneState.currentScene.key) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(animation.exitModifier),
+                ) {
+                    sceneState.currentScene.content()
                 }
-            },
-        )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            do {
+                                val event = awaitPointerEvent()
+                                event.changes.forEach { it.consume() }
+                            } while (event.changes.any { it.pressed })
+                        }
+                    },
+            )
+        } else {
+            NavDisplay(
+                sceneState = sceneState,
+                navigationEventState = navDisplayEventState,
+                transitionSpec = {
+                    activityOpenTransition(activityTransitionOffsetPx)
+                },
+                popTransitionSpec = {
+                    activityPopTransition(activityTransitionOffsetPx)
+                },
+                predictivePopTransitionSpec = { _ ->
+                    activityPopTransition(activityTransitionOffsetPx)
+                },
+            )
+        }
     }
 
     SimpleMessageDialogController.Content()

@@ -194,12 +194,12 @@ fun LicensesScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(colors.background)
             .windowInsetsPadding(
                 WindowInsets.systemBars.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
                 ),
-            )
-            .background(colors.background),
+            ),
     ) {
         HarmonicTopAppBar(
             title = "Third-party licenses",

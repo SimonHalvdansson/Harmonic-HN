@@ -29,6 +29,7 @@ fun WebLinksSettingsScreen(
         true,
     )
     val readerControlsEnabled = integratedWebView && readerModeEnabled
+    val readerModeFontSize = SettingsUtils.getReaderModeFontSize(context)
     val archiveDomains = SettingsUtils.getArchiveRedirectDomains(context)
 
     SettingsPage(
@@ -137,8 +138,13 @@ fun WebLinksSettingsScreen(
                 SettingsDivider()
                 SliderSetting(
                     title = "Text size",
-                    valueLabel = "${SettingsUtils.getReaderModeFontSize(context)}px",
-                    value = SettingsUtils.getReaderModeFontSize(context).toFloat(),
+                    valueLabel = buildString {
+                        append("${readerModeFontSize}px")
+                        if (readerModeFontSize == SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE) {
+                            append(" (default)")
+                        }
+                    },
+                    value = readerModeFontSize.toFloat(),
                     valueRange = SettingsUtils.MIN_READER_MODE_FONT_SIZE.toFloat()..
                         SettingsUtils.MAX_READER_MODE_FONT_SIZE.toFloat(),
                     steps = SettingsUtils.MAX_READER_MODE_FONT_SIZE -
