@@ -32,7 +32,6 @@ import com.simon.harmonichackernews.CoulombGasActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.utils.Changelog
 import com.simon.harmonichackernews.utils.Utils
 
 private const val OpenWithoutCacheStoryId = 49089500
@@ -331,12 +330,9 @@ private fun ChangelogDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    MessageActionDialog(
-        title = "Changelog",
-        message = Changelog.getFormatted(context),
-        neutralLabel = "GitHub",
-        negativeLabel = "Done",
-        onNeutral = {
+    SettingsChangelogDialog(
+        onDismiss = onDismiss,
+        onOpenGithub = {
             context.startActivity(
                 Intent(
                     Intent.ACTION_VIEW,
@@ -345,8 +341,6 @@ private fun ChangelogDialog(
             )
             onDismiss()
         },
-        onNegative = onDismiss,
-        onDismiss = onDismiss,
     )
 }
 

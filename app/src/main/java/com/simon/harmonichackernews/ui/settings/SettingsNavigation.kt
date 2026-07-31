@@ -21,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.PaneExpansionAnchor
@@ -46,6 +47,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavKey
@@ -56,10 +58,10 @@ import androidx.navigation3.scene.SceneInfo
 import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.compose.rememberNavigationEventState
+import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.utils.Changelog
 import com.simon.harmonichackernews.utils.Utils
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.NonCancellable
@@ -203,6 +205,41 @@ fun SettingsShell(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val adaptiveInfo = currentWindowAdaptiveInfoV2()
+    val configuration = LocalConfiguration.current
+    val supportsTwoPane = configuration.smallestScreenWidthDp >= 600
+    val hasHingeAngleSensor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+        context.packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
+    val isFoldable = adaptiveInfo.windowPosture.hingeList.isNotEmpty() || hasHingeAngleSensor
+    val directive = remember(adaptiveInfo, supportsTwoPane, isFoldable) {
+        val adaptiveDirective = calculatePaneScaffoldDirective(adaptiveInfo)
+        adaptiveDirective.copy(
+            maxHorizontalPartitions = if (supportsTwoPane) {
+                adaptiveDirective.maxHorizontalPartitions
+            } else {
+                1
+            },
+            horizontalPartitionSpacerSize = if (isFoldable) 12.dp else 16.dp,
+        )
+    }
+    val isTwoPane = directive.maxHorizontalPartitions > 1
+    val paneProportion = if (isFoldable) 0.5f else 0.4f
+    val paneExpansionState = rememberPaneExpansionState(
+        anchors = remember(paneProportion) {
+            listOf(PaneExpansionAnchor.Proportion(paneProportion))
+        },
+        initialAnchoredIndex = 0,
+    )
+    val sceneStrategy = rememberListDetailSceneStrategy<NavKey>(
+        directive = directive,
+        paneExpansionState = paneExpansionState.takeIf { isTwoPane },
+    )
+    val showDetailNavigation = !isTwoPane
+    val tabletPaneHorizontalPadding = if (isTwoPane && !isFoldable) {
+        dimensionResource(R.dimen.settings_extra_pane_padding)
+    } else {
+        0.dp
+    }
     val backStack = rememberSaveable(
         saver = listSaver(
             save = { stack ->
@@ -226,13 +263,21 @@ fun SettingsShell(
                         }
                     }
                     if (isEmpty()) add(SettingsListDestination)
+                    if (isTwoPane && lastOrNull() !is SettingsDetailDestination) {
+                        add(SettingsDetailDestination(SettingsSection.Appearance))
+                    }
                 }
             },
         ),
     ) {
         mutableStateListOf<NavKey>().apply {
             add(SettingsListDestination)
-            initialSection?.let { add(SettingsDetailDestination(it)) }
+            val initialDetailSection = initialSection ?: if (isTwoPane) {
+                SettingsSection.Appearance
+            } else {
+                null
+            }
+            initialDetailSection?.let { add(SettingsDetailDestination(it)) }
         }
     }
     val selectedSection =
@@ -247,32 +292,6 @@ fun SettingsShell(
         onSectionChanged(selectedSection)
     }
 
-    val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    val configuration = LocalConfiguration.current
-    val supportsTwoPane = configuration.smallestScreenWidthDp >= 600
-    val hasHingeAngleSensor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-        context.packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
-    val isFoldable = adaptiveInfo.windowPosture.hingeList.isNotEmpty() || hasHingeAngleSensor
-    val directive = remember(adaptiveInfo, supportsTwoPane) {
-        val adaptiveDirective = calculatePaneScaffoldDirective(adaptiveInfo)
-        adaptiveDirective.copy(
-            maxHorizontalPartitions = if (supportsTwoPane) {
-                adaptiveDirective.maxHorizontalPartitions
-            } else {
-                1
-            },
-            horizontalPartitionSpacerSize = 12.dp,
-        )
-    }
-    val foldablePaneExpansionState = rememberPaneExpansionState(
-        anchors = remember { listOf(PaneExpansionAnchor.Proportion(0.5f)) },
-        initialAnchoredIndex = 0,
-    )
-    val sceneStrategy = rememberListDetailSceneStrategy<NavKey>(
-        directive = directive,
-        paneExpansionState = foldablePaneExpansionState.takeIf { isFoldable },
-    )
-    val showDetailNavigation = directive.maxHorizontalPartitions == 1
     val showDetailNavigationState = rememberUpdatedState(showDetailNavigation)
     val activityTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
     val backAnimationScope = rememberCoroutineScope()
@@ -367,6 +386,12 @@ fun SettingsShell(
         initialSection?.let { navigateTo(it) }
     }
 
+    LaunchedEffect(isTwoPane) {
+        if (isTwoPane && backStack.lastOrNull() !is SettingsDetailDestination) {
+            backStack.add(SettingsDetailDestination(SettingsSection.Appearance))
+        }
+    }
+
     val settingsEntryProvider = entryProvider<NavKey> {
         entry<SettingsListDestination>(
             metadata = ListDetailSceneStrategy.listPane(
@@ -454,10 +479,7 @@ fun SettingsShell(
                             )
                         },
                         onOpenChangelog = {
-                            SimpleMessageDialogController.show(
-                                title = "Changelog",
-                                message = Changelog.getFormatted(context).toString(),
-                            )
+                            ChangelogDialogController.show()
                         },
                         onOpenLicenses = {
                             backStack.add(
@@ -556,6 +578,9 @@ fun SettingsShell(
             NavDisplay(
                 sceneState = sceneState,
                 navigationEventState = navDisplayEventState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = tabletPaneHorizontalPadding),
                 transitionSpec = {
                     activityOpenTransition(activityTransitionOffsetPx)
                 },
@@ -570,4 +595,5 @@ fun SettingsShell(
     }
 
     SimpleMessageDialogController.Content()
+    ChangelogDialogController.Content()
 }

@@ -38,6 +38,10 @@ public class Changelog {
                 .toMarkdown(readMarkdown(context));
     }
 
+    static public String getMarkdown(Context context) {
+        return readMarkdown(context);
+    }
+
     static private String readMarkdown(Context context) {
         if (cachedMarkdown != null) {
             return cachedMarkdown;

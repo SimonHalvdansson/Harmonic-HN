@@ -46,6 +46,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
@@ -72,6 +73,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.semantics.Role
@@ -120,9 +122,21 @@ internal fun SettingsAlertDialog(
     edgeToEdgeContent: Boolean = false,
     showButtons: Boolean = true,
     separateDismissButton: Boolean = false,
-    buttonsAtStart: Boolean = false,
     properties: DialogProperties = DialogProperties(),
+    scrollableContent: Boolean = false,
 ) {
+    val configuration = LocalConfiguration.current
+    val shortEdge = minOf(configuration.screenWidthDp, configuration.screenHeightDp)
+    val longEdge = maxOf(configuration.screenWidthDp, configuration.screenHeightDp)
+    val usesTabletDialogWidth = configuration.smallestScreenWidthDp >= 600 &&
+        longEdge >= shortEdge * 1.3f
+    val dialogMaxWidth = dimensionResource(
+        if (usesTabletDialogWidth) {
+            R.dimen.compose_settings_dialog_tablet_max_width
+        } else {
+            R.dimen.compose_settings_dialog_max_width
+        },
+    )
     var dialogBounds by remember { mutableStateOf<Rect?>(null) }
     var dialogRootOffset by remember { mutableStateOf(Offset.Zero) }
     Dialog(
@@ -176,7 +190,7 @@ internal fun SettingsAlertDialog(
                 Surface(
                     modifier = modifier
                         .widthIn(
-                            max = dimensionResource(R.dimen.compose_settings_dialog_max_width),
+                            max = dialogMaxWidth,
                         )
                         .fillMaxWidth()
                         .onGloballyPositioned { coordinates ->
@@ -209,6 +223,13 @@ internal fun SettingsAlertDialog(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .then(
+                                    if (scrollableContent) {
+                                        Modifier.weight(1f, fill = false)
+                                    } else {
+                                        Modifier
+                                    },
+                                )
                                 .padding(
                                     start = if (edgeToEdgeContent) {
                                         0.dp
@@ -241,28 +262,29 @@ internal fun SettingsAlertDialog(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 8.dp),
-                            horizontalArrangement = if (buttonsAtStart) {
-                                Arrangement.Start
-                            } else {
-                                Arrangement.End
-                            },
+                                .padding(
+                                    horizontal = dimensionResource(
+                                        R.dimen.compose_settings_dialog_content_padding,
+                                    ),
+                                    vertical = dimensionResource(
+                                        R.dimen.compose_settings_dialog_action_vertical_padding,
+                                    ),
+                                ),
+                            horizontalArrangement = Arrangement.spacedBy(
+                                8.dp,
+                                Alignment.End,
+                            ),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            if (buttonsAtStart) {
-                                dismissButton?.invoke()
-                                confirmButton()
-                            } else {
-                                neutralButton?.invoke()
-                                if (neutralButton != null) {
-                                    Spacer(Modifier.weight(1f))
-                                }
-                                dismissButton?.invoke()
-                                if (separateDismissButton && dismissButton != null) {
-                                    Spacer(Modifier.weight(1f))
-                                }
-                                confirmButton()
+                            neutralButton?.invoke()
+                            if (neutralButton != null) {
+                                Spacer(Modifier.weight(1f))
                             }
+                            dismissButton?.invoke()
+                            if (separateDismissButton && dismissButton != null) {
+                                Spacer(Modifier.weight(1f))
+                            }
+                            confirmButton()
                         }
                     }
                     }
@@ -739,6 +761,24 @@ internal fun SettingsDialogTextButton(
         modifier = modifier,
         enabled = enabled,
         shapes = ButtonDefaults.shapes(),
+        contentPadding = PaddingValues(horizontal = 24.dp),
+        content = content,
+    )
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun SettingsDialogOutlinedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable RowScope.() -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        shapes = ButtonDefaults.shapes(),
         content = content,
     )
 }
@@ -1068,6 +1108,11 @@ fun ItemsDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 480.dp),
+                contentPadding = PaddingValues(
+                    top = dimensionResource(
+                        R.dimen.compose_settings_dialog_item_top_padding,
+                    ),
+                ),
             ) {
                 items(options) { option ->
                     val index = options.indexOf(option)
@@ -1090,7 +1135,11 @@ fun ItemsDialog(
             }
         },
         confirmButton = {},
-        showButtons = false,
+        dismissButton = {
+            SettingsDialogTextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
     )
 }
 

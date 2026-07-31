@@ -1,9 +1,15 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class,
+)
 
 package com.simon.harmonichackernews.ui.settings
 
+import android.graphics.drawable.Drawable
+import android.widget.ImageView
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,12 +24,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,13 +51,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -58,14 +71,23 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.preference.PreferenceManager
+import coil.Coil
+import coil.decode.SvgDecoder
+import coil.request.ImageRequest
+import coil.target.ImageViewTarget
+import coil.util.CoilUtils
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.AiModelCatalog
 import com.simon.harmonichackernews.network.AiSummaryProviders
+import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.network.OpenRouterProviderIconLoader
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import okhttp3.Call
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -74,6 +96,8 @@ private val AiMonoFontFamily = FontFamily(
     Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
     Font(R.font.jetbrains_mono_bold, FontWeight.Bold),
 )
+
+private val AiFreeTitleSuffix = Regex("\\s*\\(free\\)\\s*$", RegexOption.IGNORE_CASE)
 
 @Composable
 fun AiSummaryTextDialog(
@@ -140,6 +164,17 @@ fun AiSummaryTextDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp)
+                    .then(
+                        if (maxLines <= 1) {
+                            Modifier.height(
+                                androidx.compose.ui.res.dimensionResource(
+                                    R.dimen.compose_settings_dialog_single_line_field_height,
+                                ),
+                            )
+                        } else {
+                            Modifier
+                        },
+                    )
                     .focusRequester(focusRequester),
                 label = { Text(hint) },
                 isError = error != null,
@@ -197,7 +232,6 @@ fun AiSummaryTextDialog(
         } else {
             null
         },
-        buttonsAtStart = preferenceKey == AiSummaryApiKeyStore.PREF_API_KEY,
     )
 }
 
@@ -382,6 +416,46 @@ fun AiModelSelectorDialog(
     val catalogCall = remember { arrayOfNulls<Call>(1) }
     val priceCall = remember { arrayOfNulls<Call>(1) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val requiredModelMessage = stringResource(R.string.ai_model_required)
+    var dismissing by remember { mutableStateOf(false) }
+
+    fun saveSelection(): Boolean {
+        val selected = modelInput.trim()
+        if (selected.isEmpty()) {
+            modelError = requiredModelMessage
+            return false
+        }
+        prefs.edit()
+            .putString(
+                AiModelCatalog.PREF_MODEL,
+                AiSummaryProviders.toProviderModelId(provider, selected),
+            )
+            .apply()
+        return true
+    }
+
+    fun dismissWithAnimation() {
+        if (dismissing) return
+        dismissing = true
+        keyboardController?.hide()
+        coroutineScope.launch {
+            sheetState.hide()
+        }.invokeOnCompletion {
+            if (!sheetState.isVisible) {
+                onDismiss()
+            } else {
+                dismissing = false
+            }
+        }
+    }
+
+    fun saveAndDismiss() {
+        if (saveSelection()) {
+            dismissWithAnimation()
+        }
+    }
 
     DisposableEffect(provider, filter, catalogReload) {
         var disposed = false
@@ -483,18 +557,19 @@ fun AiModelSelectorDialog(
                 .fillMaxHeight(0.92f),
         ) {
             Text(
-                text = "Choose a model",
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                text = stringResource(R.string.ai_model_choose_title),
+                modifier = Modifier.padding(start = 24.dp, top = 18.dp, end = 24.dp),
                 color = HarmonicTheme.colors.storyNormal,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 26.sp,
             )
             Text(
-                text = "Browse compatible text models and compare prices.",
-                modifier = Modifier.padding(horizontal = 24.dp),
+                text = stringResource(R.string.ai_model_catalog_subtitle),
+                modifier = Modifier.padding(start = 24.dp, top = 2.dp, end = 24.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp,
+                lineHeight = 17.sp,
             )
             OutlinedTextField(
                 value = modelInput,
@@ -504,8 +579,13 @@ fun AiModelSelectorDialog(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 14.dp),
-                label = { Text("Model ID") },
+                    .padding(start = 24.dp, top = 18.dp, end = 24.dp, bottom = 10.dp)
+                    .height(
+                        androidx.compose.ui.res.dimensionResource(
+                            R.dimen.compose_settings_dialog_single_line_field_height,
+                        ),
+                    ),
+                label = { Text(stringResource(R.string.ai_model_id_hint)) },
                 isError = modelError != null,
                 supportingText = modelError?.let { message ->
                     {
@@ -522,22 +602,7 @@ fun AiModelSelectorDialog(
                     imeAction = ImeAction.Done,
                 ),
                 keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (modelInput.isBlank()) {
-                            modelError = "Model is required"
-                        } else {
-                            prefs.edit()
-                                .putString(
-                                    AiModelCatalog.PREF_MODEL,
-                                    AiSummaryProviders.toProviderModelId(
-                                        provider,
-                                        modelInput.trim(),
-                                    ),
-                                )
-                                .apply()
-                            onDismiss()
-                        }
-                    },
+                    onDone = { saveAndDismiss() },
                 ),
             )
             AiModelPrice(priceState)
@@ -551,19 +616,20 @@ fun AiModelSelectorDialog(
                 val count = (catalogState as? AiModelCatalogState.Loaded)?.models?.size
                 Text(
                     text = count?.let {
-                        if (it == 1) "1 model" else "$it models"
-                    } ?: "Suggestions",
+                        pluralStringResource(R.plurals.ai_model_count, it, it)
+                    } ?: stringResource(R.string.ai_model_suggestions),
                     modifier = Modifier.weight(1f),
                     color = HarmonicTheme.colors.storyNormal,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 17.sp,
+                    lineHeight = 21.sp,
                 )
             }
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 4.dp),
+                    .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 items(AiModelFilter.entries, key = { it.name }) { option ->
@@ -573,9 +639,13 @@ fun AiModelSelectorDialog(
                         label = {
                             Text(
                                 when (option) {
-                                    AiModelFilter.Popular -> "Popular"
-                                    AiModelFilter.Free -> "Free"
-                                    AiModelFilter.Price -> "Price"
+                                    AiModelFilter.Popular -> stringResource(
+                                        R.string.ai_model_sort_popular,
+                                    )
+                                    AiModelFilter.Free -> stringResource(R.string.ai_model_sort_free)
+                                    AiModelFilter.Price -> stringResource(
+                                        R.string.ai_model_sort_price,
+                                    )
                                 },
                             )
                         },
@@ -622,7 +692,7 @@ fun AiModelSelectorDialog(
 
                         is AiModelCatalogState.Loaded -> {
                             if (state.models.isEmpty()) {
-                                Text("No free models found")
+                                Text(stringResource(R.string.ai_model_no_free))
                             } else {
                                 LazyColumn(
                                     modifier = Modifier
@@ -666,34 +736,22 @@ fun AiModelSelectorDialog(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 SettingsDialogTextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.height(56.dp),
-                ) {
-                    Text("Cancel")
-                }
-                Button(
-                    onClick = {
-                        val selected = modelInput.trim()
-                        if (selected.isEmpty()) {
-                            modelError = "Model is required"
-                        } else {
-                            prefs.edit()
-                                .putString(
-                                    AiModelCatalog.PREF_MODEL,
-                                    AiSummaryProviders.toProviderModelId(
-                                        provider,
-                                        selected,
-                                    ),
-                                )
-                                .apply()
-                            onDismiss()
-                        }
-                    },
+                    onClick = { dismissWithAnimation() },
                     modifier = Modifier
                         .height(56.dp)
-                        .padding(start = 8.dp),
+                        .widthIn(min = 94.dp),
                 ) {
-                    Text("Save")
+                    Text(stringResource(R.string.ai_model_cancel))
+                }
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = { saveAndDismiss() },
+                    modifier = Modifier
+                        .height(56.dp)
+                        .widthIn(min = 123.dp),
+                    shapes = ButtonDefaults.shapes(),
+                ) {
+                    Text(stringResource(R.string.ai_model_save))
                 }
             }
         }
@@ -772,15 +830,29 @@ private fun AiModelRow(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    val rowShape = RoundedCornerShape(18.dp)
+    val normalContainer = HarmonicTheme.colors.surfaceContainerHigh
+    val containerColor = if (selected) {
+        lerp(normalContainer, MaterialTheme.colorScheme.primaryContainer, 0.04f)
+    } else {
+        normalContainer
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 4.dp)
             .defaultMinSize(minHeight = 92.dp)
+            .then(
+                if (selected) {
+                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, rowShape)
+                } else {
+                    Modifier
+                },
+            )
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
+        shape = rowShape,
         colors = CardDefaults.cardColors(
-            containerColor = HarmonicTheme.colors.surfaceContainerHigh,
+            containerColor = containerColor,
         ),
     ) {
         Row(
@@ -789,34 +861,23 @@ private fun AiModelRow(
                 .padding(start = 16.dp, top = 13.dp, end = 8.dp, bottom = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        CircleShape,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = model.providerSlug().take(1).uppercase(),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                )
-            }
+            AiModelProviderIcon(providerSlug = model.providerSlug())
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 10.dp),
             ) {
                 Text(
-                    text = model.name,
+                    text = if (model.isFree) {
+                        model.name.replace(AiFreeTitleSuffix, "")
+                    } else {
+                        model.name
+                    },
                     color = HarmonicTheme.colors.storyNormal,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
+                    lineHeight = 20.sp,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -826,6 +887,7 @@ private fun AiModelRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = AiMonoFontFamily,
                     fontSize = 11.sp,
+                    lineHeight = 17.sp,
                     maxLines = 1,
                     overflow = TextOverflow.MiddleEllipsis,
                 )
@@ -843,19 +905,106 @@ private fun AiModelRow(
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
+                        lineHeight = 16.sp,
                     )
                 } else {
                     Text(
-                        text = "${model.formattedInputPrice()} input · " +
-                            "${model.formattedOutputPrice()} output / 1M",
+                        text = stringResource(
+                            R.string.ai_model_row_price_format,
+                            model.formattedInputPrice(),
+                            model.formattedOutputPrice(),
+                        ),
                         modifier = Modifier.padding(top = 7.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
+                        lineHeight = 16.sp,
                     )
                 }
             }
             Spacer(Modifier.width(8.dp))
             SettingsRadioButton(selected = selected)
+        }
+    }
+}
+
+@Composable
+private fun AiModelProviderIcon(providerSlug: String) {
+    var iconData by remember(providerSlug) { mutableStateOf<Any?>(null) }
+
+    DisposableEffect(providerSlug) {
+        var active = true
+        OpenRouterProviderIconLoader.resolve(providerSlug) { resolvedSlug, resolvedIcon ->
+            if (active && resolvedSlug.equals(providerSlug, ignoreCase = true)) {
+                iconData = resolvedIcon
+            }
+        }
+        onDispose {
+            active = false
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = providerSlug.take(1).uppercase().ifEmpty { "?" },
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontFamily = ProductSansFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+        )
+        iconData?.let { resolvedIcon ->
+            AndroidView(
+                factory = { viewContext ->
+                    ImageView(viewContext).apply {
+                        scaleType = ImageView.ScaleType.FIT_CENTER
+                        setBackgroundResource(R.drawable.favicon_thumbnail_background)
+                        clipToOutline = true
+                        alpha = 0f
+                    }
+                },
+                modifier = Modifier.size(22.dp),
+                update = { imageView ->
+                    if (imageView.tag == resolvedIcon) return@AndroidView
+                    CoilUtils.dispose(imageView)
+                    imageView.tag = resolvedIcon
+                    imageView.alpha = 0f
+                    imageView.setImageDrawable(null)
+                    val requestBuilder = ImageRequest.Builder(imageView.context)
+                        .data(resolvedIcon)
+                        .setHeader("User-Agent", NetworkComponent.USER_AGENT)
+                        .crossfade(100)
+                        .target(
+                            object : ImageViewTarget(imageView) {
+                                override fun onStart(placeholder: Drawable?) {
+                                    super.onStart(null)
+                                }
+
+                                override fun onSuccess(result: Drawable) {
+                                    if (imageView.tag != resolvedIcon) return
+                                    super.onSuccess(result)
+                                    imageView.alpha = 1f
+                                }
+
+                                override fun onError(error: Drawable?) {
+                                    if (imageView.tag != resolvedIcon) return
+                                    super.onError(null)
+                                    imageView.alpha = 0f
+                                }
+                            },
+                        )
+                    if (
+                        resolvedIcon is ByteArray ||
+                        resolvedIcon is String && resolvedIcon.contains(".svg", ignoreCase = true)
+                    ) {
+                        requestBuilder.decoderFactory(SvgDecoder.Factory())
+                    }
+                    Coil.imageLoader(imageView.context).enqueue(requestBuilder.build())
+                },
+            )
         }
     }
 }

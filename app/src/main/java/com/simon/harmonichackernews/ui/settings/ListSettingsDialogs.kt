@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
@@ -560,41 +561,102 @@ fun UserTagDialog(
 
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
+        edgeToEdgeContent = true,
         text = {
-            OutlinedTextField(
-                value = tag,
-                onValueChange = { tag = it },
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .focusRequester(focusRequester),
-                label = { Text("Tag") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        val saved = tag.trim()
-                        Utils.setUserTag(context, userName, saved)
-                        onSaved(saved)
-                    },
-                ),
-            )
-        },
-        confirmButton = {
-            SettingsDialogTextButton(
-                onClick = {
-                    val saved = tag.trim()
-                    Utils.setUserTag(context, userName, saved)
-                    onSaved(saved)
-                },
+                    .padding(
+                        horizontal = androidx.compose.ui.res.dimensionResource(
+                            R.dimen.compose_settings_dialog_content_padding,
+                        ),
+                    )
+                    .padding(
+                        bottom = androidx.compose.ui.res.dimensionResource(
+                            R.dimen.compose_settings_dialog_content_padding,
+                        ),
+                    ),
             ) {
-                Text("Set")
+                OutlinedTextField(
+                    value = tag,
+                    onValueChange = { tag = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(
+                            androidx.compose.ui.res.dimensionResource(
+                                R.dimen.compose_settings_dialog_single_line_field_height,
+                            ),
+                        )
+                        .focusRequester(focusRequester),
+                    label = { Text("Tag") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            val saved = tag.trim()
+                            Utils.setUserTag(context, userName, saved)
+                            onSaved(saved)
+                        },
+                    ),
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            top = androidx.compose.ui.res.dimensionResource(
+                                R.dimen.compose_settings_tag_field_button_gap,
+                            ),
+                        ),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+                ) {
+                    SettingsDialogOutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .height(
+                                androidx.compose.ui.res.dimensionResource(
+                                    R.dimen.compose_settings_tag_button_height,
+                                ),
+                            )
+                            .widthIn(
+                                min = androidx.compose.ui.res.dimensionResource(
+                                    R.dimen.compose_settings_tag_cancel_button_min_width,
+                                ),
+                            ),
+                    ) {
+                        Text("Cancel")
+                    }
+                    Spacer(
+                        Modifier.width(
+                            androidx.compose.ui.res.dimensionResource(
+                                R.dimen.compose_settings_tag_button_gap,
+                            ),
+                        ),
+                    )
+                    SettingsDialogOutlinedButton(
+                        onClick = {
+                            val saved = tag.trim()
+                            Utils.setUserTag(context, userName, saved)
+                            onSaved(saved)
+                        },
+                        modifier = Modifier
+                            .height(
+                                androidx.compose.ui.res.dimensionResource(
+                                    R.dimen.compose_settings_tag_button_height,
+                                ),
+                            )
+                            .widthIn(
+                                min = androidx.compose.ui.res.dimensionResource(
+                                    R.dimen.compose_settings_tag_button_min_width,
+                                ),
+                            ),
+                    ) {
+                        Text("Set")
+                    }
+                }
             }
         },
-        dismissButton = {
-            SettingsDialogTextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
+        confirmButton = {},
+        showButtons = false,
     )
 }
 
