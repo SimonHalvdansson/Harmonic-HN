@@ -8,7 +8,6 @@ import android.view.LayoutInflater
 import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
@@ -18,6 +17,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -25,14 +25,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.preference.PreferenceManager
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.CoulombGasActivity
-import com.simon.harmonichackernews.DebugNotificationsDialogFragment
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.WelcomeDialogFragment
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.Changelog
@@ -118,10 +115,9 @@ fun DebugSettingsScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as? AppCompatActivity
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
-    var dialog by remember { mutableStateOf<String?>(null) }
+    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
     var versionTapCount by remember { mutableIntStateOf(0) }
     var lastVersionTapTime by remember { mutableLongStateOf(0L) }
 
@@ -132,6 +128,7 @@ fun DebugSettingsScreen(
         title = "Debug",
         showNavigation = showNavigation,
         onBack = onBack,
+        contentVersion = refresh,
     ) {
         item {
             SettingsCategory("Debug tools") {
@@ -199,11 +196,7 @@ fun DebugSettingsScreen(
                 SettingRow(
                     title = "Welcome dialog",
                     icon = R.drawable.ic_explore,
-                    onClick = {
-                        activity?.let {
-                            WelcomeDialogFragment.show(it.supportFragmentManager)
-                        }
-                    },
+                    onClick = { dialog = "welcome" },
                 )
                 SettingsDivider()
                 SettingRow(
@@ -215,13 +208,7 @@ fun DebugSettingsScreen(
                 SettingRow(
                     title = "Debug notifications",
                     icon = R.drawable.ic_notifications,
-                    onClick = {
-                        activity?.let {
-                            DebugNotificationsDialogFragment.show(
-                                it.supportFragmentManager,
-                            )
-                        }
-                    },
+                    onClick = { dialog = "notifications" },
                 )
             }
         }
@@ -254,31 +241,35 @@ fun DebugSettingsScreen(
                     title = "App build",
                     summary = BuildConfig.VERSION_CODE.toString(),
                     icon = R.drawable.ic_tag,
-                    enabled = false,
-                    onClick = {},
+                    onClick = null,
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Build version",
                     summary = BuildConfig.BUILD_TYPE,
                     icon = R.drawable.ic_build,
-                    enabled = false,
-                    onClick = {},
+                    onClick = null,
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Android version",
                     summary = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
                     icon = R.drawable.ic_android,
-                    enabled = false,
-                    onClick = {},
+                    onClick = null,
                 )
             }
         }
     }
 
     when (dialog) {
-        "changelog" -> LegacyChangelogDialog(
+        "changelog" -> ChangelogDialog(
+            onDismiss = { dialog = null },
+        )
+        "welcome" -> WelcomeSettingsDialog(
+            styleChooser = false,
+            onDismiss = { dialog = null },
+        )
+        "notifications" -> DebugNotificationsDialog(
             onDismiss = { dialog = null },
         )
     }
@@ -336,39 +327,27 @@ private fun DebugHnIdSetting(
 }
 
 @Composable
-private fun LegacyChangelogDialog(
+private fun ChangelogDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val currentOnDismiss by rememberUpdatedState(onDismiss)
-    DisposableEffect(context) {
-        val dialog = MaterialAlertDialogBuilder(context)
-            .setTitle("Changelog")
-            .setMessage(Changelog.getFormatted(context))
-            .setNeutralButton("GitHub") { _, _ ->
-                context.startActivity(
-                    Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse("https://github.com/SimonHalvdansson/Harmonic-HN"),
-                    ),
-                )
-                currentOnDismiss()
-            }
-            .setNegativeButton("Done") { _, _ ->
-                currentOnDismiss()
-            }
-            .setOnCancelListener {
-                currentOnDismiss()
-            }
-            .create()
-        dialog.show()
-        onDispose {
-            dialog.setOnCancelListener(null)
-            if (dialog.isShowing) {
-                dialog.dismiss()
-            }
-        }
-    }
+    MessageActionDialog(
+        title = "Changelog",
+        message = Changelog.getFormatted(context),
+        neutralLabel = "GitHub",
+        negativeLabel = "Done",
+        onNeutral = {
+            context.startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://github.com/SimonHalvdansson/Harmonic-HN"),
+                ),
+            )
+            onDismiss()
+        },
+        onNegative = onDismiss,
+        onDismiss = onDismiss,
+    )
 }
 
 @Composable

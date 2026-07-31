@@ -7,19 +7,18 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Bookmark
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
-import com.simon.harmonichackernews.settings.AddBookmarksToFavoritesDialogFragment
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import com.simon.harmonichackernews.utils.HistoriesUtils
@@ -39,8 +38,9 @@ fun DataSettingsScreen(
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
     var localRefresh by remember { mutableIntStateOf(0) }
-    var dialog by remember { mutableStateOf<String?>(null) }
-    var overwriteBookmarksOnImport by remember { mutableStateOf(true) }
+    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
+    var overwriteBookmarksOnImport by rememberSaveable { mutableStateOf(true) }
+    var favoriteIds by remember { mutableStateOf<IntArray?>(null) }
 
     @Suppress("UNUSED_VARIABLE")
     val observedRefresh = refresh + localRefresh
@@ -97,6 +97,7 @@ fun DataSettingsScreen(
         title = "Data",
         showNavigation = showNavigation,
         onBack = onBack,
+        contentVersion = refresh + localRefresh,
     ) {
         item {
             SettingsCategory("Bookmarks") {
@@ -121,16 +122,9 @@ fun DataSettingsScreen(
                     icon = R.drawable.ic_star,
                     enabled = bookmarksEnabled && hasBookmarks && loggedIn,
                     onClick = {
-                        val ids = Utils.loadBookmarks(context, true)
+                        favoriteIds = Utils.loadBookmarks(context, true)
                             .map(Bookmark::id)
                             .toIntArray()
-                        (context as? AppCompatActivity)?.let { activity ->
-                            AddBookmarksToFavoritesDialogFragment.newInstance(ids)
-                                .show(
-                                    activity.supportFragmentManager,
-                                    "AddBookmarksToFavoritesDialogFragment",
-                                )
-                        }
                     },
                 )
                 SettingsDivider()
@@ -284,6 +278,16 @@ fun DataSettingsScreen(
                 dialog = null
             },
             onDismiss = { dialog = null },
+        )
+    }
+
+    favoriteIds?.let { ids ->
+        AddBookmarksToFavoritesDialog(
+            bookmarkIds = ids,
+            onDismiss = {
+                favoriteIds = null
+                localRefresh++
+            },
         )
     }
 }

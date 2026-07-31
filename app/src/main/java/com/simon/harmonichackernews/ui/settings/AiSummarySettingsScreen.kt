@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.settings
 
-import android.text.InputType
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
@@ -18,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -28,10 +28,7 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.AiModelCatalog
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.network.SummaryManager
-import com.simon.harmonichackernews.settings.AiModelSelectorDialogFragment
-import com.simon.harmonichackernews.settings.AiSummaryBaseUrlDialogFragment
 import com.simon.harmonichackernews.settings.AiSummaryModePreference
-import com.simon.harmonichackernews.settings.AiSummaryTextDialogFragment
 import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.summary.local.LocalModelManager
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
@@ -65,6 +62,7 @@ fun AiSummarySettingsScreen(
     }
     var nanoAvailabilityResolved by remember { mutableStateOf(false) }
     var nanoAvailable by remember { mutableStateOf(false) }
+    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
 
     @Suppress("UNUSED_VARIABLE")
     val observedRefresh = preferenceRefresh + localRefresh
@@ -90,12 +88,6 @@ fun AiSummarySettingsScreen(
             }
             LocalModelManager.addStatusListener(context, modelListener)
             LocalAiRuntimeManager.addStatusListener(context, runtimeListener)
-            activity.supportFragmentManager.setFragmentResultListener(
-                AiSummaryTextDialogFragment.RESULT_KEY,
-                activity,
-            ) { _, _ ->
-                localRefresh++
-            }
 
             var disposed = false
             if (SummaryManager.canAttemptLocalSummarization()) {
@@ -131,9 +123,6 @@ fun AiSummarySettingsScreen(
                 disposed = true
                 LocalModelManager.removeStatusListener(modelListener)
                 LocalAiRuntimeManager.removeStatusListener(runtimeListener)
-                activity.supportFragmentManager.clearFragmentResultListener(
-                    AiSummaryTextDialogFragment.RESULT_KEY,
-                )
             }
         }
     }
@@ -174,6 +163,7 @@ fun AiSummarySettingsScreen(
         title = "AI summarization",
         showNavigation = showNavigation,
         onBack = onBack,
+        contentVersion = observedRefresh,
     ) {
         item {
             SettingsMainToggle(
@@ -229,13 +219,7 @@ fun AiSummarySettingsScreen(
                     summary = baseUrl,
                     icon = R.drawable.ic_link,
                     enabled = cloudMode,
-                    onClick = {
-                        activity?.let {
-                            AiSummaryBaseUrlDialogFragment.show(
-                                it.supportFragmentManager,
-                            )
-                        }
-                    },
+                    onClick = { dialog = "base_url" },
                 )
                 SettingsDivider()
                 SettingRow(
@@ -247,25 +231,7 @@ fun AiSummarySettingsScreen(
                     },
                     icon = R.drawable.ic_key,
                     enabled = cloudMode,
-                    onClick = {
-                        activity?.let {
-                            AiSummaryTextDialogFragment.show(
-                                it.supportFragmentManager,
-                                AiSummaryApiKeyStore.PREF_API_KEY,
-                                "API Key",
-                                "API Key",
-                                "",
-                                InputType.TYPE_CLASS_TEXT or
-                                    InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS,
-                                1,
-                                1,
-                                16,
-                                true,
-                                true,
-                                false,
-                            )
-                        }
-                    },
+                    onClick = { dialog = "api_key" },
                 )
                 SettingsDivider()
                 SettingRow(
@@ -273,13 +239,7 @@ fun AiSummarySettingsScreen(
                     summary = model.ifBlank { "Finding a recommended model…" },
                     icon = R.drawable.ic_hard_drive,
                     enabled = cloudMode,
-                    onClick = {
-                        activity?.let {
-                            AiModelSelectorDialogFragment.show(
-                                it.supportFragmentManager,
-                            )
-                        }
-                    },
+                    onClick = { dialog = "model" },
                 )
                 SettingsDivider()
                 SettingRow(
@@ -290,26 +250,7 @@ fun AiSummarySettingsScreen(
                     summaryLineHeightSp = 17f,
                     summaryMaxLines = 10,
                     enabled = cloudMode,
-                    onClick = {
-                        activity?.let {
-                            AiSummaryTextDialogFragment.show(
-                                it.supportFragmentManager,
-                                KeyAiSystemPrompt,
-                                "System prompt",
-                                "System prompt",
-                                DefaultSystemPrompt,
-                                InputType.TYPE_CLASS_TEXT or
-                                    InputType.TYPE_TEXT_FLAG_MULTI_LINE or
-                                    InputType.TYPE_TEXT_FLAG_CAP_SENTENCES,
-                                5,
-                                10,
-                                15,
-                                false,
-                                true,
-                                true,
-                            )
-                        }
-                    },
+                    onClick = { dialog = "system_prompt" },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
@@ -323,6 +264,43 @@ fun AiSummarySettingsScreen(
                 )
             }
         }
+    }
+
+    when (dialog) {
+        "base_url" -> AiSummaryBaseUrlDialog(
+            onDismiss = { dialog = null },
+        )
+        "api_key" -> AiSummaryTextDialog(
+            preferenceKey = AiSummaryApiKeyStore.PREF_API_KEY,
+            title = "API Key",
+            hint = "API Key",
+            defaultValue = "",
+            minLines = 1,
+            maxLines = 1,
+            textSizeSp = 16,
+            trimValue = true,
+            allowEmpty = true,
+            showReset = false,
+            onDismiss = { dialog = null },
+            onSaved = { localRefresh++ },
+        )
+        "model" -> AiModelSelectorDialog(
+            onDismiss = { dialog = null },
+        )
+        "system_prompt" -> AiSummaryTextDialog(
+            preferenceKey = KeyAiSystemPrompt,
+            title = "System prompt",
+            hint = "System prompt",
+            defaultValue = DefaultSystemPrompt,
+            minLines = 5,
+            maxLines = 10,
+            textSizeSp = 15,
+            trimValue = false,
+            allowEmpty = true,
+            showReset = true,
+            onDismiss = { dialog = null },
+            onSaved = { localRefresh++ },
+        )
     }
 }
 

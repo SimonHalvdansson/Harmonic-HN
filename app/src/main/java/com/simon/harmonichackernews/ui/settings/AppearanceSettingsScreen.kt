@@ -1,23 +1,18 @@
 package com.simon.harmonichackernews.ui.settings
 
 import android.text.format.DateFormat
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.preference.PreferenceManager
-import com.google.android.material.timepicker.MaterialTimePicker
-import com.google.android.material.timepicker.TimeFormat
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.WelcomeDialogFragment
-import com.simon.harmonichackernews.settings.FontSelectionDialogFragment
-import com.simon.harmonichackernews.settings.PaletteTintDialogFragment
-import com.simon.harmonichackernews.settings.ThemeSelectionDialogFragment
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.text.SimpleDateFormat
@@ -33,9 +28,9 @@ fun AppearanceSettingsScreen(
 ) {
     val context = LocalContext.current
     val resources = LocalResources.current
-    val activity = context as? AppCompatActivity
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     var refreshToken by remember { mutableIntStateOf(0) }
+    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
 
     DisposableEffect(prefs) {
         val listener =
@@ -45,21 +40,6 @@ fun AppearanceSettingsScreen(
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-    DisposableEffect(activity) {
-        val fragmentManager = activity?.supportFragmentManager
-        fragmentManager?.setFragmentResultListener(
-            ThemeSelectionDialogFragment.RESULT_KEY,
-            activity,
-        ) { _, _ ->
-            onThemeChanged()
-        }
-        onDispose {
-            fragmentManager?.clearFragmentResultListener(
-                ThemeSelectionDialogFragment.RESULT_KEY,
-            )
-        }
-    }
-
     @Suppress("UNUSED_VARIABLE")
     val observedRefresh = refreshToken
     val theme = prefs.getString(SettingsUtils.PREF_THEME, SettingsUtils.DEFAULT_THEME)
@@ -76,18 +56,15 @@ fun AppearanceSettingsScreen(
         title = "Appearance",
         showNavigation = showNavigation,
         onBack = onBack,
+        contentVersion = refreshToken,
     ) {
         item {
             SettingsCategory("Theme") {
                 SettingRow(
                     title = "Theme",
-                    summary = ThemeSelectionDialogFragment.getThemeLabel(context, theme),
+                    summary = composeThemeLabel(theme),
                     icon = R.drawable.ic_style,
-                    onClick = {
-                        activity?.supportFragmentManager?.let(
-                            ThemeSelectionDialogFragment::show,
-                        )
-                    },
+                    onClick = { dialog = "theme" },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
@@ -105,32 +82,18 @@ fun AppearanceSettingsScreen(
                     summary = formatNighttimeRange(context),
                     icon = R.drawable.ic_schedule,
                     enabled = specialNighttime,
-                    onClick = {
-                        activity?.let {
-                            showNighttimeRangePickers(
-                                activity = it,
-                                onRangeSelected = onThemeChanged,
-                            )
-                        }
-                    },
+                    onClick = { dialog = "nighttime_range" },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Nighttime theme",
-                    summary = ThemeSelectionDialogFragment.getThemeLabel(
-                        context,
+                    summary = composeThemeLabel(
                         nighttimeTheme,
-                        false,
-                        true,
                         SettingsUtils.DEFAULT_NIGHTTIME_THEME,
                     ),
                     icon = R.drawable.ic_dark_mode,
                     enabled = specialNighttime,
-                    onClick = {
-                        activity?.supportFragmentManager?.let(
-                            ThemeSelectionDialogFragment::showNighttimeTheme,
-                        )
-                    },
+                    onClick = { dialog = "nighttime_theme" },
                 )
             }
         }
@@ -141,11 +104,7 @@ fun AppearanceSettingsScreen(
                     title = "Title and comment font",
                     summary = SettingsUtils.getPreferredFontLabel(context),
                     icon = R.drawable.ic_font_download,
-                    onClick = {
-                        activity?.supportFragmentManager?.let(
-                            FontSelectionDialogFragment::show,
-                        )
-                    },
+                    onClick = { dialog = "font" },
                 )
                 SettingsDivider()
                 SettingRow(
@@ -157,13 +116,7 @@ fun AppearanceSettingsScreen(
                     },
                     icon = R.drawable.ic_palette,
                     enabled = SettingsUtils.shouldTintCardUsingPreview(context),
-                    onClick = {
-                        activity?.let {
-                            PaletteTintDialogFragment.show(
-                                it.supportFragmentManager,
-                            )
-                        }
-                    },
+                    onClick = { dialog = "palette_tint" },
                 )
                 if (resources.getBoolean(R.bool.before_android_15)) {
                     SettingsDivider()
@@ -197,13 +150,7 @@ fun AppearanceSettingsScreen(
                 SettingRow(
                     title = "General style",
                     icon = R.drawable.ic_design_services,
-                    onClick = {
-                        activity?.let {
-                            WelcomeDialogFragment.showStyleChooser(
-                                it.supportFragmentManager,
-                            )
-                        }
-                    },
+                    onClick = { dialog = "style" },
                 )
                 SettingsDivider()
                 SettingRow(
@@ -220,44 +167,34 @@ fun AppearanceSettingsScreen(
             }
         }
     }
-}
 
-private fun showNighttimeRangePickers(
-    activity: AppCompatActivity,
-    onRangeSelected: () -> Unit,
-) {
-    val current = Utils.getNighttimeHours(activity)
-    val timeFormat = if (DateFormat.is24HourFormat(activity)) {
-        TimeFormat.CLOCK_24H
-    } else {
-        TimeFormat.CLOCK_12H
+    when (dialog) {
+        "theme" -> ThemeSelectionDialog(
+            nighttime = false,
+            onDismiss = { dialog = null },
+            onThemeChanged = onThemeChanged,
+        )
+        "nighttime_theme" -> ThemeSelectionDialog(
+            nighttime = true,
+            onDismiss = { dialog = null },
+            onThemeChanged = onThemeChanged,
+        )
+        "nighttime_range" -> NighttimeRangeDialog(
+            onDismiss = { dialog = null },
+            onRangeSelected = onThemeChanged,
+        )
+        "font" -> FontSelectionDialog(
+            readerMode = false,
+            onDismiss = { dialog = null },
+        )
+        "style" -> WelcomeSettingsDialog(
+            styleChooser = true,
+            onDismiss = { dialog = null },
+        )
+        "palette_tint" -> PaletteTintDialog(
+            onDismiss = { dialog = null },
+        )
     }
-    val fromPicker = MaterialTimePicker.Builder()
-        .setTimeFormat(timeFormat)
-        .setHour(current[0])
-        .setMinute(current[1])
-        .setTitleText("From:")
-        .build()
-    fromPicker.addOnPositiveButtonClickListener {
-        val toPicker = MaterialTimePicker.Builder()
-            .setTimeFormat(timeFormat)
-            .setHour(current[2])
-            .setMinute(current[3])
-            .setTitleText("To:")
-            .build()
-        toPicker.addOnPositiveButtonClickListener {
-            Utils.setNighttimeHours(
-                fromPicker.hour,
-                fromPicker.minute,
-                toPicker.hour,
-                toPicker.minute,
-                activity,
-            )
-            onRangeSelected()
-        }
-        toPicker.show(activity.supportFragmentManager, "compose_settings_to_time")
-    }
-    fromPicker.show(activity.supportFragmentManager, "compose_settings_from_time")
 }
 
 private fun formatNighttimeRange(context: android.content.Context): String {

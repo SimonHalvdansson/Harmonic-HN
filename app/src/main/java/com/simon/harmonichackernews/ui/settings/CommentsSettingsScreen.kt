@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -23,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +37,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.CommentContentPreviewPreference
-import com.simon.harmonichackernews.settings.ThreadDepthIndicatorsDialogFragment
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils
@@ -49,11 +48,10 @@ fun CommentsSettingsScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as? AppCompatActivity
     val resources = LocalResources.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
-    var dialog by remember { mutableStateOf<String?>(null) }
+    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
 
     @Suppress("UNUSED_VARIABLE")
     val observedRefresh = refresh
@@ -74,6 +72,7 @@ fun CommentsSettingsScreen(
         title = "Comments",
         showNavigation = showNavigation,
         onBack = onBack,
+        contentVersion = refresh,
         pinnedContent = {
             AndroidView(
                 factory = { CommentContentPreviewPreference(it) },
@@ -165,11 +164,7 @@ fun CommentsSettingsScreen(
                     title = "Thread depth indicators",
                     summary = CommentDepthIndicatorUtils.getModeLabel(depthMode),
                     icon = R.drawable.ic_palette,
-                    onClick = {
-                        activity?.supportFragmentManager?.let(
-                            ThreadDepthIndicatorsDialogFragment::show,
-                        )
-                    },
+                    onClick = { dialog = "thread_depth" },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
@@ -413,6 +408,10 @@ fun CommentsSettingsScreen(
                 prefs.edit().putString("pref_comments_volume_navigation", it).apply()
                 dialog = null
             },
+        )
+
+        "thread_depth" -> ThreadDepthIndicatorsDialog(
+            onDismiss = { dialog = null },
         )
     }
 }

@@ -1,13 +1,14 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.settings.ArchiveRedirectDomainsDialogFragment
-import com.simon.harmonichackernews.settings.FontSelectionDialogFragment
-import com.simon.harmonichackernews.settings.PreloadWebViewDialogFragment
 import com.simon.harmonichackernews.utils.SettingsUtils
 
 @Composable
@@ -16,9 +17,9 @@ fun WebLinksSettingsScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as? AppCompatActivity
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
+    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
 
     @Suppress("UNUSED_VARIABLE")
     val observedRefresh = refresh
@@ -36,6 +37,7 @@ fun WebLinksSettingsScreen(
         title = "Web and links",
         showNavigation = showNavigation,
         onBack = onBack,
+        contentVersion = refresh,
     ) {
         item {
             SettingsCategory("WebView") {
@@ -65,11 +67,7 @@ fun WebLinksSettingsScreen(
                     summary = preloadSummary(context),
                     icon = R.drawable.ic_cached,
                     enabled = integratedWebView,
-                    onClick = {
-                        activity?.supportFragmentManager?.let(
-                            PreloadWebViewDialogFragment::show,
-                        )
-                    },
+                    onClick = { dialog = "preload" },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
@@ -129,11 +127,7 @@ fun WebLinksSettingsScreen(
                     summary = SettingsUtils.getPreferredReaderModeFontLabel(context),
                     icon = R.drawable.ic_font_download,
                     enabled = readerControlsEnabled,
-                    onClick = {
-                        activity?.supportFragmentManager?.let(
-                            FontSelectionDialogFragment::showReaderMode,
-                        )
-                    },
+                    onClick = { dialog = "reader_font" },
                 )
                 SettingsDivider()
                 SliderSetting(
@@ -191,11 +185,7 @@ fun WebLinksSettingsScreen(
                         else -> "${archiveDomains.size} domains"
                     },
                     icon = R.drawable.ic_shuffle,
-                    onClick = {
-                        activity?.supportFragmentManager?.let(
-                            ArchiveRedirectDomainsDialogFragment::show,
-                        )
-                    },
+                    onClick = { dialog = "archive_domains" },
                 )
             }
         }
@@ -207,6 +197,7 @@ fun WebLinksSettingsScreen(
                     icon = R.drawable.ic_link_preview_arxiv,
                     key = "pref_link_preview_arxiv",
                     default = true,
+                    preferenceVersion = refresh,
                 )
                 SettingsDivider()
                 LinkPreviewSwitch(
@@ -214,6 +205,7 @@ fun WebLinksSettingsScreen(
                     icon = R.drawable.ic_link_preview_github,
                     key = "pref_link_preview_github",
                     default = true,
+                    preferenceVersion = refresh,
                 )
                 SettingsDivider()
                 LinkPreviewSwitch(
@@ -221,6 +213,7 @@ fun WebLinksSettingsScreen(
                     icon = R.drawable.ic_link_preview_gitlab,
                     key = "pref_link_preview_gitlab",
                     default = true,
+                    preferenceVersion = refresh,
                 )
                 SettingsDivider()
                 LinkPreviewSwitch(
@@ -228,6 +221,7 @@ fun WebLinksSettingsScreen(
                     icon = R.drawable.ic_link_preview_stack_exchange,
                     key = "pref_link_preview_stack_exchange",
                     default = true,
+                    preferenceVersion = refresh,
                 )
                 SettingsDivider()
                 LinkPreviewSwitch(
@@ -235,6 +229,7 @@ fun WebLinksSettingsScreen(
                     icon = R.drawable.ic_link_preview_wikipedia,
                     key = "pref_link_preview_wikipedia",
                     default = true,
+                    preferenceVersion = refresh,
                 )
                 SettingsDivider()
                 SwitchSettingRow(
@@ -254,6 +249,17 @@ fun WebLinksSettingsScreen(
             }
         }
     }
+
+    when (dialog) {
+        "preload" -> PreloadWebViewDialog(onDismiss = { dialog = null })
+        "reader_font" -> FontSelectionDialog(
+            readerMode = true,
+            onDismiss = { dialog = null },
+        )
+        "archive_domains" -> ArchiveRedirectDomainsDialog(
+            onDismiss = { dialog = null },
+        )
+    }
 }
 
 @Composable
@@ -262,9 +268,12 @@ private fun LinkPreviewSwitch(
     icon: Int,
     key: String,
     default: Boolean,
+    preferenceVersion: Int,
 ) {
     val context = LocalContext.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+    @Suppress("UNUSED_EXPRESSION")
+    preferenceVersion
     SwitchSettingRow(
         title = title,
         icon = icon,

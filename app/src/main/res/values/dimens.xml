@@ -38,6 +38,11 @@
     <dimen name="compose_settings_segmented_button_corner_radius">20dp</dimen>
     <dimen name="compose_settings_segmented_button_inner_corner_radius">8dp</dimen>
     <dimen name="compose_settings_segmented_button_pressed_inner_corner_radius">4dp</dimen>
+    <dimen name="compose_settings_dialog_horizontal_margin">35dp</dimen>
+    <dimen name="compose_settings_dialog_max_width">560dp</dimen>
+    <dimen name="compose_settings_dialog_content_padding">24dp</dimen>
+    <dimen name="compose_settings_dialog_vertical_margin">24dp</dimen>
+    <dimen name="compose_settings_dialog_option_control_size">48dp</dimen>
     <dimen name="detail_toolbar_height">60dp</dimen>
     <dimen name="detail_toolbar_navigation_height">56dp</dimen>
     <dimen name="detail_toolbar_navigation_inset">0dp</dimen>

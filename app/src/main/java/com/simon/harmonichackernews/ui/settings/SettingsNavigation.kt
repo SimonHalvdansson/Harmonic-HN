@@ -13,6 +13,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -35,11 +37,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -90,15 +95,15 @@ private data class SettingsDetailDestination(
     val section: SettingsSection,
 ) : NavKey
 
-private enum class SettingsNavigationDirection {
-    Forward,
-    Back,
-}
+private const val SettingsListSavedRoute = "__settings_list__"
 
 private const val ActivityTransitionDurationMillis = 450
 private const val ActivityEnterAlphaDelayMillis = 50
 private const val ActivityExitAlphaDelayMillis = 35
 private const val ActivityAlphaDurationMillis = 83
+private const val FragmentTransitionDurationMillis = 300
+private const val FragmentAlphaDelayMillis = 50
+private const val FragmentAlphaDurationMillis = 50
 
 private fun aospFastOutExtraSlowInEasing(): Easing = PathEasing(
     Path().apply {
@@ -156,6 +161,37 @@ private fun activityPopTransition(offsetPx: Int): ContentTransform = ContentTran
     targetContentZIndex = -1f,
 )
 
+/** Matches FragmentTransaction.TRANSIT_FRAGMENT_OPEN used by legacy two-pane Settings. */
+private fun fragmentOpenTransition(): ContentTransform = ContentTransform(
+    targetContentEnter = scaleIn(
+        animationSpec = tween(
+            durationMillis = FragmentTransitionDurationMillis,
+            easing = aospFastOutExtraSlowInEasing(),
+        ),
+        initialScale = 0.85f,
+    ) + fadeIn(
+        animationSpec = tween(
+            durationMillis = FragmentAlphaDurationMillis,
+            delayMillis = FragmentAlphaDelayMillis,
+            easing = LinearEasing,
+        ),
+    ),
+    initialContentExit = scaleOut(
+        animationSpec = tween(
+            durationMillis = FragmentTransitionDurationMillis,
+            easing = aospFastOutExtraSlowInEasing(),
+        ),
+        targetScale = 1.15f,
+    ) + fadeOut(
+        animationSpec = tween(
+            durationMillis = FragmentAlphaDurationMillis,
+            delayMillis = FragmentAlphaDelayMillis,
+            easing = LinearEasing,
+        ),
+    ),
+    targetContentZIndex = 1f,
+)
+
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun SettingsShell(
@@ -167,7 +203,33 @@ fun SettingsShell(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val backStack = remember {
+    val backStack = rememberSaveable(
+        saver = listSaver(
+            save = { stack ->
+                stack.map { destination ->
+                    when (destination) {
+                        SettingsListDestination -> SettingsListSavedRoute
+                        is SettingsDetailDestination -> destination.section.route
+                        else -> error("Unknown settings destination: $destination")
+                    }
+                }
+            },
+            restore = { savedRoutes ->
+                mutableStateListOf<NavKey>().apply {
+                    savedRoutes.forEach { route ->
+                        if (route == SettingsListSavedRoute) {
+                            add(SettingsListDestination)
+                        } else {
+                            SettingsSection.fromRoute(route)?.let { section ->
+                                add(SettingsDetailDestination(section))
+                            }
+                        }
+                    }
+                    if (isEmpty()) add(SettingsListDestination)
+                }
+            },
+        ),
+    ) {
         mutableStateListOf<NavKey>().apply {
             add(SettingsListDestination)
             initialSection?.let { add(SettingsDetailDestination(it)) }
@@ -186,12 +248,21 @@ fun SettingsShell(
     }
 
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
+    val configuration = LocalConfiguration.current
+    val supportsTwoPane = configuration.smallestScreenWidthDp >= 600
     val hasHingeAngleSensor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
         context.packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
     val isFoldable = adaptiveInfo.windowPosture.hingeList.isNotEmpty() || hasHingeAngleSensor
-    val directive = remember(adaptiveInfo) {
-        calculatePaneScaffoldDirective(adaptiveInfo)
-            .copy(horizontalPartitionSpacerSize = 12.dp)
+    val directive = remember(adaptiveInfo, supportsTwoPane) {
+        val adaptiveDirective = calculatePaneScaffoldDirective(adaptiveInfo)
+        adaptiveDirective.copy(
+            maxHorizontalPartitions = if (supportsTwoPane) {
+                adaptiveDirective.maxHorizontalPartitions
+            } else {
+                1
+            },
+            horizontalPartitionSpacerSize = 12.dp,
+        )
     }
     val foldablePaneExpansionState = rememberPaneExpansionState(
         anchors = remember { listOf(PaneExpansionAnchor.Proportion(0.5f)) },
@@ -204,29 +275,29 @@ fun SettingsShell(
     val showDetailNavigation = directive.maxHorizontalPartitions == 1
     val showDetailNavigationState = rememberUpdatedState(showDetailNavigation)
     val activityTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
-    var detailNavigationDirection by remember {
-        mutableStateOf(SettingsNavigationDirection.Forward)
-    }
     val backAnimationScope = rememberCoroutineScope()
     var activeBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
     }
     var isBackAnimationRunning by remember { mutableStateOf(false) }
 
-    fun navigateTo(section: SettingsSection) {
+    fun navigateTo(
+        section: SettingsSection,
+        preserveCurrentDetail: Boolean = false,
+    ) {
         if ((backStack.lastOrNull() as? SettingsDetailDestination)?.section == section) {
             return
         }
-        detailNavigationDirection = SettingsNavigationDirection.Forward
-        while (backStack.lastOrNull() is SettingsDetailDestination) {
-            backStack.removeLastOrNull()
+        if (!preserveCurrentDetail) {
+            while (backStack.lastOrNull() is SettingsDetailDestination) {
+                backStack.removeLastOrNull()
+            }
         }
         backStack.add(SettingsDetailDestination(section))
     }
 
     fun popSettingsBackStack() {
         if (backStack.size > 1) {
-            detailNavigationDirection = SettingsNavigationDirection.Back
             backStack.removeLastOrNull()
         } else {
             onBackFromSettings()
@@ -293,7 +364,7 @@ fun SettingsShell(
     }
 
     LaunchedEffect(initialSection) {
-        initialSection?.let(::navigateTo)
+        initialSection?.let { navigateTo(it) }
     }
 
     val settingsEntryProvider = entryProvider<NavKey> {
@@ -303,7 +374,7 @@ fun SettingsShell(
                     AppearanceSettingsScreen(
                         showNavigation = false,
                         onBack = ::navigateBack,
-                        onNavigate = ::navigateTo,
+                        onNavigate = { navigateTo(it) },
                         onThemeChanged = onThemeChanged,
                     )
                 },
@@ -313,7 +384,7 @@ fun SettingsShell(
                 selectedSection = selectedSection,
                 showSelection = !showDetailNavigationState.value,
                 onBack = onBackFromSettings,
-                onSectionSelected = ::navigateTo,
+                onSectionSelected = { navigateTo(it) },
             )
         }
 
@@ -326,7 +397,12 @@ fun SettingsShell(
                     SettingsSection.Appearance -> AppearanceSettingsScreen(
                         showNavigation = singlePane,
                         onBack = ::navigateBack,
-                        onNavigate = ::navigateTo,
+                        onNavigate = { section ->
+                            navigateTo(
+                                section = section,
+                                preserveCurrentDetail = singlePane,
+                            )
+                        },
                         onThemeChanged = onThemeChanged,
                     )
 
@@ -384,7 +460,6 @@ fun SettingsShell(
                             )
                         },
                         onOpenLicenses = {
-                            detailNavigationDirection = SettingsNavigationDirection.Forward
                             backStack.add(
                                 SettingsDetailDestination(SettingsSection.Licenses),
                             )
@@ -416,15 +491,7 @@ fun SettingsShell(
                 detailContent(destination.section)
             } else {
                 detailPaneTransition.AnimatedContent(
-                    transitionSpec = {
-                        when (detailNavigationDirection) {
-                            SettingsNavigationDirection.Forward ->
-                                activityOpenTransition(activityTransitionOffsetPx)
-
-                            SettingsNavigationDirection.Back ->
-                                activityPopTransition(activityTransitionOffsetPx)
-                        }
-                    },
+                    transitionSpec = { fragmentOpenTransition() },
                     content = { section ->
                         detailContent(section)
                     },

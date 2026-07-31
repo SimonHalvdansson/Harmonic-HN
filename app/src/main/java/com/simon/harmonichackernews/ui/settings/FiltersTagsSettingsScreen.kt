@@ -1,21 +1,19 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.UserDialogFragment
-import com.simon.harmonichackernews.UserTagDialogFragment
-import com.simon.harmonichackernews.settings.FilterListDialogFragment
 import com.simon.harmonichackernews.utils.Utils
 
 @Composable
@@ -24,10 +22,12 @@ fun FiltersTagsSettingsScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as? AppCompatActivity
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
     var tagRefresh by remember { mutableIntStateOf(0) }
+    var filterDialog by rememberSaveable { mutableStateOf<String?>(null) }
+    var tagDialogUser by rememberSaveable { mutableStateOf<String?>(null) }
+    var profileUser by rememberSaveable { mutableStateOf<String?>(null) }
 
     @Suppress("UNUSED_VARIABLE")
     val observedRefresh = refresh + tagRefresh
@@ -40,58 +40,26 @@ fun FiltersTagsSettingsScreen(
         title = "Filters and tags",
         showNavigation = showNavigation,
         onBack = onBack,
+        contentVersion = refresh + tagRefresh,
     ) {
         item {
             SettingsCategory("Filters") {
                 SettingRow(
                     title = "Filter by story title",
                     icon = R.drawable.ic_title,
-                    onClick = {
-                        activity?.supportFragmentManager?.let {
-                            FilterListDialogFragment.show(
-                                it,
-                                "pref_filter",
-                                "Filter by story title",
-                                "Hide stories containing these words or phrases in the title",
-                                "Word or phrase",
-                                "No story title filters",
-                            )
-                        }
-                    },
+                    onClick = { filterDialog = "title" },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Filter by domain",
                     icon = R.drawable.ic_public,
-                    onClick = {
-                        activity?.supportFragmentManager?.let {
-                            FilterListDialogFragment.show(
-                                it,
-                                "pref_filter_domains",
-                                "Filter by domain",
-                                "Hide stories from these domains",
-                                "Domain",
-                                "No domain filters",
-                            )
-                        }
-                    },
+                    onClick = { filterDialog = "domain" },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Blocked users",
                     icon = R.drawable.ic_person,
-                    onClick = {
-                        activity?.supportFragmentManager?.let {
-                            FilterListDialogFragment.show(
-                                it,
-                                "pref_filter_users",
-                                "Blocked users",
-                                "Hide stories and comments posted by these users",
-                                "Username",
-                                "No blocked users",
-                            )
-                        }
-                    },
+                    onClick = { filterDialog = "users" },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
@@ -124,28 +92,11 @@ fun FiltersTagsSettingsScreen(
                                 "${entry.key} (${entry.value})"
                             },
                             icon = R.drawable.ic_person,
-                            onClick = {
-                                (context as? AppCompatActivity)?.let { activity ->
-                                    UserDialogFragment.showUserDialog(
-                                        activity.supportFragmentManager,
-                                        entry.key,
-                                    )
-                                }
-                            },
+                            onClick = { profileUser = entry.key },
                             trailing = {
                                 Row {
                                     IconButton(
-                                        onClick = {
-                                            activity?.supportFragmentManager?.let {
-                                                UserTagDialogFragment.show(
-                                                    it,
-                                                    entry.key,
-                                                    Utils.getUserTag(context, entry.key),
-                                                ) {
-                                                    tagRefresh++
-                                                }
-                                            }
-                                        },
+                                        onClick = { tagDialogUser = entry.key },
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.ic_edit),
@@ -173,5 +124,52 @@ fun FiltersTagsSettingsScreen(
                 }
             }
         }
+    }
+
+    when (filterDialog) {
+        "title" -> FilterListDialog(
+            preferenceKey = "pref_filter",
+            title = "Filter by story title",
+            subtitle = "Hide stories containing these words or phrases in the title",
+            inputLabel = "Word or phrase",
+            emptyMessage = "No story title filters",
+            onDismiss = { filterDialog = null },
+        )
+        "domain" -> FilterListDialog(
+            preferenceKey = "pref_filter_domains",
+            title = "Filter by domain",
+            subtitle = "Hide stories from these domains",
+            inputLabel = "Domain",
+            emptyMessage = "No domain filters",
+            onDismiss = { filterDialog = null },
+        )
+        "users" -> FilterListDialog(
+            preferenceKey = "pref_filter_users",
+            title = "Blocked users",
+            subtitle = "Hide stories and comments posted by these users",
+            inputLabel = "Username",
+            emptyMessage = "No blocked users",
+            onDismiss = { filterDialog = null },
+        )
+    }
+
+    tagDialogUser?.let { userName ->
+        UserTagDialog(
+            userName = userName,
+            currentTag = Utils.getUserTag(context, userName),
+            onDismiss = { tagDialogUser = null },
+            onSaved = {
+                tagRefresh++
+                tagDialogUser = null
+            },
+        )
+    }
+
+    profileUser?.let { userName ->
+        UserSettingsDialog(
+            userName = userName,
+            onDismiss = { profileUser = null },
+            onTagChanged = { tagRefresh++ },
+        )
     }
 }

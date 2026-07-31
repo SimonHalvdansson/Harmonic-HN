@@ -8,11 +8,15 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -21,24 +25,31 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,15 +59,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -65,8 +82,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.preference.PreferenceManager
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
@@ -89,6 +107,206 @@ private val MainSettingsEntries = listOf(
     SettingsListEntry(SettingsSection.Debug, R.drawable.ic_api),
     SettingsListEntry(SettingsSection.About, R.drawable.ic_info),
 )
+
+@Composable
+internal fun SettingsAlertDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    neutralButton: (@Composable () -> Unit)? = null,
+    dismissButton: (@Composable () -> Unit)? = null,
+    title: (@Composable () -> Unit)? = null,
+    text: (@Composable () -> Unit)? = null,
+    edgeToEdgeContent: Boolean = false,
+    showButtons: Boolean = true,
+    separateDismissButton: Boolean = false,
+    buttonsAtStart: Boolean = false,
+    properties: DialogProperties = DialogProperties(),
+) {
+    var dialogBounds by remember { mutableStateOf<Rect?>(null) }
+    var dialogRootOffset by remember { mutableStateOf(Offset.Zero) }
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(
+            dismissOnBackPress = properties.dismissOnBackPress,
+            dismissOnClickOutside = properties.dismissOnClickOutside,
+            securePolicy = properties.securePolicy,
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = properties.decorFitsSystemWindows,
+        ),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onGloballyPositioned { coordinates ->
+                    dialogRootOffset = coordinates.positionInWindow()
+                }
+                .pointerInput(properties.dismissOnClickOutside, onDismissRequest) {
+                    if (!properties.dismissOnClickOutside) return@pointerInput
+                    awaitEachGesture {
+                        val down = awaitFirstDown(
+                            requireUnconsumed = false,
+                            pass = PointerEventPass.Final,
+                        )
+                        val up = waitForUpOrCancellation(pass = PointerEventPass.Final)
+                        val bounds = dialogBounds
+                        if (
+                            up != null &&
+                            bounds != null &&
+                            !bounds.contains(up.position + dialogRootOffset)
+                        ) {
+                            onDismissRequest()
+                        }
+                    }
+                },
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        horizontal = dimensionResource(
+                            R.dimen.compose_settings_dialog_horizontal_margin,
+                        ),
+                        vertical = dimensionResource(
+                            R.dimen.compose_settings_dialog_vertical_margin,
+                        ),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Surface(
+                    modifier = modifier
+                        .widthIn(
+                            max = dimensionResource(R.dimen.compose_settings_dialog_max_width),
+                        )
+                        .fillMaxWidth()
+                        .onGloballyPositioned { coordinates ->
+                            dialogBounds = coordinates.boundsInWindow()
+                        },
+                    shape = MaterialTheme.shapes.extraLarge,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    tonalElevation = 6.dp,
+                ) {
+                    Column {
+                    title?.let { titleContent ->
+                        Box(
+                            modifier = Modifier.padding(
+                                start = dimensionResource(
+                                    R.dimen.compose_settings_dialog_content_padding,
+                                ),
+                                top = dimensionResource(
+                                    R.dimen.compose_settings_dialog_content_padding,
+                                ),
+                                end = dimensionResource(
+                                    R.dimen.compose_settings_dialog_content_padding,
+                                ),
+                                bottom = 0.dp,
+                            ),
+                        ) {
+                            titleContent()
+                        }
+                    }
+                    text?.let { textContent ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = if (edgeToEdgeContent) {
+                                        0.dp
+                                    } else {
+                                        dimensionResource(
+                                            R.dimen.compose_settings_dialog_content_padding,
+                                        )
+                                    },
+                                    top = if (title == null) {
+                                        dimensionResource(
+                                            R.dimen.compose_settings_dialog_content_padding,
+                                        )
+                                    } else {
+                                        0.dp
+                                    },
+                                    end = if (edgeToEdgeContent) {
+                                        0.dp
+                                    } else {
+                                        dimensionResource(
+                                            R.dimen.compose_settings_dialog_content_padding,
+                                        )
+                                    },
+                                    bottom = if (edgeToEdgeContent) 0.dp else 8.dp,
+                                ),
+                        ) {
+                            textContent()
+                        }
+                    }
+                    if (showButtons) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 8.dp),
+                            horizontalArrangement = if (buttonsAtStart) {
+                                Arrangement.Start
+                            } else {
+                                Arrangement.End
+                            },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (buttonsAtStart) {
+                                dismissButton?.invoke()
+                                confirmButton()
+                            } else {
+                                neutralButton?.invoke()
+                                if (neutralButton != null) {
+                                    Spacer(Modifier.weight(1f))
+                                }
+                                dismissButton?.invoke()
+                                if (separateDismissButton && dismissButton != null) {
+                                    Spacer(Modifier.weight(1f))
+                                }
+                                confirmButton()
+                            }
+                        }
+                    }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun SettingsRadioButton(
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.size(
+            dimensionResource(R.dimen.compose_settings_dialog_option_control_size),
+        ),
+        contentAlignment = Alignment.Center,
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = null,
+        )
+    }
+}
+
+@Composable
+private fun SettingsCheckbox(
+    checked: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.size(
+            dimensionResource(R.dimen.compose_settings_dialog_option_control_size),
+        ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = null,
+        )
+    }
+}
 
 @Composable
 fun SettingsListScreen(
@@ -223,6 +441,7 @@ fun SettingsPage(
     showNavigation: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    contentVersion: Int = 0,
     pinnedContent: (@Composable () -> Unit)? = null,
     content: LazyListScope.() -> Unit,
 ) {
@@ -253,6 +472,10 @@ fun SettingsPage(
             ),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
+            // Preference-backed rows are declared in the lazy content lambda. Capturing the
+            // version here makes LazyColumn rebuild those declarations after a preference edit.
+            @Suppress("UNUSED_EXPRESSION")
+            contentVersion
             pinnedContent?.let { preview ->
                 stickyHeader(key = "settings-preview") {
                     Box(
@@ -348,10 +571,11 @@ fun SettingsMainToggle(
             .clip(RoundedCornerShape(36.dp))
             .alpha(if (enabled) 1f else 0.6f)
             .background(HarmonicTheme.colors.settingsMainToggle)
-            .clickable(
+            .toggleable(
+                value = checked,
                 enabled = enabled,
                 role = Role.Switch,
-                onClick = { onCheckedChange(!checked) },
+                onValueChange = onCheckedChange,
             )
             .padding(start = 24.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -367,7 +591,7 @@ fun SettingsMainToggle(
         )
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = null,
             enabled = enabled,
         )
     }
@@ -382,7 +606,10 @@ fun SettingRow(
     summaryLineHeightSp: Float = 18f,
     summaryMaxLines: Int = Int.MAX_VALUE,
     enabled: Boolean = true,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
+    role: Role = Role.Button,
+    checkedState: Boolean? = null,
+    iconTint: Color? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
@@ -393,7 +620,22 @@ fun SettingRow(
             )
             .background(HarmonicTheme.colors.settingsSegment)
             .alpha(if (enabled) 1f else 0.38f)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .then(
+                if (onClick != null) {
+                    if (checkedState != null) {
+                        Modifier.toggleable(
+                            value = checkedState,
+                            enabled = enabled,
+                            role = role,
+                            onValueChange = { onClick() },
+                        )
+                    } else {
+                        Modifier.clickable(enabled = enabled, role = role, onClick = onClick)
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .padding(
                 horizontal = dimensionResource(
                     R.dimen.compose_settings_row_horizontal_padding,
@@ -408,7 +650,7 @@ fun SettingRow(
                 modifier = Modifier.size(
                     dimensionResource(R.dimen.compose_settings_row_icon_size),
                 ),
-                tint = HarmonicTheme.colors.drawable,
+                tint = iconTint ?: HarmonicTheme.colors.drawable,
             )
             Spacer(
                 modifier = Modifier.width(
@@ -471,14 +713,33 @@ fun SwitchSettingRow(
         summary = summary,
         icon = icon,
         enabled = enabled,
+        role = Role.Switch,
+        checkedState = checked,
         onClick = { onCheckedChange(!checked) },
         trailing = {
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = null,
                 enabled = enabled,
             )
         },
+    )
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun SettingsDialogTextButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable RowScope.() -> Unit,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        shapes = ButtonDefaults.shapes(),
+        content = content,
     )
 }
 
@@ -685,33 +946,45 @@ fun SingleChoiceDialog(
     onDismiss: () -> Unit,
     onSelected: (String) -> Unit,
 ) {
-    val context = LocalContext.current
-    val currentOnDismiss by rememberUpdatedState(onDismiss)
-    val currentOnSelected by rememberUpdatedState(onSelected)
-    DisposableEffect(context, title, options, selected) {
-        val labels = options.map { it.second }.toTypedArray()
-        val checkedItem = options.indexOfFirst { it.first == selected }
-        val dialog = MaterialAlertDialogBuilder(context)
-            .setTitle(title)
-            .setSingleChoiceItems(labels, checkedItem) { dialogInterface, which ->
-                currentOnSelected(options[which].first)
-                dialogInterface.dismiss()
+    SettingsAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { SettingsDialogTitle(title) },
+        edgeToEdgeContent = true,
+        text = {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 480.dp)
+                    .selectableGroup(),
+            ) {
+                items(options, key = { it.first }) { option ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
+                            .selectable(
+                                selected = option.first == selected,
+                                role = Role.RadioButton,
+                                onClick = { onSelected(option.first) },
+                            )
+                            .padding(horizontal = 24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SettingsRadioButton(selected = option.first == selected)
+                        Text(
+                            text = option.second,
+                            modifier = Modifier.padding(start = 4.dp),
+                            color = HarmonicTheme.colors.textPrimary,
+                            fontFamily = ProductSansFontFamily,
+                            fontSize = 16.sp,
+                        )
+                    }
+                }
             }
-            .setNegativeButton("Cancel") { _, _ ->
-                currentOnDismiss()
-            }
-            .setOnCancelListener {
-                currentOnDismiss()
-            }
-            .create()
-        dialog.show()
-        onDispose {
-            dialog.setOnCancelListener(null)
-            if (dialog.isShowing) {
-                dialog.dismiss()
-            }
-        }
-    }
+        },
+        confirmButton = {},
+        showButtons = false,
+    )
 }
 
 @Composable
@@ -722,40 +995,61 @@ fun MultiChoiceDialog(
     onDismiss: () -> Unit,
     onSelectionChanged: (Set<String>) -> Unit,
 ) {
-    val context = LocalContext.current
-    val currentOnDismiss by rememberUpdatedState(onDismiss)
-    val currentOnSelectionChanged by rememberUpdatedState(onSelectionChanged)
-    DisposableEffect(context, title, options, selected) {
-        val workingSelection = selected.toMutableSet()
-        val labels = options.toTypedArray()
-        val checkedItems = BooleanArray(options.size) { options[it] in selected }
-        val dialog = MaterialAlertDialogBuilder(context)
-            .setTitle(title)
-            .setMultiChoiceItems(labels, checkedItems) { _, which, isChecked ->
-                if (isChecked) {
-                    workingSelection += options[which]
-                } else {
-                    workingSelection -= options[which]
+    var workingSelection by remember(options, selected) {
+        mutableStateOf(selected)
+    }
+    SettingsAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { SettingsDialogTitle(title) },
+        edgeToEdgeContent = true,
+        text = {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 480.dp),
+            ) {
+                items(options, key = { it }) { option ->
+                    val checked = option in workingSelection
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
+                            .clickable(
+                                role = Role.Checkbox,
+                                onClick = {
+                                    workingSelection = if (checked) {
+                                        workingSelection - option
+                                    } else {
+                                        workingSelection + option
+                                    }
+                                },
+                            )
+                            .padding(horizontal = 24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SettingsCheckbox(checked = checked)
+                        Text(
+                            text = option,
+                            modifier = Modifier.padding(start = 4.dp),
+                            color = HarmonicTheme.colors.textPrimary,
+                            fontFamily = ProductSansFontFamily,
+                            fontSize = 16.sp,
+                        )
+                    }
                 }
             }
-            .setPositiveButton("OK") { _, _ ->
-                currentOnSelectionChanged(workingSelection)
+        },
+        confirmButton = {
+            SettingsDialogTextButton(onClick = { onSelectionChanged(workingSelection) }) {
+                Text("OK")
             }
-            .setNegativeButton("Cancel") { _, _ ->
-                currentOnDismiss()
+        },
+        dismissButton = {
+            SettingsDialogTextButton(onClick = onDismiss) {
+                Text("Cancel")
             }
-            .setOnCancelListener {
-                currentOnDismiss()
-            }
-            .create()
-        dialog.show()
-        onDispose {
-            dialog.setOnCancelListener(null)
-            if (dialog.isShowing) {
-                dialog.dismiss()
-            }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -765,30 +1059,39 @@ fun ItemsDialog(
     onDismiss: () -> Unit,
     onSelected: (Int) -> Unit,
 ) {
-    val context = LocalContext.current
-    val currentOnDismiss by rememberUpdatedState(onDismiss)
-    val currentOnSelected by rememberUpdatedState(onSelected)
-    DisposableEffect(context, title, options) {
-        val dialog = MaterialAlertDialogBuilder(context)
-            .setTitle(title)
-            .setItems(options.toTypedArray()) { _, which ->
-                currentOnSelected(which)
+    SettingsAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { SettingsDialogTitle(title) },
+        edgeToEdgeContent = true,
+        text = {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 480.dp),
+            ) {
+                items(options) { option ->
+                    val index = options.indexOf(option)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
+                            .clickable { onSelected(index) }
+                            .padding(horizontal = 24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = option,
+                            color = HarmonicTheme.colors.textPrimary,
+                            fontFamily = ProductSansFontFamily,
+                            fontSize = 16.sp,
+                        )
+                    }
+                }
             }
-            .setNegativeButton("Cancel") { _, _ ->
-                currentOnDismiss()
-            }
-            .setOnCancelListener {
-                currentOnDismiss()
-            }
-            .create()
-        dialog.show()
-        onDispose {
-            dialog.setOnCancelListener(null)
-            if (dialog.isShowing) {
-                dialog.dismiss()
-            }
-        }
-    }
+        },
+        confirmButton = {},
+        showButtons = false,
+    )
 }
 
 @Composable
@@ -803,50 +1106,56 @@ fun MessageActionDialog(
     onNeutral: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val currentOnPositive by rememberUpdatedState(onPositive)
-    val currentOnNegative by rememberUpdatedState(onNegative)
-    val currentOnNeutral by rememberUpdatedState(onNeutral)
-    val currentOnDismiss by rememberUpdatedState(onDismiss)
-    DisposableEffect(
-        context,
-        title,
-        message,
-        positiveLabel,
-        negativeLabel,
-        neutralLabel,
-    ) {
-        val builder = MaterialAlertDialogBuilder(context)
-        title?.let { builder.setTitle(it) }
-        builder.setMessage(message)
-        positiveLabel?.let {
-            builder.setPositiveButton(it) { _, _ ->
-                currentOnPositive()
+    SettingsAlertDialog(
+        onDismissRequest = onDismiss,
+        title = title?.let {
+            {
+                SettingsDialogTitle(it)
             }
-        }
-        negativeLabel?.let {
-            builder.setNegativeButton(it) { _, _ ->
-                currentOnNegative()
+        },
+        text = {
+            Text(
+                text = message.toString(),
+                color = HarmonicTheme.colors.textPrimary,
+                fontFamily = ProductSansFontFamily,
+                fontSize = 16.sp,
+                lineHeight = 24.sp,
+            )
+        },
+        confirmButton = {
+            positiveLabel?.let { label ->
+                SettingsDialogTextButton(onClick = onPositive) {
+                    Text(label)
+                }
             }
-        }
-        neutralLabel?.let {
-            builder.setNeutralButton(it) { _, _ ->
-                currentOnNeutral()
+        },
+        dismissButton = {
+            negativeLabel?.let { label ->
+                SettingsDialogTextButton(onClick = onNegative) {
+                    Text(label)
+                }
             }
-        }
-        val dialog = builder
-            .setOnCancelListener {
-                currentOnDismiss()
+        },
+        neutralButton = {
+            neutralLabel?.let { label ->
+                SettingsDialogTextButton(onClick = onNeutral) {
+                    Text(label)
+                }
             }
-            .create()
-        dialog.show()
-        onDispose {
-            dialog.setOnCancelListener(null)
-            if (dialog.isShowing) {
-                dialog.dismiss()
-            }
-        }
-    }
+        },
+    )
+}
+
+@Composable
+internal fun SettingsDialogTitle(title: String) {
+    Text(
+        text = title,
+        color = HarmonicTheme.colors.textPrimary,
+        fontFamily = ProductSansFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
+    )
 }
 
 @Composable
@@ -872,7 +1181,7 @@ fun EditableStringListDialog(
         }
     }
 
-    AlertDialog(
+    SettingsAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -891,7 +1200,7 @@ fun EditableStringListDialog(
                         label = { Text(inputLabel) },
                         singleLine = true,
                     )
-                    TextButton(
+                    SettingsDialogTextButton(
                         onClick = { add(input) },
                         enabled = input.isNotBlank(),
                     ) {
@@ -907,7 +1216,7 @@ fun EditableStringListDialog(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         suggestions.take(3).forEach { suggestion ->
-                            TextButton(
+                            SettingsDialogTextButton(
                                 onClick = { add(suggestion) },
                                 modifier = Modifier.weight(1f),
                             ) {
@@ -957,12 +1266,12 @@ fun EditableStringListDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(items) }) {
+            SettingsDialogTextButton(onClick = { onSave(items) }) {
                 Text("Done")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            SettingsDialogTextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
         },
@@ -981,7 +1290,7 @@ fun TextEntryDialog(
     onReset: (() -> Unit)? = null,
 ) {
     var value by remember(initialValue) { mutableStateOf(initialValue) }
-    AlertDialog(
+    SettingsAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -996,7 +1305,7 @@ fun TextEntryDialog(
             )
         },
         confirmButton = {
-            TextButton(
+            SettingsDialogTextButton(
                 onClick = { onSave(value.trim()) },
                 enabled = allowEmpty || value.isNotBlank(),
             ) {
@@ -1004,14 +1313,14 @@ fun TextEntryDialog(
             }
         },
         dismissButton = {
-            Row {
-                onReset?.let { reset ->
-                    TextButton(onClick = reset) {
-                        Text("Reset")
-                    }
-                }
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+            SettingsDialogTextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        neutralButton = onReset?.let { reset ->
+            {
+                SettingsDialogTextButton(onClick = reset) {
+                    Text("Reset")
                 }
             }
         },

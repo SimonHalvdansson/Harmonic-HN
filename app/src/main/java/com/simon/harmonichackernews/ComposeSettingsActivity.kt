@@ -8,8 +8,12 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.simon.harmonichackernews.ui.settings.SettingsSection
@@ -25,6 +29,7 @@ class ComposeSettingsActivity : AppCompatActivity() {
 
     private var needsRestart = false
     private var requestedSection by mutableStateOf<SettingsSection?>(null)
+    private var themeRevision by mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,8 +55,16 @@ class ComposeSettingsActivity : AppCompatActivity() {
         )
 
         setContent {
-            HarmonicTheme {
-                SettingsContent()
+            Crossfade(
+                targetState = themeRevision,
+                animationSpec = tween(durationMillis = 220),
+                label = "Settings theme",
+            ) { revision ->
+                key(revision) {
+                    HarmonicTheme {
+                        SettingsContent()
+                    }
+                }
             }
         }
     }
@@ -67,7 +80,9 @@ class ComposeSettingsActivity : AppCompatActivity() {
             onThemeChanged = {
                 needsRestart = true
                 intent.putExtra(EXTRA_NEEDS_RESTART, true)
-                recreate()
+                requestedSection = sectionFromIntent(intent)
+                ThemeUtils.setupTheme(this, false)
+                themeRevision++
             },
             onRequestRestart = {
                 needsRestart = true

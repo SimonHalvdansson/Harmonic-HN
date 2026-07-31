@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.ui.settings
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -28,8 +27,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +48,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoryType
-import com.simon.harmonichackernews.settings.FaviconProviderDialogFragment
 import com.simon.harmonichackernews.settings.StoryContentPreviewPreference
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -70,11 +70,11 @@ fun StoriesSettingsScreen(
     onRequestRestart: () -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as? AppCompatActivity
     val resources = LocalResources.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
-    var dialog by remember { mutableStateOf<String?>(null) }
+    var localRefresh by remember { mutableStateOf(0) }
+    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
 
     @Suppress("UNUSED_VARIABLE")
     val observedRefresh = refresh
@@ -102,16 +102,38 @@ fun StoriesSettingsScreen(
         prefs.getStringSet(SettingsUtils.PREF_ADDITIONAL_FRONTPAGES, emptySet())
             ?: emptySet(),
     )
+    val hotness = prefs.getString("pref_hotness", "-1") ?: "-1"
 
     SettingsPage(
         title = "Stories",
         showNavigation = showNavigation,
         onBack = onBack,
+        contentVersion = refresh + localRefresh,
         pinnedContent = {
-            AndroidView(
-                factory = { StoryContentPreviewPreference(it) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // The legacy preview owns several interdependent View animations. Treat it as an
+            // immutable snapshot so one Compose update cannot start overlapping setter animations.
+            key(
+                displayStyle,
+                leftAlign,
+                compact,
+                previewImageMode,
+                borderlessLarge,
+                showThumbnails,
+                showPoints,
+                compactPoints,
+                includeTld,
+                showComments,
+                showIndex,
+                hotness,
+                textSize,
+                showSummary,
+                tint,
+            ) {
+                AndroidView(
+                    factory = { StoryContentPreviewPreference(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         },
     ) {
         item {
@@ -288,7 +310,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SettingRow(
                     title = "Highlight hot stories",
-                    summary = hotnessLabel(prefs.getString("pref_hotness", "-1") ?: "-1"),
+                    summary = hotnessLabel(hotness),
                     icon = R.drawable.ic_whatshot,
                     onClick = { dialog = "hotness" },
                 )
@@ -363,12 +385,9 @@ fun StoriesSettingsScreen(
                     icon = SettingsUtils.getFaviconProviderIconResource(
                         SettingsUtils.getPreferredFaviconProvider(context),
                     ),
+                    iconTint = Color.Unspecified,
                     enabled = !compact && showThumbnails,
-                    onClick = {
-                        activity?.supportFragmentManager?.let(
-                            FaviconProviderDialogFragment::show,
-                        )
-                    },
+                    onClick = { dialog = "favicon_provider" },
                 )
             }
         }
@@ -430,6 +449,12 @@ fun StoriesSettingsScreen(
             },
         )
 
+        "favicon_provider" -> FaviconProviderDialog(
+            onProviderSelected = {
+                localRefresh++
+            },
+            onDismiss = { dialog = null },
+        )
     }
 }
 
