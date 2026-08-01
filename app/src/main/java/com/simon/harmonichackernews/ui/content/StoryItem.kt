@@ -18,9 +18,9 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,6 +65,7 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
+import coil.compose.AsyncImage
 import kotlin.math.roundToInt
 
 private const val ContentAnimationDuration = 220
@@ -79,7 +81,11 @@ data class StoryItemUiModel(
     val age: String,
     val commentCount: Int,
     val faviconRes: Int,
-    val previewImageRes: Int,
+    val previewImageRes: Int?,
+    val faviconUrl: String? = null,
+    val previewImageUrl: String? = null,
+    val faviconTintArgb: Int? = null,
+    val previewImageTintArgb: Int? = null,
 )
 
 data class StoryItemStyle(
@@ -99,6 +105,7 @@ data class StoryItemStyle(
     val useHotnessIcon: Boolean,
     val preferredFont: String,
     val textSize: Float,
+    val dimmed: Boolean = false,
 )
 
 val SettingsStoryPreviewModel = StoryItemUiModel(
@@ -119,6 +126,9 @@ fun StoryItem(
     model: StoryItemUiModel,
     style: StoryItemStyle,
     modifier: Modifier = Modifier,
+    listItem: Boolean = false,
+    onLinkClick: (() -> Unit)? = null,
+    onCommentClick: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val colors = HarmonicTheme.colors
@@ -157,21 +167,78 @@ fun StoryItem(
         label = "story comment alignment",
     )
     val paletteKey = SettingsUtils.getPreferredPaletteTintConfigKey(context)
-    val tintDrawableRes = if (style.previewImageMode == SettingsUtils.STORY_PREVIEW_IMAGE_OFF) {
-        model.faviconRes
-    } else {
-        model.previewImageRes
+    val faviconSource = model.faviconUrl ?: model.faviconRes
+    val previewSource = model.previewImageUrl ?: model.previewImageRes
+    var loadedFaviconTintColor by remember(
+        faviconSource,
+        paletteKey,
+        model.faviconTintArgb,
+    ) {
+        androidx.compose.runtime.mutableStateOf(model.faviconTintArgb?.let(::Color))
     }
-    val tintColor = remember(context, tintDrawableRes, paletteKey) {
-        calculatePreviewTint(
-            drawable = AppCompatResources.getDrawable(context, tintDrawableRes),
-            fallback = colors.surfaceContainerHigh,
-            context = context,
-        )
+    var loadedPreviewTintColor by remember(
+        previewSource,
+        paletteKey,
+        model.previewImageTintArgb,
+    ) {
+        androidx.compose.runtime.mutableStateOf(model.previewImageTintArgb?.let(::Color))
     }
+    val baseTintColor = remember(context) {
+        Color(PreviewImageTintUtils.getTintBaseColor(context))
+    }
+    val faviconResourceTintColor = remember(context, model.faviconRes, model.faviconUrl, paletteKey) {
+        if (model.faviconUrl == null) {
+            calculatePreviewTint(
+                drawable = AppCompatResources.getDrawable(context, model.faviconRes),
+                fallback = baseTintColor,
+                context = context,
+            )
+        } else {
+            null
+        }
+    }
+    val previewResourceTintColor = remember(
+        context,
+        model.previewImageRes,
+        model.previewImageUrl,
+        paletteKey,
+    ) {
+        if (model.previewImageUrl == null) {
+            model.previewImageRes?.let {
+                calculatePreviewTint(
+                    drawable = AppCompatResources.getDrawable(context, it),
+                    fallback = baseTintColor,
+                    context = context,
+                )
+            }
+        } else {
+            null
+        }
+    }
+    val onPreviewDrawableLoaded: (Drawable) -> Unit = { drawable ->
+        if (style.previewImageMode != SettingsUtils.STORY_PREVIEW_IMAGE_OFF &&
+            model.previewImageTintArgb == null
+        ) {
+            loadedPreviewTintColor = calculatePreviewTint(drawable, baseTintColor, context)
+        }
+    }
+    val onFaviconDrawableLoaded: (Drawable) -> Unit = { drawable ->
+        if (model.faviconTintArgb == null) {
+            loadedFaviconTintColor = calculatePreviewTint(drawable, baseTintColor, context)
+        }
+    }
+    val usePreviewTint = style.previewImageMode != SettingsUtils.STORY_PREVIEW_IMAGE_OFF &&
+        previewSource != null
     val cardBackground by androidx.compose.animation.animateColorAsState(
         targetValue = when {
-            style.tintCard -> tintColor
+            style.tintCard && usePreviewTint -> loadedPreviewTintColor
+                ?: loadedFaviconTintColor
+                ?: previewResourceTintColor
+                ?: faviconResourceTintColor
+                ?: baseTintColor
+            style.tintCard -> loadedFaviconTintColor
+                ?: faviconResourceTintColor
+                ?: baseTintColor
             style.cardStyle -> colors.surfaceContainerHigh
             else -> colors.background
         },
@@ -183,7 +250,10 @@ fun StoryItem(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 10.dp),
+            .padding(
+                horizontal = if (listItem) 0.dp else 8.dp,
+                vertical = if (listItem) 0.dp else 10.dp,
+            ),
     ) {
         Box(
             modifier = Modifier
@@ -207,7 +277,8 @@ fun StoryItem(
                 LargeStoryPreviewImage(
                     visible = style.previewImageMode == SettingsUtils.STORY_PREVIEW_IMAGE_LARGE,
                     borderless = style.borderlessLargeImage,
-                    imageRes = model.previewImageRes,
+                    model = model.previewImageUrl ?: model.previewImageRes,
+                    onDrawableLoaded = onPreviewDrawableLoaded,
                 )
 
                 StoryBodyRow(
@@ -221,6 +292,9 @@ fun StoryItem(
                             summarySize = summarySize,
                             metaSize = metaSize,
                             alignmentProgress = alignmentProgress,
+                            onClick = onLinkClick,
+                            onPreviewDrawableLoaded = onPreviewDrawableLoaded,
+                            onFaviconDrawableLoaded = onFaviconDrawableLoaded,
                         )
                     },
                     commentRail = {
@@ -229,6 +303,7 @@ fun StoryItem(
                             style = style,
                             fontFamily = typography.family,
                             countTextSize = commentCountSize,
+                            onClick = onCommentClick,
                         )
                     },
                 )
@@ -241,7 +316,8 @@ fun StoryItem(
 private fun LargeStoryPreviewImage(
     visible: Boolean,
     borderless: Boolean,
-    imageRes: Int,
+    model: Any?,
+    onDrawableLoaded: (Drawable) -> Unit,
 ) {
     val inset by animateDpAsState(
         targetValue = if (borderless) 0.dp else 10.dp,
@@ -260,12 +336,12 @@ private fun LargeStoryPreviewImage(
     )
 
     AnimatedVisibility(
-        visible = visible,
+        visible = visible && model != null,
         enter = fadeIn(contentTween()) + expandVertically(contentTween(), expandFrom = Alignment.Top),
         exit = fadeOut(contentTween()) + shrinkVertically(contentTween(), shrinkTowards = Alignment.Top),
     ) {
-        Image(
-            painter = painterResource(imageRes),
+        AsyncImage(
+            model = model,
             contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
@@ -273,6 +349,7 @@ private fun LargeStoryPreviewImage(
                 .height(176.dp)
                 .clip(RoundedCornerShape(radius)),
             contentScale = ContentScale.Crop,
+            onSuccess = { onDrawableLoaded(it.result.drawable) },
         )
     }
 }
@@ -286,11 +363,15 @@ private fun StoryLinkContent(
     summarySize: Float,
     metaSize: Float,
     alignmentProgress: Float,
+    onClick: (() -> Unit)?,
+    onPreviewDrawableLoaded: (Drawable) -> Unit,
+    onFaviconDrawableLoaded: (Drawable) -> Unit,
 ) {
     val startPadding = lerp(6f, 0f, alignmentProgress).dp
     val endPadding = lerp(0f, 12f, alignmentProgress).dp
     val textStartPadding = lerp(10f, 4f, alignmentProgress).dp
-    val showSmallImage = style.previewImageMode == SettingsUtils.STORY_PREVIEW_IMAGE_SMALL
+    val showSmallImage = style.previewImageMode == SettingsUtils.STORY_PREVIEW_IMAGE_SMALL &&
+        (model.previewImageUrl != null || model.previewImageRes != null)
     val smallImageProgress by animateFloatAsState(
         targetValue = if (showSmallImage) 1f else 0f,
         animationSpec = contentTween(),
@@ -310,6 +391,7 @@ private fun StoryLinkContent(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
             .padding(
                 start = startPadding,
                 top = 10.dp,
@@ -355,6 +437,8 @@ private fun StoryLinkContent(
             smallImageProgress = smallImageProgress,
             summaryProgress = summaryProgress,
             metaProgress = metaProgress,
+            onPreviewDrawableLoaded = onPreviewDrawableLoaded,
+            onFaviconDrawableLoaded = onFaviconDrawableLoaded,
             modifier = Modifier.weight(1f),
         )
     }
@@ -372,6 +456,8 @@ private fun StoryTextBlock(
     smallImageProgress: Float,
     summaryProgress: Float,
     metaProgress: Float,
+    onPreviewDrawableLoaded: (Drawable) -> Unit,
+    onFaviconDrawableLoaded: (Drawable) -> Unit,
     modifier: Modifier,
 ) {
     val density = LocalDensity.current
@@ -381,7 +467,11 @@ private fun StoryTextBlock(
             Text(
                 text = model.title,
                 modifier = Modifier.padding(start = textStartPadding, end = 2.dp),
-                color = HarmonicTheme.colors.storyNormal,
+                color = if (style.dimmed) {
+                    HarmonicTheme.colors.storyDisabled
+                } else {
+                    HarmonicTheme.colors.storyNormal
+                },
                 fontFamily = typography.family,
                 fontWeight = FontWeight.Bold,
                 fontSize = titleSize.sp,
@@ -404,24 +494,31 @@ private fun StoryTextBlock(
                 style = style,
                 typography = typography,
                 textSize = metaSize,
+                onFaviconDrawableLoaded = onFaviconDrawableLoaded,
                 modifier = Modifier
                     .padding(start = textStartPadding, end = 2.dp)
                     .graphicsLayer(alpha = metaProgress),
             )
-            Image(
-                painter = painterResource(model.previewImageRes),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(width = 72.dp, height = 52.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .graphicsLayer(
-                        alpha = smallImageProgress,
-                        scaleX = 0.92f + 0.08f * smallImageProgress,
-                        scaleY = 0.92f + 0.08f * smallImageProgress,
-                        transformOrigin = TransformOrigin.Center,
-                    ),
-                contentScale = ContentScale.Crop,
-            )
+            val previewModel = model.previewImageUrl ?: model.previewImageRes
+            if (previewModel != null) {
+                AsyncImage(
+                    model = previewModel,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(width = 72.dp, height = 52.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .graphicsLayer(
+                            alpha = smallImageProgress,
+                            scaleX = 0.92f + 0.08f * smallImageProgress,
+                            scaleY = 0.92f + 0.08f * smallImageProgress,
+                            transformOrigin = TransformOrigin.Center,
+                        ),
+                    contentScale = ContentScale.Crop,
+                    onSuccess = { onPreviewDrawableLoaded(it.result.drawable) },
+                )
+            } else {
+                Box(Modifier.size(width = 72.dp, height = 52.dp))
+            }
         },
     ) { measurables, constraints ->
         val imageSlotWidth = with(density) { 82.dp.roundToPx() }
@@ -481,6 +578,7 @@ private fun StoryMeta(
     style: StoryItemStyle,
     typography: ContentTypography,
     textSize: Float,
+    onFaviconDrawableLoaded: (Drawable) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val metaText = remember(
@@ -508,13 +606,14 @@ private fun StoryMeta(
             enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
             exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
         ) {
-            Image(
-                painter = painterResource(model.faviconRes),
+            AsyncImage(
+                model = model.faviconUrl ?: model.faviconRes,
                 contentDescription = null,
                 modifier = Modifier
                     .padding(end = 4.dp)
                     .size(17.dp)
                     .clip(RoundedCornerShape(3.dp)),
+                onSuccess = { onFaviconDrawableLoaded(it.result.drawable) },
             )
         }
         AnimatedContent(
@@ -545,10 +644,12 @@ private fun StoryCommentRail(
     style: StoryItemStyle,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
     countTextSize: Float,
+    onClick: (() -> Unit)?,
 ) {
     Column(
         modifier = Modifier
             .fillMaxHeight()
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
             .padding(horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
@@ -578,7 +679,11 @@ private fun StoryCommentRail(
             Text(
                 text = model.commentCount.toString(),
                 modifier = Modifier.fillMaxWidth(),
-                color = HarmonicTheme.colors.storyNormal,
+                color = if (style.dimmed) {
+                    HarmonicTheme.colors.storyDisabled
+                } else {
+                    HarmonicTheme.colors.storyNormal
+                },
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = countTextSize.sp,

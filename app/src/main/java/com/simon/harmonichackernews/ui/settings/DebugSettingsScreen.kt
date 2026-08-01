@@ -39,6 +39,7 @@ import com.simon.harmonichackernews.CoulombGasActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.ui.editor.ComposeEditorPreference
+import com.simon.harmonichackernews.ui.submissions.SubmissionsUiPreference
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.Utils
@@ -140,11 +141,22 @@ fun DebugSettingsScreen(
     ) {
         item {
             SettingsCategory("Debug tools") {
-                ComposerImplementationSetting(
+                ImplementationSetting(
+                    title = "Post and comment editor",
                     selected = ComposeEditorPreference.selected(context),
                     onSelected = { implementation ->
                         prefs.edit()
                             .putString(ComposeEditorPreference.KEY, implementation)
+                            .apply()
+                    },
+                )
+                SettingsDivider()
+                ImplementationSetting(
+                    title = "Submissions",
+                    selected = SubmissionsUiPreference.selected(context),
+                    onSelected = { implementation ->
+                        prefs.edit()
+                            .putString(SubmissionsUiPreference.KEY, implementation)
                             .apply()
                     },
                 )
@@ -294,7 +306,8 @@ fun DebugSettingsScreen(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ComposerImplementationSetting(
+private fun ImplementationSetting(
+    title: String,
     selected: String,
     onSelected: (String) -> Unit,
 ) {
@@ -305,7 +318,7 @@ private fun ComposerImplementationSetting(
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(
-            text = "Post and comment editor",
+            text = title,
             color = HarmonicTheme.colors.textPrimary,
             fontFamily = ProductSansFontFamily,
         )

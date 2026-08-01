@@ -55,6 +55,8 @@ data class HarmonicColors(
     val settingsMainToggle: Color,
     val settingsMainToggleText: Color,
     val overlayButton: Color,
+    val submissionsCommentTimeBackground: Color,
+    val submissionsCommentTimeOutline: Color,
 )
 
 private val LocalHarmonicColors = staticCompositionLocalOf<HarmonicColors> {
@@ -199,6 +201,14 @@ fun harmonicColors(context: Context): HarmonicColors {
         overlayButton = context.colorAttribute(
             R.attr.overlayButtonColor,
             fallbackScheme.secondaryContainer,
+        ),
+        submissionsCommentTimeBackground = context.colorAttribute(
+            R.attr.submissionsCommentTimeBackgroundColor,
+            fallbackScheme.surfaceContainerHighest,
+        ),
+        submissionsCommentTimeOutline = context.colorAttribute(
+            R.attr.submissionsCommentTimeOutlineColor,
+            Color.Transparent,
         ),
     )
 }

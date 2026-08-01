@@ -220,6 +220,7 @@ dependencies {
     implementation(libs.volley)
     implementation(libs.bundles.okhttp)
     implementation(libs.coil)
+    implementation(libs.coil.compose)
     implementation(libs.coil.svg)
     implementation(libs.jsoup)
     debugLLMImplementation(libs.mlkit.genai.summarization)

@@ -30,6 +30,8 @@ import com.simon.harmonichackernews.databinding.ActivitySubmissionsBinding;
 import com.simon.harmonichackernews.network.BackgroundJSONParser;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
+import com.simon.harmonichackernews.ui.submissions.SubmissionsComposeController;
+import com.simon.harmonichackernews.ui.submissions.SubmissionsUiPreference;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils;
@@ -75,12 +77,93 @@ public class SubmissionsActivity extends AppCompatActivity {
     private int topInset = 0;
     private int appBarOffset = 0;
     private SubmissionsViewModel submissionsViewModel;
+    private boolean composeUi;
+    private SubmissionsComposeController composeController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         submissionsViewModel = new ViewModelProvider(this).get(SubmissionsViewModel.class);
         ThemeUtils.setupTheme(this, false);
+
+        String userName = getIntent().getStringExtra(KEY_USER);
+        submissions = new ArrayList<>();
+        queue = NetworkComponent.getRequestQueueInstance(this);
+        composeUi = SubmissionsUiPreference.shouldUseCompose(this);
+
+        if (composeUi) {
+            setupComposeUi(userName);
+        } else {
+            setupViewsUi(userName);
+        }
+
+        if (!restoreSubmissionsState()) {
+            loadSubmissions(true);
+        }
+    }
+
+    private void setupComposeUi(String userName) {
+        composeController = SubmissionsComposeController.install(
+                this,
+                userName,
+                submissionFilter,
+                new SubmissionsComposeController.Listener() {
+                    @Override
+                    public void onFilterSelected(int filter) {
+                        if (submissionFilter == filter) {
+                            return;
+                        }
+                        submissionFilter = filter;
+                        applySubmissionFilter();
+                    }
+
+                    @Override
+                    public void onRefresh() {
+                        loadSubmissions(true);
+                    }
+
+                    @Override
+                    public void onStoryLinkClick(@NonNull Story story) {
+                        if (story.isLink) {
+                            if (SettingsUtils.shouldUseIntegratedWebView(getApplicationContext())) {
+                                openComments(story, true);
+                            } else {
+                                Utils.launchCustomTab(SubmissionsActivity.this, story.url);
+                            }
+                        } else {
+                            openComments(story, false);
+                        }
+                    }
+
+                    @Override
+                    public void onStoryCommentsClick(@NonNull Story story) {
+                        openComments(story, false);
+                    }
+
+                    @Override
+                    public void onCommentStoryClick(@NonNull Story story) {
+                        openCommentMasterStory(story);
+                    }
+
+                    @Override
+                    public void onCommentRepliesClick(@NonNull Story story) {
+                        openComments(story, false);
+                    }
+
+                    @Override
+                    public void onLoadMore() {
+                        if (submissionsLoading || !submissionsCanLoadMore) {
+                            return;
+                        }
+                        submissionsHitsPerPage += ALGOLIA_HITS_INCREMENT;
+                        loadSubmissions(false);
+                    }
+                });
+        composeController.updateDisplaySettings(
+                StoryDisplaySettings.from(this).withShowIndex(false));
+    }
+
+    private void setupViewsUi(String userName) {
 
         binding = ActivitySubmissionsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -91,7 +174,6 @@ public class SubmissionsActivity extends AppCompatActivity {
         headerText = binding.submissionsHeaderContainer.submissionsHeaderText;
         filterGroup = binding.submissionsHeaderContainer.submissionsHeaderFilterGroup;
 
-        String userName = getIntent().getStringExtra(KEY_USER);
         headerText.setText(userName + "'s submissions");
         headerText.setContentDescription("Submissions by " + userName);
         applyPreferredHeaderTypeface();
@@ -125,10 +207,6 @@ public class SubmissionsActivity extends AppCompatActivity {
         ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout);
 
         RecyclerView recyclerView = binding.submissionsRecyclerview;
-
-        submissions = new ArrayList<>();
-
-        queue = NetworkComponent.getRequestQueueInstance(this);
 
         linearLayoutManager = new LinearLayoutManager(this);
         recyclerView.setHasFixedSize(true);
@@ -187,10 +265,6 @@ public class SubmissionsActivity extends AppCompatActivity {
 
         recyclerView.setAdapter(adapter);
         setUpWindowInsets(recyclerView);
-
-        if (!restoreSubmissionsState()) {
-            loadSubmissions(true);
-        }
     }
 
     @Override
@@ -232,6 +306,15 @@ public class SubmissionsActivity extends AppCompatActivity {
         initialLoadFinished = state.initialLoadFinished;
         submissionsLoadedSuccessfully = state.submissionsLoadedSuccessfully;
         submissionsLoading = false;
+        if (composeUi) {
+            composeController.updateLoading(false, false, false);
+            applySubmissionFilter();
+            composeController.restoreScrollState(
+                    state.firstVisiblePosition,
+                    state.firstVisibleTop,
+                    state.appBarCollapsed);
+            return submissionsLoadedSuccessfully || !allSubmissions.isEmpty();
+        }
         initialLoadingIndicator.setVisibility(View.GONE);
         filterGroup.check(submissionFilterButtonId(submissionFilter));
         applySubmissionFilter();
@@ -257,7 +340,7 @@ public class SubmissionsActivity extends AppCompatActivity {
     }
 
     private void saveSubmissionsStateForRecreation() {
-        if (submissionsViewModel == null || adapter == null || linearLayoutManager == null || binding == null) {
+        if (submissionsViewModel == null) {
             return;
         }
 
@@ -268,6 +351,20 @@ public class SubmissionsActivity extends AppCompatActivity {
         state.submissionsCanLoadMore = submissionsCanLoadMore;
         state.initialLoadFinished = initialLoadFinished;
         state.submissionsLoadedSuccessfully = submissionsLoadedSuccessfully;
+        if (composeUi) {
+            if (composeController == null) {
+                return;
+            }
+            state.appBarCollapsed = composeController.getAppBarCollapsed();
+            state.firstVisiblePosition = composeController.getFirstVisibleStoryPosition();
+            state.firstVisibleTop = composeController.getFirstVisibleStoryTop();
+            submissionsViewModel.setState(state);
+            return;
+        }
+
+        if (adapter == null || linearLayoutManager == null || binding == null) {
+            return;
+        }
         state.appBarCollapsed = appBarOffset < 0;
 
         RecyclerView recyclerView = binding.submissionsRecyclerview;
@@ -302,6 +399,9 @@ public class SubmissionsActivity extends AppCompatActivity {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        if (composeUi) {
+            return;
+        }
         int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
         swipeRefreshLayout.setPadding(sideMargin, 0, sideMargin, 0);
         appBarLayout.setPadding(sideMargin, 0, sideMargin, 0);
@@ -310,6 +410,12 @@ public class SubmissionsActivity extends AppCompatActivity {
     }
 
     private void applyStatusBarProtection() {
+        if (composeUi) {
+            if (composeController != null) {
+                composeController.applyStatusBarProtection();
+            }
+            return;
+        }
         StatusBarProtectionUtils.setTopProtection(
                 binding.submissionsStatusBarProtection,
                 StatusBarProtectionUtils.getPaneBackgroundColor(this));
@@ -317,6 +423,12 @@ public class SubmissionsActivity extends AppCompatActivity {
 
     private void syncStoryDisplayPreferences() {
         StoryDisplaySettings displaySettings = StoryDisplaySettings.from(this).withShowIndex(false);
+        if (composeUi) {
+            if (composeController != null) {
+                composeController.updateDisplaySettings(displaySettings);
+            }
+            return;
+        }
         boolean fontCacheChanged = FontUtils.font == null || !FontUtils.font.equals(displaySettings.font);
         if (fontCacheChanged) {
             FontUtils.init(this);
@@ -423,14 +535,27 @@ public class SubmissionsActivity extends AppCompatActivity {
     }
 
     private void applySubmissionFilter() {
-        int oldItemCount = adapter.getItemCount();
+        int oldItemCount = composeUi ? submissions.size() : adapter.getItemCount();
         submissions.clear();
-        adapter.showLoadMoreButton = submissionsCanLoadMore;
+        if (!composeUi) {
+            adapter.showLoadMoreButton = submissionsCanLoadMore;
+        }
 
         for (Story story : allSubmissions) {
             if (shouldShowStoryForSubmissionFilter(story)) {
                 submissions.add(story);
             }
+        }
+
+        if (composeUi) {
+            composeController.updateContent(
+                    new ArrayList<>(submissions),
+                    submissionFilter,
+                    !allSubmissions.isEmpty(),
+                    submissionsCanLoadMore,
+                    submissionsLoadedSuccessfully,
+                    getEmptyViewText());
+            return;
         }
 
         int newItemCount = adapter.getItemCount();
@@ -479,7 +604,11 @@ public class SubmissionsActivity extends AppCompatActivity {
 
                     int index = submissions.indexOf(story);
                     if (index >= 0) {
-                        adapter.notifyItemChanged(index);
+                        if (composeUi) {
+                            composeController.refreshStoryRows();
+                        } else {
+                            adapter.notifyItemChanged(index);
+                        }
                     }
 
                     Story refreshedMasterStory = story.toCommentMasterStory();
@@ -511,8 +640,15 @@ public class SubmissionsActivity extends AppCompatActivity {
         int requestGeneration = ++submissionsRequestGeneration;
         submissionsLoading = true;
         boolean showInitialLoading = !initialLoadFinished;
-        swipeRefreshLayout.setRefreshing(!showInitialLoading && resetResultLimit);
-        initialLoadingIndicator.setVisibility(showInitialLoading ? View.VISIBLE : View.GONE);
+        if (composeUi) {
+            composeController.updateLoading(
+                    true,
+                    showInitialLoading,
+                    !showInitialLoading && resetResultLimit);
+        } else {
+            swipeRefreshLayout.setRefreshing(!showInitialLoading && resetResultLimit);
+            initialLoadingIndicator.setVisibility(showInitialLoading ? View.VISIBLE : View.GONE);
+        }
         updateEmptyView();
         String url = Uri.parse("https://hn.algolia.com/api/v1/search_by_date")
                 .buildUpon()
@@ -575,12 +711,28 @@ public class SubmissionsActivity extends AppCompatActivity {
 
         submissionsLoading = false;
         initialLoadFinished = true;
-        swipeRefreshLayout.setRefreshing(false);
-        initialLoadingIndicator.setVisibility(View.GONE);
+        if (composeUi) {
+            composeController.updateLoading(false, false, false);
+        } else {
+            swipeRefreshLayout.setRefreshing(false);
+            initialLoadingIndicator.setVisibility(View.GONE);
+        }
         updateEmptyView();
     }
 
     private void updateEmptyView() {
+        if (composeUi) {
+            if (composeController != null) {
+                composeController.updateContent(
+                        new ArrayList<>(submissions),
+                        submissionFilter,
+                        !allSubmissions.isEmpty(),
+                        submissionsCanLoadMore,
+                        submissionsLoadedSuccessfully,
+                        getEmptyViewText());
+            }
+            return;
+        }
         if (adapter == null) {
             return;
         }
