@@ -78,6 +78,7 @@ import com.simon.harmonichackernews.network.BackgroundJSONParser;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
+import com.simon.harmonichackernews.ui.settings.SettingsUiPreference;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
@@ -4163,10 +4164,7 @@ public class StoriesFragment extends Fragment {
             public boolean onMenuItemClick(MenuItem item) {
                 if (item.getItemId() == R.id.menu_settings) {
                     requireActivity().startActivity(
-                            new Intent(requireActivity(), ComposeSettingsActivity.class));
-                } else if (item.getItemId() == R.id.menu_settings_old) {
-                    requireActivity().startActivity(
-                            new Intent(requireActivity(), SettingsActivity.class));
+                            SettingsUiPreference.createIntent(requireActivity()));
                 } else if (item.getItemId() == R.id.menu_log) {
                     if (TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity()))) {
                         AccountUtils.showLoginPrompt(requireActivity().getSupportFragmentManager());

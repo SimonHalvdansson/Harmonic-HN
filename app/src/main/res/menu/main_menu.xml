@@ -26,8 +26,4 @@
         android:id="@+id/menu_settings"
         android:title="Settings" />
 
-    <item
-        android:id="@+id/menu_settings_old"
-        android:title="Settings (old)" />
-
 </menu>

@@ -256,25 +256,22 @@ fun CommentsSettingsScreen(
                 SettingsDivider()
                 SegmentedSetting(
                     title = "Comment tap action",
+                    summary = if (swapTap) {
+                        "Long press: Toggle visibility"
+                    } else {
+                        "Long press: Details"
+                    },
                     options = listOf(
                         "visibility" to "Toggle visibility",
                         "details" to "Details",
                     ),
                     selected = if (swapTap) "details" else "visibility",
+                    buttonHeightRes = R.dimen.compose_settings_comment_tap_action_button_height,
                     onSelected = {
                         prefs.edit()
                             .putBoolean("pref_comments_swap_long", it == "details")
                             .apply()
                     },
-                )
-                SettingRow(
-                    title = if (swapTap) {
-                        "Long press: Toggle visibility"
-                    } else {
-                        "Long press: Details"
-                    },
-                    icon = R.drawable.ic_touch_app,
-                    onClick = {},
                 )
                 SettingsDivider()
                 SwitchSettingRow(

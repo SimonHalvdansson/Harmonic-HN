@@ -142,6 +142,16 @@ fun DebugSettingsScreen(
         item {
             SettingsCategory("Debug tools") {
                 ImplementationSetting(
+                    title = "Settings",
+                    selected = SettingsUiPreference.selected(context),
+                    onSelected = { implementation ->
+                        prefs.edit()
+                            .putString(SettingsUiPreference.KEY, implementation)
+                            .apply()
+                    },
+                )
+                SettingsDivider()
+                ImplementationSetting(
                     title = "Post and comment editor",
                     selected = ComposeEditorPreference.selected(context),
                     onSelected = { implementation ->

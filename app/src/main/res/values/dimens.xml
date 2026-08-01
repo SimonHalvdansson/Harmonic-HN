@@ -34,7 +34,9 @@
     <dimen name="compose_settings_row_trailing_start_space">16dp</dimen>
     <dimen name="compose_settings_inline_control_padding">12dp</dimen>
     <dimen name="compose_settings_inline_control_top_margin">8dp</dimen>
+    <dimen name="compose_settings_inline_control_summary_top_margin">2dp</dimen>
     <dimen name="compose_settings_segmented_button_height">40dp</dimen>
+    <dimen name="compose_settings_comment_tap_action_button_height">48dp</dimen>
     <dimen name="compose_settings_segmented_button_corner_radius">20dp</dimen>
     <dimen name="compose_settings_segmented_button_inner_corner_radius">8dp</dimen>
     <dimen name="compose_settings_segmented_button_pressed_inner_corner_radius">4dp</dimen>

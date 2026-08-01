@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import android.view.WindowManager
+import androidx.annotation.DimenRes
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -809,12 +810,18 @@ fun SettingsDivider() {
     )
 }
 
+/**
+ * Renders an inline segmented preference. An optional summary is kept inside the same
+ * preference, between its title and controls, matching custom View preference layouts.
+ */
 @Composable
 fun SegmentedSetting(
     title: String,
+    summary: String? = null,
     options: List<Pair<String, String>>,
     selected: String,
     enabled: Boolean = true,
+    @DimenRes buttonHeightRes: Int = R.dimen.compose_settings_segmented_button_height,
     onSelected: (String) -> Unit,
 ) {
     Column(
@@ -838,6 +845,20 @@ fun SegmentedSetting(
             fontSize = 16.sp,
             lineHeight = 20.sp,
         )
+        if (!summary.isNullOrBlank()) {
+            Text(
+                text = summary,
+                modifier = Modifier.padding(
+                    top = dimensionResource(
+                        R.dimen.compose_settings_inline_control_summary_top_margin,
+                    ),
+                ),
+                color = HarmonicTheme.colors.storyDisabled,
+                fontFamily = ProductSansFontFamily,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -886,9 +907,7 @@ fun SegmentedSetting(
                     modifier = Modifier
                         .weight(1f)
                         .height(
-                            dimensionResource(
-                                R.dimen.compose_settings_segmented_button_height,
-                            ),
+                            dimensionResource(buttonHeightRes),
                         )
                         .background(
                             if (isSelected) {
