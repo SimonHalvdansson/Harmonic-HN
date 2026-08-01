@@ -30,7 +30,7 @@ jobs:
         uses: android-actions/setup-android@v4
       - name: Install native build tools
         run: sdkmanager "ndk;29.0.13113456" "cmake;3.22.1"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Build with Gradle
         run: >-
           ./gradlew
