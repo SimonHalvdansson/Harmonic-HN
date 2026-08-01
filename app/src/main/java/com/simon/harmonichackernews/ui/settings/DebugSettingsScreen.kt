@@ -43,6 +43,7 @@ import com.simon.harmonichackernews.ui.submissions.SubmissionsUiPreference
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.widget.WidgetConfigUiPreference
 
 private const val OpenWithoutCacheStoryId = 49089500
 
@@ -167,6 +168,16 @@ fun DebugSettingsScreen(
                     onSelected = { implementation ->
                         prefs.edit()
                             .putString(SubmissionsUiPreference.KEY, implementation)
+                            .apply()
+                    },
+                )
+                SettingsDivider()
+                ImplementationSetting(
+                    title = "Widget configuration",
+                    selected = WidgetConfigUiPreference.selected(context),
+                    onSelected = { implementation ->
+                        prefs.edit()
+                            .putString(WidgetConfigUiPreference.KEY, implementation)
                             .apply()
                     },
                 )

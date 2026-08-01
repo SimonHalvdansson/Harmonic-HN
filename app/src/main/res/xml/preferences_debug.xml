@@ -15,6 +15,16 @@
             app:title="Settings"
             app:useSimpleSummaryProvider="true" />
 
+        <ListPreference
+            app:defaultValue="views"
+            app:entries="@array/ui_implementation_entries"
+            app:entryValues="@array/ui_implementation_values"
+            app:icon="@drawable/ic_code_blocks"
+            app:key="pref_widget_config_implementation"
+            app:singleLineTitle="false"
+            app:title="Widget configuration"
+            app:useSimpleSummaryProvider="true" />
+
         <SwitchPreferenceCompat
             app:defaultValue="false"
             app:icon="@drawable/ic_refresh"

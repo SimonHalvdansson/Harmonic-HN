@@ -383,7 +383,9 @@ private fun SubmissionsList(
             item(key = "empty") {
                 EmptySubmissions(
                     text = emptyText,
-                    modifier = Modifier.padding(horizontal = sideMargin),
+                    modifier = Modifier
+                        .animateItem()
+                        .padding(horizontal = sideMargin),
                 )
             }
         }
@@ -393,7 +395,11 @@ private fun SubmissionsList(
             key = { it.id },
             contentType = { if (it.isComment) "comment" else "story" },
         ) { story ->
-            Box(modifier = Modifier.padding(horizontal = sideMargin)) {
+            Box(
+                modifier = Modifier
+                    .animateItem()
+                    .padding(horizontal = sideMargin),
+            ) {
                 if (story.isComment) {
                     SubmissionCommentItem(
                         story = story,
@@ -420,7 +426,9 @@ private fun SubmissionsList(
                 LoadMoreButton(
                     loading = loading,
                     onClick = listener::onLoadMore,
-                    modifier = Modifier.padding(horizontal = sideMargin),
+                    modifier = Modifier
+                        .animateItem()
+                        .padding(horizontal = sideMargin),
                 )
             }
         }

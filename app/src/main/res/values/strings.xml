@@ -2,6 +2,15 @@
     <string name="load_more">Load more</string>
     <string name="loading_more_stories">Loading more stories</string>
     <string name="app_name">Harmonic</string>
+    <string name="widget_config_title">Configure Widget</string>
+    <string name="widget_config_top_stories">Top Stories</string>
+    <string name="widget_config_new_stories">New Stories</string>
+    <string name="widget_config_best_stories">Best Stories</string>
+    <string name="widget_config_ask_hn">Ask HN</string>
+    <string name="widget_config_show_hn">Show HN</string>
+    <string name="widget_config_jobs">Jobs</string>
+    <string name="widget_config_story_count_label">Number of stories to show</string>
+    <string name="widget_config_confirm">Confirm</string>
     <string name="local_ai_runtime_feature_title">Local AI runtimes</string>
     <string name="cache_stories_title">Cache stories</string>
     <string name="cache_stories_action">Cache</string>

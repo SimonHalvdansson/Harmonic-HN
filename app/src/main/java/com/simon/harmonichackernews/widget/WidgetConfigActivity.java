@@ -38,10 +38,6 @@ public class WidgetConfigActivity extends AppCompatActivity {
         // Set canceled result initially — if user backs out, widget won't be added
         setResult(RESULT_CANCELED);
 
-        binding = ActivityWidgetConfigBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
-        applyResponsivePadding();
-
         // Get widget ID from intent
         Intent intent = getIntent();
         Bundle extras = intent.getExtras();
@@ -54,6 +50,25 @@ public class WidgetConfigActivity extends AppCompatActivity {
             finish();
             return;
         }
+
+        if (WidgetConfigUiPreference.shouldUseCompose(this)) {
+            setupComposeUi();
+        } else {
+            setupViewsUi();
+        }
+    }
+
+    private void setupComposeUi() {
+        WidgetConfigComposeHost.install(
+                this,
+                getStoryCount(this, appWidgetId),
+                this::confirmConfiguration);
+    }
+
+    private void setupViewsUi() {
+        binding = ActivityWidgetConfigBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+        applyResponsivePadding();
 
         MaterialButtonToggleGroup storyCountGroup = binding.widgetConfigStoryCountGroup;
         storyCountGroup.check(getStoryCountButtonId(getStoryCount(this, appWidgetId)));
@@ -84,27 +99,30 @@ public class WidgetConfigActivity extends AppCompatActivity {
             }
 
             int storyCount = getSelectedStoryCount(storyCountGroup.getCheckedButtonId());
-
-            // Save config
-            SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-            prefs.edit()
-                    .putString(KEY_FEED_TYPE_PREFIX + appWidgetId, feedUrl)
-                    .putString(KEY_FEED_NAME_PREFIX + appWidgetId, feedName)
-                    .putInt(KEY_STORY_COUNT_PREFIX + appWidgetId, storyCount)
-                    .apply();
-
-            // Set result and finish
-            Intent resultValue = new Intent();
-            resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-            setResult(RESULT_OK, resultValue);
-            finish();
+            confirmConfiguration(feedUrl, feedName, storyCount);
         });
+    }
+
+    private void confirmConfiguration(String feedUrl, String feedName, int storyCount) {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        prefs.edit()
+                .putString(KEY_FEED_TYPE_PREFIX + appWidgetId, feedUrl)
+                .putString(KEY_FEED_NAME_PREFIX + appWidgetId, feedName)
+                .putInt(KEY_STORY_COUNT_PREFIX + appWidgetId, storyCount)
+                .apply();
+
+        Intent resultValue = new Intent();
+        resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+        setResult(RESULT_OK, resultValue);
+        finish();
     }
 
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        applyResponsivePadding();
+        if (binding != null) {
+            applyResponsivePadding();
+        }
     }
 
     private void applyResponsivePadding() {
