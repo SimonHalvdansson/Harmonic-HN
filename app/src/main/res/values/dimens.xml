@@ -25,7 +25,8 @@
     <dimen name="story_large_preview_image_inset">10dp</dimen>
     <dimen name="story_large_preview_image_bottom_margin">2dp</dimen>
 
-    <integer name="stories_pane_weight">4</integer>
+    <!-- Percentage of the window width given to the stories list in a two pane layout -->
+    <integer name="default_split_pane_ratio">50</integer>
 
     <bool name="is_tablet">false</bool>
 </resources>

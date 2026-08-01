@@ -2,6 +2,11 @@
 <resources
   xmlns:window="http://schemas.android.com/apk/res-auto">
 
+  <!--
+    The split ratios below are replaced at runtime by FoldableSplitInitializer with the ratio
+    picked in settings or set by dragging the divider between the panes.
+  -->
+
   <SplitPairRule
     window:splitRatio="0.5"
     window:splitLayoutDirection="locale"

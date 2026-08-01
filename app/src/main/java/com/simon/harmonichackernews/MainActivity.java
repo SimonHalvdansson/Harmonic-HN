@@ -25,6 +25,7 @@ import com.simon.harmonichackernews.databinding.ActivityMainFoldableBinding;
 import com.simon.harmonichackernews.utils.Changelog;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.SettingsUtils;
+import com.simon.harmonichackernews.utils.SplitRatioTracker;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -46,6 +47,8 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     private boolean searchBackEnabled = false;
     private View mainFragmentsContainer;
     private View mainFragmentStoriesContainer;
+    private View mainFragmentCommentsContainer;
+    private SplitRatioTracker splitRatioTracker;
 
     public int bottom = 0;
 
@@ -61,11 +64,14 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
             setContentView(binding.getRoot());
             mainFragmentsContainer = binding.mainFragmentsContainer;
             mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
+            mainFragmentCommentsContainer = binding.mainFragmentCommentsContainer;
+            splitRatioTracker = new SplitRatioTracker(this);
         } else {
             ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
             setContentView(binding.getRoot());
             mainFragmentsContainer = binding.mainFragmentsContainer;
             mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
+            mainFragmentCommentsContainer = binding.mainFragmentCommentsContainer;
         }
 
         updateFragmentLayout();
@@ -106,7 +112,22 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // The split ratio may have been changed in settings while we were in the background
+        if (shouldUseFoldableActivityEmbedding()) {
+            FoldableSplitInitializer.applyRulesIfSplitPaneRatioChanged(this);
+        } else {
+            updateFragmentLayout();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
+        if (splitRatioTracker != null) {
+            splitRatioTracker.teardown();
+            splitRatioTracker = null;
+        }
         if (getCurrentMainActivity() == this) {
             currentMainActivity.clear();
             searchBackEnabled = false;
@@ -302,11 +323,19 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
     private void updateFragmentLayout() {
         if (shouldOpenCommentsInMainPane() && mainFragmentsContainer instanceof LinearLayout) {
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+            int storiesWeight = SettingsUtils.getSplitPaneRatio(this);
+
+            mainFragmentStoriesContainer.setLayoutParams(new LinearLayout.LayoutParams(
                     0,
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    getResources().getInteger(R.integer.stories_pane_weight));
-            mainFragmentStoriesContainer.setLayoutParams(params);
+                    storiesWeight));
+
+            if (mainFragmentCommentsContainer != null) {
+                mainFragmentCommentsContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                        0,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        100 - storiesWeight));
+            }
 
             mainFragmentsContainer.setPadding(0, 0, 0, 0);
         }

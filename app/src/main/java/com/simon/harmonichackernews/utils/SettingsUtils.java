@@ -60,6 +60,7 @@ public class SettingsUtils {
     public static final String PREF_WEBVIEW_READER_MODE_DEFAULT = "pref_webview_reader_mode_default";
     public static final String PREF_WEBVIEW_READER_MODE_FONT = "pref_webview_reader_mode_font";
     public static final String PREF_WEBVIEW_READER_MODE_FONT_SIZE = "pref_webview_reader_mode_font_size";
+    public static final String PREF_SPLIT_PANE_RATIO = "pref_split_pane_ratio";
     public static final String PREF_ARCHIVE_REDIRECT_DOMAINS = "pref_archive_redirect_domains";
     public static final String PREF_STORIES_TO_CACHE = "pref_stories_to_cache";
     public static final String PREF_FAVICON_PROVIDER = "pref_favicon_provider";
@@ -121,6 +122,10 @@ public class SettingsUtils {
             + MAX_COMMENT_TEXT_SIZE_OFFSET * COMMENT_TEXT_SIZE_OFFSET_STEP;
     public static final String FAVORITES_LABEL = "Favorites";
     public static final String UPVOTED_LABEL = "Upvoted";
+    public static final int MIN_SPLIT_PANE_RATIO = 20;
+    public static final int MAX_SPLIT_PANE_RATIO = 70;
+    public static final int SPLIT_PANE_RATIO_UNSET = 0;
+    public static final int DEFAULT_FOLDABLE_SPLIT_PANE_RATIO = 50;
 
     public static boolean isAutoTheme(String theme) {
         return DEFAULT_THEME.equals(theme)
@@ -700,6 +705,37 @@ public class SettingsUtils {
 
     public static int clampReaderModeFontSize(int textSize) {
         return Math.max(MIN_READER_MODE_FONT_SIZE, Math.min(MAX_READER_MODE_FONT_SIZE, textSize));
+    }
+
+    /**
+     * The share of the window width, in percent, given to the stories list when both panes are
+     * visible side by side. The comments pane gets the remainder.
+     */
+    public static int getSplitPaneRatio(Context ctx) {
+        int stored = PreferenceManager.getDefaultSharedPreferences(ctx)
+                .getInt(PREF_SPLIT_PANE_RATIO, SPLIT_PANE_RATIO_UNSET);
+        if (stored == SPLIT_PANE_RATIO_UNSET) {
+            return getDefaultSplitPaneRatio(ctx);
+        }
+        return clampSplitPaneRatio(stored);
+    }
+
+    public static int getDefaultSplitPaneRatio(Context ctx) {
+        if (FoldableSplitInitializer.isFoldableSplitEnabled(ctx)) {
+            return DEFAULT_FOLDABLE_SPLIT_PANE_RATIO;
+        }
+        return clampSplitPaneRatio(ctx.getResources().getInteger(R.integer.default_split_pane_ratio));
+    }
+
+    public static void setSplitPaneRatio(Context ctx, int ratio) {
+        PreferenceManager.getDefaultSharedPreferences(ctx)
+                .edit()
+                .putInt(PREF_SPLIT_PANE_RATIO, clampSplitPaneRatio(ratio))
+                .apply();
+    }
+
+    public static int clampSplitPaneRatio(int ratio) {
+        return Math.max(MIN_SPLIT_PANE_RATIO, Math.min(MAX_SPLIT_PANE_RATIO, ratio));
     }
 
     public static boolean shouldCloseWebViewOnBack(Context ctx) {

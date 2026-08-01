@@ -12,6 +12,7 @@ import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.SettingsActivity;
 import com.simon.harmonichackernews.SettingsDetailActivity;
 import com.simon.harmonichackernews.WelcomeDialogFragment;
+import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -44,6 +45,14 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
         updateFontSummary();
         paletteTintPreference = findPreference(SettingsUtils.PREF_PALETTE_TINT_MODE);
         updatePaletteTintSummary();
+
+        Preference splitPaneRatioPreference = findPreference(SettingsUtils.PREF_SPLIT_PANE_RATIO);
+        if (splitPaneRatioPreference != null) {
+            // Only devices which can show the stories and comments side by side have a ratio to set
+            splitPaneRatioPreference.setVisible(
+                    Utils.isTablet(getResources())
+                            || FoldableSplitInitializer.isFoldableSplitEnabled(requireContext()));
+        }
 
         Preference stylePreference = findPreference("pref_style");
         if (stylePreference != null) {
@@ -190,6 +199,8 @@ public class AppearancePreferenceFragment extends BaseSettingsFragment implement
             updateThemeSummary();
         } else if (SettingsUtils.PREF_THEME_NIGHTTIME.equals(key)) {
             updateNighttimeThemeSummary();
+        } else if (SettingsUtils.PREF_SPLIT_PANE_RATIO.equals(key) && getContext() != null) {
+            FoldableSplitInitializer.applyRules(requireContext());
         }
     }
 
