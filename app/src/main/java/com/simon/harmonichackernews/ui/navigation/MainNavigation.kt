@@ -4,6 +4,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.Easing
@@ -14,6 +15,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
@@ -28,13 +32,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.dp
@@ -42,12 +49,23 @@ import androidx.fragment.compose.AndroidFragment
 import androidx.fragment.compose.rememberFragmentState
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberDecoratedNavEntries
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.scene.SceneInfo
+import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
+import androidx.navigationevent.compose.rememberNavigationEventState
 import com.simon.harmonichackernews.CommentsFragment
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.StoriesFragment
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
+import com.simon.harmonichackernews.ui.settings.DefaultActivityPredictiveBackAnimation
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import java.util.concurrent.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private data object StoriesDestination : NavKey
 
@@ -190,6 +208,19 @@ private fun MainNavigation(
     val backStack = remember {
         mutableStateListOf<NavKey>(StoriesDestination)
     }
+    val backAnimationScope = rememberCoroutineScope()
+    var activeBackAnimation by remember {
+        mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
+    }
+
+    fun popMainBackStack() {
+        if (backStack.lastOrNull() is CommentsDestination) {
+            backStack.removeLastOrNull()
+            controller.detailRemovedFromBackStack()
+        } else {
+            activity.finish()
+        }
+    }
 
     val storyRequest = controller.storyRequest
     LaunchedEffect(storyRequest?.serial) {
@@ -201,8 +232,7 @@ private fun MainNavigation(
     }
     LaunchedEffect(controller.closeRequest) {
         if (controller.closeRequest > 0 && backStack.lastOrNull() is CommentsDestination) {
-            backStack.removeLastOrNull()
-            controller.detailRemovedFromBackStack()
+            popMainBackStack()
         }
     }
 
@@ -231,23 +261,111 @@ private fun MainNavigation(
         }
     }
 
-    NavDisplay(
-        backStack = backStack,
-        onBack = {
-            if (backStack.lastOrNull() is CommentsDestination) {
-                backStack.removeLastOrNull()
-                controller.detailRemovedFromBackStack()
-            } else {
-                activity.finish()
+    PredictiveBackHandler(
+        enabled = backStack.lastOrNull() is CommentsDestination,
+    ) { events ->
+        if (isTwoPane) {
+            try {
+                events.collect { }
+                popMainBackStack()
+            } catch (_: CancellationException) {
+                // A cancelled two-pane gesture keeps the current detail selected.
             }
-        },
-        sceneStrategies = listOf(sceneStrategy),
+            return@PredictiveBackHandler
+        }
+
+        var animation: DefaultActivityPredictiveBackAnimation? = null
+        try {
+            events.collect { event ->
+                val currentAnimation = animation
+                    ?: DefaultActivityPredictiveBackAnimation(event).also {
+                        animation = it
+                        activeBackAnimation = it
+                    }
+                backAnimationScope.launch {
+                    currentAnimation.animate(event)
+                }
+            }
+
+            val currentAnimation = animation
+            if (currentAnimation == null) {
+                popMainBackStack()
+                return@PredictiveBackHandler
+            }
+            currentAnimation.finish()
+            popMainBackStack()
+            activeBackAnimation = null
+        } catch (_: CancellationException) {
+            withContext(NonCancellable) {
+                animation?.cancel()
+                if (activeBackAnimation === animation) activeBackAnimation = null
+            }
+        }
+    }
+
+    val decoratedEntries = rememberDecoratedNavEntries(
+        backStack = backStack,
+        entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
         entryProvider = provider,
-        modifier = Modifier.fillMaxSize(),
-        transitionSpec = { mainOpenTransition() },
-        popTransitionSpec = { mainPopTransition() },
-        predictivePopTransitionSpec = { _ -> mainPopTransition() },
     )
+    val sceneState = rememberSceneState(
+        entries = decoratedEntries,
+        sceneStrategies = listOf(sceneStrategy),
+        onBack = ::popMainBackStack,
+    )
+    val navDisplayEventState = rememberNavigationEventState(
+        currentInfo = SceneInfo(sceneState.currentScene),
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(HarmonicTheme.colors.background),
+    ) {
+        val animation = activeBackAnimation
+        val previousScene = sceneState.previousScenes.lastOrNull()
+        if (!isTwoPane && animation != null && previousScene != null) {
+            key(previousScene.key) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(animation.enterModifier),
+                ) {
+                    previousScene.content()
+                }
+            }
+            key(sceneState.currentScene.key) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(animation.exitModifier),
+                ) {
+                    sceneState.currentScene.content()
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            do {
+                                val event = awaitPointerEvent()
+                                event.changes.forEach { it.consume() }
+                            } while (event.changes.any { it.pressed })
+                        }
+                    },
+            )
+        } else {
+            NavDisplay(
+                sceneState = sceneState,
+                navigationEventState = navDisplayEventState,
+                modifier = Modifier.fillMaxSize(),
+                transitionSpec = { mainOpenTransition() },
+                popTransitionSpec = { mainPopTransition() },
+                predictivePopTransitionSpec = { _ -> mainPopTransition() },
+            )
+        }
+    }
 }
 
 @Composable

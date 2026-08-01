@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
@@ -329,6 +330,11 @@ fun CommentItem(
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "runtime comment text size",
     )
+    val referenceLabelSize by animateFloatAsState(
+        targetValue = typography.referenceLabelSize,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "runtime comment reference size",
+    )
     val byOp = comment.by == storyAuthor
     val byUser = !accountUser.isNullOrBlank() && comment.by == accountUser
     val metaColor = when {
@@ -338,6 +344,7 @@ fun CommentItem(
         else -> colors.storyDisabled
     }
     val cardShape = RoundedCornerShape(8.dp)
+    val rowShape = if (style.cardStyle) cardShape else RectangleShape
     val showIndicator = CommentDepthIndicatorUtils.shouldShowIndicators(style.depthIndicatorMode) &&
         (comment.depth > 0 || showTopLevelIndicator)
     val indicatorIndex = (comment.depth + if (showTopLevelIndicator) 0 else -1)
@@ -424,10 +431,10 @@ fun CommentItem(
                     .padding(shadowPadding)
                     .shadow(
                         elevation = if (style.cardStyle && style.showCardBorder) 1.dp else 0.dp,
-                        shape = cardShape,
+                        shape = rowShape,
                         clip = false,
                     )
-                    .clip(cardShape)
+                    .clip(rowShape)
                     .background(commentBackground)
                     .border(
                         1.dp,
@@ -436,7 +443,7 @@ fun CommentItem(
                         } else {
                             Color.Transparent
                         },
-                        cardShape,
+                        rowShape,
                     )
                     .height(IntrinsicSize.Min)
                     .combinedClickable(
@@ -518,7 +525,8 @@ fun CommentItem(
                                 RuntimeReferenceRow(
                                     link = link,
                                     fontFamily = typography.family,
-                                    textSize = (bodySize - 2f).coerceAtLeast(12f),
+                                    textSize = referenceLabelSize,
+                                    markerTextSize = typography.referenceMarkerSize,
                                     onLongClick = { onReferenceLongClick(link) },
                                 )
                             }
@@ -655,6 +663,7 @@ private fun RuntimeReferenceRow(
     link: CollectedReferenceLinks.ReferenceLink,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
     textSize: Float,
+    markerTextSize: Float,
     onLongClick: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -694,7 +703,7 @@ private fun RuntimeReferenceRow(
                 color = colors.storyDisabled,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
+                fontSize = markerTextSize.sp,
                 style = compactCommentTextStyle,
             )
         }

@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -24,9 +25,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,16 +46,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
@@ -63,6 +63,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -80,6 +81,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -98,6 +100,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -120,6 +123,8 @@ import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
+import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
+import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.StoryItem
 import com.simon.harmonichackernews.ui.content.StoryItemElement
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
@@ -234,6 +239,8 @@ class StoriesComposeController private constructor(
     internal var predictiveBackActive by mutableStateOf(false)
         private set
     internal var predictiveBackProgress by mutableFloatStateOf(0f)
+        private set
+    internal var predictiveBackSettleRequest by mutableStateOf<PredictiveBackSettleRequest?>(null)
         private set
     internal var contentVersion by mutableIntStateOf(0)
         private set
@@ -350,6 +357,7 @@ class StoriesComposeController private constructor(
     }
 
     fun beginPredictiveBack(progress: Float) {
+        predictiveBackSettleRequest = null
         predictiveBackActive = true
         predictiveBackProgress = progress.coerceIn(0f, 1f)
     }
@@ -358,7 +366,23 @@ class StoriesComposeController private constructor(
         predictiveBackProgress = progress.coerceIn(0f, 1f)
     }
 
-    fun endPredictiveBack() {
+    fun cancelPredictiveBack() {
+        predictiveBackSettleRequest = PredictiveBackSettleRequest(
+            serial = ++requestSerial,
+            target = 0f,
+        )
+    }
+
+    fun commitPredictiveBack() {
+        predictiveBackSettleRequest = PredictiveBackSettleRequest(
+            serial = ++requestSerial,
+            target = 1f,
+        )
+    }
+
+    internal fun endPredictiveBack(request: PredictiveBackSettleRequest? = null) {
+        if (request != null && predictiveBackSettleRequest != request) return
+        predictiveBackSettleRequest = null
         predictiveBackActive = false
         predictiveBackProgress = 0f
     }
@@ -433,11 +457,7 @@ class StoriesComposeController private constructor(
         clearTransitionSources()
         return storyBounds[storyId]?.get(StoryItemElement.Container)?.let { bounds ->
             createTransitionSource(bounds, false) { visible ->
-                suppressedStoryIds.value = if (visible) {
-                    suppressedStoryIds.value - storyId
-                } else {
-                    suppressedStoryIds.value + storyId
-                }
+                if (!visible) suppressedStoryIds.value = suppressedStoryIds.value + storyId
             }
         }
     }
@@ -500,6 +520,8 @@ class StoriesComposeController private constructor(
     internal fun isStorySuppressed(storyId: Int): Boolean = storyId in suppressedStoryIds.value
 
     data class ScrollByRequest(val serial: Int, val dy: Int)
+
+    data class PredictiveBackSettleRequest(val serial: Int, val target: Float)
 
     interface Listener {
         fun onTypeSelected(index: Int)
@@ -666,7 +688,29 @@ private fun StoriesScreen(controller: StoriesComposeController) {
     val mainState = rememberLazyListState()
     val searchState = rememberLazyListState()
     val progress = controller.predictiveBackProgress.coerceIn(0f, 1f)
-    val predictive = controller.predictiveBackActive && controller.searching
+    val predictive = controller.predictiveBackActive
+
+    val settleRequest = controller.predictiveBackSettleRequest
+    LaunchedEffect(settleRequest?.serial) {
+        val request = settleRequest ?: return@LaunchedEffect
+        val start = controller.predictiveBackProgress.coerceIn(0f, 1f)
+        val distance = kotlin.math.abs(request.target - start)
+        val animation = Animatable(start)
+        animation.animateTo(
+            targetValue = request.target,
+            animationSpec = tween(
+                durationMillis = (180 * distance).roundToInt().coerceAtLeast(1),
+                easing = StoriesEasing,
+            ),
+        ) {
+            controller.updatePredictiveBack(value)
+        }
+        if (request.target == 1f) {
+            controller.listener.onCloseSearch()
+            withFrameNanos { }
+        }
+        controller.endPredictiveBack(request)
+    }
 
     val scrollRequest = controller.scrollByRequest
     LaunchedEffect(scrollRequest) {
@@ -895,20 +939,27 @@ private fun StoriesHeader(
             .fillMaxWidth()
             .background(HarmonicTheme.colors.background)
             .padding(
-                start = 16.dp + startInset,
                 top = topInset + topSpacing,
-                end = 16.dp,
                 bottom = bottomSpacing,
             )
             .animateContentSize(tween(220, easing = StoriesEasing)),
     ) {
-        if (searchMode) SearchHeader(controller) else MainHeader(controller)
+        val sideStart = 16.dp + startInset
+        val sideEnd = 16.dp
+        if (searchMode) {
+            SearchHeader(controller, sideStart, sideEnd)
+        } else {
+            MainHeader(
+                controller,
+                modifier = Modifier.padding(start = sideStart, end = sideEnd),
+            )
+        }
 
         AnimatedVisibility(visible = !searchMode && controller.showSavedFilter) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp),
+                    .padding(start = sideStart, top = 10.dp, end = sideEnd),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SavedFilterButton("Stories", StoriesComposeController.FILTER_STORIES, controller, Modifier.weight(1f))
@@ -921,7 +972,7 @@ private fun StoriesHeader(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp),
+                    .padding(start = sideStart, top = 10.dp, end = sideEnd),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OutlinedButton(
@@ -960,20 +1011,37 @@ private fun StoriesHeader(
                 color = HarmonicTheme.colors.storyDisabled,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 12.sp,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(start = sideStart, top = 4.dp, end = sideEnd),
             )
         }
 
-        HeaderStatus(controller, searchMode)
+        Box(Modifier.padding(start = sideStart, end = sideEnd)) {
+            HeaderStatus(controller, searchMode)
+        }
     }
 }
 
 @Composable
-private fun MainHeader(controller: StoriesComposeController) {
+private fun MainHeader(
+    controller: StoriesComposeController,
+    modifier: Modifier = Modifier,
+) {
     var typesExpanded by remember { mutableStateOf(false) }
     var moreExpanded by remember { mutableStateOf(false) }
+    val settings = controller.displaySettings ?: return
+    val typography = rememberContentTypography(settings.font, settings.storyTextSize)
+    val density = LocalDensity.current
+    val selectedTextSize = with(density) {
+        when {
+            booleanResource(R.bool.extra_compact_stories_dropdown_selected_text) ->
+                (typography.storiesDropdownSelectedSize * 0.8f).dp.toSp()
+            booleanResource(R.bool.compact_stories_dropdown_selected_text) ->
+                typography.storiesDropdownCompactSelectedSize.dp.toSp()
+            else -> typography.storiesDropdownSelectedSize.dp.toSp()
+        }
+    }
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(56.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -994,40 +1062,60 @@ private fun MainHeader(controller: StoriesComposeController) {
                     } else {
                         controller.typeLabels.getOrNull(controller.selectedTypeIndex) ?: "Stories"
                     },
-                    fontFamily = ProductSansFontFamily,
+                    color = HarmonicTheme.colors.storyNormal,
+                    fontFamily = typography.family,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 30.sp,
+                    fontSize = selectedTextSize,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.semantics { heading() },
                 )
+                Spacer(Modifier.width(40.dp))
                 Icon(
                     painterResource(R.drawable.ic_keyboard_arrow_down),
                     contentDescription = "Choose story list",
                     modifier = Modifier.size(24.dp),
+                    tint = HarmonicTheme.colors.drawable,
                 )
             }
-            DropdownMenu(expanded = typesExpanded, onDismissRequest = { typesExpanded = false }) {
+            HarmonicDropdownMenu(
+                expanded = typesExpanded,
+                onDismiss = { typesExpanded = false },
+                modifier = Modifier.width(196.dp),
+            ) {
                 controller.typeLabels.forEachIndexed { index, label ->
                     DropdownMenuItem(
-                        text = { Text(label) },
+                        text = {
+                            HarmonicMenuText(
+                                text = label,
+                                color = HarmonicTheme.colors.storyNormal,
+                                fontFamily = typography.family,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = typography.storiesDropdownItemSize.sp,
+                            )
+                        },
                         onClick = {
                             typesExpanded = false
                             controller.listener.onTypeSelected(index)
                         },
-                        leadingIcon = if (index == controller.selectedTypeIndex) {
-                            { Icon(painterResource(R.drawable.ic_check), null) }
-                        } else null,
                     )
                 }
             }
         }
         IconButton(onClick = controller.listener::onOpenSearch) {
-            Icon(painterResource(R.drawable.ic_search), "Search")
+            Icon(
+                painterResource(R.drawable.ic_search),
+                "Search",
+                tint = HarmonicTheme.colors.drawable,
+            )
         }
         Box {
             IconButton(onClick = { moreExpanded = true }) {
-                Icon(painterResource(R.drawable.ic_more_vert), "More options")
+                Icon(
+                    painterResource(R.drawable.ic_more_vert),
+                    "More options",
+                    tint = HarmonicTheme.colors.drawable,
+                )
             }
             StoriesMoreMenu(controller, moreExpanded) { moreExpanded = false }
         }
@@ -1035,7 +1123,11 @@ private fun MainHeader(controller: StoriesComposeController) {
 }
 
 @Composable
-private fun SearchHeader(controller: StoriesComposeController) {
+private fun SearchHeader(
+    controller: StoriesComposeController,
+    sideStart: androidx.compose.ui.unit.Dp,
+    sideEnd: androidx.compose.ui.unit.Dp,
+) {
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
@@ -1044,7 +1136,10 @@ private fun SearchHeader(controller: StoriesComposeController) {
         keyboard?.show()
     }
     Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.padding(start = sideStart, end = sideEnd),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             TextField(
                 value = controller.searchDraft,
                 onValueChange = controller::updateSearchDraft,
@@ -1062,6 +1157,7 @@ private fun SearchHeader(controller: StoriesComposeController) {
                     unfocusedIndicatorColor = Color.Transparent,
                 ),
                 modifier = Modifier
+                    .padding(start = 4.dp)
                     .weight(1f)
                     .focusRequester(focusRequester),
             )
@@ -1070,34 +1166,48 @@ private fun SearchHeader(controller: StoriesComposeController) {
                 focusManager.clearFocus()
                 controller.listener.onCloseSearch()
             }) {
-                Icon(painterResource(R.drawable.ic_close), "Close search")
+                Icon(
+                    painterResource(R.drawable.ic_close),
+                    "Close search",
+                    tint = HarmonicTheme.colors.drawable,
+                )
             }
         }
-        Row(
+        LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
-                .horizontalScroll(rememberScrollState()),
+                .padding(top = 8.dp),
+            contentPadding = PaddingValues(start = sideStart + 4.dp, end = sideEnd),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            SearchOptionChip(controller.searchSortLabel, controller.searchSortLabels) {
-                controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_SORT, it)
+            item {
+                SearchOptionChip(controller.searchSortLabel, controller.searchSortLabels) {
+                    controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_SORT, it)
+                }
             }
-            SearchOptionChip(controller.searchDateLabel, controller.searchDateLabels) {
-                controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_DATE, it)
+            item {
+                SearchOptionChip(controller.searchDateLabel, controller.searchDateLabels) {
+                    controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_DATE, it)
+                }
             }
-            SearchOptionChip(controller.searchPointsLabel, controller.searchPointsLabels) {
-                controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_POINTS, it)
+            item {
+                SearchOptionChip(controller.searchPointsLabel, controller.searchPointsLabels) {
+                    controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_POINTS, it)
+                }
             }
-            SearchOptionChip(controller.searchCommentsLabel, controller.searchCommentsLabels) {
-                controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_COMMENTS, it)
+            item {
+                SearchOptionChip(controller.searchCommentsLabel, controller.searchCommentsLabels) {
+                    controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_COMMENTS, it)
+                }
             }
-            FilterChip(
-                selected = controller.searchOnlyClicked,
-                onClick = controller.listener::onToggleOnlyClicked,
-                label = { Text("From history") },
-                leadingIcon = { Icon(painterResource(R.drawable.ic_history), null, Modifier.size(18.dp)) },
-            )
+            item {
+                FilterChip(
+                    selected = controller.searchOnlyClicked,
+                    onClick = controller.listener::onToggleOnlyClicked,
+                    label = { Text("From history") },
+                    leadingIcon = { Icon(painterResource(R.drawable.ic_history), null, Modifier.size(18.dp)) },
+                )
+            }
         }
     }
 }
@@ -1106,18 +1216,35 @@ private fun SearchHeader(controller: StoriesComposeController) {
 private fun SearchOptionChip(label: String, labels: List<String>, onSelected: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        FilterChip(selected = false, onClick = { expanded = true }, label = { Text(label) })
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        FilterChip(
+            selected = false,
+            onClick = { expanded = true },
+            label = { Text(label) },
+            border = BorderStroke(1.dp, HarmonicTheme.colors.drawable),
+        )
+        HarmonicDropdownMenu(
+            expanded = expanded,
+            onDismiss = { expanded = false },
+            modifier = Modifier.width(196.dp),
+        ) {
             labels.forEachIndexed { index, option ->
                 DropdownMenuItem(
-                    text = { Text(option) },
+                    text = { HarmonicMenuText(option) },
                     onClick = {
                         expanded = false
                         onSelected(index)
                     },
-                    leadingIcon = if (option == label) {
-                        { Icon(painterResource(R.drawable.ic_check), null) }
-                    } else null,
+                    trailingIcon = {
+                        Box(
+                            modifier = Modifier.width(70.dp),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            RadioButton(
+                                selected = option == label,
+                                onClick = null,
+                            )
+                        }
+                    },
                 )
             }
         }
@@ -1130,33 +1257,31 @@ private fun StoriesMoreMenu(
     expanded: Boolean,
     dismiss: () -> Unit,
 ) {
-    DropdownMenu(expanded = expanded, onDismissRequest = dismiss) {
-        MoreItem("Settings", R.drawable.ic_build, StoriesComposeController.MORE_SETTINGS, controller, dismiss)
-        MoreItem(if (controller.loggedIn) "Log out" else "Log in", R.drawable.ic_key, StoriesComposeController.MORE_LOGIN, controller, dismiss)
+    HarmonicDropdownMenu(expanded = expanded, onDismiss = dismiss) {
         if (controller.loggedIn) {
-            MoreItem("Profile", R.drawable.ic_person, StoriesComposeController.MORE_PROFILE, controller, dismiss)
-            MoreItem("Submit", R.drawable.ic_add, StoriesComposeController.MORE_SUBMIT, controller, dismiss)
+            MoreItem("Profile", StoriesComposeController.MORE_PROFILE, controller, dismiss)
+            MoreItem("Submit", StoriesComposeController.MORE_SUBMIT, controller, dismiss)
         }
+        MoreItem(if (controller.loggedIn) "Log out" else "Log in", StoriesComposeController.MORE_LOGIN, controller, dismiss)
         if (controller.canCache) {
-            MoreItem("Cache stories", R.drawable.ic_cached, StoriesComposeController.MORE_CACHE, controller, dismiss)
+            MoreItem("Cache stories", StoriesComposeController.MORE_CACHE, controller, dismiss)
         }
         if (controller.canClearHistory) {
-            MoreItem("Clear history", R.drawable.ic_delete, StoriesComposeController.MORE_CLEAR_HISTORY, controller, dismiss)
+            MoreItem("Clear history", StoriesComposeController.MORE_CLEAR_HISTORY, controller, dismiss)
         }
+        MoreItem("Settings", StoriesComposeController.MORE_SETTINGS, controller, dismiss)
     }
 }
 
 @Composable
 private fun MoreItem(
     label: String,
-    icon: Int,
     action: Int,
     controller: StoriesComposeController,
     dismiss: () -> Unit,
 ) {
     DropdownMenuItem(
-        text = { Text(label) },
-        leadingIcon = { Icon(painterResource(icon), null) },
+        text = { HarmonicMenuText(label) },
         onClick = {
             dismiss()
             controller.listener.onMoreAction(action)
@@ -1181,12 +1306,20 @@ private fun SavedFilterButton(
 
 @Composable
 private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boolean) {
-    AnimatedVisibility(visible = controller.loading) {
+    AnimatedVisibility(
+        visible = controller.loading,
+        enter = fadeIn(tween(180, easing = StoriesEasing)),
+        exit = fadeOut(tween(140, easing = StoriesEasing)),
+    ) {
         Box(Modifier.fillMaxWidth().padding(top = 20.dp), contentAlignment = Alignment.Center) {
             LoadingIndicator(modifier = Modifier.size(48.dp))
         }
     }
-    AnimatedVisibility(visible = controller.loadingFailed || controller.loadingFailedServerError) {
+    AnimatedVisibility(
+        visible = controller.loadingFailed || controller.loadingFailedServerError,
+        enter = fadeIn(tween(180, easing = StoriesEasing)),
+        exit = fadeOut(tween(140, easing = StoriesEasing)),
+    ) {
         Column(
             Modifier.fillMaxWidth().padding(top = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1205,10 +1338,18 @@ private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boole
             }
         }
     }
-    AnimatedVisibility(visible = !searchMode && controller.showEmptySavedList) {
+    AnimatedVisibility(
+        visible = !searchMode && controller.showEmptySavedList,
+        enter = fadeIn(tween(180, easing = StoriesEasing)),
+        exit = fadeOut(tween(140, easing = StoriesEasing)),
+    ) {
         EmptyState(controller.emptySavedListText, R.drawable.ic_bookmark)
     }
-    AnimatedVisibility(visible = searchMode && controller.showEmptySearch) {
+    AnimatedVisibility(
+        visible = searchMode && controller.showEmptySearch,
+        enter = fadeIn(tween(180, easing = StoriesEasing)),
+        exit = fadeOut(tween(140, easing = StoriesEasing)),
+    ) {
         EmptyState("No stories found", R.drawable.ic_search)
     }
 }
@@ -1231,12 +1372,9 @@ private fun StoryLoadingItem(modifier: Modifier = Modifier) {
         shape = RoundedCornerShape(8.dp),
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
-        Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-            LoadingIndicator(Modifier.size(32.dp))
-            Column(Modifier.padding(start = 14.dp)) {
-                Box(Modifier.fillMaxWidth(0.78f).height(16.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest))
-                Box(Modifier.padding(top = 10.dp).fillMaxWidth(0.5f).height(12.dp).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest))
-            }
+        Column(Modifier.padding(18.dp)) {
+            Box(Modifier.fillMaxWidth(0.78f).height(16.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest))
+            Box(Modifier.padding(top = 10.dp).fillMaxWidth(0.5f).height(12.dp).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest))
         }
     }
 }

@@ -53,7 +53,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -88,7 +87,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -128,6 +126,8 @@ import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
+import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
+import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -398,10 +398,8 @@ class CommentsComposeController private constructor(
     fun createCommentTransitionSource(commentId: Int): View? =
         commentBounds[commentId]?.let { bounds ->
             createTransitionSource(bounds) { visible ->
-                suppressedCommentIds = if (visible) {
-                    suppressedCommentIds - commentId
-                } else {
-                    suppressedCommentIds + commentId
+                if (!visible) {
+                    suppressedCommentIds = suppressedCommentIds + commentId
                 }
             }
         }
@@ -409,7 +407,7 @@ class CommentsComposeController private constructor(
     internal fun createHeaderPreviewTransitionSource(
         bounds: androidx.compose.ui.geometry.Rect,
     ): View? = createTransitionSource(bounds) { visible ->
-        headerPreviewSuppressed = !visible
+        if (!visible) headerPreviewSuppressed = true
     }
 
     internal fun createTransitionSource(
@@ -1133,7 +1131,16 @@ private fun CommentsHeader(
         preferredFont = settings.font,
         commentTextSize = settings.preferredTextSize,
     )
-    var loadedTint by remember(story.id, story.previewImageUrl, story.faviconTintSourceUrl) {
+    val showHeaderShimmer = !story.loaded && story.title.isNullOrBlank() && !controller.loadingFailed
+    var loadedTint by remember(
+        story.id,
+        story.previewImageUrl,
+        story.previewImageTintColorLoaded,
+        story.previewImageTintColor,
+        story.faviconTintSourceUrl,
+        story.faviconTintColorLoaded,
+        story.faviconTintColor,
+    ) {
         mutableStateOf<Int?>(
             when {
                 story.previewImageTintColorLoaded -> story.previewImageTintColor
@@ -1143,7 +1150,7 @@ private fun CommentsHeader(
         )
     }
     val normalBackground = colors.background
-    val targetBackground = if (settings.tintHeader) {
+    val targetBackground = if (settings.tintHeader && !showHeaderShimmer) {
         loadedTint?.let(::Color) ?: normalBackground
     } else {
         normalBackground
@@ -1198,9 +1205,8 @@ private fun CommentsHeader(
                 )
                 .padding(top = dimensionResource(R.dimen.comments_header_top_padding)),
         ) {
-            val showShimmer = !story.loaded && story.title.isNullOrBlank() && !controller.loadingFailed
             AnimatedContent(
-                targetState = showShimmer,
+                targetState = showHeaderShimmer,
                 modifier = Modifier.graphicsLayer(
                     alpha = if (controller.predictiveBackActive) {
                         controller.predictiveBackProgress * 0.7f
@@ -1209,8 +1215,8 @@ private fun CommentsHeader(
                     },
                 ),
                 transitionSpec = {
-                    (fadeIn(tween(160)) togetherWith fadeOut(tween(160))).using(
-                        SizeTransform(clip = false) { _, _ -> tween(220) },
+                    (fadeIn(tween(220, delayMillis = 40)) togetherWith fadeOut(tween(180))).using(
+                        SizeTransform(clip = false) { _, _ -> tween(260) },
                     )
                 },
                 label = "comments story header reveal",
@@ -1268,25 +1274,20 @@ private fun CommentsHeader(
                 }
             }
         }
-        val fadeColors = remember(visibleHeaderBackground, normalBackground) {
-            List(5) { index ->
-                val position = index / 4f
-                val smoothstep = position * position * (3f - 2f * position)
-                lerpColor(visibleHeaderBackground, normalBackground, smoothstep)
-            }
+        val fadeBrush = remember(visibleHeaderBackground, normalBackground) {
+            Brush.verticalGradient(
+                0f to visibleHeaderBackground,
+                0.25f to lerpColor(visibleHeaderBackground, normalBackground, 0.16f),
+                0.55f to lerpColor(visibleHeaderBackground, normalBackground, 0.58f),
+                0.88f to normalBackground,
+                1f to normalBackground,
+            )
         }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(38.dp)
-                .layout { measurable, constraints ->
-                    val placeable = measurable.measure(constraints)
-                    val overlap = 6.dp.roundToPx()
-                    layout(placeable.width, (placeable.height - overlap).coerceAtLeast(0)) {
-                        placeable.place(0, -overlap)
-                    }
-                }
-                .background(Brush.verticalGradient(fadeColors)),
+                .height(32.dp)
+                .background(fadeBrush),
         )
     }
 }
@@ -1595,7 +1596,10 @@ private fun HeaderReferenceRow(
 ) {
     val context = LocalContext.current
     val colors = HarmonicTheme.colors
-    val typography = rememberContentTypography(preferredFont = settings.font)
+    val typography = rememberContentTypography(
+        preferredFont = settings.font,
+        commentTextSize = settings.preferredTextSize,
+    )
     var bounds by remember(link.url) { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     Row(
         modifier = Modifier
@@ -1630,7 +1634,7 @@ private fun HeaderReferenceRow(
                 color = colors.storyDisabled,
                 fontFamily = typography.family,
                 fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
+                fontSize = typography.referenceMarkerSize.sp,
             )
         }
         Text(
@@ -1638,7 +1642,7 @@ private fun HeaderReferenceRow(
             modifier = Modifier.weight(1f),
             color = colors.storyNormal,
             fontFamily = typography.family,
-            fontSize = settings.preferredTextSize.coerceAtLeast(12f).sp,
+            fontSize = typography.referenceLabelSize.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -2363,29 +2367,8 @@ private fun MoreMenu(
 }
 
 @Composable
-private fun HarmonicDropdownMenu(
-    expanded: Boolean,
-    onDismiss: () -> Unit,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(16.dp),
-        containerColor = HarmonicTheme.colors.popupMenuBackground,
-        content = content,
-    )
-}
-
-@Composable
 private fun CommentsMenuText(text: String) {
-    Text(
-        text = text,
-        color = HarmonicTheme.colors.textPrimary,
-        fontFamily = ProductSansFontFamily,
-        fontSize = 16.sp,
-        style = legacyTextStyle,
-    )
+    HarmonicMenuText(text)
 }
 
 @Composable

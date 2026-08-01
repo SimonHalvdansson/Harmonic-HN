@@ -6287,7 +6287,7 @@ public class StoriesFragment extends Fragment {
         predictiveSearchBackProgress = 0f;
         useSearchStoryList();
         if (composeController != null) {
-            composeController.endPredictiveBack();
+            composeController.cancelPredictiveBack();
             updateHeader(false);
             return;
         }
@@ -6310,8 +6310,12 @@ public class StoriesFragment extends Fragment {
         predictiveSearchBackInProgress = false;
         predictiveSearchBackShowingMainHeader = false;
         if (composeController != null) {
-            composeController.endPredictiveBack();
+            if (!finishSearchBackFromCurrentVisualState) {
+                return exitSearch();
+            }
+            composeController.commitPredictiveBack();
             finishSearchBackFromCurrentVisualState = false;
+            return true;
         }
         return exitSearch();
     }

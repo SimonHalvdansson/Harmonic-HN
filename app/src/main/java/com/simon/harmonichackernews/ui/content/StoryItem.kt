@@ -181,6 +181,11 @@ fun StoryItem(
         animationSpec = contentTween(),
         label = "story comment alignment",
     )
+    val clickedMediaAlpha by animateFloatAsState(
+        targetValue = if (style.dimmed) 0.6f else 1f,
+        animationSpec = tween(180, easing = ContentMotionEasing),
+        label = "clicked story media alpha",
+    )
     val paletteKey = SettingsUtils.getPreferredPaletteTintConfigKey(context)
     val faviconSource = model.faviconUrl ?: model.faviconRes
     val previewSource = model.previewImageUrl ?: model.previewImageRes
@@ -301,6 +306,7 @@ fun StoryItem(
                     model = model.previewImageUrl ?: model.previewImageRes,
                     onDrawableLoaded = onPreviewDrawableLoaded,
                     onBoundsChanged = onElementBoundsChanged,
+                    alpha = clickedMediaAlpha,
                 )
 
                 StoryBodyRow(
@@ -319,6 +325,7 @@ fun StoryItem(
                             onPreviewDrawableLoaded = onPreviewDrawableLoaded,
                             onFaviconDrawableLoaded = onFaviconDrawableLoaded,
                             onElementBoundsChanged = onElementBoundsChanged,
+                            mediaAlpha = clickedMediaAlpha,
                         )
                     },
                     commentRail = {
@@ -343,6 +350,7 @@ private fun LargeStoryPreviewImage(
     model: Any?,
     onDrawableLoaded: (Drawable) -> Unit,
     onBoundsChanged: ((StoryItemElement, Rect) -> Unit)?,
+    alpha: Float,
 ) {
     val context = LocalContext.current
     val softwareModel = remember(context, model) {
@@ -377,6 +385,7 @@ private fun LargeStoryPreviewImage(
                 .padding(start = inset, top = inset, end = inset, bottom = bottomMargin)
                 .height(176.dp)
                 .clip(RoundedCornerShape(radius))
+                .graphicsLayer(alpha = alpha)
                 .onGloballyPositioned {
                     onBoundsChanged?.invoke(StoryItemElement.Preview, it.boundsInWindow())
                 },
@@ -400,6 +409,7 @@ private fun StoryLinkContent(
     onPreviewDrawableLoaded: (Drawable) -> Unit,
     onFaviconDrawableLoaded: (Drawable) -> Unit,
     onElementBoundsChanged: ((StoryItemElement, Rect) -> Unit)?,
+    mediaAlpha: Float,
 ) {
     val startPadding = lerp(6f, 0f, alignmentProgress).dp
     val endPadding = lerp(0f, 12f, alignmentProgress).dp
@@ -455,7 +465,11 @@ private fun StoryLinkContent(
                     modifier = Modifier
                         .requiredWidth(43.dp)
                         .offset(x = 3.dp),
-                    color = HarmonicTheme.colors.storyNormal,
+                    color = if (style.dimmed) {
+                        HarmonicTheme.colors.storyDisabled
+                    } else {
+                        HarmonicTheme.colors.storyNormal
+                    },
                     fontFamily = typography.family,
                     fontSize = indexSize,
                     style = legacyTextStyle,
@@ -478,6 +492,7 @@ private fun StoryLinkContent(
             onPreviewDrawableLoaded = onPreviewDrawableLoaded,
             onFaviconDrawableLoaded = onFaviconDrawableLoaded,
             onElementBoundsChanged = onElementBoundsChanged,
+            mediaAlpha = mediaAlpha,
             modifier = Modifier.weight(1f),
         )
     }
@@ -498,6 +513,7 @@ private fun StoryTextBlock(
     onPreviewDrawableLoaded: (Drawable) -> Unit,
     onFaviconDrawableLoaded: (Drawable) -> Unit,
     onElementBoundsChanged: ((StoryItemElement, Rect) -> Unit)?,
+    mediaAlpha: Float,
     modifier: Modifier,
 ) {
     val density = LocalDensity.current
@@ -543,6 +559,7 @@ private fun StoryTextBlock(
                 typography = typography,
                 textSize = metaSize,
                 onFaviconDrawableLoaded = onFaviconDrawableLoaded,
+                mediaAlpha = mediaAlpha,
                 modifier = Modifier
                     .padding(start = textStartPadding, end = 2.dp)
                     .onGloballyPositioned {
@@ -571,7 +588,7 @@ private fun StoryTextBlock(
                             )
                         }
                         .graphicsLayer(
-                            alpha = smallImageProgress,
+                            alpha = smallImageProgress * mediaAlpha,
                             scaleX = 0.92f + 0.08f * smallImageProgress,
                             scaleY = 0.92f + 0.08f * smallImageProgress,
                             transformOrigin = TransformOrigin.Center,
@@ -642,6 +659,7 @@ private fun StoryMeta(
     typography: ContentTypography,
     textSize: Float,
     onFaviconDrawableLoaded: (Drawable) -> Unit,
+    mediaAlpha: Float,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -680,7 +698,8 @@ private fun StoryMeta(
                 modifier = Modifier
                     .padding(end = 4.dp)
                     .size(17.dp)
-                    .clip(RoundedCornerShape(3.dp)),
+                    .clip(RoundedCornerShape(3.dp))
+                    .graphicsLayer(alpha = mediaAlpha),
                 onSuccess = { onFaviconDrawableLoaded(it.result.drawable) },
             )
         }
@@ -736,7 +755,9 @@ private fun StoryCommentRail(
                 painter = painterResource(if (hot) R.drawable.ic_whatshot else R.drawable.ic_comment),
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = Color.Unspecified,
+                tint = HarmonicTheme.colors.drawable.let { drawable ->
+                    drawable.copy(alpha = drawable.alpha * if (style.dimmed) 0.6f else 1f)
+                },
             )
         }
         AnimatedVisibility(
