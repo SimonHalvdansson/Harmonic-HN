@@ -1,10 +1,15 @@
 package com.simon.harmonichackernews.ui.content
 
+import android.text.Html
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -13,6 +18,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -24,23 +30,33 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextMotion
@@ -48,11 +64,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import coil.compose.AsyncImage
+import com.google.android.material.color.MaterialColors
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils
+import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
+import com.simon.harmonichackernews.utils.Utils
+import kotlin.math.min
 
 data class CommentItemUiModel(
     val author: String,
@@ -71,6 +95,7 @@ data class CommentItemStyle(
     val depthIndicatorMode: String,
     val showDivider: Boolean,
     val preferredFont: String,
+    val animateChanges: Boolean = true,
 )
 
 val SettingsCommentPreviewModel = CommentItemUiModel(
@@ -96,7 +121,7 @@ fun CommentItem(
     )
     val bodySize by animateFloatAsState(
         targetValue = typography.commentTextSize,
-        animationSpec = contentTween(),
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment text size",
     )
     val referenceLabelSize by animateFloatAsState(
@@ -270,6 +295,440 @@ fun CommentItem(
         }
     }
 }
+
+/**
+ * Runtime comment row used by the Compose comments screen. The preview overload above remains a
+ * compact settings model; this overload maps the real Hacker News comment model and preserves the
+ * indentation, collapse, collected-reference, tap/long-press and OP/self styling of the legacy
+ * RecyclerView item.
+ */
+@Composable
+fun CommentItem(
+    comment: Comment,
+    style: CommentItemStyle,
+    storyAuthor: String?,
+    accountUser: String?,
+    userTag: String?,
+    hiddenReplyCount: Int,
+    collapseParent: Boolean,
+    showTopLevelIndicator: Boolean,
+    modifier: Modifier = Modifier,
+    highlighted: Boolean = false,
+    onToggleExpanded: () -> Unit,
+    onShowActions: () -> Unit,
+    onReferenceLongClick: (CollectedReferenceLinks.ReferenceLink) -> Unit,
+) {
+    val context = LocalContext.current
+    val colors = HarmonicTheme.colors
+    val typography = rememberContentTypography(
+        preferredFont = style.preferredFont,
+        commentTextSize = style.textSize,
+    )
+    val bodySize by animateFloatAsState(
+        targetValue = typography.commentTextSize,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "runtime comment text size",
+    )
+    val byOp = comment.by == storyAuthor
+    val byUser = !accountUser.isNullOrBlank() && comment.by == accountUser
+    val metaColor = when {
+        byUser -> Color(MaterialColors.getColor(context, R.attr.selfCommentColor, colors.storyDisabled.toArgb()))
+        byOp -> Color(MaterialColors.getColor(context, R.attr.opCommentColor, colors.storyDisabled.toArgb()))
+        style.emphasizeMeta -> colors.storyNormal
+        else -> colors.storyDisabled
+    }
+    val cardShape = RoundedCornerShape(8.dp)
+    val showIndicator = CommentDepthIndicatorUtils.shouldShowIndicators(style.depthIndicatorMode) &&
+        (comment.depth > 0 || showTopLevelIndicator)
+    val indicatorIndex = (comment.depth + if (showTopLevelIndicator) 0 else -1)
+        .coerceAtLeast(0) % 7
+    val indicatorColor = Color(
+        ContextCompat.getColor(
+            context,
+            CommentDepthIndicatorUtils.getColorResource(
+                context,
+                style.depthIndicatorMode,
+                ThemeUtils.getPreferredTheme(context),
+                indicatorIndex,
+            ),
+        ),
+    )
+    val referenceLinks = remember(comment.text, style.collectLinks) {
+        if (style.collectLinks) {
+            CollectedReferenceLinks.parse(comment.expandedAnchorText)
+        } else {
+            null
+        }
+    }
+    val bodyHtml = if (referenceLinks?.hasLinks() == true) {
+        referenceLinks.bodyHtml
+    } else {
+        comment.expandedAnchorText.orEmpty()
+    }
+    val linkStyles = remember(colors.link) {
+        TextLinkStyles(
+            style = SpanStyle(
+                color = colors.link,
+                textDecoration = TextDecoration.Underline,
+            ),
+        )
+    }
+    val linkListener = remember(context) {
+        LinkInteractionListener { annotation ->
+            if (annotation is LinkAnnotation.Url) {
+                Utils.openLinkMaybeHN(context, annotation.url)
+            }
+        }
+    }
+    val body = remember(bodyHtml, linkStyles, linkListener) {
+        htmlAnnotatedString(bodyHtml, linkStyles, linkListener)
+    }
+    val hiddenPreview = remember(comment.text) {
+        Html.fromHtml(
+            comment.text.orEmpty().take(120),
+            Html.FROM_HTML_MODE_LEGACY,
+        ).toString().replace('\n', ' ')
+    }
+    val textCollapsed = !comment.expanded && collapseParent
+    val defaultBackground = if (style.cardStyle) colors.surfaceContainerHigh else colors.background
+    val highlightAlpha = if (defaultBackground.luminance() < 0.5f) 0.14f else 0.08f
+    val commentBackground = if (highlighted) {
+        colors.storyNormal.copy(alpha = highlightAlpha).compositeOver(defaultBackground)
+    } else if (style.cardStyle) {
+        defaultBackground
+    } else {
+        Color.Transparent
+    }
+
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val start = min(16.dp.value + 12.dp.value * comment.depth, maxWidth.value * 0.6f).dp
+        val top = if (style.cardStyle) {
+            if (comment.depth > 0 && !collapseParent) 2.dp else 0.dp
+        } else if (comment.depth > 0 && !collapseParent) {
+            10.dp
+        } else {
+            6.dp
+        }
+        val bottom = if (style.cardStyle) 0.dp else 6.dp
+        val shadowPadding = if (style.cardStyle) 4.dp else 0.dp
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = (start - shadowPadding).coerceAtLeast(0.dp), end = 16.dp)
+                .padding(top = top, bottom = bottom),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(shadowPadding)
+                    .shadow(
+                        elevation = if (style.cardStyle && style.showCardBorder) 1.dp else 0.dp,
+                        shape = cardShape,
+                        clip = false,
+                    )
+                    .clip(cardShape)
+                    .background(commentBackground)
+                    .border(
+                        1.dp,
+                        if (style.cardStyle && style.showCardBorder) {
+                            colors.commentDivider
+                        } else {
+                            Color.Transparent
+                        },
+                        cardShape,
+                    )
+                    .height(IntrinsicSize.Min)
+                    .combinedClickable(
+                        onClick = onToggleExpanded,
+                        onLongClick = onShowActions,
+                    ),
+            ) {
+                if (showIndicator || style.cardStyle) {
+                    Box(
+                        modifier = Modifier
+                            .width(if (style.cardStyle) 3.5.dp else 2.5.dp)
+                            .fillMaxHeight()
+                            .background(if (showIndicator) indicatorColor else Color.Transparent),
+                    )
+                    Box(Modifier.width(if (style.cardStyle) 4.dp else 8.dp))
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(
+                            start = if (style.cardStyle) 4.5.dp else 5.dp,
+                            top = if (style.cardStyle) 7.dp else 5.dp,
+                            end = if (style.cardStyle) 8.dp else 4.dp,
+                            bottom = if (style.cardStyle) 7.dp else 5.dp,
+                        ),
+                ) {
+                    RuntimeCommentMeta(
+                        author = buildString {
+                            append(comment.by.orEmpty())
+                            if (!userTag.isNullOrBlank()) append(" (").append(userTag).append(')')
+                        },
+                        age = comment.timeFormatted,
+                        byOp = byOp,
+                        color = metaColor,
+                        emphasized = style.emphasizeMeta,
+                        hiddenPreview = if (textCollapsed) " • $hiddenPreview" else null,
+                        hiddenReplyCount = hiddenReplyCount.takeIf { it > 0 && !comment.expanded },
+                        fontFamily = typography.family,
+                        animateChanges = style.animateChanges,
+                    )
+
+                    AnimatedVisibility(
+                        visible = !textCollapsed && body.isNotEmpty(),
+                        enter = if (style.animateChanges) {
+                            fadeIn(contentTween()) + androidx.compose.animation.expandVertically(contentTween())
+                        } else {
+                            EnterTransition.None
+                        },
+                        exit = if (style.animateChanges) {
+                            fadeOut(contentTween()) + androidx.compose.animation.shrinkVertically(contentTween())
+                        } else {
+                            ExitTransition.None
+                        },
+                    ) {
+                        Text(
+                            text = body,
+                            color = colors.storyNormal,
+                            fontFamily = typography.family,
+                            fontSize = bodySize.sp,
+                            style = animatedCommentTextStyle,
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = !textCollapsed && referenceLinks?.hasLinks() == true,
+                        enter = if (style.animateChanges) {
+                            fadeIn(contentTween()) + androidx.compose.animation.expandVertically(contentTween())
+                        } else {
+                            EnterTransition.None
+                        },
+                        exit = if (style.animateChanges) {
+                            fadeOut(contentTween()) + androidx.compose.animation.shrinkVertically(contentTween())
+                        } else {
+                            ExitTransition.None
+                        },
+                    ) {
+                        Column(modifier = Modifier.padding(top = 5.dp)) {
+                            referenceLinks?.links.orEmpty().forEach { link ->
+                                RuntimeReferenceRow(
+                                    link = link,
+                                    fontFamily = typography.family,
+                                    textSize = (bodySize - 2f).coerceAtLeast(12f),
+                                    onLongClick = { onReferenceLongClick(link) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            if (style.showDivider) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = if (style.cardStyle) 8.dp else 4.dp)
+                        .height(1.dp)
+                        .background(colors.commentDivider),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RuntimeCommentMeta(
+    author: String,
+    age: String,
+    byOp: Boolean,
+    color: Color,
+    emphasized: Boolean,
+    hiddenPreview: String?,
+    hiddenReplyCount: Int?,
+    fontFamily: androidx.compose.ui.text.font.FontFamily,
+    animateChanges: Boolean,
+) {
+    val colors = HarmonicTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (emphasized) colors.surfaceContainerHighest else Color.Transparent)
+                .border(
+                    1.dp,
+                    if (emphasized) colors.commentDivider else Color.Transparent,
+                    RoundedCornerShape(12.dp),
+                )
+                .padding(
+                    horizontal = if (emphasized) 7.dp else 0.dp,
+                    vertical = if (emphasized) 2.dp else 0.dp,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = author,
+                color = color,
+                fontFamily = fontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                style = commentTextStyle,
+            )
+            if (byOp) {
+                Text(
+                    text = "OP",
+                    modifier = Modifier
+                        .padding(start = 3.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(color.copy(alpha = 0.14f))
+                        .padding(horizontal = 3.dp),
+                    color = color,
+                    fontFamily = fontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp,
+                    style = compactCommentTextStyle,
+                )
+            }
+            Text(
+                text = age,
+                modifier = Modifier.padding(start = 4.dp),
+                color = color,
+                fontFamily = fontFamily,
+                fontSize = 13.sp,
+                style = commentTextStyle,
+            )
+        }
+        if (hiddenPreview != null) {
+            Text(
+                text = hiddenPreview,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 4.dp),
+                color = colors.storyDisabled,
+                fontFamily = fontFamily,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = commentTextStyle,
+            )
+        } else {
+            Box(Modifier.weight(1f))
+        }
+        AnimatedContent(
+            targetState = hiddenReplyCount,
+            transitionSpec = {
+                if (animateChanges) {
+                    fadeIn(contentTween()).togetherWith(fadeOut(contentTween()))
+                } else {
+                    EnterTransition.None.togetherWith(ExitTransition.None)
+                }
+            },
+            label = "hidden reply count",
+        ) { count ->
+            if (count != null) {
+                Text(
+                    text = "+$count",
+                    modifier = Modifier
+                        .padding(start = 4.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(colors.accent)
+                        .padding(horizontal = 5.dp, vertical = 1.dp),
+                    color = Color.White,
+                    fontFamily = fontFamily,
+                    fontSize = 12.sp,
+                    style = compactCommentTextStyle,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RuntimeReferenceRow(
+    link: CollectedReferenceLinks.ReferenceLink,
+    fontFamily: androidx.compose.ui.text.font.FontFamily,
+    textSize: Float,
+    onLongClick: () -> Unit,
+) {
+    val context = LocalContext.current
+    val colors = HarmonicTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp)
+            .defaultMinSize(minHeight = 38.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .border(1.dp, colors.commentDivider, RoundedCornerShape(6.dp))
+            .combinedClickable(
+                onClick = { Utils.openLinkMaybeHN(context, link.url) },
+                onLongClick = onLongClick,
+            )
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AsyncImage(
+            model = runCatching {
+                FaviconLoader.getFaviconUrl(
+                    link.url,
+                    SettingsUtils.getPreferredFaviconProvider(context),
+                )
+            }.getOrNull(),
+            fallback = painterResource(R.drawable.ic_public),
+            error = painterResource(R.drawable.ic_public),
+            contentDescription = null,
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(17.dp),
+        )
+        if (link.hasNumber()) {
+            Text(
+                text = link.markerLabel,
+                modifier = Modifier.padding(end = 8.dp),
+                color = colors.storyDisabled,
+                fontFamily = fontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                style = compactCommentTextStyle,
+            )
+        }
+        Text(
+            text = ReferenceLinkRowUtils.getReferenceLinkLabel(link),
+            modifier = Modifier.weight(1f),
+            color = colors.storyNormal,
+            fontFamily = fontFamily,
+            fontSize = textSize.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = compactAnimatedCommentTextStyle,
+        )
+    }
+}
+
+private fun htmlAnnotatedString(
+    html: String,
+    linkStyles: TextLinkStyles,
+    linkListener: LinkInteractionListener,
+): AnnotatedString = runCatching {
+    AnnotatedString.fromHtml(
+        htmlString = preserveLegacyCommentParagraphSpacing(html),
+        linkStyles = linkStyles,
+        linkInteractionListener = linkListener,
+    )
+}.getOrElse {
+    AnnotatedString(Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString())
+}
+
+private fun preserveLegacyCommentParagraphSpacing(html: String): String = html
+    .replace(Regex("<p\\s*>", RegexOption.IGNORE_CASE), "<br><br>")
+    .replace(Regex("</p>\\s*<p", RegexOption.IGNORE_CASE), "</p><br><p")
+    .replace(Regex("</div>\\s*<div", RegexOption.IGNORE_CASE), "</div><br><div")
 
 @Composable
 private fun CommentMeta(

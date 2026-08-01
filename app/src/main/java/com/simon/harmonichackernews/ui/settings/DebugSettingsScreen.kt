@@ -9,13 +9,8 @@ import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ButtonGroup
-import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -38,12 +33,8 @@ import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.CoulombGasActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.ui.editor.ComposeEditorPreference
-import com.simon.harmonichackernews.ui.submissions.SubmissionsUiPreference
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.Utils
-import com.simon.harmonichackernews.widget.WidgetConfigUiPreference
 
 private const val OpenWithoutCacheStoryId = 49089500
 
@@ -142,46 +133,6 @@ fun DebugSettingsScreen(
     ) {
         item {
             SettingsCategory("Debug tools") {
-                ImplementationSetting(
-                    title = "Settings",
-                    selected = SettingsUiPreference.selected(context),
-                    onSelected = { implementation ->
-                        prefs.edit()
-                            .putString(SettingsUiPreference.KEY, implementation)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                ImplementationSetting(
-                    title = "Post and comment editor",
-                    selected = ComposeEditorPreference.selected(context),
-                    onSelected = { implementation ->
-                        prefs.edit()
-                            .putString(ComposeEditorPreference.KEY, implementation)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                ImplementationSetting(
-                    title = "Submissions",
-                    selected = SubmissionsUiPreference.selected(context),
-                    onSelected = { implementation ->
-                        prefs.edit()
-                            .putString(SubmissionsUiPreference.KEY, implementation)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                ImplementationSetting(
-                    title = "Widget configuration",
-                    selected = WidgetConfigUiPreference.selected(context),
-                    onSelected = { implementation ->
-                        prefs.edit()
-                            .putString(WidgetConfigUiPreference.KEY, implementation)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
                 SwitchSettingRow(
                     title = "Always show tap to refresh",
                     icon = R.drawable.ic_refresh,
@@ -322,52 +273,6 @@ fun DebugSettingsScreen(
         "notifications" -> DebugNotificationsDialog(
             onDismiss = { dialog = null },
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ImplementationSetting(
-    title: String,
-    selected: String,
-    onSelected: (String) -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(HarmonicTheme.colors.settingsSegment)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Text(
-            text = title,
-            color = HarmonicTheme.colors.textPrimary,
-            fontFamily = ProductSansFontFamily,
-        )
-        ButtonGroup(
-            overflowIndicator = { menuState ->
-                ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-        ) {
-            toggleableItem(
-                checked = selected == ComposeEditorPreference.VIEWS,
-                label = "Views",
-                onCheckedChange = { checked ->
-                    if (checked) onSelected(ComposeEditorPreference.VIEWS)
-                },
-                weight = 1f,
-            )
-            toggleableItem(
-                checked = selected == ComposeEditorPreference.COMPOSE,
-                label = "Compose",
-                onCheckedChange = { checked ->
-                    if (checked) onSelected(ComposeEditorPreference.COMPOSE)
-                },
-                weight = 1f,
-            )
-        }
     }
 }
 

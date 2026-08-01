@@ -20,6 +20,7 @@ import com.simon.harmonichackernews.settings.SettingsHeaderFragment;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
+@Deprecated
 public class SettingsDetailActivity extends AppCompatActivity implements SettingsCallback {
 
     public static final String EXTRA_FRAGMENT_CLASS = "EXTRA_FRAGMENT_CLASS";

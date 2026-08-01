@@ -60,7 +60,7 @@ private data class WidgetFeedOption(
 
 /**
  * Compose host for [WidgetConfigActivity]. The activity continues to own result delivery and
- * preference persistence while this host replaces `activity_widget_config.xml` when enabled.
+ * preference persistence for the Compose-only configuration host.
  */
 object WidgetConfigComposeHost {
     fun interface Listener {
@@ -91,8 +91,7 @@ object WidgetConfigComposeHost {
 }
 
 /**
- * Compose mapping of `activity_widget_config.xml`. The separate XML content and button
- * containers become two columns that consume the same responsive side-margin resource.
+ * The content and button containers use two columns that consume the same responsive side margin.
  */
 @Composable
 private fun WidgetConfigScreen(

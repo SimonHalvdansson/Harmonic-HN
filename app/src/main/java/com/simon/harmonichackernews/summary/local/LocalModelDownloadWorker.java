@@ -15,7 +15,7 @@ import androidx.work.ForegroundInfo;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
-import com.simon.harmonichackernews.ui.settings.SettingsUiPreference;
+import com.simon.harmonichackernews.ui.settings.SettingsIntents;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -186,7 +186,7 @@ public class LocalModelDownloadWorker extends Worker {
             manager.createNotificationChannel(channel);
         }
 
-        Intent settingsIntent = SettingsUiPreference.createAiSummaryIntent(context);
+        Intent settingsIntent = SettingsIntents.createAiSummary(context);
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 context,
                 0,

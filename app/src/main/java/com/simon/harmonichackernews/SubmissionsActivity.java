@@ -31,7 +31,6 @@ import com.simon.harmonichackernews.network.BackgroundJSONParser;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.ui.submissions.SubmissionsComposeController;
-import com.simon.harmonichackernews.ui.submissions.SubmissionsUiPreference;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils;
@@ -89,7 +88,7 @@ public class SubmissionsActivity extends AppCompatActivity {
         String userName = getIntent().getStringExtra(KEY_USER);
         submissions = new ArrayList<>();
         queue = NetworkComponent.getRequestQueueInstance(this);
-        composeUi = SubmissionsUiPreference.shouldUseCompose(this);
+        composeUi = true;
 
         if (composeUi) {
             setupComposeUi(userName);
@@ -163,6 +162,7 @@ public class SubmissionsActivity extends AppCompatActivity {
                 StoryDisplaySettings.from(this).withShowIndex(false));
     }
 
+    @Deprecated
     private void setupViewsUi(String userName) {
 
         binding = ActivitySubmissionsBinding.inflate(getLayoutInflater());

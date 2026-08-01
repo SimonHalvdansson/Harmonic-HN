@@ -3,16 +3,10 @@ package com.simon.harmonichackernews.widget;
 import android.appwidget.AppWidgetManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
 import android.os.Bundle;
-import android.view.View;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.android.material.button.MaterialButtonToggleGroup;
-import com.simon.harmonichackernews.R;
-import com.simon.harmonichackernews.databinding.ActivityWidgetConfigBinding;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -28,7 +22,6 @@ public class WidgetConfigActivity extends AppCompatActivity {
     private static final int DEFAULT_STORY_COUNT = STORY_COUNT_MEDIUM;
 
     private int appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
-    private ActivityWidgetConfigBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,11 +44,7 @@ public class WidgetConfigActivity extends AppCompatActivity {
             return;
         }
 
-        if (WidgetConfigUiPreference.shouldUseCompose(this)) {
-            setupComposeUi();
-        } else {
-            setupViewsUi();
-        }
+        setupComposeUi();
     }
 
     private void setupComposeUi() {
@@ -63,44 +52,6 @@ public class WidgetConfigActivity extends AppCompatActivity {
                 this,
                 getStoryCount(this, appWidgetId),
                 this::confirmConfiguration);
-    }
-
-    private void setupViewsUi() {
-        binding = ActivityWidgetConfigBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
-        applyResponsivePadding();
-
-        MaterialButtonToggleGroup storyCountGroup = binding.widgetConfigStoryCountGroup;
-        storyCountGroup.check(getStoryCountButtonId(getStoryCount(this, appWidgetId)));
-
-        binding.widgetConfigConfirm.setOnClickListener(v -> {
-            String feedUrl;
-            String feedName;
-
-            int checkedId = binding.widgetConfigFeedGroup.getCheckedRadioButtonId();
-            if (checkedId == binding.widgetConfigNew.getId()) {
-                feedUrl = Utils.URL_NEW;
-                feedName = "New stories";
-            } else if (checkedId == binding.widgetConfigBest.getId()) {
-                feedUrl = Utils.URL_BEST;
-                feedName = "Best stories";
-            } else if (checkedId == binding.widgetConfigAsk.getId()) {
-                feedUrl = Utils.URL_ASK;
-                feedName = "Ask HN";
-            } else if (checkedId == binding.widgetConfigShow.getId()) {
-                feedUrl = Utils.URL_SHOW;
-                feedName = "Show HN";
-            } else if (checkedId == binding.widgetConfigJobs.getId()) {
-                feedUrl = Utils.URL_JOBS;
-                feedName = "Jobs";
-            } else {
-                feedUrl = Utils.URL_TOP;
-                feedName = "Top stories";
-            }
-
-            int storyCount = getSelectedStoryCount(storyCountGroup.getCheckedButtonId());
-            confirmConfiguration(feedUrl, feedName, storyCount);
-        });
     }
 
     private void confirmConfiguration(String feedUrl, String feedName, int storyCount) {
@@ -115,24 +66,6 @@ public class WidgetConfigActivity extends AppCompatActivity {
         resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
         setResult(RESULT_OK, resultValue);
         finish();
-    }
-
-    @Override
-    public void onConfigurationChanged(@NonNull Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        if (binding != null) {
-            applyResponsivePadding();
-        }
-    }
-
-    private void applyResponsivePadding() {
-        int sideMargin = getResources().getDimensionPixelSize(R.dimen.single_view_side_margin);
-        setHorizontalPadding(binding.widgetConfigContentContainer, sideMargin);
-        setHorizontalPadding(binding.widgetConfigButtonContainer, sideMargin);
-    }
-
-    private void setHorizontalPadding(View view, int sidePadding) {
-        view.setPadding(sidePadding, view.getPaddingTop(), sidePadding, view.getPaddingBottom());
     }
 
     public static String getFeedUrl(android.content.Context context, int appWidgetId) {
@@ -172,24 +105,6 @@ public class WidgetConfigActivity extends AppCompatActivity {
             return 28;
         }
         return 20;
-    }
-
-    private static int getSelectedStoryCount(int checkedButtonId) {
-        if (checkedButtonId == R.id.widget_config_count_10) {
-            return STORY_COUNT_SMALL;
-        } else if (checkedButtonId == R.id.widget_config_count_30) {
-            return STORY_COUNT_LARGE;
-        }
-        return DEFAULT_STORY_COUNT;
-    }
-
-    private static int getStoryCountButtonId(int storyCount) {
-        if (storyCount == STORY_COUNT_SMALL) {
-            return R.id.widget_config_count_10;
-        } else if (storyCount == STORY_COUNT_LARGE) {
-            return R.id.widget_config_count_30;
-        }
-        return R.id.widget_config_count_20;
     }
 
     static void clearPreferences(android.content.Context context, int appWidgetId) {

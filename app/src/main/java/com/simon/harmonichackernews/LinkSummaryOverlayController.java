@@ -345,6 +345,7 @@ final class LinkSummaryOverlayController {
         }
         void stopLinkSummaryListScroll();
         void syncLinkSummaryBackState();
+        default void onLinkSummaryOverlayRemoved() { }
 
         default boolean shouldKeepLinkSummaryOpenOnStoryNavigation() { return false; }
         default boolean shouldAnimateLinkSummaryDismissOnStoryNavigation() { return false; }
@@ -1093,9 +1094,10 @@ final class LinkSummaryOverlayController {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    void showImage(String imageUrl, String description, @Nullable ImageView source) {
+    void showImage(String imageUrl, String description, @Nullable View source) {
         Context context = host.getLinkSummaryContext();
-        Drawable sourceDrawable = source == null ? null : source.getDrawable();
+        Drawable sourceDrawable = source instanceof ImageView
+                ? ((ImageView) source).getDrawable() : null;
         if (context == null || (TextUtils.isEmpty(imageUrl) && sourceDrawable == null)
                 || !prepareOverlay(source)) {
             return;
@@ -2958,6 +2960,7 @@ final class LinkSummaryOverlayController {
         visibleStoryId = NO_STORY_ID; visibleStoryPosition = -1;
         visibleUrl = null; fallbackTitle = null; dismissing = false;
         predictiveBackActive = false; enterTransitionStarted = false;
+        host.onLinkSummaryOverlayRemoved();
         enterTransitionComplete = false;
         pendingReferenceStateChange = null;
         lastStoryPagerPosition = Float.NaN;

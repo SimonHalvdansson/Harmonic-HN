@@ -1,14 +1,4 @@
 <resources>
-    <string-array name="ui_implementation_entries">
-        <item>Views</item>
-        <item>Compose</item>
-    </string-array>
-
-    <string-array name="ui_implementation_values">
-        <item>views</item>
-        <item>compose</item>
-    </string-array>
-
     <string-array name="font_size_entries">
         <item>Smaller (13 sp)</item>
         <item>Small (14 sp)</item>

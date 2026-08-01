@@ -36,6 +36,7 @@ import com.simon.harmonichackernews.utils.Utils;
 import java.util.HashMap;
 import java.util.Map;
 
+@Deprecated
 public class SettingsActivity extends AppCompatActivity implements
         PreferenceFragmentCompat.OnPreferenceStartFragmentCallback,
         SettingsCallback {

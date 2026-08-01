@@ -43,7 +43,6 @@ import com.simon.harmonichackernews.databinding.ActivityComposeBinding;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.ui.editor.ComposeEditorController;
 import com.simon.harmonichackernews.ui.editor.ComposeEditorHost;
-import com.simon.harmonichackernews.ui.editor.ComposeEditorPreference;
 import com.simon.harmonichackernews.ui.editor.ComposeEditorSubmission;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -134,7 +133,9 @@ public class ComposeActivity extends AppCompatActivity {
             return;
         }
 
-        composeUi = ComposeEditorPreference.shouldUseCompose(this);
+        // The editor is Compose-only. The unreachable View setup below remains temporarily so its
+        // state-handling code can be retired independently without reworking submission behavior.
+        composeUi = true;
         if (composeUi) {
             WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
             composeEditorController = ComposeEditorHost.install(

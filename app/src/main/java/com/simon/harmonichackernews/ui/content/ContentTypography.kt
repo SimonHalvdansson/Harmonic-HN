@@ -15,6 +15,8 @@ internal data class ContentTypography(
     val storyMetaSize: Float,
     val storyCommentCountSize: Float,
     val commentTextSize: Float,
+    val commentsHeaderMetaSize: Float,
+    val commentsHeaderTitleSize: Float,
     val referenceMarkerSize: Float,
     val referenceLabelSize: Float,
 )
@@ -42,6 +44,8 @@ internal fun rememberContentTypography(
             storyMetaSize = metrics.storyMeta * storyScale,
             storyCommentCountSize = metrics.storyCommentCount * storyScale,
             commentTextSize = metrics.commentText + commentDelta,
+            commentsHeaderMetaSize = metrics.commentsHeaderMeta,
+            commentsHeaderTitleSize = metrics.commentsHeaderTitle,
             referenceMarkerSize = 13f + explicitAdjustment,
             referenceLabelSize = maxOf(12f, clampedCommentSize - 2f) + explicitAdjustment,
         )
@@ -53,18 +57,20 @@ private data class FontMetrics(
     val storyMeta: Float,
     val storyCommentCount: Float,
     val commentText: Float,
+    val commentsHeaderMeta: Float,
+    val commentsHeaderTitle: Float,
 ) {
     companion object {
         fun forFont(font: String): FontMetrics = when (font) {
-            "productsans" -> FontMetrics(17.5f, 13f, 14f, 15f)
-            "googlesans" -> FontMetrics(17.5f, 13f, 14f, 15f)
-            "devicedefault" -> FontMetrics(18f, 13f, 13f, 15f)
-            "verdana" -> FontMetrics(15f, 12f, 13f, 14f)
-            "jetbrainsmono" -> FontMetrics(16f, 12f, 14f, 14f)
-            "googlesanscode" -> FontMetrics(16f, 12f, 14f, 14f)
-            "georgia" -> FontMetrics(17f, 13f, 14f, 15f)
-            "robotoslab" -> FontMetrics(17.5f, 13f, 14f, 15f)
-            else -> FontMetrics(16f, 13f, 13.5f, 13.75f)
+            "productsans" -> FontMetrics(17.5f, 13f, 14f, 15f, 14f, 27f)
+            "googlesans" -> FontMetrics(17.5f, 13f, 14f, 15f, 14f, 27f)
+            "devicedefault" -> FontMetrics(18f, 13f, 13f, 15f, 13f, 26f)
+            "verdana" -> FontMetrics(15f, 12f, 13f, 14f, 13f, 23f)
+            "jetbrainsmono" -> FontMetrics(16f, 12f, 14f, 14f, 13f, 26f)
+            "googlesanscode" -> FontMetrics(16f, 12f, 14f, 14f, 13f, 26f)
+            "georgia" -> FontMetrics(17f, 13f, 14f, 15f, 13f, 24f)
+            "robotoslab" -> FontMetrics(17.5f, 13f, 14f, 15f, 13f, 26f)
+            else -> FontMetrics(16f, 13f, 13.5f, 13.75f, 13.5f, 26f)
         }
     }
 }

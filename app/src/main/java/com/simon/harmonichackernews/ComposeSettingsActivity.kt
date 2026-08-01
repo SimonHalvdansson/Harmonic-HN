@@ -22,8 +22,8 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.ThemeUtils
 
 /**
- * Compose-only Settings host. The legacy [SettingsActivity] remains available while the
- * migration is verified, but no fragment or activity embedding is used by this activity.
+ * Compose-only Settings host. Deprecated View hosts remain only for temporary source compatibility;
+ * all app entry points route here.
  */
 class ComposeSettingsActivity : AppCompatActivity() {
 
