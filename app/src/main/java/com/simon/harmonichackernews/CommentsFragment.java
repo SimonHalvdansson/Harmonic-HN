@@ -324,6 +324,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                 @Override
                 public void setLinkSummaryImageSourceSuppressed(boolean suppressed) {
+                    if (composeController != null) {
+                        composeController.updateHeaderPreviewSuppressed(suppressed);
+                    }
                     if (adapter != null) {
                         adapter.setHeaderPreviewImageSuppressed(suppressed);
                     }
@@ -774,8 +777,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     return;
                 }
 
-                requireActivity().finish();
-                if (!SettingsUtils.shouldDisableCommentsSwipeBack(getContext()) && !Utils.isTablet(getResources())) {
+                if (requireActivity() instanceof MainActivity) {
+                    ((MainActivity) requireActivity()).closeStory();
+                } else {
+                    requireActivity().finish();
+                }
+                if (!(requireActivity() instanceof MainActivity)
+                        && !SettingsUtils.shouldDisableCommentsSwipeBack(getContext())
+                        && !Utils.isTablet(getResources())) {
                     requireActivity().overridePendingTransition(0, R.anim.activity_out_animation);
                 }
             }
@@ -1162,7 +1171,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 getCurrentCommentSorting(),
                 topInset,
                 commentsContentInsetLeft,
-                commentsContentInsetRight);
+                commentsContentInsetRight,
+                adapter != null && adapter.isStoryVoteLoading(),
+                adapter != null && adapter.isStoryFavoriteLoading());
         controller.updateSheet(getCurrentBottomSheetSlideOffsetForHeader(), topInset);
     }
 
@@ -1171,7 +1182,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (controller == null) {
             return;
         }
-        onRequest(controller::refreshContent, controller::refreshContent);
+        controller.updateStorySummaryLoading(true);
+        onRequest(controller::refreshContent, () -> {
+            controller.updateStorySummaryLoading(false);
+            controller.refreshContent();
+        });
     }
 
     private void shareFromCompose(int action) {

@@ -2279,6 +2279,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         return loadMoreLoading || showLoadMoreButton || (paginationMode && visibleStoryCount < stories.size());
     }
 
+    public boolean isLoadMoreLoading() {
+        return loadMoreLoading;
+    }
+
     private boolean isLoadMorePosition(int position) {
         return hasLoadMoreButton() && position == getVisibleItemCount();
     }

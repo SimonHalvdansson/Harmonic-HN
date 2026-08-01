@@ -17,6 +17,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
@@ -28,6 +30,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -84,6 +88,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -205,6 +210,16 @@ class CommentsComposeController private constructor(
         private set
     internal var predictiveBackProgress by mutableFloatStateOf(0f)
         private set
+    internal var storyVoteLoading by mutableStateOf(false)
+        private set
+    internal var storyFavoriteLoading by mutableStateOf(false)
+        private set
+    internal var storySummaryLoading by mutableStateOf(false)
+        private set
+    internal var suppressedCommentIds by mutableStateOf<Set<Int>>(emptySet())
+        private set
+    internal var headerPreviewSuppressed by mutableStateOf(false)
+        private set
 
     var firstVisibleCommentId: Int = 0
         private set
@@ -235,6 +250,8 @@ class CommentsComposeController private constructor(
         topInsetPx: Int,
         contentInsetLeftPx: Int,
         contentInsetRightPx: Int,
+        storyVoteLoading: Boolean,
+        storyFavoriteLoading: Boolean,
     ) {
         this.story = story
         this.comments = comments.toList()
@@ -254,7 +271,17 @@ class CommentsComposeController private constructor(
         this.topInsetPx = topInsetPx
         this.contentInsetLeftPx = contentInsetLeftPx
         this.contentInsetRightPx = contentInsetRightPx
+        this.storyVoteLoading = storyVoteLoading
+        this.storyFavoriteLoading = storyFavoriteLoading
         contentVersion++
+    }
+
+    fun updateStorySummaryLoading(loading: Boolean) {
+        storySummaryLoading = loading
+    }
+
+    fun updateHeaderPreviewSuppressed(suppressed: Boolean) {
+        headerPreviewSuppressed = suppressed
     }
 
     fun refreshContent() {
@@ -369,9 +396,26 @@ class CommentsComposeController private constructor(
     }
 
     fun createCommentTransitionSource(commentId: Int): View? =
-        commentBounds[commentId]?.let(::createTransitionSource)
+        commentBounds[commentId]?.let { bounds ->
+            createTransitionSource(bounds) { visible ->
+                suppressedCommentIds = if (visible) {
+                    suppressedCommentIds - commentId
+                } else {
+                    suppressedCommentIds + commentId
+                }
+            }
+        }
 
-    internal fun createTransitionSource(bounds: androidx.compose.ui.geometry.Rect): View? {
+    internal fun createHeaderPreviewTransitionSource(
+        bounds: androidx.compose.ui.geometry.Rect,
+    ): View? = createTransitionSource(bounds) { visible ->
+        headerPreviewSuppressed = !visible
+    }
+
+    internal fun createTransitionSource(
+        bounds: androidx.compose.ui.geometry.Rect,
+        onVisibilityChanged: ((Boolean) -> Unit)? = null,
+    ): View? {
         val source = composeView ?: return null
         val host = activity.findViewById<View>(android.R.id.content) as? ViewGroup ?: return null
         val hostLocation = IntArray(2)
@@ -387,6 +431,7 @@ class CommentsComposeController private constructor(
             source = source,
             cropLeftInWindow = left,
             cropTopInWindow = top,
+            onVisibilityChanged = onVisibilityChanged,
         )
         host.addView(proxy, ViewGroup.LayoutParams(right - left, bottom - top))
         proxy.x = (left - hostLocation[0]).toFloat()
@@ -397,9 +442,12 @@ class CommentsComposeController private constructor(
 
     fun clearTransitionSources() {
         transitionSources.toList().forEach { source ->
+            source.visibility = View.VISIBLE
             (source.parent as? ViewGroup)?.removeView(source)
         }
         transitionSources.clear()
+        suppressedCommentIds = emptySet()
+        headerPreviewSuppressed = false
     }
 
     fun requestStopScroll() {
@@ -523,8 +571,17 @@ class CommentsComposeController private constructor(
                 }
             }
             controller.composeView = composeView
+            val boundedHost = CommentsComposeHost(activity).apply {
+                addView(
+                    composeView,
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                    ),
+                )
+            }
             contentHost.addView(
-                composeView,
+                boundedHost,
                 FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT,
@@ -537,12 +594,21 @@ class CommentsComposeController private constructor(
         fun installEmpty(fragment: Fragment, contentHost: ViewGroup) {
             val context = fragment.requireContext()
             contentHost.removeAllViews()
+            val composeView = ComposeView(context).apply {
+                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+                setContent {
+                    HarmonicTheme { EmptyCommentsScreen() }
+                }
+            }
             contentHost.addView(
-                ComposeView(context).apply {
-                    setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-                    setContent {
-                        HarmonicTheme { EmptyCommentsScreen() }
-                    }
+                CommentsComposeHost(context).apply {
+                    addView(
+                        composeView,
+                        FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                        ),
+                    )
                 },
                 ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -553,12 +619,35 @@ class CommentsComposeController private constructor(
     }
 }
 
+/** Keeps Compose bounded during speculative weight and BottomSheet measure passes. */
+private class CommentsComposeHost(context: android.content.Context) : FrameLayout(context) {
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val displayMetrics = resources.displayMetrics
+        super.onMeasure(
+            boundedSpec(widthMeasureSpec, displayMetrics.widthPixels),
+            boundedSpec(heightMeasureSpec, displayMetrics.heightPixels),
+        )
+    }
+
+    private fun boundedSpec(measureSpec: Int, displaySize: Int): Int {
+        val mode = MeasureSpec.getMode(measureSpec)
+        val size = MeasureSpec.getSize(measureSpec)
+        val safeDisplaySize = displaySize.coerceAtLeast(1)
+        return if (mode == MeasureSpec.UNSPECIFIED || size > safeDisplaySize * 2) {
+            MeasureSpec.makeMeasureSpec(safeDisplaySize, MeasureSpec.EXACTLY)
+        } else {
+            measureSpec
+        }
+    }
+}
+
 @SuppressLint("ViewConstructor")
 private class ComposeCropTransitionView(
     context: android.content.Context,
     private val source: View,
     private val cropLeftInWindow: Int,
     private val cropTopInWindow: Int,
+    private val onVisibilityChanged: ((Boolean) -> Unit)?,
 ) : View(context) {
     private val sourceLocation = IntArray(2)
 
@@ -575,6 +664,14 @@ private class ComposeCropTransitionView(
             (sourceLocation[1] - cropTopInWindow).toFloat(),
         ) {
             source.draw(this)
+        }
+    }
+
+    override fun setVisibility(visibility: Int) {
+        val changed = visibility != this.visibility
+        super.setVisibility(visibility)
+        if (changed) {
+            onVisibilityChanged?.invoke(visibility == VISIBLE)
         }
     }
 }
@@ -778,6 +875,9 @@ private fun CommentsScreen(controller: CommentsComposeController) {
                     highlighted = item.comment.id == controller.highlightedCommentId,
                     modifier = Modifier
                         .padding(start = contentInsetStart, end = contentInsetEnd)
+                        .graphicsLayer(
+                            alpha = if (item.comment.id in controller.suppressedCommentIds) 0f else 1f,
+                        )
                         .onGloballyPositioned { coordinates ->
                             controller.updateCommentBounds(
                                 item.comment.id,
@@ -881,6 +981,7 @@ private fun CommentsScreen(controller: CommentsComposeController) {
                     Icon(
                         painterResource(R.drawable.ic_arrow_upward),
                         contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.8f),
                     )
                 },
                 text = {
@@ -945,7 +1046,7 @@ private data class ScrollbarMetrics(
 )
 
 @Composable
-private fun EmptyCommentsScreen() {
+internal fun EmptyCommentsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1121,12 +1222,13 @@ private fun CommentsHeader(
                         HeaderPreviewImage(
                             story = story,
                             visible = settings.showHeaderPreviewImage,
+                            suppressed = controller.headerPreviewSuppressed,
                             tintBaseColor = PreviewImageTintUtils.getTintBaseColor(context),
                             onTintLoaded = { loadedTint = it },
                             onClick = controller.listener::onHeaderClick,
                             onLongClick = { bounds ->
                                 controller.listener.onHeaderPreviewLongClick(
-                                    controller.createTransitionSource(bounds)
+                                    controller.createHeaderPreviewTransitionSource(bounds)
                                         ?: controllerSourceView(context),
                                 )
                             },
@@ -1166,15 +1268,25 @@ private fun CommentsHeader(
                 }
             }
         }
+        val fadeColors = remember(visibleHeaderBackground, normalBackground) {
+            List(5) { index ->
+                val position = index / 4f
+                val smoothstep = position * position * (3f - 2f * position)
+                lerpColor(visibleHeaderBackground, normalBackground, smoothstep)
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (settings.cardStyle) 24.dp else 28.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(visibleHeaderBackground, visibleHeaderBackground.copy(alpha = 0f)),
-                    ),
-                ),
+                .height(38.dp)
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    val overlap = 6.dp.roundToPx()
+                    layout(placeable.width, (placeable.height - overlap).coerceAtLeast(0)) {
+                        placeable.place(0, -overlap)
+                    }
+                }
+                .background(Brush.verticalGradient(fadeColors)),
         )
     }
 }
@@ -1316,6 +1428,7 @@ private fun HeaderShimmer() {
 private fun HeaderPreviewImage(
     story: Story,
     visible: Boolean,
+    suppressed: Boolean,
     tintBaseColor: Int,
     onTintLoaded: (Int) -> Unit,
     onClick: () -> Unit,
@@ -1351,6 +1464,7 @@ private fun HeaderPreviewImage(
                 .padding(start = 16.dp, end = 16.dp, bottom = 10.dp)
                 .height(176.dp)
                 .clip(RoundedCornerShape(8.dp))
+                .graphicsLayer(alpha = if (suppressed) 0f else 1f)
                 .onGloballyPositioned { bounds = it.boundsInWindow() }
                 .combinedClickable(
                     onClick = onClick,
@@ -1965,7 +2079,7 @@ private fun HeaderMeta(story: Story, settings: CommentDisplaySettings) {
                 painterResource(R.drawable.ic_link),
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
-                tint = HarmonicTheme.colors.storyDisabled,
+                tint = HarmonicTheme.colors.drawable,
             )
         }
     }
@@ -1978,7 +2092,7 @@ private fun HeaderMetaItem(icon: Int, label: String, typography: com.simon.harmo
             painterResource(icon),
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = HarmonicTheme.colors.storyDisabled,
+            tint = HarmonicTheme.colors.drawable,
         )
         Text(
             label,
@@ -1991,6 +2105,7 @@ private fun HeaderMetaItem(icon: Int, label: String, typography: com.simon.harmo
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HeaderActions(
     controller: CommentsComposeController,
@@ -2010,33 +2125,27 @@ private fun HeaderActions(
     val actions = buildList {
         add(HeaderAction(R.drawable.ic_account_circle, "User", CommentsComposeController.HEADER_ACTION_USER))
         if (canReply) add(HeaderAction(R.drawable.ic_comment, if (story.isComment) "Reply to comment" else "Reply to post", CommentsComposeController.HEADER_ACTION_REPLY))
-        if (hasAccount) add(HeaderAction(if (upvoted) R.drawable.ic_thumb_up_filled else R.drawable.ic_thumb_up, if (upvoted) "Remove vote" else "Vote", CommentsComposeController.HEADER_ACTION_VOTE))
-        if (hasAccount) add(HeaderAction(if (favorited) R.drawable.ic_star_filled else R.drawable.ic_star, if (favorited) "Remove favorite" else "Favorite", CommentsComposeController.HEADER_ACTION_FAVORITE))
+        if (hasAccount) add(HeaderAction(if (upvoted) R.drawable.ic_thumb_up_filled else R.drawable.ic_thumb_up, if (upvoted) "Remove vote" else "Vote", CommentsComposeController.HEADER_ACTION_VOTE, controller.storyVoteLoading))
+        if (hasAccount) add(HeaderAction(if (favorited) R.drawable.ic_star_filled else R.drawable.ic_star, if (favorited) "Remove favorite" else "Favorite", CommentsComposeController.HEADER_ACTION_FAVORITE, controller.storyFavoriteLoading))
         if (bookmarksEnabled && !hasAccount) add(HeaderAction(if (bookmarked) R.drawable.ic_bookmark_filled else R.drawable.ic_bookmark, if (bookmarked) "Remove bookmark" else "Bookmark", CommentsComposeController.HEADER_ACTION_BOOKMARK))
-        if (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully) add(HeaderAction(R.drawable.ic_auto_awesome, "Summarize", CommentsComposeController.HEADER_ACTION_SUMMARIZE))
+        if (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully) add(HeaderAction(R.drawable.ic_auto_awesome, "Summarize", CommentsComposeController.HEADER_ACTION_SUMMARIZE, controller.storySummaryLoading))
     }
-    Row(
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
-            .height(58.dp)
             .padding(horizontal = dimensionResource(R.dimen.comments_header_action_padding)),
         horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.Center,
     ) {
         actions.forEach { action ->
-            IconButton(
-                onClick = { controller.listener.onHeaderAction(action.action) },
-                modifier = Modifier.weight(1f),
-            ) {
-                Icon(
-                    painterResource(action.icon),
-                    contentDescription = action.label,
-                    modifier = Modifier.size(24.dp),
-                    tint = HarmonicTheme.colors.drawable,
-                )
+            HeaderActionButton(action) {
+                controller.listener.onHeaderAction(action.action)
             }
         }
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(width = 48.dp, height = 58.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             IconButton(onClick = { shareExpanded = true }) {
                 Icon(
                     painterResource(R.drawable.ic_share),
@@ -2055,7 +2164,7 @@ private fun HeaderActions(
         if (!hasAccount) {
             IconButton(
                 onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.size(width = 48.dp, height = 58.dp),
             ) {
                 Icon(
                     painterResource(R.drawable.ic_refresh),
@@ -2065,7 +2174,10 @@ private fun HeaderActions(
                 )
             }
         }
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(width = 48.dp, height = 58.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             IconButton(onClick = { moreExpanded = true }) {
                 Icon(
                     painterResource(R.drawable.ic_more_vert),
@@ -2090,7 +2202,55 @@ private fun HeaderActions(
     }
 }
 
-private data class HeaderAction(val icon: Int, val label: String, val action: Int)
+private data class HeaderAction(
+    val icon: Int,
+    val label: String,
+    val action: Int,
+    val loading: Boolean = false,
+)
+
+private data class HeaderActionVisual(
+    val icon: Int,
+    val label: String,
+    val loading: Boolean,
+)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun HeaderActionButton(
+    action: HeaderAction,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        enabled = !action.loading,
+        modifier = Modifier.size(width = 48.dp, height = 58.dp),
+    ) {
+        AnimatedContent(
+            targetState = HeaderActionVisual(action.icon, action.label, action.loading),
+            transitionSpec = {
+                (fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.72f)) togetherWith
+                    (fadeOut(tween(90)) + scaleOut(tween(90), targetScale = 0.72f))
+            },
+            label = "${action.label} loading transition",
+        ) { visual ->
+            if (visual.loading) {
+                LoadingIndicator(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .semantics { contentDescription = visual.label },
+                )
+            } else {
+                Icon(
+                    painterResource(visual.icon),
+                    contentDescription = visual.label,
+                    modifier = Modifier.size(24.dp),
+                    tint = HarmonicTheme.colors.drawable,
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun ShareMenu(
@@ -2099,10 +2259,10 @@ private fun ShareMenu(
     onDismiss: () -> Unit,
     onAction: (Int) -> Unit,
 ) {
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+    HarmonicDropdownMenu(expanded = expanded, onDismiss = onDismiss) {
         @Composable fun action(label: String, id: Int) {
             DropdownMenuItem(
-                text = { Text(label) },
+                text = { CommentsMenuText(label) },
                 onClick = {
                     onDismiss()
                     onAction(id)
@@ -2134,11 +2294,17 @@ private fun MoreMenu(
     val commentsCount = controller.comments.size
     val context = LocalContext.current
     val bookmarked = Utils.isBookmarked(context, story.id)
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+    HarmonicDropdownMenu(expanded = expanded, onDismiss = onDismiss) {
         @Composable fun action(label: String, icon: Int, id: Int) {
             DropdownMenuItem(
-                text = { Text(label) },
-                leadingIcon = { Icon(painterResource(icon), contentDescription = null) },
+                text = { CommentsMenuText(label) },
+                leadingIcon = {
+                    Icon(
+                        painterResource(icon),
+                        contentDescription = null,
+                        tint = HarmonicTheme.colors.drawable,
+                    )
+                },
                 onClick = {
                     onDismiss()
                     controller.listener.onMoreAction(id)
@@ -2158,8 +2324,14 @@ private fun MoreMenu(
         if (commentsCount > 1) action("Search comments", R.drawable.ic_search, CommentsComposeController.MORE_SEARCH)
         if (commentsCount > 2) {
             DropdownMenuItem(
-                text = { Text("Sort comments") },
-                leadingIcon = { Icon(painterResource(R.drawable.ic_filter_list), null) },
+                text = { CommentsMenuText("Sort comments") },
+                leadingIcon = {
+                    Icon(
+                        painterResource(R.drawable.ic_filter_list),
+                        contentDescription = null,
+                        tint = HarmonicTheme.colors.drawable,
+                    )
+                },
                 onClick = onSortExpanded,
             )
         }
@@ -2172,11 +2344,15 @@ private fun MoreMenu(
         }
         if (story.isLink) action("View on archive", R.drawable.ic_history, CommentsComposeController.MORE_ARCHIVE)
     }
-    DropdownMenu(expanded = sortExpanded, onDismissRequest = onDismiss) {
+    HarmonicDropdownMenu(expanded = sortExpanded, onDismiss = onDismiss) {
         val options = context.resources.getStringArray(R.array.comment_sorting)
         options.forEach { option ->
             DropdownMenuItem(
-                text = { Text(if (option == controller.currentSorting) "✓ $option" else option) },
+                text = {
+                    CommentsMenuText(
+                        if (option == controller.currentSorting) "✓ $option" else option,
+                    )
+                },
                 onClick = {
                     onDismiss()
                     controller.listener.onSortComments(option)
@@ -2184,6 +2360,32 @@ private fun MoreMenu(
             )
         }
     }
+}
+
+@Composable
+private fun HarmonicDropdownMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(16.dp),
+        containerColor = HarmonicTheme.colors.popupMenuBackground,
+        content = content,
+    )
+}
+
+@Composable
+private fun CommentsMenuText(text: String) {
+    Text(
+        text = text,
+        color = HarmonicTheme.colors.textPrimary,
+        fontFamily = ProductSansFontFamily,
+        fontSize = 16.sp,
+        style = legacyTextStyle,
+    )
 }
 
 @Composable

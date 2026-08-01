@@ -22,6 +22,8 @@ import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.databinding.ActivityMainBinding;
 import com.simon.harmonichackernews.databinding.ActivityMainFoldableBinding;
+import com.simon.harmonichackernews.ui.navigation.MainNavigationController;
+import com.simon.harmonichackernews.ui.navigation.MainNavigationHost;
 import com.simon.harmonichackernews.utils.Changelog;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -34,7 +36,8 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
 
-public class MainActivity extends BaseActivity implements StoriesFragment.StoryClickListener {
+public class MainActivity extends BaseActivity implements StoriesFragment.StoryClickListener,
+        CommentsFragment.BottomSheetFragmentCallback {
 
     public static ArrayList<CommentsScrollProgress> commentsScrollProgresses = new ArrayList<>();
     private static final Set<SearchBackStateListener> searchBackStateListeners =
@@ -46,6 +49,8 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     private boolean searchBackEnabled = false;
     private View mainFragmentsContainer;
     private View mainFragmentStoriesContainer;
+    private MainNavigationController mainNavigationController;
+    private boolean legacyNavigationHost;
 
     public int bottom = 0;
 
@@ -56,20 +61,26 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
         ThemeUtils.setupTheme(this);
 
-        if (shouldUseFoldableActivityEmbedding()) {
-            ActivityMainFoldableBinding binding = ActivityMainFoldableBinding.inflate(getLayoutInflater());
-            setContentView(binding.getRoot());
-            mainFragmentsContainer = binding.mainFragmentsContainer;
-            mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
-        } else {
-            ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
-            setContentView(binding.getRoot());
-            mainFragmentsContainer = binding.mainFragmentsContainer;
-            mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
-        }
+        legacyNavigationHost = BuildConfig.DEBUG
+                && getIntent().getBooleanExtra(StoriesFragment.EXTRA_USE_LEGACY_STORIES, false);
+        if (legacyNavigationHost) {
+            if (shouldUseFoldableActivityEmbedding()) {
+                ActivityMainFoldableBinding binding = ActivityMainFoldableBinding.inflate(getLayoutInflater());
+                setContentView(binding.getRoot());
+                mainFragmentsContainer = binding.mainFragmentsContainer;
+                mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
+            } else {
+                ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
+                setContentView(binding.getRoot());
+                mainFragmentsContainer = binding.mainFragmentsContainer;
+                mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
+            }
 
-        updateFragmentLayout();
-        removeUnavailableCommentsPaneFragment();
+            updateFragmentLayout();
+            removeUnavailableCommentsPaneFragment();
+        } else {
+            mainNavigationController = MainNavigationHost.install(this);
+        }
 
         boolean shouldShowWelcomeDialog = Utils.shouldShowWelcomeDialog(this);
         boolean justUpdated = Utils.justUpdated(this);
@@ -211,6 +222,9 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     private StoriesFragment getStoriesFragment() {
+        if (mainNavigationController != null) {
+            return mainNavigationController.getStoriesFragment();
+        }
         return (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
     }
 
@@ -227,7 +241,9 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        updateFragmentLayout();
+        if (legacyNavigationHost) {
+            updateFragmentLayout();
+        }
     }
 
     @Override
@@ -242,13 +258,15 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         bundle.putInt(CommentsFragment.EXTRA_FORWARD, pos - lastPosition);
         bundle.putBoolean(CommentsFragment.EXTRA_SHOW_WEBSITE, showWebsite);
 
-        if (shouldUseFoldableActivityEmbedding()) {
+        if (legacyNavigationHost && shouldUseFoldableActivityEmbedding()) {
             bundle.putBoolean(CommentsActivity.PREVENT_BACK, true);
         }
 
         lastPosition = pos;
 
-        if (shouldOpenCommentsInMainPane()) {
+        if (mainNavigationController != null) {
+            mainNavigationController.openStory(bundle);
+        } else if (shouldOpenCommentsInMainPane()) {
             CommentsFragment fragment = new CommentsFragment();
             fragment.setArguments(bundle);
             FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
@@ -269,6 +287,10 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         if (story == null) {
             return false;
         }
+        if (mainNavigationController != null) {
+            return mainNavigationController.switchOpenStoryViewIfMatching(
+                    story.id, showWebsite);
+        }
         if (shouldOpenCommentsInMainPane()) {
             CommentsFragment fragment = (CommentsFragment) getSupportFragmentManager()
                     .findFragmentById(R.id.main_fragment_comments_container);
@@ -285,8 +307,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         String volumeNavigationMode = SettingsUtils.getCommentsVolumeNavigationMode(getApplicationContext());
         if (!SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED.equals(volumeNavigationMode)) {
             boolean topLevelOnly = SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL.equals(volumeNavigationMode);
-            CommentsFragment fragment = (CommentsFragment) getSupportFragmentManager()
-                    .findFragmentById(R.id.main_fragment_comments_container);
+            CommentsFragment fragment = getCommentsFragment();
             if (fragment != null && fragment.isAdded() && fragment.isBottomSheetFullyExpanded()) {
                 if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
                     fragment.navigateToNextComment(topLevelOnly, true);
@@ -313,7 +334,8 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     private boolean shouldOpenCommentsInMainPane() {
-        return !shouldUseFoldableActivityEmbedding()
+        return legacyNavigationHost
+                && !shouldUseFoldableActivityEmbedding()
                 && Utils.isTablet(getResources())
                 && findViewById(R.id.main_fragment_comments_container) != null;
     }
@@ -334,11 +356,51 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     public void onAccountStateChanged() {
-        StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.main_fragment_stories_container);
+        StoriesFragment fragment = getStoriesFragment();
         if (fragment != null) {
             fragment.onAccountStateChanged();
         }
+    }
+
+    public void closeStory() {
+        if (mainNavigationController != null) {
+            mainNavigationController.closeStory();
+        }
+    }
+
+    public boolean openCommentsItem(int itemId) {
+        if (mainNavigationController == null || itemId <= 0) {
+            return false;
+        }
+        Bundle bundle = new Bundle();
+        bundle.putInt(CommentsFragment.EXTRA_ID, itemId);
+        bundle.putString(CommentsFragment.EXTRA_TITLE, "");
+        bundle.putBoolean(CommentsFragment.EXTRA_SHOW_WEBSITE, false);
+        mainNavigationController.openStory(bundle);
+        return true;
+    }
+
+    public boolean isAdaptiveTwoPaneNavigation() {
+        return mainNavigationController != null
+                && mainNavigationController.isAdaptiveTwoPane();
+    }
+
+    public boolean isAdaptiveFoldableNavigation() {
+        return mainNavigationController != null
+                && mainNavigationController.isAdaptiveFoldable();
+    }
+
+    @Override
+    public void onSwitchView(boolean isAtWebView) {
+        // Navigation 3 and CommentsFragment's own back handler own the relevant state now.
+    }
+
+    private CommentsFragment getCommentsFragment() {
+        if (mainNavigationController != null) {
+            return mainNavigationController.getCommentsFragment();
+        }
+        return (CommentsFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.main_fragment_comments_container);
     }
 
     private void showWelcomeDialog() {
@@ -378,6 +440,6 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     private boolean shouldUseFoldableActivityEmbedding() {
-        return FoldableSplitInitializer.isFoldableSplitEnabled(this);
+        return legacyNavigationHost && FoldableSplitInitializer.isFoldableSplitEnabled(this);
     }
 }

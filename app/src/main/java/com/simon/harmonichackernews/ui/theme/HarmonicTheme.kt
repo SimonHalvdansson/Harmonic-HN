@@ -50,6 +50,7 @@ data class HarmonicColors(
     val outlineVariant: Color,
     val commentDivider: Color,
     val drawable: Color,
+    val popupMenuBackground: Color,
     val settingsSegment: Color,
     val settingsHeaderSelected: Color,
     val settingsMainToggle: Color,
@@ -181,7 +182,13 @@ fun harmonicColors(context: Context): HarmonicColors {
             R.attr.commentDividerColor,
             fallbackScheme.outlineVariant,
         ),
-        drawable = context.colorAttribute(R.attr.drawableColor, fallbackScheme.onSurface),
+        drawable = context.colorAttribute(R.attr.drawableColor, fallbackScheme.onSurface).let { color ->
+            color.copy(alpha = color.alpha * 0.8f)
+        },
+        popupMenuBackground = context.colorAttribute(
+            R.attr.popupMenuBackgroundColor,
+            fallbackScheme.surfaceContainerHigh,
+        ),
         settingsSegment = context.colorAttribute(
             R.attr.settingsSegmentColor,
             fallbackScheme.surfaceContainerHigh,

@@ -27,6 +27,7 @@ import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.BuildConfig;
 import com.simon.harmonichackernews.CommentsActivity;
+import com.simon.harmonichackernews.MainActivity;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
 import com.simon.harmonichackernews.data.Story;
@@ -1655,6 +1656,11 @@ public class Utils {
     }
 
     public static void openCommentsActivity(int id, int scrollToCommentId, Context context) {
+        if (scrollToCommentId <= 0
+                && context instanceof MainActivity
+                && ((MainActivity) context).openCommentsItem(id)) {
+            return;
+        }
         Uri.Builder builder = Uri.parse("https://news.ycombinator.com/item").buildUpon()
                 .appendQueryParameter("id", String.valueOf(id));
         if (scrollToCommentId > 0) {

@@ -3605,6 +3605,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
     }
 
+    public boolean isStoryFavoriteLoading() {
+        return storyFavoriteLoading;
+    }
+
     public void showStoryFavoriteResult(@Nullable View actionView, boolean favorited) {
         storyFavoriteLoading = false;
         storyFavoriteLoadingTarget = favorited;
@@ -3621,6 +3625,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         if (button != null) {
             showHeaderVoteLoading(button, upvoted, true);
         }
+    }
+
+    public boolean isStoryVoteLoading() {
+        return storyVoteLoading;
     }
 
     public void showStoryVoteResult(@Nullable View actionView, boolean upvoted) {

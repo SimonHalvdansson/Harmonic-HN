@@ -137,10 +137,6 @@
         </activity>
 
         <activity
-            android:name=".SplitPlaceholderActivity"
-            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout" />
-
-        <activity
             android:name=".widget.WidgetConfigActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
             android:exported="true" />

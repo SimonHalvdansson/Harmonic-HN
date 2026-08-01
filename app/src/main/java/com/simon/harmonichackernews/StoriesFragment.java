@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -79,6 +80,7 @@ import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.ui.settings.SettingsIntents;
+import com.simon.harmonichackernews.ui.stories.StoriesComposeController;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
@@ -111,6 +113,8 @@ import java.util.TimeZone;
 import okhttp3.Response;
 
 public class StoriesFragment extends Fragment {
+    public static final String EXTRA_USE_LEGACY_STORIES =
+            "com.simon.harmonichackernews.EXTRA_USE_LEGACY_STORIES";
     private static final String TAG = "StoriesFragment";
     private static final int SWIPE_REFRESH_PROGRESS_START_OFFSET_DP = -32;
     private static final int SWIPE_REFRESH_PROGRESS_END_OFFSET_DP = -64;
@@ -123,6 +127,7 @@ public class StoriesFragment extends Fragment {
 
     private StoryClickListener storyClickListener;
     private FragmentStoriesBinding binding;
+    @Nullable private StoriesComposeController composeController;
     private StoriesHeaderBinding headerBinding;
     private SwipeRefreshLayout swipeRefreshLayout;
     private ExtendedFloatingActionButton updateFab;
@@ -209,14 +214,16 @@ public class StoriesFragment extends Fragment {
                         return;
                     }
                     linkSummaryStoryListExtraLayoutEnabled = enabled;
-                    if (recyclerView != null) {
+                    if (composeController == null && recyclerView != null) {
                         recyclerView.requestLayout();
                     }
                 }
 
                 @Override
                 public void scrollLinkSummaryStoryListBy(int dy) {
-                    if (recyclerView != null && dy != 0) {
+                    if (composeController != null) {
+                        composeController.requestScrollBy(dy);
+                    } else if (recyclerView != null && dy != 0) {
                         recyclerView.scrollBy(0, dy);
                     }
                 }
@@ -225,7 +232,10 @@ public class StoriesFragment extends Fragment {
                 public void setLinkSummaryStoryPagingAlphas(
                         int firstStoryId, float firstAlpha,
                         int secondStoryId, float secondAlpha) {
-                    if (adapter != null) {
+                    if (composeController != null) {
+                        composeController.setStoryPagingAlphas(
+                                firstStoryId, firstAlpha, secondStoryId, secondAlpha);
+                    } else if (adapter != null) {
                         adapter.setPreviewPagingAlphas(
                                 firstStoryId, firstAlpha, secondStoryId, secondAlpha);
                     }
@@ -233,6 +243,9 @@ public class StoriesFragment extends Fragment {
 
                 @Override
                 public void clearLinkSummaryStoryPagingAlphas(boolean animate) {
+                    if (composeController != null) {
+                        composeController.clearStoryPagingAlphas();
+                    }
                     if (mainAdapter != null) {
                         mainAdapter.clearPreviewPagingAlphas(animate);
                     }
@@ -252,8 +265,15 @@ public class StoriesFragment extends Fragment {
 
                 @Override
                 public void stopLinkSummaryListScroll() {
-                    if (recyclerView != null) {
+                    if (composeController == null && recyclerView != null) {
                         recyclerView.stopScroll();
+                    }
+                }
+
+                @Override
+                public void onLinkSummaryOverlayRemoved() {
+                    if (composeController != null) {
+                        composeController.clearTransitionSources();
                     }
                 }
 
@@ -672,6 +692,7 @@ public class StoriesFragment extends Fragment {
                 systemBottomInset = insets.bottom;
                 applyStoriesRecyclerPadding();
                 requestRecyclerScrollStateUpdate();
+                syncComposeState();
 
                 return windowInsets;
             }
@@ -689,6 +710,9 @@ public class StoriesFragment extends Fragment {
         searchRecyclerView.addOnScrollListener(searchRecyclerViewScrollListener);
 
         queue = NetworkComponent.getRequestQueueInstance(requireContext());
+        if (shouldUseComposeStoriesUi() && view instanceof ViewGroup) {
+            initializeComposeUi((ViewGroup) view);
+        }
         if (restoredStateForCurrentView) {
             updateHeader();
             restoreRecyclerViewPositions(restoredState);
@@ -726,10 +750,347 @@ public class StoriesFragment extends Fragment {
                         break;
                     }
                 }
+                syncComposeState();
             }
         };
         StoryUpdate.setStoryUpdatedListener(storyUpdateListener);
         restoreLinkSummaryAfterRecreation(view);
+    }
+
+    private boolean shouldUseComposeStoriesUi() {
+        Activity activity = getActivity();
+        return activity == null
+                || !BuildConfig.DEBUG
+                || !activity.getIntent().getBooleanExtra(EXTRA_USE_LEGACY_STORIES, false);
+    }
+
+    private void initializeComposeUi(@NonNull ViewGroup contentHost) {
+        if (binding == null || composeController != null) {
+            return;
+        }
+
+        // The existing RecyclerViews remain laid out as the temporary loading/cache bridge. They
+        // are excluded from drawing and accessibility; the debug launch extra can still select the
+        // complete legacy surface for same-build comparisons.
+        View legacyContent = contentHost.getChildCount() > 0 ? contentHost.getChildAt(0) : null;
+        ViewGroup composeHost = legacyContent instanceof ViewGroup
+                ? (ViewGroup) legacyContent
+                : contentHost;
+        for (int index = 0; index < composeHost.getChildCount(); index++) {
+            View legacyChild = composeHost.getChildAt(index);
+            legacyChild.setAlpha(0f);
+            legacyChild.setImportantForAccessibility(
+                    View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        }
+        swipeRefreshLayout.setEnabled(false);
+
+        composeController = StoriesComposeController.install(
+                this,
+                composeHost,
+                new StoriesComposeController.Listener() {
+                    @Override
+                    public void onTypeSelected(int index) {
+                        useMainStoryList();
+                        if (index < 0 || index >= buildTypeAdapterList(requireContext()).size()
+                                || index == adapter.type) {
+                            return;
+                        }
+                        adapter.type = index;
+                        updateAdapterCommentRows();
+                        updateAdapterPaginationMode(adapter);
+                        attemptStoryTypeRefresh();
+                    }
+
+                    @Override
+                    public void onOpenSearch() {
+                        openSearch();
+                    }
+
+                    @Override
+                    public void onCloseSearch() {
+                        closeSearch(null);
+                    }
+
+                    @Override
+                    public void onSearch(@NonNull String query) {
+                        search(query);
+                    }
+
+                    @Override
+                    public void onSearchOption(int kind, int index) {
+                        if (kind == StoriesComposeController.SEARCH_OPTION_SORT) {
+                            searchController.setSortIndex(index);
+                        } else if (kind == StoriesComposeController.SEARCH_OPTION_DATE) {
+                            searchController.setDateRangeIndex(index);
+                        } else if (kind == StoriesComposeController.SEARCH_OPTION_POINTS) {
+                            searchController.setMinimumPointsIndex(index);
+                        } else if (kind == StoriesComposeController.SEARCH_OPTION_COMMENTS) {
+                            searchController.setMinimumCommentsIndex(index);
+                        }
+                        updateSearchOptionChips();
+                        retrySearchWithCurrentOptions();
+                    }
+
+                    @Override
+                    public void onToggleOnlyClicked() {
+                        searchController.toggleOnlyClicked();
+                        updateSearchOptionChips();
+                        retrySearchWithCurrentOptions();
+                    }
+
+                    @Override
+                    public void onRefresh() {
+                        attemptRefresh();
+                    }
+
+                    @Override
+                    public void onShowCached() {
+                        showCachedStories();
+                    }
+
+                    @Override
+                    public void onLoadMore() {
+                        handleLoadMore(adapter);
+                    }
+
+                    @Override
+                    public void onSavedFilterSelected(int filter) {
+                        if (filter == userItemListFilter) {
+                            return;
+                        }
+                        userItemListFilter = filter;
+                        if (currentTypeUsesSavedItemFilter()) {
+                            applySavedItemFilter(true);
+                        }
+                    }
+
+                    @Override
+                    public void onShiftFrontDate(int days) {
+                        shiftFrontPageDay(days);
+                    }
+
+                    @Override
+                    public void onPickFrontDate() {
+                        showFrontPageDatePicker();
+                    }
+
+                    @Override
+                    public void onMoreAction(int action) {
+                        handleComposeMoreAction(action);
+                    }
+
+                    @Override
+                    public void onLinkClick(@NonNull Story story) {
+                        handleStoryLinkClick(adapter, stories.indexOf(story));
+                    }
+
+                    @Override
+                    public void onCommentClick(@NonNull Story story) {
+                        int position = stories.indexOf(story);
+                        if (position >= 0) {
+                            clickedComments(position);
+                        }
+                    }
+
+                    @Override
+                    public void onCommentStoryClick(@NonNull Story story) {
+                        int position = stories.indexOf(story);
+                        if (position >= 0) {
+                            clickedCommentStory(position);
+                        }
+                    }
+
+                    @Override
+                    public void onCommentRepliesClick(@NonNull Story story) {
+                        int position = stories.indexOf(story);
+                        if (position >= 0) {
+                            clickedComments(position);
+                        }
+                    }
+
+                    @Override
+                    public void onStoryLongClick(@NonNull Story story) {
+                        int position = stories.indexOf(story);
+                        if (position < 0) {
+                            return;
+                        }
+                        linkSummaryOverlayController.showStory(
+                                story,
+                                position,
+                                findLinkSummarySourceView(story.id),
+                                findLinkSummaryStorySharedElements(story.id));
+                    }
+
+                    @Override
+                    public void onVisibleStoryRange(int lastVisibleIndex) {
+                        loadComposeVisibleStories(lastVisibleIndex);
+                    }
+                });
+        syncComposeState();
+    }
+
+    private void loadComposeVisibleStories(int lastVisibleIndex) {
+        if (composeController == null || stories == null || stories.isEmpty()) {
+            return;
+        }
+        int targetIndex = Math.min(
+                stories.size() - 1,
+                Math.max(getInitialLoadCount() - 1,
+                        lastVisibleIndex + STORY_VISIBLE_PREFETCH_THRESHOLD));
+        loadStoriesThroughIndex(targetIndex, storyListGeneration);
+        retryUnsettledStoriesThroughIndex(targetIndex, storyListGeneration);
+        Context context = getContext();
+        if (context != null) {
+            int prefetchStart = Math.max(0, lastVisibleIndex - 2);
+            for (int i = prefetchStart; i <= targetIndex; i++) {
+                Story story = stories.get(i);
+                if (story != null && story.loaded) {
+                    requestPreviewImagePrefetch(context, story);
+                }
+            }
+        }
+    }
+
+    private void handleComposeMoreAction(int action) {
+        if (action == StoriesComposeController.MORE_SETTINGS) {
+            requireActivity().startActivity(SettingsIntents.create(requireActivity()));
+        } else if (action == StoriesComposeController.MORE_LOGIN) {
+            if (TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity()))) {
+                AccountUtils.showLoginPrompt(requireActivity().getSupportFragmentManager());
+            } else {
+                AccountUtils.deleteAccountDetails(requireActivity());
+                refreshTypeSpinnerItemsIfNeeded();
+                Toast.makeText(getContext(), "Logged out", Toast.LENGTH_SHORT).show();
+            }
+        } else if (action == StoriesComposeController.MORE_PROFILE) {
+            UserDialogFragment.showUserDialog(
+                    requireActivity().getSupportFragmentManager(),
+                    AccountUtils.getAccountUsername(requireActivity()));
+        } else if (action == StoriesComposeController.MORE_CACHE) {
+            CacheStoriesDialogFragment.show(getParentFragmentManager());
+        } else if (action == StoriesComposeController.MORE_SUBMIT) {
+            Intent submitIntent = new Intent(getContext(), ComposeActivity.class);
+            submitIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_POST);
+            startActivity(submitIntent);
+        } else if (action == StoriesComposeController.MORE_CLEAR_HISTORY) {
+            HistoriesUtils.INSTANCE.clearHistories(requireContext());
+            loadingFailed = false;
+            loadingFailedServerError = false;
+            loadingFailedRateLimited = false;
+            clearStories();
+            updateHeader();
+        }
+        syncComposeState();
+    }
+
+    private void syncComposeState() {
+        StoriesComposeController controller = composeController;
+        if (controller == null || binding == null || mainAdapter == null || searchAdapter == null
+                || adapter == null || stories == null || getContext() == null) {
+            return;
+        }
+        Context context = requireContext();
+        ArrayList<CharSequence> labels = buildTypeAdapterList(context);
+        ArrayList<String> stringLabels = new ArrayList<>(labels.size());
+        for (CharSequence label : labels) {
+            stringLabels.add(label == null ? "" : label.toString());
+        }
+
+        boolean bookmarksType = isBookmarksType(adapter.type);
+        boolean historyType = isHistoryType(adapter.type);
+        boolean favoritesType = isFavoritesType(adapter.type);
+        boolean upvotedType = isUpvotedType(adapter.type);
+        boolean userItemListType = favoritesType || upvotedType;
+        boolean savedItemSourceHasItems = currentSavedItemSourceHasItems();
+        boolean hasSubmittedSearch = !TextUtils.isEmpty(lastSearch.trim());
+        boolean showEmptySearch = searching
+                && hasSubmittedSearch
+                && stories.isEmpty()
+                && !algoliaLoading
+                && !loadingFailed
+                && !loadingFailedServerError;
+        boolean showEmptySaved = !searching
+                && stories.isEmpty()
+                && !loadingFailed
+                && !loadingFailedServerError
+                && (bookmarksType
+                || historyType
+                || (userItemListType && !userItemListInitialLoadInProgress
+                && !swipeRefreshLayout.isRefreshing()));
+        boolean showLoading = searching
+                ? algoliaLoading
+                : stories.isEmpty()
+                && !loadingFailed
+                && !loadingFailedServerError
+                && !bookmarksType
+                && !historyType
+                && (!userItemListType || userItemListInitialLoadInProgress);
+        String loadingMessage;
+        if (loadingFailedRateLimited) {
+            loadingMessage = "Rate limited";
+        } else if (!Utils.isNetworkAvailable(context)) {
+            loadingMessage = "No internet connection";
+        } else {
+            loadingMessage = "Loading failed";
+        }
+        String lastUpdated = shouldShowLastUpdatedHeader()
+                ? "Last updated: " + android.text.format.DateFormat.getTimeFormat(context)
+                .format(new java.util.Date(lastLoaded))
+                : null;
+        boolean cacheInProgress = storyCacheController != null
+                && storyCacheController.isCachingStories();
+        boolean hasVisibleStories = adapter.getVisibleStoryItemCount() > 0;
+        boolean canCache = hasVisibleStories
+                && !showingCached
+                && !cacheInProgress
+                && Utils.isNetworkAvailable(context);
+
+        controller.updateContent(
+                mainStories,
+                searchStories,
+                StoryDisplaySettings.from(context),
+                stringLabels,
+                mainAdapter.type,
+                searching,
+                lastSearch,
+                searchController.getSortLabel(),
+                searchController.getDateRangeLabel(),
+                searchController.getMinimumPointsLabel(),
+                searchController.getMinimumCommentsLabel(),
+                searchController.getSortLabels(),
+                searchController.getDateRangeLabels(),
+                searchController.getMinimumPointsLabels(),
+                searchController.getMinimumCommentsLabels(),
+                searchController.isOnlyClicked(),
+                showLoading,
+                swipeRefreshLayout.isRefreshing(),
+                loadingFailed,
+                loadingFailedServerError,
+                loadingMessage,
+                showingCached,
+                loadingFailed && !searching && Utils.hasCachedStories(context),
+                showEmptySaved,
+                getEmptySavedListText(
+                        historyType, favoritesType, upvotedType, savedItemSourceHasItems),
+                showEmptySearch,
+                updateButtonShowing,
+                lastUpdated,
+                adapter.hasLoadMoreButton(),
+                adapter.isLoadMoreLoading(),
+                mainAdapter.getVisibleStoryItemCount(),
+                searchAdapter.getVisibleStoryItemCount(),
+                !searching && currentTypeUsesSavedItemFilter() && savedItemSourceHasItems,
+                userItemListFilter,
+                !searching && currentTypeIsFront(),
+                getFrontPageDayParameter(),
+                getFrontPageDayUtc().after(getEarliestFrontPageDayUtc()),
+                getFrontPageDayUtc().before(getLatestFrontPageDayUtc()),
+                !TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity())),
+                canCache,
+                isHistoryType(adapter.type) && HistoriesUtils.INSTANCE.size() > 0,
+                topInset,
+                getSplitStoriesContentPaddingStart(),
+                systemBottomInset);
     }
 
     private void restoreLinkSummaryAfterRecreation(@NonNull View rootView) {
@@ -1763,6 +2124,7 @@ public class StoriesFragment extends Fragment {
         if (predictiveSearchBackInProgress) {
             applySearchBackVisualProgress(predictiveSearchBackProgress);
         }
+        syncComposeState();
     }
 
     private boolean shouldShowLastUpdatedHeader() {
@@ -2092,6 +2454,7 @@ public class StoriesFragment extends Fragment {
         searchOnlyClickedChip.setContentDescription(searchController.isOnlyClicked()
                 ? "From history search enabled"
                 : "From history search disabled");
+        syncComposeState();
     }
 
     private void beginSearchOptionsTransition() {
@@ -2153,7 +2516,11 @@ public class StoriesFragment extends Fragment {
         updateSearchStatus();
         animateSearchOptionsIn();
 
-        focusSearchInput();
+        if (composeController == null) {
+            focusSearchInput();
+        } else {
+            syncComposeState();
+        }
     }
 
     private void closeSearch(@Nullable View view) {
@@ -2961,49 +3328,7 @@ public class StoriesFragment extends Fragment {
         configuredAdapter.visibleStoryCount = configuredAdapter.paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
 
         configuredAdapter.setOnLinkClickListener(position -> {
-            useStoryListForAdapter(configuredAdapter);
-            if (position == RecyclerView.NO_POSITION) {
-                return;
-            }
-
-            Story story = stories.get(position);
-            if (alwaysOpenComments && !story.isFrontpageLink) {
-                clickedComments(position);
-                return;
-            }
-
-            long now = System.currentTimeMillis();
-            if (now - lastClick > CLICK_INTERVAL) {
-                lastClick = now;
-            } else {
-                return;
-            }
-
-            if (story.loaded) {
-                if (story.isFrontpageLink) {
-                    story.clicked = true;
-                    adapter.updateStoryClickedState(position);
-                    Utils.launchCustomTab(getContext(), story.url);
-                    return;
-                }
-
-                markStoryClicked(story);
-                adapter.updateStoryClickedState(position);
-
-                if (story.isLink) {
-                    if (SettingsUtils.shouldUseIntegratedWebView(getContext())) {
-                        openComments(story, position, true);
-                    } else {
-                        Utils.launchCustomTab(getContext(), story.url);
-                    }
-                } else {
-                    openComments(story, position, false);
-                }
-            } else if (story.loadingFailed) {
-                story.loadingFailed = false;
-                loadStory(story, 0);
-                adapter.notifyItemChanged(position);
-            }
+            handleStoryLinkClick(configuredAdapter, position);
         });
 
         configuredAdapter.setOnCommentClickListener(position -> {
@@ -3021,27 +3346,7 @@ public class StoriesFragment extends Fragment {
 
         // Set up pagination "Load More" button click listener
         configuredAdapter.setOnLoadMoreClickListener(v -> {
-            useStoryListForAdapter(configuredAdapter);
-            if (adapter.paginationMode && adapter.visibleStoryCount < stories.size()) {
-                int newLoadedTo = Math.min(
-                        loadedTo + StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE,
-                        stories.size() - 1
-                );
-
-                startPaginationLoadMore(newLoadedTo, storyListGeneration);
-                adapter.setLoadMoreLoading(true);
-                // Move the busy load-more row after the newly revealed page.
-                adapter.loadNextPage();
-                if (paginationLoadMoreStoryIds.isEmpty()) {
-                    clearPaginationLoadMoreState();
-                }
-                loadStoriesThroughIndex(newLoadedTo, storyListGeneration);
-                retryUnsettledStoriesThroughIndex(newLoadedTo, storyListGeneration);
-            } else if (adapter.showLoadMoreButton && currentTypeIsScrapedFrontpage()) {
-                loadMoreScrapedFrontpageStories(storyListGeneration);
-            } else if (adapter.showLoadMoreButton) {
-                loadMoreAlgoliaResults();
-            }
+            handleLoadMore(configuredAdapter);
         });
 
         configuredAdapter.setOnLongClickListener(new StoryRecyclerViewAdapter.LongClickCoordinateListener() {
@@ -3061,6 +3366,79 @@ public class StoriesFragment extends Fragment {
                 return true;
             }
         });
+    }
+
+    private void handleStoryLinkClick(
+            @NonNull StoryRecyclerViewAdapter sourceAdapter,
+            int position) {
+        useStoryListForAdapter(sourceAdapter);
+        if (position == RecyclerView.NO_POSITION || position < 0 || position >= stories.size()) {
+            return;
+        }
+
+        Story story = stories.get(position);
+        if (alwaysOpenComments && !story.isFrontpageLink) {
+            clickedComments(position);
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now - lastClick > CLICK_INTERVAL) {
+            lastClick = now;
+        } else {
+            return;
+        }
+
+        if (story.loaded) {
+            if (story.isFrontpageLink) {
+                story.clicked = true;
+                adapter.updateStoryClickedState(position);
+                Utils.launchCustomTab(getContext(), story.url);
+                return;
+            }
+
+            markStoryClicked(story);
+            adapter.updateStoryClickedState(position);
+
+            if (story.isLink) {
+                if (SettingsUtils.shouldUseIntegratedWebView(getContext())) {
+                    openComments(story, position, true);
+                } else {
+                    Utils.launchCustomTab(getContext(), story.url);
+                }
+            } else {
+                openComments(story, position, false);
+            }
+        } else if (story.loadingFailed) {
+            story.loadingFailed = false;
+            loadStory(story, 0);
+            adapter.notifyItemChanged(position);
+        }
+    }
+
+    private void handleLoadMore(@Nullable StoryRecyclerViewAdapter sourceAdapter) {
+        if (sourceAdapter == null) {
+            return;
+        }
+        useStoryListForAdapter(sourceAdapter);
+        if (adapter.paginationMode && adapter.visibleStoryCount < stories.size()) {
+            int newLoadedTo = Math.min(
+                    loadedTo + StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE,
+                    stories.size() - 1);
+            startPaginationLoadMore(newLoadedTo, storyListGeneration);
+            adapter.setLoadMoreLoading(true);
+            adapter.loadNextPage();
+            if (paginationLoadMoreStoryIds.isEmpty()) {
+                clearPaginationLoadMoreState();
+            }
+            loadStoriesThroughIndex(newLoadedTo, storyListGeneration);
+            retryUnsettledStoriesThroughIndex(newLoadedTo, storyListGeneration);
+        } else if (adapter.showLoadMoreButton && currentTypeIsScrapedFrontpage()) {
+            loadMoreScrapedFrontpageStories(storyListGeneration);
+        } else if (adapter.showLoadMoreButton) {
+            loadMoreAlgoliaResults();
+        }
+        syncComposeState();
     }
 
     private void setupLinkSummaryBackCallback() {
@@ -3118,13 +3496,23 @@ public class StoriesFragment extends Fragment {
     }
 
     private boolean isFoldableSplitLayout() {
-        return isAdded()
-                && FoldableSplitInitializer.isFoldableSplitEnabled(requireContext());
+        if (!isAdded()) {
+            return false;
+        }
+        if (requireActivity() instanceof MainActivity
+                && ((MainActivity) requireActivity()).isAdaptiveFoldableNavigation()) {
+            return true;
+        }
+        return FoldableSplitInitializer.isFoldableSplitEnabled(requireContext());
     }
 
     private boolean isTabletSplitLayout() {
         if (!isAdded()) {
             return false;
+        }
+        if (requireActivity() instanceof MainActivity
+                && ((MainActivity) requireActivity()).isAdaptiveTwoPaneNavigation()) {
+            return !((MainActivity) requireActivity()).isAdaptiveFoldableNavigation();
         }
         View commentsPane = requireActivity().findViewById(
                 R.id.main_fragment_comments_container);
@@ -3298,6 +3686,9 @@ public class StoriesFragment extends Fragment {
 
     @Nullable
     private View findLinkSummarySourceView(int storyId) {
+        if (composeController != null) {
+            return composeController.createStoryTransitionSource(storyId);
+        }
         if (stories == null || recyclerView == null) {
             return null;
         }
@@ -3312,6 +3703,13 @@ public class StoriesFragment extends Fragment {
 
     @Nullable
     private LinkSummaryOverlayController.StorySharedElements findLinkSummaryStorySharedElements(int storyId) {
+        if (composeController != null) {
+            return new LinkSummaryOverlayController.StorySharedElements(
+                    composeController.createStoryImageTransitionSource(storyId),
+                    composeController.createStoryTitleTransitionSource(storyId),
+                    composeController.createStorySummaryTransitionSource(storyId),
+                    composeController.createStoryMetaTransitionSource(storyId));
+        }
         if (stories == null || recyclerView == null) {
             return null;
         }
@@ -3325,6 +3723,9 @@ public class StoriesFragment extends Fragment {
     }
 
     private int getLinkSummaryStoryPagingDistance(int firstStoryId, int secondStoryId) {
+        if (composeController != null) {
+            return composeController.getStoryPagingDistance(firstStoryId, secondStoryId);
+        }
         if (stories == null || recyclerView == null) return 0;
         cacheVisibleLinkSummaryStoryHeights();
         int firstPosition = findStoryPositionById(firstStoryId);
@@ -3548,6 +3949,7 @@ public class StoriesFragment extends Fragment {
 
         syncInactiveStoryAdapterDisplaySettings();
         syncStoriesWithHistoriesIfNeeded();
+        syncComposeState();
     }
 
     private void refreshBookmarksIfNeeded() {
@@ -3703,6 +4105,9 @@ public class StoriesFragment extends Fragment {
                 : NO_PENDING_LINK_SUMMARY_STORY_ID;
         linkSummaryOverlayController.removeNow();
         linkSummaryBackCallback = null;
+        if (composeController != null) {
+            composeController.clearTransitionSources();
+        }
         View rootView = getView();
 
         if (rootView != null) {
@@ -3791,6 +4196,7 @@ public class StoriesFragment extends Fragment {
         }
 
         binding = null;
+        composeController = null;
         headerBinding = null;
         swipeRefreshLayout = null;
         updateFab = null;
@@ -5652,31 +6058,37 @@ public class StoriesFragment extends Fragment {
             @Override
             public void onChanged() {
                 requestRecyclerScrollStateUpdate();
+                syncComposeState();
             }
 
             @Override
             public void onItemRangeChanged(int positionStart, int itemCount) {
                 requestRecyclerScrollStateUpdate();
+                syncComposeState();
             }
 
             @Override
             public void onItemRangeChanged(int positionStart, int itemCount, @Nullable Object payload) {
                 requestRecyclerScrollStateUpdate();
+                syncComposeState();
             }
 
             @Override
             public void onItemRangeInserted(int positionStart, int itemCount) {
                 requestRecyclerScrollStateUpdate();
+                syncComposeState();
             }
 
             @Override
             public void onItemRangeRemoved(int positionStart, int itemCount) {
                 requestRecyclerScrollStateUpdate();
+                syncComposeState();
             }
 
             @Override
             public void onItemRangeMoved(int fromPosition, int toPosition, int itemCount) {
                 requestRecyclerScrollStateUpdate();
+                syncComposeState();
             }
         };
     }
@@ -5830,6 +6242,13 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
+        if (composeController != null) {
+            predictiveSearchBackInProgress = true;
+            predictiveSearchBackProgress = Math.max(0f, Math.min(1f, progress));
+            composeController.beginPredictiveBack(predictiveSearchBackProgress);
+            return;
+        }
+
         cancelSearchOptionsAnimation();
         predictiveSearchBackInProgress = true;
         predictiveSearchBackShowingMainHeader = false;
@@ -5848,6 +6267,12 @@ public class StoriesFragment extends Fragment {
             return;
         }
 
+        if (composeController != null) {
+            predictiveSearchBackProgress = Math.max(0f, Math.min(1f, progress));
+            composeController.updatePredictiveBack(predictiveSearchBackProgress);
+            return;
+        }
+
         applySearchBackVisualProgress(progress);
     }
 
@@ -5861,6 +6286,11 @@ public class StoriesFragment extends Fragment {
         predictiveSearchBackShowingMainHeader = false;
         predictiveSearchBackProgress = 0f;
         useSearchStoryList();
+        if (composeController != null) {
+            composeController.endPredictiveBack();
+            updateHeader(false);
+            return;
+        }
         updateHeader(false);
         resetSearchBackVisualAlphas();
         resetSearchBackContentVisualState();
@@ -5879,6 +6309,10 @@ public class StoriesFragment extends Fragment {
         finishSearchBackFromCurrentVisualState = predictiveSearchBackInProgress;
         predictiveSearchBackInProgress = false;
         predictiveSearchBackShowingMainHeader = false;
+        if (composeController != null) {
+            composeController.endPredictiveBack();
+            finishSearchBackFromCurrentVisualState = false;
+        }
         return exitSearch();
     }
 
@@ -6079,6 +6513,7 @@ public class StoriesFragment extends Fragment {
             updateFab.hide();
         }
         applyStoriesRecyclerPadding();
+        syncComposeState();
     }
 
     private void showUpdateButton() {
@@ -6092,6 +6527,7 @@ public class StoriesFragment extends Fragment {
             updateFab.show();
         }
         applyStoriesRecyclerPadding();
+        syncComposeState();
     }
 
     private void openComments(Story story, int pos, boolean showWebsite) {

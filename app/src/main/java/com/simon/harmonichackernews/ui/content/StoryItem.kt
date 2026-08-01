@@ -21,6 +21,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -45,10 +46,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -66,6 +70,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import kotlin.math.roundToInt
 
 private const val ContentAnimationDuration = 220
@@ -108,6 +113,14 @@ data class StoryItemStyle(
     val dimmed: Boolean = false,
 )
 
+enum class StoryItemElement {
+    Container,
+    Preview,
+    Title,
+    Summary,
+    Meta,
+}
+
 val SettingsStoryPreviewModel = StoryItemUiModel(
     index = "3.",
     title = "Algorithm breaks speed limit for solving linear equations",
@@ -128,7 +141,9 @@ fun StoryItem(
     modifier: Modifier = Modifier,
     listItem: Boolean = false,
     onLinkClick: (() -> Unit)? = null,
+    onLinkLongClick: (() -> Unit)? = null,
     onCommentClick: (() -> Unit)? = null,
+    onElementBoundsChanged: ((StoryItemElement, Rect) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val colors = HarmonicTheme.colors
@@ -263,6 +278,12 @@ fun StoryItem(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .onGloballyPositioned {
+                        onElementBoundsChanged?.invoke(
+                            StoryItemElement.Container,
+                            it.boundsInWindow(),
+                        )
+                    }
                     .shadow(
                         elevation = 1.dp,
                         shape = shape,
@@ -279,6 +300,7 @@ fun StoryItem(
                     borderless = style.borderlessLargeImage,
                     model = model.previewImageUrl ?: model.previewImageRes,
                     onDrawableLoaded = onPreviewDrawableLoaded,
+                    onBoundsChanged = onElementBoundsChanged,
                 )
 
                 StoryBodyRow(
@@ -293,8 +315,10 @@ fun StoryItem(
                             metaSize = metaSize,
                             alignmentProgress = alignmentProgress,
                             onClick = onLinkClick,
+                            onLongClick = onLinkLongClick,
                             onPreviewDrawableLoaded = onPreviewDrawableLoaded,
                             onFaviconDrawableLoaded = onFaviconDrawableLoaded,
+                            onElementBoundsChanged = onElementBoundsChanged,
                         )
                     },
                     commentRail = {
@@ -318,7 +342,12 @@ private fun LargeStoryPreviewImage(
     borderless: Boolean,
     model: Any?,
     onDrawableLoaded: (Drawable) -> Unit,
+    onBoundsChanged: ((StoryItemElement, Rect) -> Unit)?,
 ) {
+    val context = LocalContext.current
+    val softwareModel = remember(context, model) {
+        ImageRequest.Builder(context).data(model).allowHardware(false).build()
+    }
     val inset by animateDpAsState(
         targetValue = if (borderless) 0.dp else 10.dp,
         animationSpec = contentTween(),
@@ -341,13 +370,16 @@ private fun LargeStoryPreviewImage(
         exit = fadeOut(contentTween()) + shrinkVertically(contentTween(), shrinkTowards = Alignment.Top),
     ) {
         AsyncImage(
-            model = model,
+            model = softwareModel,
             contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = inset, top = inset, end = inset, bottom = bottomMargin)
                 .height(176.dp)
-                .clip(RoundedCornerShape(radius)),
+                .clip(RoundedCornerShape(radius))
+                .onGloballyPositioned {
+                    onBoundsChanged?.invoke(StoryItemElement.Preview, it.boundsInWindow())
+                },
             contentScale = ContentScale.Crop,
             onSuccess = { onDrawableLoaded(it.result.drawable) },
         )
@@ -364,8 +396,10 @@ private fun StoryLinkContent(
     metaSize: Float,
     alignmentProgress: Float,
     onClick: (() -> Unit)?,
+    onLongClick: (() -> Unit)?,
     onPreviewDrawableLoaded: (Drawable) -> Unit,
     onFaviconDrawableLoaded: (Drawable) -> Unit,
+    onElementBoundsChanged: ((StoryItemElement, Rect) -> Unit)?,
 ) {
     val startPadding = lerp(6f, 0f, alignmentProgress).dp
     val endPadding = lerp(0f, 12f, alignmentProgress).dp
@@ -391,7 +425,11 @@ private fun StoryLinkContent(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = onClick != null) { onClick?.invoke() }
+            .combinedClickable(
+                enabled = onClick != null || onLongClick != null,
+                onClick = { onClick?.invoke() },
+                onLongClick = onLongClick,
+            )
             .padding(
                 start = startPadding,
                 top = 10.dp,
@@ -439,6 +477,7 @@ private fun StoryLinkContent(
             metaProgress = metaProgress,
             onPreviewDrawableLoaded = onPreviewDrawableLoaded,
             onFaviconDrawableLoaded = onFaviconDrawableLoaded,
+            onElementBoundsChanged = onElementBoundsChanged,
             modifier = Modifier.weight(1f),
         )
     }
@@ -458,15 +497,21 @@ private fun StoryTextBlock(
     metaProgress: Float,
     onPreviewDrawableLoaded: (Drawable) -> Unit,
     onFaviconDrawableLoaded: (Drawable) -> Unit,
+    onElementBoundsChanged: ((StoryItemElement, Rect) -> Unit)?,
     modifier: Modifier,
 ) {
     val density = LocalDensity.current
+    val context = LocalContext.current
     Layout(
         modifier = modifier,
         content = {
             Text(
                 text = model.title,
-                modifier = Modifier.padding(start = textStartPadding, end = 2.dp),
+                modifier = Modifier
+                    .padding(start = textStartPadding, end = 2.dp)
+                    .onGloballyPositioned {
+                        onElementBoundsChanged?.invoke(StoryItemElement.Title, it.boundsInWindow())
+                    },
                 color = if (style.dimmed) {
                     HarmonicTheme.colors.storyDisabled
                 } else {
@@ -481,6 +526,9 @@ private fun StoryTextBlock(
                 text = model.summary,
                 modifier = Modifier
                     .padding(start = textStartPadding, end = 2.dp)
+                    .onGloballyPositioned {
+                        onElementBoundsChanged?.invoke(StoryItemElement.Summary, it.boundsInWindow())
+                    }
                     .graphicsLayer(alpha = summaryProgress),
                 color = HarmonicTheme.colors.storyDisabled,
                 fontFamily = typography.family,
@@ -497,16 +545,31 @@ private fun StoryTextBlock(
                 onFaviconDrawableLoaded = onFaviconDrawableLoaded,
                 modifier = Modifier
                     .padding(start = textStartPadding, end = 2.dp)
+                    .onGloballyPositioned {
+                        onElementBoundsChanged?.invoke(StoryItemElement.Meta, it.boundsInWindow())
+                    }
                     .graphicsLayer(alpha = metaProgress),
             )
             val previewModel = model.previewImageUrl ?: model.previewImageRes
             if (previewModel != null) {
+                val softwarePreviewModel = remember(context, previewModel) {
+                    ImageRequest.Builder(context)
+                        .data(previewModel)
+                        .allowHardware(false)
+                        .build()
+                }
                 AsyncImage(
-                    model = previewModel,
+                    model = softwarePreviewModel,
                     contentDescription = null,
                     modifier = Modifier
                         .size(width = 72.dp, height = 52.dp)
                         .clip(RoundedCornerShape(6.dp))
+                        .onGloballyPositioned {
+                            onElementBoundsChanged?.invoke(
+                                StoryItemElement.Preview,
+                                it.boundsInWindow(),
+                            )
+                        }
                         .graphicsLayer(
                             alpha = smallImageProgress,
                             scaleX = 0.92f + 0.08f * smallImageProgress,
@@ -581,6 +644,11 @@ private fun StoryMeta(
     onFaviconDrawableLoaded: (Drawable) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val faviconModel = model.faviconUrl ?: model.faviconRes
+    val softwareFaviconModel = remember(context, faviconModel) {
+        ImageRequest.Builder(context).data(faviconModel).allowHardware(false).build()
+    }
     val metaText = remember(
         style.showPoints,
         style.compactPoints,
@@ -607,7 +675,7 @@ private fun StoryMeta(
             exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
         ) {
             AsyncImage(
-                model = model.faviconUrl ?: model.faviconRes,
+                model = softwareFaviconModel,
                 contentDescription = null,
                 modifier = Modifier
                     .padding(end = 4.dp)

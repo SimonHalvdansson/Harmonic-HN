@@ -245,6 +245,7 @@ dependencies {
     implementation(libs.androidx.material3.adaptive.navigation3)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.fragment.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 
