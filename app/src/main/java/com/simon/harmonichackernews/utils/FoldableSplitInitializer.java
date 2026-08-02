@@ -140,6 +140,8 @@ public class FoldableSplitInitializer implements Initializer<RuleController> {
               .build();
    }
 
+   // The divider calls are guarded by the extension version check below, which lint does not see
+   @SuppressLint("RequiresWindowSdk")
    public static SplitAttributes createSplitAttributes(Context context) {
       SplitAttributes.Builder builder = new SplitAttributes.Builder()
               .setSplitType(SplitAttributes.SplitType.ratio(SettingsUtils.getSplitPaneRatio(context) / 100f))

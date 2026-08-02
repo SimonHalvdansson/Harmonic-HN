@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.utils;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
@@ -67,6 +68,8 @@ public class SplitRatioTracker {
      * Applies the stored ratio to the splits which are currently showing. Used when the ratio was
      * changed in settings, since the rules alone only affect splits created afterwards.
      */
+    // updateSplitAttributes is guarded by the extension version check below, which lint does not see
+    @SuppressLint("RequiresWindowSdk")
     public void applyStoredRatioToActiveSplits() {
         if (activeSplits.isEmpty()
                 || WindowSdkExtensions.getInstance().getExtensionVersion()
