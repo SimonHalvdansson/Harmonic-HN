@@ -19,9 +19,9 @@ import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewStub;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
@@ -44,7 +44,6 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 
@@ -53,7 +52,6 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import com.simon.harmonichackernews.data.Story;
-import com.simon.harmonichackernews.databinding.CommentsWebviewBinding;
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController;
 import com.simon.harmonichackernews.utils.FileDownloader;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -112,7 +110,7 @@ class CommentsWebViewController {
         void onResult(@Nullable String text);
     }
 
-    private final CommentsFragment fragment;
+    private final CommentsCoordinator coordinator;
     private final Story story;
     private final LinkPreviewController linkPreviewController;
     private final Callbacks callbacks;
@@ -130,9 +128,7 @@ class CommentsWebViewController {
         }
     };
 
-    private SwipeRefreshLayout swipeRefreshLayout;
     private WebView webView;
-    private ViewStub webViewStub;
     private FrameLayout webViewContainer;
     private FrameLayout fullscreenContainer;
     private View webViewBackdrop;
@@ -182,24 +178,27 @@ class CommentsWebViewController {
     private int readerModeAvailabilityRecheckGeneration = -1;
     private boolean readerModeAvailabilityRecheckUsed = false;
     private long readerModeInitialAvailabilityGraceStartedAtMs = 0L;
+    private int touchGestureStartScrollX = 0;
+    private int touchGestureStartScrollY = 0;
+    private boolean touchGestureStartScrollCaptured = false;
+    private int predictiveBackScrollX = 0;
+    private int predictiveBackScrollY = 0;
+    private boolean predictiveBackScrollFrozen = false;
     @Nullable
     private String readerModeScript;
 
-    CommentsWebViewController(CommentsFragment fragment, Story story, LinkPreviewController linkPreviewController, Callbacks callbacks) {
-        this.fragment = fragment;
+    CommentsWebViewController(CommentsCoordinator coordinator, Story story, LinkPreviewController linkPreviewController, Callbacks callbacks) {
+        this.coordinator = coordinator;
         this.story = story;
         this.linkPreviewController = linkPreviewController;
         this.callbacks = callbacks;
     }
 
     void bindViews(@NonNull CommentsWebViewHost host,
-                   @Nullable SwipeRefreshLayout swipeRefreshLayout,
                    @NonNull LinearProgressIndicator progressIndicator) {
-        this.swipeRefreshLayout = swipeRefreshLayout;
         this.progressIndicator = progressIndicator;
         this.progressIndicator.setVisibility(View.GONE);
         this.progressIndicator.setProgress(0);
-        webViewStub = host.webViewStub;
         webView = null;
         downloadButton = host.downloadButton;
         webViewContainer = host.webViewContainer;
@@ -281,6 +280,41 @@ class CommentsWebViewController {
         return !isShowingCustomView() && webView != null && !webView.canGoBack();
     }
 
+    void beginPredictiveBackScrollFreeze() {
+        if (webView == null) {
+            return;
+        }
+        predictiveBackScrollX = touchGestureStartScrollCaptured
+                ? touchGestureStartScrollX
+                : webView.getScrollX();
+        predictiveBackScrollY = touchGestureStartScrollCaptured
+                ? touchGestureStartScrollY
+                : webView.getScrollY();
+        predictiveBackScrollFrozen = true;
+        restorePredictiveBackScroll();
+    }
+
+    void maintainPredictiveBackScrollFreeze() {
+        if (predictiveBackScrollFrozen) {
+            restorePredictiveBackScroll();
+        }
+    }
+
+    void endPredictiveBackScrollFreeze() {
+        if (!predictiveBackScrollFrozen) {
+            return;
+        }
+        restorePredictiveBackScroll();
+        predictiveBackScrollFrozen = false;
+    }
+
+    private void restorePredictiveBackScroll() {
+        if (webView != null && (webView.getScrollX() != predictiveBackScrollX
+                || webView.getScrollY() != predictiveBackScrollY)) {
+            webView.scrollTo(predictiveBackScrollX, predictiveBackScrollY);
+        }
+    }
+
     boolean isShowingOfflineOrCachedPage() {
         return showingErrorPage || showingCachedArticlePage;
     }
@@ -360,13 +394,13 @@ class CommentsWebViewController {
                 throw new IllegalStateException("WebView not available");
             }
             intent.setData(Uri.parse(webView.getUrl()));
-            fragment.startActivity(intent);
+            coordinator.startActivity(intent);
         } catch (Exception e) {
             try {
                 intent.setData(Uri.parse(story.url));
-                fragment.startActivity(intent);
+                coordinator.startActivity(intent);
             } catch (Exception e2) {
-                Utils.toast("Couldn't open URL", fragment.getContext());
+                Utils.toast("Couldn't open URL", coordinator.getContext());
             }
         }
     }
@@ -379,7 +413,7 @@ class CommentsWebViewController {
         webView.reload();
 
         Snackbar snackbar = Snackbar.make(webView, "Disabled AdBlock, refreshing WebView", Snackbar.LENGTH_SHORT);
-        ViewCompat.setElevation(snackbar.getView(), Utils.pxFromDp(fragment.getResources(), 24));
+        ViewCompat.setElevation(snackbar.getView(), Utils.pxFromDp(coordinator.getResources(), 24));
         snackbar.show();
     }
 
@@ -394,8 +428,8 @@ class CommentsWebViewController {
         if (webView == null) {
             initialize();
         }
-        Context context = fragment.getContext();
-        if (webView == null || context == null || fragment.getView() == null) {
+        Context context = coordinator.getContext();
+        if (webView == null || context == null || coordinator.getView() == null) {
             return;
         }
 
@@ -437,8 +471,8 @@ class CommentsWebViewController {
     }
 
     private void applyReaderMode(boolean enable, boolean showFeedback) {
-        Context context = fragment.getContext();
-        if (!readerModeFeatureEnabled || webView == null || context == null || fragment.getView() == null) {
+        Context context = coordinator.getContext();
+        if (!readerModeFeatureEnabled || webView == null || context == null || coordinator.getView() == null) {
             return;
         }
 
@@ -457,11 +491,11 @@ class CommentsWebViewController {
         WebView targetWebView = webView;
         int generation = webViewLoadGeneration;
         targetWebView.evaluateJavascript(command, result -> {
-            Context callbackContext = fragment.getContext();
+            Context callbackContext = coordinator.getContext();
             if (callbackContext == null
                     || targetWebView != webView
                     || generation != webViewLoadGeneration
-                    || fragment.getView() == null) {
+                    || coordinator.getView() == null) {
                 return;
             }
 
@@ -494,7 +528,7 @@ class CommentsWebViewController {
     }
 
     private void checkReaderModeAvailability(WebView view, int generation) {
-        Context context = fragment.getContext();
+        Context context = coordinator.getContext();
         if (!canCheckReaderModeAvailability(view, generation, context)) {
             setReaderModeUnavailableNow();
             return;
@@ -507,7 +541,7 @@ class CommentsWebViewController {
         }
 
         view.evaluateJavascript(script + "\nHarmonicReaderMode.isAvailable();", result -> {
-            Context callbackContext = fragment.getContext();
+            Context callbackContext = coordinator.getContext();
             if (!canCheckReaderModeAvailability(view, generation, callbackContext)) {
                 return;
             }
@@ -527,7 +561,7 @@ class CommentsWebViewController {
                 || view != webView
                 || generation != webViewLoadGeneration
                 || context == null
-                || fragment.getView() == null) {
+                || coordinator.getView() == null) {
             return false;
         }
 
@@ -869,8 +903,8 @@ class CommentsWebViewController {
             return;
         }
 
-        Context context = fragment.getContext();
-        if (context == null || fragment.getView() == null) {
+        Context context = coordinator.getContext();
+        if (context == null || coordinator.getView() == null) {
             return;
         }
 
@@ -879,14 +913,6 @@ class CommentsWebViewController {
             return;
         }
         initializedWebView = true;
-
-        try {
-            if (swipeRefreshLayout != null && swipeRefreshLayout.getParent() instanceof FrameLayout) {
-                ((FrameLayout) swipeRefreshLayout.getParent()).removeView(swipeRefreshLayout);
-            }
-        } catch (Exception ignored) {
-            // The old comments list bridge may already have been detached.
-        }
 
         if (blockAds && Utils.adservers.isEmpty()) {
             Utils.loadAdservers(context.getResources());
@@ -926,7 +952,7 @@ class CommentsWebViewController {
 
             @Override
             public void onShowCustomView(View view, CustomViewCallback callback) {
-                if (fragment.getContext() == null || fragment.getView() == null || fullscreenContainer == null || webViewContainer == null) {
+                if (coordinator.getContext() == null || coordinator.getView() == null || fullscreenContainer == null || webViewContainer == null) {
                     callback.onCustomViewHidden();
                     return;
                 }
@@ -970,13 +996,13 @@ class CommentsWebViewController {
     private boolean isCurrentWebViewCallback(WebView view) {
         return view != null
                 && view == webView
-                && fragment.getContext() != null
-                && fragment.getView() != null
+                && coordinator.getContext() != null
+                && coordinator.getView() != null
                 && webViewBackdrop != null;
     }
 
     private void beginWebViewLoad(@NonNull WebView view, @Nullable String url) {
-        if (view != webView || fragment.getContext() == null || fragment.getView() == null) {
+        if (view != webView || coordinator.getContext() == null || coordinator.getView() == null) {
             return;
         }
 
@@ -1034,7 +1060,7 @@ class CommentsWebViewController {
 
     private void updateWebViewProgress(@NonNull WebView view, int newProgress) {
         LinearProgressIndicator currentProgressIndicator = progressIndicator;
-        if (view != webView || fragment.getContext() == null || fragment.getView() == null || currentProgressIndicator == null) {
+        if (view != webView || coordinator.getContext() == null || coordinator.getView() == null || currentProgressIndicator == null) {
             return;
         }
         cancelProgressAnimator();
@@ -1100,7 +1126,7 @@ class CommentsWebViewController {
         if (!isCurrentWebViewCallback(view) || showingErrorPage || showingCachedArticlePage) {
             return;
         }
-        linkPreviewController.onWebViewOfflineFallback(fragment.getContext());
+        linkPreviewController.onWebViewOfflineFallback(coordinator.getContext());
         if ((errorPageType == ErrorPageType.DNS || errorPageType == ErrorPageType.OFFLINE)
                 && loadCachedArticleSnapshot(view, failingUrl)) {
             return;
@@ -1113,9 +1139,6 @@ class CommentsWebViewController {
             lastFailedWebViewUrl = view.getUrl();
         }
         retryingFailedWebViewUrl = false;
-        if (swipeRefreshLayout != null) {
-            swipeRefreshLayout.setRefreshing(false);
-        }
         view.stopLoading();
         finishWebViewLoadUi(view, webViewLoadGeneration, false);
         clearWebViewHistoryOnNextFinish = !view.canGoBack();
@@ -1185,12 +1208,12 @@ class CommentsWebViewController {
     }
 
     private void setFullscreenSystemBarsHidden(boolean hidden) {
-        if (fragment.getActivity() == null) {
+        if (coordinator.getActivity() == null) {
             return;
         }
 
         WindowInsetsControllerCompat windowInsetsController =
-                ViewCompat.getWindowInsetsController(fragment.requireActivity().getWindow().getDecorView());
+                ViewCompat.getWindowInsetsController(coordinator.requireActivity().getWindow().getDecorView());
         if (windowInsetsController == null) {
             return;
         }
@@ -1226,12 +1249,12 @@ class CommentsWebViewController {
     }
 
     private void loadUrl(String url, @Nullable String pdfFilePath) {
-        Context context = fragment.getContext();
+        Context context = coordinator.getContext();
         if (webView == null && integratedWebview) {
             initialize();
-            context = fragment.getContext();
+            context = coordinator.getContext();
         }
-        if (webView == null || context == null || fragment.getView() == null) {
+        if (webView == null || context == null || coordinator.getView() == null) {
             return;
         }
         if (TextUtils.isEmpty(url)) {
@@ -1247,9 +1270,6 @@ class CommentsWebViewController {
             pdfFilePath = !TextUtils.isEmpty(pdfFilePath) ? pdfFilePath : currentPdfFilePath;
             if (TextUtils.isEmpty(pdfFilePath)) {
                 retryingFailedWebViewUrl = false;
-                if (swipeRefreshLayout != null) {
-                    swipeRefreshLayout.setRefreshing(false);
-                }
                 return;
             }
         }
@@ -1307,14 +1327,32 @@ class CommentsWebViewController {
         if (webView != null) {
             return webView;
         }
-        if (webViewStub == null) {
+        if (webViewContainer == null) {
             return null;
         }
-
-        View inflated = webViewStub.inflate();
-        webView = CommentsWebviewBinding.bind(inflated).getRoot();
-        webViewStub = null;
+        webView = new WebView(webViewContainer.getContext());
+        webView.setId(R.id.comments_webview);
+        attachWebView(webView);
         return webView;
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void attachWebView(@NonNull WebView view) {
+        if (webViewContainer == null) return;
+        view.setOnTouchListener((ignored, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                touchGestureStartScrollX = view.getScrollX();
+                touchGestureStartScrollY = view.getScrollY();
+                touchGestureStartScrollCaptured = true;
+            }
+            return false;
+        });
+        webViewContainer.addView(
+                view,
+                Math.min(1, webViewContainer.getChildCount()),
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     private void downloadPdf(String url, String contentDisposition, String mimetype, Context ctx) {
@@ -1352,10 +1390,10 @@ class CommentsWebViewController {
                         request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, URLUtil.guessFileName(url, contentDisposition, mimetype));
                         DownloadManager dm = (DownloadManager) view.getContext().getSystemService(DOWNLOAD_SERVICE);
                         dm.enqueue(request);
-                        Toast.makeText(fragment.getContext(), "Downloading...", Toast.LENGTH_LONG).show();
+                        Toast.makeText(coordinator.getContext(), "Downloading...", Toast.LENGTH_LONG).show();
                     } catch (Exception e) {
-                        Toast.makeText(fragment.getContext(), "Failed to download, opening in browser", Toast.LENGTH_LONG).show();
-                        Utils.launchInExternalBrowser(fragment.getActivity(), url);
+                        Toast.makeText(coordinator.getContext(), "Failed to download, opening in browser", Toast.LENGTH_LONG).show();
+                        Utils.launchInExternalBrowser(coordinator.getActivity(), url);
                     }
 
                 }
@@ -1461,8 +1499,8 @@ class CommentsWebViewController {
     }
 
     private boolean loadCachedArticleSnapshot(WebView view, @Nullable String failingUrl) {
-        Context context = fragment.getContext();
-        if (view == null || context == null || fragment.getView() == null || story == null || !story.isLink || story.id <= 0) {
+        Context context = coordinator.getContext();
+        if (view == null || context == null || coordinator.getView() == null || story == null || !story.isLink || story.id <= 0) {
             return false;
         }
 
@@ -1480,10 +1518,6 @@ class CommentsWebViewController {
         retryingFailedWebViewUrl = false;
         showingErrorPage = false;
         showingCachedArticlePage = true;
-        if (swipeRefreshLayout != null) {
-            swipeRefreshLayout.setRefreshing(false);
-        }
-
         view.stopLoading();
         clearWebViewHistoryOnNextFinish = true;
         Toast.makeText(context, "Showing cached webview content", Toast.LENGTH_SHORT).show();
@@ -1546,8 +1580,8 @@ class CommentsWebViewController {
     }
 
     private void restartWebView() {
-        Context context = fragment.getContext();
-        if (context == null || fragment.getView() == null || webViewContainer == null) {
+        Context context = coordinator.getContext();
+        if (context == null || coordinator.getView() == null || webViewContainer == null) {
             destroy(true);
             return;
         }
@@ -1557,10 +1591,7 @@ class CommentsWebViewController {
         try {
             webView = new WebView(context);
             webView.setId(R.id.comments_webview);
-            webViewContainer.addView(webView, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-            ));
+            attachWebView(webView);
             initialize();
         } catch (RuntimeException e) {
             webView = null;
@@ -1593,9 +1624,7 @@ class CommentsWebViewController {
     }
 
     void clearViewReferences() {
-        swipeRefreshLayout = null;
         webView = null;
-        webViewStub = null;
         webViewContainer = null;
         fullscreenContainer = null;
         webViewBackdrop = null;
@@ -1643,9 +1672,6 @@ class CommentsWebViewController {
             finishWebViewLoadUi(view, webViewLoadGeneration, true);
 
             if (retryingFailedWebViewUrl) {
-                if (swipeRefreshLayout != null) {
-                    swipeRefreshLayout.setRefreshing(false);
-                }
                 retryingFailedWebViewUrl = false;
             }
 
@@ -1661,7 +1687,7 @@ class CommentsWebViewController {
                 });
             }
 
-            linkPreviewController.onWebViewPageFinished(fragment.getContext(), view, url);
+            linkPreviewController.onWebViewPageFinished(coordinator.getContext(), view, url);
 
             int finishedGeneration = webViewLoadGeneration;
             if (readerModePending && !showingErrorPage && !PDF_LOADER_URL.equals(url)) {
@@ -1751,7 +1777,7 @@ class CommentsWebViewController {
                 destroy(true);
             }
 
-            if (fragment.getContext() == null || fragment.getView() == null || webViewContainer == null) {
+            if (coordinator.getContext() == null || coordinator.getView() == null || webViewContainer == null) {
                 return true;
             }
 
@@ -1765,7 +1791,7 @@ class CommentsWebViewController {
 
                 return true;
             }
-            Context context = fragment.getContext();
+            Context context = coordinator.getContext();
             if (context != null && wasCurrentWebView) {
                 Utils.toast("WebView crashed, reinitializing", context);
                 restartWebView();

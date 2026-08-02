@@ -5,7 +5,7 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.activity.ComponentActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
@@ -13,7 +13,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.simon.harmonichackernews.utils.ViewUtils;
 
-public class BaseActivity extends AppCompatActivity {
+public class BaseActivity extends ComponentActivity {
 
     private static final String TAG = "BaseActivity";
     private int navBarHeight = 0;

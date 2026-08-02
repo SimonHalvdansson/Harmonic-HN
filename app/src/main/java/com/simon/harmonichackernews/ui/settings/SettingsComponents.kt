@@ -10,9 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,14 +65,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -142,8 +134,6 @@ internal fun SettingsAlertDialog(
             R.dimen.compose_settings_dialog_max_width
         },
     )
-    var dialogBounds by remember { mutableStateOf<Rect?>(null) }
-    var dialogRootOffset by remember { mutableStateOf(Offset.Zero) }
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
@@ -151,7 +141,7 @@ internal fun SettingsAlertDialog(
             dismissOnClickOutside = properties.dismissOnClickOutside,
             securePolicy = properties.securePolicy,
             usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = properties.decorFitsSystemWindows,
+            decorFitsSystemWindows = false,
         ),
     ) {
         val dialogView = LocalView.current
@@ -167,33 +157,21 @@ internal fun SettingsAlertDialog(
             }
         }
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .onGloballyPositioned { coordinates ->
-                    dialogRootOffset = coordinates.positionInWindow()
-                }
-                .pointerInput(properties.dismissOnClickOutside, onDismissRequest) {
-                    if (!properties.dismissOnClickOutside) return@pointerInput
-                    awaitEachGesture {
-                        val down = awaitFirstDown(
-                            requireUnconsumed = false,
-                            pass = PointerEventPass.Final,
-                        )
-                        val up = waitForUpOrCancellation(pass = PointerEventPass.Final)
-                        val bounds = dialogBounds
-                        if (
-                            up != null &&
-                            bounds != null &&
-                            !bounds.contains(up.position + dialogRootOffset)
-                        ) {
-                            onDismissRequest()
-                        }
-                    }
-                },
+            modifier = Modifier.fillMaxSize(),
         ) {
+            if (properties.dismissOnClickOutside) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .pointerInput(onDismissRequest) {
+                            detectTapGestures { onDismissRequest() }
+                        },
+                )
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(
                         horizontal = dimensionResource(
                             R.dimen.compose_settings_dialog_horizontal_margin,
@@ -210,8 +188,10 @@ internal fun SettingsAlertDialog(
                             max = dialogMaxWidth,
                         )
                         .fillMaxWidth()
-                        .onGloballyPositioned { coordinates ->
-                            dialogBounds = coordinates.boundsInWindow()
+                        .pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) awaitPointerEvent()
+                            }
                         },
                     shape = MaterialTheme.shapes.extraLarge,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,

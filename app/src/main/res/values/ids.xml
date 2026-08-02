@@ -9,8 +9,7 @@
     <item name="webview_container" type="id" />
     <item name="comments_fullscreen_container" type="id" />
     <item name="comments_webview_backdrop" type="id" />
+    <item name="comments_webview" type="id" />
     <item name="webview_download" type="id" />
-    <item name="comments_webview_stub" type="id" />
-    <item name="comments_webview_stub_content" type="id" />
     <item name="webview_progress" type="id" />
 </resources>

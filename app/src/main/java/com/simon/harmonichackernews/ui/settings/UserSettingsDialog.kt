@@ -333,6 +333,7 @@ private fun UserLoadedContent(
                 label = "Submissions",
                 icon = R.drawable.ic_forum,
                 onClick = {
+                    onDismiss()
                     context.startActivity(
                         SubmissionsContract.createIntent(context, user.id),
                     )

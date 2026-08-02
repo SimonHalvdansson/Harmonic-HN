@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -77,7 +77,7 @@ fun AddBookmarksToFavoritesDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as? AppCompatActivity
+    val activity = context as? ComponentActivity
     val initialTitles = remember(bookmarkIds.contentHashCode()) {
         bookmarkIds.map { id ->
             val story = Story().apply { this.id = id }
@@ -357,7 +357,7 @@ private fun BookmarkFavoriteResultsDialog(
 }
 
 private suspend fun addBookmarkToFavorites(
-    activity: AppCompatActivity,
+    activity: ComponentActivity,
     id: Int,
     initialTitle: String,
 ): BookmarkFavoriteResult = suspendCancellableCoroutine { continuation ->

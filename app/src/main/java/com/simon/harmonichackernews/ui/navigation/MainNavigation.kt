@@ -6,25 +6,31 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.PathEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.PaneExpansionAnchor
@@ -50,16 +56,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
-import androidx.fragment.compose.AndroidFragment
-import androidx.fragment.compose.rememberFragmentState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
@@ -68,9 +76,10 @@ import androidx.navigation3.scene.SceneInfo
 import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.compose.rememberNavigationEventState
-import com.simon.harmonichackernews.CommentsFragment
+import com.simon.harmonichackernews.CommentsContract
+import com.simon.harmonichackernews.CommentsCoordinator
 import com.simon.harmonichackernews.MainActivity
-import com.simon.harmonichackernews.StoriesFragment
+import com.simon.harmonichackernews.StoriesCoordinator
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
@@ -114,7 +123,7 @@ internal data class MainStoryRequest(
     val serial: Int,
     val arguments: Bundle,
 ) {
-    val storyId: Int = arguments.getInt(CommentsFragment.EXTRA_ID, -1)
+    val storyId: Int = arguments.getInt(CommentsContract.EXTRA_ID, -1)
 }
 
 internal data class MainSettingsRequest(
@@ -180,6 +189,8 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         private set
     internal var lastSubmissionsRequest: MainSubmissionsRequest? = null
         private set
+    internal var storyOpenedFromSubmissions by mutableStateOf(false)
+        private set
     internal var coulombGasVisible by mutableStateOf(false)
         private set
     internal var closeRequest by mutableIntStateOf(0)
@@ -193,8 +204,11 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     private var userRequestSerial = 0
     private var currentSettingsSectionRoute: String? = null
     private var settingsNeedsRestart = false
-    private var storiesFragment: StoriesFragment? = null
-    private var commentsFragment: CommentsFragment? = null
+    private var storiesCoordinator: StoriesCoordinator? = null
+    private var commentsCoordinator: CommentsCoordinator? = null
+    private var restoredCommentsState: Bundle? = savedState?.getBundle(STATE_COMMENTS_STATE)
+    private var restoredCommentsRequestSerial: Int =
+        savedState?.getInt(STATE_COMMENTS_REQUEST_SERIAL, -1) ?: -1
     internal var storiesComposeController by mutableStateOf<StoriesComposeController?>(null)
         private set
     internal var commentsComposeController by mutableStateOf<CommentsComposeController?>(null)
@@ -249,12 +263,19 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
                 lastSubmissionsRequest = it
             }
         }
+        storyOpenedFromSubmissions =
+            savedState?.getBoolean(STATE_STORY_OPENED_FROM_SUBMISSIONS, false) == true &&
+                storyRequest != null && submissionsRequest != null
         coulombGasVisible = savedState?.getBoolean(STATE_COULOMB_GAS_VISIBLE, false) == true
     }
 
     fun openStory(arguments: Bundle) {
+        restoredCommentsState = null
+        restoredCommentsRequestSerial = -1
         settingsRequest = null
-        submissionsRequest = null
+        if (!storyOpenedFromSubmissions) {
+            submissionsRequest = null
+        }
         editorRequest = null
         coulombGasVisible = false
         MainStoryRequest(++requestSerial, Bundle(arguments)).also {
@@ -269,6 +290,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
 
     fun openSettings(sectionRoute: String?) {
         submissionsRequest = null
+        storyOpenedFromSubmissions = false
         editorRequest = null
         coulombGasVisible = false
         currentSettingsSectionRoute = sectionRoute
@@ -372,6 +394,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     fun openEditor(arguments: Bundle) {
         settingsRequest = null
         submissionsRequest = null
+        storyOpenedFromSubmissions = false
         coulombGasVisible = false
         MainEditorRequest(++editorRequestSerial, Bundle(arguments)).also {
             editorRequest = it
@@ -394,10 +417,18 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
 
     internal fun closeSubmissions() {
         submissionsRequest = null
+        storyOpenedFromSubmissions = false
+    }
+
+    internal fun prepareToOpenStoryFromSubmissions() {
+        if (submissionsRequest != null) {
+            storyOpenedFromSubmissions = true
+        }
     }
 
     fun openCoulombGas() {
         submissionsRequest = null
+        storyOpenedFromSubmissions = false
         editorRequest = null
         coulombGasVisible = true
     }
@@ -407,22 +438,22 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     }
 
     fun switchOpenStoryViewIfMatching(storyId: Int, showWebsite: Boolean): Boolean =
-        commentsFragment?.switchStoryViewIfMatching(storyId, showWebsite) == true
+        commentsCoordinator?.switchStoryViewIfMatching(storyId, showWebsite) == true
 
-    fun getStoriesFragment(): StoriesFragment? = storiesFragment
+    fun getStoriesCoordinator(): StoriesCoordinator? = storiesCoordinator
 
-    fun getCommentsFragment(): CommentsFragment? = commentsFragment
+    fun getCommentsCoordinator(): CommentsCoordinator? = commentsCoordinator
 
     fun isAdaptiveTwoPane(): Boolean = adaptiveTwoPane
 
     fun isAdaptiveFoldable(): Boolean = adaptiveFoldable
 
-    fun attachStoriesFragment(fragment: StoriesFragment) {
-        storiesFragment = fragment
+    fun attachStoriesCoordinator(coordinator: StoriesCoordinator) {
+        storiesCoordinator = coordinator
     }
 
-    internal fun detachStoriesFragment(fragment: StoriesFragment) {
-        if (storiesFragment === fragment) storiesFragment = null
+    internal fun detachStoriesCoordinator(coordinator: StoriesCoordinator) {
+        if (storiesCoordinator === coordinator) storiesCoordinator = null
     }
 
     fun attachStoriesComposeController(controller: StoriesComposeController) {
@@ -433,12 +464,20 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         if (storiesComposeController === controller) storiesComposeController = null
     }
 
-    internal fun attachCommentsFragment(fragment: CommentsFragment) {
-        commentsFragment = fragment
+    internal fun attachCommentsCoordinator(coordinator: CommentsCoordinator) {
+        commentsCoordinator = coordinator
     }
 
-    internal fun detachCommentsFragment(fragment: CommentsFragment) {
-        if (commentsFragment === fragment) commentsFragment = null
+    internal fun detachCommentsCoordinator(coordinator: CommentsCoordinator) {
+        if (commentsCoordinator === coordinator) commentsCoordinator = null
+    }
+
+    internal fun consumeCommentsSavedState(requestSerial: Int): Bundle? {
+        if (restoredCommentsRequestSerial != requestSerial) return null
+        return restoredCommentsState?.also {
+            restoredCommentsState = null
+            restoredCommentsRequestSerial = -1
+        }
     }
 
     fun attachCommentsComposeController(controller: CommentsComposeController) {
@@ -451,7 +490,8 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
 
     internal fun detailRemovedFromBackStack() {
         storyRequest = null
-        commentsFragment = null
+        storyOpenedFromSubmissions = false
+        commentsCoordinator = null
         commentsComposeController = null
     }
 
@@ -464,6 +504,12 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         storyRequest?.let { request ->
             outState.putInt(STATE_REQUEST_SERIAL, request.serial)
             outState.putBundle(STATE_STORY_ARGUMENTS, Bundle(request.arguments))
+            commentsCoordinator?.let { coordinator ->
+                val commentsState = Bundle()
+                coordinator.onSaveInstanceState(commentsState)
+                outState.putInt(STATE_COMMENTS_REQUEST_SERIAL, request.serial)
+                outState.putBundle(STATE_COMMENTS_STATE, commentsState)
+            }
         }
         if (settingsRequest != null) {
             outState.putBoolean(STATE_SETTINGS_OPEN, true)
@@ -487,12 +533,18 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
             outState.putInt(STATE_SUBMISSIONS_REQUEST_SERIAL, request.serial)
             outState.putString(STATE_SUBMISSIONS_USER, request.userName)
         }
+        outState.putBoolean(
+            STATE_STORY_OPENED_FROM_SUBMISSIONS,
+            storyOpenedFromSubmissions,
+        )
         outState.putBoolean(STATE_COULOMB_GAS_VISIBLE, coulombGasVisible)
     }
 
     private companion object {
         const val STATE_REQUEST_SERIAL = "main_navigation_request_serial"
         const val STATE_STORY_ARGUMENTS = "main_navigation_story_arguments"
+        const val STATE_COMMENTS_REQUEST_SERIAL = "main_navigation_comments_request_serial"
+        const val STATE_COMMENTS_STATE = "main_navigation_comments_state"
         const val STATE_SETTINGS_OPEN = "main_navigation_settings_open"
         const val STATE_SETTINGS_REQUEST_SERIAL = "main_navigation_settings_request_serial"
         const val STATE_SETTINGS_SECTION = "main_navigation_settings_section"
@@ -508,6 +560,8 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         const val STATE_EDITOR_ARGUMENTS = "main_navigation_editor_arguments"
         const val STATE_SUBMISSIONS_REQUEST_SERIAL = "main_navigation_submissions_request_serial"
         const val STATE_SUBMISSIONS_USER = "main_navigation_submissions_user"
+        const val STATE_STORY_OPENED_FROM_SUBMISSIONS =
+            "main_navigation_story_opened_from_submissions"
         const val STATE_COULOMB_GAS_VISIBLE = "main_navigation_coulomb_gas_visible"
     }
 }
@@ -595,6 +649,7 @@ private fun MainNavigation(
     }
 
     val storyRequest = controller.storyRequest
+    val storyOpenedFromSubmissions = controller.storyOpenedFromSubmissions
     LaunchedEffect(storyRequest?.serial) {
         storyRequest ?: return@LaunchedEffect
         if (backStack.lastOrNull() is CommentsDestination) {
@@ -614,7 +669,7 @@ private fun MainNavigation(
                 detailPlaceholder = { EmptyCommentsScreen() },
             ),
         ) {
-            StoriesFragmentPane(controller)
+            StoriesPane(controller)
         }
 
         entry<CommentsDestination>(
@@ -625,7 +680,7 @@ private fun MainNavigation(
             if (request == null) {
                 EmptyCommentsScreen()
             } else {
-                CommentsFragmentPane(
+                CommentsPane(
                     request = request,
                     controller = controller,
                 )
@@ -637,18 +692,40 @@ private fun MainNavigation(
         enabled = backStack.lastOrNull() is CommentsDestination,
     ) { events ->
         if (isTwoPane) {
+            var frozenWebViewCoordinator: CommentsCoordinator? = null
             try {
-                events.collect { }
+                events.collect {
+                    val currentFrozenCoordinator = frozenWebViewCoordinator
+                    if (currentFrozenCoordinator == null) {
+                        controller.getCommentsCoordinator()
+                            ?.takeIf { it.beginVisibleWebViewPredictiveBackScrollFreeze() }
+                            ?.let { frozenWebViewCoordinator = it }
+                    } else {
+                        currentFrozenCoordinator
+                            .maintainVisibleWebViewPredictiveBackScrollFreeze()
+                    }
+                }
                 popMainBackStack()
             } catch (_: CancellationException) {
                 // A cancelled two-pane gesture keeps the current detail selected.
+            } finally {
+                frozenWebViewCoordinator?.endVisibleWebViewPredictiveBackScrollFreeze()
             }
             return@PredictiveBackHandler
         }
 
         var animation: DefaultActivityPredictiveBackAnimation? = null
+        var frozenWebViewCoordinator: CommentsCoordinator? = null
         try {
             events.collect { event ->
+                val currentFrozenCoordinator = frozenWebViewCoordinator
+                if (currentFrozenCoordinator == null) {
+                    controller.getCommentsCoordinator()
+                        ?.takeIf { it.beginVisibleWebViewPredictiveBackScrollFreeze() }
+                        ?.let { frozenWebViewCoordinator = it }
+                } else {
+                    currentFrozenCoordinator.maintainVisibleWebViewPredictiveBackScrollFreeze()
+                }
                 val currentAnimation = animation
                     ?: DefaultActivityPredictiveBackAnimation(event).also {
                         animation = it
@@ -673,6 +750,8 @@ private fun MainNavigation(
                 animation?.cancel()
                 if (activeBackAnimation === animation) activeBackAnimation = null
             }
+        } finally {
+            frozenWebViewCoordinator?.endVisibleWebViewPredictiveBackScrollFreeze()
         }
     }
 
@@ -727,7 +806,9 @@ private fun MainNavigation(
     var activeSubmissionsBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
     }
-    PredictiveBackHandler(enabled = submissionsRequest != null) { events ->
+    PredictiveBackHandler(
+        enabled = submissionsRequest != null && !storyOpenedFromSubmissions,
+    ) { events ->
         var animation: DefaultActivityPredictiveBackAnimation? = null
         try {
             events.collect { event ->
@@ -818,6 +899,22 @@ private fun MainNavigation(
         currentInfo = SceneInfo(sceneState.currentScene),
     )
     val settingsTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
+    val paneStatusBarColor = HarmonicTheme.colors.background
+    val commentsController = controller.commentsComposeController
+    val targetStatusBarColor = if (storyRequest != null && commentsController != null) {
+        lerp(
+            paneStatusBarColor,
+            commentsController.statusBarHeaderColor ?: paneStatusBarColor,
+            commentsController.statusBarHeaderCoverage,
+        )
+    } else {
+        paneStatusBarColor
+    }
+    val statusBarColor by animateColorAsState(
+        targetValue = targetStatusBarColor,
+        animationSpec = tween(durationMillis = 90, easing = LinearEasing),
+        label = "main status bar protection",
+    )
 
     Box(
         modifier = Modifier
@@ -830,7 +927,7 @@ private fun MainNavigation(
                 .then(
                     if (
                         settingsRequest != null ||
-                        submissionsRequest != null ||
+                        (submissionsRequest != null && !storyOpenedFromSubmissions) ||
                         editorRequest != null ||
                         coulombGasVisible
                     ) {
@@ -855,9 +952,18 @@ private fun MainNavigation(
                     controller = controller,
                     animation = activeBackAnimation,
                     completedPredictivePop = completedPredictivePop,
+                    showStoriesPane = !storyOpenedFromSubmissions,
                 )
             }
         }
+
+        Spacer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsTopHeight(androidx.compose.foundation.layout.WindowInsets.statusBars)
+                .background(statusBarColor)
+                .zIndex(3f),
+        )
 
         controller.storiesComposeController?.let { storiesController ->
             if (storiesController.storyPreviewOverlay != null) {
@@ -926,9 +1032,13 @@ private fun MainNavigation(
             visible = submissionsRequest != null,
             modifier = Modifier
                 .fillMaxSize()
-                .zIndex(7f)
+                .zIndex(if (storyOpenedFromSubmissions) -1f else 7f)
                 .then(
-                    if (editorRequest != null || coulombGasVisible) {
+                    if (
+                        storyOpenedFromSubmissions ||
+                        editorRequest != null ||
+                        coulombGasVisible
+                    ) {
                         Modifier.clearAndSetSemantics { }
                     } else {
                         Modifier
@@ -945,7 +1055,7 @@ private fun MainNavigation(
                             activity,
                             request.userName,
                         ) { story, showWebsite ->
-                            controller.closeSubmissions()
+                            controller.prepareToOpenStoryFromSubmissions()
                             controller.closeSettings()
                             activity.openStory(story, 0, showWebsite)
                         }
@@ -1090,16 +1200,21 @@ private fun SinglePaneNavigation(
     controller: MainNavigationController,
     animation: DefaultActivityPredictiveBackAnimation?,
     completedPredictivePop: Boolean,
+    showStoriesPane: Boolean,
 ) {
     val storyRequest = controller.storyRequest
     val displayedRequest = storyRequest ?: controller.lastStoryRequest
     var paneWidth by remember { mutableIntStateOf(0) }
     val storiesOffset by animateFloatAsState(
         targetValue = if (storyRequest == null) 0f else -0.2f,
-        animationSpec = tween(
-            durationMillis = NavigationTransitionDurationMillis,
-            easing = navigationEasing(),
-        ),
+        animationSpec = if (storyRequest == null) {
+            snap()
+        } else {
+            tween(
+                durationMillis = NavigationTransitionDurationMillis,
+                easing = navigationEasing(),
+            )
+        },
         label = "stories navigation offset",
     )
 
@@ -1109,11 +1224,19 @@ private fun SinglePaneNavigation(
                 .fillMaxSize()
                 .onSizeChanged { paneWidth = it.width }
                 .graphicsLayer {
+                    alpha = if (showStoriesPane) 1f else 0f
                     translationX = if (animation == null) paneWidth * storiesOffset else 0f
                 }
+                .then(
+                    if (showStoriesPane) {
+                        Modifier
+                    } else {
+                        Modifier.clearAndSetSemantics { }
+                    },
+                )
                 .then(animation?.enterModifier ?: Modifier),
         ) {
-            StoriesFragmentPane(controller)
+            StoriesPane(controller)
         }
 
         AnimatedVisibility(
@@ -1127,7 +1250,7 @@ private fun SinglePaneNavigation(
         ) {
             displayedRequest?.let { request ->
                 key(request.serial) {
-                    CommentsFragmentPane(
+                    CommentsPane(
                         request = request,
                         controller = controller,
                     )
@@ -1135,56 +1258,62 @@ private fun SinglePaneNavigation(
             }
         }
 
-        if (animation != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(2f)
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            do {
-                                val event = awaitPointerEvent()
-                                event.changes.forEach { it.consume() }
-                            } while (event.changes.any { it.pressed })
-                        }
-                    },
-            )
-        }
     }
 }
 
 @Composable
-private fun StoriesFragmentPane(controller: MainNavigationController) {
+private fun StoriesPane(controller: MainNavigationController) {
     Box(Modifier.fillMaxSize()) {
         controller.storiesComposeController?.let { StoriesScreen(it) }
     }
 }
 
 @Composable
-private fun CommentsFragmentPane(
+private fun CommentsPane(
     request: MainStoryRequest,
     controller: MainNavigationController,
 ) {
-    val attachedFragment = remember { arrayOfNulls<CommentsFragment>(1) }
+    val activity = LocalActivity.current as MainActivity
+    val lifecycleOwner = LocalLifecycleOwner.current
     val arguments = remember(request.serial) { Bundle(request.arguments) }
-    DisposableEffect(controller, request.serial) {
+    var coordinator by remember(activity, request.serial) {
+        mutableStateOf<CommentsCoordinator?>(null)
+    }
+    DisposableEffect(controller, activity, request.serial, lifecycleOwner) {
+        val activeCoordinator = CommentsCoordinator(
+            activity,
+            arguments,
+            controller.consumeCommentsSavedState(request.serial),
+        )
+        coordinator = activeCoordinator
+        controller.attachCommentsCoordinator(activeCoordinator)
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> activeCoordinator.onStart()
+                Lifecycle.Event.ON_RESUME -> activeCoordinator.onResume()
+                Lifecycle.Event.ON_STOP -> activeCoordinator.onStop()
+                Lifecycle.Event.ON_DESTROY -> activeCoordinator.onDestroy()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
-            attachedFragment[0]?.let(controller::detachCommentsFragment)
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            controller.detachCommentsCoordinator(activeCoordinator)
+            activeCoordinator.onDestroy()
+            if (coordinator === activeCoordinator) coordinator = null
         }
     }
-    Box(Modifier.fillMaxSize()) {
-        AndroidFragment<CommentsFragment>(
-            modifier = Modifier.fillMaxSize(),
-            fragmentState = rememberFragmentState(),
-            arguments = arguments,
-            onUpdate = { fragment ->
-                attachedFragment[0] = fragment
-                controller.attachCommentsFragment(fragment)
-            },
-        )
-        controller.commentsComposeController?.let { commentsController ->
-            if (!commentsController.webViewFullscreen) {
-                CommentsScaffold(commentsController)
+    coordinator?.let { activeCoordinator ->
+        Box(Modifier.fillMaxSize()) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { activeCoordinator.webViewRoot },
+            )
+            controller.commentsComposeController?.let { commentsController ->
+                if (!commentsController.webViewFullscreen) {
+                    CommentsScaffold(commentsController)
+                }
             }
         }
     }

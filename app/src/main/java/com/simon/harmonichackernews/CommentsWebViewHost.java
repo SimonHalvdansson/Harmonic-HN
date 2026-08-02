@@ -4,7 +4,6 @@ import android.content.Context;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewStub;
 import android.widget.FrameLayout;
 
 import androidx.core.view.insets.ProtectionLayout;
@@ -25,7 +24,6 @@ final class CommentsWebViewHost {
     final FrameLayout fullscreenContainer;
     final View webViewBackdrop;
     final MaterialButton downloadButton;
-    final ViewStub webViewStub;
     final LinearProgressIndicator progressIndicator;
 
     CommentsWebViewHost(Context context) {
@@ -66,12 +64,6 @@ final class CommentsWebViewHost {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.CENTER);
         webViewContainer.addView(downloadButton, downloadParams);
-
-        webViewStub = new ViewStub(context);
-        webViewStub.setId(R.id.comments_webview_stub);
-        webViewStub.setInflatedId(R.id.comments_webview_stub_content);
-        webViewStub.setLayoutResource(R.layout.comments_webview);
-        webViewContainer.addView(webViewStub, matchParentFrameParams());
 
         progressIndicator = new LinearProgressIndicator(context);
         progressIndicator.setId(R.id.webview_progress);

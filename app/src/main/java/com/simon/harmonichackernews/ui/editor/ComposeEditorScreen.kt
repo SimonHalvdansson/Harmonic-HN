@@ -2,7 +2,7 @@ package com.simon.harmonichackernews.ui.editor
 
 import android.os.Looper
 import androidx.activity.compose.BackHandler
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -107,7 +107,7 @@ data class ComposeEditorSubmission(
 
 @Stable
 class ComposeEditorController internal constructor(
-    private val activity: AppCompatActivity,
+    private val activity: ComponentActivity,
 ) {
     internal var submitting by mutableStateOf(false)
 

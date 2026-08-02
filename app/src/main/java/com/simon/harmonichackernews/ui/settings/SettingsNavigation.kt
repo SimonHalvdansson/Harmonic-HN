@@ -103,9 +103,9 @@ private const val ActivityTransitionDurationMillis = 450
 private const val ActivityEnterAlphaDelayMillis = 50
 private const val ActivityExitAlphaDelayMillis = 35
 private const val ActivityAlphaDurationMillis = 83
-private const val FragmentTransitionDurationMillis = 300
-private const val FragmentAlphaDelayMillis = 50
-private const val FragmentAlphaDurationMillis = 50
+private const val DetailTransitionDurationMillis = 300
+private const val DetailAlphaDelayMillis = 50
+private const val DetailAlphaDurationMillis = 50
 
 private fun aospFastOutExtraSlowInEasing(): Easing = PathEasing(
     Path().apply {
@@ -163,31 +163,31 @@ private fun activityPopTransition(offsetPx: Int): ContentTransform = ContentTran
     targetContentZIndex = -1f,
 )
 
-/** Matches FragmentTransaction.TRANSIT_FRAGMENT_OPEN used by legacy two-pane Settings. */
-private fun fragmentOpenTransition(): ContentTransform = ContentTransform(
+/** Preserves the legacy two-pane detail transition timing. */
+private fun detailOpenTransition(): ContentTransform = ContentTransform(
     targetContentEnter = scaleIn(
         animationSpec = tween(
-            durationMillis = FragmentTransitionDurationMillis,
+            durationMillis = DetailTransitionDurationMillis,
             easing = aospFastOutExtraSlowInEasing(),
         ),
         initialScale = 0.85f,
     ) + fadeIn(
         animationSpec = tween(
-            durationMillis = FragmentAlphaDurationMillis,
-            delayMillis = FragmentAlphaDelayMillis,
+            durationMillis = DetailAlphaDurationMillis,
+            delayMillis = DetailAlphaDelayMillis,
             easing = LinearEasing,
         ),
     ),
     initialContentExit = scaleOut(
         animationSpec = tween(
-            durationMillis = FragmentTransitionDurationMillis,
+            durationMillis = DetailTransitionDurationMillis,
             easing = aospFastOutExtraSlowInEasing(),
         ),
         targetScale = 1.15f,
     ) + fadeOut(
         animationSpec = tween(
-            durationMillis = FragmentAlphaDurationMillis,
-            delayMillis = FragmentAlphaDelayMillis,
+            durationMillis = DetailAlphaDurationMillis,
+            delayMillis = DetailAlphaDelayMillis,
             easing = LinearEasing,
         ),
     ),
@@ -488,7 +488,7 @@ fun SettingsShell(
                         },
                         onOpenPrivacy = {
                             Utils.launchCustomTab(
-                                context as androidx.fragment.app.FragmentActivity,
+                                context,
                                 "https://simonhalvdansson.github.io/harmonic_privacy.html",
                             )
                         },
@@ -500,7 +500,7 @@ fun SettingsShell(
                         onBack = ::navigateBack,
                         onOpenLicense = { url ->
                             Utils.launchCustomTab(
-                                context as androidx.fragment.app.FragmentActivity,
+                                context,
                                 url,
                             )
                         },
@@ -513,7 +513,7 @@ fun SettingsShell(
                 detailContent(destination.section)
             } else {
                 detailPaneTransition.AnimatedContent(
-                    transitionSpec = { fragmentOpenTransition() },
+                    transitionSpec = { detailOpenTransition() },
                     content = { section ->
                         detailContent(section)
                     },

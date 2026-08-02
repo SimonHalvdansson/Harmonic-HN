@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -37,10 +38,8 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
 
-public class MainActivity extends BaseActivity implements StoriesFragment.StoryClickListener,
-        CommentsFragment.BottomSheetFragmentCallback {
-
-    private static final String STORIES_CONTROLLER_TAG = "stories_compose_controller";
+public class MainActivity extends BaseActivity implements StoriesCoordinator.StoryClickListener,
+        CommentsCoordinator.CommentsPaneCallback {
 
     public static final String ACTION_OPEN_SETTINGS =
             "com.simon.harmonichackernews.action.OPEN_SETTINGS";
@@ -66,7 +65,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         ThemeUtils.setupTheme(this);
 
         mainNavigationController = MainNavigationHost.install(this, savedInstanceState);
-        attachPersistentStoriesController();
+        initializeStoriesCoordinator(savedInstanceState);
         // A singleTask can be recreated with saved navigation state while also receiving a new
         // deep link or feature intent. Always apply that launch intent after restoring state so
         // the newly requested destination wins.
@@ -115,6 +114,10 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
+        StoriesCoordinator storiesCoordinator = getStoriesCoordinator();
+        if (storiesCoordinator != null) {
+            storiesCoordinator.onSaveInstanceState(outState);
+        }
         if (mainNavigationController != null) {
             mainNavigationController.saveState(outState);
         }
@@ -123,12 +126,37 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
     @Override
     protected void onDestroy() {
+        StoriesCoordinator storiesCoordinator = getStoriesCoordinator();
+        if (storiesCoordinator != null) {
+            storiesCoordinator.onDestroy();
+        }
         if (getCurrentMainActivity() == this) {
             currentMainActivity.clear();
             searchBackEnabled = false;
             notifySearchBackStateListeners(false);
         }
         super.onDestroy();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        StoriesCoordinator storiesCoordinator = getStoriesCoordinator();
+        if (storiesCoordinator != null) storiesCoordinator.onStart();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        StoriesCoordinator storiesCoordinator = getStoriesCoordinator();
+        if (storiesCoordinator != null) storiesCoordinator.onResume();
+    }
+
+    @Override
+    protected void onStop() {
+        StoriesCoordinator storiesCoordinator = getStoriesCoordinator();
+        if (storiesCoordinator != null) storiesCoordinator.onStop();
+        super.onStop();
     }
 
     public void setSearchBackEnabled(boolean enabled) {
@@ -214,59 +242,51 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     private void applyWelcomePresetToUi() {
-        final StoriesFragment fragment = getStoriesFragment();
+        final StoriesCoordinator coordinator = getStoriesCoordinator();
 
-        if (fragment != null) {
-            fragment.applyWelcomePresetSettings();
+        if (coordinator != null) {
+            coordinator.applyWelcomePresetSettings();
         }
     }
 
     private void startSearchBackProgress(float progress) {
-        final StoriesFragment fragment = getStoriesFragment();
+        final StoriesCoordinator coordinator = getStoriesCoordinator();
 
-        if (fragment != null) {
-            fragment.startSearchBackProgress(progress);
+        if (coordinator != null) {
+            coordinator.startSearchBackProgress(progress);
         }
     }
 
     private void updateSearchBackProgress(float progress) {
-        final StoriesFragment fragment = getStoriesFragment();
+        final StoriesCoordinator coordinator = getStoriesCoordinator();
 
-        if (fragment != null) {
-            fragment.updateSearchBackProgress(progress);
+        if (coordinator != null) {
+            coordinator.updateSearchBackProgress(progress);
         }
     }
 
     private void cancelSearchBackProgress() {
-        final StoriesFragment fragment = getStoriesFragment();
+        final StoriesCoordinator coordinator = getStoriesCoordinator();
 
-        if (fragment != null) {
-            fragment.cancelSearchBackProgress();
+        if (coordinator != null) {
+            coordinator.cancelSearchBackProgress();
         }
     }
 
     private boolean finishSearchBackProgress() {
-        final StoriesFragment fragment = getStoriesFragment();
+        final StoriesCoordinator coordinator = getStoriesCoordinator();
 
-        return fragment != null && fragment.finishSearchBackProgress();
+        return coordinator != null && coordinator.finishSearchBackProgress();
     }
 
-    private StoriesFragment getStoriesFragment() {
-        return mainNavigationController.getStoriesFragment();
+    private StoriesCoordinator getStoriesCoordinator() {
+        return mainNavigationController == null ? null : mainNavigationController.getStoriesCoordinator();
     }
 
-    private void attachPersistentStoriesController() {
-        StoriesFragment fragment = (StoriesFragment) getSupportFragmentManager()
-                .findFragmentByTag(STORIES_CONTROLLER_TAG);
-        if (fragment == null) {
-            fragment = new StoriesFragment();
-            getSupportFragmentManager()
-                    .beginTransaction()
-                    .add(fragment, STORIES_CONTROLLER_TAG)
-                    .commitNow();
-        }
-        mainNavigationController.attachStoriesFragment(fragment);
-        StoriesComposeController composeController = fragment.getComposeController();
+    private void initializeStoriesCoordinator(@Nullable Bundle savedInstanceState) {
+        StoriesCoordinator coordinator = new StoriesCoordinator(this, savedInstanceState);
+        mainNavigationController.attachStoriesCoordinator(coordinator);
+        StoriesComposeController composeController = coordinator.getComposeController();
         if (composeController != null) {
             mainNavigationController.attachStoriesComposeController(composeController);
         }
@@ -291,8 +311,8 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
         Bundle bundle = story.toBundle();
 
-        bundle.putInt(CommentsFragment.EXTRA_FORWARD, pos - lastPosition);
-        bundle.putBoolean(CommentsFragment.EXTRA_SHOW_WEBSITE, showWebsite);
+        bundle.putInt(CommentsContract.EXTRA_FORWARD, pos - lastPosition);
+        bundle.putBoolean(CommentsContract.EXTRA_SHOW_WEBSITE, showWebsite);
 
         lastPosition = pos;
         mainNavigationController.openStory(bundle);
@@ -310,13 +330,13 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         String volumeNavigationMode = SettingsUtils.getCommentsVolumeNavigationMode(getApplicationContext());
         if (!SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED.equals(volumeNavigationMode)) {
             boolean topLevelOnly = SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL.equals(volumeNavigationMode);
-            CommentsFragment fragment = getCommentsFragment();
-            if (fragment != null && fragment.isAdded() && fragment.isBottomSheetFullyExpanded()) {
+            CommentsCoordinator coordinator = getCommentsCoordinator();
+            if (coordinator != null && coordinator.isAdded() && coordinator.isBottomSheetFullyExpanded()) {
                 if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-                    fragment.navigateToNextComment(topLevelOnly, true);
+                    coordinator.navigateToNextComment(topLevelOnly, true);
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-                    fragment.navigateToPreviousComment(topLevelOnly, true);
+                    coordinator.navigateToPreviousComment(topLevelOnly, true);
                     return true;
                 }
             }
@@ -325,9 +345,9 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     public void onAccountStateChanged() {
-        StoriesFragment fragment = getStoriesFragment();
-        if (fragment != null) {
-            fragment.onAccountStateChanged();
+        StoriesCoordinator coordinator = getStoriesCoordinator();
+        if (coordinator != null) {
+            coordinator.onAccountStateChanged();
         }
     }
 
@@ -374,11 +394,11 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
             return false;
         }
         Bundle bundle = new Bundle();
-        bundle.putInt(CommentsFragment.EXTRA_ID, itemId);
-        bundle.putString(CommentsFragment.EXTRA_TITLE, "");
-        bundle.putBoolean(CommentsFragment.EXTRA_SHOW_WEBSITE, false);
+        bundle.putInt(CommentsContract.EXTRA_ID, itemId);
+        bundle.putString(CommentsContract.EXTRA_TITLE, "");
+        bundle.putBoolean(CommentsContract.EXTRA_SHOW_WEBSITE, false);
         if (scrollToCommentId > 0) {
-            bundle.putInt(CommentsFragment.EXTRA_SCROLL_TO_COMMENT, scrollToCommentId);
+            bundle.putInt(CommentsContract.EXTRA_SCROLL_TO_COMMENT, scrollToCommentId);
         }
         mainNavigationController.openStory(bundle);
         return true;
@@ -442,14 +462,14 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                     sharedText == null ? null : sharedText.toString());
         }
 
-        int itemId = arguments.getInt(CommentsFragment.EXTRA_ID, -1);
+        int itemId = arguments.getInt(CommentsContract.EXTRA_ID, -1);
         if (hackerNewsUri != null && Utils.isHackerNewsItemUri(hackerNewsUri)) {
             try {
                 itemId = Integer.parseInt(hackerNewsUri.getQueryParameter("id"));
                 String fragment = hackerNewsUri.getFragment();
                 if (!TextUtils.isEmpty(fragment) && TextUtils.isDigitsOnly(fragment)) {
                     arguments.putInt(
-                            CommentsFragment.EXTRA_SCROLL_TO_COMMENT,
+                            CommentsContract.EXTRA_SCROLL_TO_COMMENT,
                             Integer.parseInt(fragment));
                 }
             } catch (RuntimeException ignored) {
@@ -464,13 +484,13 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
             return false;
         }
 
-        arguments.putInt(CommentsFragment.EXTRA_ID, itemId);
-        if (!arguments.containsKey(CommentsFragment.EXTRA_TITLE)) {
-            arguments.putString(CommentsFragment.EXTRA_TITLE, "");
+        arguments.putInt(CommentsContract.EXTRA_ID, itemId);
+        if (!arguments.containsKey(CommentsContract.EXTRA_TITLE)) {
+            arguments.putString(CommentsContract.EXTRA_TITLE, "");
         }
         arguments.putBoolean(
-                CommentsFragment.EXTRA_SHOW_WEBSITE,
-                arguments.getBoolean(CommentsFragment.EXTRA_SHOW_WEBSITE, false));
+                CommentsContract.EXTRA_SHOW_WEBSITE,
+                arguments.getBoolean(CommentsContract.EXTRA_SHOW_WEBSITE, false));
         mainNavigationController.openStory(arguments);
         return true;
     }
@@ -509,12 +529,19 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     @Override
-    public void onSwitchView(boolean isAtWebView) {
-        // Navigation 3 and CommentsFragment's own back handler own the relevant state now.
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        CommentsCoordinator coordinator = getCommentsCoordinator();
+        if (coordinator != null) coordinator.onConfigurationChanged(newConfig);
     }
 
-    private CommentsFragment getCommentsFragment() {
-        return mainNavigationController.getCommentsFragment();
+    @Override
+    public void onSwitchView(boolean isAtWebView) {
+        // Navigation 3 and the comments coordinator's back handler own the relevant state now.
+    }
+
+    private CommentsCoordinator getCommentsCoordinator() {
+        return mainNavigationController == null ? null : mainNavigationController.getCommentsCoordinator();
     }
 
 }

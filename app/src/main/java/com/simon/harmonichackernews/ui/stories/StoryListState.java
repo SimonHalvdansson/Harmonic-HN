@@ -30,7 +30,7 @@ import coil.request.ImageRequest;
 import coil.target.Target;
 
 /**
- * Non-View state owned by {@code StoriesFragment} while Compose renders the story list.
+ * Non-View state owned by {@code StoriesCoordinator} while Compose renders the story list.
  *
  * <p>This replaces the old unattached RecyclerView adapter. It deliberately contains only the
  * stateful responsibilities still needed by the Compose screen: pagination, display settings,

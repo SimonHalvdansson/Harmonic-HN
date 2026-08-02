@@ -5,7 +5,7 @@
 
 package com.simon.harmonichackernews.ui.stories
 
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -17,13 +17,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,6 +93,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -114,7 +113,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.fragment.app.Fragment
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
@@ -135,11 +133,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.roundToInt
 
 /**
- * Compose presentation bridge for the stories screen. The fragment remains the data/network
+ * Compose presentation bridge for the stories screen. The coordinator remains the data/network
  * controller during this migration; adapter notifications are converted to immutable snapshots.
  */
 class StoriesComposeController private constructor(
-    private val activity: AppCompatActivity,
+    private val activity: ComponentActivity,
     internal val listener: Listener,
 ) {
     internal var mainStories by mutableStateOf<List<Story>>(emptyList())
@@ -242,6 +240,8 @@ class StoriesComposeController private constructor(
         private set
     internal var predictiveBackProgress by mutableFloatStateOf(0f)
         private set
+    internal var suppressSearchAutoFocus by mutableStateOf(false)
+        private set
     internal var predictiveBackSettleRequest by mutableStateOf<PredictiveBackSettleRequest?>(null)
         private set
     internal var contentVersion by mutableIntStateOf(0)
@@ -331,7 +331,10 @@ class StoriesComposeController private constructor(
         this.selectedTypeIndex = selectedTypeIndex
         this.searching = searching
         this.lastSearch = lastSearch
-        if (enteringSearch) searchDraft = lastSearch
+        if (enteringSearch) {
+            searchDraft = lastSearch
+            suppressSearchAutoFocus = false
+        }
         if (!searching && searchDraft.isNotEmpty()) searchDraft = ""
         this.searchSortLabel = searchSortLabel
         this.searchDateLabel = searchDateLabel
@@ -405,6 +408,7 @@ class StoriesComposeController private constructor(
 
     fun beginPredictiveBack(progress: Float) {
         predictiveBackSettleRequest = null
+        suppressSearchAutoFocus = true
         predictiveBackActive = true
         predictiveBackProgress = progress.coerceIn(0f, 1f)
     }
@@ -432,6 +436,7 @@ class StoriesComposeController private constructor(
         predictiveBackSettleRequest = null
         predictiveBackActive = false
         predictiveBackProgress = 0f
+        if (request?.target == 0f) suppressSearchAutoFocus = false
     }
 
     fun requestScrollBy(dy: Int) {
@@ -716,10 +721,9 @@ class StoriesComposeController private constructor(
 
         @JvmStatic
         fun create(
-            fragment: Fragment,
+            activity: ComponentActivity,
             listener: Listener,
         ): StoriesComposeController {
-            val activity = fragment.requireActivity() as AppCompatActivity
             return StoriesComposeController(activity, listener)
         }
     }
@@ -741,6 +745,15 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
     val searchState = rememberLazyListState()
     val progress = controller.predictiveBackProgress.coerceIn(0f, 1f)
     val predictive = controller.predictiveBackActive
+    val standardSearchProgress by animateFloatAsState(
+        targetValue = if (controller.searching) 1f else 0f,
+        animationSpec = if (!controller.searching && controller.suppressSearchAutoFocus) {
+            androidx.compose.animation.core.snap()
+        } else {
+            tween(180, easing = StoriesEasing)
+        },
+        label = "stories search transition",
+    )
 
     val settleRequest = controller.predictiveBackSettleRequest
     LaunchedEffect(settleRequest?.serial) {
@@ -777,52 +790,55 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
             .fillMaxSize()
             .background(HarmonicTheme.colors.background),
     ) {
-        if (predictive) {
-            val searchProgress = (progress / 0.5f).coerceIn(0f, 1f)
-            val mainProgress = ((progress - 0.5f) / 0.5f).coerceIn(0f, 1f)
-            StoriesList(
-                controller = controller,
-                settings = settings,
-                stories = controller.searchStories,
-                listState = searchState,
-                searchMode = true,
-                modifier = Modifier.graphicsLayer {
-                    alpha = 1f - searchProgress
-                    translationY = 24.dp.toPx() * searchProgress
+        val predictiveSearchFade = (progress / 0.5f).coerceIn(0f, 1f)
+        val predictiveMainFade = ((progress - 0.5f) / 0.5f).coerceIn(0f, 1f)
+        val searchAlpha = if (predictive) 1f - predictiveSearchFade else standardSearchProgress
+        val mainAlpha = if (predictive) predictiveMainFade else 1f - standardSearchProgress
+        val mainActive = !predictive && !controller.searching
+        val searchActive = !predictive && controller.searching
+
+        StableStoriesLayer(
+            active = mainActive,
+            modifier = Modifier
+                .zIndex(if (mainActive) 1f else 0f)
+                .graphicsLayer {
+                    alpha = mainAlpha
+                    translationY = if (predictive) {
+                        24.dp.toPx() * (1f - predictiveMainFade)
+                    } else {
+                        24.dp.toPx() * standardSearchProgress
+                    }
                 },
-            )
+        ) {
             StoriesList(
                 controller = controller,
                 settings = settings,
                 stories = controller.mainStories,
                 listState = mainState,
                 searchMode = false,
-                modifier = Modifier.graphicsLayer {
-                    alpha = mainProgress
-                    translationY = 24.dp.toPx() * (1f - mainProgress)
-                },
             )
-        } else {
-            AnimatedContent(
-                targetState = controller.searching,
-                transitionSpec = {
-                    (fadeIn(tween(180, easing = StoriesEasing)) +
-                        slideInVertically(tween(180, easing = StoriesEasing)) { it / 10 })
-                        .togetherWith(
-                            fadeOut(tween(140, easing = StoriesEasing)) +
-                                slideOutVertically(tween(140, easing = StoriesEasing)) { it / 10 },
-                        )
+        }
+
+        StableStoriesLayer(
+            active = searchActive,
+            modifier = Modifier
+                .zIndex(if (searchActive) 1f else 0f)
+                .graphicsLayer {
+                    alpha = searchAlpha
+                    translationY = if (predictive) {
+                        24.dp.toPx() * predictiveSearchFade
+                    } else {
+                        24.dp.toPx() * (1f - standardSearchProgress)
+                    }
                 },
-                label = "stories search mode",
-            ) { searchMode ->
-                StoriesList(
-                    controller = controller,
-                    settings = settings,
-                    stories = if (searchMode) controller.searchStories else controller.mainStories,
-                    listState = if (searchMode) searchState else mainState,
-                    searchMode = searchMode,
-                )
-            }
+        ) {
+            StoriesList(
+                controller = controller,
+                settings = settings,
+                stories = controller.searchStories,
+                listState = searchState,
+                searchMode = true,
+            )
         }
 
         AnimatedVisibility(
@@ -849,6 +865,31 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
             onDismiss = controller::dismissFrontDatePicker,
             onSelected = controller::selectFrontDate,
         )
+    }
+}
+
+@Composable
+private fun StableStoriesLayer(
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier.fillMaxSize()) {
+        content()
+        if (!active) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            do {
+                                val event = awaitPointerEvent()
+                                event.changes.forEach { it.consume() }
+                            } while (event.changes.any { it.pressed })
+                        }
+                    },
+            )
+        }
     }
 }
 
@@ -1282,9 +1323,14 @@ private fun SearchHeader(
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-        keyboard?.show()
+    LaunchedEffect(controller.searching, controller.suppressSearchAutoFocus) {
+        if (controller.searching && !controller.suppressSearchAutoFocus) {
+            focusRequester.requestFocus()
+            keyboard?.show()
+        } else {
+            keyboard?.hide()
+            focusManager.clearFocus(force = true)
+        }
     }
     Column {
         Row(

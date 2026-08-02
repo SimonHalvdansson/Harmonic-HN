@@ -174,7 +174,6 @@ android {
         buildConfig = true
         compose = true
         resValues = true
-        viewBinding = true
     }
 
 }
@@ -203,6 +202,12 @@ kotlin {
     }
 }
 
+// The app is Compose/Navigation 3 only. Several legacy AndroidX and Material artifacts still
+// advertise optional Fragment integrations, but no runtime code uses them.
+configurations.configureEach {
+    exclude group: "androidx.fragment"
+}
+
 dependencies {
     implementation(libs.bundles.androidx.lifecycle)
 
@@ -210,11 +215,9 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.core)
-    implementation(libs.androidx.fragment)
     implementation(libs.androidx.palette)
     implementation(libs.androidx.preference)
     implementation(libs.androidx.security)
-    implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.activity)
 
@@ -248,7 +251,6 @@ dependencies {
     implementation(libs.androidx.material3.adaptive.navigation3)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
-    implementation(libs.androidx.fragment.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 

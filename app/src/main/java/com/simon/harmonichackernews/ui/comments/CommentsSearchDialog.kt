@@ -2,9 +2,9 @@ package com.simon.harmonichackernews.ui.comments
 
 import android.text.Html
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,11 +22,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +53,7 @@ fun CommentsSearchDialog(
     onCommentSelected: (Comment) -> Unit,
 ) {
     var searchTerm by rememberSaveable { mutableStateOf("") }
+    val maxDialogHeight = LocalConfiguration.current.screenHeightDp.dp * 0.9f
     val searchableComments = remember(comments) {
         if (comments.size > 1) comments.drop(1) else emptyList()
     }
@@ -74,7 +77,7 @@ fun CommentsSearchDialog(
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {},
-        modifier = Modifier.fillMaxHeight(0.9f),
+        modifier = Modifier.heightIn(max = maxDialogHeight),
         text = {
             CommentsSearchContent(
                 searchTerm = searchTerm,
@@ -111,7 +114,7 @@ private fun CommentsSearchContent(
             keyboardController?.show()
         }
     }
-    val matchLabel = if (visibleComments.size == 1) "match" else "matches"
+    val matchLabel = if (visibleComments.size == 1) "MATCH" else "MATCHES"
     val itemStyle = remember(settings) {
         CommentItemStyle(
             cardStyle = settings.cardStyle,
@@ -127,20 +130,19 @@ private fun CommentsSearchContent(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight()
-            .padding(top = 24.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
             text = "(${visibleComments.size} $matchLabel)",
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 2.dp),
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 2.dp),
             color = HarmonicTheme.colors.storyDisabled,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 12.sp,
+            textAlign = TextAlign.Center,
         )
         OutlinedTextField(
             value = searchTerm,
@@ -167,7 +169,7 @@ private fun CommentsSearchContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .weight(1f, fill = false),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 top = 8.dp,
                 bottom = 24.dp,

@@ -5,12 +5,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.activity.ComponentActivity;
 
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
-public class WidgetConfigActivity extends AppCompatActivity {
+public class WidgetConfigActivity extends ComponentActivity {
 
     private static final String PREFS_NAME = "widget_config";
     private static final String KEY_FEED_TYPE_PREFIX = "feed_type_";

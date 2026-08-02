@@ -301,7 +301,12 @@ fun StoryItem(
                     )
                     .clip(shape)
                     .background(cardBackground)
-                    .border(1.dp, colors.commentDivider.copy(alpha = cardProgress), shape),
+                    .border(1.dp, colors.commentDivider.copy(alpha = cardProgress), shape)
+                    .combinedClickable(
+                        enabled = onLinkClick != null || onLinkLongClick != null,
+                        onClick = { onLinkClick?.invoke() },
+                        onLongClick = onLinkLongClick,
+                    ),
             ) {
                 LargeStoryPreviewImage(
                     visible = style.previewImageMode == SettingsUtils.STORY_PREVIEW_IMAGE_LARGE,
@@ -323,8 +328,6 @@ fun StoryItem(
                             summarySize = summarySize,
                             metaSize = metaSize,
                             alignmentProgress = alignmentProgress,
-                            onClick = onLinkClick,
-                            onLongClick = onLinkLongClick,
                             onPreviewDrawableLoaded = onPreviewDrawableLoaded,
                             onFaviconDrawableLoaded = onFaviconDrawableLoaded,
                             onElementBoundsChanged = onElementBoundsChanged,
@@ -407,8 +410,6 @@ private fun StoryLinkContent(
     summarySize: Float,
     metaSize: Float,
     alignmentProgress: Float,
-    onClick: (() -> Unit)?,
-    onLongClick: (() -> Unit)?,
     onPreviewDrawableLoaded: (Drawable) -> Unit,
     onFaviconDrawableLoaded: (Drawable) -> Unit,
     onElementBoundsChanged: ((StoryItemElement, Rect) -> Unit)?,
@@ -438,11 +439,6 @@ private fun StoryLinkContent(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(
-                enabled = onClick != null || onLongClick != null,
-                onClick = { onClick?.invoke() },
-                onLongClick = onLongClick,
-            )
             .padding(
                 start = startPadding,
                 top = 10.dp,
@@ -796,14 +792,11 @@ private fun StoryBodyRow(
     commentRail: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
-    val leftRailAlpha = ((commentsOnLeftProgress - 0.5f) * 2f).coerceIn(0f, 1f)
-    val rightRailAlpha = ((0.5f - commentsOnLeftProgress) * 2f).coerceIn(0f, 1f)
     Layout(
         modifier = Modifier.fillMaxWidth(),
         content = {
             Box { content() }
-            Box(modifier = Modifier.graphicsLayer(alpha = leftRailAlpha)) { commentRail() }
-            Box(modifier = Modifier.graphicsLayer(alpha = rightRailAlpha)) { commentRail() }
+            Box { commentRail() }
         },
     ) { measurables, constraints ->
         val width = constraints.maxWidth
@@ -817,17 +810,14 @@ private fun StoryBodyRow(
                 maxHeight = constraints.maxHeight,
             ),
         )
-        val leftRailPlaceable = measurables[1].measure(
-            Constraints.fixed(railWidth, contentPlaceable.height),
-        )
-        val rightRailPlaceable = measurables[2].measure(
+        val railPlaceable = measurables[1].measure(
             Constraints.fixed(railWidth, contentPlaceable.height),
         )
         val contentX = (railWidth * commentsOnLeftProgress).roundToInt()
+        val railX = ((width - railWidth) * (1f - commentsOnLeftProgress)).roundToInt()
         layout(width, contentPlaceable.height) {
             contentPlaceable.placeRelative(contentX, 0)
-            leftRailPlaceable.placeRelative(0, 0)
-            rightRailPlaceable.placeRelative(width - railWidth, 0)
+            railPlaceable.placeRelative(railX, 0)
         }
     }
 }

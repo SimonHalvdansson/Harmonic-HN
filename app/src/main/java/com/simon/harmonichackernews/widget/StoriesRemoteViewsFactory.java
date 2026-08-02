@@ -8,7 +8,7 @@ import android.content.SharedPreferences;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
-import com.simon.harmonichackernews.CommentsFragment;
+import com.simon.harmonichackernews.CommentsContract;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.network.JSONParser;
@@ -282,7 +282,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         // Fill-in intent for item click -> MainActivity's Compose comments destination.
         Intent fillInIntent = new Intent();
         fillInIntent.putExtras(story.toBundle());
-        fillInIntent.putExtra(CommentsFragment.EXTRA_SHOW_WEBSITE, story.isLink);
+        fillInIntent.putExtra(CommentsContract.EXTRA_SHOW_WEBSITE, story.isLink);
         views.setOnClickFillInIntent(R.id.widget_story_item_container, fillInIntent);
 
         return views;

@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.data;
 import android.os.Bundle;
 import android.text.Spanned;
 
-import com.simon.harmonichackernews.CommentsFragment;
+import com.simon.harmonichackernews.CommentsContract;
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -141,37 +141,37 @@ public class Story {
 
     public Bundle toBundle() {
         Bundle bundle = new Bundle();
-        bundle.putString(CommentsFragment.EXTRA_TITLE, title);
-        bundle.putString(CommentsFragment.EXTRA_PDF_TITLE, pdfTitle);
-        bundle.putString(CommentsFragment.EXTRA_VIDEO_TITLE, videoTitle);
-        bundle.putString(CommentsFragment.EXTRA_BY, by);
-        bundle.putString(CommentsFragment.EXTRA_URL, url);
-        bundle.putString(CommentsFragment.EXTRA_PREVIEW_IMAGE_URL, previewImageUrl);
-        bundle.putBoolean(CommentsFragment.EXTRA_PREVIEW_IMAGE_URL_LOADED, previewImageUrlLoaded);
-        bundle.putBoolean(CommentsFragment.EXTRA_PREVIEW_IMAGE_LOAD_FAILED, previewImageLoadFailed);
-        bundle.putBoolean(CommentsFragment.EXTRA_PREVIEW_IMAGE_TINT_COLOR_LOADED, previewImageTintColorLoaded);
-        bundle.putInt(CommentsFragment.EXTRA_PREVIEW_IMAGE_TINT_COLOR, previewImageTintColor);
-        bundle.putString(CommentsFragment.EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL, previewImageTintSourceUrl);
-        bundle.putInt(CommentsFragment.EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR, previewImageTintBaseColor);
-        bundle.putString(CommentsFragment.EXTRA_PREVIEW_IMAGE_TINT_MODE, previewImageTintMode);
-        bundle.putBoolean(CommentsFragment.EXTRA_FAVICON_TINT_COLOR_LOADED, faviconTintColorLoaded);
-        bundle.putInt(CommentsFragment.EXTRA_FAVICON_TINT_COLOR, faviconTintColor);
-        bundle.putString(CommentsFragment.EXTRA_FAVICON_TINT_SOURCE_URL, faviconTintSourceUrl);
-        bundle.putInt(CommentsFragment.EXTRA_FAVICON_TINT_BASE_COLOR, faviconTintBaseColor);
-        bundle.putString(CommentsFragment.EXTRA_FAVICON_TINT_MODE, faviconTintMode);
-        bundle.putInt(CommentsFragment.EXTRA_TIME, time);
-        bundle.putIntArray(CommentsFragment.EXTRA_KIDS, kids);
-        bundle.putIntArray(CommentsFragment.EXTRA_POLL_OPTIONS, pollOptions);
-        bundle.putInt(CommentsFragment.EXTRA_DESCENDANTS, descendants);
-        bundle.putInt(CommentsFragment.EXTRA_ID, id);
-        bundle.putInt(CommentsFragment.EXTRA_SCORE, score);
-        bundle.putString(CommentsFragment.EXTRA_TEXT, text);
-        bundle.putBoolean(CommentsFragment.EXTRA_IS_LINK, isLink);
-        bundle.putBoolean(CommentsFragment.EXTRA_IS_COMMENT, isComment);
-        bundle.putInt(CommentsFragment.EXTRA_PARENT_ID, parentId);
-        bundle.putInt(CommentsFragment.EXTRA_COMMENT_MASTER_ID, commentMasterId);
-        bundle.putString(CommentsFragment.EXTRA_COMMENT_MASTER_TITLE, commentMasterTitle);
-        bundle.putString(CommentsFragment.EXTRA_COMMENT_MASTER_URL, commentMasterUrl);
+        bundle.putString(CommentsContract.EXTRA_TITLE, title);
+        bundle.putString(CommentsContract.EXTRA_PDF_TITLE, pdfTitle);
+        bundle.putString(CommentsContract.EXTRA_VIDEO_TITLE, videoTitle);
+        bundle.putString(CommentsContract.EXTRA_BY, by);
+        bundle.putString(CommentsContract.EXTRA_URL, url);
+        bundle.putString(CommentsContract.EXTRA_PREVIEW_IMAGE_URL, previewImageUrl);
+        bundle.putBoolean(CommentsContract.EXTRA_PREVIEW_IMAGE_URL_LOADED, previewImageUrlLoaded);
+        bundle.putBoolean(CommentsContract.EXTRA_PREVIEW_IMAGE_LOAD_FAILED, previewImageLoadFailed);
+        bundle.putBoolean(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_COLOR_LOADED, previewImageTintColorLoaded);
+        bundle.putInt(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_COLOR, previewImageTintColor);
+        bundle.putString(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL, previewImageTintSourceUrl);
+        bundle.putInt(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR, previewImageTintBaseColor);
+        bundle.putString(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_MODE, previewImageTintMode);
+        bundle.putBoolean(CommentsContract.EXTRA_FAVICON_TINT_COLOR_LOADED, faviconTintColorLoaded);
+        bundle.putInt(CommentsContract.EXTRA_FAVICON_TINT_COLOR, faviconTintColor);
+        bundle.putString(CommentsContract.EXTRA_FAVICON_TINT_SOURCE_URL, faviconTintSourceUrl);
+        bundle.putInt(CommentsContract.EXTRA_FAVICON_TINT_BASE_COLOR, faviconTintBaseColor);
+        bundle.putString(CommentsContract.EXTRA_FAVICON_TINT_MODE, faviconTintMode);
+        bundle.putInt(CommentsContract.EXTRA_TIME, time);
+        bundle.putIntArray(CommentsContract.EXTRA_KIDS, kids);
+        bundle.putIntArray(CommentsContract.EXTRA_POLL_OPTIONS, pollOptions);
+        bundle.putInt(CommentsContract.EXTRA_DESCENDANTS, descendants);
+        bundle.putInt(CommentsContract.EXTRA_ID, id);
+        bundle.putInt(CommentsContract.EXTRA_SCORE, score);
+        bundle.putString(CommentsContract.EXTRA_TEXT, text);
+        bundle.putBoolean(CommentsContract.EXTRA_IS_LINK, isLink);
+        bundle.putBoolean(CommentsContract.EXTRA_IS_COMMENT, isComment);
+        bundle.putInt(CommentsContract.EXTRA_PARENT_ID, parentId);
+        bundle.putInt(CommentsContract.EXTRA_COMMENT_MASTER_ID, commentMasterId);
+        bundle.putString(CommentsContract.EXTRA_COMMENT_MASTER_TITLE, commentMasterTitle);
+        bundle.putString(CommentsContract.EXTRA_COMMENT_MASTER_URL, commentMasterUrl);
 
         return bundle;
     }

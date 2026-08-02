@@ -29,12 +29,9 @@ androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runt
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 androidx-core = "androidx.core:core:1.19.0"
 androidx-browser = "androidx.browser:browser:1.10.0"
-androidx-fragment = "androidx.fragment:fragment:1.8.9"
-androidx-fragment-compose = "androidx.fragment:fragment-compose:1.8.9"
 androidx-preference = "androidx.preference:preference:1.2.1"
 androidx-palette = "androidx.palette:palette:1.0.0"
 androidx-security = "androidx.security:security-crypto:1.1.0"
-androidx-swiperefreshlayout = "androidx.swiperefreshlayout:swiperefreshlayout:1.2.0"
 androidx-webkit = "androidx.webkit:webkit:1.16.0"
 androidx-activity = "androidx.activity:activity:1.13.0"
 androidx-window = "androidx.window:window:1.5.1"

@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.widget
 
 import androidx.annotation.DimenRes
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -69,7 +69,7 @@ object WidgetConfigComposeHost {
 
     @JvmStatic
     fun install(
-        activity: AppCompatActivity,
+        activity: ComponentActivity,
         initialStoryCount: Int,
         listener: Listener,
     ) {

@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Column
@@ -54,7 +54,7 @@ fun AiSummarySettingsScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as? AppCompatActivity
+    val activity = context as? ComponentActivity
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val preferenceRefresh = rememberPreferenceRefresh()
     var localRefresh by remember { mutableIntStateOf(0) }

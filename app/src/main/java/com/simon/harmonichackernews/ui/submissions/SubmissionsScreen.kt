@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.ui.submissions
 
 import android.text.Html
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.selectable
@@ -98,7 +98,7 @@ const val SUBMISSION_FILTER_COMMENTS = 2
  * State bridge used by the submissions coordinator inside MainActivity's Compose navigation.
  */
 class SubmissionsComposeController internal constructor(
-    private val activity: AppCompatActivity,
+    private val activity: ComponentActivity,
     internal val userName: String,
     initialFilter: Int,
     internal val listener: Listener,
@@ -220,7 +220,7 @@ class SubmissionsComposeController internal constructor(
     companion object {
         @JvmStatic
         fun create(
-            activity: AppCompatActivity,
+            activity: ComponentActivity,
             userName: String,
             initialFilter: Int,
             listener: Listener,

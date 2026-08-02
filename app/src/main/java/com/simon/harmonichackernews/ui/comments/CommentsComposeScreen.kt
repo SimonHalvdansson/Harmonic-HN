@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.ui.comments
 import android.annotation.SuppressLint
 import android.graphics.drawable.Drawable
 import android.text.Html
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -141,13 +142,12 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * Compose state bridge for [com.simon.harmonichackernews.CommentsFragment]. Networking, cache
- * parsing and the WebView lifecycle intentionally remain in the fragment during this incremental
- * migration. The visible comments surface is a Compose tree layered into the existing bottom-sheet
- * host; immutable list snapshots turn controller updates into normal Compose state changes.
+ * Compose state bridge for [com.simon.harmonichackernews.CommentsCoordinator]. Networking, cache
+ * parsing and the Android WebView lifecycle remain in that coordinator. The visible comments
+ * surface is Compose; immutable list snapshots turn controller updates into normal state changes.
  */
 class CommentsComposeController private constructor(
-    private val activity: AppCompatActivity,
+    private val activity: ComponentActivity,
     initialStory: Story,
     internal val initialShowWebsite: Boolean,
     internal val accountUser: String?,
@@ -184,6 +184,10 @@ class CommentsComposeController private constructor(
     internal var sheetSlideOffset by mutableFloatStateOf(if (initialShowWebsite) 0f else 1f)
         private set
     internal var topInsetPx by mutableIntStateOf(0)
+        private set
+    internal var statusBarHeaderColor by mutableStateOf<Color?>(null)
+        private set
+    internal var statusBarHeaderCoverage by mutableFloatStateOf(0f)
         private set
     internal var contentInsetLeftPx by mutableIntStateOf(0)
         private set
@@ -330,6 +334,14 @@ class CommentsComposeController private constructor(
     fun updateSheet(slideOffset: Float, topInsetPx: Int) {
         sheetSlideOffset = slideOffset.coerceIn(0f, 1f)
         this.topInsetPx = topInsetPx
+    }
+
+    internal fun updateStatusBarHeaderColor(color: Color) {
+        statusBarHeaderColor = color
+    }
+
+    internal fun updateStatusBarHeaderCoverage(coverage: Float) {
+        statusBarHeaderCoverage = coverage.coerceIn(0f, 1f)
     }
 
     fun requestExpandSheet() {
@@ -824,7 +836,7 @@ class CommentsComposeController private constructor(
 
         @JvmStatic
         fun create(
-            activity: AppCompatActivity,
+            activity: ComponentActivity,
             story: Story,
             showWebsite: Boolean,
             accountUser: String?,
@@ -971,23 +983,24 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
         buildVisibleComments(sourceComments)
     }
     val nestedScrollInterop = rememberNestedScrollInteropConnection()
+    val density = LocalDensity.current
+    val topInsetPx = WindowInsets.statusBars.getTop(density)
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val bottomPadding = navigationBottom + if (settings.showNavigationBar) 88.dp else 16.dp
     val animateComments = SettingsUtils.shouldUseCommentsAnimation(context)
     val showScrollbar = SettingsUtils.shouldUseCommentsScrollbar(context)
-    val density = LocalDensity.current
     val contentInsetStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val contentInsetEnd = with(density) { controller.contentInsetRightPx.toDp() }
 
     LaunchedEffect(listState, visibleComments) {
         snapshotFlow {
             val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == 0 }
-            val coverage = if (header == null || controller.topInsetPx <= 0) {
+            val coverage = if (header == null || topInsetPx <= 0) {
                 0f
             } else {
-                val overlap = minOf(header.offset + header.size, controller.topInsetPx) -
+                val overlap = minOf(header.offset + header.size, topInsetPx) -
                     maxOf(header.offset, 0)
-                (overlap.toFloat() / controller.topInsetPx).coerceIn(0f, 1f)
+                (overlap.toFloat() / topInsetPx).coerceIn(0f, 1f)
             }
             Triple(
                 listState.firstVisibleItemIndex,
@@ -996,6 +1009,7 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
             )
         }.distinctUntilChanged().collect { (_, _, coverage) ->
             controller.updateScrollPosition(listState, visibleComments.map { item -> item.comment })
+            controller.updateStatusBarHeaderCoverage(coverage)
             controller.listener.onHeaderCoverageChanged(coverage)
         }
     }
@@ -1015,7 +1029,7 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
             )
         }
         val listIndex = target + 1
-        val scrollOffset = if (listIndex == 0) 0 else -controller.topInsetPx
+        val scrollOffset = if (listIndex == 0) 0 else -topInsetPx
         if (request.animate) {
             listState.animateScrollToItem(listIndex, scrollOffset)
         } else {
@@ -1467,10 +1481,11 @@ private fun CommentsHeader(
         controller.sheetSlideOffset,
     )
     LaunchedEffect(visibleHeaderBackground) {
+        controller.updateStatusBarHeaderColor(visibleHeaderBackground)
         controller.listener.onHeaderColorChanged(visibleHeaderBackground.toArgb())
     }
     val topSpacer = with(density) {
-        (controller.topInsetPx * controller.sheetSlideOffset).roundToInt().toDp()
+        (WindowInsets.statusBars.getTop(this) * controller.sheetSlideOffset).roundToInt().toDp()
     }
     val sideMarginStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val sideMarginEnd = with(density) { controller.contentInsetRightPx.toDp() }
