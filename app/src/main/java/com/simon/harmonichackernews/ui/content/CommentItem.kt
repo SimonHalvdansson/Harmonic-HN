@@ -730,7 +730,7 @@ private fun RuntimeReferenceRow(
         )
         if (link.hasNumber()) {
             Text(
-                text = link.markerLabel,
+                text = link.markerLabel.orEmpty(),
                 modifier = Modifier.padding(end = 8.dp),
                 color = colors.storyDisabled,
                 fontFamily = fontFamily,

@@ -121,7 +121,6 @@ import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemElement
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
@@ -272,7 +271,7 @@ class StoriesComposeController private constructor(
         private set
 
     private var requestSerial = 0
-    private val storyBounds = mutableMapOf<Int, MutableMap<StoryItemElement, Rect>>()
+    private val storyBounds = mutableMapOf<Int, Rect>()
     private val suppressedStoryIds = mutableStateOf<Set<Int>>(emptySet())
 
     fun updateContent(
@@ -565,7 +564,7 @@ class StoriesComposeController private constructor(
     }
 
     internal fun sourceBoundsForStory(storyId: Int): Rect? =
-        storyBounds[storyId]?.get(StoryItemElement.Container)
+        storyBounds[storyId]
 
     internal fun onStoryPreviewPagePosition(
         lowerPage: Int,
@@ -633,7 +632,6 @@ class StoriesComposeController private constructor(
         val end = maxOf(first, second)
         return (start until end).sumOf { index ->
             storyBounds[activeStories[index].id]
-                ?.get(StoryItemElement.Container)
                 ?.height
                 ?.roundToInt()
                 ?.coerceAtLeast(1)
@@ -642,8 +640,8 @@ class StoriesComposeController private constructor(
     }
 
     private fun averageStoryHeight(): Int {
-        val heights = storyBounds.values.mapNotNull {
-            it[StoryItemElement.Container]?.height?.roundToInt()?.takeIf { height -> height > 0 }
+        val heights = storyBounds.values.mapNotNull { bounds ->
+            bounds.height.roundToInt().takeIf { height -> height > 0 }
         }
         return if (heights.isEmpty()) {
             (96f * activity.resources.displayMetrics.density).roundToInt()
@@ -652,9 +650,9 @@ class StoriesComposeController private constructor(
         }
     }
 
-    internal fun updateStoryBounds(storyId: Int, element: StoryItemElement, bounds: Rect) {
+    internal fun updateStoryBounds(storyId: Int, bounds: Rect) {
         if (bounds.width <= 0f || bounds.height <= 0f) return
-        storyBounds.getOrPut(storyId) { mutableMapOf() }[element] = bounds
+        if (storyBounds[storyId] != bounds) storyBounds[storyId] = bounds
     }
 
     internal fun isStorySuppressed(storyId: Int): Boolean = storyId in suppressedStoryIds.value
@@ -1037,18 +1035,32 @@ private fun StoriesList(
                     } else {
                         val pagingAlpha = controller.storyPagingAlphas[story.id] ?: 1f
                         val suppressed = controller.isStorySuppressed(story.id)
+                        val contentVersion = controller.contentVersion
+                        val model = remember(story, index, settings, contentVersion) {
+                            story.toUiModel(index, settings, context)
+                        }
+                        val style = remember(story, settings, contentVersion) {
+                            settings.toItemStyle(story)
+                        }
+                        val itemModifier = Modifier.animateItem().let { baseModifier ->
+                            if (suppressed || pagingAlpha != 1f) {
+                                baseModifier.graphicsLayer(
+                                    alpha = if (suppressed) 0f else pagingAlpha,
+                                )
+                            } else {
+                                baseModifier
+                            }
+                        }
                         StoryItem(
-                            model = story.toUiModel(index, settings, context),
-                            style = settings.toItemStyle(story),
-                            modifier = Modifier
-                                .animateItem()
-                                .graphicsLayer(alpha = if (suppressed) 0f else pagingAlpha),
+                            model = model,
+                            style = style,
+                            modifier = itemModifier,
                             listItem = true,
                             onLinkClick = { controller.listener.onLinkClick(story) },
                             onLinkLongClick = { controller.listener.onStoryLongClick(story) },
                             onCommentClick = { controller.listener.onCommentClick(story) },
-                            onElementBoundsChanged = { element, bounds ->
-                                controller.updateStoryBounds(story.id, element, bounds)
+                            onBoundsChanged = { bounds ->
+                                controller.updateStoryBounds(story.id, bounds)
                             },
                         )
                     }
@@ -1633,8 +1645,8 @@ private fun Story.toUiModel(
     settings: StoryDisplaySettings,
     context: android.content.Context,
 ): StoryItemUiModel {
-    val fullDomain = runCatching { getDisplayDomain(true) }.getOrDefault("")
-    val shortDomain = runCatching { getDisplayDomain(false) }.getOrDefault(fullDomain)
+    val fullDomain = runCatching { getDisplayDomain(true) }.getOrNull().orEmpty()
+    val shortDomain = runCatching { getDisplayDomain(false) }.getOrNull().orEmpty()
     val favicon = runCatching { FaviconLoader.getFaviconUrl(url, settings.faviconProvider) }.getOrNull()
     val tintBaseColor = PreviewImageTintUtils.getTintBaseColor(context)
     val paletteTintMode = SettingsUtils.getPaletteTintConfigKey(settings.paletteTintMode)
@@ -1654,7 +1666,7 @@ private fun Story.toUiModel(
         points = score,
         domain = fullDomain,
         domainWithoutTopLevel = shortDomain,
-        age = getTimeFormatted(),
+        age = timeFormatted,
         commentCount = descendants,
         faviconRes = R.drawable.ic_public,
         previewImageRes = null,

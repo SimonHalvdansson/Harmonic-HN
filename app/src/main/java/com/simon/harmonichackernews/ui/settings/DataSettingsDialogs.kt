@@ -82,7 +82,7 @@ fun AddBookmarksToFavoritesDialog(
         bookmarkIds.map { id ->
             val story = Story().apply { this.id = id }
             if (Utils.loadCachedStorySummary(context, story) && !story.title.isNullOrBlank()) {
-                story.title
+                story.title.orEmpty()
             } else {
                 "Story #$id"
             }

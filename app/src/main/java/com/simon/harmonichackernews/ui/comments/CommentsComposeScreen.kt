@@ -1967,7 +1967,7 @@ private fun HeaderReferenceRow(
         )
         if (link.hasNumber()) {
             Text(
-                link.markerLabel,
+                link.markerLabel.orEmpty(),
                 modifier = Modifier.padding(end = 8.dp),
                 color = colors.storyDisabled,
                 fontFamily = typography.family,
@@ -2151,7 +2151,7 @@ private fun GitHubPreview(story: Story) {
                 PreviewInfoRow(R.drawable.ic_fork_right, info.formatForks())
             },
             right = {
-                PreviewInfoRow(R.drawable.ic_link, info.getShortenedUrl()) {
+                PreviewInfoRow(R.drawable.ic_link, info.shortenedUrl) {
                     Utils.openLinkMaybeHN(context, info.website)
                 }
                 PreviewInfoRow(R.drawable.ic_attribution, info.license)
@@ -2174,7 +2174,7 @@ private fun GitLabPreview(story: Story) {
                 PreviewInfoRow(R.drawable.ic_fork_right, info.formatForks())
             },
             right = {
-                PreviewInfoRow(R.drawable.ic_link, info.getShortenedUrl()) {
+                PreviewInfoRow(R.drawable.ic_link, info.shortenedUrl) {
                     Utils.openLinkMaybeHN(context, info.website)
                 }
                 PreviewInfoRow(R.drawable.ic_visibility, info.formatVisibility())
@@ -2242,7 +2242,7 @@ private fun ArxivPreview(story: Story, settings: CommentDisplaySettings) {
         )
         PreviewInfoRow(R.drawable.ic_library_books, runCatching(info::formatSubjects).getOrNull())
         Button(
-            onClick = { Utils.downloadPDF(context, info.getPDFURL()) },
+            onClick = { Utils.downloadPDF(context, info.pDFURL) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
@@ -3013,7 +3013,7 @@ private fun CommentsHeaderPreview() {
     HarmonicTheme {
         Column(Modifier.background(HarmonicTheme.colors.background)) {
             Text(
-                story.title,
+                story.title.orEmpty(),
                 Modifier.padding(16.dp),
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,

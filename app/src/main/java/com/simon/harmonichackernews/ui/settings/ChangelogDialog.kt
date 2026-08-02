@@ -60,7 +60,7 @@ internal fun SettingsChangelogDialog(
         },
         text = {
             ChangelogMarkdown(
-                markdown = Changelog.getMarkdown(context),
+                markdown = Changelog.getMarkdown(context).orEmpty(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(scrollState),

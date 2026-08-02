@@ -20,7 +20,6 @@ import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.widget.StoriesRemoteViewsFactory
 import com.simon.harmonichackernews.widget.StoriesWidgetProvider
-import java.util.HashSet
 import java.util.Locale
 
 private const val KeyCompactView = "pref_compact_view"

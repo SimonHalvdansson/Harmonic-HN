@@ -701,8 +701,8 @@ private fun rememberStoryItemUiModel(
         title = story.title.orEmpty(),
         summary = summary,
         points = story.score,
-        domain = fullDomain,
-        domainWithoutTopLevel = shortDomain,
+        domain = fullDomain.orEmpty(),
+        domainWithoutTopLevel = shortDomain.orEmpty(),
         age = story.timeFormatted,
         commentCount = story.descendants,
         faviconRes = R.drawable.ic_public,
@@ -892,7 +892,7 @@ private fun SubmissionCommentBody(
     val formatted = remember(html, linkStyles, linkListener) {
         runCatching {
             AnnotatedString.fromHtml(
-                htmlString = Utils.expandShortenedAnchorText(html),
+                htmlString = Utils.expandShortenedAnchorText(html).orEmpty(),
                 linkStyles = linkStyles,
                 linkInteractionListener = linkListener,
             )

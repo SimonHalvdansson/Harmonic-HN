@@ -338,7 +338,10 @@ private fun StoryPreviewCard(
         ?: story.pdfTitle?.takeIf(String::isNotBlank)
         ?: story.videoTitle?.takeIf(String::isNotBlank)
         ?: story.title.orEmpty()
-    val domain = if (story.isLink) runCatching { Utils.getDomainName(story.url) }.getOrDefault(story.url) else story.by
+    val domain = if (story.isLink) {
+        val storyUrl = story.url
+        if (storyUrl == null) null else runCatching { Utils.getDomainName(storyUrl) }.getOrDefault(storyUrl)
+    } else story.by
     val meta = buildString {
         append(story.score)
         append(if (story.score == 1) " point" else " points")
@@ -604,8 +607,8 @@ private fun rememberStorySummary(story: Story): StorySummaryState {
             val requestedUrl = story.url
             val request = LinkSummaryLoader.load(
                 context,
-                requestedUrl,
-                story.title,
+                requestedUrl.orEmpty(),
+                story.title.orEmpty(),
                 object : LinkSummaryLoader.Callback {
                     override fun onSuccess(result: LinkSummaryLoader.Result) {
                         if (story.url != requestedUrl) return
@@ -710,7 +713,7 @@ private fun StoryPreviewCardPreview() {
             // The runtime controller owns actions; this preview intentionally exercises the
             // card's real typography through a lightweight controller shell.
             Text(
-                text = story.title,
+                text = story.title.orEmpty(),
                 modifier = Modifier.padding(24.dp),
                 fontFamily = ProductSansFontFamily,
             )

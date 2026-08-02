@@ -244,8 +244,8 @@ fun AiSummaryBaseUrlDialog(
         mutableStateOf(
             prefs.getString(
                 AiModelCatalog.PREF_BASE_URL,
-                AiSummaryProviders.getDefaultBaseUrl(),
-            ) ?: AiSummaryProviders.getDefaultBaseUrl(),
+                AiSummaryProviders.defaultBaseUrl,
+            ) ?: AiSummaryProviders.defaultBaseUrl,
         )
     }
     var error by remember { mutableStateOf<String?>(null) }
@@ -261,7 +261,7 @@ fun AiSummaryBaseUrlDialog(
         val oldProvider = AiSummaryProviders.getProviderForBaseUrl(
             prefs.getString(
                 AiModelCatalog.PREF_BASE_URL,
-                AiSummaryProviders.getDefaultBaseUrl(),
+                AiSummaryProviders.defaultBaseUrl,
             ),
         )
         val newProvider = AiSummaryProviders.getProviderForBaseUrl(savedUrl)
@@ -276,7 +276,7 @@ fun AiSummaryBaseUrlDialog(
                     prefs.getString(AiModelCatalog.PREF_MODEL, ""),
                 )
             }
-            if (translated.isEmpty()) {
+            if (translated.isNullOrEmpty()) {
                 editor.remove(AiModelCatalog.PREF_MODEL)
             } else {
                 editor.putString(AiModelCatalog.PREF_MODEL, translated)
@@ -392,10 +392,10 @@ fun AiModelSelectorDialog(
     }
     val baseUrl = prefs.getString(
         AiModelCatalog.PREF_BASE_URL,
-        AiSummaryProviders.getDefaultBaseUrl(),
-    ) ?: AiSummaryProviders.getDefaultBaseUrl()
+        AiSummaryProviders.defaultBaseUrl,
+    ) ?: AiSummaryProviders.defaultBaseUrl
     val provider = AiSummaryProviders.getProviderForBaseUrl(baseUrl)
-        ?: AiSummaryProviders.OPENROUTER
+        ?: AiSummaryProviders.defaultProvider
     val initialModel = AiSummaryProviders.getModelForRequest(
         baseUrl,
         prefs.getString(AiModelCatalog.PREF_MODEL, ""),
@@ -467,7 +467,7 @@ fun AiModelSelectorDialog(
             provider,
             sort,
             object : AiModelCatalog.ModelsCallback {
-                override fun onSuccess(models: MutableList<AiModelCatalog.Model>?) {
+                override fun onSuccess(models: MutableList<AiModelCatalog.Model>) {
                     if (disposed) return
                     val safeModels = models.orEmpty()
                     catalogState = AiModelCatalogState.Loaded(
@@ -509,8 +509,8 @@ fun AiModelSelectorDialog(
             provider,
             requestedModel,
             object : AiModelCatalog.ModelCallback {
-                override fun onSuccess(model: AiModelCatalog.Model?) {
-                    if (model != null && requestedModel == modelInput.trim()) {
+                override fun onSuccess(model: AiModelCatalog.Model) {
+                    if (requestedModel == modelInput.trim()) {
                         priceState = AiModelPriceState.Resolved(model)
                     }
                 }

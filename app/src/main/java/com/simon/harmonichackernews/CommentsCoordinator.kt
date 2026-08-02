@@ -122,7 +122,7 @@ class CommentsCoordinator(
     private var backPressedCallback: OnBackPressedCallback? = null
     private var username: String? = null
     private var story: Story? = null
-    private var filteredUsers: MutableSet<String?>? = null
+    private var filteredUsers: MutableSet<String>? = null
     private var scrollToCommentId = -1
     private var commentsByOpFilterActive = false
     private var originalStatusBarColor = Color.TRANSPARENT
@@ -192,7 +192,7 @@ class CommentsCoordinator(
     }
 
     private fun initializeStory() {
-        filteredUsers = Utils.getFilteredUsers(this.context)
+        filteredUsers = Utils.getFilteredUsers(requireContext())
 
         story = Story()
 
@@ -298,13 +298,13 @@ class CommentsCoordinator(
         }
 
         if (TextUtils.isEmpty(currentCommentSorting)) {
-            currentCommentSorting = SettingsUtils.getPreferredCommentSorting(this.context)
+            currentCommentSorting = SettingsUtils.getPreferredCommentSorting(requireContext())
         }
 
         originalStatusBarColor = requireActivity().getWindow().getStatusBarColor()
         originalStatusBarColorCaptured = true
 
-        prefIntegratedWebview = SettingsUtils.shouldUseIntegratedWebView(this.context)
+        prefIntegratedWebview = SettingsUtils.shouldUseIntegratedWebView(requireContext())
         loadInitialStorySummaryFromCache()
         uncachedStoryHeaderLoading = story!!.id > 0 && !story!!.loaded
 
@@ -315,13 +315,13 @@ class CommentsCoordinator(
         updateCommentsStatusBarAppearance()
 
         integratedWebview = prefIntegratedWebview && story!!.isLink
-        preloadWebview = SettingsUtils.shouldPreloadWebView(this.context)
-        preloadWebviewMinimumBattery = SettingsUtils.getPreloadWebViewMinimumBattery(this.context)
-        matchWebviewTheme = SettingsUtils.shouldMatchWebViewTheme(this.context)
-        readerModeEnabled = SettingsUtils.shouldUseReaderMode(this.context)
-        readerModeDefault = SettingsUtils.shouldUseReaderModeByDefault(this.context)
-        val blockAds = SettingsUtils.shouldBlockAds(this.context) && !adBlockDisabledForSession
-        closeWebViewOnBack = SettingsUtils.shouldCloseWebViewOnBack(this.context)
+        preloadWebview = SettingsUtils.shouldPreloadWebView(requireContext())
+        preloadWebviewMinimumBattery = SettingsUtils.getPreloadWebViewMinimumBattery(requireContext())
+        matchWebviewTheme = SettingsUtils.shouldMatchWebViewTheme(requireContext())
+        readerModeEnabled = SettingsUtils.shouldUseReaderMode(requireContext())
+        readerModeDefault = SettingsUtils.shouldUseReaderModeByDefault(requireContext())
+        val blockAds = SettingsUtils.shouldBlockAds(requireContext()) && !adBlockDisabledForSession
+        closeWebViewOnBack = SettingsUtils.shouldCloseWebViewOnBack(requireContext())
 
         progressIndicator = host.progressIndicator
         linkPreviewController = LinkPreviewController(
@@ -330,7 +330,7 @@ class CommentsCoordinator(
         webViewController = CommentsWebViewController(
             this,
             story,
-            linkPreviewController,
+            linkPreviewController!!,
             object : CommentsWebViewController.Callbacks {
                 override fun onSwitchView(isAtWebView: Boolean) {
                     if (callback != null) {
@@ -345,7 +345,7 @@ class CommentsCoordinator(
                 override fun onReaderModeChanged(enabled: Boolean) {
                     if (composeController != null && webViewController != null) {
                         composeController!!.updateReaderMode(
-                            webViewController!!.isReaderModeAvailable(), enabled
+                            webViewController!!.isReaderModeAvailable, enabled
                         )
                     }
                 }
@@ -479,7 +479,7 @@ class CommentsCoordinator(
                     return
                 }
 
-                if (webViewController!!.isShowingCustomView()) {
+                if (webViewController!!.isShowingCustomView) {
                     webViewController!!.hideCustomView(true)
                     return
                 }
@@ -569,7 +569,7 @@ class CommentsCoordinator(
         allComments = ArrayList<Comment>()
         allComments!!.add(headerComment)
 
-        username = AccountUtils.getAccountUsername(this.context)
+        username = AccountUtils.getAccountUsername(requireContext())
         hasAccountDetails = AccountUtils.hasAccountDetails(requireContext())
         displaySettings = createCommentDisplaySettings()
 
@@ -590,7 +590,7 @@ class CommentsCoordinator(
         })
         if (shouldInitializeWebViewInBackground && webViewController != null) {
             view.postDelayed(
-                webViewController!!.getInitializeRunnable(),
+                webViewController!!.initializeRunnable,
                 WEBVIEW_BACKGROUND_INITIALIZATION_DELAY_MS
             )
         }
@@ -673,7 +673,7 @@ class CommentsCoordinator(
 
                 override fun onHeaderClick() {
                     if (story != null && story!!.isLink) {
-                        Utils.launchCustomTab(getActivity(), story!!.url)
+                        Utils.launchCustomTab(requireActivity(), story!!.url)
                     }
                 }
 
@@ -755,7 +755,7 @@ class CommentsCoordinator(
                     UserActions.votePollOption(requireContext(), optionId)
                 }
             })
-        requireActivity().attachCommentsComposeController(composeController)
+        requireActivity().attachCommentsComposeController(composeController!!)
         restoreLinkSummaryAfterRecreation()
         syncComposeState()
     }
@@ -766,7 +766,7 @@ class CommentsCoordinator(
             return
         }
         val readerAvailable =
-            webViewController != null && webViewController!!.isReaderModeAvailable()
+            webViewController != null && webViewController!!.isReaderModeAvailable
         val readerEnabled = webViewController != null && webViewController!!.isReaderModeEnabled()
         if (displaySettings == null) {
             displaySettings = createCommentDisplaySettings()
@@ -782,7 +782,7 @@ class CommentsCoordinator(
             showUpdate,
             commentsByOpFilterActive,
             hasCommentsByOp(),
-            webViewController != null && webViewController!!.isBlockingAds(),
+            webViewController != null && webViewController!!.isBlockingAds,
             integratedWebview,
             readerAvailable,
             readerEnabled,
@@ -811,7 +811,7 @@ class CommentsCoordinator(
         if (story == null) {
             return
         }
-        val shareIntent: Intent
+        val shareIntent: Intent?
         if (action == CommentsComposeController.SHARE_ARTICLE) {
             shareIntent = ShareUtils.getShareIntent(story!!.url)
         } else if (action == CommentsComposeController.SHARE_ARTICLE_TITLE) {
@@ -819,11 +819,11 @@ class CommentsCoordinator(
         } else if (action == CommentsComposeController.SHARE_HN) {
             shareIntent = ShareUtils.getShareIntent(story!!.id)
         } else if (action == CommentsComposeController.SHARE_ALL) {
-            shareIntent = ShareUtils.getShareIntentWithTitle(story!!.title, story!!.id, story!!.url)
+            shareIntent = ShareUtils.getShareIntentWithTitle(story!!.title.orEmpty(), story!!.id, story!!.url)
         } else {
             shareIntent = ShareUtils.getShareIntentWithTitle(story!!.title, story!!.id)
         }
-        startActivity(shareIntent)
+        shareIntent?.let(::startActivity)
     }
 
     private fun handleComposeMoreAction(action: Int) {
@@ -881,7 +881,7 @@ class CommentsCoordinator(
             return
         }
         if (action == CommentsComposeController.SHEET_REFRESH) {
-            if (webViewController!!.isShowingOfflineOrCachedPage() && webViewController!!.hasLastFailedUrl()) {
+            if (webViewController!!.isShowingOfflineOrCachedPage && webViewController!!.hasLastFailedUrl()) {
                 webViewController!!.retryLastFailedUrl()
             } else {
                 webViewController!!.reload()
@@ -907,13 +907,13 @@ class CommentsCoordinator(
         if (action == CommentsComposeController.COMMENT_ACTION_USER) {
             if (!TextUtils.isEmpty(comment.by)) {
                 requireActivity().showUserDialog(
-                    comment.by,
+                    comment.by.orEmpty(),
                     Runnable { updateUserTags(comment.by) })
             }
             return
         }
         if (action == CommentsComposeController.COMMENT_ACTION_SHARE) {
-            startActivity(ShareUtils.getShareIntent(comment.id))
+            ShareUtils.getShareIntent(comment.id)?.let(::startActivity)
             return
         }
         if (action == CommentsComposeController.COMMENT_ACTION_COPY) {
@@ -980,7 +980,7 @@ class CommentsCoordinator(
             UserActions.setFavorite(
                 ctx, comment.id, newFavorited,
                 object : ActionCallback {
-                    override fun onSuccess(response: Response?) {
+                    override fun onSuccess(response: Response) {
                         if (composeController != null) {
                             composeController!!.setCommentActionFavoriteLoading(
                                 comment.id, false
@@ -1017,7 +1017,7 @@ class CommentsCoordinator(
                 && composeController!!.isCommentActionDownvoted(comment.id)
         composeController!!.setCommentActionVoteLoading(comment.id, action)
         val callback: ActionCallback = object : ActionCallback {
-            override fun onSuccess(response: Response?) {
+            override fun onSuccess(response: Response) {
                 val upvoted = action == CommentsComposeController.COMMENT_ACTION_UPVOTE
                 val downvoted = action == CommentsComposeController.COMMENT_ACTION_DOWNVOTE
                 Utils.setUpvoted(ctx, comment.id, true, upvoted)
@@ -1053,7 +1053,7 @@ class CommentsCoordinator(
             backPressedCallback!!.isEnabled = true
             return
         }
-        if (webViewController != null && webViewController!!.isShowingCustomView()) {
+        if (webViewController != null && webViewController!!.isShowingCustomView) {
             backPressedCallback!!.isEnabled = true
             return
         }
@@ -1278,7 +1278,7 @@ class CommentsCoordinator(
     fun onResume() {
         if (destroyed) return
 
-        val shouldShowUpdate = SettingsUtils.shouldAlwaysShowTapToRefresh(this.context)
+        val shouldShowUpdate = SettingsUtils.shouldAlwaysShowTapToRefresh(requireContext())
                 || (lastLoaded != 0L && (System.currentTimeMillis() - lastLoaded) > 1000 * 60 * 60 && !Utils.timeInSecondsMoreThanTwoHoursAgo(
             story!!.time
         ))
@@ -1300,7 +1300,7 @@ class CommentsCoordinator(
             return
         }
         if (MainActivity.commentsScrollProgresses == null) {
-            MainActivity.commentsScrollProgresses = ArrayList<CommentsScrollProgress?>()
+            MainActivity.commentsScrollProgresses = ArrayList()
         }
         val recordedProgress = recordScrollProgress()
         for (i in MainActivity.commentsScrollProgresses.indices) {
@@ -1353,7 +1353,7 @@ class CommentsCoordinator(
             scrollProgress.topCommentOffset = -composeController!!.firstVisibleCommentOffset
         }
 
-        scrollProgress.collapsedIDs = HashSet<Int?>()
+        scrollProgress.collapsedIDs = HashSet()
 
         for (c in comments!!) {
             if (!c.expanded) {
@@ -1573,7 +1573,7 @@ class CommentsCoordinator(
 
     fun onOpenInBrowser() {
         Utils.launchInExternalBrowser(
-            getActivity(),
+            requireActivity(),
             "https://news.ycombinator.com/item?id=" + story!!.id
         )
     }
@@ -1627,11 +1627,12 @@ class CommentsCoordinator(
         }
 
         // Initialize fallback manager
+        val requestQueue = queue ?: return -1
         fallbackManager = AlgoliaFallbackManager(
-            context,
-            queue,
+            requireContext(),
+            requestQueue,
             requestTag,
-            filteredUsers,
+            filteredUsers ?: HashSet(),
             object : FallbackListener {
                 override fun onAlgoliaSuccess(response: String?) {
                     if (!isCurrentCommentsLoad(loadGeneration, id)) {
@@ -1747,17 +1748,17 @@ class CommentsCoordinator(
                     notifyHeaderChanged()
                 }
 
-                override fun onAllCommentsLoaded(loadedComments: MutableList<Comment>?) {
+                override fun onAllCommentsLoaded(loadedComments: MutableList<Comment>) {
                     if (!isCurrentCommentsLoad(loadGeneration, id)) {
                         Log.w(
                             TAG, ("Ignoring stale loaded comments for storyId=" + id
-                                    + ", loadedCount=" + (if (loadedComments == null) 0 else loadedComments.size))
+                                    + ", loadedCount=" + loadedComments.size)
                         )
                         return
                     }
                     Log.d(
                         TAG, ("Loaded comments from fallback path for storyId=" + id
-                                + ", loadedCount=" + loadedComments!!.size)
+                                + ", loadedCount=" + loadedComments.size)
                     )
                     val revealComments = Runnable {
                         if (!isCurrentCommentsLoad(loadGeneration, id)) {
@@ -1767,7 +1768,7 @@ class CommentsCoordinator(
                         // row removal and item insertion from the immutable list snapshot.
                         allComments!!.addAll(loadedComments)
                         updateDefaultCommentSortOrder(allComments!!)
-                        CommentSorter.sort(allComments, getCurrentCommentSorting())
+                        CommentSorter.sort(allComments!!, getCurrentCommentSorting())
                         applyDisplayedComments(getDisplayedCommentsForCurrentFilter(allComments!!))
                         completeCommentsLoad(false)
                         setCommentsRefreshInProgress(false)
@@ -1855,15 +1856,16 @@ class CommentsCoordinator(
         }
 
         pollOptionsLoadStarted = true
-        story!!.pollOptionArrayList = ArrayList<PollOption?>()
-        for (optionId in story!!.pollOptions) {
+        story!!.pollOptionArrayList = ArrayList()
+        val pollOptionIds = story!!.pollOptions ?: intArrayOf()
+        for (optionId in pollOptionIds) {
             val pollOption = PollOption()
             pollOption.loaded = false
             pollOption.id = optionId
-            story!!.pollOptionArrayList.add(pollOption)
+            story!!.pollOptionArrayList!!.add(pollOption)
         }
 
-        for (optionId in story!!.pollOptions) {
+        for (optionId in pollOptionIds) {
             val url = "https://hacker-news.firebaseio.com/v0/item/" + optionId + ".json"
 
             val stringRequest = StringRequest(
@@ -1873,7 +1875,7 @@ class CommentsCoordinator(
                         return@Listener
                     }
                     try {
-                        for (pollOption in story!!.pollOptionArrayList) {
+                        for (pollOption in story!!.pollOptionArrayList.orEmpty()) {
                             if (pollOption.id == optionId) {
                                 pollOption.loaded = true
 
@@ -1920,9 +1922,9 @@ class CommentsCoordinator(
             notifyHeaderChanged()
         }
 
-        val topLevelCommentIds = if (story!!.kids == null) null else story!!.kids.clone()
-        val filteredUsersSnapshot: MutableSet<String?>? =
-            filteredUsers?.let { HashSet<String?>(it) }
+        val topLevelCommentIds = story!!.kids?.clone()
+        val filteredUsersSnapshot: MutableSet<String>? =
+            filteredUsers?.let { HashSet(it) }
         cancelPendingCommentsParse()
         val pendingParse =
             PendingCommentsParse(loadGeneration, id, completion)
@@ -1982,10 +1984,10 @@ class CommentsCoordinator(
         }
 
         val storyChanged =
-            parsedResponse.updateStoryInformation(story, forceHeaderRefresh, oldCommentCount)
+            parsedResponse.updateStoryInformation(story!!, forceHeaderRefresh, oldCommentCount)
         val updateHeaderAfterLoad = storyChanged || forceHeaderRefresh
         if (linkPreviewController != null) {
-            linkPreviewController!!.loadNetworkPreviews(this.context)
+            linkPreviewController!!.loadNetworkPreviews(requireContext())
         }
         maybeLoadPollOptions()
 
@@ -2002,7 +2004,7 @@ class CommentsCoordinator(
 
         // Seems like loading went well, lets cache the result
         if (cache) {
-            Utils.cacheStory(this.context, id, response)
+            Utils.cacheStory(requireContext(), id, response)
         }
 
         val revealComments = Runnable {
@@ -2168,8 +2170,8 @@ class CommentsCoordinator(
         parsedComments: MutableList<Comment>,
         headerRefreshWillFollow: Boolean
     ) {
-        val oldComments = CommentListDiff.copyForDiff(comments)
-        val existingCommentsById: MutableMap<Int?, Comment?> = HashMap<Int?, Comment?>()
+        val oldComments = CommentListDiff.copyForDiff(comments!!)
+        val existingCommentsById: MutableMap<Int, Comment?> = HashMap<Int, Comment?>()
         val sourceComments =
             this.allCommentsSource
         for (i in 1..<sourceComments.size) {
@@ -2192,7 +2194,7 @@ class CommentsCoordinator(
         updateDefaultCommentSortOrder(nextComments)
         CommentSorter.sort(nextComments, getCurrentCommentSorting())
 
-        if (SettingsUtils.shouldCollapseTopLevel(this.context)) {
+        if (SettingsUtils.shouldCollapseTopLevel(requireContext())) {
             for (comment in nextComments) {
                 if (comment.depth == 0) {
                     comment.expanded = false
@@ -2215,11 +2217,11 @@ class CommentsCoordinator(
             return if (source.isNullOrEmpty()) comments ?: mutableListOf() else source
         }
 
-    private fun getCurrentCommentSorting(): String? {
+    private fun getCurrentCommentSorting(): String {
         if (TextUtils.isEmpty(currentCommentSorting)) {
-            currentCommentSorting = SettingsUtils.getPreferredCommentSorting(this.context)
+            currentCommentSorting = SettingsUtils.getPreferredCommentSorting(requireContext())
         }
-        return currentCommentSorting
+        return currentCommentSorting.orEmpty()
     }
 
     private fun updateDefaultCommentSortOrder(commentsWithHeader: MutableList<Comment>) {
@@ -2233,7 +2235,7 @@ class CommentsCoordinator(
             return
         }
 
-        val oldComments = CommentListDiff.copyForDiff(comments)
+        val oldComments = CommentListDiff.copyForDiff(comments!!)
         currentCommentSorting = sortType
         val sourceComments =
             this.allCommentsSource
@@ -2286,7 +2288,7 @@ class CommentsCoordinator(
 
     private fun applyDisplayedComments(
         nextComments: MutableList<Comment>,
-        oldComments: MutableList<Comment?>? = CommentListDiff.copyForDiff(comments),
+        oldComments: MutableList<Comment>? = comments?.let(CommentListDiff::copyForDiff),
         updateBoundHeader: Boolean = true
     ) {
         comments!!.clear()
@@ -2317,10 +2319,10 @@ class CommentsCoordinator(
         Toast.makeText(this.context, "Contacting archive.org API...", Toast.LENGTH_SHORT).show()
         ArchiveOrgUrlGetter.getArchiveUrl(
             story!!.url,
-            this.context,
+            requireContext(),
             object : ArchiveOrgUrlGetter.GetterCallback {
                 override fun onSuccess(url: String?) {
-                    Utils.launchCustomTab(getActivity(), url)
+                    Utils.launchCustomTab(requireActivity(), url)
                 }
 
                 override fun onFailure(reason: String?) {
@@ -2333,24 +2335,24 @@ class CommentsCoordinator(
     }
 
     private fun openArchiveIs() {
-        Utils.launchCustomTab(getActivity(), "https://archive.is/newest/" + Uri.encode(story!!.url))
+        Utils.launchCustomTab(requireActivity(), "https://archive.is/newest/" + Uri.encode(story!!.url))
     }
 
     private fun openArchiveToday() {
         Utils.launchCustomTab(
-            getActivity(),
+            requireActivity(),
             "https://archive.today/newest/" + Uri.encode(story!!.url)
         )
     }
 
     fun clickUser() {
         requireActivity().showUserDialog(
-            story!!.by,
+            story!!.by.orEmpty(),
             Runnable { updateUserTags(story!!.by) })
     }
 
     fun clickComment() {
-        if (!AccountUtils.hasAccountDetails(this.context)) {
+        if (!AccountUtils.hasAccountDetails(requireContext())) {
             AccountUtils.showLoginPrompt(requireContext())
             return
         }
@@ -2385,7 +2387,7 @@ class CommentsCoordinator(
         syncComposeState()
 
         val cb: ActionCallback = object : ActionCallback {
-            override fun onSuccess(response: Response?) {
+            override fun onSuccess(response: Response) {
                 Utils.setUpvoted(ctx, storyId, storyIsComment, newUpvoted)
                 storyVoteLoading = false
                 syncComposeState()
@@ -2422,7 +2424,7 @@ class CommentsCoordinator(
         storyFavoriteLoading = true
         syncComposeState()
         UserActions.setFavorite(ctx, storyId, newFavorited, object : ActionCallback {
-            override fun onSuccess(response: Response?) {
+            override fun onSuccess(response: Response) {
                 Utils.setFavorite(ctx, storyId, newFavorited)
                 storyFavoriteLoading = false
                 syncComposeState()
@@ -2578,9 +2580,9 @@ class CommentsCoordinator(
                 }
             }
             if (hasArticleText) {
-                SummaryManager.summarizeText(context, queue, articleText, callback)
+                SummaryManager.summarizeText(requireContext(), queue, articleText, callback)
             } else {
-                SummaryManager.summarizeArticle(context, queue, story!!.url, callback)
+                SummaryManager.summarizeArticle(requireContext(), queue, story!!.url.orEmpty(), callback)
             }
         }
     }

@@ -146,26 +146,32 @@ android {
     sourceSets {
         debug {
             java.srcDirs += "src/foss/java"
+            kotlin.srcDirs += "src/foss/java"
             res.srcDirs += "src/foss/res"
         }
         debugFast {
             java.srcDirs += "src/foss/java"
+            kotlin.srcDirs += "src/foss/java"
             res.srcDirs += "src/foss/res"
         }
         debugLLM {
             java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/java"
             res.srcDirs += "src/play/res"
         }
         debugLLMFast {
             java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/java"
             res.srcDirs += "src/play/res"
         }
         fossRelease {
             java.srcDirs += "src/foss/java"
+            kotlin.srcDirs += "src/foss/java"
             res.srcDirs += "src/foss/res"
         }
         playRelease {
             java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/java"
             res.srcDirs += "src/play/res"
         }
     }

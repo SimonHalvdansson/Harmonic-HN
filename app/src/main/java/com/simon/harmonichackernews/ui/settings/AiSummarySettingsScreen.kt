@@ -141,8 +141,8 @@ fun AiSummarySettingsScreen(
     val enabled = prefs.getBoolean(KeyAiEnabled, configurationComplete)
     val baseUrl = prefs.getString(
         KeyAiBaseUrl,
-        AiSummaryProviders.getDefaultBaseUrl(),
-    ) ?: AiSummaryProviders.getDefaultBaseUrl()
+        AiSummaryProviders.defaultBaseUrl,
+    ) ?: AiSummaryProviders.defaultBaseUrl
     val apiKey = AiSummaryApiKeyStore.getApiKey(context)
     val model = prefs.getString(KeyAiModel, "") ?: ""
     val systemPrompt = prefs.getString(
@@ -323,7 +323,7 @@ private fun LocalModelsPanel(
             .fillMaxWidth()
             .animateContentSize(),
     ) {
-        LocalModelManager.getModels().forEachIndexed { index, model ->
+        LocalModelManager.models.forEachIndexed { index, model ->
             if (index > 0) {
                 SettingsDivider()
             }
@@ -543,7 +543,7 @@ private fun cloudConfigurationComplete(context: android.content.Context): Boolea
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     return !prefs.getString(
         KeyAiBaseUrl,
-        AiSummaryProviders.getDefaultBaseUrl(),
+        AiSummaryProviders.defaultBaseUrl,
     ).isNullOrBlank() &&
         AiSummaryApiKeyStore.getApiKey(context).isNotBlank() &&
         !prefs.getString(KeyAiModel, "").isNullOrBlank() &&
@@ -551,7 +551,7 @@ private fun cloudConfigurationComplete(context: android.content.Context): Boolea
 }
 
 private fun selectFirstReadyLocalModelOrClear(context: android.content.Context) {
-    val readyModel = LocalModelManager.getModels().firstOrNull { model ->
+    val readyModel = LocalModelManager.models.firstOrNull { model ->
         model.downloadable &&
             LocalModelManager.isModelSupported(model) &&
             LocalModelManager.isModelDownloaded(context, model) &&

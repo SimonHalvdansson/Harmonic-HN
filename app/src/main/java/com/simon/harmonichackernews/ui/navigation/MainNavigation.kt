@@ -491,8 +491,10 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     internal fun detailRemovedFromBackStack() {
         storyRequest = null
         storyOpenedFromSubmissions = false
-        commentsCoordinator = null
-        commentsComposeController = null
+        // Keep the outgoing detail content alive until AnimatedVisibility has finished its
+        // exit. Clearing the Compose controller here leaves the WebView's white surface as
+        // the only outgoing layer for a frame, which flashes over Stories during back.
+        // CommentsPane's onDispose owns tearing down and detaching both controllers.
     }
 
     internal fun updateAdaptiveState(twoPane: Boolean, foldable: Boolean) {

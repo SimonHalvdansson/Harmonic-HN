@@ -1,0 +1,101 @@
+package com.simon.harmonichackernews.utils
+
+import android.content.Context
+import com.simon.harmonichackernews.R
+import kotlin.math.abs
+
+object CommentDepthIndicatorUtils {
+    const val MODE_THEME_DEFAULT: String = "theme_default"
+    const val MODE_MATERIAL_YOU: String = "material_you"
+    const val MODE_COLORS: String = "colors"
+    const val MODE_MONOCHROME: String = "monochrome"
+    const val MODE_NONE: String = "none"
+
+    const val COMMENT_DEPTH_COLOR_COUNT: Int = 7
+
+    private val COMMENT_DEPTH_COLORS_DARK = intArrayOf(
+        R.color.commentIndentIndicatorColor1,
+        R.color.commentIndentIndicatorColor2,
+        R.color.commentIndentIndicatorColor3,
+        R.color.commentIndentIndicatorColor4,
+        R.color.commentIndentIndicatorColor5,
+        R.color.commentIndentIndicatorColor6,
+        R.color.commentIndentIndicatorColor7
+    )
+
+    private val COMMENT_DEPTH_COLORS_MATERIAL = intArrayOf(
+        R.color.material_you_thread_depth_1,
+        R.color.material_you_thread_depth_2,
+        R.color.material_you_thread_depth_3,
+        R.color.material_you_thread_depth_4,
+        R.color.material_you_thread_depth_5,
+        R.color.material_you_thread_depth_6,
+        R.color.material_you_thread_depth_7
+    )
+
+    private val COMMENT_DEPTH_COLORS_LIGHT = intArrayOf(
+        R.color.commentIndentIndicatorColor1light,
+        R.color.commentIndentIndicatorColor2light,
+        R.color.commentIndentIndicatorColor3light,
+        R.color.commentIndentIndicatorColor4light,
+        R.color.commentIndentIndicatorColor5light,
+        R.color.commentIndentIndicatorColor6light,
+        R.color.commentIndentIndicatorColor7light
+    )
+
+    fun getColorResource(ctx: Context, mode: String, theme: String?, index: Int): Int {
+        val safeIndex = abs(index) % COMMENT_DEPTH_COLOR_COUNT
+        val safeMode = sanitizeMode(mode)
+
+        if (MODE_MONOCHROME == safeMode) {
+            return R.color.commentIndentIndicatorColorMonochrome
+        }
+
+        if (MODE_MATERIAL_YOU == safeMode) {
+            return COMMENT_DEPTH_COLORS_MATERIAL[safeIndex]
+        }
+
+        if (MODE_COLORS == safeMode) {
+            return getStandardColorResource(ctx, theme, safeIndex)
+        }
+
+        if (theme != null && theme.startsWith("material")) {
+            return COMMENT_DEPTH_COLORS_MATERIAL[safeIndex]
+        }
+        return getStandardColorResource(ctx, theme, safeIndex)
+    }
+
+    fun sanitizeMode(mode: String): String {
+        if (MODE_MATERIAL_YOU == mode
+            || MODE_COLORS == mode
+            || MODE_MONOCHROME == mode
+            || MODE_NONE == mode
+        ) {
+            return mode
+        }
+        return MODE_THEME_DEFAULT
+    }
+
+    fun shouldShowIndicators(mode: String): Boolean {
+        return MODE_NONE != sanitizeMode(mode)
+    }
+
+    fun getModeLabel(mode: String): String {
+        when (sanitizeMode(mode)) {
+            MODE_MATERIAL_YOU -> return "Material You"
+            MODE_COLORS -> return "Standard"
+            MODE_MONOCHROME -> return "Monochrome"
+            MODE_NONE -> return "None"
+            MODE_THEME_DEFAULT -> return "Theme default"
+            else -> return "Theme default"
+        }
+    }
+
+    private fun getStandardColorResource(ctx: Context, theme: String?, index: Int): Int {
+        return if (ThemeUtils.isDarkMode(
+                ctx,
+                theme
+            )
+        ) COMMENT_DEPTH_COLORS_DARK[index] else COMMENT_DEPTH_COLORS_LIGHT[index]
+    }
+}

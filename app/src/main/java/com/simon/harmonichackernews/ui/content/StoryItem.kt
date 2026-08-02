@@ -113,14 +113,6 @@ data class StoryItemStyle(
     val dimmed: Boolean = false,
 )
 
-enum class StoryItemElement {
-    Container,
-    Preview,
-    Title,
-    Summary,
-    Meta,
-}
-
 val SettingsStoryPreviewModel = StoryItemUiModel(
     index = "3.",
     title = "Algorithm breaks speed limit for solving linear equations",
@@ -143,7 +135,7 @@ fun StoryItem(
     onLinkClick: (() -> Unit)? = null,
     onLinkLongClick: (() -> Unit)? = null,
     onCommentClick: (() -> Unit)? = null,
-    onElementBoundsChanged: ((StoryItemElement, Rect) -> Unit)? = null,
+    onBoundsChanged: ((Rect) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val colors = HarmonicTheme.colors
@@ -287,10 +279,7 @@ fun StoryItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .onGloballyPositioned {
-                        onElementBoundsChanged?.invoke(
-                            StoryItemElement.Container,
-                            it.boundsInWindow(),
-                        )
+                        onBoundsChanged?.invoke(it.boundsInWindow())
                     }
                     .shadow(
                         elevation = 1.dp,
@@ -313,7 +302,6 @@ fun StoryItem(
                     borderless = style.borderlessLargeImage,
                     model = model.previewImageUrl ?: model.previewImageRes,
                     onDrawableLoaded = onPreviewDrawableLoaded,
-                    onBoundsChanged = onElementBoundsChanged,
                     alpha = clickedMediaAlpha,
                 )
 
@@ -330,7 +318,6 @@ fun StoryItem(
                             alignmentProgress = alignmentProgress,
                             onPreviewDrawableLoaded = onPreviewDrawableLoaded,
                             onFaviconDrawableLoaded = onFaviconDrawableLoaded,
-                            onElementBoundsChanged = onElementBoundsChanged,
                             mediaAlpha = clickedMediaAlpha,
                         )
                     },
@@ -355,7 +342,6 @@ private fun LargeStoryPreviewImage(
     borderless: Boolean,
     model: Any?,
     onDrawableLoaded: (Drawable) -> Unit,
-    onBoundsChanged: ((StoryItemElement, Rect) -> Unit)?,
     alpha: Float,
 ) {
     val context = LocalContext.current
@@ -391,10 +377,7 @@ private fun LargeStoryPreviewImage(
                 .padding(start = inset, top = inset, end = inset, bottom = bottomMargin)
                 .height(176.dp)
                 .clip(RoundedCornerShape(radius))
-                .graphicsLayer(alpha = alpha)
-                .onGloballyPositioned {
-                    onBoundsChanged?.invoke(StoryItemElement.Preview, it.boundsInWindow())
-                },
+                .graphicsLayer(alpha = alpha),
             contentScale = ContentScale.Crop,
             onSuccess = { onDrawableLoaded(it.result.drawable) },
         )
@@ -412,7 +395,6 @@ private fun StoryLinkContent(
     alignmentProgress: Float,
     onPreviewDrawableLoaded: (Drawable) -> Unit,
     onFaviconDrawableLoaded: (Drawable) -> Unit,
-    onElementBoundsChanged: ((StoryItemElement, Rect) -> Unit)?,
     mediaAlpha: Float,
 ) {
     val startPadding = lerp(6f, 0f, alignmentProgress).dp
@@ -490,7 +472,6 @@ private fun StoryLinkContent(
             metaProgress = metaProgress,
             onPreviewDrawableLoaded = onPreviewDrawableLoaded,
             onFaviconDrawableLoaded = onFaviconDrawableLoaded,
-            onElementBoundsChanged = onElementBoundsChanged,
             mediaAlpha = mediaAlpha,
             modifier = Modifier.weight(1f),
         )
@@ -511,7 +492,6 @@ private fun StoryTextBlock(
     metaProgress: Float,
     onPreviewDrawableLoaded: (Drawable) -> Unit,
     onFaviconDrawableLoaded: (Drawable) -> Unit,
-    onElementBoundsChanged: ((StoryItemElement, Rect) -> Unit)?,
     mediaAlpha: Float,
     modifier: Modifier,
 ) {
@@ -523,10 +503,7 @@ private fun StoryTextBlock(
             Text(
                 text = model.title,
                 modifier = Modifier
-                    .padding(start = textStartPadding, end = 2.dp)
-                    .onGloballyPositioned {
-                        onElementBoundsChanged?.invoke(StoryItemElement.Title, it.boundsInWindow())
-                    },
+                    .padding(start = textStartPadding, end = 2.dp),
                 color = if (style.dimmed) {
                     HarmonicTheme.colors.storyDisabled
                 } else {
@@ -541,9 +518,6 @@ private fun StoryTextBlock(
                 text = model.summary,
                 modifier = Modifier
                     .padding(start = textStartPadding, end = 2.dp)
-                    .onGloballyPositioned {
-                        onElementBoundsChanged?.invoke(StoryItemElement.Summary, it.boundsInWindow())
-                    }
                     .graphicsLayer(alpha = summaryProgress),
                 color = HarmonicTheme.colors.storyDisabled,
                 fontFamily = typography.family,
@@ -561,9 +535,6 @@ private fun StoryTextBlock(
                 mediaAlpha = mediaAlpha,
                 modifier = Modifier
                     .padding(start = textStartPadding, end = 2.dp)
-                    .onGloballyPositioned {
-                        onElementBoundsChanged?.invoke(StoryItemElement.Meta, it.boundsInWindow())
-                    }
                     .graphicsLayer(alpha = metaProgress),
             )
             val previewModel = model.previewImageUrl ?: model.previewImageRes
@@ -580,12 +551,6 @@ private fun StoryTextBlock(
                     modifier = Modifier
                         .size(width = 72.dp, height = 52.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .onGloballyPositioned {
-                            onElementBoundsChanged?.invoke(
-                                StoryItemElement.Preview,
-                                it.boundsInWindow(),
-                            )
-                        }
                         .graphicsLayer(
                             alpha = smallImageProgress * mediaAlpha,
                             scaleX = 0.92f + 0.08f * smallImageProgress,
