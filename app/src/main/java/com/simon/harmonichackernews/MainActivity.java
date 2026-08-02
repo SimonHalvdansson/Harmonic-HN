@@ -117,6 +117,9 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         // The split ratio may have been changed in settings while we were in the background
         if (shouldUseFoldableActivityEmbedding()) {
             FoldableSplitInitializer.applyRulesIfSplitPaneRatioChanged(this);
+            if (splitRatioTracker != null) {
+                splitRatioTracker.applyStoredRatioToActiveSplits();
+            }
         } else {
             updateFragmentLayout();
         }

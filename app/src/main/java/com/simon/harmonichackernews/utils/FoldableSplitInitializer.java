@@ -3,17 +3,14 @@ package com.simon.harmonichackernews.utils;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.startup.Initializer;
 import androidx.window.WindowSdkExtensions;
-import androidx.window.embedding.ActivityEmbeddingController;
 import androidx.window.embedding.DividerAttributes;
 import androidx.window.embedding.EmbeddingRule;
 import androidx.window.embedding.RuleController;
 import androidx.window.embedding.SplitAttributes;
-import androidx.window.embedding.SplitAttributesCalculatorParams;
 import androidx.window.embedding.SplitController;
 import androidx.window.embedding.SplitController.SplitSupportStatus;
 import androidx.window.embedding.SplitPairRule;
@@ -26,20 +23,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import kotlin.jvm.functions.Function1;
-
 public class FoldableSplitInitializer implements Initializer<RuleController> {
-   private static final String TAG = "FoldableSplitInit";
 
    /** Window SDK extension version required to set a divider between the two panes. */
    private static final int DIVIDER_EXTENSION_VERSION = 6;
-   /** Window SDK extension version required to use a split attributes calculator. */
-   private static final int CALCULATOR_EXTENSION_VERSION = 2;
-   /** Window SDK extension version required to refresh already visible splits. */
-   private static final int INVALIDATE_EXTENSION_VERSION = 3;
 
    private static RuleController ruleController;
-   private static boolean calculatorInstalled = false;
    private static int appliedSplitPaneRatio = SettingsUtils.SPLIT_PANE_RATIO_UNSET;
 
    @NonNull
@@ -71,8 +60,13 @@ public class FoldableSplitInitializer implements Initializer<RuleController> {
    }
 
    /**
-    * Applies the split rules using the currently configured split ratio. Safe to call again
-    * whenever the ratio changes, in which case already visible splits are updated as well.
+    * Applies the split rules using the currently configured split ratio. The rules decide the ratio
+    * of splits which are created from now on; splits which are already showing are updated by
+    * {@link SplitRatioTracker}.
+    *
+    * Note that no split attributes calculator is registered on purpose. A calculator is reapplied
+    * on every window and device state update, which would immediately undo the ratio the user just
+    * dragged the divider to.
     */
    public static void applyRules(Context context) {
       Context appContext = context.getApplicationContext();
@@ -85,8 +79,6 @@ public class FoldableSplitInitializer implements Initializer<RuleController> {
 
       appliedSplitPaneRatio = SettingsUtils.getSplitPaneRatio(appContext);
       controller.setRules(buildRules(appContext));
-      installSplitAttributesCalculator(appContext);
-      invalidateVisibleSplits(appContext);
    }
 
    /**
@@ -148,7 +140,7 @@ public class FoldableSplitInitializer implements Initializer<RuleController> {
               .build();
    }
 
-   private static SplitAttributes createSplitAttributes(Context context) {
+   public static SplitAttributes createSplitAttributes(Context context) {
       SplitAttributes.Builder builder = new SplitAttributes.Builder()
               .setSplitType(SplitAttributes.SplitType.ratio(SettingsUtils.getSplitPaneRatio(context) / 100f))
               .setLayoutDirection(SplitAttributes.LayoutDirection.LOCALE);
@@ -163,44 +155,6 @@ public class FoldableSplitInitializer implements Initializer<RuleController> {
       }
 
       return builder.build();
-   }
-
-   /**
-    * Lets the window manager ask us for the split attributes every time it re-evaluates a split,
-    * so that a changed ratio is picked up without having to recreate the split.
-    */
-   private static void installSplitAttributesCalculator(Context context) {
-      if (calculatorInstalled || getExtensionVersion() < CALCULATOR_EXTENSION_VERSION) {
-         return;
-      }
-
-      final Context appContext = context.getApplicationContext();
-      SplitController.getInstance(appContext).setSplitAttributesCalculator(
-              new Function1<SplitAttributesCalculatorParams, SplitAttributes>() {
-                 @Override
-                 public SplitAttributes invoke(SplitAttributesCalculatorParams params) {
-                    if (!params.areDefaultConstraintsSatisfied()) {
-                       return new SplitAttributes.Builder()
-                               .setSplitType(SplitAttributes.SplitType.SPLIT_TYPE_EXPAND)
-                               .build();
-                    }
-
-                    return createSplitAttributes(appContext);
-                 }
-              });
-      calculatorInstalled = true;
-   }
-
-   private static void invalidateVisibleSplits(Context context) {
-      if (!calculatorInstalled || getExtensionVersion() < INVALIDATE_EXTENSION_VERSION) {
-         return;
-      }
-
-      try {
-         ActivityEmbeddingController.getInstance(context).invalidateVisibleActivityStacks();
-      } catch (UnsupportedOperationException e) {
-         Log.w(TAG, "Could not refresh visible splits", e);
-      }
    }
 
    private static int getExtensionVersion() {
