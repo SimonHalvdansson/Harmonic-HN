@@ -22,22 +22,4 @@
     <attr name="storyCardBackgroundColor" format="reference|color"/>
     <attr name="popupMenuBackgroundColor" format="reference|color"/>
 
-    <declare-styleable name="BoxShimmerLayout">
-        <attr name="boxShimmerAutoStart" format="boolean"/>
-        <attr name="boxShimmerDuration" format="integer"/>
-        <attr name="boxShimmerBaseAlpha" format="float"/>
-        <attr name="boxShimmerHighlightAlpha" format="float"/>
-    </declare-styleable>
-
-    <declare-styleable name="SwipeBackLayout">
-        <attr name="swipeBackFactor" format="float"/>
-        <attr name="maskAlpha" format="integer"/>
-        <attr name="isSwipeFromEdge" format="boolean"/>
-        <attr name="directionMode">
-            <enum name="left" value="1" />
-            <enum name="right" value="2" />
-            <enum name="top" value="4" />
-            <enum name="bottom" value="8" />
-        </attr>
-    </declare-styleable>
 </resources>

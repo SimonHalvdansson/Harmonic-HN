@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.ui.submissions
 
 import android.text.Html
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -53,9 +52,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -77,7 +74,6 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.insets.ProtectionLayout
 import com.google.android.material.R as MaterialR
 import com.google.android.material.button.MaterialButton
 import com.simon.harmonichackernews.R
@@ -92,7 +88,6 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
-import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.Utils
 
 const val SUBMISSION_FILTER_STORIES = 0
@@ -100,17 +95,14 @@ const val SUBMISSION_FILTER_BOTH = 1
 const val SUBMISSION_FILTER_COMMENTS = 2
 
 /**
- * State bridge used by the existing activity while its networking and navigation remain in Java.
- * The bridge deliberately exposes stories as immutable list snapshots so RecyclerView notifications
- * map to normal Compose state updates without duplicating the activity's loading logic.
+ * State bridge used by the submissions coordinator inside MainActivity's Compose navigation.
  */
-class SubmissionsComposeController private constructor(
+class SubmissionsComposeController internal constructor(
     private val activity: AppCompatActivity,
     internal val userName: String,
     initialFilter: Int,
     internal val listener: Listener,
 ) {
-    private val statusBarProtection = ProtectionLayout(activity)
 
     internal var submissions by mutableStateOf<List<Story>>(emptyList())
         private set
@@ -198,13 +190,6 @@ class SubmissionsComposeController private constructor(
         }
     }
 
-    fun applyStatusBarProtection() {
-        StatusBarProtectionUtils.setTopProtection(
-            statusBarProtection,
-            StatusBarProtectionUtils.getPaneBackgroundColor(activity),
-        )
-    }
-
     internal fun updateScrollState(state: LazyListState) {
         val listIndex = state.firstVisibleItemIndex
         firstVisibleStoryPosition = (listIndex - 1).coerceAtLeast(0)
@@ -234,51 +219,29 @@ class SubmissionsComposeController private constructor(
 
     companion object {
         @JvmStatic
-        fun install(
+        fun create(
             activity: AppCompatActivity,
             userName: String,
             initialFilter: Int,
             listener: Listener,
         ): SubmissionsComposeController {
-            val controller = SubmissionsComposeController(
+            return SubmissionsComposeController(
                 activity = activity,
                 userName = userName,
                 initialFilter = initialFilter,
                 listener = listener,
             )
-            activity.enableEdgeToEdge()
-            val composeView = ComposeView(activity).apply {
-                setViewCompositionStrategy(
-                    ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
-                )
-                setContent {
-                    HarmonicTheme {
-                        SubmissionsScreen(controller)
-                    }
-                }
-            }
-            controller.statusBarProtection.addView(
-                composeView,
-                android.view.ViewGroup.LayoutParams(
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                ),
-            )
-            activity.setContentView(controller.statusBarProtection)
-            controller.applyStatusBarProtection()
-            return controller
         }
     }
 }
 
 /**
- * Compose mapping of `activity_submissions.xml`: the legacy AppBarLayout becomes the first lazy
- * item, the scrolling behavior is supplied by the LazyColumn, and every content row retains the
- * exact qualified `single_view_side_margin` used by the phone, foldable, and tablet layouts.
+ * The header is the first lazy item, scrolling is supplied by the LazyColumn, and every content
+ * row retains the qualified `single_view_side_margin` used on phones, foldables, and tablets.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SubmissionsScreen(controller: SubmissionsComposeController) {
+internal fun SubmissionsScreen(controller: SubmissionsComposeController) {
     val listState = rememberLazyListState()
 
     LaunchedEffect(listState) {

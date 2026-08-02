@@ -4,9 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.text.TextUtils;
 
-import androidx.fragment.app.FragmentManager;
-
-import com.simon.harmonichackernews.LoginDialogFragment;
+import com.simon.harmonichackernews.MainActivity;
 
 import kotlin.Triple;
 
@@ -19,6 +17,7 @@ public class AccountUtils {
     public final static int FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION = 1;
     public final static int FAILURE_MODE_NO_USERNAME = 3;
     public final static int FAILURE_MODE_NO_PASSWORD = 4;
+    private static volatile Boolean cachedHasAccountDetails;
 
 
     public static String getAccountUsername(Context ctx) {
@@ -26,12 +25,26 @@ public class AccountUtils {
     }
 
     public static void setAccountUsername(Context ctx, String username) {
+        cachedHasAccountDetails = null;
         SettingsUtils.saveStringToSharedPreferences(ctx, KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME, username);
     }
 
     public static boolean hasAccountDetails(Context ctx) {
-        Triple<String, String, Integer> account = getAccountDetails(ctx);
-        return (account.getThird() == FAILURE_MODE_NONE && !TextUtils.isEmpty(account.getFirst()) && !TextUtils.isEmpty(account.getSecond()));
+        Boolean cached = cachedHasAccountDetails;
+        if (cached != null) {
+            return cached;
+        }
+        synchronized (AccountUtils.class) {
+            cached = cachedHasAccountDetails;
+            if (cached == null) {
+                Triple<String, String, Integer> account = getAccountDetails(ctx);
+                cached = account.getThird() == FAILURE_MODE_NONE
+                        && !TextUtils.isEmpty(account.getFirst())
+                        && !TextUtils.isEmpty(account.getSecond());
+                cachedHasAccountDetails = cached;
+            }
+            return cached;
+        }
     }
 
     public static Triple<String, String, Integer> getAccountDetails(Context ctx) {
@@ -64,6 +77,7 @@ public class AccountUtils {
     }
 
     public static void deleteAccountDetails(Context ctx) {
+        cachedHasAccountDetails = null;
         setAccountDetails(ctx, null, null);
         boolean deleted = EncryptedSharedPreferencesHelper.deleteSharedPreferences(ctx);
         if (!deleted) {
@@ -72,6 +86,7 @@ public class AccountUtils {
     }
 
     public static void setAccountDetails(Context ctx, String username, String password) {
+        cachedHasAccountDetails = null;
         SharedPreferences sharedPreferences;
         try {
             sharedPreferences = EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(ctx);
@@ -87,19 +102,18 @@ public class AccountUtils {
         setAccountUsername(ctx, username);
     }
 
-    public static void showLoginPrompt(FragmentManager fm) {
-        new LoginDialogFragment().show(fm, LoginDialogFragment.TAG);
+    public static boolean showLoginPrompt(Context ctx) {
+        return MainActivity.showLoginPrompt();
     }
 
-    public static boolean handlePossibleError(Triple<String, String, Integer> account, FragmentManager fm, Context ctx) {
+    public static boolean handlePossibleError(Triple<String, String, Integer> account,
+                                              boolean showLoginPrompt,
+                                              Context ctx) {
         if (account.getThird() == AccountUtils.FAILURE_MODE_NONE) {
             return false;
         }
 
-        boolean loginPromptShown = fm != null;
-        if (loginPromptShown) {
-            AccountUtils.showLoginPrompt(fm);
-        }
+        boolean loginPromptShown = showLoginPrompt && AccountUtils.showLoginPrompt(ctx);
 
         switch (account.getThird()) {
             case AccountUtils.FAILURE_MODE_MAINKEY:

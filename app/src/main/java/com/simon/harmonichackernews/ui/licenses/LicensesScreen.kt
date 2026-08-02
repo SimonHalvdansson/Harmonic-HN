@@ -121,12 +121,6 @@ private val CommonLicensesAfterLocalAi = listOf(
         "https://github.com/Kotlin/kotlinx.coroutines",
     ),
     LicenseEntry(
-        "HtmlTextView",
-        "SufficientlySecure",
-        "Apache License 2.0",
-        "https://github.com/SufficientlySecure/html-textview",
-    ),
-    LicenseEntry(
         "OkHttp",
         "Square",
         "Apache License 2.0",
@@ -167,12 +161,6 @@ private val CommonLicensesAfterLocalAi = listOf(
         "Noties",
         "Apache License 2.0",
         "https://noties.io/Markwon/",
-    ),
-    LicenseEntry(
-        "SwipeBackLayout",
-        "Gongwen",
-        "Apache License 2.0",
-        "https://github.com/gongwen/SwipeBackLayout",
     ),
 )
 

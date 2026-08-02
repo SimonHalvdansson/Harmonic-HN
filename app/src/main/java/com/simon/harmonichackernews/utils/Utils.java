@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.utils;
 
 import static androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -26,7 +27,6 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.simon.harmonichackernews.BuildConfig;
-import com.simon.harmonichackernews.CommentsActivity;
 import com.simon.harmonichackernews.MainActivity;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.data.Bookmark;
@@ -1656,9 +1656,8 @@ public class Utils {
     }
 
     public static void openCommentsActivity(int id, int scrollToCommentId, Context context) {
-        if (scrollToCommentId <= 0
-                && context instanceof MainActivity
-                && ((MainActivity) context).openCommentsItem(id)) {
+        if (context instanceof MainActivity
+                && ((MainActivity) context).openCommentsItem(id, scrollToCommentId)) {
             return;
         }
         Uri.Builder builder = Uri.parse("https://news.ycombinator.com/item").buildUpon()
@@ -1669,7 +1668,11 @@ public class Utils {
         Uri uri = builder.build();
 
         Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-        intent.setClass(context, CommentsActivity.class);
+        intent.setClass(context, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        if (!(context instanceof Activity)) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
         context.startActivity(intent);
     }
 

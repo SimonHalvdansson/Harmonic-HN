@@ -3,7 +3,6 @@
 package com.simon.harmonichackernews.ui.settings
 
 import android.text.format.DateFormat
-import android.widget.ImageView
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
@@ -68,7 +67,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.preference.PreferenceManager
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
@@ -623,16 +621,19 @@ fun WelcomeSettingsDialog(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center,
                         ) {
-                            AndroidView(
-                                factory = { imageContext ->
-                                    ImageView(imageContext).apply {
-                                        setImageResource(R.mipmap.ic_launcher)
-                                        scaleType = ImageView.ScaleType.FIT_CENTER
-                                        contentDescription = "Harmonic"
-                                    }
-                                },
-                                modifier = Modifier.size(64.dp),
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
+                                    .background(colorResource(R.color.ic_launcher_background)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.ic_launcher_foreground),
+                                    contentDescription = "Harmonic",
+                                    modifier = Modifier.size(64.dp),
+                                )
+                            }
                         }
                     }
                 }

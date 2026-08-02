@@ -36,7 +36,6 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -49,14 +48,12 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 
-import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.databinding.CommentsWebviewBinding;
-import com.simon.harmonichackernews.databinding.FragmentCommentsBinding;
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController;
 import com.simon.harmonichackernews.utils.FileDownloader;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -107,6 +104,8 @@ class CommentsWebViewController {
         void onReaderModeChanged(boolean enabled);
 
         void onReaderModeAvailabilityChanged(boolean available);
+
+        void onFullscreenChanged(boolean fullscreen);
     }
 
     interface PageTextCallback {
@@ -132,7 +131,6 @@ class CommentsWebViewController {
     };
 
     private SwipeRefreshLayout swipeRefreshLayout;
-    private LinearLayout bottomSheet;
     private WebView webView;
     private ViewStub webViewStub;
     private FrameLayout webViewContainer;
@@ -141,7 +139,6 @@ class CommentsWebViewController {
     private MaterialButton downloadButton;
     private LinearProgressIndicator progressIndicator;
     private ValueAnimator progressAnimator;
-    private BottomSheetBehavior.BottomSheetCallback webViewBottomSheetCallback;
     private boolean showWebsite = false;
     private boolean integratedWebview = true;
     private String preloadWebview = "never";
@@ -195,18 +192,19 @@ class CommentsWebViewController {
         this.callbacks = callbacks;
     }
 
-    void bindViews(@NonNull FragmentCommentsBinding binding, @NonNull LinearLayout bottomSheet, @NonNull SwipeRefreshLayout swipeRefreshLayout, @NonNull LinearProgressIndicator progressIndicator) {
-        this.bottomSheet = bottomSheet;
+    void bindViews(@NonNull CommentsWebViewHost host,
+                   @Nullable SwipeRefreshLayout swipeRefreshLayout,
+                   @NonNull LinearProgressIndicator progressIndicator) {
         this.swipeRefreshLayout = swipeRefreshLayout;
         this.progressIndicator = progressIndicator;
         this.progressIndicator.setVisibility(View.GONE);
         this.progressIndicator.setProgress(0);
-        webViewStub = binding.commentsWebviewStub;
+        webViewStub = host.webViewStub;
         webView = null;
-        downloadButton = binding.webviewDownload;
-        webViewContainer = binding.webviewContainer;
-        fullscreenContainer = binding.commentsFullscreenContainer;
-        webViewBackdrop = binding.commentsWebviewBackdrop;
+        downloadButton = host.downloadButton;
+        webViewContainer = host.webViewContainer;
+        fullscreenContainer = host.fullscreenContainer;
+        webViewBackdrop = host.webViewBackdrop;
     }
 
     void configure(boolean showWebsite, boolean integratedWebview, String preloadWebview, int preloadWebviewMinimumBattery, boolean matchWebviewTheme, boolean readerModeFeatureEnabled, boolean readerModeDefault, boolean blockAds) {
@@ -232,9 +230,19 @@ class CommentsWebViewController {
         return initializeWebViewRunnable;
     }
 
-    @Nullable
-    BottomSheetBehavior.BottomSheetCallback getBottomSheetCallback() {
-        return webViewBottomSheetCallback;
+    void initializeForVisibleWebsite() {
+        initialize();
+        if (webView != null && !startedLoading) {
+            startedLoading = true;
+            loadUrl(story.url);
+        }
+        callbacks.onSwitchView(true);
+    }
+
+    boolean shouldInitializeInBackground(@Nullable Context context) {
+        return context != null
+                && (shouldPreloadStoryUrl(context)
+                || linkPreviewController.shouldInitializeWebViewForPreview(context));
     }
 
     boolean hasWebView() {
@@ -871,27 +879,13 @@ class CommentsWebViewController {
             return;
         }
         initializedWebView = true;
-        BottomSheetBehavior.from(bottomSheet).setDraggable(true);
-        webViewBottomSheetCallback = new BottomSheetBehavior.BottomSheetCallback() {
-            @Override
-            public void onStateChanged(@NonNull View bottomSheet, int newState) {
-                callbacks.onSwitchView(newState == BottomSheetBehavior.STATE_COLLAPSED);
-            }
-
-            @Override
-            public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-                if (!startedLoading && slideOffset < 0.9999) {
-                    startedLoading = true;
-                    loadUrl(story.url);
-                }
-            }
-        };
-        BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(webViewBottomSheetCallback);
 
         try {
-            ((FrameLayout) swipeRefreshLayout.getParent()).removeView(swipeRefreshLayout);
-        } catch (Exception e) {
-            // This will crash if we have already done this, which is fine.
+            if (swipeRefreshLayout != null && swipeRefreshLayout.getParent() instanceof FrameLayout) {
+                ((FrameLayout) swipeRefreshLayout.getParent()).removeView(swipeRefreshLayout);
+            }
+        } catch (Exception ignored) {
+            // The old comments list bridge may already have been detached.
         }
 
         if (blockAds && Utils.adservers.isEmpty()) {
@@ -932,7 +926,7 @@ class CommentsWebViewController {
 
             @Override
             public void onShowCustomView(View view, CustomViewCallback callback) {
-                if (fragment.getContext() == null || fragment.getView() == null || fullscreenContainer == null || webViewContainer == null || bottomSheet == null) {
+                if (fragment.getContext() == null || fragment.getView() == null || fullscreenContainer == null || webViewContainer == null) {
                     callback.onCustomViewHidden();
                     return;
                 }
@@ -978,7 +972,6 @@ class CommentsWebViewController {
                 && view == webView
                 && fragment.getContext() != null
                 && fragment.getView() != null
-                && bottomSheet != null
                 && webViewBackdrop != null;
     }
 
@@ -1148,12 +1141,12 @@ class CommentsWebViewController {
         fullscreenContainer.removeAllViews();
         fullscreenContainer.setVisibility(View.GONE);
         webViewContainer.setVisibility(View.VISIBLE);
-        bottomSheet.setVisibility(View.VISIBLE);
+        callbacks.onFullscreenChanged(false);
 
         setFullscreenSystemBarsHidden(false);
         callbacks.syncOnBackPressedCallbackEnabledState();
 
-        callbacks.onSwitchView(BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED);
+        callbacks.onSwitchView(true);
 
         if (notifyCallback && currentCustomViewCallback != null) {
             currentCustomViewCallback.onCustomViewHidden();
@@ -1183,7 +1176,7 @@ class CommentsWebViewController {
         ));
         fullscreenContainer.setVisibility(View.VISIBLE);
         webViewContainer.setVisibility(View.GONE);
-        bottomSheet.setVisibility(View.GONE);
+        callbacks.onFullscreenChanged(true);
 
         setFullscreenSystemBarsHidden(true);
         callbacks.syncOnBackPressedCallbackEnabledState();
@@ -1601,7 +1594,6 @@ class CommentsWebViewController {
 
     void clearViewReferences() {
         swipeRefreshLayout = null;
-        bottomSheet = null;
         webView = null;
         webViewStub = null;
         webViewContainer = null;
@@ -1609,7 +1601,6 @@ class CommentsWebViewController {
         webViewBackdrop = null;
         downloadButton = null;
         progressIndicator = null;
-        webViewBottomSheetCallback = null;
         customView = null;
         customViewCallback = null;
         pdfAndroidJavascriptBridge = null;
@@ -1658,9 +1649,7 @@ class CommentsWebViewController {
                 retryingFailedWebViewUrl = false;
             }
 
-            if (BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED) {
-                callbacks.syncOnBackPressedCallbackEnabledState();
-            }
+            callbacks.syncOnBackPressedCallbackEnabledState();
 
             if (clearWebViewHistoryOnNextFinish) {
                 clearWebViewHistoryOnNextFinish = false;

@@ -77,6 +77,7 @@ import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
+import java.util.Locale
 import kotlin.math.min
 
 data class CommentItemUiModel(
@@ -315,6 +316,9 @@ fun CommentItem(
     showTopLevelIndicator: Boolean,
     modifier: Modifier = Modifier,
     highlighted: Boolean = false,
+    flattenHierarchy: Boolean = false,
+    forceExpanded: Boolean = false,
+    searchTerm: String = "",
     onToggleExpanded: () -> Unit,
     onShowActions: () -> Unit,
     onReferenceLongClick: (CollectedReferenceLinks.ReferenceLink) -> Unit,
@@ -345,9 +349,11 @@ fun CommentItem(
     }
     val cardShape = RoundedCornerShape(8.dp)
     val rowShape = if (style.cardStyle) cardShape else RectangleShape
-    val showIndicator = CommentDepthIndicatorUtils.shouldShowIndicators(style.depthIndicatorMode) &&
-        (comment.depth > 0 || showTopLevelIndicator)
-    val indicatorIndex = (comment.depth + if (showTopLevelIndicator) 0 else -1)
+    val effectiveDepth = if (flattenHierarchy) 0 else comment.depth
+    val showIndicator = !flattenHierarchy &&
+        CommentDepthIndicatorUtils.shouldShowIndicators(style.depthIndicatorMode) &&
+        (effectiveDepth > 0 || showTopLevelIndicator)
+    val indicatorIndex = (effectiveDepth + if (showTopLevelIndicator) 0 else -1)
         .coerceAtLeast(0) % 7
     val indicatorColor = Color(
         ContextCompat.getColor(
@@ -390,13 +396,39 @@ fun CommentItem(
     val body = remember(bodyHtml, linkStyles, linkListener) {
         htmlAnnotatedString(bodyHtml, linkStyles, linkListener)
     }
+    val markedColor = remember(context) {
+        Color(
+            if (ThemeUtils.isDarkMode(context)) 0xfffce205.toInt() else 0xffcc7722.toInt(),
+        )
+    }
+    val displayedBody = remember(body, searchTerm, markedColor) {
+        val needle = searchTerm.trim()
+        if (needle.isEmpty()) {
+            body
+        } else {
+            buildAnnotatedString {
+                append(body)
+                val haystack = body.text.lowercase(Locale.ROOT)
+                val normalizedNeedle = needle.lowercase(Locale.ROOT)
+                var start = haystack.indexOf(normalizedNeedle)
+                while (start >= 0) {
+                    addStyle(
+                        SpanStyle(color = markedColor, fontWeight = FontWeight.Bold),
+                        start,
+                        start + normalizedNeedle.length,
+                    )
+                    start = haystack.indexOf(normalizedNeedle, start + normalizedNeedle.length)
+                }
+            }
+        }
+    }
     val hiddenPreview = remember(comment.text) {
         Html.fromHtml(
             comment.text.orEmpty().take(120),
             Html.FROM_HTML_MODE_LEGACY,
         ).toString().replace('\n', ' ')
     }
-    val textCollapsed = !comment.expanded && collapseParent
+    val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
     val defaultBackground = if (style.cardStyle) colors.surfaceContainerHigh else colors.background
     val highlightAlpha = if (defaultBackground.luminance() < 0.5f) 0.14f else 0.08f
     val commentBackground = if (highlighted) {
@@ -408,10 +440,10 @@ fun CommentItem(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val start = min(16.dp.value + 12.dp.value * comment.depth, maxWidth.value * 0.6f).dp
+        val start = min(16.dp.value + 12.dp.value * effectiveDepth, maxWidth.value * 0.6f).dp
         val top = if (style.cardStyle) {
-            if (comment.depth > 0 && !collapseParent) 2.dp else 0.dp
-        } else if (comment.depth > 0 && !collapseParent) {
+            if (effectiveDepth > 0 && !collapseParent) 2.dp else 0.dp
+        } else if (effectiveDepth > 0 && !collapseParent) {
             10.dp
         } else {
             6.dp
@@ -499,7 +531,7 @@ fun CommentItem(
                         },
                     ) {
                         Text(
-                            text = body,
+                            text = displayedBody,
                             color = colors.storyNormal,
                             fontFamily = typography.family,
                             fontSize = bodySize.sp,

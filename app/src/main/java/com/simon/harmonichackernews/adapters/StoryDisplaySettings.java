@@ -3,9 +3,9 @@ package com.simon.harmonichackernews.adapters;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.simon.harmonichackernews.data.Story;
+import com.simon.harmonichackernews.ui.stories.StoryListState;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 
 import java.util.List;
@@ -133,38 +133,12 @@ public class StoryDisplaySettings {
     }
 
     @NonNull
-    public StoryRecyclerViewAdapter createAdapter(@NonNull List<Story> stories,
-                                                  @Nullable String submissionsUserName,
-                                                  int wantedType) {
-        return new StoryRecyclerViewAdapter(stories,
-                showPoints,
-                compactPoints,
-                includeTopLevelDomain,
-                showCommentsCount,
-                compactView,
-                thumbnails,
-                previewImageMode,
-                borderlessLargePreviewImage,
-                showSummary,
-                storyTextSize,
-                showIndex,
-                compactHeader,
-                leftAlign,
-                cardStyle,
-                tintCardUsingPreview,
-                paletteTintMode,
-                grayOutClicked,
-                hotness,
-                faviconProvider,
-                font,
-                commentTextSize,
-                submissionsUserName,
-                wantedType
-        );
+    public StoryListState createListState(@NonNull List<Story> stories, int wantedType) {
+        return new StoryListState(stories, this, wantedType);
     }
 
     @NonNull
-    public UpdateResult applyToAdapter(@NonNull StoryRecyclerViewAdapter adapter) {
+    public UpdateResult applyToState(@NonNull StoryListState adapter) {
         boolean itemsChanged = false;
         boolean requiresRebuild = false;
         boolean previewImageModeChanged = false;
@@ -275,8 +249,8 @@ public class StoryDisplaySettings {
         );
     }
 
-    public static void copyAdapterSettings(@NonNull StoryRecyclerViewAdapter sourceAdapter,
-                                           @NonNull StoryRecyclerViewAdapter targetAdapter) {
+    public static void copyStateSettings(@NonNull StoryListState sourceAdapter,
+                                         @NonNull StoryListState targetAdapter) {
         targetAdapter.showPoints = sourceAdapter.showPoints;
         targetAdapter.compactPoints = sourceAdapter.compactPoints;
         targetAdapter.includeTopLevelDomain = sourceAdapter.includeTopLevelDomain;

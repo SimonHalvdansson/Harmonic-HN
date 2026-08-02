@@ -4,13 +4,18 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
-import android.view.LayoutInflater
-import android.view.inputmethod.EditorInfo
-import android.widget.ImageView
-import android.widget.TextView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -23,17 +28,21 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.preference.PreferenceManager
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import com.simon.harmonichackernews.BuildConfig
-import com.simon.harmonichackernews.CoulombGasActivity
+import com.simon.harmonichackernews.ui.debug.CoulombGasContract
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.Utils
 
 private const val OpenWithoutCacheStoryId = 49089500
@@ -232,7 +241,7 @@ fun DebugSettingsScreen(
                             versionTapCount = 0
                             lastVersionTapTime = 0L
                             context.startActivity(
-                                Intent(context, CoulombGasActivity::class.java),
+                                CoulombGasContract.createIntent(context),
                             )
                         }
                     },
@@ -281,50 +290,88 @@ private fun DebugHnIdSetting(
     onOpenId: (Int) -> Unit,
 ) {
     val currentOnOpenId by rememberUpdatedState(onOpenId)
-    AndroidView(
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var value by rememberSaveable { mutableStateOf("") }
+    var error by rememberSaveable { mutableStateOf<String?>(null) }
+
+    fun openId() {
+        val trimmed = value.trim()
+        val id = trimmed.toIntOrNull()
+        error = when {
+            trimmed.isEmpty() || trimmed.any { !it.isDigit() } -> "Enter a numeric HN ID"
+            id == null -> "HN ID is too large"
+            id <= 0 -> "Enter a positive HN ID"
+            else -> null
+        }
+        if (error == null && id != null) {
+            keyboardController?.hide()
+            currentOnOpenId(id)
+        }
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HarmonicTheme.colors.settingsSegment),
-        factory = { context ->
-            val root = LayoutInflater.from(context)
-                .inflate(R.layout.preference_debug_hn_id, null, false)
-            root.findViewById<TextView>(android.R.id.title).text = "Open HN item by ID"
-            root.findViewById<ImageView>(android.R.id.icon)
-                .setImageResource(R.drawable.ic_open_in_new)
-
-            val inputLayout =
-                root.findViewById<TextInputLayout>(R.id.debug_hn_id_input_layout)
-            val input = root.findViewById<TextInputEditText>(R.id.debug_hn_id_input)
-            val openButton = root.findViewById<MaterialButton>(R.id.debug_open_hn_id)
-
-            fun openId() {
-                val value = input.text?.toString()?.trim().orEmpty()
-                val id = value.toIntOrNull()
-                inputLayout.error = when {
-                    value.isEmpty() || value.any { !it.isDigit() } ->
-                        "Enter a numeric HN ID"
-
-                    id == null -> "HN ID is too large"
-                    id <= 0 -> "Enter a positive HN ID"
-                    else -> null
-                }
-                if (inputLayout.error == null && id != null) {
-                    currentOnOpenId(id)
-                }
+            .background(HarmonicTheme.colors.settingsSegment)
+            .padding(start = 24.dp, top = 12.dp, end = 16.dp, bottom = 12.dp),
+    ) {
+        Row {
+            Icon(
+                painterResource(R.drawable.ic_open_in_new),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = HarmonicTheme.colors.drawable,
+            )
+            Spacer(Modifier.width(32.dp))
+            Text(
+                "Open HN item by ID",
+                color = HarmonicTheme.colors.textPrimary,
+                fontFamily = ProductSansFontFamily,
+                fontSize = 16.sp,
+                lineHeight = 20.sp,
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 56.dp, top = 12.dp),
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = {
+                    value = it.filter(Char::isDigit)
+                    error = null
+                },
+                modifier = Modifier.weight(1f),
+                label = { Text("HN ID", fontFamily = ProductSansFontFamily) },
+                singleLine = true,
+                isError = error != null,
+                supportingText = error?.let { message ->
+                    { Text(message, fontFamily = ProductSansFontFamily) }
+                },
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontFamily = ProductSansFontFamily,
+                    fontSize = 16.sp,
+                ),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Go,
+                ),
+                keyboardActions = KeyboardActions(onGo = { openId() }),
+            )
+            Spacer(Modifier.width(8.dp))
+            OutlinedIconButton(
+                onClick = { openId() },
+                modifier = Modifier.size(56.dp),
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_chevron_right),
+                    contentDescription = "Open HN ID",
+                    tint = HarmonicTheme.colors.drawable,
+                )
             }
-
-            input.setOnEditorActionListener { _, actionId, _ ->
-                if (actionId == EditorInfo.IME_ACTION_GO) {
-                    openId()
-                    true
-                } else {
-                    false
-                }
-            }
-            openButton.setOnClickListener { openId() }
-            root
-        },
-    )
+        }
+    }
 }
 
 @Composable

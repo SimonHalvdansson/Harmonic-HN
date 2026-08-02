@@ -366,7 +366,6 @@ private suspend fun addBookmarkToFavorites(
         activity,
         id,
         true,
-        activity.supportFragmentManager,
         object : UserActions.ActionCallback {
             override fun onItemTitleLoaded(itemId: Int, loadedTitle: String?) {
                 if (itemId == id && !loadedTitle.isNullOrBlank()) {

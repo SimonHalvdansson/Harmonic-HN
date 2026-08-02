@@ -13,7 +13,6 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.util.Pair;
-import androidx.fragment.app.FragmentManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.simon.harmonichackernews.data.Story;
@@ -111,16 +110,16 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
         "launches"
 };
 
-    public static void voteWithDir(Context ctx, int id, FragmentManager fm, String dir) {
-        voteWithDir(ctx, id, fm, dir, null, null);
+    public static void voteWithDir(Context ctx, int id, String dir) {
+        voteWithDir(ctx, id, dir, null, null);
     }
 
-    private static void voteWithDir(Context ctx, int id, FragmentManager fm, String dir, String successMessage) {
-        voteWithDir(ctx, id, fm, dir, successMessage, null);
+    private static void voteWithDir(Context ctx, int id, String dir, String successMessage) {
+        voteWithDir(ctx, id, dir, successMessage, null);
     }
 
-    private static void voteWithDir(Context ctx, int id, FragmentManager fm, String dir, String successMessage, ActionCallback cb) {
-        UserActions.vote(String.valueOf(id), dir, ctx, fm, new UserActions.ActionCallback() {
+    private static void voteWithDir(Context ctx, int id, String dir, String successMessage, ActionCallback cb) {
+        UserActions.vote(String.valueOf(id), dir, ctx, new UserActions.ActionCallback() {
             @Override
             public void onSuccess(Response response) {
                 if (cb == null) {
@@ -160,36 +159,36 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
         });
     }
 
-    public static void upvote(Context ctx, int id, FragmentManager fm) {
-        voteWithDir(ctx, id, fm, VOTE_DIR_UP);
+    public static void upvote(Context ctx, int id) {
+        voteWithDir(ctx, id, VOTE_DIR_UP);
     }
 
-    public static void upvote(Context ctx, int id, FragmentManager fm, ActionCallback cb) {
-        voteWithDir(ctx, id, fm, VOTE_DIR_UP, null, cb);
+    public static void upvote(Context ctx, int id, ActionCallback cb) {
+        voteWithDir(ctx, id, VOTE_DIR_UP, null, cb);
     }
 
-    public static void votePollOption(Context ctx, int id, FragmentManager fm) {
-        voteWithDir(ctx, id, fm, VOTE_DIR_UP, "Poll vote successful");
+    public static void votePollOption(Context ctx, int id) {
+        voteWithDir(ctx, id, VOTE_DIR_UP, "Poll vote successful");
     }
 
-    public static void downvote(Context ctx, int id, FragmentManager fm) {
-        voteWithDir(ctx, id, fm, VOTE_DIR_DOWN);
+    public static void downvote(Context ctx, int id) {
+        voteWithDir(ctx, id, VOTE_DIR_DOWN);
     }
 
-    public static void downvote(Context ctx, int id, FragmentManager fm, ActionCallback cb) {
-        voteWithDir(ctx, id, fm, VOTE_DIR_DOWN, null, cb);
+    public static void downvote(Context ctx, int id, ActionCallback cb) {
+        voteWithDir(ctx, id, VOTE_DIR_DOWN, null, cb);
     }
 
-    public static void unvote(Context ctx, int id, FragmentManager fm) {
-        voteWithDir(ctx, id, fm, VOTE_DIR_UN);
+    public static void unvote(Context ctx, int id) {
+        voteWithDir(ctx, id, VOTE_DIR_UN);
     }
 
-    public static void unvote(Context ctx, int id, FragmentManager fm, ActionCallback cb) {
-        voteWithDir(ctx, id, fm, VOTE_DIR_UN, null, cb);
+    public static void unvote(Context ctx, int id, ActionCallback cb) {
+        voteWithDir(ctx, id, VOTE_DIR_UN, null, cb);
     }
 
-    public static void setFavorite(Context ctx, int id, boolean favorite, FragmentManager fm) {
-        setFavorite(ctx, id, favorite, fm, new ActionCallback() {
+    public static void setFavorite(Context ctx, int id, boolean favorite) {
+        setFavorite(ctx, id, favorite, new ActionCallback() {
             @Override
             public void onSuccess(Response response) {
                 Toast.makeText(ctx, favorite ? "Added favorite" : "Removed favorite", Toast.LENGTH_SHORT).show();
@@ -203,9 +202,9 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
         });
     }
 
-    public static void setFavorite(Context ctx, int id, boolean favorite, FragmentManager fm, ActionCallback cb) {
+    public static void setFavorite(Context ctx, int id, boolean favorite, ActionCallback cb) {
         Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
-        if (AccountUtils.handlePossibleError(account, fm, ctx)) {
+        if (AccountUtils.handlePossibleError(account, true, ctx)) {
             return;
         }
 
@@ -452,7 +451,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
                                           boolean loginRequired,
                                           UserItemListCallback cb) {
         Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
-        if (AccountUtils.handlePossibleError(account, null, ctx)) {
+        if (AccountUtils.handlePossibleError(account, false, ctx)) {
             cb.onFailure("Login required", "Save your Hacker News login before syncing " + listName + ".");
             return;
         }
@@ -856,11 +855,11 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
     }
 
 
-    public static void vote(String itemId, String direction, Context ctx, FragmentManager fm, ActionCallback cb) {
+    public static void vote(String itemId, String direction, Context ctx, ActionCallback cb) {
         Utils.log("Attempting to vote");
         Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
 
-        if (AccountUtils.handlePossibleError(account, fm, ctx)) {
+        if (AccountUtils.handlePossibleError(account, true, ctx)) {
             return;
         }
 
@@ -884,7 +883,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
     public static void comment(String itemId, String text, Context ctx, ActionCallback cb) {
         Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
 
-        if (AccountUtils.handlePossibleError(account, null, ctx)) {
+        if (AccountUtils.handlePossibleError(account, false, ctx)) {
             return;
         }
 
@@ -915,7 +914,7 @@ private static final String[] HACKER_NEWS_LIST_PATHS = {
 
         // Retrieve stored account details
         Triple<String, String, Integer> account = AccountUtils.getAccountDetails(ctx);
-        if (AccountUtils.handlePossibleError(account, null, ctx)) {
+        if (AccountUtils.handlePossibleError(account, false, ctx)) {
             cb.onFailure("Couldn't read credentials", "Check your saved login.");
             return;
         }

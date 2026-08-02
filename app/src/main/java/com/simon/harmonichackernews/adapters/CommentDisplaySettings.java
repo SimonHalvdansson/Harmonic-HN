@@ -1,19 +1,11 @@
 package com.simon.harmonichackernews.adapters;
 
 import android.content.Context;
-import android.widget.LinearLayout;
-
 import androidx.annotation.NonNull;
-import androidx.fragment.app.FragmentManager;
 
-import com.simon.harmonichackernews.data.Comment;
-import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
-
-import java.util.List;
-import java.util.Objects;
 
 public class CommentDisplaySettings {
     public final boolean collapseParent;
@@ -117,139 +109,4 @@ public class CommentDisplaySettings {
         );
     }
 
-    @NonNull
-    public CommentsRecyclerViewAdapter createAdapter(boolean integratedWebview,
-                                                     LinearLayout bottomSheet,
-                                                     FragmentManager fragmentManager,
-                                                     List<Comment> comments,
-                                                     Story story,
-                                                     String username,
-                                                     CommentsRecyclerViewAdapter.RequestSummaryCallback summaryCallback) {
-        return new CommentsRecyclerViewAdapter(
-                integratedWebview,
-                bottomSheet,
-                fragmentManager,
-                comments,
-                story,
-                username,
-                this,
-                summaryCallback
-        );
-    }
-
-    @NonNull
-    public UpdateResult applyToAdapter(@NonNull CommentsRecyclerViewAdapter adapter) {
-        boolean updateHeader = false;
-        boolean updateComments = false;
-        boolean themeChanged = false;
-
-        if (adapter.collapseParent != collapseParent) {
-            adapter.collapseParent = collapseParent;
-            updateComments = true;
-        }
-        if (adapter.showThumbnail != showThumbnail) {
-            adapter.showThumbnail = showThumbnail;
-            updateHeader = true;
-        }
-        if (adapter.canProvideSummary != canProvideSummary) {
-            adapter.canProvideSummary = canProvideSummary;
-            updateHeader = true;
-        }
-        if (adapter.showHeaderPreviewImage != showHeaderPreviewImage) {
-            adapter.showHeaderPreviewImage = showHeaderPreviewImage;
-            updateHeader = true;
-        }
-        if (adapter.tintHeader != tintHeader) {
-            adapter.tintHeader = tintHeader;
-            updateHeader = true;
-        }
-        if (!Objects.equals(adapter.paletteTintMode, paletteTintMode)) {
-            adapter.paletteTintMode = paletteTintMode;
-            updateHeader = true;
-        }
-        if (Float.compare(adapter.preferredTextSize, preferredTextSize) != 0) {
-            adapter.preferredTextSize = preferredTextSize;
-            adapter.invalidateTypography();
-            updateHeader = true;
-            updateComments = true;
-        }
-        if (!Objects.equals(adapter.commentDepthIndicatorMode, commentDepthIndicatorMode)) {
-            adapter.commentDepthIndicatorMode = commentDepthIndicatorMode;
-            updateComments = true;
-        }
-        if (adapter.showNavigationBar != showNavigationBar) {
-            adapter.showNavigationBar = showNavigationBar;
-            updateHeader = true;
-        }
-        if (!Objects.equals(adapter.font, font)) {
-            adapter.font = font;
-            adapter.invalidateTypography();
-            updateHeader = true;
-            updateComments = true;
-        }
-        if (adapter.showInvert != showInvert) {
-            adapter.showInvert = showInvert;
-            updateHeader = true;
-        }
-        if (adapter.showTopLevelDepthIndicator != showTopLevelDepthIndicator) {
-            adapter.showTopLevelDepthIndicator = showTopLevelDepthIndicator;
-            updateComments = true;
-        }
-        if (!Objects.equals(adapter.theme, theme)) {
-            adapter.theme = theme;
-            updateHeader = true;
-            updateComments = true;
-            themeChanged = true;
-        }
-        if (!Objects.equals(adapter.faviconProvider, faviconProvider)) {
-            adapter.faviconProvider = faviconProvider;
-            updateHeader = true;
-            updateComments = true;
-        }
-        if (adapter.swapLongPressTap != swapLongPressTap) {
-            adapter.swapLongPressTap = swapLongPressTap;
-        }
-        if (adapter.cardStyle != cardStyle) {
-            adapter.cardStyle = cardStyle;
-            updateComments = true;
-        }
-        if (adapter.cardBorder != cardBorder) {
-            adapter.cardBorder = cardBorder;
-            updateComments = true;
-        }
-        if (adapter.showDividers != showDividers) {
-            adapter.showDividers = showDividers;
-            updateComments = true;
-        }
-        if (adapter.highlightCommentMeta != highlightCommentMeta) {
-            adapter.highlightCommentMeta = highlightCommentMeta;
-            updateComments = true;
-        }
-        if (adapter.collectReferenceLinks != collectReferenceLinks) {
-            adapter.collectReferenceLinks = collectReferenceLinks;
-            updateHeader = true;
-            updateComments = true;
-        }
-        if (adapter.hasAccountDetails != hasAccountDetails) {
-            adapter.hasAccountDetails = hasAccountDetails;
-            updateHeader = true;
-        }
-
-        if (updateComments) {
-            adapter.invalidateCommentViewStyle();
-        }
-        return new UpdateResult(updateHeader, updateComments, themeChanged);
-    }
-
-    public static class UpdateResult {
-        public final boolean updateHeader;
-        public final boolean updateComments;
-        public final boolean themeChanged;
-
-        private UpdateResult(boolean updateHeader, boolean updateComments, boolean themeChanged) {
-            this.updateHeader = updateHeader;
-            this.updateComments = updateComments;
-            this.themeChanged = themeChanged;
-        }
-    }
 }

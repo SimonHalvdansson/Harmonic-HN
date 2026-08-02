@@ -1,12 +1,8 @@
 package com.simon.harmonichackernews.ui.comments
 
 import android.annotation.SuppressLint
-import android.graphics.Canvas
 import android.graphics.drawable.Drawable
 import android.text.Html
-import android.view.View
-import android.view.ViewGroup
-import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -28,6 +24,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -53,6 +50,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -63,8 +61,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -82,17 +83,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -106,6 +105,7 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.style.TextDecoration
@@ -113,9 +113,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
-import androidx.fragment.app.Fragment
-import androidx.core.graphics.withTranslation
 import coil.compose.AsyncImage
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
@@ -138,19 +137,19 @@ import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlin.math.ceil
-import kotlin.math.floor
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
  * Compose state bridge for [com.simon.harmonichackernews.CommentsFragment]. Networking, cache
  * parsing and the WebView lifecycle intentionally remain in the fragment during this incremental
  * migration. The visible comments surface is a Compose tree layered into the existing bottom-sheet
- * host; immutable list snapshots turn legacy adapter notifications into normal Compose updates.
+ * host; immutable list snapshots turn controller updates into normal Compose state changes.
  */
 class CommentsComposeController private constructor(
     private val activity: AppCompatActivity,
     initialStory: Story,
+    internal val initialShowWebsite: Boolean,
     internal val accountUser: String?,
     internal val listener: Listener,
 ) {
@@ -182,7 +181,7 @@ class CommentsComposeController private constructor(
         private set
     internal var readerModeEnabled by mutableStateOf(false)
         private set
-    internal var sheetSlideOffset by mutableFloatStateOf(1f)
+    internal var sheetSlideOffset by mutableFloatStateOf(if (initialShowWebsite) 0f else 1f)
         private set
     internal var topInsetPx by mutableIntStateOf(0)
         private set
@@ -220,6 +219,47 @@ class CommentsComposeController private constructor(
         private set
     internal var headerPreviewSuppressed by mutableStateOf(false)
         private set
+    internal var suppressedHeaderReferenceUrl by mutableStateOf<String?>(null)
+        private set
+    internal var searchDialogVisible by mutableStateOf(false)
+        private set
+    internal var sheetRequest by mutableStateOf<SheetRequest?>(null)
+        private set
+    internal var webViewFullscreen by mutableStateOf(false)
+        private set
+    internal var commentActionOverlay by mutableStateOf<CommentActionOverlayState?>(null)
+        private set
+    internal var commentActionDismissRequest by mutableIntStateOf(0)
+        private set
+    internal var commentActionPredictiveBackProgress by mutableFloatStateOf(0f)
+        private set
+    internal var commentActionPredictiveBackEdge by mutableIntStateOf(0)
+        private set
+    internal var commentActionPredictiveBackTouchY by mutableFloatStateOf(0f)
+        private set
+    internal var commentActionFavoriteLoadingId by mutableIntStateOf(-1)
+        private set
+    internal var commentActionVoteLoadingId by mutableIntStateOf(-1)
+        private set
+    internal var commentActionVoteLoadingAction by mutableIntStateOf(-1)
+        private set
+    internal var commentActionDownvotedIds by mutableStateOf<Set<Int>>(emptySet())
+        private set
+    internal var linkPreviewOverlay by mutableStateOf<CommentLinkPreviewOverlayState?>(null)
+        private set
+    internal var linkPreviewDismissRequest by mutableIntStateOf(0)
+        private set
+    internal var linkPreviewPredictiveBackProgress by mutableFloatStateOf(0f)
+        private set
+    internal var linkPreviewPredictiveBackEdge by mutableIntStateOf(0)
+        private set
+    internal var linkPreviewPredictiveBackTouchY by mutableFloatStateOf(0f)
+        private set
+    internal var linkPreviewPredictiveBackSettleRequest by
+        mutableStateOf<PredictiveBackSettleRequest?>(null)
+        private set
+    internal var linkPreviewVisibleUrl by mutableStateOf<String?>(null)
+        private set
 
     var firstVisibleCommentId: Int = 0
         private set
@@ -227,9 +267,7 @@ class CommentsComposeController private constructor(
         private set
 
     private var requestSerial = 0
-    private var composeView: ComposeView? = null
     private val commentBounds = mutableMapOf<Int, androidx.compose.ui.geometry.Rect>()
-    private val transitionSources = mutableSetOf<View>()
 
     fun updateContent(
         story: Story,
@@ -294,9 +332,29 @@ class CommentsComposeController private constructor(
         this.topInsetPx = topInsetPx
     }
 
+    fun requestExpandSheet() {
+        sheetRequest = SheetRequest(++requestSerial, expanded = true)
+    }
+
+    fun requestCollapseSheet() {
+        sheetRequest = SheetRequest(++requestSerial, expanded = false)
+    }
+
+    internal fun consumeSheetRequest(request: SheetRequest) {
+        if (sheetRequest == request) sheetRequest = null
+    }
+
+    fun isSheetExpanded(): Boolean = sheetSlideOffset >= 0.999f
+
+    fun isWebsiteVisible(): Boolean = integratedWebView && sheetSlideOffset <= 0.001f
+
     fun updateReaderMode(available: Boolean, enabled: Boolean) {
         readerModeAvailable = available
         readerModeEnabled = enabled
+    }
+
+    fun updateWebViewFullscreen(fullscreen: Boolean) {
+        webViewFullscreen = fullscreen
     }
 
     fun navigateNext(topLevelOnly: Boolean, scaleLongScrollSpeed: Boolean) {
@@ -366,6 +424,113 @@ class CommentsComposeController private constructor(
         )
     }
 
+    fun showCommentSearch() {
+        searchDialogVisible = true
+    }
+
+    fun showCommentActions(comment: Comment) {
+        requestStopScroll()
+        commentActionDismissRequest = 0
+        commentActionPredictiveBackProgress = 0f
+        commentActionOverlay = CommentActionOverlayState(
+            comment = comment,
+            sourceBounds = commentBounds[comment.id],
+        )
+        suppressedCommentIds = suppressedCommentIds + comment.id
+        listener.onCommentActionOverlayVisibilityChanged(true)
+    }
+
+    fun restoreCommentActions(comment: Comment) {
+        commentActionDismissRequest = 0
+        commentActionPredictiveBackProgress = 0f
+        commentActionOverlay = CommentActionOverlayState(comment, sourceBounds = null)
+        suppressedCommentIds = suppressedCommentIds + comment.id
+        listener.onCommentActionOverlayVisibilityChanged(true)
+    }
+
+    fun isCommentActionOverlayShowing(): Boolean = commentActionOverlay != null
+
+    fun getVisibleCommentActionId(): Int = commentActionOverlay?.comment?.id ?: -1
+
+    fun requestDismissCommentActions() {
+        if (commentActionOverlay != null) {
+            commentActionDismissRequest++
+        }
+    }
+
+    fun updateCommentActionPredictiveBack(progress: Float, edge: Int, touchY: Float) {
+        if (commentActionOverlay == null) return
+        commentActionPredictiveBackProgress = progress.coerceIn(0f, 1f)
+        commentActionPredictiveBackEdge = edge
+        commentActionPredictiveBackTouchY = touchY
+    }
+
+    fun cancelCommentActionPredictiveBack() {
+        commentActionPredictiveBackProgress = 0f
+    }
+
+    fun isCommentActionPredictiveBackActive(): Boolean =
+        commentActionOverlay != null && commentActionPredictiveBackProgress > 0f
+
+    fun commitCommentActionPredictiveBack() {
+        commentActionPredictiveBackProgress = 0f
+        requestDismissCommentActions()
+    }
+
+    fun completeCommentActionDismiss() {
+        val commentId = commentActionOverlay?.comment?.id
+        commentActionOverlay = null
+        commentActionDismissRequest = 0
+        commentActionPredictiveBackProgress = 0f
+        if (commentId != null) {
+            suppressedCommentIds = suppressedCommentIds - commentId
+        }
+        listener.onCommentActionOverlayVisibilityChanged(false)
+    }
+
+    fun setCommentActionFavoriteLoading(commentId: Int, loading: Boolean) {
+        commentActionFavoriteLoadingId = if (loading) commentId else -1
+        contentVersion++
+    }
+
+    fun setCommentActionVoteLoading(commentId: Int, action: Int) {
+        commentActionVoteLoadingId = commentId
+        commentActionVoteLoadingAction = action
+        contentVersion++
+    }
+
+    fun isCommentActionVoteLoading(commentId: Int): Boolean =
+        commentActionVoteLoadingId == commentId
+
+    fun isCommentActionDownvoted(commentId: Int): Boolean =
+        commentId in commentActionDownvotedIds
+
+    fun finishCommentActionVote(commentId: Int, downvoted: Boolean) {
+        if (downvoted) {
+            commentActionDownvotedIds = commentActionDownvotedIds + commentId
+        } else {
+            commentActionDownvotedIds = commentActionDownvotedIds - commentId
+        }
+        if (commentActionVoteLoadingId == commentId) {
+            commentActionVoteLoadingId = -1
+            commentActionVoteLoadingAction = -1
+        }
+        contentVersion++
+    }
+
+    fun refreshCommentActionState() {
+        contentVersion++
+    }
+
+    internal fun dismissCommentSearch() {
+        searchDialogVisible = false
+    }
+
+    internal fun selectSearchResult(comment: Comment) {
+        searchDialogVisible = false
+        listener.onSearchResultSelected(comment)
+    }
+
     internal fun revealSearchResult(commentId: Int, visiblePosition: Int) {
         highlightedCommentId = commentId
         searchScrollTopTargetId = commentId.takeIf { visiblePosition > 10 && !showUpdate } ?: -1
@@ -375,7 +540,7 @@ class CommentsComposeController private constructor(
         if (highlightedCommentId == commentId) highlightedCommentId = -1
     }
 
-    internal fun clearSearchScrollTopTarget() {
+    fun clearSearchScrollTopTarget() {
         searchScrollTopTargetId = -1
     }
 
@@ -395,57 +560,153 @@ class CommentsComposeController private constructor(
         commentBounds.remove(commentId)
     }
 
-    fun createCommentTransitionSource(commentId: Int): View? =
-        commentBounds[commentId]?.let { bounds ->
-            createTransitionSource(bounds) { visible ->
-                if (!visible) {
-                    suppressedCommentIds = suppressedCommentIds + commentId
-                }
-            }
-        }
+    internal fun commentBoundsFor(commentId: Int): androidx.compose.ui.geometry.Rect? =
+        commentBounds[commentId]
 
-    internal fun createHeaderPreviewTransitionSource(
-        bounds: androidx.compose.ui.geometry.Rect,
-    ): View? = createTransitionSource(bounds) { visible ->
-        if (!visible) headerPreviewSuppressed = true
-    }
-
-    internal fun createTransitionSource(
-        bounds: androidx.compose.ui.geometry.Rect,
-        onVisibilityChanged: ((Boolean) -> Unit)? = null,
-    ): View? {
-        val source = composeView ?: return null
-        val host = activity.findViewById<View>(android.R.id.content) as? ViewGroup ?: return null
-        val hostLocation = IntArray(2)
-        host.getLocationInWindow(hostLocation)
-        val left = floor(bounds.left).toInt()
-        val top = floor(bounds.top).toInt()
-        val right = ceil(bounds.right).toInt()
-        val bottom = ceil(bounds.bottom).toInt()
-        if (right <= left || bottom <= top) return null
-
-        val proxy = ComposeCropTransitionView(
-            context = activity,
-            source = source,
-            cropLeftInWindow = left,
-            cropTopInWindow = top,
-            onVisibilityChanged = onVisibilityChanged,
+    fun showReferencePreview(
+        link: CollectedReferenceLinks.ReferenceLink,
+        sourceBounds: androidx.compose.ui.geometry.Rect?,
+        sourceCommentId: Int = -1,
+        headerReference: Boolean = false,
+    ) {
+        val url = link.url?.takeIf(String::isNotBlank) ?: return
+        showReferencePreview(
+            url = url,
+            title = firstNotBlank(link.resolvedTitle, link.label, url),
+            resolvedTitle = link.resolvedTitle,
+            sourceBounds = sourceBounds,
+            sourceCommentId = sourceCommentId,
+            headerReference = headerReference,
         )
-        host.addView(proxy, ViewGroup.LayoutParams(right - left, bottom - top))
-        proxy.x = (left - hostLocation[0]).toFloat()
-        proxy.y = (top - hostLocation[1]).toFloat()
-        transitionSources += proxy
-        return proxy
     }
 
-    fun clearTransitionSources() {
-        transitionSources.toList().forEach { source ->
-            source.visibility = View.VISIBLE
-            (source.parent as? ViewGroup)?.removeView(source)
+    @JvmOverloads
+    fun showReferencePreview(
+        url: String,
+        title: String?,
+        resolvedTitle: String? = null,
+        sourceBounds: androidx.compose.ui.geometry.Rect? = null,
+        sourceCommentId: Int = -1,
+        headerReference: Boolean = false,
+    ) {
+        if (url.isBlank()) return
+        requestStopScroll()
+        resetLinkPreviewAnimationState()
+        linkPreviewVisibleUrl = url
+        linkPreviewOverlay = CommentLinkPreviewOverlayState.Reference(
+            originalUrl = url,
+            fallbackTitle = firstNotBlank(title, url),
+            resolvedTitle = resolvedTitle,
+            sourceBounds = sourceBounds,
+            sourceCommentId = sourceCommentId.takeIf { it > 0 },
+            headerReference = headerReference,
+        )
+        if (sourceCommentId > 0) {
+            suppressedCommentIds = suppressedCommentIds + sourceCommentId
         }
-        transitionSources.clear()
-        suppressedCommentIds = emptySet()
-        headerPreviewSuppressed = false
+        if (headerReference) suppressedHeaderReferenceUrl = url
+        listener.onLinkPreviewOverlayVisibilityChanged(true)
+    }
+
+    @JvmOverloads
+    fun showImagePreview(
+        imageUrl: String,
+        description: String?,
+        sourceBounds: androidx.compose.ui.geometry.Rect? = null,
+        backgroundColor: Int,
+    ) {
+        if (imageUrl.isBlank()) return
+        requestStopScroll()
+        resetLinkPreviewAnimationState()
+        linkPreviewVisibleUrl = imageUrl
+        linkPreviewOverlay = CommentLinkPreviewOverlayState.Image(
+            imageUrl = imageUrl,
+            description = description.orEmpty(),
+            sourceBounds = sourceBounds,
+            backgroundColor = backgroundColor,
+        )
+        headerPreviewSuppressed = true
+        listener.onLinkPreviewOverlayVisibilityChanged(true)
+    }
+
+    fun isLinkPreviewOverlayShowing(): Boolean = linkPreviewOverlay != null
+
+    fun isLinkPreviewReferenceShowing(): Boolean =
+        linkPreviewOverlay is CommentLinkPreviewOverlayState.Reference
+
+    fun isLinkPreviewImageShowing(): Boolean =
+        linkPreviewOverlay is CommentLinkPreviewOverlayState.Image
+
+    fun getLinkPreviewVisibleUrl(): String? = linkPreviewVisibleUrl
+
+    fun getLinkPreviewFallbackTitle(): String? =
+        (linkPreviewOverlay as? CommentLinkPreviewOverlayState.Reference)?.fallbackTitle
+
+    internal fun updateLinkPreviewVisibleUrl(originalUrl: String, resolvedUrl: String?) {
+        val current = linkPreviewOverlay as? CommentLinkPreviewOverlayState.Reference ?: return
+        if (current.originalUrl == originalUrl && !resolvedUrl.isNullOrBlank()) {
+            linkPreviewVisibleUrl = resolvedUrl
+        }
+    }
+
+    fun requestDismissLinkPreview() {
+        if (linkPreviewOverlay == null || linkPreviewDismissRequest != 0) return
+        linkPreviewDismissRequest = ++requestSerial
+    }
+
+    fun completeLinkPreviewDismiss() {
+        val state = linkPreviewOverlay ?: return
+        when (state) {
+            is CommentLinkPreviewOverlayState.Reference -> {
+                state.sourceCommentId?.let { suppressedCommentIds = suppressedCommentIds - it }
+                if (state.headerReference) suppressedHeaderReferenceUrl = null
+            }
+            is CommentLinkPreviewOverlayState.Image -> headerPreviewSuppressed = false
+        }
+        linkPreviewOverlay = null
+        linkPreviewVisibleUrl = null
+        resetLinkPreviewAnimationState()
+        listener.onLinkPreviewOverlayVisibilityChanged(false)
+    }
+
+    fun startLinkPreviewPredictiveBack(progress: Float, edge: Int, touchY: Float) {
+        if (linkPreviewOverlay == null || linkPreviewDismissRequest != 0) return
+        linkPreviewPredictiveBackSettleRequest = null
+        linkPreviewPredictiveBackEdge = edge
+        linkPreviewPredictiveBackTouchY = touchY
+        linkPreviewPredictiveBackProgress = progress.coerceIn(0f, 1f)
+    }
+
+    fun updateLinkPreviewPredictiveBack(progress: Float, edge: Int, touchY: Float) =
+        startLinkPreviewPredictiveBack(progress, edge, touchY)
+
+    fun cancelLinkPreviewPredictiveBack() {
+        if (linkPreviewOverlay == null || linkPreviewPredictiveBackProgress <= 0f) return
+        linkPreviewPredictiveBackSettleRequest = PredictiveBackSettleRequest(
+            serial = ++requestSerial,
+            target = 0f,
+        )
+    }
+
+    fun isLinkPreviewPredictiveBackActive(): Boolean =
+        linkPreviewOverlay != null &&
+            (linkPreviewPredictiveBackProgress > 0f ||
+                linkPreviewPredictiveBackSettleRequest != null)
+
+    fun commitLinkPreviewPredictiveBack() {
+        if (linkPreviewOverlay != null) requestDismissLinkPreview()
+    }
+
+    internal fun finishLinkPreviewPredictiveBackSettle(request: PredictiveBackSettleRequest) {
+        if (linkPreviewPredictiveBackSettleRequest != request) return
+        linkPreviewPredictiveBackProgress = request.target
+        linkPreviewPredictiveBackSettleRequest = null
+    }
+
+    private fun resetLinkPreviewAnimationState() {
+        linkPreviewDismissRequest = 0
+        linkPreviewPredictiveBackProgress = 0f
+        linkPreviewPredictiveBackSettleRequest = null
     }
 
     fun requestStopScroll() {
@@ -491,21 +752,28 @@ class CommentsComposeController private constructor(
         val searchResult: Boolean,
     )
 
+    internal data class SheetRequest(
+        val serial: Int,
+        val expanded: Boolean,
+    )
+
+    internal data class PredictiveBackSettleRequest(val serial: Int, val target: Float)
+
     interface Listener {
         fun onToggleComment(comment: Comment, position: Int)
-        fun onShowCommentActions(comment: Comment, source: View)
-        fun onReferenceLongClick(
-            link: CollectedReferenceLinks.ReferenceLink,
-            source: View,
-        )
+        fun onCommentAction(comment: Comment, action: Int)
+        fun onCommentActionOverlayVisibilityChanged(showing: Boolean)
+        fun onLinkPreviewOverlayVisibilityChanged(showing: Boolean)
         fun onHeaderClick()
-        fun onHeaderPreviewLongClick(source: View)
         fun onHeaderAction(action: Int)
         fun onShareAction(action: Int)
         fun onMoreAction(action: Int)
+        fun onSearchResultSelected(comment: Comment)
         fun onSortComments(sortType: String)
         fun onSheetAction(action: Int)
         fun onCollapseSheetForWebsite()
+        fun onSheetProgressChanged(expandedFraction: Float)
+        fun onSheetSettled(expanded: Boolean)
         fun onHeaderColorChanged(color: Int)
         fun onHeaderCoverageChanged(coverage: Float)
         fun onPollOption(optionId: Int)
@@ -534,7 +802,9 @@ class CommentsComposeController private constructor(
         const val MORE_COMMENTS_BY_OP = 5
         const val MORE_OPEN_BROWSER = 6
         const val MORE_DISABLE_ADBLOCK = 7
-        const val MORE_ARCHIVE = 8
+        const val MORE_ARCHIVE_ORG = 8
+        const val MORE_ARCHIVE_IS = 9
+        const val MORE_ARCHIVE_TODAY = 10
 
         const val SHEET_REFRESH = 0
         const val SHEET_EXPAND = 1
@@ -542,135 +812,133 @@ class CommentsComposeController private constructor(
         const val SHEET_READER = 3
         const val SHEET_INVERT = 4
 
+        const val COMMENT_ACTION_USER = 0
+        const val COMMENT_ACTION_SHARE = 1
+        const val COMMENT_ACTION_COPY = 2
+        const val COMMENT_ACTION_BOOKMARK = 4
+        const val COMMENT_ACTION_FAVORITE = 5
+        const val COMMENT_ACTION_UPVOTE = 6
+        const val COMMENT_ACTION_UNVOTE = 7
+        const val COMMENT_ACTION_DOWNVOTE = 8
+        const val COMMENT_ACTION_REPLY = 9
+
         @JvmStatic
-        fun install(
-            fragment: Fragment,
-            contentHost: FrameLayout,
+        fun create(
+            activity: AppCompatActivity,
             story: Story,
+            showWebsite: Boolean,
             accountUser: String?,
             listener: Listener,
-        ): CommentsComposeController {
-            val activity = fragment.requireActivity() as AppCompatActivity
-            val controller = CommentsComposeController(
-                activity = activity,
-                initialStory = story,
-                accountUser = accountUser,
-                listener = listener,
-            )
-            val composeView = ComposeView(activity).apply {
-                id = View.generateViewId()
-                setViewCompositionStrategy(
-                    ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
-                )
-                setContent {
-                    HarmonicTheme {
-                        CommentsScreen(controller)
-                    }
-                }
-            }
-            controller.composeView = composeView
-            val boundedHost = CommentsComposeHost(activity).apply {
-                addView(
-                    composeView,
-                    FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                    ),
-                )
-            }
-            contentHost.addView(
-                boundedHost,
-                FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                ),
-            )
-            return controller
-        }
-
-        @JvmStatic
-        fun installEmpty(fragment: Fragment, contentHost: ViewGroup) {
-            val context = fragment.requireContext()
-            contentHost.removeAllViews()
-            val composeView = ComposeView(context).apply {
-                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-                setContent {
-                    HarmonicTheme { EmptyCommentsScreen() }
-                }
-            }
-            contentHost.addView(
-                CommentsComposeHost(context).apply {
-                    addView(
-                        composeView,
-                        FrameLayout.LayoutParams(
-                            FrameLayout.LayoutParams.MATCH_PARENT,
-                            FrameLayout.LayoutParams.MATCH_PARENT,
-                        ),
-                    )
-                },
-                ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                ),
-            )
-        }
-    }
-}
-
-/** Keeps Compose bounded during speculative weight and BottomSheet measure passes. */
-private class CommentsComposeHost(context: android.content.Context) : FrameLayout(context) {
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val displayMetrics = resources.displayMetrics
-        super.onMeasure(
-            boundedSpec(widthMeasureSpec, displayMetrics.widthPixels),
-            boundedSpec(heightMeasureSpec, displayMetrics.heightPixels),
+        ): CommentsComposeController = CommentsComposeController(
+            activity = activity,
+            initialStory = story,
+            initialShowWebsite = showWebsite,
+            accountUser = accountUser,
+            listener = listener,
         )
-    }
 
-    private fun boundedSpec(measureSpec: Int, displaySize: Int): Int {
-        val mode = MeasureSpec.getMode(measureSpec)
-        val size = MeasureSpec.getSize(measureSpec)
-        val safeDisplaySize = displaySize.coerceAtLeast(1)
-        return if (mode == MeasureSpec.UNSPECIFIED || size > safeDisplaySize * 2) {
-            MeasureSpec.makeMeasureSpec(safeDisplaySize, MeasureSpec.EXACTLY)
-        } else {
-            measureSpec
-        }
     }
 }
 
-@SuppressLint("ViewConstructor")
-private class ComposeCropTransitionView(
-    context: android.content.Context,
-    private val source: View,
-    private val cropLeftInWindow: Int,
-    private val cropTopInWindow: Int,
-    private val onVisibilityChanged: ((Boolean) -> Unit)?,
-) : View(context) {
-    private val sourceLocation = IntArray(2)
+internal data class CommentActionOverlayState(
+    val comment: Comment,
+    val sourceBounds: androidx.compose.ui.geometry.Rect?,
+)
 
-    init {
-        setWillNotDraw(false)
-        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
-    }
+internal sealed interface CommentLinkPreviewOverlayState {
+    val sourceBounds: androidx.compose.ui.geometry.Rect?
 
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        source.getLocationInWindow(sourceLocation)
-        canvas.withTranslation(
-            (sourceLocation[0] - cropLeftInWindow).toFloat(),
-            (sourceLocation[1] - cropTopInWindow).toFloat(),
-        ) {
-            source.draw(this)
+    data class Reference(
+        val originalUrl: String,
+        val fallbackTitle: String,
+        val resolvedTitle: String?,
+        override val sourceBounds: androidx.compose.ui.geometry.Rect?,
+        val sourceCommentId: Int?,
+        val headerReference: Boolean,
+    ) : CommentLinkPreviewOverlayState
+
+    data class Image(
+        val imageUrl: String,
+        val description: String,
+        override val sourceBounds: androidx.compose.ui.geometry.Rect?,
+        val backgroundColor: Int,
+    ) : CommentLinkPreviewOverlayState
+}
+
+private fun firstNotBlank(vararg values: String?): String =
+    values.firstOrNull { !it.isNullOrBlank() }.orEmpty()
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun CommentsScaffold(controller: CommentsComposeController) {
+    val density = LocalDensity.current
+    val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val peekHeight = navigationBottom + if (controller.displaySettings?.isTablet == true) 81.dp else 68.dp
+    val sheetState = rememberBottomSheetState(
+        initialValue = if (controller.initialShowWebsite) {
+            SheetValue.PartiallyExpanded
+        } else {
+            SheetValue.Expanded
+        },
+        enabledValues = setOf(SheetValue.PartiallyExpanded, SheetValue.Expanded),
+    )
+    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
+
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val fullHeight = maxHeight
+        val travelPx = with(density) { (fullHeight - peekHeight).toPx().coerceAtLeast(1f) }
+
+        LaunchedEffect(controller.sheetRequest) {
+            val request = controller.sheetRequest ?: return@LaunchedEffect
+            if (request.expanded) sheetState.expand() else sheetState.partialExpand()
+            controller.consumeSheetRequest(request)
         }
-    }
 
-    override fun setVisibility(visibility: Int) {
-        val changed = visibility != this.visibility
-        super.setVisibility(visibility)
-        if (changed) {
-            onVisibilityChanged?.invoke(visibility == VISIBLE)
+        LaunchedEffect(sheetState, travelPx) {
+            snapshotFlow {
+                runCatching { sheetState.requireOffset() }.getOrNull()
+            }.collect { offset ->
+                val expandedFraction = offset
+                    ?.let { 1f - (it / travelPx) }
+                    ?.coerceIn(0f, 1f)
+                    ?: if (sheetState.currentValue == SheetValue.Expanded) 1f else 0f
+                controller.updateSheet(expandedFraction, controller.topInsetPx)
+                controller.listener.onSheetProgressChanged(expandedFraction)
+            }
         }
+
+        LaunchedEffect(sheetState) {
+            snapshotFlow { sheetState.currentValue }
+                .distinctUntilChanged()
+                .collect { value ->
+                    controller.listener.onSheetSettled(value == SheetValue.Expanded)
+                }
+        }
+
+        BottomSheetScaffold(
+            modifier = Modifier.fillMaxSize(),
+            scaffoldState = scaffoldState,
+            sheetPeekHeight = peekHeight,
+            sheetMaxWidth = Dp.Unspecified,
+            sheetShape = RectangleShape,
+            sheetContainerColor = HarmonicTheme.colors.background,
+            sheetContentColor = HarmonicTheme.colors.storyNormal,
+            sheetShadowElevation = 16.dp,
+            sheetDragHandle = null,
+            sheetSwipeEnabled = controller.integratedWebView,
+            containerColor = Color.Transparent,
+            contentColor = HarmonicTheme.colors.storyNormal,
+            sheetContent = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(fullHeight),
+                ) {
+                    CommentsScreen(controller)
+                }
+            },
+            content = {},
+        )
     }
 }
 
@@ -682,7 +950,7 @@ private data class VisibleComment(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun CommentsScreen(controller: CommentsComposeController) {
+internal fun CommentsScreen(controller: CommentsComposeController) {
     val context = LocalContext.current
     val settings = controller.displaySettings
     if (settings == null) {
@@ -702,7 +970,6 @@ private fun CommentsScreen(controller: CommentsComposeController) {
     val visibleComments = remember(sourceComments, controller.contentVersion) {
         buildVisibleComments(sourceComments)
     }
-    val sourceView = LocalView.current
     val nestedScrollInterop = rememberNestedScrollInteropConnection()
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val bottomPadding = navigationBottom + if (settings.showNavigationBar) 88.dp else 16.dp
@@ -838,6 +1105,7 @@ private fun CommentsScreen(controller: CommentsComposeController) {
                 CommentsHeader(
                     controller = controller,
                     settings = settings,
+                    contentVersion = controller.contentVersion,
                 )
             }
 
@@ -885,10 +1153,7 @@ private fun CommentsScreen(controller: CommentsComposeController) {
                         .then(if (animateComments) Modifier.animateItem() else Modifier),
                     onToggleExpanded = {
                         if (settings.swapLongPressTap) {
-                            controller.listener.onShowCommentActions(
-                                item.comment,
-                                controller.createCommentTransitionSource(item.comment.id) ?: sourceView,
-                            )
+                            controller.showCommentActions(item.comment)
                         } else {
                             controller.listener.onToggleComment(item.comment, item.sourceIndex)
                         }
@@ -897,16 +1162,14 @@ private fun CommentsScreen(controller: CommentsComposeController) {
                         if (settings.swapLongPressTap) {
                             controller.listener.onToggleComment(item.comment, item.sourceIndex)
                         } else {
-                            controller.listener.onShowCommentActions(
-                                item.comment,
-                                controller.createCommentTransitionSource(item.comment.id) ?: sourceView,
-                            )
+                            controller.showCommentActions(item.comment)
                         }
                     },
                     onReferenceLongClick = { link ->
-                        controller.listener.onReferenceLongClick(
-                            link,
-                            controller.createCommentTransitionSource(item.comment.id) ?: sourceView,
+                        controller.showReferencePreview(
+                            link = link,
+                            sourceBounds = controller.commentBoundsFor(item.comment.id),
+                            sourceCommentId = item.comment.id,
                         )
                     },
                 )
@@ -994,6 +1257,19 @@ private fun CommentsScreen(controller: CommentsComposeController) {
             )
         }
     }
+
+    if (controller.searchDialogVisible) {
+        CommentsSearchDialog(
+            comments = controller.comments,
+            settings = settings,
+            storyAuthor = controller.story.by,
+            accountUser = controller.accountUser,
+            onDismiss = controller::dismissCommentSearch,
+            onCommentSelected = controller::selectSearchResult,
+        )
+    }
+
+    CommentActionOverlay(controller, settings)
 }
 
 @Composable
@@ -1122,11 +1398,23 @@ private fun findNavigationTarget(
 private fun CommentsHeader(
     controller: CommentsComposeController,
     settings: CommentDisplaySettings,
+    contentVersion: Int,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val story = controller.story
+    // Story is a mutable Java model. Network link previews, votes, summaries, and image metadata
+    // update that instance in place, so include the bridge revision in the snapshot key.
+    val story = remember(controller.story, contentVersion) { controller.story }
     val colors = HarmonicTheme.colors
+    val tintBaseColor = remember(context, settings.theme) {
+        PreviewImageTintUtils.getTintBaseColor(context)
+    }
+    val paletteTintMode = remember(context, settings.paletteTintMode) {
+        SettingsUtils.getPaletteTintConfigKey(settings.paletteTintMode)
+    }
+    val faviconTintSource = remember(story.url, settings.faviconProvider) {
+        runCatching { FaviconLoader.getFaviconUrl(story.url, settings.faviconProvider) }.getOrNull()
+    }
     val headerTypography = rememberContentTypography(
         preferredFont = settings.font,
         commentTextSize = settings.preferredTextSize,
@@ -1137,21 +1425,35 @@ private fun CommentsHeader(
         story.previewImageUrl,
         story.previewImageTintColorLoaded,
         story.previewImageTintColor,
+        story.previewImageTintBaseColor,
+        story.previewImageTintMode,
         story.faviconTintSourceUrl,
         story.faviconTintColorLoaded,
         story.faviconTintColor,
+        story.faviconTintBaseColor,
+        story.faviconTintMode,
+        tintBaseColor,
+        paletteTintMode,
+        faviconTintSource,
     ) {
         mutableStateOf<Int?>(
             when {
-                story.previewImageTintColorLoaded -> story.previewImageTintColor
-                story.faviconTintColorLoaded -> story.faviconTintColor
+                PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
+                    story,
+                    tintBaseColor,
+                    paletteTintMode,
+                ) -> story.previewImageTintColor
+                story.faviconTintColorLoaded &&
+                    story.faviconTintBaseColor == tintBaseColor &&
+                    SettingsUtils.getPaletteTintConfigKey(story.faviconTintMode) == paletteTintMode &&
+                    story.faviconTintSourceUrl == faviconTintSource -> story.faviconTintColor
                 else -> null
             },
         )
     }
     val normalBackground = colors.background
     val targetBackground = if (settings.tintHeader && !showHeaderShimmer) {
-        loadedTint?.let(::Color) ?: normalBackground
+        loadedTint?.let(::Color) ?: Color(tintBaseColor)
     } else {
         normalBackground
     }
@@ -1176,100 +1478,113 @@ private fun CommentsHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(visibleHeaderBackground),
+            .background(normalBackground),
     ) {
-        Spacer(Modifier.height(topSpacer))
-        if (controller.integratedWebView) {
-            SheetControls(
-                readerModeAvailable = controller.readerModeAvailable,
-                readerModeEnabled = controller.readerModeEnabled,
-                showInvert = settings.showInvert,
-                progress = 1f - controller.sheetSlideOffset,
-                contentAlpha = if (controller.predictiveBackActive) {
-                    1f - controller.predictiveBackProgress * 0.7f
-                } else {
-                    1f
-                },
-                onAction = controller.listener::onSheetAction,
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = sideMarginStart, end = sideMarginEnd)
-                .combinedClickable(
-                    enabled = story.isLink,
-                    onClick = controller.listener::onHeaderClick,
-                    onLongClick = null,
-                )
-                .padding(top = dimensionResource(R.dimen.comments_header_top_padding)),
+                .background(visibleHeaderBackground),
         ) {
-            AnimatedContent(
-                targetState = showHeaderShimmer,
-                modifier = Modifier.graphicsLayer(
-                    alpha = if (controller.predictiveBackActive) {
-                        controller.predictiveBackProgress * 0.7f
+            Spacer(Modifier.height(topSpacer))
+            if (controller.integratedWebView) {
+                SheetControls(
+                    readerModeAvailable = controller.readerModeAvailable,
+                    readerModeEnabled = controller.readerModeEnabled,
+                    showInvert = settings.showInvert,
+                    progress = 1f - controller.sheetSlideOffset,
+                    contentAlpha = if (controller.predictiveBackActive) {
+                        1f - controller.predictiveBackProgress * 0.7f
                     } else {
                         1f
                     },
-                ),
-                transitionSpec = {
-                    (fadeIn(tween(220, delayMillis = 40)) togetherWith fadeOut(tween(180))).using(
-                        SizeTransform(clip = false) { _, _ -> tween(260) },
+                    onAction = controller.listener::onSheetAction,
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = sideMarginStart, end = sideMarginEnd)
+                    .combinedClickable(
+                        enabled = story.isLink,
+                        onClick = controller.listener::onHeaderClick,
+                        onLongClick = null,
                     )
-                },
-                label = "comments story header reveal",
-            ) { loadingHeader ->
-                if (loadingHeader) {
-                    HeaderShimmer()
-                } else {
-                    Column(Modifier.fillMaxWidth()) {
-                        HeaderPreviewImage(
-                            story = story,
-                            visible = settings.showHeaderPreviewImage,
-                            suppressed = controller.headerPreviewSuppressed,
-                            tintBaseColor = PreviewImageTintUtils.getTintBaseColor(context),
-                            onTintLoaded = { loadedTint = it },
-                            onClick = controller.listener::onHeaderClick,
-                            onLongClick = { bounds ->
-                                controller.listener.onHeaderPreviewLongClick(
-                                    controller.createHeaderPreviewTransitionSource(bounds)
-                                        ?: controllerSourceView(context),
-                                )
-                            },
+                    .padding(top = dimensionResource(R.dimen.comments_header_top_padding)),
+            ) {
+                AnimatedContent(
+                    targetState = showHeaderShimmer,
+                    modifier = Modifier.graphicsLayer(
+                        alpha = if (controller.predictiveBackActive) {
+                            controller.predictiveBackProgress * 0.7f
+                        } else {
+                            1f
+                        },
+                    ),
+                    transitionSpec = {
+                        (fadeIn(tween(220, delayMillis = 40)) togetherWith fadeOut(tween(180))).using(
+                            SizeTransform(clip = false) { _, _ -> tween(260) },
                         )
-                        Text(
-                            text = story.pdfTitle ?: story.videoTitle ?: story.title.orEmpty(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .semantics { heading() },
-                            color = colors.storyNormal,
-                            fontFamily = headerTypography.family,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = headerTypography.commentsHeaderTitleSize.sp,
-                            style = legacyTextStyle,
-                        )
-                        HeaderLinkInfo(story = story, settings = settings)
-                        HeaderStoryBody(
-                            story = story,
-                            settings = settings,
-                            onReferenceLongClick = { link, bounds ->
-                                controller.listener.onReferenceLongClick(
-                                    link,
-                                    controller.createTransitionSource(bounds)
-                                        ?: controllerSourceView(context),
-                                )
-                            },
-                        )
-                        LinkPreviewContent(story)
-                        PollOptions(story.pollOptionArrayList, controller.listener::onPollOption)
-                        StorySummary(story, settings)
-                        HeaderMeta(story, settings)
-                        HeaderActions(controller, settings)
-                        OpFilterBanner(controller)
-                        HeaderStatus(controller)
+                    },
+                    label = "comments story header reveal",
+                ) { loadingHeader ->
+                    if (loadingHeader) {
+                        HeaderShimmer()
+                    } else {
+                        Column(Modifier.fillMaxWidth()) {
+                            HeaderPreviewImage(
+                                story = story,
+                                visible = settings.showHeaderPreviewImage,
+                                suppressed = controller.headerPreviewSuppressed,
+                                tintBaseColor = tintBaseColor,
+                                onTintLoaded = { loadedTint = it },
+                                onClick = controller.listener::onHeaderClick,
+                                onLongClick = { bounds ->
+                                    story.previewImageUrl?.takeIf(String::isNotBlank)?.let { imageUrl ->
+                                        controller.showImagePreview(
+                                            imageUrl = imageUrl,
+                                            description = if (story.title.isNullOrBlank()) {
+                                                "Story preview image"
+                                            } else {
+                                                "Preview image for ${story.title}"
+                                            },
+                                            sourceBounds = bounds,
+                                            backgroundColor = visibleHeaderBackground.toArgb(),
+                                        )
+                                    }
+                                },
+                            )
+                            Text(
+                                text = story.pdfTitle ?: story.videoTitle ?: story.title.orEmpty(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .semantics { heading() },
+                                color = colors.storyNormal,
+                                fontFamily = headerTypography.family,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = headerTypography.commentsHeaderTitleSize.sp,
+                                style = legacyTextStyle,
+                            )
+                            HeaderLinkInfo(story = story, settings = settings)
+                            HeaderStoryBody(
+                                story = story,
+                                settings = settings,
+                                suppressedReferenceUrl = controller.suppressedHeaderReferenceUrl,
+                                onReferenceLongClick = { link, bounds ->
+                                    controller.showReferencePreview(
+                                        link = link,
+                                        sourceBounds = bounds,
+                                        headerReference = true,
+                                    )
+                                },
+                            )
+                            LinkPreviewContent(story, contentVersion, settings)
+                            PollOptions(story.pollOptionArrayList, controller.listener::onPollOption)
+                            StorySummary(story, settings)
+                            HeaderMeta(story, settings)
+                            HeaderActions(controller, settings)
+                        }
                     }
                 }
             }
@@ -1289,11 +1604,10 @@ private fun CommentsHeader(
                 .height(32.dp)
                 .background(fadeBrush),
         )
+        OpFilterBanner(controller)
+        HeaderStatus(controller)
     }
 }
-
-private fun controllerSourceView(context: android.content.Context): View =
-    (context as? AppCompatActivity)?.window?.decorView ?: View(context)
 
 @Composable
 private fun SheetControls(
@@ -1317,11 +1631,12 @@ private fun SheetControls(
                 .clip(RoundedCornerShape(3.dp))
                 .background(colors.storyDisabled.copy(alpha = 0.6f)),
         )
+        val actionAlpha = progress.coerceIn(0f, 1f).let { it * it * it }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height((56f * progress).dp)
-                .graphicsLayer(alpha = progress * contentAlpha)
+                .graphicsLayer(alpha = actionAlpha * contentAlpha)
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1535,6 +1850,7 @@ private fun HeaderLinkInfo(story: Story, settings: CommentDisplaySettings) {
 private fun HeaderStoryBody(
     story: Story,
     settings: CommentDisplaySettings,
+    suppressedReferenceUrl: String?,
     onReferenceLongClick: (
         CollectedReferenceLinks.ReferenceLink,
         androidx.compose.ui.geometry.Rect,
@@ -1580,7 +1896,12 @@ private fun HeaderStoryBody(
             )
         }
         references?.links.orEmpty().forEach { link ->
-            HeaderReferenceRow(link, settings, onReferenceLongClick)
+            HeaderReferenceRow(
+                link = link,
+                settings = settings,
+                suppressed = link.url == suppressedReferenceUrl,
+                onLongClick = onReferenceLongClick,
+            )
         }
     }
 }
@@ -1589,6 +1910,7 @@ private fun HeaderStoryBody(
 private fun HeaderReferenceRow(
     link: CollectedReferenceLinks.ReferenceLink,
     settings: CommentDisplaySettings,
+    suppressed: Boolean,
     onLongClick: (
         CollectedReferenceLinks.ReferenceLink,
         androidx.compose.ui.geometry.Rect,
@@ -1604,6 +1926,7 @@ private fun HeaderReferenceRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer(alpha = if (suppressed) 0f else 1f)
             .padding(top = 4.dp)
             .defaultMinSize(minHeight = 38.dp)
             .clip(RoundedCornerShape(6.dp))
@@ -1651,16 +1974,22 @@ private fun HeaderReferenceRow(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun LinkPreviewContent(story: Story) {
-    val previewType = when {
-        story.repoInfo != null -> "github"
-        story.gitLabInfo != null -> "gitlab"
-        story.stackExchangeInfo != null -> "stackexchange"
-        story.arxivInfo != null -> "arxiv"
-        story.wikiInfo != null -> "wikipedia"
-        story.nitterInfo != null -> "nitter"
-        story.linkPreviewLoading -> "loading"
-        else -> "none"
+private fun LinkPreviewContent(
+    story: Story,
+    contentVersion: Int,
+    settings: CommentDisplaySettings,
+) {
+    val previewType = remember(story, contentVersion) {
+        when {
+            story.repoInfo != null -> "github"
+            story.gitLabInfo != null -> "gitlab"
+            story.stackExchangeInfo != null -> "stackexchange"
+            story.arxivInfo != null -> "arxiv"
+            story.wikiInfo != null -> "wikipedia"
+            story.nitterInfo != null -> "nitter"
+            story.linkPreviewLoading -> "loading"
+            else -> "none"
+        }
     }
     AnimatedVisibility(
         visible = previewType != "none",
@@ -1687,7 +2016,7 @@ private fun LinkPreviewContent(story: Story) {
                 "github" -> GitHubPreview(story)
                 "gitlab" -> GitLabPreview(story)
                 "stackexchange" -> StackExchangePreview(story)
-                "arxiv" -> ArxivPreview(story)
+                "arxiv" -> ArxivPreview(story, settings)
                 "wikipedia" -> WikipediaPreview(story)
                 "nitter" -> NitterPreview(story)
                 else -> Box(
@@ -1711,21 +2040,34 @@ private fun PreviewHeader(text: String) {
         fontFamily = ProductSansFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 13.sp,
+        lineHeight = 16.sp,
+        style = legacyTextStyle,
     )
 }
 
 @Composable
-private fun PreviewBody(text: String, bold: Boolean = false, maxLines: Int = Int.MAX_VALUE) {
+private fun PreviewBody(
+    text: String,
+    bold: Boolean = false,
+    maxLines: Int = Int.MAX_VALUE,
+    topPadding: Dp = 6.dp,
+    bottomPadding: Dp = 4.dp,
+    fontFamily: FontFamily = ProductSansFontFamily,
+    fontSize: Float = 14f,
+    lineHeight: Float = 17f,
+) {
     if (text.isBlank()) return
     Text(
         text = text,
-        modifier = Modifier.padding(top = 6.dp, bottom = 4.dp),
+        modifier = Modifier.padding(top = topPadding, bottom = bottomPadding),
         color = HarmonicTheme.colors.storyNormal,
-        fontFamily = ProductSansFontFamily,
+        fontFamily = fontFamily,
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
-        fontSize = 15.sp,
+        fontSize = fontSize.sp,
+        lineHeight = lineHeight.sp,
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
+        style = legacyTextStyle,
     )
 }
 
@@ -1764,8 +2106,10 @@ private fun PreviewInfoRow(
             color = HarmonicTheme.colors.storyNormal,
             fontFamily = ProductSansFontFamily,
             fontSize = 14.sp,
+            lineHeight = 17.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
+            style = legacyTextStyle,
         )
     }
 }
@@ -1830,8 +2174,13 @@ private fun StackExchangePreview(story: Story) {
     val info = story.stackExchangeInfo ?: return
     Column {
         PreviewHeader("Stack Exchange:")
-        PreviewBody(info.title.orEmpty(), bold = true)
-        PreviewBody(info.formatBy().orEmpty(), maxLines = 20)
+        PreviewBody(
+            text = info.title.orEmpty(),
+            bold = true,
+            fontSize = 15f,
+            lineHeight = 18f,
+        )
+        PreviewBody(info.formatBy().orEmpty(), maxLines = 20, topPadding = 0.dp)
         PreviewInfoColumns(
             left = {
                 PreviewInfoRow(R.drawable.ic_star, info.formatScore())
@@ -1848,12 +2197,25 @@ private fun StackExchangePreview(story: Story) {
 }
 
 @Composable
-private fun ArxivPreview(story: Story) {
+private fun ArxivPreview(story: Story, settings: CommentDisplaySettings) {
     val context = LocalContext.current
     val info = story.arxivInfo ?: return
+    val typography = rememberContentTypography(preferredFont = settings.font)
+    val abstractTextSize = if (SettingsUtils.sanitizeFont(settings.font) == "googlesansflexrounded") {
+        14.5f
+    } else {
+        15f
+    }
     Column {
         PreviewHeader("Abstract:")
-        PreviewBody(info.arxivAbstract.orEmpty())
+        PreviewBody(
+            text = info.arxivAbstract.orEmpty(),
+            topPadding = 0.dp,
+            bottomPadding = 0.dp,
+            fontFamily = typography.family,
+            fontSize = abstractTextSize,
+            lineHeight = 18f,
+        )
         PreviewInfoRow(R.drawable.ic_calendar_today, runCatching(info::formatDate).getOrNull())
         PreviewInfoRow(
             when (info.authors?.size ?: 0) {
@@ -1888,7 +2250,14 @@ private fun WikipediaPreview(story: Story) {
     val info = story.wikiInfo ?: return
     Column {
         PreviewHeader("Wikipedia summary:")
-        PreviewBody(Html.fromHtml(info.summary.orEmpty(), Html.FROM_HTML_MODE_LEGACY).toString(), maxLines = 40)
+        PreviewBody(
+            Html.fromHtml(info.summary.orEmpty(), Html.FROM_HTML_MODE_LEGACY).toString(),
+            maxLines = 40,
+            topPadding = 0.dp,
+            bottomPadding = 3.dp,
+            fontSize = 15f,
+            lineHeight = 18f,
+        )
     }
 }
 
@@ -1898,7 +2267,12 @@ private fun NitterPreview(story: Story) {
     val info = story.nitterInfo ?: return
     Column {
         PreviewHeader("${info.userName.orEmpty()} ${info.userTag.orEmpty()}")
-        PreviewBody(Html.fromHtml(info.text.orEmpty(), Html.FROM_HTML_MODE_LEGACY).toString())
+        PreviewBody(
+            Html.fromHtml(info.text.orEmpty(), Html.FROM_HTML_MODE_LEGACY).toString(),
+            topPadding = 0.dp,
+            fontSize = 15f,
+            lineHeight = 18f,
+        )
         if (!info.imgSrc.isNullOrBlank()) {
             Box(
                 Modifier
@@ -1936,12 +2310,30 @@ private fun NitterPreview(story: Story) {
         Row(verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f).padding(bottom = 12.dp)) {
                 Row {
-                    PreviewCompactInfo(R.drawable.ic_calendar_today, info.date)
-                    PreviewCompactInfo(R.drawable.ic_reply, info.replyCount)
+                    PreviewCompactInfo(
+                        icon = R.drawable.ic_calendar_today,
+                        text = info.date,
+                        iconWidth = 14.dp,
+                    )
+                    PreviewCompactInfo(
+                        icon = R.drawable.ic_reply,
+                        text = info.replyCount,
+                        startPadding = 1.dp,
+                        endPadding = 7.dp,
+                    )
                 }
                 Row {
-                    PreviewCompactInfo(R.drawable.ic_action_retweet, info.reposts)
-                    PreviewCompactInfo(R.drawable.ic_thumb_up, info.likes)
+                    PreviewCompactInfo(
+                        icon = R.drawable.ic_action_retweet,
+                        text = info.reposts,
+                        startPadding = 1.dp,
+                    )
+                    PreviewCompactInfo(
+                        icon = R.drawable.ic_thumb_up,
+                        text = info.likes,
+                        iconWidth = 12.dp,
+                        endPadding = 4.dp,
+                    )
                 }
             }
             Button(
@@ -1967,20 +2359,28 @@ private fun NitterPreview(story: Story) {
 }
 
 @Composable
-private fun PreviewCompactInfo(icon: Int, text: String?) {
+private fun PreviewCompactInfo(
+    icon: Int,
+    text: String?,
+    iconWidth: Dp = 15.dp,
+    startPadding: Dp = 2.dp,
+    endPadding: Dp = 8.dp,
+) {
     if (text.isNullOrBlank()) return
     Icon(
         painterResource(icon),
         contentDescription = null,
-        modifier = Modifier.size(width = 15.dp, height = 16.dp),
+        modifier = Modifier.size(width = iconWidth, height = 16.dp),
         tint = HarmonicTheme.colors.drawable,
     )
     Text(
         text,
-        modifier = Modifier.padding(start = 2.dp, end = 8.dp),
+        modifier = Modifier.padding(start = startPadding, end = endPadding),
         color = HarmonicTheme.colors.storyNormal,
         fontFamily = ProductSansFontFamily,
         fontSize = 13.sp,
+        lineHeight = 16.sp,
+        style = legacyTextStyle,
     )
 }
 
@@ -2123,6 +2523,7 @@ private fun HeaderActions(
     var shareExpanded by remember { mutableStateOf(false) }
     var moreExpanded by remember { mutableStateOf(false) }
     var sortExpanded by remember { mutableStateOf(false) }
+    var archiveExpanded by remember { mutableStateOf(false) }
     val upvoted = Utils.isUpvoted(context, story.id, story.isComment)
     val favorited = Utils.isFavorited(context, story.id)
     val bookmarked = Utils.isBookmarked(context, story.id)
@@ -2193,14 +2594,17 @@ private fun HeaderActions(
             MoreMenu(
                 expanded = moreExpanded,
                 sortExpanded = sortExpanded,
+                archiveExpanded = archiveExpanded,
                 controller = controller,
                 settings = settings,
                 bookmarksEnabled = bookmarksEnabled,
                 onDismiss = {
                     moreExpanded = false
                     sortExpanded = false
+                    archiveExpanded = false
                 },
                 onSortExpanded = { sortExpanded = true },
+                onArchiveExpanded = { archiveExpanded = true },
             )
         }
     }
@@ -2288,11 +2692,13 @@ private fun ShareMenu(
 private fun MoreMenu(
     expanded: Boolean,
     sortExpanded: Boolean,
+    archiveExpanded: Boolean,
     controller: CommentsComposeController,
     settings: CommentDisplaySettings,
     bookmarksEnabled: Boolean,
     onDismiss: () -> Unit,
     onSortExpanded: () -> Unit,
+    onArchiveExpanded: () -> Unit,
 ) {
     val story = controller.story
     val commentsCount = controller.comments.size
@@ -2346,7 +2752,19 @@ private fun MoreMenu(
         if (controller.adBlockActive) {
             action("Disable AdBlock", R.drawable.ic_block, CommentsComposeController.MORE_DISABLE_ADBLOCK)
         }
-        if (story.isLink) action("View on archive", R.drawable.ic_history, CommentsComposeController.MORE_ARCHIVE)
+        if (story.isLink) {
+            DropdownMenuItem(
+                text = { CommentsMenuText("View on archive") },
+                leadingIcon = {
+                    Icon(
+                        painterResource(R.drawable.ic_history),
+                        contentDescription = null,
+                        tint = HarmonicTheme.colors.drawable,
+                    )
+                },
+                onClick = onArchiveExpanded,
+            )
+        }
     }
     HarmonicDropdownMenu(expanded = sortExpanded, onDismiss = onDismiss) {
         val options = context.resources.getStringArray(R.array.comment_sorting)
@@ -2363,6 +2781,20 @@ private fun MoreMenu(
                 },
             )
         }
+    }
+    HarmonicDropdownMenu(expanded = archiveExpanded, onDismiss = onDismiss) {
+        @Composable fun archive(label: String, action: Int) {
+            DropdownMenuItem(
+                text = { CommentsMenuText(label) },
+                onClick = {
+                    onDismiss()
+                    controller.listener.onMoreAction(action)
+                },
+            )
+        }
+        archive("archive.org", CommentsComposeController.MORE_ARCHIVE_ORG)
+        archive("archive.is", CommentsComposeController.MORE_ARCHIVE_IS)
+        archive("archive.today", CommentsComposeController.MORE_ARCHIVE_TODAY)
     }
 }
 

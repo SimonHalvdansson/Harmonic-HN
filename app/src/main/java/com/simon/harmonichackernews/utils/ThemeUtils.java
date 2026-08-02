@@ -39,62 +39,45 @@ public class ThemeUtils {
     private static final int defaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b);
 
     public static void setupTheme(ComponentActivity activity) {
-        setupTheme(activity, false, true);
-    }
-
-    public static void setupTheme(ComponentActivity activity, boolean swipeBack) {
-        setupTheme(activity, swipeBack, true);
-    }
-
-    public static void setupTheme(ComponentActivity activity, boolean swipeBack, boolean specialFlags) {
         String theme = getPreferredTheme(activity);
         switch (theme) {
             case "material_daynight":
-                // below 30, default on comments is swipeBack so if we don't use it we need to change to a normal theme
                 if (Build.VERSION.SDK_INT < 30) {
-                    if (!swipeBack) {
-                        activity.setTheme(R.style.AppThemeMaterialDayNight);
-                    }
-                } else {
-                    // at and above 30, the default is AppTheme so if we use swipeBack we need to change
-                    if (swipeBack) {
-                        activity.setTheme(R.style.ThemeSwipeBackNoActionBarMaterialDayNight);
-                    }
+                    activity.setTheme(R.style.AppThemeMaterialDayNight);
                 }
                 break;
             case "darklight_daynight":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarDarkLightDayNight : R.style.AppThemeDarkLightDayNight);
+                activity.setTheme(R.style.AppThemeDarkLightDayNight);
                 break;
             case "amoledwhite_daynight":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarAmoledWhiteDayNight : R.style.AppThemeAmoledWhiteDayNight);
+                activity.setTheme(R.style.AppThemeAmoledWhiteDayNight);
                 break;
             case "material_dark":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarMaterialDark : R.style.AppThemeMaterialDark);
+                activity.setTheme(R.style.AppThemeMaterialDark);
                 break;
             case "amoled":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarAmoledDark : R.style.AppThemeAmoledDark);
+                activity.setTheme(R.style.AppThemeAmoledDark);
                 break;
             case "hacker":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarHacker : R.style.AppThemeHacker);
+                activity.setTheme(R.style.AppThemeHacker);
                 break;
             case "gray":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarGray : R.style.AppThemeGray);
+                activity.setTheme(R.style.AppThemeGray);
                 break;
             case "light":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarLight : R.style.AppThemeLight);
+                activity.setTheme(R.style.AppThemeLight);
                 break;
             case "hacker_news":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarHackerNews : R.style.AppThemeHackerNews);
+                activity.setTheme(R.style.AppThemeHackerNews);
                 break;
             case "material_light":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarMaterialLight : R.style.AppThemeMaterialLight);
+                activity.setTheme(R.style.AppThemeMaterialLight);
                 break;
             case "white":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBarWhite : R.style.AppThemeWhite);
+                activity.setTheme(R.style.AppThemeWhite);
                 break;
-            // needed because of comment activity where the default is AppTheme, now swipeBack
             case "dark":
-                activity.setTheme(swipeBack ? R.style.ThemeSwipeBackNoActionBar : R.style.AppTheme);
+                activity.setTheme(R.style.AppTheme);
                 break;
         }
 
@@ -103,9 +86,7 @@ public class ThemeUtils {
         insetsController.setAppearanceLightStatusBars(!isDarkMode(activity));
         insetsController.setAppearanceLightNavigationBars(!isDarkMode(activity));
 
-        if (specialFlags) {
-            WindowCompat.setDecorFitsSystemWindows(window, false);
-        }
+        WindowCompat.setDecorFitsSystemWindows(window, false);
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             // All themes have nav bar color set to transparent so on API 29+ the system will draw

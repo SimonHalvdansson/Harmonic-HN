@@ -247,18 +247,21 @@ fun StoryItem(
             loadedFaviconTintColor = calculatePreviewTint(drawable, baseTintColor, context)
         }
     }
+    val useFaviconTint = model.faviconUrl != null || model.faviconRes != R.drawable.ic_public
+    val effectiveFaviconTint = if (useFaviconTint) {
+        loadedFaviconTintColor ?: faviconResourceTintColor
+    } else {
+        null
+    }
     val usePreviewTint = style.previewImageMode != SettingsUtils.STORY_PREVIEW_IMAGE_OFF &&
         previewSource != null
     val cardBackground by androidx.compose.animation.animateColorAsState(
         targetValue = when {
             style.tintCard && usePreviewTint -> loadedPreviewTintColor
-                ?: loadedFaviconTintColor
                 ?: previewResourceTintColor
-                ?: faviconResourceTintColor
+                ?: effectiveFaviconTint
                 ?: baseTintColor
-            style.tintCard -> loadedFaviconTintColor
-                ?: faviconResourceTintColor
-                ?: baseTintColor
+            style.tintCard -> effectiveFaviconTint ?: baseTintColor
             style.cardStyle -> colors.surfaceContainerHigh
             else -> colors.background
         },
@@ -694,6 +697,9 @@ private fun StoryMeta(
         ) {
             AsyncImage(
                 model = softwareFaviconModel,
+                placeholder = painterResource(model.faviconRes),
+                fallback = painterResource(model.faviconRes),
+                error = painterResource(model.faviconRes),
                 contentDescription = null,
                 modifier = Modifier
                     .padding(end = 4.dp)

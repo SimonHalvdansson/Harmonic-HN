@@ -10,7 +10,6 @@ import android.net.Uri;
 import android.view.View;
 import android.widget.RemoteViews;
 
-import com.simon.harmonichackernews.CommentsActivity;
 import com.simon.harmonichackernews.MainActivity;
 import com.simon.harmonichackernews.R;
 import com.simon.harmonichackernews.utils.Utils;
@@ -171,8 +170,10 @@ public class StoriesWidgetProvider extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent);
 
-        Intent itemIntent = new Intent(context, CommentsActivity.class);
-        itemIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Intent itemIntent = new Intent(context, MainActivity.class);
+        itemIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent itemPendingIntent = PendingIntent.getActivity(
                 context, 1, itemIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);

@@ -279,7 +279,7 @@ public class StoriesRemoteViewsFactory implements RemoteViewsService.RemoteViews
         meta += " \u00B7 " + Utils.getTimeAgo(story.time);
         views.setTextViewText(R.id.widget_story_meta, meta);
 
-        // Fill-in intent for item click -> CommentsActivity
+        // Fill-in intent for item click -> MainActivity's Compose comments destination.
         Intent fillInIntent = new Intent();
         fillInIntent.putExtras(story.toBundle());
         fillInIntent.putExtra(CommentsFragment.EXTRA_SHOW_WEBSITE, story.isLink);

@@ -274,17 +274,6 @@ fun CommentsSettingsScreen(
                     },
                 )
                 SettingsDivider()
-                SwitchSettingRow(
-                    title = "Disable swipe back from comments",
-                    icon = R.drawable.ic_swipe,
-                    checked = prefs.getBoolean("pref_comments_disable_swipeback", true),
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean("pref_comments_disable_swipeback", it)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
                 SettingRow(
                     title = "Comment sorting",
                     summary = prefs.getString("pref_comment_sorting", "Default"),

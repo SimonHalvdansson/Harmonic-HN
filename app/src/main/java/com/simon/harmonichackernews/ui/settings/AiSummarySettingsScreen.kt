@@ -28,7 +28,6 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.AiModelCatalog
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.network.SummaryManager
-import com.simon.harmonichackernews.settings.AiSummaryModePreference
 import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.summary.local.LocalModelManager
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
@@ -39,6 +38,8 @@ private const val KeyAiBaseUrl = "pref_ai_summary_base_url"
 private const val KeyAiModel = "pref_ai_summary_model"
 private const val KeyAiSystemPrompt = "pref_ai_summary_system_prompt"
 private const val KeyAiStream = "pref_ai_summary_stream_responses"
+private const val AiModeLocal = "local"
+private const val AiModeCloud = "cloud"
 
 private const val DefaultSystemPrompt =
     "You are a helpful assistant that is an expert on summarizing articles into an " +
@@ -71,7 +72,7 @@ fun AiSummarySettingsScreen(
         AiModelCatalog.ensureInitialDefault(context)
         if (!SummaryManager.canAttemptLocalSummarization()) {
             prefs.edit()
-                .putString(KeyAiMode, AiSummaryModePreference.MODE_CLOUD)
+                .putString(KeyAiMode, AiModeCloud)
                 .apply()
         }
     }
@@ -109,7 +110,7 @@ fun AiSummarySettingsScreen(
                         }
                         if (!available) {
                             prefs.edit()
-                                .putString(KeyAiMode, AiSummaryModePreference.MODE_CLOUD)
+                                .putString(KeyAiMode, AiModeCloud)
                                 .apply()
                         }
                         localRefresh++
@@ -129,9 +130,9 @@ fun AiSummarySettingsScreen(
 
     val mode = prefs.getString(
         KeyAiMode,
-        AiSummaryModePreference.MODE_CLOUD,
-    ) ?: AiSummaryModePreference.MODE_CLOUD
-    val cloudMode = mode == AiSummaryModePreference.MODE_CLOUD
+        AiModeCloud,
+    ) ?: AiModeCloud
+    val cloudMode = mode == AiModeCloud
     val configurationComplete = if (cloudMode) {
         cloudConfigurationComplete(context)
     } else {
@@ -182,13 +183,13 @@ fun AiSummarySettingsScreen(
                     SegmentedSetting(
                         title = "Summarization mode",
                         options = listOf(
-                            AiSummaryModePreference.MODE_LOCAL to "Local",
-                            AiSummaryModePreference.MODE_CLOUD to "Cloud",
+                            AiModeLocal to "Local",
+                            AiModeCloud to "Cloud",
                         ),
                         selected = mode,
                         onSelected = { selected ->
                             if (
-                                selected == AiSummaryModePreference.MODE_LOCAL &&
+                                selected == AiModeLocal &&
                                 !localAvailable
                             ) {
                                 Toast.makeText(
@@ -203,7 +204,7 @@ fun AiSummarySettingsScreen(
                     )
 
                     AnimatedVisibility(
-                        visible = mode == AiSummaryModePreference.MODE_LOCAL,
+                        visible = mode == AiModeLocal,
                     ) {
                         LocalModelsPanel(
                             nanoAvailabilityResolved = nanoAvailabilityResolved,

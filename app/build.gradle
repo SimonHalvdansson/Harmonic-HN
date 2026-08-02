@@ -102,8 +102,16 @@ android {
             )
         }
 
+        debug {
+            applicationIdSuffix = ".compose"
+            resValue "string", "app_name", "Harmonic Compose"
+        }
+
         debugFast {
             initWith(release)
+
+            applicationIdSuffix = ".compose"
+            resValue "string", "app_name", "Harmonic Compose"
 
             signingConfig = signingConfigs.debug
 
@@ -200,9 +208,7 @@ dependencies {
 
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.browser)
-    implementation(libs.androidx.cardview)
     implementation(libs.androidx.core)
     implementation(libs.androidx.fragment)
     implementation(libs.androidx.palette)
@@ -211,9 +217,6 @@ dependencies {
     implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.activity)
-    implementation(libs.bundles.androidx.window)
-    implementation(libs.androidx.startup)
-    implementation(libs.androidx.viewpager2)
 
     implementation(libs.materialui)
 

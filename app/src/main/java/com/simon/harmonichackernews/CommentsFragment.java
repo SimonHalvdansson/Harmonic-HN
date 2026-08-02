@@ -3,28 +3,24 @@ package com.simon.harmonichackernews;
 import static androidx.webkit.WebViewFeature.isFeatureSupported;
 
 import android.content.Context;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import android.content.res.Resources;
 import android.graphics.Color;
-import android.graphics.PointF;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
+import android.text.Html;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.activity.BackEventCompat;
@@ -32,8 +28,6 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.preference.PreferenceManager;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.PopupMenu;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.graphics.Insets;
@@ -41,27 +35,17 @@ import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.LinearSmoothScroller;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.webkit.WebViewFeature;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
-import com.google.android.material.bottomsheet.BottomSheetBehavior;
-import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
-import com.google.android.material.transition.MaterialFadeThrough;
-import com.google.android.material.transition.MaterialSharedAxis;
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings;
-import com.simon.harmonichackernews.adapters.CommentsRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Comment;
 import com.simon.harmonichackernews.data.CommentsScrollProgress;
 import com.simon.harmonichackernews.data.PollOption;
 import com.simon.harmonichackernews.data.Story;
-import com.simon.harmonichackernews.databinding.FragmentCommentsBinding;
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController;
 import com.simon.harmonichackernews.network.AlgoliaFallbackManager;
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
@@ -71,7 +55,6 @@ import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.SummaryManager;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
-import com.simon.harmonichackernews.utils.CollectedReferenceLinks;
 import com.simon.harmonichackernews.utils.CommentSorter;
 import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -81,6 +64,7 @@ import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 import com.simon.harmonichackernews.utils.ViewUtils;
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController;
+import com.simon.harmonichackernews.ui.editor.ComposeEditorContract;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -97,9 +81,8 @@ import java.util.regex.Pattern;
 
 import okhttp3.Response;
 
-public class CommentsFragment extends Fragment implements CommentsRecyclerViewAdapter.CommentClickListener, CommentsRecyclerViewAdapter.RequestSummaryCallback, CommentsRecyclerViewAdapter.RetryListener, CommentNavigationController.Host {
+public class CommentsFragment extends Fragment {
     private static final String TAG = "CommentsFragment";
-    private static final Object HEADER_UPDATE_PAYLOAD = new Object();
 
     public final static String EXTRA_TITLE = "com.simon.harmonichackernews.EXTRA_TITLE";
     public final static String EXTRA_PDF_TITLE = "com.simon.harmonichackernews.EXTRA_PDF_TITLE";
@@ -134,6 +117,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public final static String EXTRA_COMMENT_MASTER_URL = "com.simon.harmonichackernews.EXTRA_COMMENT_MASTER_URL";
     public final static String EXTRA_FORWARD = "com.simon.harmonichackernews.EXTRA_FORWARD";
     public final static String EXTRA_SHOW_WEBSITE = "com.simon.harmonichackernews.EXTRA_SHOW_WEBSITE";
+    public final static String EXTRA_SCROLL_TO_COMMENT = "com.simon.harmonichackernews.EXTRA_SCROLL_TO_COMMENT";
     private final static String STATE_COMMENT_ACTION_COMMENT_ID = "com.simon.harmonichackernews.STATE_COMMENT_ACTION_COMMENT_ID";
     private final static String STATE_ADBLOCK_DISABLED_FOR_SESSION = "com.simon.harmonichackernews.STATE_ADBLOCK_DISABLED_FOR_SESSION";
     private final static String STATE_COMMENT_SORTING = "com.simon.harmonichackernews.STATE_COMMENT_SORTING";
@@ -144,17 +128,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static String STATE_PREVIEW_IMAGE_DIALOG_URL =
             "com.simon.harmonichackernews.STATE_PREVIEW_IMAGE_DIALOG_URL";
     private final static Pattern POLL_TITLE_PATTERN = Pattern.compile("\\bpoll\\b", Pattern.CASE_INSENSITIVE);
-
-    private final static int PREDICTIVE_BACK_MAX_PEEK_DP = 70;
-    private final static int MENU_COMMENT_SORT_GROUP_ID = 100;
-    private final static int MENU_COMMENT_SORT_ITEM_ID_BASE = 200;
-    private final static int MENU_ARCHIVE_SERVICE_GROUP_ID = 300;
-    private final static int MENU_ARCHIVE_ORG_ITEM_ID = 301;
-    private final static int MENU_ARCHIVE_IS_ITEM_ID = 302;
-    private final static int MENU_ARCHIVE_TODAY_ITEM_ID = 303;
-    private static final int SWIPE_REFRESH_PROGRESS_START_OFFSET_DP = -32;
-    private static final int SWIPE_REFRESH_PROGRESS_END_OFFSET_DP = -32;
-
+    // Keep WebView startup clear of the comments entrance transition. WebView process and
+    // renderer initialization can otherwise land on the same frames as the shared transition
+    // on physical devices, which makes opening a story feel much heavier than it is.
+    private static final long WEBVIEW_BACKGROUND_INITIALIZATION_DELAY_MS = 900L;
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
     private List<Comment> allComments;
@@ -162,230 +139,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final Object requestTag = new Object();
     private int commentsLoadGeneration = 0;
     @Nullable private PendingCommentsParse pendingCommentsParse;
-    private CommentsRecyclerViewAdapter adapter;
-    private FragmentCommentsBinding binding;
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private RecyclerView recyclerView;
-    private RecyclerView recyclerViewSwipe;
-    private RecyclerView recyclerViewRegular;
-    @Nullable private CommentDividerItemDecoration commentItemDecoration;
+    @Nullable private CommentsWebViewHost webViewHost;
     private int commentsContentInsetLeft;
     private int commentsContentInsetRight;
-    private LinearLayoutManager layoutManager;
-    private RecyclerView.OnScrollListener recyclerViewScrollListener;
-    private View.OnLayoutChangeListener recyclerViewLayoutChangeListener;
-    private BottomSheetBehavior.BottomSheetCallback recyclerBottomSheetCallback;
-    private boolean collapseBottomSheetAfterScrollToTop;
-    private ViewTreeObserver.OnPreDrawListener preDrawListener;
-    private RecyclerView.SmoothScroller smoothScroller;
-    private CommentNavigationController commentNavigationController;
-    private final CommentActionOverlayController commentActionOverlayController = new CommentActionOverlayController(new CommentActionOverlayController.Host() {
-        @Nullable
-        @Override
-        public Context getCommentActionContext() {
-            return CommentsFragment.this.getContext();
-        }
-
-        @NonNull
-        @Override
-        public Context requireCommentActionContext() {
-            return CommentsFragment.this.requireContext();
-        }
-
-        @NonNull
-        @Override
-        public androidx.fragment.app.FragmentManager getCommentActionActivityFragmentManager() {
-            return CommentsFragment.this.requireActivity().getSupportFragmentManager();
-        }
-
-        @NonNull
-        @Override
-        public androidx.fragment.app.FragmentManager getCommentActionParentFragmentManager() {
-            return CommentsFragment.this.getParentFragmentManager();
-        }
-
-        @Nullable
-        @Override
-        public Story getCommentActionStory() {
-            return story;
-        }
-
-        @Nullable
-        @Override
-        public String getCommentActionReplyPostTitle() {
-            return adapter != null && adapter.story != null ? adapter.story.title : null;
-        }
-
-        @Override
-        public boolean isCommentActionHostAdded() {
-            return CommentsFragment.this.isAdded();
-        }
-
-        @Override
-        public boolean shouldUseCommentActionCardStyle(Context ctx) {
-            return adapter != null
-                    ? adapter.cardStyle
-                    : SettingsUtils.shouldUseCardCommentDisplayStyle(ctx);
-        }
-
-        @Nullable
-        @Override
-        public ViewGroup getCommentActionOverlayHost() {
-            return CommentsFragment.this.getCommentActionOverlayHost();
-        }
-
-        @Nullable
-        @Override
-        public View findCommentActionSourceView(int commentId) {
-            if (composeController != null) {
-                return composeController.createCommentTransitionSource(commentId);
-            }
-            return CommentsFragment.this.findCommentView(commentId);
-        }
-
-        @Nullable
-        @Override
-        public Comment findCommentActionComment(int commentId) {
-            return CommentsFragment.this.findCommentById(commentId);
-        }
-
-        @Override
-        public void stopCommentActionListScroll() {
-            if (composeController != null) {
-                composeController.requestStopScroll();
-            }
-            if (recyclerView != null) {
-                recyclerView.stopScroll();
-            }
-        }
-
-        @Override
-        public void setCommentActionLinksDisabled(boolean disabled) {
-            if (adapter != null) {
-                adapter.disableCommentATagClick = disabled;
-            }
-        }
-
-        @Override
-        public void syncCommentActionBackState() {
-            syncOnBackPressedCallbackEnabledState();
-        }
-
-        @Override
-        public void onCommentActionOverlayRemoved() {
-            if (composeController != null) {
-                composeController.clearTransitionSources();
-            }
-            updateCommentsStatusBarAppearance();
-        }
-
-        @Override
-        public void updateCommentActionUserTags(String changedUser) {
-            updateUserTags(changedUser);
-        }
-    });
-    private final LinkSummaryOverlayController linkSummaryOverlayController =
-            new LinkSummaryOverlayController(new LinkSummaryOverlayController.Host() {
-                @Nullable
-                @Override
-                public Context getLinkSummaryContext() {
-                    return CommentsFragment.this.getContext();
-                }
-
-                @NonNull
-                @Override
-                public Context requireLinkSummaryContext() {
-                    return CommentsFragment.this.requireContext();
-                }
-
-                @Nullable
-                @Override
-                public ViewGroup getLinkSummaryOverlayHost() {
-                    return CommentsFragment.this.getCommentActionOverlayHost();
-                }
-
-                @Nullable
-                @Override
-                public View findLinkSummarySourceView(int storyId) {
-                    return null;
-                }
-
-                @Nullable
-                @Override
-                public View findLinkSummaryImageSourceView() {
-                    return adapter == null ? null : adapter.getBoundHeaderPreviewImage();
-                }
-
-                @Nullable
-                @Override
-                public Integer getLinkSummaryImageBackgroundColor() {
-                    return adapter == null ? null : adapter.getCurrentHeaderContentBackgroundColor();
-                }
-
-                @Override
-                public void setLinkSummaryImageSourceSuppressed(boolean suppressed) {
-                    if (composeController != null) {
-                        composeController.updateHeaderPreviewSuppressed(suppressed);
-                    }
-                    if (adapter != null) {
-                        adapter.setHeaderPreviewImageSuppressed(suppressed);
-                    }
-                }
-
-                @Override
-                public int resolveLinkSummarySourceColor(@Nullable View source) {
-                    if (adapter != null && adapter.isBoundHeaderView(source)) {
-                        Integer headerColor = adapter.getCurrentHeaderContentBackgroundColor();
-                        if (headerColor != null) {
-                            return headerColor;
-                        }
-                    }
-                    Context context = requireLinkSummaryContext();
-                    return ContextCompat.getColor(
-                            context,
-                            ThemeUtils.getBackgroundColorResource(context));
-                }
-
-                @Override
-                public void stopLinkSummaryListScroll() {
-                    if (composeController != null) {
-                        composeController.requestStopScroll();
-                    }
-                    if (recyclerView != null) {
-                        recyclerView.stopScroll();
-                    }
-                }
-
-                @Override
-                public void syncLinkSummaryBackState() {
-                    syncOnBackPressedCallbackEnabledState();
-                }
-
-                @Override
-                public void onLinkSummaryOverlayRemoved() {
-                    if (composeController != null) {
-                        composeController.clearTransitionSources();
-                    }
-                }
-            });
+    private int pendingCommentActionId = -1;
     @Nullable private String pendingReferenceLinkSummaryUrl;
     @Nullable private String pendingReferenceLinkSummaryTitle;
     @Nullable private String pendingPreviewImageDialogUrl;
-    private View scrollNavigation;
-    private ExtendedFloatingActionButton searchScrollTopFab;
-    private int commentsBottomInset = 0;
-    private int scrollNavigationBaseBottomMargin = 0;
-    private int searchScrollTopFabBaseBottomMargin = 0;
-    private boolean rootInsetsApplied = false;
-    private boolean recyclerInsetsApplied = false;
     private boolean uncachedStoryHeaderLoading;
     private LinearProgressIndicator progressIndicator;
-    private LinearLayout bottomSheet;
-    private View headerSpacer;
     private LinkPreviewController linkPreviewController;
     private CommentsWebViewController webViewController;
-    private boolean showNavButtons = false;
-    private boolean showCommentsScrollbar = false;
     private boolean showWebsite = false;
     private boolean integratedWebview = true;
     private boolean prefIntegratedWebview = true;
@@ -400,11 +164,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean closeWebViewOnBack = false;
     private int topInset = 0;
     private long lastLoaded = 0;
+    private boolean commentsLoaded;
+    private boolean commentsRefreshInProgress;
+    private boolean loadingFailed;
+    private boolean loadingFailedServerError;
+    private boolean showUpdate;
+    private boolean storyVoteLoading;
+    private boolean storyFavoriteLoading;
+    private boolean hasAccountDetails;
+    @Nullable private CommentDisplaySettings displaySettings;
     private OnBackPressedCallback backPressedCallback;
     private String username;
     private Story story;
     private Set<String> filteredUsers;
-    private int SCREEN_HEIGHT_IN_PIXELS = 100;
     private int scrollToCommentId = -1;
     private boolean commentsByOpFilterActive = false;
     private int originalStatusBarColor = Color.TRANSPARENT;
@@ -415,10 +187,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private boolean appliedStatusBarProtectionKnown = false;
     private boolean appliedStatusBarProtectionEnabled = false;
     private int appliedStatusBarProtectionColor = Color.TRANSPARENT;
-    private final int[] statusBarRootLocation = new int[2];
-    private final int[] statusBarHeaderLocation = new int[2];
     private String currentCommentSorting;
-    private float lastHeaderSpacerSlideOffset = Float.NaN;
     @Nullable private CommentsComposeController composeController;
 
     // Clean fallback management
@@ -447,7 +216,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return FragmentCommentsBinding.inflate(inflater, container, false).getRoot();
+        webViewHost = new CommentsWebViewHost(inflater.getContext());
+        return webViewHost.root;
     }
 
     @Override
@@ -455,8 +225,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         super.onCreate(savedInstanceState);
 
         filteredUsers = Utils.getFilteredUsers(getContext());
-
-        postponeEnterTransition();
 
         story = new Story();
 
@@ -495,50 +263,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             story.commentMasterUrl = bundle.getString(EXTRA_COMMENT_MASTER_URL);
             story.loaded = story.by != null;
 
-            if (Utils.isTablet(getResources())) {
-                int forward = bundle.getInt(EXTRA_FORWARD, 0);
-                if (forward == 0) {
-                    setExitTransition(new MaterialFadeThrough());
-                    setEnterTransition(new MaterialFadeThrough());
-                } else if (forward > 0) {
-                    setExitTransition(new MaterialSharedAxis(MaterialSharedAxis.Y, true));
-                    setEnterTransition(new MaterialSharedAxis(MaterialSharedAxis.Y, false));
-                } else {
-                    setExitTransition(new MaterialSharedAxis(MaterialSharedAxis.Y, false));
-                    setEnterTransition(new MaterialSharedAxis(MaterialSharedAxis.Y, true));
-                }
-            }
-
             showWebsite = bundle.getBoolean(EXTRA_SHOW_WEBSITE, false);
+            scrollToCommentId = bundle.getInt(EXTRA_SCROLL_TO_COMMENT, -1);
 
         } else {
             story.loaded = false;
             story.id = -1;
-            // check if url intercept
-            Intent intent = requireActivity().getIntent();
-            if (intent != null) {
-                if (Intent.ACTION_VIEW.equalsIgnoreCase(intent.getAction())) {
-                    if (!loadStoryFromHackerNewsUri(intent.getData())) {
-                        Toast.makeText(getContext(), "Unable to parse story", Toast.LENGTH_SHORT).show();
-                        requireActivity().finish();
-                    }
-                } else if (Intent.ACTION_SEND.equalsIgnoreCase(intent.getAction())) {
-                    CharSequence sharedText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
-                    Uri uri = Utils.getHackerNewsItemUriFromText(sharedText != null ? sharedText.toString() : null);
-                    if (!loadStoryFromHackerNewsUri(uri)) {
-                        Toast.makeText(getContext(), "Unable to parse story", Toast.LENGTH_SHORT).show();
-                        requireActivity().finish();
-                    }
-                } else {
-                    if (intent.getIntExtra(EXTRA_ID, -1) != -1) {
-                        story.id = intent.getIntExtra(EXTRA_ID, -1);
-                        story.title = intent.getStringExtra(EXTRA_TITLE);
-                        story.by = "";
-                        story.url = "";
-                        story.score = 0;
-                    }
-                }
-            }
         }
     }
 
@@ -546,30 +276,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         return bundle != null
                 && bundle.getInt(EXTRA_ID, -1) > 0
                 && bundle.getString(EXTRA_TITLE) != null;
-    }
-
-    private boolean loadStoryFromHackerNewsUri(Uri uri) {
-        if (!Utils.isHackerNewsItemUri(uri)) return false;
-
-        try {
-            int id = Integer.parseInt(uri.getQueryParameter("id"));
-            if (id <= 0) return false;
-
-            story.id = id;
-            story.title = null;
-            story.by = "";
-            story.url = "";
-            story.score = 0;
-
-            String fragment = uri.getFragment();
-            if (fragment != null && !fragment.isEmpty() && TextUtils.isDigitsOnly(fragment)) {
-                scrollToCommentId = Integer.parseInt(fragment);
-            }
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
     }
 
     private void loadInitialStorySummaryFromCache() {
@@ -588,15 +294,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             pendingReferenceLinkSummaryTitle = savedInstanceState.getString(STATE_REFERENCE_LINK_SUMMARY_TITLE);
             pendingPreviewImageDialogUrl = savedInstanceState.getString(STATE_PREVIEW_IMAGE_DIALOG_URL);
         }
-        binding = FragmentCommentsBinding.bind(view);
-        rootInsetsApplied = false;
-        recyclerInsetsApplied = false;
+        CommentsWebViewHost host = webViewHost;
+        if (host == null) {
+            throw new IllegalStateException("Comments WebView host was not created");
+        }
         topInset = 0;
 
         if (savedInstanceState != null) {
-            commentActionOverlayController.setPendingCommentId(savedInstanceState.getInt(
+            pendingCommentActionId = savedInstanceState.getInt(
                     STATE_COMMENT_ACTION_COMMENT_ID,
-                    CommentActionOverlayController.NO_COMMENT_ID));
+                    -1);
             adBlockDisabledForSession = savedInstanceState.getBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, false);
             currentCommentSorting = savedInstanceState.getString(STATE_COMMENT_SORTING);
         }
@@ -629,11 +336,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         boolean blockAds = SettingsUtils.shouldBlockAds(getContext()) && !adBlockDisabledForSession;
         closeWebViewOnBack = SettingsUtils.shouldCloseWebViewOnBack(getContext());
 
-        swipeRefreshLayout = binding.commentsSwipeRefresh;
-        recyclerViewRegular = binding.commentsRecyclerview;
-        recyclerViewSwipe = binding.commentsRecyclerviewSwipe;
-        bottomSheet = binding.commentsBottomSheet;
-        progressIndicator = binding.webviewProgress;
+        progressIndicator = host.progressIndicator;
         linkPreviewController = new LinkPreviewController(story, CommentsFragment.this::onLinkPreviewChanged);
         webViewController = new CommentsWebViewController(this, story, linkPreviewController, new CommentsWebViewController.Callbacks() {
             @Override
@@ -650,9 +353,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onReaderModeChanged(boolean enabled) {
-                if (adapter != null) {
-                    adapter.setReaderModeEnabled(enabled);
-                }
                 if (composeController != null && webViewController != null) {
                     composeController.updateReaderMode(
                             webViewController.isReaderModeAvailable(), enabled);
@@ -661,26 +361,26 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void onReaderModeAvailabilityChanged(boolean available) {
-                if (adapter != null) {
-                    adapter.setReaderModeAvailable(available);
-                }
                 if (composeController != null && webViewController != null) {
                     composeController.updateReaderMode(
                             available, webViewController.isReaderModeEnabled());
                 }
             }
+
+            @Override
+            public void onFullscreenChanged(boolean fullscreen) {
+                if (composeController != null) {
+                    composeController.updateWebViewFullscreen(fullscreen);
+                }
+            }
         });
-        webViewController.bindViews(binding, bottomSheet, swipeRefreshLayout, progressIndicator);
+        webViewController.bindViews(host, null, progressIndicator);
         webViewController.configure(showWebsite, integratedWebview, preloadWebview, preloadWebviewMinimumBattery, matchWebviewTheme, readerModeEnabled, readerModeDefault, blockAds);
 
         if (story.id <= 0 && story.title == null) {
             // Empty view for tablets
-            CommentsComposeController.installEmpty(this, binding.commentsEmpty);
-            binding.commentsEmpty.setVisibility(View.VISIBLE);
-            bottomSheet.setVisibility(View.GONE);
             webViewController.setContainerVisibility(View.GONE);
 
-            swipeRefreshLayout.setEnabled(false);
             return;
         }
 
@@ -688,71 +388,88 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
             @Override
             public void handleOnBackCancelled() {
-                if (linkSummaryOverlayController.isShowing()) {
-                    linkSummaryOverlayController.cancelPredictiveBack();
+                if (composeController != null
+                        && composeController.isLinkPreviewOverlayShowing()) {
+                    composeController.cancelLinkPreviewPredictiveBack();
                     return;
                 }
-                if (commentActionOverlayController.isShowing()) {
-                    commentActionOverlayController.cancelPredictiveBack();
+                if (composeController != null
+                        && composeController.isCommentActionOverlayShowing()) {
+                    composeController.cancelCommentActionPredictiveBack();
                     return;
                 }
 
                 if (willExpandBottomSheetOnBack()) {
-                    bottomSheet.setTranslationY(0f);
                     endCommentsPredictiveBackVisuals();
                 }
             }
 
             @Override
             public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
-                if (linkSummaryOverlayController.isShowing()) {
-                    linkSummaryOverlayController.updatePredictiveBack(backEvent);
+                if (composeController != null
+                        && composeController.isLinkPreviewOverlayShowing()) {
+                    composeController.updateLinkPreviewPredictiveBack(
+                            backEvent.getProgress(),
+                            backEvent.getSwipeEdge(),
+                            backEvent.getTouchY());
                     return;
                 }
-                if (commentActionOverlayController.isShowing()) {
-                    commentActionOverlayController.updatePredictiveBack(backEvent);
+                if (composeController != null
+                        && composeController.isCommentActionOverlayShowing()) {
+                    composeController.updateCommentActionPredictiveBack(
+                            backEvent.getProgress(),
+                            backEvent.getSwipeEdge(),
+                            backEvent.getTouchY());
                     return;
                 }
 
                 if (willExpandBottomSheetOnBack()) {
-                    bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
                     updateCommentsPredictiveBackVisuals(backEvent.getProgress(), false);
                 }
             }
 
             @Override
             public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
-                if (linkSummaryOverlayController.isShowing()) {
-                    linkSummaryOverlayController.startPredictiveBack(backEvent);
+                if (composeController != null
+                        && composeController.isLinkPreviewOverlayShowing()) {
+                    composeController.startLinkPreviewPredictiveBack(
+                            backEvent.getProgress(),
+                            backEvent.getSwipeEdge(),
+                            backEvent.getTouchY());
                     return;
                 }
-                if (commentActionOverlayController.isShowing()) {
-                    commentActionOverlayController.startPredictiveBack(backEvent);
+                if (composeController != null
+                        && composeController.isCommentActionOverlayShowing()) {
+                    composeController.updateCommentActionPredictiveBack(
+                            backEvent.getProgress(),
+                            backEvent.getSwipeEdge(),
+                            backEvent.getTouchY());
                     return;
                 }
 
                 if (willExpandBottomSheetOnBack()) {
-                    bottomSheet.setTranslationY(backEvent.getProgress() * -Utils.pxFromDpInt(getResources(), PREDICTIVE_BACK_MAX_PEEK_DP));
                     updateCommentsPredictiveBackVisuals(backEvent.getProgress(), true);
                 }
             }
 
             @Override
             public void handleOnBackPressed() {
-                if (linkSummaryOverlayController.isShowing()) {
-                    if (linkSummaryOverlayController.isPredictiveBackActive()) {
-                        linkSummaryOverlayController.commitPredictiveBack();
+                if (composeController != null
+                        && composeController.isLinkPreviewOverlayShowing()) {
+                    if (composeController.isLinkPreviewPredictiveBackActive()) {
+                        composeController.commitLinkPreviewPredictiveBack();
                     } else {
-                        linkSummaryOverlayController.dismiss(true);
+                        composeController.requestDismissLinkPreview();
                     }
                     return;
                 }
-                if (commentActionOverlayController.isShowing()) {
-                    if (commentActionOverlayController.isPredictiveBackActive()) {
-                        commentActionOverlayController.commitPredictiveBack();
+                if (composeController != null
+                        && composeController.isCommentActionOverlayShowing()) {
+                    if (composeController.isCommentActionPredictiveBackActive()) {
+                        composeController.commitCommentActionPredictiveBack();
                         return;
                     }
-                    commentActionOverlayController.dismiss(true);
+                    composeController.requestDismissCommentActions();
                     return;
                 }
 
@@ -761,15 +478,15 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     return;
                 }
 
-                boolean webViewVisible = BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
+                boolean webViewVisible = composeController != null
+                        && composeController.isWebsiteVisible();
                 if (webViewVisible && webViewController.isReaderModeEnabled()) {
                     webViewController.disableReaderMode();
                     return;
                 } else if (willExpandBottomSheetOnBack()) {
                     // If the webView can't go back but the back handler is enabled,
                     // it means that the closeWebViewOnBack == true
-                    BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
-                    bottomSheet.setTranslationY(0f);
+                    composeController.requestExpandSheet();
                     endCommentsPredictiveBackVisuals();
                     return;
                 } else if (webViewVisible) {
@@ -782,25 +499,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 } else {
                     requireActivity().finish();
                 }
-                if (!(requireActivity() instanceof MainActivity)
-                        && !SettingsUtils.shouldDisableCommentsSwipeBack(getContext())
-                        && !Utils.isTablet(getResources())) {
-                    requireActivity().overridePendingTransition(0, R.anim.activity_out_animation);
-                }
             }
 
             private boolean willExpandBottomSheetOnBack() {
-                boolean webViewVisible = BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
+                boolean webViewVisible = composeController != null
+                        && composeController.isWebsiteVisible();
                 return webViewVisible && webViewController.willExpandBottomSheetOnBack();
             }
         };
 
         requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), backPressedCallback);
-
-        swipeRefreshLayout.setOnRefreshListener(() -> retryComments(true));
-        ViewUtils.setUpSwipeRefreshWithStatusBarOffset(swipeRefreshLayout,
-                Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_PROGRESS_START_OFFSET_DP),
-                Utils.pxFromDpInt(getResources(), SWIPE_REFRESH_PROGRESS_END_OFFSET_DP));
 
         // This is how much the bottom sheet sticks up by default and also decides height of WebView
         // We want to watch for navigation bar height changes (tablets on Android 12L can cause
@@ -811,10 +519,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             @Override
             public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
                 Insets systemInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-                rootInsetsApplied = true;
                 topInset = systemInsets.top;
                 updateBottomSheetMargin(systemInsets.bottom);
-                updateHeaderSpacerForCurrentSheetOffset();
 
                 Insets cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
                 int contentPaddingLeft = 0;
@@ -830,11 +536,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
                 int leftPadding = Math.max(Math.max(cutoutInsets.left, systemInsets.left), contentPaddingLeft);
                 int rightPadding = Math.max(Math.max(cutoutInsets.right, systemInsets.right), contentPaddingRight);
-                bottomSheet.setPadding(0, 0, 0, 0);
                 setCommentsContentSideInsets(leftPadding, rightPadding);
-
-                View emptyView = binding.commentsEmpty;
-                emptyView.setPadding(leftPadding, emptyView.getPaddingTop(), rightPadding, emptyView.getPaddingBottom());
 
                 webViewController.setContainerPadding(0, systemInsets.top, 0, 0);
 
@@ -843,33 +545,26 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
         ViewUtils.requestApplyInsetsWhenAttached(view);
 
-        if (!showWebsite) {
-            BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
-        }
         syncOnBackPressedCallbackEnabledState();
 
         if (callback != null) {
             callback.onSwitchView(showWebsite);
         }
 
-        if (integratedWebview) {
-            swipeRefreshLayout.setEnabled(false);
-            swipeRefreshLayout.setNestedScrollingEnabled(true);
-        }
-
-        progressIndicator = binding.webviewProgress;
+        progressIndicator = host.progressIndicator;
 
         boolean shouldInitializeWebViewBeforeFirstDraw = integratedWebview && showWebsite;
-        boolean shouldInitializeWebViewAfterFirstDraw = integratedWebview && !showWebsite;
+        boolean shouldInitializeWebViewInBackground = integratedWebview
+                && !showWebsite
+                && webViewController.shouldInitializeInBackground(requireContext());
 
         if (shouldInitializeWebViewBeforeFirstDraw) {
             webViewController.initialize();
-        } else if (!integratedWebview) {
-            BottomSheetBehavior.from(bottomSheet).setDraggable(false);
         }
 
-        bottomSheet.setBackgroundColor(ContextCompat.getColor(requireContext(), ThemeUtils.getBackgroundColorResource(requireContext())));
-        webViewController.setContainerBackgroundColor(ContextCompat.getColor(requireContext(), ThemeUtils.getBackgroundColorResource(requireContext())));
+        // The pane color was already resolved from the active theme above. Reusing it avoids two
+        // cold theme/preference/resource lookups on the comments-open frame.
+        webViewController.setContainerBackgroundColor(commentsPaneStatusBarColor);
 
         comments = new ArrayList<>();
         Comment headerComment = new Comment();
@@ -878,119 +573,27 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         allComments.add(headerComment);
 
         username = AccountUtils.getAccountUsername(getContext());
-
-        scrollNavigation = binding.commentsScrollNavigation;
-        scrollNavigationBaseBottomMargin = ((FrameLayout.LayoutParams) scrollNavigation.getLayoutParams()).bottomMargin;
-        ViewCompat.setOnApplyWindowInsetsListener(scrollNavigation, new OnApplyWindowInsetsListener() {
-            @NonNull
-            @Override
-            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
-                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
-
-                FrameLayout.LayoutParams scrollParams = (FrameLayout.LayoutParams) scrollNavigation.getLayoutParams();
-                commentsBottomInset = insets.bottom;
-                scrollParams.setMargins(scrollParams.leftMargin, scrollParams.topMargin, scrollParams.rightMargin,
-                        commentsBottomInset + scrollNavigationBaseBottomMargin);
-                updateSearchScrollTopFabPosition();
-
-                return windowInsets;
-            }
-        });
-        ViewUtils.requestApplyInsetsWhenAttached(scrollNavigation);
-
-        searchScrollTopFab = binding.commentsSearchScrollTopFab;
-        FrameLayout.LayoutParams searchScrollTopFabParams = (FrameLayout.LayoutParams) searchScrollTopFab.getLayoutParams();
-        searchScrollTopFabBaseBottomMargin = searchScrollTopFabParams.bottomMargin;
-        ViewCompat.setOnApplyWindowInsetsListener(searchScrollTopFab, new OnApplyWindowInsetsListener() {
-            @NonNull
-            @Override
-            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
-                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
-
-                commentsBottomInset = insets.bottom;
-                updateSearchScrollTopFabPosition();
-
-                return windowInsets;
-            }
-        });
-        ViewUtils.requestApplyInsetsWhenAttached(searchScrollTopFab);
-        commentNavigationController = new CommentNavigationController(this);
-        searchScrollTopFab.setOnClickListener(v -> {
-            if (commentNavigationController == null) {
-                return;
-            }
-            if (SettingsUtils.shouldSmoothScrollComments(requireContext())) {
-                commentNavigationController.smoothScrollTop();
-            } else {
-                commentNavigationController.scrollTop();
-            }
-            commentNavigationController.clearSearchedCommentScrollTopTarget();
-        });
-
-        showNavButtons = SettingsUtils.shouldShowNavigationButtons(getContext());
-        showCommentsScrollbar = SettingsUtils.shouldUseCommentsScrollbar(getContext());
-        updateNavigationVisibility();
-
-        ImageButton scrollPrev = binding.commentsScrollPrevious;
-        ImageButton scrollNext = binding.commentsScrollNext;
-        ImageView scrollIcon = binding.commentsScrollIcon;
-
-        scrollIcon.setOnClickListener(null);
-
-        scrollNext.setOnClickListener(v -> navigateToNextComment());
-        scrollNext.setOnLongClickListener(v -> {
-            if (commentNavigationController == null) {
-                return true;
-            }
-            if (SettingsUtils.shouldSmoothScrollComments(getContext())) {
-                commentNavigationController.smoothScrollLast();
-            } else {
-                commentNavigationController.scrollLast();
-            }
-            return true;
-        });
-
-        scrollPrev.setOnClickListener(v -> navigateToPreviousComment());
-        scrollPrev.setOnLongClickListener(v -> {
-            if (commentNavigationController == null) {
-                return true;
-            }
-            if (SettingsUtils.shouldSmoothScrollComments(getContext())) {
-                commentNavigationController.smoothScrollTop();
-            } else {
-                commentNavigationController.scrollTop();
-            }
-            return true;
-        });
-
-        initializeRecyclerView();
+        hasAccountDetails = AccountUtils.hasAccountDetails(requireContext());
+        displaySettings = createCommentDisplaySettings();
 
         initializeComposeUi();
 
         boolean restoreScrollFromCache = !showWebsite;
 
-        preDrawListener = new ViewTreeObserver.OnPreDrawListener() {
-            @Override
-            public boolean onPreDraw() {
-                if (!rootInsetsApplied || !recyclerInsetsApplied) {
-                    ViewCompat.requestApplyInsets(view);
-                    if (recyclerView != null) {
-                        ViewCompat.requestApplyInsets(recyclerView);
-                    }
-                    return false;
-                }
-
-                view.getViewTreeObserver().removeOnPreDrawListener(this);
-                preDrawListener = null;
-                startPostponedEnterTransition();
-                view.post(() -> loadInitialStoryAndComments(restoreScrollFromCache));
-                if (shouldInitializeWebViewAfterFirstDraw && webViewController != null) {
-                    view.post(webViewController.getInitializeRunnable());
-                }
-                return true;
+        // Navigation Compose owns the screen transition. Do not hold the fragment's first frame
+        // behind the old inset-gated postponed transition; render the header skeleton immediately
+        // and start loading on the next main-loop turn.
+        view.post(() -> {
+            if (getView() != view || !isAdded()) {
+                return;
             }
-        };
-        view.getViewTreeObserver().addOnPreDrawListener(preDrawListener);
+            loadInitialStoryAndComments(restoreScrollFromCache);
+        });
+        if (shouldInitializeWebViewInBackground && webViewController != null) {
+            view.postDelayed(
+                    webViewController.getInitializeRunnable(),
+                    WEBVIEW_BACKGROUND_INITIALIZATION_DELAY_MS);
+        }
     }
 
     private void updateCommentsPredictiveBackVisuals(float progress, boolean started) {
@@ -1002,12 +605,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             }
             return;
         }
-        try {
-            setSheetButtonsContentAlpha(1f - progress * 0.7f);
-            adapter.setBoundHeaderAlpha(progress * 0.7f);
-        } catch (Exception ignored) {
-            // The header can be between bind passes while predictive back begins.
-        }
     }
 
     private void endCommentsPredictiveBackVisuals() {
@@ -1015,35 +612,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             composeController.endPredictiveBack();
             return;
         }
-        try {
-            setSheetButtonsContentAlpha(1f);
-            adapter.setBoundHeaderAlpha(0f);
-        } catch (Exception ignored) {
-            // The header can be between bind passes while predictive back ends.
-        }
     }
 
     private void initializeComposeUi() {
-        if (binding == null || bottomSheet == null || story == null) {
+        if (webViewHost == null || story == null) {
             return;
         }
-        View sheetContent = bottomSheet.getChildAt(0);
-        if (!(sheetContent instanceof FrameLayout)) {
-            throw new IllegalStateException("Comments sheet content must host Compose");
-        }
-
-        // Keep the RecyclerView laid out behind Compose as the existing state/network bridge.
-        // It is never drawn or interactive and can be removed with the remaining adapter migration.
-        recyclerViewRegular.setVisibility(View.INVISIBLE);
-        recyclerViewSwipe.setVisibility(View.INVISIBLE);
-        swipeRefreshLayout.setEnabled(false);
-        scrollNavigation.setVisibility(View.GONE);
-        searchScrollTopFab.setVisibility(View.GONE);
-
-        composeController = CommentsComposeController.install(
-                this,
-                (FrameLayout) sheetContent,
+        composeController = CommentsComposeController.create(
+                (androidx.appcompat.app.AppCompatActivity) requireActivity(),
                 story,
+                showWebsite,
                 username,
                 new CommentsComposeController.Listener() {
                     @Override
@@ -1052,15 +630,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     }
 
                     @Override
-                    public void onShowCommentActions(@NonNull Comment comment, @NonNull View source) {
-                        commentActionOverlayController.show(comment, source, true);
+                    public void onCommentAction(@NonNull Comment comment, int action) {
+                        handleComposeCommentAction(comment, action);
                     }
 
                     @Override
-                    public void onReferenceLongClick(
-                            @NonNull CollectedReferenceLinks.ReferenceLink link,
-                            @NonNull View source) {
-                        linkSummaryOverlayController.showReference(link, source, null);
+                    public void onCommentActionOverlayVisibilityChanged(boolean showing) {
+                        syncOnBackPressedCallbackEnabledState();
+                        updateCommentsStatusBarAppearance();
+                    }
+
+                    @Override
+                    public void onLinkPreviewOverlayVisibilityChanged(boolean showing) {
+                        syncOnBackPressedCallbackEnabledState();
                     }
 
                     @Override
@@ -1068,18 +650,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         if (story != null && story.isLink) {
                             Utils.launchCustomTab(getActivity(), story.url);
                         }
-                    }
-
-                    @Override
-                    public void onHeaderPreviewLongClick(@NonNull View source) {
-                        if (story == null || TextUtils.isEmpty(story.previewImageUrl)) {
-                            return;
-                        }
-                        linkSummaryOverlayController.showImage(
-                                story.previewImageUrl,
-                                TextUtils.isEmpty(story.title)
-                                        ? "Story preview image" : "Preview image for " + story.title,
-                                source);
                     }
 
                     @Override
@@ -1113,6 +683,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     }
 
                     @Override
+                    public void onSearchResultSelected(@NonNull Comment comment) {
+                        selectComposeSearchResult(comment);
+                    }
+
+                    @Override
                     public void onSortComments(@NonNull String sortType) {
                         changeCommentSorting(sortType);
                     }
@@ -1128,6 +703,32 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     }
 
                     @Override
+                    public void onSheetProgressChanged(float expandedFraction) {
+                        if (expandedFraction < 0.999f
+                                && integratedWebview
+                                && webViewController != null
+                                && !webViewController.hasWebView()) {
+                            webViewController.initializeForVisibleWebsite();
+                        }
+                        updateCommentsStatusBarAppearance();
+                    }
+
+                    @Override
+                    public void onSheetSettled(boolean expanded) {
+                        if (!expanded
+                                && integratedWebview
+                                && webViewController != null
+                                && !webViewController.hasWebView()) {
+                            webViewController.initializeForVisibleWebsite();
+                        }
+                        if (callback != null) {
+                            callback.onSwitchView(!expanded);
+                        }
+                        syncOnBackPressedCallbackEnabledState();
+                        updateCommentsStatusBarAppearance();
+                    }
+
+                    @Override
                     public void onHeaderColorChanged(int color) {
                         updateHeaderStatusBarColor(color);
                     }
@@ -1140,9 +741,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                     @Override
                     public void onPollOption(int optionId) {
-                        UserActions.votePollOption(requireContext(), optionId, getParentFragmentManager());
+                        UserActions.votePollOption(requireContext(), optionId);
                     }
                 });
+        if (requireActivity() instanceof MainActivity) {
+            ((MainActivity) requireActivity()).attachCommentsComposeController(composeController);
+        }
+        restoreLinkSummaryAfterRecreation();
         syncComposeState();
     }
 
@@ -1153,15 +758,18 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         boolean readerAvailable = webViewController != null && webViewController.isReaderModeAvailable();
         boolean readerEnabled = webViewController != null && webViewController.isReaderModeEnabled();
+        if (displaySettings == null) {
+            displaySettings = createCommentDisplaySettings();
+        }
         controller.updateContent(
                 story,
                 comments,
-                createCommentDisplaySettings(),
-                adapter != null && adapter.commentsLoaded,
-                adapter != null && adapter.commentsRefreshInProgress,
-                adapter != null && adapter.loadingFailed,
-                adapter != null && adapter.loadingFailedServerError,
-                adapter != null && adapter.showUpdate,
+                displaySettings,
+                commentsLoaded,
+                commentsRefreshInProgress,
+                loadingFailed,
+                loadingFailedServerError,
+                showUpdate,
                 commentsByOpFilterActive,
                 hasCommentsByOp(),
                 webViewController != null && webViewController.isBlockingAds(),
@@ -1172,9 +780,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 topInset,
                 commentsContentInsetLeft,
                 commentsContentInsetRight,
-                adapter != null && adapter.isStoryVoteLoading(),
-                adapter != null && adapter.isStoryFavoriteLoading());
-        controller.updateSheet(getCurrentBottomSheetSlideOffsetForHeader(), topInset);
+                storyVoteLoading,
+                storyFavoriteLoading);
     }
 
     private void requestComposeSummary() {
@@ -1234,27 +841,32 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         } else if (action == CommentsComposeController.MORE_DISABLE_ADBLOCK) {
             adBlockDisabledForSession = true;
             webViewController.disableAdBlockAndReload();
-        } else if (action == CommentsComposeController.MORE_ARCHIVE && binding != null) {
-            showArchiveServiceMenu(binding.getRoot());
+        } else if (action == CommentsComposeController.MORE_ARCHIVE_ORG) {
+            openArchiveOrg();
+        } else if (action == CommentsComposeController.MORE_ARCHIVE_IS) {
+            openArchiveIs();
+        } else if (action == CommentsComposeController.MORE_ARCHIVE_TODAY) {
+            openArchiveToday();
         }
     }
 
     private void showComposeCommentSearch() {
         resetCommentsByOpFilter();
-        CommentsSearchDialogFragment.showCommentSearchDialog(
-                getParentFragmentManager(),
-                comments,
-                comment -> {
-                    expandParentsForComment(comment);
-                    if (composeController != null) {
-                        syncComposeState();
-                        composeController.scrollToSearchResult(comment.id);
-                    }
-                });
+        if (composeController != null) {
+            composeController.showCommentSearch();
+        }
+    }
+
+    private void selectComposeSearchResult(@NonNull Comment comment) {
+        expandParentsForComment(comment);
+        if (composeController != null) {
+            syncComposeState();
+            composeController.scrollToSearchResult(comment.id);
+        }
     }
 
     private void handleComposeSheetAction(int action) {
-        if (webViewController == null || bottomSheet == null) {
+        if (webViewController == null) {
             return;
         }
         if (action == CommentsComposeController.SHEET_REFRESH) {
@@ -1264,7 +876,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 webViewController.reload();
             }
         } else if (action == CommentsComposeController.SHEET_EXPAND) {
-            BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
+            if (composeController != null) {
+                composeController.requestExpandSheet();
+            }
         } else if (action == CommentsComposeController.SHEET_BROWSER) {
             clickBrowser();
         } else if (action == CommentsComposeController.SHEET_READER) {
@@ -1274,11 +888,151 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
+    private void handleComposeCommentAction(@NonNull Comment comment, int action) {
+        if (!isAdded() || composeController == null) {
+            return;
+        }
+        Context ctx = requireContext();
+        if (action == CommentsComposeController.COMMENT_ACTION_USER) {
+            if (!TextUtils.isEmpty(comment.by)) {
+                ((MainActivity) requireActivity()).showUserDialog(
+                        comment.by,
+                        () -> updateUserTags(comment.by));
+            }
+            return;
+        }
+        if (action == CommentsComposeController.COMMENT_ACTION_SHARE) {
+            startActivity(ShareUtils.getShareIntent(comment.id));
+            return;
+        }
+        if (action == CommentsComposeController.COMMENT_ACTION_COPY) {
+            ClipboardManager clipboard = (ClipboardManager)
+                    ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(ClipData.newPlainText(
+                        "Hacker News comment",
+                        Html.fromHtml(comment.text == null ? "" : comment.text,
+                                Html.FROM_HTML_MODE_LEGACY)));
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                    Toast.makeText(ctx, "Text copied to clipboard", Toast.LENGTH_SHORT).show();
+                }
+            }
+            return;
+        }
+        if (action == CommentsComposeController.COMMENT_ACTION_BOOKMARK) {
+            if (Utils.isBookmarked(ctx, comment.id)) {
+                Utils.removeBookmark(ctx, comment.id);
+            } else {
+                Utils.addBookmark(ctx, comment.id);
+            }
+            composeController.refreshCommentActionState();
+            return;
+        }
+        if (action == CommentsComposeController.COMMENT_ACTION_REPLY) {
+            if (!AccountUtils.hasAccountDetails(ctx)) {
+                AccountUtils.showLoginPrompt(ctx);
+                return;
+            }
+            if (Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)) {
+                Toast.makeText(ctx, "This comment is too old to reply to", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Intent replyIntent = ComposeEditorContract.createIntent(ctx);
+            replyIntent.putExtra(ComposeEditorContract.EXTRA_ID, comment.id);
+            replyIntent.putExtra(ComposeEditorContract.EXTRA_PARENT_TEXT, comment.text);
+            replyIntent.putExtra(
+                    ComposeEditorContract.EXTRA_POST_TITLE,
+                    story == null ? null : story.title);
+            replyIntent.putExtra(ComposeEditorContract.EXTRA_USER, comment.by);
+            replyIntent.putExtra(
+                    ComposeEditorContract.EXTRA_TYPE,
+                    ComposeEditorContract.TYPE_COMMENT_REPLY);
+            startActivity(replyIntent);
+            return;
+        }
+
+        if (!AccountUtils.hasAccountDetails(ctx)) {
+            AccountUtils.showLoginPrompt(ctx);
+            return;
+        }
+        if (action == CommentsComposeController.COMMENT_ACTION_FAVORITE) {
+            boolean oldFavorited = Utils.isFavorited(ctx, comment.id);
+            boolean newFavorited = !oldFavorited;
+            composeController.setCommentActionFavoriteLoading(comment.id, true);
+            UserActions.setFavorite(ctx, comment.id, newFavorited,
+                    new UserActions.ActionCallback() {
+                        @Override
+                        public void onSuccess(Response response) {
+                            if (composeController != null) {
+                                composeController.setCommentActionFavoriteLoading(
+                                        comment.id, false);
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(String summary, String response) {
+                            Utils.setFavorite(ctx, comment.id, oldFavorited);
+                            if (composeController != null) {
+                                composeController.setCommentActionFavoriteLoading(
+                                        comment.id, false);
+                            }
+                            UserActions.showFailureDetailDialog(ctx, summary, response);
+                            Toast.makeText(
+                                    ctx,
+                                    "Couldn't update favorite",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    });
+            return;
+        }
+
+        if (action != CommentsComposeController.COMMENT_ACTION_UPVOTE
+                && action != CommentsComposeController.COMMENT_ACTION_DOWNVOTE
+                && action != CommentsComposeController.COMMENT_ACTION_UNVOTE) {
+            return;
+        }
+        if (composeController.isCommentActionVoteLoading(comment.id)) {
+            return;
+        }
+        boolean wasUpvoted = Utils.isUpvoted(ctx, comment.id, true);
+        boolean wasDownvoted = !wasUpvoted
+                && composeController.isCommentActionDownvoted(comment.id);
+        composeController.setCommentActionVoteLoading(comment.id, action);
+        UserActions.ActionCallback callback = new UserActions.ActionCallback() {
+            @Override
+            public void onSuccess(Response response) {
+                boolean upvoted = action == CommentsComposeController.COMMENT_ACTION_UPVOTE;
+                boolean downvoted = action == CommentsComposeController.COMMENT_ACTION_DOWNVOTE;
+                Utils.setUpvoted(ctx, comment.id, true, upvoted);
+                if (composeController != null) {
+                    composeController.finishCommentActionVote(comment.id, downvoted);
+                }
+            }
+
+            @Override
+            public void onFailure(String summary, String response) {
+                Utils.setUpvoted(ctx, comment.id, true, wasUpvoted);
+                if (composeController != null) {
+                    composeController.finishCommentActionVote(comment.id, wasDownvoted);
+                }
+            }
+        };
+        if (action == CommentsComposeController.COMMENT_ACTION_UPVOTE) {
+            UserActions.upvote(ctx, comment.id, callback);
+        } else if (action == CommentsComposeController.COMMENT_ACTION_DOWNVOTE) {
+            UserActions.downvote(ctx, comment.id, callback);
+        } else {
+            UserActions.unvote(ctx, comment.id, callback);
+        }
+    }
+
     private void syncOnBackPressedCallbackEnabledState() {
         if (backPressedCallback == null) {
             return;
         }
-        if (linkSummaryOverlayController.isShowing() || commentActionOverlayController.isShowing()) {
+        if (composeController != null
+                && (composeController.isLinkPreviewOverlayShowing()
+                || composeController.isCommentActionOverlayShowing())) {
             backPressedCallback.setEnabled(true);
             return;
         }
@@ -1286,8 +1040,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             backPressedCallback.setEnabled(true);
             return;
         }
-        boolean webViewVisible = webViewController != null && webViewController.hasWebView() &&
-                BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED;
+        boolean webViewVisible = webViewController != null
+                && webViewController.hasWebView()
+                && composeController != null
+                && composeController.isWebsiteVisible();
         if (webViewVisible && webViewController.isReaderModeEnabled()) {
             backPressedCallback.setEnabled(true);
             return;
@@ -1299,25 +1055,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    private void updateCommentsScrollbarVisibility(boolean bottomSheetFullyExpanded) {
-        if (recyclerView == null) {
-            return;
-        }
-        recyclerView.setVerticalScrollBarEnabled(showCommentsScrollbar && bottomSheetFullyExpanded);
-    }
-
     private void updateBottomSheetMargin(int navbarHeight) {
         int standardMargin = Utils.pxFromDpInt(getResources(), Utils.isTablet(getResources()) ? 81 : 68);
 
-        BottomSheetBehavior.from(bottomSheet).setPeekHeight(standardMargin + navbarHeight);
-        CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
         params.setMargins(0, 0, 0, standardMargin + navbarHeight);
 
         webViewController.setContainerLayoutParams(params);
 
-        if (adapter != null) {
-            adapter.setNavbarHeight(navbarHeight);
-        }
     }
 
     private void updateHeaderStatusBarColor(int color) {
@@ -1338,7 +1085,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void updateCommentsStatusBarAppearance(int commentsStatusBarColor) {
-        if (binding == null || getContext() == null) {
+        CommentsWebViewHost host = webViewHost;
+        if (host == null || getContext() == null) {
             return;
         }
 
@@ -1349,7 +1097,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 || appliedStatusBarProtectionEnabled != statusBarProtectionEnabled
                 || (statusBarProtectionEnabled && appliedStatusBarProtectionColor != statusBarColor)) {
             StatusBarProtectionUtils.setTopProtection(
-                    binding.listProtection,
+                    host.root,
                     statusBarProtectionEnabled,
                     statusBarColor);
             appliedStatusBarProtectionKnown = true;
@@ -1372,13 +1120,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     public boolean isBottomSheetFullyExpanded() {
-        if (bottomSheet == null) {
-            return false;
-        }
-
-        BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(bottomSheet);
-        return behavior.getState() == BottomSheetBehavior.STATE_EXPANDED
-                && behavior.calculateSlideOffset() >= 0.9999f;
+        return composeController != null && composeController.isSheetExpanded();
     }
 
     public boolean switchStoryViewIfMatching(int storyId, boolean showWebsite) {
@@ -1386,7 +1128,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 || story == null
                 || story.id != storyId
                 || !integratedWebview
-                || bottomSheet == null
                 || webViewController == null) {
             return false;
         }
@@ -1396,47 +1137,30 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 composeController.requestWebsite();
                 return true;
             }
-            if (BottomSheetBehavior.from(bottomSheet).getState()
-                    != BottomSheetBehavior.STATE_COLLAPSED) {
-                scrollCommentsToTopThenCollapseBottomSheet();
-            }
+            scrollCommentsToTopThenCollapseBottomSheet();
         } else {
-            collapseBottomSheetAfterScrollToTop = false;
-            if (recyclerView != null) {
-                recyclerView.stopScroll();
+            if (composeController != null) {
+                composeController.requestStopScroll();
+                composeController.requestExpandSheet();
             }
-            BottomSheetBehavior.from(bottomSheet).setState(
-                    BottomSheetBehavior.STATE_EXPANDED);
-            bottomSheet.setTranslationY(0f);
         }
         return true;
     }
 
     private void scrollCommentsToTopThenCollapseBottomSheet() {
-        if (recyclerView == null || layoutManager == null) {
-            collapseBottomSheetForWebsite();
-            return;
-        }
-
-        recyclerView.stopScroll();
-        if (!recyclerView.canScrollVertically(-1)) {
-            collapseBottomSheetForWebsite();
-            return;
-        }
-
-        collapseBottomSheetAfterScrollToTop = true;
-        if (commentNavigationController != null) {
-            commentNavigationController.startCommentSmoothScrollWithScaledSpeed(0);
+        if (composeController != null) {
+            composeController.requestWebsite();
         } else {
-            recyclerView.smoothScrollToPosition(0);
+            collapseBottomSheetForWebsite();
         }
     }
 
     private void collapseBottomSheetForWebsite() {
-        collapseBottomSheetAfterScrollToTop = false;
-        if (bottomSheet != null) {
-            BottomSheetBehavior.from(bottomSheet).setState(
-                    BottomSheetBehavior.STATE_COLLAPSED);
+        if (webViewController != null) {
+            webViewController.initialize();
+        }
+        if (composeController != null) {
+            composeController.requestCollapseSheet();
         }
     }
 
@@ -1449,33 +1173,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (composeController != null) {
             return composeHeaderStatusBarCoverage;
         }
-        if (recyclerView == null || topInset <= 0) {
-            return 0f;
-        }
-
-        RecyclerView.ViewHolder headerHolder = recyclerView.findViewHolderForAdapterPosition(0);
-        if (!(headerHolder instanceof CommentsRecyclerViewAdapter.HeaderViewHolder)) {
-            return 0f;
-        }
-
-        View headerView = headerHolder.itemView;
-        binding.listProtection.getLocationOnScreen(statusBarRootLocation);
-        headerView.getLocationOnScreen(statusBarHeaderLocation);
-
-        int headerTop = statusBarHeaderLocation[1] - statusBarRootLocation[1];
-        int headerBottom = headerTop + headerView.getHeight();
-        int overlap = Math.min(headerBottom, topInset) - Math.max(headerTop, 0);
-        if (overlap <= 0) {
-            return 0f;
-        }
-        return Math.min(1f, overlap / (float) topInset);
-    }
-
-    private void setSheetButtonsContentAlpha(float alpha) {
-        if (adapter == null) {
-            return;
-        }
-        adapter.setBoundSheetButtonsContentAlpha(alpha);
+        return 0f;
     }
 
     @Override
@@ -1483,292 +1181,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         super.onConfigurationChanged(newConfig);
         // this is to make sure that action buttons in header get updated padding on rotations...
         // yes it's ugly, I know
-        if (getContext() != null && Utils.isTablet(getResources()) && adapter != null) {
+        if (getContext() != null && Utils.isTablet(getResources())) {
+            displaySettings = createCommentDisplaySettings();
             notifyHeaderChanged();
         }
-        refreshCommentActionOverlayForConfiguration();
-    }
-
-    private void initializeRecyclerView() {
-        adapter = createCommentDisplaySettings().createAdapter(
-                integratedWebview,
-                bottomSheet,
-                requireActivity().getSupportFragmentManager(),
-                comments,
-                story,
-                username,
-                this);
-        adapter.lastRefreshed = lastLoaded;
-        adapter.setCommentsByOpFilterActive(commentsByOpFilterActive);
-        if (webViewController != null) {
-            adapter.setReaderModeEnabled(webViewController.isReaderModeEnabled());
-            adapter.setReaderModeAvailable(webViewController.isReaderModeAvailable());
-        }
-        adapter.setHeaderBackgroundColorListener(this::updateHeaderStatusBarColor);
-        adapter.setStoryHeaderLoading(uncachedStoryHeaderLoading);
-        adapter.setHeaderContentSideInsets(
-                commentsContentInsetLeft,
-                commentsContentInsetRight);
-        adapter.loadUserTags(requireContext());
-
-        adapter.setOnHeaderClickListener(story1 -> Utils.launchCustomTab(getActivity(), story1.url));
-
-        adapter.setOnCommentClickListener((comment, index, commentView) ->
-                toggleCommentExpanded(comment, index));
-
-        adapter.setOnCommentLongClickListener(this);
-        adapter.setOnReferenceLinkLongClickListener((url, title, view, sourceBounds, referenceLink) -> {
-            if (referenceLink != null) {
-                linkSummaryOverlayController.showReference(referenceLink, view, sourceBounds);
-            } else {
-                linkSummaryOverlayController.showReference(url, title, view, sourceBounds);
-            }
-        });
-        adapter.setOnHeaderPreviewLongClickListener((imageUrl, imageView) ->
-                linkSummaryOverlayController.showImage(
-                        imageUrl,
-                        TextUtils.isEmpty(story.title)
-                                ? "Story preview image" : "Preview image for " + story.title,
-                        imageView));
-        restoreLinkSummaryAfterRecreation();
-        adapter.setRetryListener(this);
-
-        adapter.setOnHeaderActionClickListener(new CommentsRecyclerViewAdapter.HeaderActionClickListener() {
-            @Override
-            @SuppressWarnings("deprecation")
-            public void onActionClicked(int flag, View clickedView) {
-                switch (flag) {
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_USER:
-                        clickUser();
-                        break;
-
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_COMMENT:
-                        clickComment();
-                        break;
-
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_VOTE:
-                        clickVote(clickedView);
-                        break;
-
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_FAVORITE:
-                        clickFavorite(clickedView);
-                        break;
-
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_SHARE:
-                        clickShare(clickedView);
-                        break;
-
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_MORE:
-                        clickMore(clickedView);
-                        break;
-
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_COMMENTS_REFRESH:
-                        onRetry();
-                        break;
-
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_REFRESH:
-                        if (webViewController.isShowingOfflineOrCachedPage() && webViewController.hasLastFailedUrl()) {
-                            webViewController.retryLastFailedUrl();
-                        } else {
-                            webViewController.reload();
-                        }
-                        break;
-
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_EXPAND:
-                        BottomSheetBehavior.from(bottomSheet).setState(BottomSheetBehavior.STATE_EXPANDED);
-                        break;
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_BROWSER:
-                        clickBrowser();
-                        break;
-
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_READER:
-                        webViewController.toggleReaderMode();
-                        break;
-
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_INVERT:
-                        // This whole thing should only be visible for SDK_INT larger than Q (29)
-                        // We first check the "new" version of dark mode, algorithmic darkening
-                        // this requires the isDarkMode thing to be true for the theme which we
-                        // have set
-                        webViewController.toggleDarkMode();
-
-                        break;
-
-                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_RESET_OP_FILTER:
-                        resetCommentsByOpFilter();
-                        break;
-                }
-            }
-        });
-
-        if (integratedWebview) {
-            recyclerView = recyclerViewRegular;
-        } else {
-            recyclerView = recyclerViewSwipe;
-        }
-
-        layoutManager = new LinearLayoutManager(getContext());
-
-        recyclerView.setHasFixedSize(true);
-        recyclerView.setLayoutManager(layoutManager);
-        commentItemDecoration = new CommentDividerItemDecoration(adapter);
-        commentItemDecoration.setContentSideInsets(
-                commentsContentInsetLeft,
-                commentsContentInsetRight);
-        recyclerView.addItemDecoration(commentItemDecoration);
-        recyclerViewScrollListener = new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-                updateCommentsStatusBarAppearance();
-
-                if (integratedWebview) {
-                    // Shouldn't be neccessary but once I was stuck in comments and couldn't swipe up.
-                    // This just updates a flag so there's no performance impact
-                    if (dy != 0 && callback != null) {
-                        callback.onSwitchView(false);
-                    }
-                    BottomSheetBehavior.from(bottomSheet).setDraggable(recyclerView.computeVerticalScrollOffset() == 0);
-                }
-
-                // Note: Infinite scroll removed - all comments now load at once via AlgoliaFallbackManager
-                if (commentNavigationController != null) {
-                    commentNavigationController.updateSearchedCommentScrollTopVisibility(
-                            !commentNavigationController.isSearchedCommentScrollTopPending());
-                }
-            }
-
-            @Override
-            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-                super.onScrollStateChanged(recyclerView, newState);
-                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                    if (collapseBottomSheetAfterScrollToTop) {
-                        collapseBottomSheetForWebsite();
-                    }
-                    if (commentNavigationController != null) {
-                        commentNavigationController.updateSearchedCommentScrollTopVisibility(true);
-                        commentNavigationController.highlightPendingSearchedCommentIfReady();
-                    }
-                }
-            }
-        };
-        recyclerView.addOnScrollListener(recyclerViewScrollListener);
-        recyclerViewLayoutChangeListener = (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
-                updateCommentsStatusBarAppearance();
-        recyclerView.addOnLayoutChangeListener(recyclerViewLayoutChangeListener);
-        smoothScroller = new LinearSmoothScroller(requireContext()) {
-            public PointF computeScrollVectorForPosition(int targetPosition) {
-                return layoutManager.computeScrollVectorForPosition(targetPosition);
-            }
-
-            @Override
-            protected int getVerticalSnapPreference() {
-                return LinearSmoothScroller.SNAP_TO_START;
-            }
-
-            @Override
-            protected int calculateTimeForScrolling(int dx) {
-                int speedMultiplier = commentNavigationController == null ? 1 : commentNavigationController.getSmoothScrollSpeedMultiplier();
-                return Math.max(1, super.calculateTimeForScrolling(dx) / speedMultiplier);
-            }
-
-            @Override
-            public int calculateDyToMakeVisible(View view, int snapPreference) {
-                // This is to make sure that scrollTo calls work properly
-                return super.calculateDyToMakeVisible(view, snapPreference) + topInset;
-            }
-
-        };
-
-        if (!SettingsUtils.shouldUseCommentsAnimation(getContext())) {
-            recyclerView.setItemAnimator(null);
-        }
-
-        // For some reason, I could only get the scrollbars to show up when they are enabled via
-        // xml but disabling them in java worked so this is an okay solution...
-        updateCommentsScrollbarVisibility(BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_EXPANDED);
-
-        recyclerBottomSheetCallback = new BottomSheetBehavior.BottomSheetCallback() {
-            @Override
-            public void onStateChanged(@NonNull View view, int newState) {
-                syncOnBackPressedCallbackEnabledState();
-                updateCommentsScrollbarVisibility(newState == BottomSheetBehavior.STATE_EXPANDED);
-                updateCommentsStatusBarAppearance();
-                if (composeController != null) {
-                    composeController.updateSheet(
-                            getCurrentBottomSheetSlideOffsetForHeader(), topInset);
-                }
-            }
-
-            @Override
-            public void onSlide(@NonNull View view, float slideOffset) {
-                updateCommentsScrollbarVisibility(BottomSheetBehavior.from(view).getState() == BottomSheetBehavior.STATE_EXPANDED
-                        && slideOffset >= 0.9999f);
-                // Updating padding (of recyclerview) doesn't work because it causes incorrect scroll position for recycler.
-                // Updating scroll together with padding causes severe lags and other problems.
-                // So don't update padding at all on slide and instead just change whole view position (by translationY on recyclerView)
-                // ... is something you could do but this means that the touch target of the recyclerview is not aligned with the view
-                // so we go back to the padding but instead just put a view above the recyclerview (a spacer) and change its height!
-                // ... is what you could do if you were stupid! This would mean that the recyclerView starts BELOW the status bar
-                // breaking transparent status bar. Instead, the spacing needs to be _within_ the recyclerview header!
-                // NOTE: this also needs to be set in onBindViewHolder of the adapter to stay up to date if the header item
-                // should be refreshed
-                updateHeaderSpacer(slideOffset);
-                if (composeController != null) {
-                    composeController.updateSheet(slideOffset, topInset);
-                }
-            }
-        };
-        BottomSheetBehavior.from(bottomSheet).addBottomSheetCallback(recyclerBottomSheetCallback);
-
-        ViewCompat.setOnApplyWindowInsetsListener(recyclerView, new OnApplyWindowInsetsListener() {
-            @NonNull
-            @Override
-            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat windowInsets) {
-                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-                recyclerInsetsApplied = true;
-                topInset = insets.top;
-
-                updateHeaderSpacerForCurrentSheetOffset();
-                updateCommentsStatusBarAppearance();
-
-                int paddingBottom = insets.bottom + getResources().getDimensionPixelSize(showNavButtons ? R.dimen.comments_bottom_navigation : R.dimen.comments_bottom_standard);
-                recyclerView.setPadding(recyclerView.getPaddingLeft(), recyclerView.getPaddingTop(), recyclerView.getPaddingRight(), paddingBottom);
-
-                return windowInsets;
-            }
-        });
-        ViewUtils.requestApplyInsetsWhenAttached(recyclerView);
-
-        updateHeaderSpacerForCurrentSheetOffset();
-        recyclerView.setAdapter(adapter);
-        recyclerView.post(this::updateHeaderSpacerForCurrentSheetOffset);
-        recyclerView.post(this::updateCommentsStatusBarAppearance);
-
-        recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COMMENT, 300);
-        recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COMMENT_CARD, 300);
-        recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_COLLAPSED, 600);
-        recyclerView.getRecycledViewPool().setMaxRecycledViews(CommentsRecyclerViewAdapter.TYPE_HEADER, 1);
     }
 
     private void toggleCommentExpanded(@NonNull Comment comment, int index) {
-        if (adapter == null || comments == null || recyclerView == null) {
+        if (comments == null) {
             return;
         }
         comment.expanded = !comment.expanded;
-        adapter.invalidateCommentVisibility();
-
-        int lastChildIndex = adapter.getIndexOfLastChild(index);
-        if (index == lastChildIndex && !adapter.collapseParent) {
-            syncComposeState();
-            return;
-        }
-
-        adapter.notifyItemChanged(index);
-
-        if (lastChildIndex != index || adapter.collapseParent) {
-            adapter.notifyItemRangeChanged(index + 1, lastChildIndex - index + 1);
-        }
         syncComposeState();
     }
 
@@ -1783,19 +1206,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         commentsContentInsetLeft = safeLeftInset;
         commentsContentInsetRight = safeRightInset;
 
-        if (commentItemDecoration != null
-                && commentItemDecoration.setContentSideInsets(
-                        commentsContentInsetLeft,
-                        commentsContentInsetRight)
-                && recyclerView != null) {
-            recyclerView.invalidateItemDecorations();
-        }
-
-        if (adapter != null) {
-            adapter.setHeaderContentSideInsets(
-                    commentsContentInsetLeft,
-                    commentsContentInsetRight);
-        }
         syncComposeState();
     }
 
@@ -1805,7 +1215,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 context,
                 shouldShowInvertAction(),
                 Utils.isTablet(getResources()),
-                AccountUtils.hasAccountDetails(context),
+                hasAccountDetails,
                 story != null && story.isLink && Utils.canProvideSummary(context));
     }
 
@@ -1824,37 +1234,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
 
         if (callback != null) {
-            callback.onSwitchView(BottomSheetBehavior.from(bottomSheet).getState() == BottomSheetBehavior.STATE_COLLAPSED);
+            callback.onSwitchView(composeController != null
+                    && composeController.isWebsiteVisible());
         }
 
-        if (adapter != null) {
-            Context ctx = requireContext();
-            boolean updateHeader = false;
-            boolean updateComments = false;
-
-            if (adapter.reloadUserTagsIfChanged(ctx)) {
-                updateHeader = true;
-                updateComments = true;
-            }
-
-            CommentDisplaySettings.UpdateResult displayUpdate = createCommentDisplaySettings().applyToAdapter(adapter);
-            updateHeader |= displayUpdate.updateHeader;
-            updateComments |= displayUpdate.updateComments;
-
-            if (displayUpdate.themeChanged) {
-                // The system theme may have changed, so keep the sheet and webview backgrounds in sync.
-                if (bottomSheet != null) {
-                    bottomSheet.setBackgroundColor(ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx)));
-                }
-                if (webViewController != null) {
-                    webViewController.setContainerBackgroundColor(ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx)));
-                }
-            }
-            if (updateHeader) {
-                notifyHeaderChanged();
-            }
-            if (updateComments) {
-                adapter.notifyDataSetChanged();
+        Context ctx = requireContext();
+        hasAccountDetails = AccountUtils.hasAccountDetails(ctx);
+        CommentDisplaySettings latestSettings = createCommentDisplaySettings();
+        boolean themeChanged = displaySettings != null
+                && !TextUtils.equals(displaySettings.theme, latestSettings.theme);
+        displaySettings = latestSettings;
+        if (themeChanged) {
+            int backgroundColor = ContextCompat.getColor(
+                    ctx, ThemeUtils.getBackgroundColorResource(ctx));
+            if (webViewController != null) {
+                webViewController.setContainerBackgroundColor(backgroundColor);
             }
         }
         syncComposeState();
@@ -1866,44 +1260,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         boolean shouldShowUpdate = SettingsUtils.shouldAlwaysShowTapToRefresh(getContext())
                 || (lastLoaded != 0 && (System.currentTimeMillis() - lastLoaded) > 1000 * 60 * 60 && !Utils.timeInSecondsMoreThanTwoHoursAgo(story.time));
-        if (adapter != null) {
-            adapter.lastRefreshed = lastLoaded;
-            boolean hasAccountDetails = AccountUtils.hasAccountDetails(getContext());
-            if (adapter.hasAccountDetails != hasAccountDetails) {
-                adapter.hasAccountDetails = hasAccountDetails;
-                notifyHeaderChanged();
-            }
-            if (adapter.showUpdate != shouldShowUpdate) {
-                adapter.showUpdate = shouldShowUpdate;
-                if (shouldShowUpdate) {
-                    if (commentNavigationController != null) {
-                        commentNavigationController.clearSearchedCommentScrollTopTarget();
-                    }
-                }
-                notifyHeaderChanged();
+        if (showUpdate != shouldShowUpdate) {
+            showUpdate = shouldShowUpdate;
+            if (showUpdate && composeController != null) {
+                composeController.clearSearchScrollTopTarget();
             }
         }
-        if (adapter != null) {
-            notifyHeaderChanged();
-        }
-        saveScreenHeight();
-        refreshCommentActionOverlayForConfiguration();
         syncCommentsStatusBarProtection();
         syncComposeState();
-    }
-
-    private void refreshCommentActionOverlayForConfiguration() {
-        commentActionOverlayController.refreshForConfiguration();
     }
 
     @Override
     public void onStop() {
         super.onStop();
 
-        boolean hasVisiblePosition = composeController != null
-                || (layoutManager != null
-                && layoutManager.findFirstVisibleItemPosition() != RecyclerView.NO_POSITION);
-        if (!hasVisiblePosition || story == null) {
+        if (composeController == null || story == null) {
             return;
         }
         if (MainActivity.commentsScrollProgresses == null) {
@@ -1924,18 +1295,20 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        if (linkSummaryOverlayController.isShowingReference()) {
+        if (composeController != null && composeController.isLinkPreviewReferenceShowing()) {
             outState.putString(STATE_REFERENCE_LINK_SUMMARY_URL,
-                    linkSummaryOverlayController.getVisibleUrl());
+                    composeController.getLinkPreviewVisibleUrl());
             outState.putString(STATE_REFERENCE_LINK_SUMMARY_TITLE,
-                    linkSummaryOverlayController.getFallbackTitle());
-        } else if (linkSummaryOverlayController.isShowingImage()) {
+                    composeController.getLinkPreviewFallbackTitle());
+        } else if (composeController != null && composeController.isLinkPreviewImageShowing()) {
             outState.putString(STATE_PREVIEW_IMAGE_DIALOG_URL,
-                    linkSummaryOverlayController.getVisibleUrl());
+                    composeController.getLinkPreviewVisibleUrl());
         }
 
-        int visibleCommentActionId = commentActionOverlayController.getRestorableCommentId();
-        if (visibleCommentActionId != CommentActionOverlayController.NO_COMMENT_ID) {
+        int visibleCommentActionId = composeController == null
+                ? pendingCommentActionId
+                : composeController.getVisibleCommentActionId();
+        if (visibleCommentActionId != -1) {
             outState.putInt(STATE_COMMENT_ACTION_COMMENT_ID, visibleCommentActionId);
         }
         if (adBlockDisabledForSession) {
@@ -1944,92 +1317,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         outState.putString(STATE_COMMENT_SORTING, getCurrentCommentSorting());
     }
 
-    private void saveScreenHeight() {
-        SCREEN_HEIGHT_IN_PIXELS = Resources.getSystem().getDisplayMetrics().heightPixels;
-    }
-
-    private void loadHeaderSpacer() {
-        if (recyclerView == null) {
-            return;
-        }
-
-        RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(0);
-        if (viewHolder instanceof CommentsRecyclerViewAdapter.HeaderViewHolder) {
-            headerSpacer = ((CommentsRecyclerViewAdapter.HeaderViewHolder) viewHolder).spacer;
-        }
-    }
-
-    private void updateHeaderSpacerForCurrentSheetOffset() {
-        if (bottomSheet == null) {
-            return;
-        }
-
-        updateHeaderSpacer(getCurrentBottomSheetSlideOffsetForHeader());
-    }
-
-    private float getCurrentBottomSheetSlideOffsetForHeader() {
-        if (bottomSheet == null) {
-            return 1f;
-        }
-
-        BottomSheetBehavior<LinearLayout> behavior = BottomSheetBehavior.from(bottomSheet);
-        int state = behavior.getState();
-        if (state == BottomSheetBehavior.STATE_COLLAPSED) {
-            return 0f;
-        }
-        if (state == BottomSheetBehavior.STATE_EXPANDED) {
-            return 1f;
-        }
-        return behavior.calculateSlideOffset();
-    }
-
-    private void updateHeaderSpacer(float slideOffset) {
-        if (adapter == null) {
-            return;
-        }
-
-        float sanitizedSlideOffset = Float.isNaN(slideOffset) ? 1f : Math.max(0f, Math.min(1f, slideOffset));
-        int spacerHeight = Math.round(topInset * sanitizedSlideOffset);
-        if (Float.compare(lastHeaderSpacerSlideOffset, sanitizedSlideOffset) == 0
-                && adapter.spacerHeight == spacerHeight) {
-            return;
-        }
-        lastHeaderSpacerSlideOffset = sanitizedSlideOffset;
-        adapter.spacerHeight = spacerHeight;
-        if (composeController != null) {
-            composeController.updateSheet(sanitizedSlideOffset, topInset);
-        }
-        updateCommentsStatusBarAppearance();
-
-        loadHeaderSpacer();
-        if (headerSpacer == null) {
-            return;
-        }
-
-        ViewGroup.LayoutParams params = headerSpacer.getLayoutParams();
-        if (params != null && params.height == spacerHeight) {
-            return;
-        }
-
-        headerSpacer.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, spacerHeight));
-    }
-
     private CommentsScrollProgress recordScrollProgress() {
         CommentsScrollProgress scrollProgress = new CommentsScrollProgress();
 
         scrollProgress.storyId = story.id;
         if (composeController != null) {
             scrollProgress.topCommentId = composeController.getFirstVisibleCommentId();
-            // RecyclerView persisted the item's top relative to the viewport. LazyColumn exposes
-            // the inverse: how far the first visible item has already scrolled past the top.
+            // LazyColumn exposes how far the first visible item has scrolled past the top.
             scrollProgress.topCommentOffset = -composeController.getFirstVisibleCommentOffset();
-        } else {
-            int lastScrollIndex = layoutManager.findFirstVisibleItemPosition();
-            scrollProgress.topCommentId = comments.get(lastScrollIndex).id;
-
-            View firstVisibleItem = recyclerView.getChildAt(0);
-            scrollProgress.topCommentOffset = (firstVisibleItem == null)
-                    ? 0 : (firstVisibleItem.getTop() - recyclerView.getPaddingTop());
         }
 
         scrollProgress.collapsedIDs = new HashSet<>();
@@ -2044,16 +1339,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void restoreScrollProgress(CommentsScrollProgress scrollProgress) {
-        boolean restoredAwayFromHeader = false;
         for (int i = 0; i < comments.size(); i++) {
             Comment c = comments.get(i);
-            if (composeController == null && c.id == scrollProgress.topCommentId) {
-                layoutManager.scrollToPositionWithOffset(i, scrollProgress.topCommentOffset);
-                if (i > 0) {
-                    restoredAwayFromHeader = true;
-                    updateCommentsStatusBarAppearance(commentsPaneStatusBarColor);
-                }
-            }
             c.expanded = !scrollProgress.collapsedIDs.contains(c.id);
         }
         if (composeController != null) {
@@ -2062,41 +1349,13 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     scrollProgress.topCommentId,
                     scrollProgress.topCommentOffset,
                     false);
-            return;
         }
-        if (restoredAwayFromHeader) {
-            updateCommentsStatusBarAppearanceAfterScrollRestore();
-        }
-    }
-
-    private void updateCommentsStatusBarAppearanceAfterScrollRestore() {
-        RecyclerView currentRecyclerView = recyclerView;
-        if (currentRecyclerView == null) {
-            return;
-        }
-
-        currentRecyclerView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
-            @Override
-            public boolean onPreDraw() {
-                if (recyclerView != currentRecyclerView) {
-                    currentRecyclerView.getViewTreeObserver().removeOnPreDrawListener(this);
-                    return true;
-                }
-
-                updateCommentsStatusBarAppearance();
-                if (getHeaderStatusBarCoverage() == 0f) {
-                    currentRecyclerView.getViewTreeObserver().removeOnPreDrawListener(this);
-                }
-                return true;
-            }
-        });
     }
 
     private void scrollToTargetComment() {
         if (scrollToCommentId == -1) return;
         for (int i = 0; i < comments.size(); i++) {
             if (comments.get(i).id == scrollToCommentId) {
-                int targetIndex = i;
                 expandParentsForComment(comments.get(i));
                 if (composeController != null) {
                     syncComposeState();
@@ -2104,18 +1363,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     scrollToCommentId = -1;
                     return;
                 }
-                RecyclerView currentRecyclerView = recyclerView;
-                LinearLayoutManager currentLayoutManager = layoutManager;
-                if (currentRecyclerView == null || currentLayoutManager == null) {
-                    scrollToCommentId = -1;
-                    return;
-                }
-                // +1 to account for header at adapter position 0
-                currentRecyclerView.post(() -> {
-                    if (recyclerView == currentRecyclerView && layoutManager == currentLayoutManager) {
-                        currentLayoutManager.scrollToPositionWithOffset(targetIndex + 1, topInset);
-                    }
-                });
                 scrollToCommentId = -1;
                 return;
             }
@@ -2150,33 +1397,33 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             parentId = parent.parent;
         }
 
-        if (expandedAny && adapter != null) {
-            adapter.invalidateCommentVisibility();
-            adapter.notifyDataSetChanged();
+        if (expandedAny) {
+            syncComposeState();
         }
     }
 
     @Override
     public void onDestroyView() {
+        CommentsComposeController controllerToDetach = composeController;
         boolean preserveReferenceSummary = getActivity() != null
                 && requireActivity().isChangingConfigurations()
-                && linkSummaryOverlayController.isShowingReference();
+                && composeController != null
+                && composeController.isLinkPreviewReferenceShowing();
         boolean preservePreviewImage = getActivity() != null
                 && requireActivity().isChangingConfigurations()
-                && linkSummaryOverlayController.isShowingImage();
+                && composeController != null
+                && composeController.isLinkPreviewImageShowing();
         pendingReferenceLinkSummaryUrl = preserveReferenceSummary
-                ? linkSummaryOverlayController.getVisibleUrl() : null;
+                ? composeController.getLinkPreviewVisibleUrl() : null;
         pendingReferenceLinkSummaryTitle = preserveReferenceSummary
-                ? linkSummaryOverlayController.getFallbackTitle() : null;
+                ? composeController.getLinkPreviewFallbackTitle() : null;
         pendingPreviewImageDialogUrl = preservePreviewImage
-                ? linkSummaryOverlayController.getVisibleUrl() : null;
-        linkSummaryOverlayController.removeNow();
-        commentActionOverlayController.removeNow();
+                ? composeController.getLinkPreviewVisibleUrl() : null;
         if (composeController != null) {
-            composeController.clearTransitionSources();
-        }
-        if (commentNavigationController != null) {
-            commentNavigationController.clear();
+            if (composeController.isLinkPreviewOverlayShowing()) {
+                composeController.completeLinkPreviewDismiss();
+            }
+            composeController.completeCommentActionDismiss();
         }
         if (originalStatusBarColorCaptured && getActivity() != null) {
             requireActivity().getWindow().setStatusBarColor(originalStatusBarColor);
@@ -2185,58 +1432,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         View rootView = getView();
         if (rootView != null) {
-            if (preDrawListener != null && rootView.getViewTreeObserver().isAlive()) {
-                rootView.getViewTreeObserver().removeOnPreDrawListener(preDrawListener);
-            }
             ViewCompat.setOnApplyWindowInsetsListener(rootView, null);
         }
-        preDrawListener = null;
 
         if (backPressedCallback != null) {
             backPressedCallback.remove();
             backPressedCallback = null;
         }
 
-        if (bottomSheet != null) {
-            BottomSheetBehavior<View> bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
-            if (recyclerBottomSheetCallback != null) {
-                bottomSheetBehavior.removeBottomSheetCallback(recyclerBottomSheetCallback);
-            }
-            if (webViewController != null && webViewController.getBottomSheetCallback() != null) {
-                bottomSheetBehavior.removeBottomSheetCallback(webViewController.getBottomSheetCallback());
-            }
-        }
-
-        if (recyclerView != null) {
-            if (recyclerViewScrollListener != null) {
-                recyclerView.removeOnScrollListener(recyclerViewScrollListener);
-            }
-            if (recyclerViewLayoutChangeListener != null) {
-                recyclerView.removeOnLayoutChangeListener(recyclerViewLayoutChangeListener);
-            }
-            ViewCompat.setOnApplyWindowInsetsListener(recyclerView, null);
-            recyclerView.stopScroll();
-            recyclerView.setAdapter(null);
-            recyclerView.setLayoutManager(null);
-        }
-        if (recyclerViewRegular != null && recyclerViewRegular != recyclerView) {
-            recyclerViewRegular.setAdapter(null);
-            recyclerViewRegular.setLayoutManager(null);
-        }
-        if (recyclerViewSwipe != null && recyclerViewSwipe != recyclerView) {
-            recyclerViewSwipe.setAdapter(null);
-            recyclerViewSwipe.setLayoutManager(null);
-        }
-        if (swipeRefreshLayout != null) {
-            swipeRefreshLayout.setOnRefreshListener(null);
-        }
-        if (scrollNavigation != null) {
-            ViewCompat.setOnApplyWindowInsetsListener(scrollNavigation, null);
-        }
-        if (searchScrollTopFab != null) {
-            ViewCompat.setOnApplyWindowInsetsListener(searchScrollTopFab, null);
-            searchScrollTopFab.setOnClickListener(null);
-        }
         if (queue != null) {
             queue.cancelAll(requestTag);
         }
@@ -2245,6 +1448,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         fallbackManager = null;
         if (webViewController != null) {
             webViewController.onDestroyView(rootView);
+        }
+        if (controllerToDetach != null && getActivity() instanceof MainActivity) {
+            ((MainActivity) requireActivity()).detachCommentsComposeController(controllerToDetach);
         }
 
         clearViewReferences();
@@ -2256,11 +1462,21 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (!TextUtils.isEmpty(pendingPreviewImageDialogUrl) && getView() != null) {
             String imageUrl = pendingPreviewImageDialogUrl;
             pendingPreviewImageDialogUrl = null;
-            getView().post(() -> linkSummaryOverlayController.showImage(
-                    imageUrl,
-                    TextUtils.isEmpty(story.title)
-                            ? "Story preview image" : "Preview image for " + story.title,
-                    adapter == null ? null : adapter.getBoundHeaderPreviewImage()));
+            getView().post(() -> {
+                if (composeController != null) {
+                    int backgroundColor = commentsHeaderStatusBarColor != Color.TRANSPARENT
+                            ? commentsHeaderStatusBarColor
+                            : ContextCompat.getColor(
+                                    requireContext(),
+                                    ThemeUtils.getBackgroundColorResource(requireContext()));
+                    composeController.showImagePreview(
+                            imageUrl,
+                            TextUtils.isEmpty(story.title)
+                                    ? "Story preview image" : "Preview image for " + story.title,
+                            null,
+                            backgroundColor);
+                }
+            });
             return;
         }
         if (TextUtils.isEmpty(pendingReferenceLinkSummaryUrl) || getView() == null) {
@@ -2270,7 +1486,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         String title = pendingReferenceLinkSummaryTitle;
         pendingReferenceLinkSummaryUrl = null;
         pendingReferenceLinkSummaryTitle = null;
-        getView().post(() -> linkSummaryOverlayController.showReference(url, title, null));
+        getView().post(() -> {
+            if (composeController != null) {
+                composeController.showReferencePreview(url, title);
+            }
+        });
     }
 
     @Override
@@ -2280,28 +1500,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void clearViewReferences() {
-        adapter = null;
-        binding = null;
-        swipeRefreshLayout = null;
-        recyclerView = null;
-        recyclerViewSwipe = null;
-        recyclerViewRegular = null;
-        commentItemDecoration = null;
-        layoutManager = null;
-        recyclerViewScrollListener = null;
-        recyclerViewLayoutChangeListener = null;
-        recyclerBottomSheetCallback = null;
-        collapseBottomSheetAfterScrollToTop = false;
-        smoothScroller = null;
-        commentNavigationController = null;
-        scrollNavigation = null;
-        searchScrollTopFab = null;
+        webViewHost = null;
         progressIndicator = null;
-        bottomSheet = null;
-        headerSpacer = null;
         composeController = null;
         appliedStatusBarProtectionKnown = false;
-        lastHeaderSpacerSlideOffset = Float.NaN;
         if (webViewController != null) {
             webViewController.clearViewReferences();
             webViewController = null;
@@ -2312,39 +1514,26 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
     }
 
-    @Override
     public void onRetry() {
-        retryComments(false);
+        retryComments();
     }
 
-    private void retryComments(boolean showSwipeRefreshIndicator) {
-        if (!isCommentsViewActive() || adapter == null || adapter.story == null) {
+    private void retryComments() {
+        if (!isCommentsViewActive() || story == null) {
             Log.w(TAG, "Retry ignored: commentsViewActive=" + isCommentsViewActive()
-                    + ", adapterPresent=" + (adapter != null)
-                    + ", storyPresent=" + (adapter != null && adapter.story != null));
-            if (swipeRefreshLayout != null) {
-                swipeRefreshLayout.setRefreshing(false);
-            }
+                    + ", storyPresent=" + (story != null));
             return;
         }
         if (pendingCommentsParse != null) {
             Log.d(TAG, "Retry ignored while comments are still being parsed for storyId="
-                    + adapter.story.id);
-            if (swipeRefreshLayout != null) {
-                swipeRefreshLayout.setRefreshing(false);
-            }
+                    + story.id);
             return;
         }
-        Log.d(TAG, "Retry requested for storyId=" + adapter.story.id
-                + ", showSwipeRefreshIndicator=" + showSwipeRefreshIndicator);
+        Log.d(TAG, "Retry requested for storyId=" + story.id);
         setCommentsRefreshInProgress(true);
-        if (showSwipeRefreshIndicator && swipeRefreshLayout != null) {
-            swipeRefreshLayout.setRefreshing(true);
-        }
-        loadStoryAndComments(adapter.story.id, null);
+        loadStoryAndComments(story.id, null);
     }
 
-    @Override
     public void onOpenInBrowser() {
         Utils.launchInExternalBrowser(getActivity(), "https://news.ycombinator.com/item?id=" + story.id);
     }
@@ -2359,9 +1548,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         String cachedResponse = Utils.loadCachedStory(context, story.id);
 
         int loadGeneration = loadStoryAndComments(story.id, cachedResponse);
-
-        // if this isn't here, the addition of the text appears to scroll the recyclerview down a little
-        recyclerView.scrollToPosition(0);
 
         if (cachedResponse != null && loadGeneration >= 0) {
             handleJsonResponse(
@@ -2389,12 +1575,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         cancelPendingCommentsParse();
         Log.d(TAG, "Loading comments for storyId=" + id + ", hasCachedResponse=" + (oldCachedResponse != null));
         lastLoaded = System.currentTimeMillis();
-        if (adapter != null) {
-            adapter.lastRefreshed = lastLoaded;
-            if (adapter.showUpdate) {
-                adapter.showUpdate = false;
-                notifyHeaderChanged();
-            }
+        if (showUpdate) {
+            showUpdate = false;
+            notifyHeaderChanged();
         }
 
         // Initialize fallback manager
@@ -2437,12 +1620,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     return;
                 }
                 Log.w(TAG, "Algolia comments load failed for storyId=" + id + ", noInternet=" + noInternet);
-                adapter.loadingFailed = true;
-                adapter.loadingFailedServerError = !noInternet;
-                adapter.commentsLoaded = true;
+                loadingFailed = true;
+                loadingFailedServerError = !noInternet;
+                commentsLoaded = true;
                 setCommentsRefreshInProgress(false);
                 notifyHeaderChanged();
-                swipeRefreshLayout.setRefreshing(false);
             }
 
             @Override
@@ -2480,12 +1662,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 int oldSize = comments.size();
                 if (oldSize > 1) {
                     comments.subList(1, oldSize).clear();
-                    adapter.invalidateCommentLookup();
-                    adapter.notifyItemRangeRemoved(1, oldSize - 1);
                 }
 
-                adapter.loadingFailed = false;
-                adapter.loadingFailedServerError = false;
+                loadingFailed = false;
+                loadingFailedServerError = false;
                 if (linkPreviewController != null) {
                     linkPreviewController.loadNetworkPreviews(context);
                 }
@@ -2500,12 +1680,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     return;
                 }
                 Log.w(TAG, "HN API comments load failed for storyId=" + id);
-                adapter.loadingFailed = true;
-                adapter.loadingFailedServerError = false;
-                adapter.commentsLoaded = true;
+                loadingFailed = true;
+                loadingFailedServerError = false;
+                commentsLoaded = true;
                 setCommentsRefreshInProgress(false);
                 notifyHeaderChanged();
-                swipeRefreshLayout.setRefreshing(false);
             }
 
             @Override
@@ -2521,26 +1700,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     if (!isCurrentCommentsLoad(loadGeneration, id)) {
                         return;
                     }
-                    // Add all comments at once in proper tree order. Keeping this mutation after
-                    // the loading row's relayout lets DiffUtil drive the RecyclerView insert
-                    // animation from the header's final height.
+                    // Add all comments at once in proper tree order. Compose animates the loading
+                    // row removal and item insertion from the immutable list snapshot.
                     allComments.addAll(loadedComments);
                     updateDefaultCommentSortOrder(allComments);
                     CommentSorter.sort(allComments, getCurrentCommentSorting());
                     applyDisplayedComments(getDisplayedCommentsForCurrentFilter(allComments));
                     completeCommentsLoad(false);
                     setCommentsRefreshInProgress(false);
-                    swipeRefreshLayout.setRefreshing(false);
                 };
 
-                boolean shouldAnimateInitialComments = oldCachedResponse == null
-                        && !adapter.commentsLoaded
-                        && comments.size() <= 1
-                        && !loadedComments.isEmpty();
-                if (shouldAnimateInitialComments
-                        && adapter.fadeInitialLoadingIndicatorOutThen(revealComments)) {
-                    return;
-                }
                 revealComments.run();
             }
         });
@@ -2556,28 +1725,19 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void onLinkPreviewChanged() {
-        if (adapter != null) {
-            notifyHeaderChanged();
-        }
+        notifyHeaderChanged();
     }
 
     private void notifyHeaderChanged() {
-        if (adapter != null) {
-            adapter.notifyItemChanged(0, HEADER_UPDATE_PAYLOAD);
-        }
         syncComposeState();
     }
 
     private void setCommentsRefreshInProgress(boolean refreshInProgress) {
-        if (adapter == null || adapter.commentsRefreshInProgress == refreshInProgress) {
+        if (commentsRefreshInProgress == refreshInProgress) {
             return;
         }
-        adapter.commentsRefreshInProgress = refreshInProgress;
-        if (!adapter.updateBoundHeaderLoadingState()) {
-            notifyHeaderChanged();
-        } else {
-            syncComposeState();
-        }
+        commentsRefreshInProgress = refreshInProgress;
+        syncComposeState();
     }
 
     private void maybeLoadPollOptions() {
@@ -2683,10 +1843,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         // Actually, the response being a 404 should be captured by another part
         // so this should never be called. Not that I dare remove it...
         if (response.equals(JSONParser.ALGOLIA_ERROR_STRING)) {
-            adapter.loadingFailed = true;
-            adapter.loadingFailedServerError = true;
+            loadingFailed = true;
+            loadingFailedServerError = true;
             notifyHeaderChanged();
-            swipeRefreshLayout.setRefreshing(false);
         }
 
         final int[] topLevelCommentIds = story.kids == null ? null : story.kids.clone();
@@ -2727,10 +1886,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                         }
                         pendingCommentsParse = null;
                         error.printStackTrace();
-                        adapter.loadingFailed = true;
-                        adapter.loadingFailedServerError = false;
+                        loadingFailed = true;
+                        loadingFailedServerError = false;
                         notifyHeaderChanged();
-                        swipeRefreshLayout.setRefreshing(false);
                         completeCommentsLoad(false);
                         runPendingParseCompletion(pendingParse);
                         runPendingParseFollowUp(pendingParse);
@@ -2759,17 +1917,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         maybeLoadPollOptions();
 
+        boolean wasIntegratedWebview = integratedWebview;
         integratedWebview = prefIntegratedWebview && story.isLink;
 
-        if (integratedWebview && !adapter.integratedWebview) {
-            // It's the first time, so we need to re-initialize the recyclerview too
+        if (integratedWebview && !wasIntegratedWebview) {
             webViewController.setIntegratedWebview(true);
             webViewController.initialize();
-            initializeRecyclerView();
         }
 
-        adapter.loadingFailed = false;
-        adapter.loadingFailedServerError = false;
+        loadingFailed = false;
+        loadingFailedServerError = false;
 
         // Seems like loading went well, lets cache the result
         if (cache) {
@@ -2801,15 +1958,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             completeCommentsLoad(updateHeaderAfterLoad);
         };
 
-        boolean shouldAnimateInitialComments = cache
-                && forceHeaderRefresh
-                && !adapter.commentsLoaded
-                && comments.size() <= 1
-                && !parsedResponse.comments.isEmpty();
-        if (shouldAnimateInitialComments
-                && adapter.fadeInitialLoadingIndicatorOutThen(revealComments)) {
-            return;
-        }
         revealComments.run();
     }
 
@@ -2869,7 +2017,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
         setCommentsRefreshInProgress(false);
-        swipeRefreshLayout.setRefreshing(false);
     }
 
     private boolean isCurrentPendingCommentsParse(PendingCommentsParse pendingParse) {
@@ -2890,8 +2037,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         if (!isCommentsViewActive()) {
             return;
         }
-        boolean commentsWereLoaded = adapter.commentsLoaded;
-        adapter.commentsLoaded = true;
+        boolean commentsWereLoaded = commentsLoaded;
+        commentsLoaded = true;
         if (!commentsWereLoaded) {
             notifyHeaderChanged();
         }
@@ -2899,13 +2046,30 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             refreshHeaderAfterStoryLoad();
         }
         updateNavigationVisibility();
-        recyclerView.post(() -> {
+        View commentsView = getView();
+        if (commentsView == null) {
+            return;
+        }
+        commentsView.post(() -> {
             if (!isCommentsViewActive()) {
                 return;
             }
             scrollToTargetComment();
-            commentActionOverlayController.restorePending();
+            restorePendingCommentAction();
         });
+    }
+
+    private void restorePendingCommentAction() {
+        if (pendingCommentActionId == -1 || composeController == null) {
+            return;
+        }
+        Comment comment = findCommentById(pendingCommentActionId);
+        if (comment == null) {
+            return;
+        }
+        pendingCommentActionId = -1;
+        composeController.restoreCommentActions(comment);
+        syncOnBackPressedCallbackEnabledState();
     }
 
     private void refreshHeaderAfterStoryLoad() {
@@ -2913,23 +2077,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             return;
         }
 
-        adapter.refreshCanProvideSummary(requireContext());
         if (uncachedStoryHeaderLoading && story.loaded) {
             uncachedStoryHeaderLoading = false;
-            if (adapter.revealLoadedStoryHeader()) {
-                return;
-            }
         }
-        if (!adapter.updateBoundHeaderStoryViews()) {
-            notifyHeaderChanged();
-        }
+        notifyHeaderChanged();
     }
 
     private boolean isCommentsViewActive() {
         return getView() != null
-                && adapter != null
-                && swipeRefreshLayout != null
-                && recyclerView != null
                 && comments != null
                 && allComments != null;
     }
@@ -3036,9 +2191,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
     private void setCommentsByOpFilterActive(boolean active) {
         commentsByOpFilterActive = active;
-        if (adapter != null) {
-            adapter.setCommentsByOpFilterActive(active);
-        }
     }
 
     private List<Comment> getDisplayedCommentsForCurrentFilter(List<Comment> sourceComments) {
@@ -3067,191 +2219,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             List<Comment> nextComments,
             List<Comment> oldComments,
             boolean updateBoundHeader) {
-        boolean initialInsert = oldComments.size() == 1 && !nextComments.isEmpty();
-        androidx.recyclerview.widget.DiffUtil.DiffResult diffResult =
-                initialInsert
-                        ? null
-                        : CommentListDiff.calculateDiff(oldComments, nextComments);
-
         comments.clear();
         comments.addAll(nextComments);
-        if (adapter != null) {
-            adapter.invalidateCommentLookup();
-            if (initialInsert) {
-                int insertedCount = nextComments.size() - 1;
-                if (insertedCount > 0) {
-                    adapter.notifyItemRangeInserted(1, insertedCount);
-                }
-            } else {
-                diffResult.dispatchUpdatesTo(adapter);
-            }
-            if (updateBoundHeader) {
-                adapter.updateBoundHeaderStoryViews();
-            }
-        }
         updateNavigationVisibility();
         syncComposeState();
     }
 
     public void clickBrowser() {
         webViewController.openCurrentOrStoryUrlInBrowser();
-    }
-
-    public void clickShare(View view) {
-        PopupMenu popup = new PopupMenu(requireActivity(), view);
-        popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem item) {
-                int itemId = item.getItemId();
-
-                if (itemId == R.id.menu_link) {
-                    startActivity(ShareUtils.getShareIntent(adapter.story.url));
-                } else if (itemId == R.id.menu_link_title) {
-                    startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.url));
-                } else if (itemId == R.id.menu_hacker_news_link) {
-                    startActivity(ShareUtils.getShareIntent(adapter.story.id));
-                } else if (itemId == R.id.menu_hacker_news_link_title) {
-                    startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.id));
-                } else if (itemId == R.id.menu_link_title_and_hacker_news_link_title) {
-                    startActivity(ShareUtils.getShareIntentWithTitle(adapter.story.title, adapter.story.id, adapter.story.url));
-                }
-
-
-                return true;
-            }
-        });
-        MenuInflater inflater = popup.getMenuInflater();
-        inflater.inflate(R.menu.share_menu, popup.getMenu());
-
-        if (!adapter.story.isLink) {
-            popup.getMenu().findItem(R.id.menu_link).setVisible(false);
-            popup.getMenu().findItem(R.id.menu_link_title).setVisible(false);
-            popup.getMenu().findItem(R.id.menu_link_title_and_hacker_news_link_title).setVisible(false);
-        }
-
-        popup.show();
-    }
-
-    public void clickMore(View view) {
-        Context ctx = getContext();
-        if (ctx == null) {
-            return;
-        }
-
-        PopupMenu popup = new PopupMenu(requireActivity(), view);
-        popup.setForceShowIcon(true);
-
-        popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem item) {
-                int id = item.getItemId();
-
-                if (id == R.id.menu_refresh) {
-                    onRetry();
-                } else if (id == R.id.menu_open_parent) {
-                    if (story.parentId > 0) {
-                        Utils.openCommentsActivity(story.parentId, -1, requireContext());
-                    }
-                } else if (id == R.id.menu_open_top_level) {
-                    if (story.commentMasterId > 0) {
-                        Utils.openCommentsActivity(story.commentMasterId, -1, requireContext());
-                    }
-                } else if (id == R.id.menu_adblock) {
-                    adBlockDisabledForSession = true;
-                    webViewController.disableAdBlockAndReload();
-                } else if (id == R.id.menu_bookmark) {
-                    toggleStoryBookmark();
-                } else if (id == R.id.menu_archive) {
-                    view.post(() -> showArchiveServiceMenu(view));
-                } else if (id == R.id.menu_search_comments) {
-                    resetCommentsByOpFilter();
-                    CommentsSearchDialogFragment.showCommentSearchDialog(getParentFragmentManager(), comments, new CommentsSearchDialogFragment.CommentSelectedListener() {
-                        @Override
-                        public void onCommentSelected(Comment comment) {
-                            for (Comment c : comments) {
-                                if (c.id == comment.id) {
-                                    int targetIndex = comments.indexOf(c);
-                                    expandParentsForComment(c);
-                                    if (commentNavigationController != null) {
-                                        commentNavigationController.setSearchedCommentScrollTopTarget(targetIndex);
-                                    }
-                                    RecyclerView currentRecyclerView = recyclerView;
-                                    if (currentRecyclerView != null) {
-                                        currentRecyclerView.post(() -> {
-                                            if (!isCommentsViewActive() || recyclerView != currentRecyclerView) {
-                                                return;
-                                            }
-                                            if (commentNavigationController != null) {
-                                                commentNavigationController.scrollToSearchedComment(targetIndex);
-                                                commentNavigationController.setPendingSearchedCommentHighlight(targetIndex);
-                                                commentNavigationController.updateSearchedCommentScrollTopVisibility(false);
-                                            }
-                                        });
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    });
-                } else if (id == R.id.menu_change_comment_sorting) {
-                    view.post(() -> showCommentSortingMenu(view));
-                } else if (id == R.id.menu_comments_by_op) {
-                    showCommentsByOp();
-                } else if (id == R.id.menu_comments_browser) {
-                    onOpenInBrowser();
-                }
-
-                return true;
-            }
-        });
-        MenuInflater inflater = popup.getMenuInflater();
-        inflater.inflate(R.menu.comments_more_menu, popup.getMenu());
-
-        boolean hasAccountDetails = AccountUtils.hasAccountDetails(ctx);
-        boolean bookmarksEnabled = SettingsUtils.shouldUseBookmarks(ctx);
-        popup.getMenu().findItem(R.id.menu_refresh).setVisible(hasAccountDetails);
-        MenuItem bookmarkItem = popup.getMenu().findItem(R.id.menu_bookmark);
-        bookmarkItem.setVisible(hasAccountDetails && bookmarksEnabled);
-        if (bookmarksEnabled && story != null) {
-            boolean bookmarked = Utils.isBookmarked(ctx, story.id);
-            bookmarkItem.setTitle(bookmarked ? "Remove bookmark" : "Bookmark");
-            bookmarkItem.setIcon(bookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark);
-        }
-
-        for (int i = 0; i < popup.getMenu().size(); i++) {
-            MenuItem item = popup.getMenu().getItem(i);
-
-            if (!story.isLink && item.getItemId() == R.id.menu_archive) {
-                item.setVisible(false);
-            }
-
-            if (!webViewController.isBlockingAds() && item.getItemId() == R.id.menu_adblock) {
-                item.setVisible(false);
-            }
-
-            if (item.getItemId() == R.id.menu_search_comments && getAllCommentsSource().size() < 2) {
-                item.setVisible(false);
-            }
-
-            if (item.getItemId() == R.id.menu_change_comment_sorting && getAllCommentsSource().size() < 3) {
-                item.setVisible(false);
-            }
-
-            if (item.getItemId() == R.id.menu_comments_by_op
-                    && (commentsByOpFilterActive || !hasCommentsByOp())) {
-                item.setVisible(false);
-            }
-
-            if (item.getItemId() == R.id.menu_open_parent && (!story.isComment || story.parentId <= 0)) {
-                item.setVisible(false);
-            }
-
-            if (item.getItemId() == R.id.menu_open_top_level && (!story.isComment || story.commentMasterId <= 0)) {
-                item.setVisible(false);
-            }
-        }
-
-        popup.show();
     }
 
     private void toggleStoryBookmark() {
@@ -3266,31 +2241,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         } else {
             Utils.removeBookmark(ctx, story.id);
         }
-    }
-
-    private void showArchiveServiceMenu(View anchor) {
-        PopupMenu popup = new PopupMenu(requireActivity(), anchor);
-
-        popup.getMenu().add(MENU_ARCHIVE_SERVICE_GROUP_ID, MENU_ARCHIVE_ORG_ITEM_ID, 0, "archive.org");
-        popup.getMenu().add(MENU_ARCHIVE_SERVICE_GROUP_ID, MENU_ARCHIVE_IS_ITEM_ID, 1, "archive.is");
-        popup.getMenu().add(MENU_ARCHIVE_SERVICE_GROUP_ID, MENU_ARCHIVE_TODAY_ITEM_ID, 2, "archive.today");
-
-        popup.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == MENU_ARCHIVE_ORG_ITEM_ID) {
-                openArchiveOrg();
-                return true;
-            } else if (item.getItemId() == MENU_ARCHIVE_IS_ITEM_ID) {
-                openArchiveIs();
-                return true;
-            } else if (item.getItemId() == MENU_ARCHIVE_TODAY_ITEM_ID) {
-                openArchiveToday();
-                return true;
-            }
-
-            return false;
-        });
-
-        popup.show();
     }
 
     private void openArchiveOrg() {
@@ -3318,148 +2268,97 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         Utils.launchCustomTab(getActivity(), "https://archive.today/newest/" + Uri.encode(story.url));
     }
 
-    private void showCommentSortingMenu(View anchor) {
-        if (!isCommentsViewActive()) {
-            return;
-        }
-
-        PopupMenu popup = new PopupMenu(requireActivity(), anchor);
-        String[] sortingOptions = getResources().getStringArray(R.array.comment_sorting);
-        String currentSorting = getCurrentCommentSorting();
-
-        for (int i = 0; i < sortingOptions.length; i++) {
-            MenuItem item = popup.getMenu().add(MENU_COMMENT_SORT_GROUP_ID,
-                    MENU_COMMENT_SORT_ITEM_ID_BASE + i,
-                    i,
-                    sortingOptions[i]);
-            item.setCheckable(true);
-            item.setChecked(TextUtils.equals(sortingOptions[i], currentSorting));
-        }
-        popup.getMenu().setGroupCheckable(MENU_COMMENT_SORT_GROUP_ID, true, true);
-
-        popup.setOnMenuItemClickListener(item -> {
-            int index = item.getItemId() - MENU_COMMENT_SORT_ITEM_ID_BASE;
-            if (index < 0 || index >= sortingOptions.length) {
-                return false;
-            }
-            item.setChecked(true);
-            changeCommentSorting(sortingOptions[index]);
-            return true;
-        });
-
-        popup.show();
-    }
-
     public void clickUser() {
-        UserDialogFragment.showUserDialog(requireActivity().getSupportFragmentManager(), adapter.story.by, new UserDialogFragment.UserDialogCallback() {
-            @Override
-            public void onResult(boolean accepted) {
-                if (accepted) {
-                    updateUserTags(story.by);
-                }
-            }
-        });
+        ((MainActivity) requireActivity()).showUserDialog(
+                story.by,
+                () -> updateUserTags(story.by));
     }
 
     public void clickComment() {
         if (!AccountUtils.hasAccountDetails(getContext())) {
-            AccountUtils.showLoginPrompt(getParentFragmentManager());
+            AccountUtils.showLoginPrompt(requireContext());
             return;
         }
 
-        Intent intent = new Intent(getContext(), ComposeActivity.class);
-        intent.putExtra(ComposeActivity.EXTRA_ID, adapter.story.id);
-        intent.putExtra(ComposeActivity.EXTRA_PARENT_TEXT, adapter.story.title);
-        intent.putExtra(ComposeActivity.EXTRA_POST_TITLE, adapter.story.title);
-        intent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_TOP_COMMENT);
+        Intent intent = ComposeEditorContract.createIntent(requireContext());
+        intent.putExtra(ComposeEditorContract.EXTRA_ID, story.id);
+        intent.putExtra(ComposeEditorContract.EXTRA_PARENT_TEXT, story.title);
+        intent.putExtra(ComposeEditorContract.EXTRA_POST_TITLE, story.title);
+        intent.putExtra(
+                ComposeEditorContract.EXTRA_TYPE,
+                ComposeEditorContract.TYPE_TOP_COMMENT);
         startActivity(intent);
     }
 
     public void clickVote() {
-        clickVote(null);
-    }
-
-    public void clickVote(@Nullable View actionView) {
         Context ctx = getContext();
-        if (ctx == null || adapter == null || adapter.story == null) {
+        if (ctx == null || story == null) {
             return;
         }
 
         if (!AccountUtils.hasAccountDetails(ctx)) {
-            AccountUtils.showLoginPrompt(getParentFragmentManager());
+            AccountUtils.showLoginPrompt(requireContext());
             return;
         }
 
-        int storyId = adapter.story.id;
-        boolean storyIsComment = adapter.story.isComment;
+        int storyId = story.id;
+        boolean storyIsComment = story.isComment;
         boolean wasUpvoted = Utils.isUpvoted(ctx, storyId, storyIsComment);
         boolean newUpvoted = !wasUpvoted;
-        adapter.showStoryVoteLoading(actionView, newUpvoted);
+        storyVoteLoading = true;
         syncComposeState();
 
         UserActions.ActionCallback cb = new UserActions.ActionCallback() {
             @Override
             public void onSuccess(Response response) {
                 Utils.setUpvoted(ctx, storyId, storyIsComment, newUpvoted);
-                if (adapter != null) {
-                    adapter.showStoryVoteResult(actionView, newUpvoted);
-                }
+                storyVoteLoading = false;
                 syncComposeState();
             }
 
             @Override
             public void onFailure(String summary, String response) {
                 Utils.setUpvoted(ctx, storyId, storyIsComment, wasUpvoted);
-                if (adapter != null) {
-                    adapter.showStoryVoteResult(actionView, wasUpvoted);
-                }
+                storyVoteLoading = false;
                 syncComposeState();
             }
         };
 
         if (newUpvoted) {
-            UserActions.upvote(ctx, storyId, getParentFragmentManager(), cb);
+            UserActions.upvote(ctx, storyId, cb);
         } else {
-            UserActions.unvote(ctx, storyId, getParentFragmentManager(), cb);
+            UserActions.unvote(ctx, storyId, cb);
         }
     }
 
     public void clickFavorite() {
-        clickFavorite(null);
-    }
-
-    public void clickFavorite(@Nullable View actionView) {
         Context ctx = getContext();
-        if (ctx == null || adapter == null) {
+        if (ctx == null || story == null) {
             return;
         }
 
-        int storyId = adapter.story.id;
+        int storyId = story.id;
         boolean wasFavorited = Utils.isFavorited(ctx, storyId);
         if (!AccountUtils.hasAccountDetails(ctx)) {
-            AccountUtils.showLoginPrompt(getParentFragmentManager());
+            AccountUtils.showLoginPrompt(requireContext());
             return;
         }
 
         boolean newFavorited = !wasFavorited;
-        adapter.showStoryFavoriteLoading(actionView, newFavorited);
+        storyFavoriteLoading = true;
         syncComposeState();
-        UserActions.setFavorite(ctx, storyId, newFavorited, getParentFragmentManager(), new UserActions.ActionCallback() {
+        UserActions.setFavorite(ctx, storyId, newFavorited, new UserActions.ActionCallback() {
             @Override
             public void onSuccess(Response response) {
                 Utils.setFavorite(ctx, storyId, newFavorited);
-                if (adapter != null) {
-                    adapter.showStoryFavoriteResult(actionView, newFavorited);
-                }
+                storyFavoriteLoading = false;
                 syncComposeState();
             }
 
             @Override
             public void onFailure(String summary, String response) {
                 Utils.setFavorite(ctx, storyId, wasFavorited);
-                if (adapter != null) {
-                    adapter.showStoryFavoriteResult(actionView, wasFavorited);
-                }
+                storyFavoriteLoading = false;
                 syncComposeState();
                 if (!wasFavorited) {
                     Toast.makeText(ctx, "Couldn't add favorite", Toast.LENGTH_SHORT).show();
@@ -3482,10 +2381,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void navigateToNextComment(boolean topLevelOnly, boolean scaleLongScrollSpeed) {
         if (composeController != null) {
             composeController.navigateNext(topLevelOnly, scaleLongScrollSpeed);
-            return;
-        }
-        if (commentNavigationController != null) {
-            commentNavigationController.navigateToNextComment(topLevelOnly, scaleLongScrollSpeed);
         }
     }
 
@@ -3500,144 +2395,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     public void navigateToPreviousComment(boolean topLevelOnly, boolean scaleLongScrollSpeed) {
         if (composeController != null) {
             composeController.navigatePrevious(topLevelOnly, scaleLongScrollSpeed);
-            return;
-        }
-        if (commentNavigationController != null) {
-            commentNavigationController.navigateToPreviousComment(topLevelOnly, scaleLongScrollSpeed);
         }
     }
 
     private void updateNavigationVisibility() {
-        if (commentNavigationController != null) {
-            commentNavigationController.updateNavigationVisibility();
-        }
-    }
-
-    private void updateSearchScrollTopFabPosition() {
-        if (commentNavigationController != null) {
-            commentNavigationController.updateSearchScrollTopFabPosition();
-        }
-    }
-
-    @Override
-    public boolean isNavigationHostAdded() {
-        return isAdded();
-    }
-
-    @Override
-    public Context requireNavigationContext() {
-        return requireContext();
-    }
-
-    @Override
-    public Resources getNavigationResources() {
-        return getResources();
-    }
-
-    @Override
-    public @Nullable List<Comment> getNavigationComments() {
-        return comments;
-    }
-
-    @Override
-    public @Nullable CommentsRecyclerViewAdapter getNavigationAdapter() {
-        return adapter;
-    }
-
-    @Override
-    public @Nullable RecyclerView getNavigationRecyclerView() {
-        return recyclerView;
-    }
-
-    @Override
-    public @Nullable LinearLayoutManager getNavigationLayoutManager() {
-        return layoutManager;
-    }
-
-    @Override
-    public @Nullable RecyclerView.SmoothScroller getNavigationSmoothScroller() {
-        return smoothScroller;
-    }
-
-    @Override
-    public int getTopInset() {
-        return topInset;
-    }
-
-    @Override
-    public int getScreenHeightInPixels() {
-        return SCREEN_HEIGHT_IN_PIXELS;
-    }
-
-    @Override
-    public boolean shouldShowNavButtons() {
-        return showNavButtons;
-    }
-
-    @Override
-    public @Nullable View getScrollNavigationView() {
-        return scrollNavigation;
-    }
-
-    @Override
-    public @Nullable ExtendedFloatingActionButton getSearchScrollTopFab() {
-        return searchScrollTopFab;
-    }
-
-    @Override
-    public int getCommentsBottomInset() {
-        return commentsBottomInset;
-    }
-
-    @Override
-    public int getScrollNavigationBaseBottomMargin() {
-        return scrollNavigationBaseBottomMargin;
-    }
-
-    @Override
-    public int getSearchScrollTopFabBaseBottomMargin() {
-        return searchScrollTopFabBaseBottomMargin;
-    }
-
-    @Override
-    public void onItemClick(Comment comment, int pos, View view) {
-        commentActionOverlayController.show(comment, view, true);
-    }
-
-    @Nullable
-    private ViewGroup getCommentActionOverlayHost() {
-        if (!isAdded()) {
-            return null;
-        }
-
-        View content = requireActivity().findViewById(android.R.id.content);
-        if (content instanceof ViewGroup) {
-            return (ViewGroup) content;
-        }
-
-        View fragmentView = getView();
-        return fragmentView instanceof ViewGroup ? (ViewGroup) fragmentView : null;
-    }
-
-    @Nullable
-    private View findCommentView(int commentId) {
-        if (recyclerView == null || comments == null) {
-            return null;
-        }
-
-        for (int i = 1; i < comments.size(); i++) {
-            if (comments.get(i).id == commentId) {
-                RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(i);
-                if (holder == null) {
-                    return null;
-                }
-                if (holder instanceof CommentsRecyclerViewAdapter.ItemViewHolder) {
-                    return ((CommentsRecyclerViewAdapter.ItemViewHolder) holder).getCommentActionSourceView();
-                }
-                return holder.itemView;
-            }
-        }
-        return null;
+        // Compose derives navigation visibility directly from display settings and list content.
     }
 
     @Nullable
@@ -3660,27 +2422,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     }
 
     private void updateUserTags(String changedUser) {
-        CommentsRecyclerViewAdapter commentAdapter = CommentsFragment.this.adapter;
-        if (commentAdapter == null) {
-            return;
-        }
-
-        commentAdapter.loadUserTags(requireContext());
-
-        if (story.by.equals(changedUser)) {
-            notifyHeaderChanged();
-        }
-        for (int i = 1; i < comments.size(); i++) {
-            String by = comments.get(i).by;
-            if (by != null) {
-                if (by.equals(changedUser)) {
-                    commentAdapter.notifyCommentUserTagChanged(i);
-                }
-            }
-        }
+        syncComposeState();
     }
 
-    @Override
     public void onRequest(Runnable onUpdate, Runnable onDone) {
         if (story == null || TextUtils.isEmpty(story.url)) {
             onDone.run();

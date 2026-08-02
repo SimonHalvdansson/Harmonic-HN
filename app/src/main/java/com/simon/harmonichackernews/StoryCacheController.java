@@ -1,19 +1,16 @@
 package com.simon.harmonichackernews;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
-import android.view.View;
-import android.view.animation.PathInterpolator;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.view.ViewCompat;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
-import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
@@ -29,10 +26,7 @@ import java.util.Set;
 import okhttp3.Call;
 
 class StoryCacheController {
-    private static final long HEADER_LAYOUT_ANIMATION_DURATION_MS = 220;
     private static final long CACHE_PROGRESS_FINISHED_HOLD_MS = 1000;
-    private static final long CACHE_PROGRESS_FADE_DURATION_MS = 140;
-    private static final long CACHE_PROGRESS_STATUS_TEXT_FADE_DURATION_MS = 90;
     private static final String CACHE_PROGRESS_STATUS_CACHING = "Caching stories";
     private static final String CACHE_PROGRESS_STATUS_FINISHED = "Finished";
     private static final String CACHE_PROGRESS_STATUS_FAILED = "Caching failed";
@@ -49,17 +43,13 @@ class StoryCacheController {
         @NonNull
         Object getRequestTag();
 
-        void beginHeaderTransition();
+        void onCacheProgressChanged();
     }
 
     private final Callbacks callbacks;
-    @Nullable
-    private TextView statusText;
-    @Nullable
-    private LinearProgressIndicator progressIndicator;
+    private final Handler progressHandler = new Handler(Looper.getMainLooper());
     private boolean cachingStories = false;
-    private boolean progressIndicatorVisible = false;
-    private boolean progressHidePending = false;
+    private boolean progressVisible = false;
     private int progressAnimationGeneration = 0;
     private int cacheStoriesTotal = 1;
     private int cacheStoriesCompleted = 0;
@@ -74,13 +64,7 @@ class StoryCacheController {
         this.callbacks = callbacks;
     }
 
-    void bindViews(@Nullable LinearProgressIndicator progressIndicator, @Nullable TextView statusText) {
-        this.progressIndicator = progressIndicator;
-        this.statusText = statusText;
-        updateProgressIndicator();
-    }
-
-    void clearViewReferences() {
+    void dispose() {
         articleDownloadGeneration++;
         pendingArticleDownloads.clear();
         for (Call call : activeArticleDownloads) {
@@ -89,17 +73,9 @@ class StoryCacheController {
         activeArticleDownloads.clear();
         articleSnapshotDownloader = null;
         progressAnimationGeneration++;
-        if (progressIndicator != null) {
-            progressIndicator.animate().cancel();
-        }
-        if (statusText != null) {
-            statusText.animate().cancel();
-        }
-        statusText = null;
-        progressIndicator = null;
+        progressHandler.removeCallbacksAndMessages(null);
         cachingStories = false;
-        progressIndicatorVisible = false;
-        progressHidePending = false;
+        progressVisible = false;
         resetProgressState();
     }
 
@@ -107,24 +83,21 @@ class StoryCacheController {
         return cachingStories;
     }
 
-    void updateProgressIndicator() {
-        if (progressIndicator == null || statusText == null) {
-            return;
-        }
+    boolean isProgressVisible() {
+        return progressVisible;
+    }
 
-        LinearProgressIndicator currentProgressIndicator = progressIndicator;
-        TextView currentStatusText = statusText;
-        String status = cachingStories ? getCachingStatus() : progressStatus;
-        currentProgressIndicator.setMax(Math.max(cacheStoriesTotal, 1));
-        currentProgressIndicator.setProgressCompat(cacheStoriesCompleted, true);
-        updateProgressStatusText(currentStatusText, status);
+    int getProgress() {
+        return cacheStoriesCompleted;
+    }
 
-        if (cachingStories) {
-            showProgressIndicator(currentProgressIndicator, currentStatusText);
-            return;
-        }
+    int getProgressMax() {
+        return Math.max(cacheStoriesTotal, 1);
+    }
 
-        hideProgressIndicator(currentProgressIndicator, currentStatusText);
+    @NonNull
+    String getProgressStatus() {
+        return cachingStories ? getCachingStatus() : progressStatus;
     }
 
     void cacheStories() {
@@ -182,16 +155,19 @@ class StoryCacheController {
     }
 
     private void startProgress(int total) {
+        progressHandler.removeCallbacksAndMessages(null);
+        progressAnimationGeneration++;
         cachingStories = true;
+        progressVisible = true;
         cacheStoriesTotal = Math.max(total, 1);
         cacheStoriesCompleted = 0;
         progressStatus = CACHE_PROGRESS_STATUS_CACHING;
-        updateProgressIndicator();
+        callbacks.onCacheProgressChanged();
     }
 
     private void incrementProgress() {
         cacheStoriesCompleted = Math.min(cacheStoriesCompleted + 1, cacheStoriesTotal);
-        updateProgressIndicator();
+        callbacks.onCacheProgressChanged();
     }
 
     private void finishProgress() {
@@ -200,110 +176,18 @@ class StoryCacheController {
 
     private void finishProgress(@NonNull String status) {
         cachingStories = false;
+        progressVisible = true;
         progressStatus = status;
-        updateProgressIndicator();
-    }
+        callbacks.onCacheProgressChanged();
 
-    private void updateProgressStatusText(@NonNull TextView currentStatusText,
-                                          @NonNull String status) {
-        if (TextUtils.equals(currentStatusText.getText(), status)) {
-            return;
-        }
-
-        currentStatusText.animate().cancel();
-        if (currentStatusText.getVisibility() != View.VISIBLE || !ViewCompat.isLaidOut(currentStatusText)) {
-            currentStatusText.setAlpha(1f);
-            currentStatusText.setText(status);
-            return;
-        }
-
-        currentStatusText.animate()
-                .alpha(0f)
-                .setDuration(CACHE_PROGRESS_STATUS_TEXT_FADE_DURATION_MS)
-                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                .withEndAction(() -> {
-                    currentStatusText.setText(status);
-                    currentStatusText.animate()
-                            .alpha(1f)
-                            .setDuration(CACHE_PROGRESS_STATUS_TEXT_FADE_DURATION_MS)
-                            .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                            .start();
-                })
-                .start();
-    }
-
-    private void showProgressIndicator(@NonNull LinearProgressIndicator currentProgressIndicator,
-                                       @NonNull TextView currentStatusText) {
-        if (progressIndicatorVisible
-                && currentProgressIndicator.getVisibility() == View.VISIBLE
-                && currentStatusText.getVisibility() == View.VISIBLE) {
-            return;
-        }
-
-        progressAnimationGeneration++;
-        progressHidePending = false;
-        currentProgressIndicator.animate().cancel();
-        currentStatusText.animate().cancel();
-        progressIndicatorVisible = true;
-        callbacks.beginHeaderTransition();
-        currentStatusText.setAlpha(0f);
-        currentStatusText.setVisibility(View.VISIBLE);
-        currentProgressIndicator.setAlpha(0f);
-        currentProgressIndicator.setVisibility(View.VISIBLE);
-        currentStatusText.animate()
-                .alpha(1f)
-                .setDuration(CACHE_PROGRESS_FADE_DURATION_MS)
-                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                .start();
-        currentProgressIndicator.animate()
-                .alpha(1f)
-                .setDuration(CACHE_PROGRESS_FADE_DURATION_MS)
-                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                .start();
-    }
-
-    private void hideProgressIndicator(@NonNull LinearProgressIndicator currentProgressIndicator,
-                                       @NonNull TextView currentStatusText) {
-        if (progressHidePending) {
-            return;
-        }
-
-        if (!progressIndicatorVisible
-                && currentProgressIndicator.getVisibility() != View.VISIBLE
-                && currentStatusText.getVisibility() != View.VISIBLE) {
-            resetProgressState();
-            return;
-        }
-
-        progressIndicatorVisible = false;
-        progressHidePending = true;
         int animationGeneration = ++progressAnimationGeneration;
-        currentProgressIndicator.animate().cancel();
-        currentProgressIndicator.postDelayed(() -> {
-            if (progressAnimationGeneration != animationGeneration
-                    || progressIndicator != currentProgressIndicator
-                    || statusText != currentStatusText) {
+        progressHandler.postDelayed(() -> {
+            if (progressAnimationGeneration != animationGeneration) {
                 return;
             }
-
-            callbacks.beginHeaderTransition();
-            currentStatusText.animate().cancel();
-            currentStatusText.setVisibility(View.GONE);
-            currentProgressIndicator.setVisibility(View.GONE);
-            currentProgressIndicator.postDelayed(() -> {
-                if (progressAnimationGeneration != animationGeneration
-                        || progressIndicator != currentProgressIndicator
-                        || statusText != currentStatusText) {
-                    return;
-                }
-
-                currentStatusText.setAlpha(1f);
-                currentStatusText.setText(CACHE_PROGRESS_STATUS_CACHING);
-                currentProgressIndicator.setAlpha(1f);
-                currentProgressIndicator.setProgressCompat(0, false);
-                resetProgressState();
-                progressHidePending = false;
-            }, HEADER_LAYOUT_ANIMATION_DURATION_MS);
+            progressVisible = false;
+            resetProgressState();
+            callbacks.onCacheProgressChanged();
         }, CACHE_PROGRESS_FINISHED_HOLD_MS);
     }
 

@@ -47,13 +47,26 @@ Use `assembleDebug` for the normal edit/verify loop when the change warrants com
 
 ## Device Verification
 
-Do not run or control a connected Android device or emulator unless the user explicitly asks for device verification. When asked, use `adb devices` to confirm it is online. If more than one device is connected, select the intended target explicitly with `adb -s <serial>` for every install, navigation, inspection, and capture command. To verify UI changes, install the debug APK with `adb install -r app/build/outputs/apk/debug/app-debug.apk`, launch the app with `adb shell monkey -p com.simon.harmonichackernews -c android.intent.category.LAUNCHER 1`, navigate with `adb shell input tap ...`, and inspect the hierarchy with `adb shell uiautomator dump` when verifying text, visibility, state, or clickability.
+Do not run or control a connected Android device or emulator unless the user explicitly asks for device verification. When asked, use `adb devices` to confirm it is online. If more than one device is connected, select the intended target explicitly with `adb -s <serial>` for every install, navigation, inspection, and capture command. To verify UI changes, install the debug APK with `adb install -r app/build/outputs/apk/debug/app-debug.apk`, navigate with `adb shell input tap ...`, and inspect the hierarchy with `adb shell uiautomator dump` when verifying text, visibility, state, or clickability.
+
+### Legacy/Compose side-by-side QA
+
+On 2026-08-01, the `main` branch's `debugFast` build was installed on every connected QA target: the physical Pixel 8 Pro plus the Pixel 9a, foldable, and tablet emulators. It remains installed as `com.simon.harmonichackernews` with the label **Harmonic** for legacy View comparisons.
+
+While the `codex/compose` migration branch is in progress, its debug and debugFast variants use the temporary application ID `com.simon.harmonichackernews.compose` and label **Harmonic Compose**. This lets both builds remain installed. Re-check serials with `adb devices`, then use the appropriate explicit package when launching:
+
+```
+adb -s <serial> shell monkey -p com.simon.harmonichackernews -c android.intent.category.LAUNCHER 1
+adb -s <serial> shell monkey -p com.simon.harmonichackernews.compose -c android.intent.category.LAUNCHER 1
+```
+
+Do not remove the temporary suffix until legacy side-by-side QA is finished. Do not uninstall either package or clear its data as part of comparison testing.
 
 If `adb` or `emulator` is not on `PATH`, use the binaries under `/Users/simon/Library/Android/sdk/platform-tools/` and `/Users/simon/Library/Android/sdk/emulator/` rather than searching the system repeatedly.
 
 ### Debug Fixtures
 
-Before searching live Hacker News content or adding temporary debug hooks, check Settings -> Debug. Its Sample content section provides repeatable link posts, reference-link posts, polls, internal HN links, and video examples. It also provides direct access to dialogs and arbitrary HN item IDs. Prefer these fixtures when they cover the behavior being tested. Do not duplicate their hardcoded item IDs in `AGENTS.md`; `DebugFragment.java` is the source of truth.
+Before searching live Hacker News content or adding temporary debug hooks, check Settings -> Debug. Its Sample content section provides repeatable link posts, reference-link posts, polls, internal HN links, and video examples. It also provides direct access to dialogs and arbitrary HN item IDs. Prefer these fixtures when they cover the behavior being tested. Do not duplicate their hardcoded item IDs in `AGENTS.md`; `ui/settings/DebugSettingsScreen.kt` is the source of truth.
 
 ### Device State Restoration
 

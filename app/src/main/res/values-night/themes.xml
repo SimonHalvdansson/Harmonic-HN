@@ -2,14 +2,8 @@
 
     <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialDark"></style>
 
-    <style name="ThemeSwipeBackNoActionBarMaterialDayNight" parent="ThemeSwipeBackNoActionBarMaterialDark"></style>
-
     <style name="AppThemeDarkLightDayNight" parent="AppTheme"></style>
 
-    <style name="ThemeSwipeBackNoActionBarDarkLightDayNight" parent="ThemeSwipeBackNoActionBar"></style>
-
     <style name="AppThemeAmoledWhiteDayNight" parent="AppThemeAmoledDark"></style>
-
-    <style name="ThemeSwipeBackNoActionBarAmoledWhiteDayNight" parent="ThemeSwipeBackNoActionBarAmoledDark"></style>
 
 </resources>

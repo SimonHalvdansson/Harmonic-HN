@@ -52,7 +52,7 @@ import com.android.volley.DefaultRetryPolicy
 import com.android.volley.Request
 import com.android.volley.toolbox.StringRequest
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.SubmissionsActivity
+import com.simon.harmonichackernews.ui.submissions.SubmissionsContract
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.RepliesChecker
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -334,9 +334,7 @@ private fun UserLoadedContent(
                 icon = R.drawable.ic_forum,
                 onClick = {
                     context.startActivity(
-                        Intent(context, SubmissionsActivity::class.java).apply {
-                            putExtra(SubmissionsActivity.KEY_USER, user.id)
-                        },
+                        SubmissionsContract.createIntent(context, user.id),
                     )
                 },
                 modifier = Modifier.padding(top = 8.dp),

@@ -5,12 +5,6 @@
 
 package com.simon.harmonichackernews.ui.stories
 
-import android.annotation.SuppressLint
-import android.graphics.Canvas
-import android.view.View
-import android.view.ViewGroup
-import android.widget.FrameLayout
-import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -21,6 +15,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -55,12 +51,15 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
@@ -68,10 +67,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -92,13 +93,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.semantics.contentDescription
@@ -114,9 +114,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.core.graphics.createBitmap
-import androidx.core.graphics.drawable.toDrawable
-import androidx.core.graphics.withTranslation
 import androidx.fragment.app.Fragment
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
@@ -133,9 +130,8 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlin.math.ceil
-import kotlin.math.floor
 import kotlin.math.roundToInt
 
 /**
@@ -224,17 +220,23 @@ class StoriesComposeController private constructor(
         private set
     internal var frontNextEnabled by mutableStateOf(false)
         private set
+    internal var frontDatePickerRequest by mutableStateOf<FrontDatePickerRequest?>(null)
+        private set
     internal var loggedIn by mutableStateOf(false)
         private set
     internal var canCache by mutableStateOf(false)
         private set
     internal var canClearHistory by mutableStateOf(false)
         private set
-    internal var topInsetPx by mutableIntStateOf(0)
+    internal var cacheProgressVisible by mutableStateOf(false)
+        private set
+    internal var cacheProgress by mutableIntStateOf(0)
+        private set
+    internal var cacheProgressMax by mutableIntStateOf(1)
+        private set
+    internal var cacheProgressStatus by mutableStateOf("Caching stories")
         private set
     internal var contentInsetStartPx by mutableIntStateOf(0)
-        private set
-    internal var bottomInsetPx by mutableIntStateOf(0)
         private set
     internal var predictiveBackActive by mutableStateOf(false)
         private set
@@ -249,11 +251,28 @@ class StoriesComposeController private constructor(
     internal var headerPinnedForPreview by mutableStateOf(false)
         private set
     internal val storyPagingAlphas = mutableStateMapOf<Int, Float>()
+    internal var storyPreviewOverlay by mutableStateOf<StoryPreviewOverlayState?>(null)
+        private set
+    internal var storyPreviewDismissRequest by mutableIntStateOf(0)
+        private set
+    internal var storyPreviewPredictiveBackProgress by mutableFloatStateOf(0f)
+        private set
+    internal var storyPreviewPredictiveBackEdge by mutableIntStateOf(0)
+        private set
+    internal var storyPreviewPredictiveBackTouchY by mutableFloatStateOf(0f)
+        private set
+    internal var storyPreviewPredictiveBackSettleRequest by
+        mutableStateOf<PredictiveBackSettleRequest?>(null)
+        private set
+    internal var storyPreviewVoteLoadingId by mutableIntStateOf(-1)
+        private set
+    internal var storyPreviewFavoriteLoadingId by mutableIntStateOf(-1)
+        private set
+    internal var visibleStoryPreviewId by mutableIntStateOf(-1)
+        private set
 
-    private var composeView: ComposeView? = null
     private var requestSerial = 0
     private val storyBounds = mutableMapOf<Int, MutableMap<StoryItemElement, Rect>>()
-    private val transitionSources = mutableSetOf<View>()
     private val suppressedStoryIds = mutableStateOf<Set<Int>>(emptySet())
 
     fun updateContent(
@@ -298,9 +317,11 @@ class StoriesComposeController private constructor(
         loggedIn: Boolean,
         canCache: Boolean,
         canClearHistory: Boolean,
-        topInsetPx: Int,
+        cacheProgressVisible: Boolean,
+        cacheProgress: Int,
+        cacheProgressMax: Int,
+        cacheProgressStatus: String,
         contentInsetStartPx: Int,
-        bottomInsetPx: Int,
     ) {
         val enteringSearch = !this.searching && searching
         this.mainStories = mainStories.toList()
@@ -346,14 +367,40 @@ class StoriesComposeController private constructor(
         this.loggedIn = loggedIn
         this.canCache = canCache
         this.canClearHistory = canClearHistory
-        this.topInsetPx = topInsetPx
+        this.cacheProgressVisible = cacheProgressVisible
+        this.cacheProgress = cacheProgress
+        this.cacheProgressMax = cacheProgressMax.coerceAtLeast(1)
+        this.cacheProgressStatus = cacheProgressStatus
         this.contentInsetStartPx = contentInsetStartPx
-        this.bottomInsetPx = bottomInsetPx
         contentVersion++
     }
 
     fun updateSearchDraft(value: String) {
         searchDraft = value
+    }
+
+    fun cacheStories(storyCount: Int) {
+        listener.onCacheStoriesConfirmed(
+            SettingsUtils.sanitizeStoriesToCache(storyCount),
+        )
+    }
+
+    fun showFrontDatePicker(initialDay: Long, earliestDay: Long, latestDay: Long) {
+        frontDatePickerRequest = FrontDatePickerRequest(
+            initialDay = initialDay.coerceIn(earliestDay, latestDay),
+            earliestDay = earliestDay,
+            latestDay = latestDay,
+        )
+    }
+
+    internal fun dismissFrontDatePicker() {
+        frontDatePickerRequest = null
+    }
+
+    internal fun selectFrontDate(day: Long) {
+        val request = frontDatePickerRequest ?: return
+        frontDatePickerRequest = null
+        listener.onFrontDateSelected(day.coerceIn(request.earliestDay, request.latestDay))
     }
 
     fun beginPredictiveBack(progress: Float) {
@@ -390,7 +437,8 @@ class StoriesComposeController private constructor(
     fun requestScrollBy(dy: Int) {
         if (dy != 0) {
             headerPinnedForPreview = true
-            scrollByRequest = ScrollByRequest(++requestSerial, dy)
+            val pendingDy = scrollByRequest?.dy ?: 0
+            scrollByRequest = ScrollByRequest(++requestSerial, pendingDy + dy)
         }
     }
 
@@ -415,6 +463,160 @@ class StoriesComposeController private constructor(
 
     fun clearStoryPagingAlphas() {
         storyPagingAlphas.clear()
+    }
+
+    fun showStoryPreview(
+        stories: List<Story>,
+        sourcePositions: IntArray,
+        cardColors: IntArray,
+        openedStoryId: Int,
+    ) {
+        if (stories.isEmpty() || stories.size != sourcePositions.size || stories.size != cardColors.size) {
+            return
+        }
+        val initialPage = stories.indexOfFirst { it.id == openedStoryId }.takeIf { it >= 0 } ?: 0
+        requestStopStoryPreviewScroll()
+        storyPreviewDismissRequest = 0
+        storyPreviewPredictiveBackProgress = 0f
+        storyPreviewPredictiveBackSettleRequest = null
+        storyPreviewOverlay = StoryPreviewOverlayState(
+            stories = stories.toList(),
+            sourcePositions = sourcePositions.toList(),
+            cardColors = cardColors.toList(),
+            initialPage = initialPage,
+        )
+        visibleStoryPreviewId = stories[initialPage].id
+        suppressedStoryIds.value = setOf(stories[initialPage].id)
+        listener.onStoryPreviewVisibilityChanged(true)
+    }
+
+    fun restoreStoryPreview(
+        stories: List<Story>,
+        sourcePositions: IntArray,
+        cardColors: IntArray,
+        openedStoryId: Int,
+    ) = showStoryPreview(stories, sourcePositions, cardColors, openedStoryId)
+
+    fun isStoryPreviewShowing(): Boolean = storyPreviewOverlay != null
+
+    fun getVisibleStoryPreviewId(): Int = visibleStoryPreviewId
+
+    fun requestDismissStoryPreview() {
+        if (storyPreviewOverlay == null || storyPreviewDismissRequest != 0) return
+        storyPreviewDismissRequest = ++requestSerial
+    }
+
+    fun completeStoryPreviewDismiss() {
+        if (storyPreviewOverlay == null) return
+        storyPreviewOverlay = null
+        storyPreviewDismissRequest = 0
+        storyPreviewPredictiveBackProgress = 0f
+        storyPreviewPredictiveBackSettleRequest = null
+        storyPreviewVoteLoadingId = -1
+        storyPreviewFavoriteLoadingId = -1
+        visibleStoryPreviewId = -1
+        storyPagingAlphas.clear()
+        suppressedStoryIds.value = emptySet()
+        headerPinnedForPreview = false
+        listener.onStoryPreviewVisibilityChanged(false)
+    }
+
+    fun startStoryPreviewPredictiveBack(progress: Float, edge: Int, touchY: Float) {
+        if (storyPreviewOverlay == null || storyPreviewDismissRequest != 0) return
+        storyPreviewPredictiveBackSettleRequest = null
+        storyPreviewPredictiveBackEdge = edge
+        storyPreviewPredictiveBackTouchY = touchY
+        storyPreviewPredictiveBackProgress = progress.coerceIn(0f, 1f)
+    }
+
+    fun updateStoryPreviewPredictiveBack(progress: Float, edge: Int, touchY: Float) {
+        startStoryPreviewPredictiveBack(progress, edge, touchY)
+    }
+
+    fun cancelStoryPreviewPredictiveBack() {
+        if (storyPreviewOverlay == null || storyPreviewPredictiveBackProgress <= 0f) return
+        storyPreviewPredictiveBackSettleRequest = PredictiveBackSettleRequest(
+            serial = ++requestSerial,
+            target = 0f,
+        )
+    }
+
+    fun isStoryPreviewPredictiveBackActive(): Boolean =
+        storyPreviewOverlay != null &&
+            (storyPreviewPredictiveBackProgress > 0f ||
+                storyPreviewPredictiveBackSettleRequest != null)
+
+    fun commitStoryPreviewPredictiveBack() {
+        if (storyPreviewOverlay == null) return
+        requestDismissStoryPreview()
+    }
+
+    internal fun finishStoryPreviewPredictiveBackSettle(
+        request: PredictiveBackSettleRequest,
+    ) {
+        if (storyPreviewPredictiveBackSettleRequest != request) return
+        storyPreviewPredictiveBackProgress = request.target
+        storyPreviewPredictiveBackSettleRequest = null
+    }
+
+    internal fun sourceBoundsForStory(storyId: Int): Rect? =
+        storyBounds[storyId]?.get(StoryItemElement.Container)
+
+    internal fun onStoryPreviewPagePosition(
+        lowerPage: Int,
+        upperPage: Int,
+        offset: Float,
+    ) {
+        val state = storyPreviewOverlay ?: return
+        val lower = state.stories.getOrNull(lowerPage) ?: return
+        val upper = state.stories.getOrNull(upperPage) ?: lower
+        suppressedStoryIds.value = emptySet()
+        setStoryPagingAlphas(
+            lower.id,
+            if (upperPage == lowerPage) 0f else offset.coerceIn(0f, 1f),
+            if (upperPage == lowerPage) -1 else upper.id,
+            if (upperPage == lowerPage) 1f else 1f - offset.coerceIn(0f, 1f),
+        )
+    }
+
+    internal fun onStoryPreviewPageSettled(page: Int) {
+        val state = storyPreviewOverlay ?: return
+        visibleStoryPreviewId = state.stories.getOrNull(page)?.id ?: return
+    }
+
+    internal fun onStoryPreviewNavigate(page: Int, showWebsite: Boolean) {
+        val state = storyPreviewOverlay ?: return
+        val story = state.stories.getOrNull(page) ?: return
+        val sourcePosition = state.sourcePositions.getOrNull(page) ?: return
+        if (!listener.onStoryPreviewNavigate(story, sourcePosition, showWebsite)) {
+            requestDismissStoryPreview()
+        }
+    }
+
+    internal fun onStoryPreviewAction(page: Int, action: Int) {
+        val state = storyPreviewOverlay ?: return
+        val story = state.stories.getOrNull(page) ?: return
+        val sourcePosition = state.sourcePositions.getOrNull(page) ?: return
+        if (action == STORY_PREVIEW_ACTION_VOTE) storyPreviewVoteLoadingId = story.id
+        if (action == STORY_PREVIEW_ACTION_FAVORITE) storyPreviewFavoriteLoadingId = story.id
+        listener.onStoryPreviewAction(story, sourcePosition, action)
+        if (action == STORY_PREVIEW_ACTION_READ || action == STORY_PREVIEW_ACTION_BOOKMARK) {
+            contentVersion++
+        }
+    }
+
+    fun finishStoryPreviewAction(storyId: Int, action: Int) {
+        if (action == STORY_PREVIEW_ACTION_VOTE && storyPreviewVoteLoadingId == storyId) {
+            storyPreviewVoteLoadingId = -1
+        }
+        if (action == STORY_PREVIEW_ACTION_FAVORITE && storyPreviewFavoriteLoadingId == storyId) {
+            storyPreviewFavoriteLoadingId = -1
+        }
+        contentVersion++
+    }
+
+    private fun requestStopStoryPreviewScroll() {
+        listener.onStoryPreviewStopScroll()
     }
 
     fun getStoryPagingDistance(firstStoryId: Int, secondStoryId: Int): Int {
@@ -450,78 +652,17 @@ class StoriesComposeController private constructor(
         storyBounds.getOrPut(storyId) { mutableMapOf() }[element] = bounds
     }
 
-    fun createStoryTransitionSource(storyId: Int): View? {
-        // Paging changes the active story while the overlay remains open. Unlike RecyclerView
-        // children these proxy views live in the activity overlay, so retire the previous page's
-        // proxies before creating the new shared-element source.
-        clearTransitionSources()
-        return storyBounds[storyId]?.get(StoryItemElement.Container)?.let { bounds ->
-            createTransitionSource(bounds, false) { visible ->
-                if (!visible) suppressedStoryIds.value = suppressedStoryIds.value + storyId
-            }
-        }
-    }
-
-    fun createStoryImageTransitionSource(storyId: Int): ImageView? =
-        storyBounds[storyId]?.get(StoryItemElement.Preview)?.let { bounds ->
-            createTransitionSource(bounds, true, null) as? ImageView
-        }
-
-    fun createStoryTitleTransitionSource(storyId: Int): View? =
-        storyBounds[storyId]?.get(StoryItemElement.Title)?.let {
-            createTransitionSource(it, false, null)
-        }
-
-    fun createStorySummaryTransitionSource(storyId: Int): View? =
-        storyBounds[storyId]?.get(StoryItemElement.Summary)?.let {
-            createTransitionSource(it, false, null)
-        }
-
-    fun createStoryMetaTransitionSource(storyId: Int): View? =
-        storyBounds[storyId]?.get(StoryItemElement.Meta)?.let {
-            createTransitionSource(it, false, null)
-        }
-
-    private fun createTransitionSource(
-        bounds: Rect,
-        image: Boolean,
-        onVisibilityChanged: ((Boolean) -> Unit)?,
-    ): View? {
-        val source = composeView ?: return null
-        val host = activity.findViewById<View>(android.R.id.content) as? ViewGroup ?: return null
-        val hostLocation = IntArray(2)
-        host.getLocationInWindow(hostLocation)
-        val left = floor(bounds.left).toInt()
-        val top = floor(bounds.top).toInt()
-        val right = ceil(bounds.right).toInt()
-        val bottom = ceil(bounds.bottom).toInt()
-        if (right <= left || bottom <= top) return null
-        val proxy = if (image) {
-            ComposeCropTransitionImageView(activity, source, left, top, right - left, bottom - top)
-        } else {
-            ComposeCropTransitionView(activity, source, left, top, onVisibilityChanged)
-        }
-        host.addView(proxy, ViewGroup.LayoutParams(right - left, bottom - top))
-        proxy.x = (left - hostLocation[0]).toFloat()
-        proxy.y = (top - hostLocation[1]).toFloat()
-        transitionSources += proxy
-        return proxy
-    }
-
-    fun clearTransitionSources() {
-        transitionSources.toList().forEach { source ->
-            source.visibility = View.VISIBLE
-            (source.parent as? ViewGroup)?.removeView(source)
-        }
-        transitionSources.clear()
-        suppressedStoryIds.value = emptySet()
-    }
-
     internal fun isStorySuppressed(storyId: Int): Boolean = storyId in suppressedStoryIds.value
 
     data class ScrollByRequest(val serial: Int, val dy: Int)
 
     data class PredictiveBackSettleRequest(val serial: Int, val target: Float)
+
+    data class FrontDatePickerRequest(
+        val initialDay: Long,
+        val earliestDay: Long,
+        val latestDay: Long,
+    )
 
     interface Listener {
         fun onTypeSelected(index: Int)
@@ -536,13 +677,19 @@ class StoriesComposeController private constructor(
         fun onSavedFilterSelected(filter: Int)
         fun onShiftFrontDate(days: Int)
         fun onPickFrontDate()
+        fun onFrontDateSelected(day: Long)
         fun onMoreAction(action: Int)
+        fun onCacheStoriesConfirmed(storyCount: Int)
         fun onLinkClick(story: Story)
         fun onCommentClick(story: Story)
         fun onCommentStoryClick(story: Story)
         fun onCommentRepliesClick(story: Story)
         fun onStoryLongClick(story: Story)
         fun onVisibleStoryRange(lastVisibleIndex: Int)
+        fun onStoryPreviewStopScroll()
+        fun onStoryPreviewVisibilityChanged(showing: Boolean)
+        fun onStoryPreviewNavigate(story: Story, position: Int, showWebsite: Boolean): Boolean
+        fun onStoryPreviewAction(story: Story, position: Int, action: Int)
     }
 
     companion object {
@@ -562,128 +709,33 @@ class StoriesComposeController private constructor(
         const val FILTER_BOTH = 1
         const val FILTER_COMMENTS = 2
 
+        const val STORY_PREVIEW_ACTION_VOTE = 0
+        const val STORY_PREVIEW_ACTION_READ = 1
+        const val STORY_PREVIEW_ACTION_BOOKMARK = 2
+        const val STORY_PREVIEW_ACTION_FAVORITE = 3
+
         @JvmStatic
-        fun install(
+        fun create(
             fragment: Fragment,
-            contentHost: ViewGroup,
             listener: Listener,
         ): StoriesComposeController {
             val activity = fragment.requireActivity() as AppCompatActivity
-            val controller = StoriesComposeController(activity, listener)
-            val composeView = ComposeView(activity).apply {
-                id = View.generateViewId()
-                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-                setContent {
-                    HarmonicTheme { StoriesScreen(controller) }
-                }
-            }
-            controller.composeView = composeView
-            val boundedHost = StoriesComposeHost(activity).apply {
-                addView(
-                    composeView,
-                    FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                    ),
-                )
-            }
-            contentHost.addView(
-                boundedHost,
-                ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                ),
-            )
-            boundedHost.bringToFront()
-            return controller
+            return StoriesComposeController(activity, listener)
         }
     }
 }
 
-/**
- * Weighted FragmentContainerViews can receive an unbounded speculative height during the first
- * LinearLayout measure pass. Cap only that invalid pass; subsequent exact window measurements
- * replace it normally.
- */
-private class StoriesComposeHost(context: android.content.Context) : FrameLayout(context) {
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val displayMetrics = resources.displayMetrics
-        super.onMeasure(
-            boundedSpec(widthMeasureSpec, displayMetrics.widthPixels),
-            boundedSpec(heightMeasureSpec, displayMetrics.heightPixels),
-        )
-    }
-
-    private fun boundedSpec(measureSpec: Int, displaySize: Int): Int {
-        val mode = MeasureSpec.getMode(measureSpec)
-        val size = MeasureSpec.getSize(measureSpec)
-        val safeDisplaySize = displaySize.coerceAtLeast(1)
-        return if (mode == MeasureSpec.UNSPECIFIED || size > safeDisplaySize * 2) {
-            MeasureSpec.makeMeasureSpec(safeDisplaySize, MeasureSpec.EXACTLY)
-        } else {
-            measureSpec
-        }
-    }
-}
-
-@SuppressLint("ViewConstructor")
-private class ComposeCropTransitionView(
-    context: android.content.Context,
-    private val source: View,
-    private val cropLeftInWindow: Int,
-    private val cropTopInWindow: Int,
-    private val onVisibilityChanged: ((Boolean) -> Unit)?,
-) : View(context) {
-    private val sourceLocation = IntArray(2)
-
-    init {
-        setWillNotDraw(false)
-        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        source.getLocationInWindow(sourceLocation)
-        canvas.withTranslation(
-            (sourceLocation[0] - cropLeftInWindow).toFloat(),
-            (sourceLocation[1] - cropTopInWindow).toFloat(),
-        ) { source.draw(this) }
-    }
-
-    override fun setVisibility(visibility: Int) {
-        val changed = visibility != this.visibility
-        super.setVisibility(visibility)
-        if (changed) onVisibilityChanged?.invoke(visibility == VISIBLE)
-    }
-}
-
-@SuppressLint("ViewConstructor")
-private class ComposeCropTransitionImageView(
-    context: android.content.Context,
-    source: View,
-    cropLeftInWindow: Int,
-    cropTopInWindow: Int,
-    width: Int,
-    height: Int,
-) : androidx.appcompat.widget.AppCompatImageView(context) {
-    init {
-        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
-        val sourceLocation = IntArray(2)
-        source.getLocationInWindow(sourceLocation)
-        val bitmap = createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1))
-        val canvas = Canvas(bitmap)
-        canvas.withTranslation(
-            (sourceLocation[0] - cropLeftInWindow).toFloat(),
-            (sourceLocation[1] - cropTopInWindow).toFloat(),
-        ) { source.draw(this) }
-        setImageDrawable(bitmap.toDrawable(resources))
-        scaleType = ImageView.ScaleType.CENTER_CROP
-    }
-}
+internal data class StoryPreviewOverlayState(
+    val stories: List<Story>,
+    val sourcePositions: List<Int>,
+    val cardColors: List<Int>,
+    val initialPage: Int,
+)
 
 private val StoriesEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 @Composable
-private fun StoriesScreen(controller: StoriesComposeController) {
+internal fun StoriesScreen(controller: StoriesComposeController) {
     val settings = controller.displaySettings ?: return
     val mainState = rememberLazyListState()
     val searchState = rememberLazyListState()
@@ -790,6 +842,77 @@ private fun StoriesScreen(controller: StoriesComposeController) {
             )
         }
     }
+
+    controller.frontDatePickerRequest?.let { request ->
+        FrontPageDatePickerDialog(
+            request = request,
+            onDismiss = controller::dismissFrontDatePicker,
+            onSelected = controller::selectFrontDate,
+        )
+    }
+}
+
+@Composable
+private fun FrontPageDatePickerDialog(
+    request: StoriesComposeController.FrontDatePickerRequest,
+    onDismiss: () -> Unit,
+    onSelected: (Long) -> Unit,
+) {
+    val selectableDates = remember(request.earliestDay, request.latestDay) {
+        object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                utcTimeMillis in request.earliestDay..request.latestDay
+        }
+    }
+    val state = rememberDatePickerState(
+        initialSelectedDateMillis = request.initialDay,
+        selectableDates = selectableDates,
+    )
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = { state.selectedDateMillis?.let(onSelected) },
+                enabled = state.selectedDateMillis != null,
+            ) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    ) {
+        FrontPageDatePickerContent(state = state)
+    }
+}
+
+@Composable
+private fun FrontPageDatePickerContent(
+    state: androidx.compose.material3.DatePickerState,
+) {
+    DatePicker(
+        state = state,
+        title = {
+            Text(
+                text = "Select front page day",
+                modifier = Modifier.padding(start = 24.dp, top = 16.dp),
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.Bold,
+            )
+        },
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun FrontPageDatePickerContentPreview() {
+    HarmonicTheme {
+        FrontPageDatePickerContent(
+            state = rememberDatePickerState(initialSelectedDateMillis = 1_700_000_000_000L),
+        )
+    }
 }
 
 @Composable
@@ -801,11 +924,12 @@ private fun StoriesList(
     searchMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val visibleCount = if (searchMode) controller.searchVisibleCount else controller.mainVisibleCount
     val visibleStories = remember(stories, visibleCount, controller.contentVersion) {
         stories.take(visibleCount.coerceAtLeast(0).coerceAtMost(stories.size))
     }
-    val bottomPadding = with(LocalDensity.current) { controller.bottomInsetPx.toDp() }
+    val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
     var headerHeightPx by remember(searchMode) { mutableIntStateOf(0) }
     val headerHeight = with(density) { headerHeightPx.toDp() }
@@ -873,7 +997,7 @@ private fun StoriesList(
                         val pagingAlpha = controller.storyPagingAlphas[story.id] ?: 1f
                         val suppressed = controller.isStorySuppressed(story.id)
                         StoryItem(
-                            model = story.toUiModel(index, settings),
+                            model = story.toUiModel(index, settings, context),
                             style = settings.toItemStyle(story),
                             modifier = Modifier
                                 .animateItem()
@@ -928,7 +1052,7 @@ private fun StoriesHeader(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
-    val topInset = with(density) { controller.topInsetPx.toDp() }
+    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
     val compact = controller.displaySettings?.compactHeader == true
     val topSpacing = if (compact) 20.dp else 40.dp
@@ -1015,6 +1139,32 @@ private fun StoriesHeader(
             )
         }
 
+        AnimatedVisibility(
+            visible = !searchMode && controller.cacheProgressVisible,
+            enter = fadeIn(tween(180, easing = StoriesEasing)) + expandVertically(),
+            exit = fadeOut(tween(140, easing = StoriesEasing)) + shrinkVertically(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = sideStart, top = 8.dp, end = sideEnd),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = controller.cacheProgressStatus,
+                    color = HarmonicTheme.colors.storyDisabled,
+                    fontFamily = ProductSansFontFamily,
+                    fontSize = 12.sp,
+                )
+                LinearProgressIndicator(
+                    progress = {
+                        controller.cacheProgress.toFloat() / controller.cacheProgressMax
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
         Box(Modifier.padding(start = sideStart, end = sideEnd)) {
             HeaderStatus(controller, searchMode)
         }
@@ -1049,6 +1199,7 @@ private fun MainHeader(
         Box(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
                     .combinedClickable(
                         onClick = { typesExpanded = true },
                         onLongClick = null,
@@ -1257,7 +1408,11 @@ private fun StoriesMoreMenu(
     expanded: Boolean,
     dismiss: () -> Unit,
 ) {
-    HarmonicDropdownMenu(expanded = expanded, onDismiss = dismiss) {
+    HarmonicDropdownMenu(
+        expanded = expanded,
+        onDismiss = dismiss,
+        modifier = Modifier.width(196.dp),
+    ) {
         if (controller.loggedIn) {
             MoreItem("Profile", StoriesComposeController.MORE_PROFILE, controller, dismiss)
             MoreItem("Submit", StoriesComposeController.MORE_SUBMIT, controller, dismiss)
@@ -1427,10 +1582,25 @@ private fun SavedCommentStoryItem(
     }
 }
 
-private fun Story.toUiModel(position: Int, settings: StoryDisplaySettings): StoryItemUiModel {
+private fun Story.toUiModel(
+    position: Int,
+    settings: StoryDisplaySettings,
+    context: android.content.Context,
+): StoryItemUiModel {
     val fullDomain = runCatching { getDisplayDomain(true) }.getOrDefault("")
     val shortDomain = runCatching { getDisplayDomain(false) }.getOrDefault(fullDomain)
     val favicon = runCatching { FaviconLoader.getFaviconUrl(url, settings.faviconProvider) }.getOrNull()
+    val tintBaseColor = PreviewImageTintUtils.getTintBaseColor(context)
+    val paletteTintMode = SettingsUtils.getPaletteTintConfigKey(settings.paletteTintMode)
+    val currentPreviewTint = PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
+        this,
+        tintBaseColor,
+        paletteTintMode,
+    )
+    val currentFaviconTint = faviconTintColorLoaded &&
+        faviconTintBaseColor == tintBaseColor &&
+        SettingsUtils.getPaletteTintConfigKey(faviconTintMode) == paletteTintMode &&
+        faviconTintSourceUrl == favicon
     return StoryItemUiModel(
         index = "${position + 1}.",
         title = title ?: if (loadingFailed) "Tap to retry" else "Loading…",
@@ -1444,8 +1614,8 @@ private fun Story.toUiModel(position: Int, settings: StoryDisplaySettings): Stor
         previewImageRes = null,
         faviconUrl = favicon,
         previewImageUrl = previewImageUrl,
-        faviconTintArgb = faviconTintColor.takeIf { faviconTintColorLoaded },
-        previewImageTintArgb = previewImageTintColor.takeIf { previewImageTintColorLoaded },
+        faviconTintArgb = faviconTintColor.takeIf { currentFaviconTint },
+        previewImageTintArgb = previewImageTintColor.takeIf { currentPreviewTint },
     )
 }
 

@@ -59,7 +59,6 @@
         <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="dialogCornerRadius">28dp</item>
-        <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>
 
     <style name="AppTheme" parent="AppThemeBase">
@@ -109,7 +108,6 @@
         <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="dialogCornerRadius">28dp</item>
-        <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>
 
     <style name="AppThemeAmoledDark" parent="AppTheme">
@@ -249,7 +247,6 @@
         <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="dialogCornerRadius">28dp</item>
-        <item name="switchPreferenceCompatStyle">@style/MaterialSwitchPreferenceCompat</item>
     </style>
 
     <style name="AppThemeMaterialLight" parent="AppThemeLight">
@@ -330,69 +327,4 @@
         <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
         <item name="dialogCornerRadius">28dp</item>
     </style>
-
-
-
-    <style name="ThemeSwipeBackNoActionBar" parent="AppTheme">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-    </style>
-
-    <style name="ThemeSwipeBackNoActionBarMaterialDayNight" parent="ThemeSwipeBackNoActionBarMaterialLight"></style>
-
-    <style name="ThemeSwipeBackNoActionBarDarkLightDayNight" parent="ThemeSwipeBackNoActionBarLight"></style>
-
-    <style name="ThemeSwipeBackNoActionBarAmoldedWhiteDayNight" parent="ThemeSwipeBackNoActionBarWhite"></style>
-
-    <style name="ThemeSwipeBackNoActionBarMaterialDark" parent="@style/AppThemeMaterialDark">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-    </style>
-
-    <style name="ThemeSwipeBackNoActionBarAmoledDark" parent="AppThemeAmoledDark">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-    </style>
-
-    <style name="ThemeSwipeBackNoActionBarHacker" parent="AppThemeHacker">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-    </style>
-
-    <style name="ThemeSwipeBackNoActionBarGray" parent="AppThemeGray">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-    </style>
-
-    <style name="ThemeSwipeBackNoActionBarLight" parent="@style/AppThemeLight">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-    </style>
-
-    <style name="ThemeSwipeBackNoActionBarMaterialLight" parent="@style/AppThemeMaterialLight">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-    </style>
-
-    <style name="ThemeSwipeBackNoActionBarHackerNews" parent="@style/AppThemeHackerNews">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-    </style>
-
-    <style name="ThemeSwipeBackNoActionBarWhite" parent="@style/AppThemeWhite">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-    </style>
-
-    <style name="CommentsDefaultTheme" parent="ThemeSwipeBackNoActionBarMaterialDayNight"/>
-
-    <style name="ThemeDialogHost" parent="ThemeSwipeBackNoActionBarMaterialDayNight">
-        <item name="android:windowNoTitle">true</item>
-        <item name="android:windowIsFloating">false</item>
-    </style>
-
 </resources>

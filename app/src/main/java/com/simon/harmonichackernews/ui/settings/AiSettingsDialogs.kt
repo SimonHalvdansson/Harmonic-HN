@@ -5,8 +5,6 @@
 
 package com.simon.harmonichackernews.ui.settings
 
-import android.graphics.drawable.Drawable
-import android.widget.ImageView
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -59,6 +57,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
@@ -71,13 +71,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.preference.PreferenceManager
-import coil.Coil
+import coil.compose.AsyncImage
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
-import coil.target.ImageViewTarget
-import coil.util.CoilUtils
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.AiModelCatalog
 import com.simon.harmonichackernews.network.AiSummaryProviders
@@ -957,53 +954,30 @@ private fun AiModelProviderIcon(providerSlug: String) {
             fontSize = 12.sp,
         )
         iconData?.let { resolvedIcon ->
-            AndroidView(
-                factory = { viewContext ->
-                    ImageView(viewContext).apply {
-                        scaleType = ImageView.ScaleType.FIT_CENTER
-                        setBackgroundResource(R.drawable.favicon_thumbnail_background)
-                        clipToOutline = true
-                        alpha = 0f
+            val context = LocalContext.current
+            val request = remember(resolvedIcon) {
+                ImageRequest.Builder(context)
+                    .data(resolvedIcon)
+                    .setHeader("User-Agent", NetworkComponent.USER_AGENT)
+                    .crossfade(100)
+                    .apply {
+                        if (
+                            resolvedIcon is ByteArray ||
+                            resolvedIcon is String &&
+                            resolvedIcon.contains(".svg", ignoreCase = true)
+                        ) {
+                            decoderFactory(SvgDecoder.Factory())
+                        }
                     }
-                },
-                modifier = Modifier.size(22.dp),
-                update = { imageView ->
-                    if (imageView.tag == resolvedIcon) return@AndroidView
-                    CoilUtils.dispose(imageView)
-                    imageView.tag = resolvedIcon
-                    imageView.alpha = 0f
-                    imageView.setImageDrawable(null)
-                    val requestBuilder = ImageRequest.Builder(imageView.context)
-                        .data(resolvedIcon)
-                        .setHeader("User-Agent", NetworkComponent.USER_AGENT)
-                        .crossfade(100)
-                        .target(
-                            object : ImageViewTarget(imageView) {
-                                override fun onStart(placeholder: Drawable?) {
-                                    super.onStart(null)
-                                }
-
-                                override fun onSuccess(result: Drawable) {
-                                    if (imageView.tag != resolvedIcon) return
-                                    super.onSuccess(result)
-                                    imageView.alpha = 1f
-                                }
-
-                                override fun onError(error: Drawable?) {
-                                    if (imageView.tag != resolvedIcon) return
-                                    super.onError(null)
-                                    imageView.alpha = 0f
-                                }
-                            },
-                        )
-                    if (
-                        resolvedIcon is ByteArray ||
-                        resolvedIcon is String && resolvedIcon.contains(".svg", ignoreCase = true)
-                    ) {
-                        requestBuilder.decoderFactory(SvgDecoder.Factory())
-                    }
-                    Coil.imageLoader(imageView.context).enqueue(requestBuilder.build())
-                },
+                    .build()
+            }
+            AsyncImage(
+                model = request,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(CircleShape),
             )
         }
     }
