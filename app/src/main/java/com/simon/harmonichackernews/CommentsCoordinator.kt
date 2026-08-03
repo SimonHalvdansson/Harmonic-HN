@@ -634,6 +634,27 @@ class CommentsCoordinator(
         }
     }
 
+    fun handlesBackInternally(): Boolean {
+        syncOnBackPressedCallbackEnabledState()
+        return backPressedCallback?.isEnabled == true
+    }
+
+    fun startInternalPredictiveBack(backEvent: BackEventCompat) {
+        backPressedCallback?.handleOnBackStarted(backEvent)
+    }
+
+    fun updateInternalPredictiveBack(backEvent: BackEventCompat) {
+        backPressedCallback?.handleOnBackProgressed(backEvent)
+    }
+
+    fun cancelInternalPredictiveBack() {
+        backPressedCallback?.handleOnBackCancelled()
+    }
+
+    fun commitInternalBack() {
+        backPressedCallback?.takeIf { it.isEnabled }?.handleOnBackPressed()
+    }
+
     private fun endCommentsPredictiveBackVisuals() {
         if (webViewController != null) {
             webViewController!!.endPredictiveBackScrollFreeze()
@@ -758,6 +779,7 @@ class CommentsCoordinator(
         requireActivity().attachCommentsComposeController(composeController!!)
         restoreLinkSummaryAfterRecreation()
         syncComposeState()
+        syncOnBackPressedCallbackEnabledState()
     }
 
     private fun syncComposeState() {
@@ -1043,32 +1065,19 @@ class CommentsCoordinator(
     }
 
     private fun syncOnBackPressedCallbackEnabledState() {
-        if (backPressedCallback == null) {
-            return
+        val commentsController = composeController
+        val websiteController = webViewController
+        val webViewVisible = websiteController?.hasWebView() == true &&
+            commentsController?.isWebsiteVisible() == true
+        val enabled = when {
+            commentsController?.isLinkPreviewOverlayShowing() == true -> true
+            commentsController?.isCommentActionOverlayShowing() == true -> true
+            websiteController?.isShowingCustomView == true -> true
+            webViewVisible && websiteController?.isReaderModeEnabled() == true -> true
+            closeWebViewOnBack -> webViewVisible
+            else -> webViewVisible && websiteController?.canGoBack() == true
         }
-        if (composeController != null
-            && (composeController!!.isLinkPreviewOverlayShowing()
-                    || composeController!!.isCommentActionOverlayShowing())
-        ) {
-            backPressedCallback!!.isEnabled = true
-            return
-        }
-        if (webViewController != null && webViewController!!.isShowingCustomView) {
-            backPressedCallback!!.isEnabled = true
-            return
-        }
-        val webViewVisible = webViewController != null && webViewController!!.hasWebView()
-                && composeController != null && composeController!!.isWebsiteVisible()
-        if (webViewVisible && webViewController!!.isReaderModeEnabled()) {
-            backPressedCallback!!.isEnabled = true
-            return
-        }
-        if (closeWebViewOnBack) {
-            backPressedCallback!!.isEnabled = webViewVisible
-        } else {
-            backPressedCallback!!.isEnabled =
-                webViewController != null && webViewController!!.canGoBack()
-        }
+        backPressedCallback?.isEnabled = enabled
     }
 
     private fun updateBottomSheetMargin(navbarHeight: Int) {

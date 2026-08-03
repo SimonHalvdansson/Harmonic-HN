@@ -513,17 +513,11 @@ object SettingsUtils {
             return defaultValue
         }
 
-        val parts: Array<String?> =
-            modeOrConfigKey.split("\\|".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-        if (parts.size <= partIndex) {
-            return defaultValue
-        }
-
-        try {
-            return parts[partIndex]!!.toInt()
-        } catch (e: NumberFormatException) {
-            return defaultValue
-        }
+        return modeOrConfigKey
+            .split('|')
+            .getOrNull(partIndex)
+            ?.toIntOrNull()
+            ?: defaultValue
     }
 
     fun shouldShowNavigationButtons(ctx: Context): Boolean {
@@ -963,9 +957,7 @@ object SettingsUtils {
             return domains
         }
 
-        val parts: Array<String?> =
-            value!!.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-        for (part in parts) {
+        for (part in value!!.split(',')) {
             val domain = normalizeArchiveRedirectDomain(part)
             if (!TextUtils.isEmpty(domain) && !containsDomain(domains, domain)) {
                 domains.add(domain)
@@ -987,8 +979,8 @@ object SettingsUtils {
         }
 
         val uri = Uri.parse(normalized)
-        val host: String = uri.getHost()!!
-        if (!TextUtils.isEmpty(host)) {
+        val host = uri.host
+        if (!host.isNullOrEmpty()) {
             normalized = host
         } else {
             val pathStart = normalized.indexOf('/')
@@ -1032,8 +1024,8 @@ object SettingsUtils {
             return null
         }
 
-        val host: String = uri.getHost()!!
-        if (TextUtils.isEmpty(host) || isArchiveHost(host)) {
+        val host = uri.host
+        if (host.isNullOrEmpty() || isArchiveHost(host)) {
             return null
         }
 

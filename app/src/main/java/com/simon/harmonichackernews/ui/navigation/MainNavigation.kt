@@ -51,9 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -79,6 +77,7 @@ import androidx.navigationevent.compose.rememberNavigationEventState
 import com.simon.harmonichackernews.CommentsContract
 import com.simon.harmonichackernews.CommentsCoordinator
 import com.simon.harmonichackernews.MainActivity
+import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoriesCoordinator
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
@@ -601,7 +600,12 @@ private fun MainNavigation(
     val hasHingeAngleSensor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
         context.packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
     val isFoldable = adaptiveInfo.windowPosture.hingeList.isNotEmpty() || hasHingeAngleSensor
-    val directive = remember(adaptiveInfo, supportsTwoPane, isFoldable) {
+    val density = LocalDensity.current
+    val tabletPaneSpacer = with(density) {
+        context.resources.getDimensionPixelSize(R.dimen.margin_between_panes).toDp()
+    }
+    val tabletStoriesWeight = context.resources.getInteger(R.integer.stories_pane_weight)
+    val directive = remember(adaptiveInfo, supportsTwoPane, isFoldable, tabletPaneSpacer) {
         val adaptiveDirective = calculatePaneScaffoldDirective(adaptiveInfo)
         adaptiveDirective.copy(
             maxHorizontalPartitions = if (supportsTwoPane) {
@@ -609,7 +613,7 @@ private fun MainNavigation(
             } else {
                 1
             },
-            horizontalPartitionSpacerSize = if (isFoldable) 12.dp else 16.dp,
+            horizontalPartitionSpacerSize = if (isFoldable) 12.dp else tabletPaneSpacer,
         )
     }
     val isTwoPane = directive.maxHorizontalPartitions > 1
@@ -619,7 +623,11 @@ private fun MainNavigation(
             foldable = isTwoPane && isFoldable,
         )
     }
-    val paneProportion = if (isFoldable) 0.5f else 0.38f
+    val paneProportion = if (isFoldable) {
+        0.5f
+    } else {
+        tabletStoriesWeight / (tabletStoriesWeight + LEGACY_COMMENTS_PANE_WEIGHT)
+    }
     val paneExpansionState = rememberPaneExpansionState(
         anchors = remember(paneProportion) {
             listOf(PaneExpansionAnchor.Proportion(paneProportion))
@@ -654,6 +662,10 @@ private fun MainNavigation(
     val storyOpenedFromSubmissions = controller.storyOpenedFromSubmissions
     LaunchedEffect(storyRequest?.serial) {
         storyRequest ?: return@LaunchedEffect
+        // A completed predictive pop keeps its snap exit policy while the detail is hidden.
+        // Resetting it only when opening the next story avoids changing AnimatedVisibility's
+        // exit transition for one hidden frame, which could briefly resurrect Comments.
+        completedPredictivePop = false
         if (backStack.lastOrNull() is CommentsDestination) {
             backStack.removeLastOrNull()
         }
@@ -693,6 +705,28 @@ private fun MainNavigation(
     PredictiveBackHandler(
         enabled = backStack.lastOrNull() is CommentsDestination,
     ) { events ->
+        val internalBackCoordinator = controller.getCommentsCoordinator()
+            ?.takeIf(CommentsCoordinator::handlesBackInternally)
+        if (internalBackCoordinator != null) {
+            var predictiveBackStarted = false
+            try {
+                events.collect { event ->
+                    if (predictiveBackStarted) {
+                        internalBackCoordinator.updateInternalPredictiveBack(event)
+                    } else {
+                        predictiveBackStarted = true
+                        internalBackCoordinator.startInternalPredictiveBack(event)
+                    }
+                }
+                internalBackCoordinator.commitInternalBack()
+            } catch (_: CancellationException) {
+                if (predictiveBackStarted) {
+                    internalBackCoordinator.cancelInternalPredictiveBack()
+                }
+            }
+            return@PredictiveBackHandler
+        }
+
         if (isTwoPane) {
             var frozenWebViewCoordinator: CommentsCoordinator? = null
             try {
@@ -1189,12 +1223,6 @@ private fun MainNavigation(
         }
     }
 
-    LaunchedEffect(completedPredictivePop, controller.storyRequest) {
-        if (completedPredictivePop && controller.storyRequest == null) {
-            withFrameNanos { }
-            completedPredictivePop = false
-        }
-    }
 }
 
 @Composable
@@ -1227,7 +1255,11 @@ private fun SinglePaneNavigation(
                 .onSizeChanged { paneWidth = it.width }
                 .graphicsLayer {
                     alpha = if (showStoriesPane) 1f else 0f
-                    translationX = if (animation == null) paneWidth * storiesOffset else 0f
+                    translationX = if (animation == null && !completedPredictivePop) {
+                        paneWidth * storiesOffset
+                    } else {
+                        0f
+                    }
                 }
                 .then(
                     if (showStoriesPane) {
@@ -1241,21 +1273,27 @@ private fun SinglePaneNavigation(
             StoriesPane(controller)
         }
 
-        AnimatedVisibility(
-            visible = storyRequest != null,
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(1f)
-                .then(animation?.exitModifier ?: Modifier),
-            enter = if (completedPredictivePop) EnterTransition.None else commentsOpenEnter(),
-            exit = if (completedPredictivePop) ExitTransition.None else commentsPopExit(),
-        ) {
-            displayedRequest?.let { request ->
-                key(request.serial) {
-                    CommentsPane(
-                        request = request,
-                        controller = controller,
-                    )
+        // The predictive animation has already made Comments fully transparent when it
+        // completes. Remove its AndroidView tree in the same composition as the pop instead of
+        // asking AnimatedVisibility for a snap exit: a snap exit retains the WebView for one
+        // disposal frame and can briefly redraw it over Stories.
+        if (!completedPredictivePop || storyRequest != null) {
+            AnimatedVisibility(
+                visible = storyRequest != null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(1f)
+                    .then(animation?.exitModifier ?: Modifier),
+                enter = commentsOpenEnter(),
+                exit = commentsPopExit(),
+            ) {
+                displayedRequest?.let { request ->
+                    key(request.serial) {
+                        CommentsPane(
+                            request = request,
+                            controller = controller,
+                        )
+                    }
                 }
             }
         }
@@ -1323,6 +1361,7 @@ private fun CommentsPane(
 
 private const val NavigationTransitionDurationMillis = 450
 private const val NavigationFadeDurationMillis = 90
+private const val LEGACY_COMMENTS_PANE_WEIGHT = 5f
 
 private fun navigationEasing(): Easing = PathEasing(
     Path().apply {

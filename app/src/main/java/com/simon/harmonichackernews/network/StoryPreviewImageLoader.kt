@@ -12,6 +12,7 @@ import com.simon.harmonichackernews.network.LinkSummaryLoader.extractYoutubeOEmb
 import com.simon.harmonichackernews.network.LinkSummaryLoader.isYoutubeVideoUrl
 import com.simon.harmonichackernews.network.LinkSummaryLoader.readBoundedBody
 import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstance
+import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -26,10 +27,8 @@ import kotlin.collections.MutableIterator
 import kotlin.collections.MutableList
 import kotlin.collections.MutableMap
 import kotlin.collections.MutableSet
-import kotlin.collections.dropLastWhile
 import kotlin.collections.indices
 import kotlin.collections.remove
-import kotlin.collections.toTypedArray
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl
@@ -62,6 +61,7 @@ object StoryPreviewImageLoader {
     private val IMAGE_CACHE: MutableMap<String?, String?> = HashMap<String?, String?>()
     private val LINK_SUMMARY_CACHE: MutableMap<String?, LinkSummaryLoader.Result?> =
         HashMap<String?, LinkSummaryLoader.Result?>()
+    private val CACHE_ORDERS: MutableMap<String, List<String>> = HashMap()
     private val MISS_CACHE: MutableSet<String?> = LinkedHashSet<String?>()
     private val PENDING_CALLBACKS: MutableMap<String?, PendingPreviewImageBatch?> =
         HashMap<String?, PendingPreviewImageBatch?>()
@@ -228,7 +228,7 @@ object StoryPreviewImageLoader {
             override fun onResponse(call: Call, response: Response) {
                 try {
                     response.use { closeableResponse ->
-                        if (!closeableResponse.isSuccessful || closeableResponse.body == null) {
+                        if (!closeableResponse.isSuccessful) {
                             StoryPreviewImageLoader.finish(
                                 normalizedPageUrl,
                                 requestBatch!!,
@@ -447,6 +447,7 @@ object StoryPreviewImageLoader {
                     editor.remove(key)
                 }
             }
+            CACHE_ORDERS.clear()
             editor.apply()
         }
     }
@@ -513,7 +514,7 @@ object StoryPreviewImageLoader {
                 editor.remove(getPreviewImageUrlKey(oldestId))
                 editor.remove(getPreviewImageUrlLoadedKey(oldestId))
             }
-            editor.putString(KEY_PREVIEW_IMAGE_CACHE_ORDER, TextUtils.join(",", orderedIds)).apply()
+            putCacheOrder(editor, KEY_PREVIEW_IMAGE_CACHE_ORDER, orderedIds).apply()
         }
     }
 
@@ -554,8 +555,7 @@ object StoryPreviewImageLoader {
             while (orderedKeys.size > MAX_DISK_CACHE_SIZE) {
                 editor.remove(orderedKeys.removeAt(0))
             }
-            editor.putString(KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER, TextUtils.join(",", orderedKeys))
-                .apply()
+            putCacheOrder(editor, KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER, orderedKeys).apply()
         }
     }
 
@@ -569,6 +569,10 @@ object StoryPreviewImageLoader {
             return null
         }
 
+        StoryPreviewImageMemoryCache.getTintColor(storyId, imageUrl, baseColor)?.let {
+            return it
+        }
+
         synchronized(StoryPreviewImageLoader::class.java) {
             val preferences = getPreviewImageCachePreferences(context)
             val key =
@@ -578,6 +582,7 @@ object StoryPreviewImageLoader {
             }
 
             val tintColor = preferences.getInt(key, baseColor)
+            StoryPreviewImageMemoryCache.putTintColor(storyId, imageUrl, baseColor, tintColor)
             movePreviewImageTintCacheKeyToEnd(preferences, key)
             return tintColor
         }
@@ -590,9 +595,11 @@ object StoryPreviewImageLoader {
         val orderedIds = readPreviewImageCacheOrder(preferences)
         orderedIds.remove(previewImageCacheEntryId)
         orderedIds.add(previewImageCacheEntryId!!)
-        preferences.edit()
-            .putString(KEY_PREVIEW_IMAGE_CACHE_ORDER, TextUtils.join(",", orderedIds))
-            .apply()
+        putCacheOrder(
+            preferences.edit(),
+            KEY_PREVIEW_IMAGE_CACHE_ORDER,
+            orderedIds,
+        ).apply()
     }
 
     private fun readPreviewImageCacheOrder(preferences: SharedPreferences): MutableList<String> {
@@ -609,23 +616,34 @@ object StoryPreviewImageLoader {
 
     private fun readCacheOrder(
         preferences: SharedPreferences,
-        orderKey: String?
+        orderKey: String,
     ): MutableList<String> {
-        val orderedIds: MutableList<String> = ArrayList<String>()
-        val seenIds: MutableSet<String?> = HashSet<String?>()
-        val order: String = preferences.getString(orderKey, "")!!
-        if (TextUtils.isEmpty(order)) {
+        CACHE_ORDERS[orderKey]?.let { return ArrayList(it) }
+
+        val orderedIds = ArrayList<String>()
+        val seenIds = HashSet<String>()
+        val order = preferences.getString(orderKey, "").orEmpty()
+        if (order.isEmpty()) {
+            CACHE_ORDERS[orderKey] = emptyList()
             return orderedIds
         }
 
-        val storyIds: Array<String?> =
-            order.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-        for (storyId in storyIds) {
-            if (!TextUtils.isEmpty(storyId) && seenIds.add(storyId)) {
-                orderedIds.add(storyId!!)
+        for (storyId in order.split(',')) {
+            if (storyId.isNotEmpty() && seenIds.add(storyId)) {
+                orderedIds.add(storyId)
             }
         }
+        CACHE_ORDERS[orderKey] = ArrayList(orderedIds)
         return orderedIds
+    }
+
+    private fun putCacheOrder(
+        editor: SharedPreferences.Editor,
+        orderKey: String,
+        order: List<String>,
+    ): SharedPreferences.Editor {
+        CACHE_ORDERS[orderKey] = ArrayList(order)
+        return editor.putString(orderKey, TextUtils.join(",", order))
     }
 
     private fun movePreviewImageTintCacheKeyToEnd(
@@ -635,9 +653,11 @@ object StoryPreviewImageLoader {
         val orderedKeys = readPreviewImageTintCacheOrder(preferences)
         orderedKeys.remove(tintColorKey)
         orderedKeys.add(tintColorKey!!)
-        preferences.edit()
-            .putString(KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER, TextUtils.join(",", orderedKeys))
-            .apply()
+        putCacheOrder(
+            preferences.edit(),
+            KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER,
+            orderedKeys,
+        ).apply()
     }
 
     fun clearCachedPreviewImageTintColors(context: Context?) {
@@ -653,6 +673,7 @@ object StoryPreviewImageLoader {
 
             val editor = preferences.edit()
                 .remove(KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER)
+            CACHE_ORDERS.remove(KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER)
             for (key in preferences.getAll().keys) {
                 if (key.startsWith(KEY_PREVIEW_IMAGE_TINT_COLOR)) {
                     editor.remove(key)
@@ -731,9 +752,11 @@ object StoryPreviewImageLoader {
                 val order = readLinkSummaryCacheOrder(preferences)
                 order.remove(key)
                 order.add(key)
-                preferences.edit()
-                    .putString(KEY_LINK_SUMMARY_CACHE_ORDER, TextUtils.join(",", order))
-                    .apply()
+                putCacheOrder(
+                    preferences.edit(),
+                    KEY_LINK_SUMMARY_CACHE_ORDER,
+                    order,
+                ).apply()
             }
             return result
         }
@@ -766,7 +789,7 @@ object StoryPreviewImageLoader {
             while (order.size > MAX_DISK_CACHE_SIZE) {
                 editor.remove(order.removeAt(0))
             }
-            editor.putString(KEY_LINK_SUMMARY_CACHE_ORDER, TextUtils.join(",", order)).apply()
+            putCacheOrder(editor, KEY_LINK_SUMMARY_CACHE_ORDER, order).apply()
         }
     }
 
@@ -793,7 +816,7 @@ object StoryPreviewImageLoader {
     }
 
     private fun deserializeLinkSummary(serialized: String?): LinkSummaryLoader.Result? {
-        if (TextUtils.isEmpty(serialized)) {
+        if (serialized.isNullOrEmpty()) {
             return null
         }
         try {
@@ -833,17 +856,11 @@ object StoryPreviewImageLoader {
         }
 
         val cacheId = key.substring(KEY_PREVIEW_IMAGE_TINT_COLOR.length)
-        val parts: Array<String?> = cacheId.split(":".toRegex()).toTypedArray()
-        if (parts.size != 3 || TextUtils.isEmpty(parts[2])) {
+        val parts = cacheId.split(':', limit = 3)
+        if (parts.size != 3 || parts[2].isEmpty()) {
             return false
         }
-        try {
-            parts[0]!!.toInt()
-            parts[1]!!.toInt()
-            return true
-        } catch (e: NumberFormatException) {
-            return false
-        }
+        return parts[0].toIntOrNull() != null && parts[1].toIntOrNull() != null
     }
 
     private fun sha256Hex(value: String): String {

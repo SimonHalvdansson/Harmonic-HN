@@ -50,7 +50,7 @@ class StoryListState(
     private val previewRequests: MutableMap<Story, PreviewImageRequest> = IdentityHashMap()
     private val imagePrefetches: MutableMap<Story, Disposable> = IdentityHashMap()
     private val tintExtractor = PreviewImageTintExtractor()
-    private var changedListener: Runnable? = null
+    private var changedListener: ((Story?) -> Unit)? = null
 
     var showPoints: Boolean = false
     var compactPoints: Boolean = false
@@ -88,7 +88,7 @@ class StoryListState(
         tintExtractor.attach()
     }
 
-    fun setChangedListener(listener: Runnable?) {
+    fun setChangedListener(listener: ((Story?) -> Unit)?) {
         changedListener = listener
     }
 
@@ -124,7 +124,7 @@ class StoryListState(
     }
 
     fun updateStoryClickedState(position: Int) {
-        if (position >= 0 && position < stories.size) notifyChanged()
+        stories.getOrNull(position)?.let(::notifyChanged)
     }
 
     fun updateStoryIndicesFromPosition(position: Int) {
@@ -136,7 +136,7 @@ class StoryListState(
     }
 
     fun notifyItemChanged(position: Int) {
-        notifyChanged()
+        notifyChanged(stories.getOrNull(position))
     }
 
     fun notifyItemInserted(position: Int) {
@@ -242,7 +242,7 @@ class StoryListState(
                     if (previewEnabled && !TextUtils.isEmpty(story.previewImageUrl)) {
                         prefetchPreviewDrawable(appContext, story)
                     }
-                    notifyChanged()
+                    notifyChanged(story)
                 })
         previewRequests.put(story, request)
     }
@@ -371,7 +371,7 @@ class StoryListState(
                     StoryPreviewImageMemoryCache.put(story.id, imageUrl, result)
                     requestTint(context, story, imageUrl, result, false)
                     cachePreviewState(context, story)
-                    notifyChanged()
+                    notifyChanged(story)
                 }
             })
             .build()
@@ -486,7 +486,7 @@ class StoryListState(
             return
         }
         cachePreviewState(context, story)
-        notifyChanged()
+        notifyChanged(story)
     }
 
     private fun cachePreviewState(context: Context?, story: Story) {
@@ -529,9 +529,7 @@ class StoryListState(
         }
     }
 
-    private fun notifyChanged() {
-        if (changedListener != null) changedListener!!.run()
-    }
+    private fun notifyChanged(story: Story? = null) = changedListener?.invoke(story)
 
     companion object {
         const val PAGINATION_PAGE_SIZE: Int = 30

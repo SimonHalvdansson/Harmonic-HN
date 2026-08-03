@@ -1057,17 +1057,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     }
 
     private val splitStoriesContentPaddingStart: Int
-        get() {
-            val ctx = this.context
-            if (ctx == null || !activity.isAdaptiveFoldableNavigation || !Utils.isTablet(
-                    this.resources
-                )
-            ) {
-                return 0
-            }
-
-            return this.resources.getDimensionPixelSize(R.dimen.extra_pane_padding)
-        }
+        get() = resources.getDimensionPixelSize(R.dimen.extra_pane_padding)
 
     private fun getFrontPageDayUtc(): Calendar {
         if (frontPageDayUtc == null) {
@@ -1572,7 +1562,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         updateAdapterPaginationMode(configuredAdapter)
         configuredAdapter.visibleStoryCount =
             if (configuredAdapter.paginationMode) StoryListState.PAGINATION_PAGE_SIZE else Int.MAX_VALUE
-        configuredAdapter.setChangedListener(Runnable { this.onStoryListStateChanged() })
+        configuredAdapter.setChangedListener(::onStoryListStateChanged)
     }
 
     private fun handleStoryLinkClick(
@@ -3335,15 +3325,20 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return
         }
 
+        if (story.id > 0 && (requestedPreviewImagePrefetchStoryIds.contains(story.id)
+                || queuedPreviewImagePrefetchStoryIds.contains(story.id))
+        ) {
+            return
+        }
+
         if (previewImagePrefetchRampComplete || previewImagePrefetchRampTargetIndex < 0) {
+            if (story.id > 0) requestedPreviewImagePrefetchStoryIds.add(story.id)
             adapter!!.prefetchPreviewImage(context, story)
             return
         }
 
         if (story.id > 0) {
-            if (requestedPreviewImagePrefetchStoryIds.contains(story.id)
-                || !queuedPreviewImagePrefetchStoryIds.add(story.id)
-            ) {
+            if (!queuedPreviewImagePrefetchStoryIds.add(story.id)) {
                 return
             }
         }
@@ -3440,7 +3435,6 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         previewImagePrefetchHandler.removeCallbacks(previewImagePrefetchRampRunnable)
         previewImagePrefetchRampScheduled = false
         queuedPreviewImagePrefetchStoryIds.clear()
-        requestedPreviewImagePrefetchStoryIds.clear()
     }
 
     private fun arePreviewImagePrefetchRampStoriesSettled(): Boolean {
@@ -3883,8 +3877,8 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     }
 
     private fun registerStoryAdapterDataObservers() {
-        if (mainAdapter != null) mainAdapter!!.setChangedListener(Runnable { this.onStoryListStateChanged() })
-        if (searchAdapter != null) searchAdapter!!.setChangedListener(Runnable { this.onStoryListStateChanged() })
+        mainAdapter?.setChangedListener(::onStoryListStateChanged)
+        searchAdapter?.setChangedListener(::onStoryListStateChanged)
     }
 
     private fun unregisterStoryAdapterDataObservers() {
@@ -3892,8 +3886,12 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         if (searchAdapter != null) searchAdapter!!.setChangedListener(null)
     }
 
-    private fun onStoryListStateChanged() {
-        syncComposeState()
+    private fun onStoryListStateChanged(story: Story?) {
+        if (story == null) {
+            syncComposeState()
+        } else {
+            composeController?.invalidateStory(story.id)
+        }
     }
 
     fun currentTypeIsAlgolia(): Boolean {

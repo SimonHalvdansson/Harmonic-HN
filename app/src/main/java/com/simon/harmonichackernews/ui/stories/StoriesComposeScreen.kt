@@ -72,6 +72,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -272,6 +273,7 @@ class StoriesComposeController private constructor(
 
     private var requestSerial = 0
     private val storyBounds = mutableMapOf<Int, Rect>()
+    private val storyRevisions = mutableMapOf<Int, MutableIntState>()
     private val suppressedStoryIds = mutableStateOf<Set<Int>>(emptySet())
 
     fun updateContent(
@@ -374,8 +376,21 @@ class StoriesComposeController private constructor(
         this.cacheProgressMax = cacheProgressMax.coerceAtLeast(1)
         this.cacheProgressStatus = cacheProgressStatus
         this.contentInsetStartPx = contentInsetStartPx
+        val currentStoryIds = buildSet(mainStories.size + searchStories.size) {
+            mainStories.forEach { add(it.id) }
+            searchStories.forEach { add(it.id) }
+        }
+        storyRevisions.keys.retainAll(currentStoryIds)
         contentVersion++
     }
+
+    internal fun invalidateStory(storyId: Int) {
+        val revision = storyRevisions.getOrPut(storyId) { mutableIntStateOf(0) }
+        revision.intValue++
+    }
+
+    internal fun storyRevision(storyId: Int): Int =
+        storyRevisions.getOrPut(storyId) { mutableIntStateOf(0) }.intValue
 
     fun updateSearchDraft(value: String) {
         searchDraft = value
@@ -970,6 +985,7 @@ private fun StoriesList(
     }
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
+    val startInset = with(density) { controller.contentInsetStartPx.toDp() }
     var headerHeightPx by remember(searchMode) { mutableIntStateOf(0) }
     val headerHeight = with(density) { headerHeightPx.toDp() }
     val headerPinnedForPreview = controller.headerPinnedForPreview
@@ -1013,6 +1029,7 @@ private fun StoriesList(
                     .fillMaxSize()
                     .nestedScroll(userScrollConnection),
                 contentPadding = PaddingValues(
+                    start = startInset,
                     top = headerHeight,
                     bottom = bottomPadding + if (controller.showUpdate) 88.dp else 8.dp,
                 ),
@@ -1028,28 +1045,27 @@ private fun StoriesList(
                             settings = settings,
                             onStory = { controller.listener.onCommentStoryClick(story) },
                             onReplies = { controller.listener.onCommentRepliesClick(story) },
-                            modifier = Modifier.animateItem(),
+                            modifier = Modifier,
                         )
                     } else if (!story.loaded && !story.loadingFailed) {
-                        StoryLoadingItem(modifier = Modifier.animateItem())
+                        StoryLoadingItem(modifier = Modifier)
                     } else {
                         val pagingAlpha = controller.storyPagingAlphas[story.id] ?: 1f
                         val suppressed = controller.isStorySuppressed(story.id)
                         val contentVersion = controller.contentVersion
-                        val model = remember(story, index, settings, contentVersion) {
+                        val storyRevision = controller.storyRevision(story.id)
+                        val model = remember(story, index, settings, contentVersion, storyRevision) {
                             story.toUiModel(index, settings, context)
                         }
-                        val style = remember(story, settings, contentVersion) {
+                        val style = remember(story, settings, contentVersion, storyRevision) {
                             settings.toItemStyle(story)
                         }
-                        val itemModifier = Modifier.animateItem().let { baseModifier ->
-                            if (suppressed || pagingAlpha != 1f) {
-                                baseModifier.graphicsLayer(
-                                    alpha = if (suppressed) 0f else pagingAlpha,
-                                )
-                            } else {
-                                baseModifier
-                            }
+                        val itemModifier = if (suppressed || pagingAlpha != 1f) {
+                            Modifier.graphicsLayer(
+                                alpha = if (suppressed) 0f else pagingAlpha,
+                            )
+                        } else {
+                            Modifier
                         }
                         StoryItem(
                             model = model,
@@ -1257,7 +1273,7 @@ private fun MainHeader(
                         onClick = { typesExpanded = true },
                         onLongClick = null,
                     )
-                    .padding(vertical = 4.dp),
+                    .padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -1695,6 +1711,7 @@ private fun StoryDisplaySettings.toItemStyle(story: Story) = StoryItemStyle(
     preferredFont = font,
     textSize = storyTextSize,
     dimmed = grayOutClicked && story.clicked,
+    paletteTintConfigKey = paletteTintMode,
 )
 
 @Preview(name = "Phone", device = Devices.PIXEL_7, showBackground = true)
