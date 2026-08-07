@@ -47,12 +47,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -241,7 +242,9 @@ internal fun StoryPreviewOverlay(controller: StoriesComposeController) {
             modifier = Modifier.fillMaxSize(),
             beyondViewportPageCount = 2,
             userScrollEnabled = progress >= 0.999f && dismissRequest == 0,
-            key = { page -> state.stories[page].id },
+            // A preview can contain repeated story IDs while a list is being merged/refreshed.
+            // Pager keys must still be unique or a long press can crash during composition.
+            key = { page -> "${state.stories[page].id}:$page" },
         ) { page ->
             val pageOffset = abs(
                 (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction,
@@ -311,7 +314,7 @@ private fun StoryPreviewCard(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val summaryState = rememberStorySummary(story)
+    val summaryState = rememberStorySummary(story, controller)
     val fallbackSettings = remember(context) { StoryDisplaySettings.from(context) }
     val settings = controller.displaySettings ?: fallbackSettings
     val typography = rememberContentTypography(
@@ -511,7 +514,7 @@ private fun StoryPreviewCard(
                             loading = favoriteLoading,
                         ) { controller.onStoryPreviewAction(page, StoriesComposeController.STORY_PREVIEW_ACTION_FAVORITE) }
                     }
-                    Button(
+                    ElevatedButton(
                         onClick = { controller.onStoryPreviewNavigate(page, false) },
                         modifier = Modifier
                             .weight(1f)
@@ -520,8 +523,9 @@ private fun StoryPreviewCard(
                             .semantics {
                                 contentDescription = "Comments (${story.descendants})"
                             },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = HarmonicTheme.colors.overlayButton,
+                        shapes = ButtonDefaults.shapes(),
+                        colors = ButtonDefaults.elevatedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                             contentColor = HarmonicTheme.colors.storyNormal,
                         ),
                     ) {
@@ -587,7 +591,10 @@ private data class StorySummaryState(
 )
 
 @Composable
-private fun rememberStorySummary(story: Story): StorySummaryState {
+private fun rememberStorySummary(
+    story: Story,
+    controller: StoriesComposeController,
+): StorySummaryState {
     val context = LocalContext.current
     var state by remember(story.id, story.url) {
         mutableStateOf(
@@ -599,6 +606,15 @@ private fun rememberStorySummary(story: Story): StorySummaryState {
                 } ?: StorySummaryState(true)
             },
         )
+    }
+    LaunchedEffect(story.id, story.url, state.result?.imageUrl) {
+        val imageUrl = state.result?.imageUrl?.takeIf(String::isNotBlank) ?: return@LaunchedEffect
+        if (story.previewImageUrl != imageUrl || !story.previewImageUrlLoaded) {
+            story.previewImageUrl = imageUrl
+            story.previewImageUrlLoaded = true
+            story.previewImageLoadFailed = false
+            controller.invalidateStory(story.id)
+        }
     }
     DisposableEffect(story.id, story.url) {
         if (!story.isLink || story.url.isNullOrBlank() || state.result != null) {
@@ -612,10 +628,6 @@ private fun rememberStorySummary(story: Story): StorySummaryState {
                 object : LinkSummaryLoader.Callback {
                     override fun onSuccess(result: LinkSummaryLoader.Result) {
                         if (story.url != requestedUrl) return
-                        result.imageUrl?.takeIf(String::isNotBlank)?.let { imageUrl ->
-                            story.previewImageUrl = imageUrl
-                            story.previewImageUrlLoaded = true
-                        }
                         state = StorySummaryState(false, result)
                     }
 

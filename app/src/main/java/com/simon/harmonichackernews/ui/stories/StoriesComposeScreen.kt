@@ -196,6 +196,8 @@ class StoriesComposeController private constructor(
         private set
     internal var emptySavedListText by mutableStateOf("No saved stories")
         private set
+    internal var emptySavedListIcon by mutableIntStateOf(R.drawable.ic_bookmark)
+        private set
     internal var showEmptySearch by mutableStateOf(false)
         private set
     internal var showUpdate by mutableStateOf(false)
@@ -306,6 +308,7 @@ class StoriesComposeController private constructor(
         showCachedAction: Boolean,
         showEmptySavedList: Boolean,
         emptySavedListText: String,
+        emptySavedListIcon: Int,
         showEmptySearch: Boolean,
         showUpdate: Boolean,
         lastUpdatedText: String?,
@@ -359,6 +362,7 @@ class StoriesComposeController private constructor(
         this.showCachedAction = showCachedAction
         this.showEmptySavedList = showEmptySavedList
         this.emptySavedListText = emptySavedListText
+        this.emptySavedListIcon = emptySavedListIcon
         this.showEmptySearch = showEmptySearch
         this.showUpdate = showUpdate
         this.lastUpdatedText = lastUpdatedText
@@ -1481,16 +1485,12 @@ private fun SearchOptionChip(label: String, labels: List<String>, onSelected: (I
                         expanded = false
                         onSelected(index)
                     },
+                    contentPadding = PaddingValues(horizontal = 16.dp),
                     trailingIcon = {
-                        Box(
-                            modifier = Modifier.width(70.dp),
-                            contentAlignment = Alignment.CenterStart,
-                        ) {
-                            RadioButton(
-                                selected = option == label,
-                                onClick = null,
-                            )
-                        }
+                        RadioButton(
+                            selected = option == label,
+                            onClick = null,
+                        )
                     },
                 )
             }
@@ -1594,7 +1594,7 @@ private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boole
         enter = fadeIn(tween(180, easing = StoriesEasing)),
         exit = fadeOut(tween(140, easing = StoriesEasing)),
     ) {
-        EmptyState(controller.emptySavedListText, R.drawable.ic_bookmark)
+        SavedEmptyState(controller.emptySavedListText, controller.emptySavedListIcon)
     }
     AnimatedVisibility(
         visible = searchMode && controller.showEmptySearch,
@@ -1606,13 +1606,47 @@ private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boole
 }
 
 @Composable
+private fun SavedEmptyState(text: String, icon: Int) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 56.dp, bottom = 36.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier.size(48.dp),
+            tint = HarmonicTheme.colors.storyNormal,
+        )
+        Text(
+            text = text,
+            color = HarmonicTheme.colors.storyNormal,
+            fontFamily = ProductSansFontFamily,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+@Composable
 private fun EmptyState(text: String, icon: Int) {
     Column(
         Modifier.fillMaxWidth().padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(painterResource(icon), null, Modifier.size(48.dp), tint = HarmonicTheme.colors.storyDisabled)
-        Text(text, color = HarmonicTheme.colors.storyDisabled, modifier = Modifier.padding(top = 8.dp))
+        Icon(
+            painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier.size(48.dp),
+            tint = HarmonicTheme.colors.storyDisabled,
+        )
+        Text(
+            text,
+            color = HarmonicTheme.colors.storyDisabled,
+            modifier = Modifier.padding(top = 8.dp),
+        )
     }
 }
 

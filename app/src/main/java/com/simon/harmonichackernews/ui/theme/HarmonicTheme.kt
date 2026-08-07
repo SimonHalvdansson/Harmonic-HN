@@ -105,6 +105,10 @@ fun HarmonicTheme(content: @Composable () -> Unit) {
         onBackground = colors.onSurface,
         surface = context.colorAttribute(MaterialR.attr.colorSurface, colors.background),
         onSurface = colors.onSurface,
+        surfaceContainerLow = context.colorAttribute(
+            MaterialR.attr.colorSurfaceContainerLow,
+            baseScheme.surfaceContainerLow,
+        ),
         surfaceContainerHigh = colors.surfaceContainerHigh,
         surfaceVariant = context.colorAttribute(
             MaterialR.attr.colorSurfaceVariant,

@@ -24,6 +24,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -799,6 +801,11 @@ private fun MainNavigation(
     var activeSettingsBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
     }
+    var completedSettingsPredictiveBack by remember { mutableStateOf(false) }
+
+    LaunchedEffect(settingsRequest?.serial) {
+        if (settingsRequest != null) completedSettingsPredictiveBack = false
+    }
 
     fun closeSettings() {
         val needsRestart = controller.consumeSettingsRestartRequest()
@@ -828,6 +835,7 @@ private fun MainNavigation(
                 return@PredictiveBackHandler
             }
             currentAnimation.finish()
+            completedSettingsPredictiveBack = true
             closeSettings()
             activeSettingsBackAnimation = null
         } catch (_: CancellationException) {
@@ -845,6 +853,12 @@ private fun MainNavigation(
     var activeSubmissionsBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
     }
+    var completedSubmissionsPredictiveBack by remember { mutableStateOf(false) }
+
+    LaunchedEffect(submissionsRequest?.serial) {
+        if (submissionsRequest != null) completedSubmissionsPredictiveBack = false
+    }
+
     PredictiveBackHandler(
         enabled = submissionsRequest != null && !storyOpenedFromSubmissions,
     ) { events ->
@@ -866,6 +880,7 @@ private fun MainNavigation(
                 return@PredictiveBackHandler
             }
             currentAnimation.finish()
+            completedSubmissionsPredictiveBack = true
             controller.closeSubmissions()
             activeSubmissionsBackAnimation = null
         } catch (_: CancellationException) {
@@ -1053,7 +1068,11 @@ private fun MainNavigation(
                 )
                 .then(activeSettingsBackAnimation?.exitModifier ?: Modifier),
             enter = settingsOpenEnter(settingsTransitionOffsetPx),
-            exit = settingsPopExit(settingsTransitionOffsetPx),
+            exit = if (completedSettingsPredictiveBack) {
+                ExitTransition.None
+            } else {
+                settingsPopExit(settingsTransitionOffsetPx)
+            },
         ) {
             controller.lastSettingsRequest?.let { request ->
                 key(request.serial, controller.settingsThemeRevision) {
@@ -1092,7 +1111,11 @@ private fun MainNavigation(
                 )
                 .then(activeSubmissionsBackAnimation?.exitModifier ?: Modifier),
             enter = settingsOpenEnter(settingsTransitionOffsetPx),
-            exit = settingsPopExit(settingsTransitionOffsetPx),
+            exit = if (completedSubmissionsPredictiveBack) {
+                ExitTransition.None
+            } else {
+                settingsPopExit(settingsTransitionOffsetPx)
+            },
         ) {
             controller.lastSubmissionsRequest?.let { request ->
                 key(request.serial) {
@@ -1132,29 +1155,47 @@ private fun MainNavigation(
         ) {
             controller.lastEditorRequest?.let { request ->
                 key(request.serial) {
-                    val editorController = remember(request.serial) {
-                        ComposeEditorController(activity)
-                    }
-                    val coordinator = remember(request.serial) {
-                        ComposeEditorCoordinator(
-                            activity,
-                            Bundle(request.arguments),
-                            controller::closeEditor,
+                    Box(Modifier.fillMaxSize()) {
+                        // The editor is a modal sibling of the story navigation. Its opaque
+                        // surface is not itself a pointer target, so keep an explicit barrier
+                        // behind it to prevent taps in field gutters reaching the story layer.
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .pointerInput(Unit) {
+                                    awaitEachGesture {
+                                        do {
+                                            val event = awaitPointerEvent()
+                                            event.changes.forEach { it.consume() }
+                                        } while (event.changes.any { it.pressed })
+                                    }
+                                },
+                        )
+
+                        val editorController = remember(request.serial) {
+                            ComposeEditorController(activity)
+                        }
+                        val coordinator = remember(request.serial) {
+                            ComposeEditorCoordinator(
+                                activity,
+                                Bundle(request.arguments),
+                                controller::closeEditor,
+                            )
+                        }
+                        SideEffect {
+                            coordinator.attachController(editorController)
+                        }
+                        ComposeEditorScreen(
+                            type = coordinator.type,
+                            parentText = coordinator.parentText,
+                            postTitle = coordinator.postTitle,
+                            user = coordinator.user,
+                            titleMaxLength = coordinator.titleMaxLength,
+                            submitting = editorController.submitting,
+                            onClose = controller::closeEditor,
+                            onSubmit = coordinator::submit,
                         )
                     }
-                    SideEffect {
-                        coordinator.attachController(editorController)
-                    }
-                    ComposeEditorScreen(
-                        type = coordinator.type,
-                        parentText = coordinator.parentText,
-                        postTitle = coordinator.postTitle,
-                        user = coordinator.user,
-                        titleMaxLength = coordinator.titleMaxLength,
-                        submitting = editorController.submitting,
-                        onClose = controller::closeEditor,
-                        onSubmit = coordinator::submit,
-                    )
                 }
             }
         }

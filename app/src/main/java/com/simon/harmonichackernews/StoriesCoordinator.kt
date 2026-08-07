@@ -679,6 +679,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             getEmptySavedListText(
                 historyType, favoritesType, upvotedType, savedItemSourceHasItems
             ),
+            getEmptySavedListIcon(historyType, favoritesType, upvotedType),
             showEmptySearch,
             updateButtonShowing,
             lastUpdated,
@@ -1191,6 +1192,23 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return "No bookmarked comments"
         }
         return "No bookmarks"
+    }
+
+    private fun getEmptySavedListIcon(
+        historyType: Boolean,
+        favoritesType: Boolean,
+        upvotedType: Boolean
+    ): Int {
+        if (historyType) {
+            return R.drawable.ic_history
+        }
+        if (favoritesType) {
+            return R.drawable.ic_star
+        }
+        if (upvotedType) {
+            return R.drawable.ic_thumb_up_filled
+        }
+        return R.drawable.ic_bookmark
     }
 
     private fun updateSearchOptionChips(animate: Boolean = true) {

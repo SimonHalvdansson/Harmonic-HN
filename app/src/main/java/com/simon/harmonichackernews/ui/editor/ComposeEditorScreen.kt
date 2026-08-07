@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -242,7 +243,14 @@ internal fun ComposeEditorScreen(
                     )
                 }
             },
-            modifier = Modifier.windowInsetsPadding(bottomInsets),
+        )
+
+        // Match the Views editor's animated inset spacer: as the IME reports each animation
+        // frame, the spacer changes height and the weighted editor content moves with it.
+        Spacer(
+            Modifier
+                .fillMaxWidth()
+                .windowInsetsBottomHeight(bottomInsets),
         )
     }
 

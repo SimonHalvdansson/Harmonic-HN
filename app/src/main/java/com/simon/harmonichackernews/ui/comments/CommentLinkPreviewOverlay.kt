@@ -40,10 +40,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -482,14 +483,15 @@ private fun ReferenceCardContent(
                 }
             }
 
-            Button(
+            ElevatedButton(
                 onClick = onOpen,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 18.dp)
                     .height(52.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = HarmonicTheme.colors.overlayButton,
+                shapes = ButtonDefaults.shapes(),
+                colors = ButtonDefaults.elevatedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     contentColor = HarmonicTheme.colors.storyNormal,
                 ),
             ) {
