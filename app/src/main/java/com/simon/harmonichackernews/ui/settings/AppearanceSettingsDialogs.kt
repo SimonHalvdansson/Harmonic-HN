@@ -5,14 +5,15 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+import android.graphics.Bitmap
 import android.text.format.DateFormat
 import androidx.annotation.DrawableRes
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,7 +24,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,15 +37,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.GenericShape
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TimePicker
@@ -60,22 +59,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.graphics.drawable.toBitmap
 import androidx.preference.PreferenceManager
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.AiModelCatalog
+import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -624,19 +629,7 @@ fun WelcomeSettingsDialog(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(colorResource(R.color.ic_launcher_background)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Image(
-                                    painter = painterResource(R.drawable.ic_launcher_foreground),
-                                    contentDescription = "Harmonic",
-                                    modifier = Modifier.size(64.dp),
-                                )
-                            }
+                            WelcomeLauncherIcon()
                         }
                     }
                 }
@@ -655,6 +648,7 @@ fun WelcomeSettingsDialog(
                         fontWeight = FontWeight.Bold,
                         fontSize = 24.sp,
                         lineHeight = 30.sp,
+                        style = WelcomeTextStyle,
                         textAlign = TextAlign.Center,
                     )
                 }
@@ -674,6 +668,7 @@ fun WelcomeSettingsDialog(
                         fontFamily = GoogleSansFlexRoundedFontFamily,
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
+                        style = WelcomeTextStyle,
                     )
                 }
                 item {
@@ -686,12 +681,14 @@ fun WelcomeSettingsDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .selectableGroup()
                             .padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         StylePresetButton(
                             label = "Expressive",
                             selected = expressive,
+                            position = 0,
                             fontFamily = GoogleSansFlexRoundedFontFamily,
                             onClick = { expressive = true },
                             modifier = Modifier.weight(1f),
@@ -699,6 +696,7 @@ fun WelcomeSettingsDialog(
                         StylePresetButton(
                             label = "Simple",
                             selected = !expressive,
+                            position = 1,
                             fontFamily = ProductSansFontFamily,
                             onClick = { expressive = false },
                             modifier = Modifier.weight(1f),
@@ -715,6 +713,7 @@ fun WelcomeSettingsDialog(
                             fontFamily = GoogleSansFlexRoundedFontFamily,
                             fontSize = 14.sp,
                             lineHeight = 20.sp,
+                            style = WelcomeTextStyle,
                         )
                     }
                 }
@@ -770,6 +769,7 @@ fun WelcomeSettingsDialog(
                             text = if (styleChooser) "Apply" else "Get started",
                             fontFamily = ProductSansFontFamily,
                             fontWeight = FontWeight.Bold,
+                            style = WelcomeTextStyle,
                         )
                     }
                 }
@@ -784,40 +784,20 @@ fun WelcomeSettingsDialog(
 private fun StylePresetButton(
     label: String,
     selected: Boolean,
+    position: Int,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (selected) {
-        Button(
-            onClick = onClick,
-            modifier = modifier.height(50.dp),
-            shapes = ButtonDefaults.shapes(shape = CircleShape),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.inverseSurface,
-                contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-            ),
-        ) {
-            Text(
-                text = label,
-                fontFamily = fontFamily,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-    } else {
-        OutlinedButton(
-            onClick = onClick,
-            modifier = modifier.height(50.dp),
-            shapes = ButtonDefaults.shapes(shape = CircleShape),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        ) {
-            Text(
-                text = label,
-                fontFamily = fontFamily,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-    }
+    HarmonicFilterButton(
+        label = label,
+        selected = selected,
+        position = position,
+        onClick = onClick,
+        modifier = modifier,
+        fontFamily = fontFamily,
+        lastPosition = 1,
+    )
 }
 
 @Composable
@@ -825,8 +805,45 @@ private fun WelcomeStoryPreview(
     expressive: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    AnimatedContent(
+        targetState = expressive,
+        modifier = modifier,
+        label = "welcome style preview",
+    ) { isExpressive ->
+        WelcomeStoryPreviewContent(isExpressive)
+    }
+}
+
+private val WelcomeTextStyle = TextStyle(
+    platformStyle = PlatformTextStyle(includeFontPadding = true),
+)
+
+@Composable
+private fun WelcomeLauncherIcon() {
+    val context = LocalContext.current
+    val size = 64.dp
+    val sizePx = with(LocalDensity.current) { size.roundToPx() }
+    val bitmap = remember(context, sizePx) {
+        requireNotNull(AppCompatResources.getDrawable(context, R.mipmap.ic_launcher))
+            .toBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+            .asImageBitmap()
+    }
+
+    Image(
+        bitmap = bitmap,
+        contentDescription = "Harmonic",
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape),
+    )
+}
+
+@Composable
+private fun WelcomeStoryPreviewContent(
+    expressive: Boolean,
+) {
     Row(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .background(
                 if (expressive) {
@@ -850,6 +867,7 @@ private fun WelcomeStoryPreview(
                 },
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.5.sp,
+                style = WelcomeTextStyle,
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
@@ -867,6 +885,7 @@ private fun WelcomeStoryPreview(
                         ProductSansFontFamily
                     },
                     fontSize = 13.sp,
+                    style = WelcomeTextStyle,
                 )
             }
         }
@@ -876,9 +895,10 @@ private fun WelcomeStoryPreview(
                 contentDescription = null,
                 modifier = Modifier
                     .padding(start = 12.dp)
-                    .size(64.dp)
-                    .aspectRatio(1f)
+                    .width(72.dp)
+                    .height(52.dp)
                     .clip(RoundedCornerShape(6.dp)),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
             )
         }
         Column(
@@ -892,9 +912,14 @@ private fun WelcomeStoryPreview(
             )
             Text(
                 text = "18",
-                fontFamily = ProductSansFontFamily,
+                fontFamily = if (expressive) {
+                    GoogleSansFlexRoundedFontFamily
+                } else {
+                    ProductSansFontFamily
+                },
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
+                style = WelcomeTextStyle,
             )
         }
     }

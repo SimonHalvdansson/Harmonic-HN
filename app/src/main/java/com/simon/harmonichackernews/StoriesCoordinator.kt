@@ -3907,6 +3907,18 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         }
     }
 
+    fun onStoryPreviewImageLoaded(storyId: Int) {
+        // The comments pane receives a bundle copy of the story, so its header preview load does
+        // not otherwise invalidate the row that is still visible in the stories pane.
+        if (storyId <= 0) return
+        val currentContext = context ?: return
+        val currentAdapter = adapter ?: return
+        val currentStories = stories ?: return
+        currentStories.firstOrNull { it.id == storyId }?.let { story ->
+            currentAdapter.prefetchPreviewImage(currentContext, story)
+        }
+    }
+
     fun currentTypeIsAlgolia(): Boolean = currentStoryType.isAlgolia
 
     private fun currentTypeIsActive(): Boolean = currentStoryType.isActive

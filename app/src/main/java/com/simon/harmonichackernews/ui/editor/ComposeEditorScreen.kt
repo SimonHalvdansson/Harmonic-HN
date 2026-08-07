@@ -52,6 +52,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -153,6 +154,12 @@ internal fun ComposeEditorScreen(
         mutableStateOf(TextFieldValue())
     }
     var dialog by rememberSaveable { mutableStateOf<EditorDialog?>(null) }
+    var discardConfirmed by rememberSaveable { mutableStateOf(false) }
+
+    // Let the dialog leave composition before starting the editor's parent exit transition.
+    LaunchedEffect(discardConfirmed) {
+        if (discardConfirmed) onClose()
+    }
 
     val isPost = type == ComposeEditorContract.TYPE_POST
     val titleTooLong = title.text.length > titleMaxLength
@@ -270,7 +277,10 @@ internal fun ComposeEditorScreen(
             message = if (isPost) "Discard post?" else "Discard comment?",
             positiveLabel = "Discard",
             negativeLabel = "Cancel",
-            onPositive = onClose,
+            onPositive = {
+                dialog = null
+                discardConfirmed = true
+            },
             onNegative = { dialog = null },
             onDismiss = { dialog = null },
         )

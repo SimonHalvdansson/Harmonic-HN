@@ -38,7 +38,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -446,13 +448,16 @@ fun CommentItem(
     val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
     val defaultBackground = if (style.cardStyle) colors.surfaceContainerHigh else colors.background
     val highlightAlpha = if (defaultBackground.luminance() < 0.5f) 0.14f else 0.08f
-    val commentBackground = if (highlighted) {
-        colors.storyNormal.copy(alpha = highlightAlpha).compositeOver(defaultBackground)
-    } else if (style.cardStyle) {
-        defaultBackground
-    } else {
-        Color.Transparent
-    }
+    val highlightOverlayAlpha by animateFloatAsState(
+        targetValue = if (highlighted) highlightAlpha else 0f,
+        animationSpec = contentTween(),
+        label = "comment search highlight opacity",
+    )
+    // Animate only the overlay opacity. Interpolating between Transparent and an opaque
+    // composited color also interpolates through Transparent's zero RGB channels, which makes
+    // the highlight look much stronger than the intended subtle overlay.
+    val commentBackground = colors.storyNormal.copy(alpha = highlightOverlayAlpha)
+        .compositeOver(defaultBackground)
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val start = min(16.dp.value + 12.dp.value * effectiveDepth, maxWidth.value * 0.6f).dp
@@ -623,6 +628,22 @@ private fun RuntimeCommentMeta(
 ) {
     val colors = HarmonicTheme.colors
     val metaShape = if (emphasized) RoundedCornerShape(12.dp) else RectangleShape
+    var displayedReplyCount by remember { mutableIntStateOf(hiddenReplyCount ?: 0) }
+    LaunchedEffect(hiddenReplyCount) {
+        if (hiddenReplyCount != null) {
+            displayedReplyCount = hiddenReplyCount
+        }
+    }
+    val replyCountIndicatorProgress by animateFloatAsState(
+        targetValue = if (hiddenReplyCount != null) 1f else 0f,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "hidden reply count indicator",
+    )
+    val replyCountTextAlpha = if (hiddenReplyCount != null) {
+        ((replyCountIndicatorProgress - 0.5f) * 2f).coerceIn(0f, 1f)
+    } else {
+        (replyCountIndicatorProgress * 2f).coerceIn(0f, 1f)
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -692,25 +713,31 @@ private fun RuntimeCommentMeta(
         } else {
             Box(Modifier.weight(1f))
         }
-        AnimatedContent(
-            targetState = hiddenReplyCount,
-            transitionSpec = {
-                if (animateChanges) {
-                    fadeIn(contentTween()).togetherWith(fadeOut(contentTween()))
-                } else {
-                    EnterTransition.None.togetherWith(ExitTransition.None)
-                }
-            },
-            label = "hidden reply count",
-        ) { count ->
-            if (count != null) {
+        if (hiddenReplyCount != null || replyCountIndicatorProgress > 0f) {
+            Box(
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colors.accent)
+                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                    .graphicsLayer {
+                        val scale = 0.72f + 0.28f * replyCountIndicatorProgress
+                        scaleX = scale
+                        scaleY = scale
+                        alpha = if (hiddenReplyCount != null) {
+                            1f
+                        } else {
+                            replyCountIndicatorProgress
+                        }
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(
+                            pivotFractionX = 1f,
+                            pivotFractionY = 0.5f,
+                        )
+                    },
+            ) {
                 Text(
-                    text = "+$count",
-                    modifier = Modifier
-                        .padding(start = 4.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(colors.accent)
-                        .padding(horizontal = 5.dp, vertical = 1.dp),
+                    text = "+$displayedReplyCount",
+                    modifier = Modifier.graphicsLayer(alpha = replyCountTextAlpha),
                     color = Color.White,
                     fontFamily = fontFamily,
                     fontSize = 12.sp,

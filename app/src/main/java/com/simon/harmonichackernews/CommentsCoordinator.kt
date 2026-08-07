@@ -715,6 +715,10 @@ class CommentsCoordinator(
                     }
                 }
 
+                override fun onHeaderPreviewLoaded() {
+                    story?.id?.takeIf { it > 0 }?.let(activity::onStoryPreviewImageLoaded)
+                }
+
                 override fun onHeaderAction(action: Int) {
                     if (action == CommentsComposeController.HEADER_ACTION_USER) {
                         clickUser()
@@ -947,7 +951,7 @@ class CommentsCoordinator(
             if (!TextUtils.isEmpty(comment.by)) {
                 requireActivity().showUserDialog(
                     comment.by.orEmpty(),
-                    Runnable { updateUserTags(comment.by) })
+                    Runnable { updateUserTags() })
             }
             return
         }
@@ -2351,7 +2355,7 @@ class CommentsCoordinator(
     fun clickUser() {
         requireActivity().showUserDialog(
             story!!.by.orEmpty(),
-            Runnable { updateUserTags(story!!.by) })
+            Runnable { updateUserTags() })
     }
 
     fun clickComment() {
@@ -2485,8 +2489,8 @@ class CommentsCoordinator(
         return null
     }
 
-    private fun updateUserTags(changedUser: String?) {
-        syncComposeState()
+    private fun updateUserTags() {
+        composeController?.refreshContent()
     }
 
     fun onRequest(onUpdate: Runnable, onDone: Runnable) {

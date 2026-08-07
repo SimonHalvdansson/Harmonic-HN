@@ -17,6 +17,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.combinedClickable
@@ -47,6 +48,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -65,6 +67,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -72,8 +75,12 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
@@ -95,6 +102,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.focus.FocusRequester
@@ -103,6 +111,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -114,6 +123,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
@@ -131,6 +141,7 @@ import com.simon.harmonichackernews.ui.content.StoryItem
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.SettingsUtils
@@ -1184,12 +1195,13 @@ private fun StoriesHeader(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = sideStart, top = 10.dp, end = sideEnd),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(start = sideStart, top = 10.dp, end = sideEnd)
+                    .selectableGroup(),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                SavedFilterButton("Stories", StoriesComposeController.FILTER_STORIES, controller, Modifier.weight(1f))
-                SavedFilterButton("Both", StoriesComposeController.FILTER_BOTH, controller, Modifier.weight(1f))
-                SavedFilterButton("Comments", StoriesComposeController.FILTER_COMMENTS, controller, Modifier.weight(1f))
+                SavedFilterButton("Stories", StoriesComposeController.FILTER_STORIES, 0, controller, Modifier.weight(1f))
+                SavedFilterButton("Both", StoriesComposeController.FILTER_BOTH, 1, controller, Modifier.weight(1f))
+                SavedFilterButton("Comments", StoriesComposeController.FILTER_COMMENTS, 2, controller, Modifier.weight(1f))
             }
         }
 
@@ -1239,14 +1251,34 @@ private fun StoriesHeader(
                 color = HarmonicTheme.colors.storyDisabled,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 12.sp,
-                modifier = Modifier.padding(start = sideStart, top = 4.dp, end = sideEnd),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = sideStart, top = 4.dp, end = sideEnd),
+                textAlign = TextAlign.Center,
             )
         }
 
         AnimatedVisibility(
             visible = !searchMode && controller.cacheProgressVisible,
-            enter = fadeIn(tween(180, easing = StoriesEasing)) + expandVertically(),
-            exit = fadeOut(tween(140, easing = StoriesEasing)) + shrinkVertically(),
+            enter = fadeIn(
+                tween(
+                    durationMillis = 180,
+                    delayMillis = 220,
+                    easing = StoriesEasing,
+                ),
+            ) + expandVertically(
+                animationSpec = tween(220, easing = StoriesEasing),
+            ),
+            exit = fadeOut(
+                tween(140, easing = StoriesEasing),
+            ) + shrinkVertically(
+                animationSpec = tween(
+                    durationMillis = 220,
+                    delayMillis = 140,
+                    easing = StoriesEasing,
+                ),
+            ),
         ) {
             Column(
                 modifier = Modifier
@@ -1254,16 +1286,33 @@ private fun StoriesHeader(
                     .padding(start = sideStart, top = 8.dp, end = sideEnd),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(
-                    text = controller.cacheProgressStatus,
-                    color = HarmonicTheme.colors.storyDisabled,
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 12.sp,
+                AnimatedContent(
+                    targetState = controller.cacheProgressStatus,
+                    transitionSpec = {
+                        fadeIn(tween(180, easing = StoriesEasing)) togetherWith
+                            fadeOut(tween(120, easing = StoriesEasing))
+                    },
+                    label = "story cache status",
+                ) { status ->
+                    Text(
+                        text = status,
+                        color = HarmonicTheme.colors.storyDisabled,
+                        fontFamily = ProductSansFontFamily,
+                        fontSize = 12.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                val targetProgress =
+                    (controller.cacheProgress.toFloat() / controller.cacheProgressMax)
+                        .coerceIn(0f, 1f)
+                val animatedProgress by animateFloatAsState(
+                    targetValue = targetProgress,
+                    animationSpec = tween(300, easing = StoriesEasing),
+                    label = "story cache progress",
                 )
                 LinearProgressIndicator(
-                    progress = {
-                        controller.cacheProgress.toFloat() / controller.cacheProgressMax
-                    },
+                    progress = { animatedProgress },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -1357,30 +1406,56 @@ private fun MainHeader(
                 }
             }
         }
-        IconButton(
-            onClick = controller.listener::onOpenSearch,
-            shapes = IconButtonDefaults.shapes(),
-        ) {
-            Icon(
-                painterResource(R.drawable.ic_search),
-                "Search",
-                tint = HarmonicTheme.colors.drawable,
-            )
-        }
-        Box {
+        StoriesTooltip("Search") {
             IconButton(
-                onClick = { moreExpanded = true },
+                onClick = controller.listener::onOpenSearch,
                 shapes = IconButtonDefaults.shapes(),
             ) {
                 Icon(
-                    painterResource(R.drawable.ic_more_vert),
-                    "More options",
+                    painterResource(R.drawable.ic_search),
+                    "Search",
                     tint = HarmonicTheme.colors.drawable,
                 )
+            }
+        }
+        Box {
+            StoriesTooltip("More options") {
+                IconButton(
+                    onClick = { moreExpanded = true },
+                    shapes = IconButtonDefaults.shapes(),
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_more_vert),
+                        "More options",
+                        tint = HarmonicTheme.colors.drawable,
+                    )
+                }
             }
             StoriesMoreMenu(controller, moreExpanded) { moreExpanded = false }
         }
     }
+}
+
+@Composable
+private fun StoriesTooltip(
+    description: String,
+    content: @Composable () -> Unit,
+) {
+    val tooltipState = rememberTooltipState()
+    val hapticFeedback = LocalHapticFeedback.current
+    LaunchedEffect(tooltipState.isVisible) {
+        if (tooltipState.isVisible) {
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            TooltipAnchorPosition.Above,
+        ),
+        tooltip = { PlainTooltip { Text(description) } },
+        state = tooltipState,
+        content = content,
+    )
 }
 
 @Composable
@@ -1562,13 +1637,15 @@ private fun MoreItem(
 private fun SavedFilterButton(
     label: String,
     value: Int,
+    position: Int,
     controller: StoriesComposeController,
     modifier: Modifier,
 ) {
-    FilterChip(
+    HarmonicFilterButton(
+        label = label,
         selected = controller.savedFilter == value,
         onClick = { controller.listener.onSavedFilterSelected(value) },
-        label = { Text(label, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+        position = position,
         modifier = modifier,
     )
 }

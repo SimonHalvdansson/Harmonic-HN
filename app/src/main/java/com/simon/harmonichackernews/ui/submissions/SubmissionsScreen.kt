@@ -2,13 +2,8 @@ package com.simon.harmonichackernews.ui.submissions
 
 import android.text.Html
 import androidx.activity.ComponentActivity
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,13 +50,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -78,13 +71,12 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.android.material.R as MaterialR
-import com.google.android.material.button.MaterialButton
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
+import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 import com.simon.harmonichackernews.ui.content.StoryItem
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
@@ -482,122 +474,13 @@ private fun SubmissionFilterButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = rememberLegacyFilterColors()
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val innerCorner by animateDpAsState(
-        targetValue = if (isPressed) 4.dp else 8.dp,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 800f,
-        ),
-        label = "submission filter button corners",
+    HarmonicFilterButton(
+        label = label,
+        selected = selected,
+        position = position,
+        onClick = onClick,
+        modifier = modifier,
     )
-    val shape = if (selected) {
-        RoundedCornerShape(if (isPressed) 12.dp else 24.dp)
-    } else {
-        when (position) {
-            0 -> RoundedCornerShape(
-                topStart = 24.dp,
-                topEnd = innerCorner,
-                bottomEnd = innerCorner,
-                bottomStart = 24.dp,
-            )
-            2 -> RoundedCornerShape(
-                topStart = innerCorner,
-                topEnd = 24.dp,
-                bottomEnd = 24.dp,
-                bottomStart = innerCorner,
-            )
-            else -> RoundedCornerShape(innerCorner)
-        }
-    }
-    Box(
-        modifier = modifier
-            .height(48.dp)
-            .clip(shape)
-            .background(if (selected) colors.checkedBackground else Color.Transparent)
-            .border(
-                1.dp,
-                if (selected) colors.checkedStroke else colors.uncheckedStroke,
-                shape,
-            )
-            .selectable(
-                selected = selected,
-                onClick = onClick,
-                role = Role.RadioButton,
-                interactionSource = interactionSource,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = if (selected) colors.checkedText else colors.uncheckedText,
-            fontFamily = ProductSansFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-        )
-    }
-}
-
-private data class LegacyFilterColors(
-    val checkedBackground: Color,
-    val checkedText: Color,
-    val checkedStroke: Color,
-    val uncheckedText: Color,
-    val uncheckedStroke: Color,
-)
-
-@Composable
-private fun rememberLegacyFilterColors(): LegacyFilterColors {
-    val context = LocalContext.current
-    val fallback = HarmonicTheme.colors
-    return remember(context, fallback) {
-        val button = MaterialButton(
-            context,
-            null,
-            MaterialR.attr.materialButtonOutlinedStyle,
-        ).apply {
-            isCheckable = true
-        }
-        val checkedState = intArrayOf(
-            android.R.attr.state_enabled,
-            android.R.attr.state_checkable,
-            android.R.attr.state_checked,
-        )
-        val uncheckedState = intArrayOf(
-            android.R.attr.state_enabled,
-            android.R.attr.state_checkable,
-            -android.R.attr.state_checked,
-        )
-        fun android.content.res.ColorStateList?.colorFor(
-            state: IntArray,
-            default: Color,
-        ): Color = Color(this?.getColorForState(state, default.toArgb()) ?: default.toArgb())
-
-        LegacyFilterColors(
-            checkedBackground = button.backgroundTintList.colorFor(
-                checkedState,
-                fallback.storyNormal,
-            ),
-            checkedText = button.textColors.colorFor(
-                checkedState,
-                fallback.background,
-            ),
-            checkedStroke = button.strokeColor.colorFor(
-                checkedState,
-                fallback.storyNormal,
-            ),
-            uncheckedText = button.textColors.colorFor(
-                uncheckedState,
-                fallback.storyNormal,
-            ),
-            uncheckedStroke = button.strokeColor.colorFor(
-                uncheckedState,
-                fallback.outlineVariant,
-            ),
-        )
-    }
 }
 
 @Composable

@@ -43,6 +43,17 @@ object ThemeUtils {
         when (theme) {
             "material_daynight" -> if (Build.VERSION.SDK_INT < 30) {
                 activity.setTheme(R.style.AppThemeMaterialDayNight)
+            } else {
+                // The v31 day/night theme keeps the dark base for WebView behavior. Resolve
+                // the current system mode here so switching back to auto also updates the
+                // existing activity immediately.
+                activity.setTheme(
+                    if (uiModeNight(activity)) {
+                        R.style.AppThemeMaterialDark
+                    } else {
+                        R.style.AppThemeMaterialLight
+                    },
+                )
             }
 
             "darklight_daynight" -> activity.setTheme(R.style.AppThemeDarkLightDayNight)

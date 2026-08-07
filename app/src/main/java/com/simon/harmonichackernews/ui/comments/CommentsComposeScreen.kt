@@ -11,6 +11,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -58,6 +60,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,11 +68,16 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -90,6 +98,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -97,6 +106,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -145,6 +155,7 @@ import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -775,6 +786,7 @@ class CommentsComposeController private constructor(
         fun onCommentActionOverlayVisibilityChanged(showing: Boolean)
         fun onLinkPreviewOverlayVisibilityChanged(showing: Boolean)
         fun onHeaderClick()
+        fun onHeaderPreviewLoaded()
         fun onHeaderAction(action: Int)
         fun onShareAction(action: Int)
         fun onMoreAction(action: Int)
@@ -958,6 +970,60 @@ private data class VisibleComment(
     val hiddenReplyCount: Int,
 )
 
+private const val COMMENT_NAVIGATION_SPEED_STEP = 50
+
+private suspend fun LazyListState.animateToCommentNavigationTarget(
+    index: Int,
+    scrollOffset: Int,
+    scaleLongScrollSpeed: Boolean,
+) {
+    if (!scaleLongScrollSpeed) {
+        animateScrollToItem(index, scrollOffset)
+        return
+    }
+
+    val distanceItems = abs(index - firstVisibleItemIndex)
+    if (distanceItems <= COMMENT_NAVIGATION_SPEED_STEP) {
+        animateScrollToItem(index, scrollOffset)
+        return
+    }
+
+    // LazyListState's built-in animation is intentionally conservative for very distant targets.
+    // Estimate the pixel distance from the currently composed rows and animate that distance with
+    // a duration scaled in the same 50-item steps as the old RecyclerView implementation. The
+    // final snap handles variable-height comment rows and the header exactly.
+    val averageItemSize = layoutInfo.visibleItemsInfo
+        .asSequence()
+        .filter { it.index > 0 && it.size > 0 }
+        .map { it.size }
+        .average()
+        .toFloat()
+        .takeIf { it > 0f }
+        ?: 1f
+    val estimatedDistance =
+        (index - firstVisibleItemIndex) * averageItemSize -
+            firstVisibleItemScrollOffset - scrollOffset
+    val speedMultiplier = ((distanceItems - 1) / COMMENT_NAVIGATION_SPEED_STEP) + 1
+    val baseDuration = (distanceItems * 16).coerceIn(240, 1000)
+    val durationMillis = (baseDuration / speedMultiplier).coerceIn(180, 520)
+
+    scroll {
+        var previousValue = 0f
+        animate(
+            initialValue = 0f,
+            targetValue = estimatedDistance,
+            animationSpec = tween(
+                durationMillis = durationMillis,
+                easing = FastOutSlowInEasing,
+            ),
+        ) { value, _ ->
+            scrollBy(value - previousValue)
+            previousValue = value
+        }
+    }
+    scrollToItem(index, scrollOffset)
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun CommentsScreen(controller: CommentsComposeController) {
@@ -1029,7 +1095,11 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
         val listIndex = target + 1
         val scrollOffset = if (listIndex == 0) 0 else -topInsetPx
         if (request.animate) {
-            listState.animateScrollToItem(listIndex, scrollOffset)
+            listState.animateToCommentNavigationTarget(
+                index = listIndex,
+                scrollOffset = scrollOffset,
+                scaleLongScrollSpeed = request.scaleLongScrollSpeed,
+            )
         } else {
             listState.scrollToItem(listIndex, scrollOffset)
         }
@@ -1274,6 +1344,14 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
                 },
                 containerColor = HarmonicTheme.colors.overlayButton,
                 contentColor = Color.White,
+                // Keep the shadow present but constant. AnimatedVisibility owns the appearance
+                // transition, so Material's interaction elevation cannot flash it on entry.
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 3.dp,
+                    pressedElevation = 3.dp,
+                    focusedElevation = 3.dp,
+                    hoveredElevation = 3.dp,
+                ),
             )
         }
     }
@@ -1425,6 +1503,9 @@ private fun CommentsHeader(
     // Story is a mutable Java model. Network link previews, votes, summaries, and image metadata
     // update that instance in place, so include the bridge revision in the snapshot key.
     val story = remember(controller.story, contentVersion) { controller.story }
+    val storyPosterTag = remember(story.by, contentVersion) {
+        Utils.getUserTag(context, story.by)
+    }
     val colors = HarmonicTheme.colors
     val tintBaseColor = remember(context, settings.theme) {
         PreviewImageTintUtils.getTintBaseColor(context)
@@ -1529,11 +1610,6 @@ private fun CommentsHeader(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = sideMarginStart, end = sideMarginEnd)
-                    .combinedClickable(
-                        enabled = story.isLink,
-                        onClick = controller.listener::onHeaderClick,
-                        onLongClick = null,
-                    )
                     .padding(top = dimensionResource(R.dimen.comments_header_top_padding)),
             ) {
                 AnimatedContent(
@@ -1553,68 +1629,89 @@ private fun CommentsHeader(
                     label = "comments story header reveal",
                 ) { loadingHeader ->
                     if (loadingHeader) {
-                        HeaderShimmer()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .combinedClickable(
+                                    enabled = story.isLink,
+                                    onClick = controller.listener::onHeaderClick,
+                                    onLongClick = null,
+                                ),
+                        ) {
+                            HeaderShimmer()
+                        }
                     } else {
                         Column(Modifier.fillMaxWidth()) {
-                            HeaderPreviewImage(
-                                story = story,
-                                visible = settings.showHeaderPreviewImage,
-                                suppressed = controller.headerPreviewSuppressed,
-                                tintBaseColor = tintBaseColor,
-                                onTintLoaded = { loadedTint = it },
-                                onClick = controller.listener::onHeaderClick,
-                                onLongClick = { bounds ->
-                                    story.previewImageUrl?.takeIf(String::isNotBlank)?.let { imageUrl ->
-                                        controller.showImagePreview(
-                                            imageUrl = imageUrl,
-                                            description = if (story.title.isNullOrBlank()) {
-                                                "Story preview image"
-                                            } else {
-                                                "Preview image for ${story.title}"
-                                            },
-                                            sourceBounds = bounds,
-                                            backgroundColor = visibleHeaderBackground.toArgb(),
-                                        )
-                                    }
-                                },
-                            )
-                            Text(
-                                text = story.pdfTitle ?: story.videoTitle ?: story.title.orEmpty(),
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
-                                    .semantics { heading() },
-                                color = colors.storyNormal,
-                                fontFamily = headerTypography.family,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = headerTypography.commentsHeaderTitleSize.sp,
-                                style = legacyTextStyle,
-                            )
-                            HeaderLinkInfo(story = story, settings = settings)
-                            HeaderStoryBody(
-                                story = story,
-                                settings = settings,
-                                suppressedReferenceUrl = controller.suppressedHeaderReferenceUrl,
-                                onReferenceLongClick = { link, bounds ->
-                                    controller.showReferencePreview(
-                                        link = link,
-                                        sourceBounds = bounds,
-                                        headerReference = true,
-                                    )
-                                },
-                                onLinkLongClick = { url, title, bounds ->
-                                    controller.showReferencePreview(
-                                        url = url,
-                                        title = title,
-                                        sourceBounds = bounds,
-                                        headerReference = true,
-                                    )
-                                },
-                            )
-                            LinkPreviewContent(story, contentVersion, settings)
-                            PollOptions(story.pollOptionArrayList, controller.listener::onPollOption)
-                            StorySummary(story, settings)
-                            HeaderMeta(story, settings)
+                                    .combinedClickable(
+                                        enabled = story.isLink,
+                                        onClick = controller.listener::onHeaderClick,
+                                        onLongClick = null,
+                                    ),
+                            ) {
+                                HeaderPreviewImage(
+                                    story = story,
+                                    visible = settings.showHeaderPreviewImage,
+                                    suppressed = controller.headerPreviewSuppressed,
+                                    tintBaseColor = tintBaseColor,
+                                    onTintLoaded = { loadedTint = it },
+                                    onPreviewLoaded = controller.listener::onHeaderPreviewLoaded,
+                                    onClick = controller.listener::onHeaderClick,
+                                    onLongClick = { bounds ->
+                                        story.previewImageUrl?.takeIf(String::isNotBlank)?.let { imageUrl ->
+                                            controller.showImagePreview(
+                                                imageUrl = imageUrl,
+                                                description = if (story.title.isNullOrBlank()) {
+                                                    "Story preview image"
+                                                } else {
+                                                    "Preview image for ${story.title}"
+                                                },
+                                                sourceBounds = bounds,
+                                                backgroundColor = visibleHeaderBackground.toArgb(),
+                                            )
+                                        }
+                                    },
+                                )
+                                Text(
+                                    text = story.pdfTitle ?: story.videoTitle ?: story.title.orEmpty(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp)
+                                        .semantics { heading() },
+                                    color = colors.storyNormal,
+                                    fontFamily = headerTypography.family,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = headerTypography.commentsHeaderTitleSize.sp,
+                                    style = legacyTextStyle,
+                                )
+                                HeaderLinkInfo(story = story, settings = settings)
+                                HeaderStoryBody(
+                                    story = story,
+                                    settings = settings,
+                                    suppressedReferenceUrl = controller.suppressedHeaderReferenceUrl,
+                                    onReferenceLongClick = { link, bounds ->
+                                        controller.showReferencePreview(
+                                            link = link,
+                                            sourceBounds = bounds,
+                                            headerReference = true,
+                                        )
+                                    },
+                                    onLinkLongClick = { url, title, bounds ->
+                                        controller.showReferencePreview(
+                                            url = url,
+                                            title = title,
+                                            sourceBounds = bounds,
+                                            headerReference = true,
+                                        )
+                                    },
+                                )
+                                LinkPreviewContent(story, contentVersion, settings)
+                                PollOptions(story.pollOptionArrayList, controller.listener::onPollOption)
+                                StorySummary(story, settings)
+                                HeaderMeta(story, settings, storyPosterTag)
+                            }
                             HeaderActions(controller, settings)
                         }
                     }
@@ -1721,17 +1818,19 @@ private fun SheetButton(
     tint: Color = HarmonicTheme.colors.drawable,
     onClick: () -> Unit,
 ) {
-    IconButton(
-        onClick = onClick,
-        shapes = IconButtonDefaults.shapes(),
-        modifier = Modifier.size(56.dp),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = description,
-            modifier = Modifier.size(24.dp),
-            tint = tint,
-        )
+    CommentsTooltip(description) {
+        IconButton(
+            onClick = onClick,
+            shapes = IconButtonDefaults.shapes(),
+            modifier = Modifier.size(56.dp),
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = description,
+                modifier = Modifier.size(24.dp),
+                tint = tint,
+            )
+        }
     }
 }
 
@@ -1780,6 +1879,7 @@ private fun HeaderPreviewImage(
     suppressed: Boolean,
     tintBaseColor: Int,
     onTintLoaded: (Int) -> Unit,
+    onPreviewLoaded: () -> Unit,
     onClick: () -> Unit,
     onLongClick: (androidx.compose.ui.geometry.Rect) -> Unit,
 ) {
@@ -1821,6 +1921,7 @@ private fun HeaderPreviewImage(
                 ),
             contentScale = ContentScale.Crop,
             onSuccess = { state ->
+                onPreviewLoaded()
                 calculateTint(state.result.drawable, context, tintBaseColor)?.let(onTintLoaded)
             },
         )
@@ -2503,7 +2604,11 @@ private fun StorySummary(
 }
 
 @Composable
-private fun HeaderMeta(story: Story, settings: CommentDisplaySettings) {
+private fun HeaderMeta(
+    story: Story,
+    settings: CommentDisplaySettings,
+    storyPosterTag: String = "",
+) {
     if (!story.loaded) return
     val colors = HarmonicTheme.colors
     val typography = rememberContentTypography(settings.font)
@@ -2523,7 +2628,13 @@ private fun HeaderMeta(story: Story, settings: CommentDisplaySettings) {
             }
             HeaderMetaItem(R.drawable.ic_comment, story.descendants.toString(), typography)
             HeaderMetaItem(R.drawable.ic_schedule, story.timeFormatted, typography)
-            HeaderMetaItem(R.drawable.ic_account_circle, story.by.orEmpty(), typography)
+            val posterLabel = buildString {
+                append(story.by.orEmpty())
+                if (storyPosterTag.isNotBlank()) {
+                    append(" (").append(storyPosterTag).append(')')
+                }
+            }
+            HeaderMetaItem(R.drawable.ic_account_circle, posterLabel, typography)
         }
         Spacer(Modifier.weight(1f))
         if (story.isLink) {
@@ -2599,16 +2710,18 @@ private fun HeaderActions(
             Modifier.size(width = 48.dp, height = 58.dp),
             contentAlignment = Alignment.Center,
         ) {
-            IconButton(
-                onClick = { shareExpanded = true },
-                shapes = IconButtonDefaults.shapes(),
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_share),
-                    contentDescription = "Share",
-                    modifier = Modifier.size(24.dp),
-                    tint = HarmonicTheme.colors.drawable,
-                )
+            CommentsTooltip("Share") {
+                IconButton(
+                    onClick = { shareExpanded = true },
+                    shapes = IconButtonDefaults.shapes(),
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_share),
+                        contentDescription = "Share",
+                        modifier = Modifier.size(24.dp),
+                        tint = HarmonicTheme.colors.drawable,
+                    )
+                }
             }
             ShareMenu(
                 expanded = shareExpanded,
@@ -2618,33 +2731,37 @@ private fun HeaderActions(
             )
         }
         if (!hasAccount) {
-            IconButton(
-                onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
-                shapes = IconButtonDefaults.shapes(),
-                modifier = Modifier.size(width = 48.dp, height = 58.dp),
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_refresh),
-                    contentDescription = "Refresh",
-                    modifier = Modifier.size(24.dp),
-                    tint = HarmonicTheme.colors.drawable,
-                )
+            CommentsTooltip("Refresh") {
+                IconButton(
+                    onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
+                    shapes = IconButtonDefaults.shapes(),
+                    modifier = Modifier.size(width = 48.dp, height = 58.dp),
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_refresh),
+                        contentDescription = "Refresh",
+                        modifier = Modifier.size(24.dp),
+                        tint = HarmonicTheme.colors.drawable,
+                    )
+                }
             }
         }
         Box(
             Modifier.size(width = 48.dp, height = 58.dp),
             contentAlignment = Alignment.Center,
         ) {
-            IconButton(
-                onClick = { moreExpanded = true },
-                shapes = IconButtonDefaults.shapes(),
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_more_vert),
-                    contentDescription = "More options",
-                    modifier = Modifier.size(24.dp),
-                    tint = HarmonicTheme.colors.drawable,
-                )
+            CommentsTooltip("More options") {
+                IconButton(
+                    onClick = { moreExpanded = true },
+                    shapes = IconButtonDefaults.shapes(),
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_more_vert),
+                        contentDescription = "More options",
+                        modifier = Modifier.size(24.dp),
+                        tint = HarmonicTheme.colors.drawable,
+                    )
+                }
             }
             MoreMenu(
                 expanded = moreExpanded,
@@ -2688,36 +2805,61 @@ private fun HeaderActionButton(
     action: HeaderAction,
     onClick: () -> Unit,
 ) {
-    IconButton(
-        onClick = onClick,
-        shapes = IconButtonDefaults.shapes(),
-        enabled = !action.loading,
-        modifier = Modifier.size(width = 48.dp, height = 58.dp),
-    ) {
-        AnimatedContent(
-            targetState = HeaderActionVisual(action.icon, action.label, action.loading),
-            transitionSpec = {
-                (fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.72f)) togetherWith
-                    (fadeOut(tween(90)) + scaleOut(tween(90), targetScale = 0.72f))
-            },
-            label = "${action.label} loading transition",
-        ) { visual ->
-            if (visual.loading) {
-                LoadingIndicator(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .semantics { contentDescription = visual.label },
-                )
-            } else {
-                Icon(
-                    painterResource(visual.icon),
-                    contentDescription = visual.label,
-                    modifier = Modifier.size(24.dp),
-                    tint = HarmonicTheme.colors.drawable,
-                )
+    CommentsTooltip(action.label) {
+        IconButton(
+            onClick = onClick,
+            shapes = IconButtonDefaults.shapes(),
+            enabled = !action.loading,
+            modifier = Modifier.size(width = 48.dp, height = 58.dp),
+        ) {
+            AnimatedContent(
+                targetState = HeaderActionVisual(action.icon, action.label, action.loading),
+                transitionSpec = {
+                    (fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.72f)) togetherWith
+                        (fadeOut(tween(90)) + scaleOut(tween(90), targetScale = 0.72f))
+                },
+                label = "${action.label} loading transition",
+            ) { visual ->
+                if (visual.loading) {
+                    LoadingIndicator(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .semantics { contentDescription = visual.label },
+                    )
+                } else {
+                    Icon(
+                        painterResource(visual.icon),
+                        contentDescription = visual.label,
+                        modifier = Modifier.size(24.dp),
+                        tint = HarmonicTheme.colors.drawable,
+                    )
+                }
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CommentsTooltip(
+    description: String,
+    content: @Composable () -> Unit,
+) {
+    val tooltipState = rememberTooltipState()
+    val hapticFeedback = LocalHapticFeedback.current
+    LaunchedEffect(tooltipState.isVisible) {
+        if (tooltipState.isVisible) {
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            TooltipAnchorPosition.Above,
+        ),
+        tooltip = { PlainTooltip { Text(description) } },
+        state = tooltipState,
+        content = content,
+    )
 }
 
 @Composable
@@ -2924,11 +3066,13 @@ private fun OpFilterBanner(controller: CommentsComposeController) {
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
             )
-            IconButton(
-                onClick = { controller.listener.onMoreAction(CommentsComposeController.MORE_COMMENTS_BY_OP) },
-                shapes = IconButtonDefaults.shapes(),
-            ) {
-                Icon(painterResource(R.drawable.ic_close), contentDescription = "Show all comments")
+            CommentsTooltip("Show all comments") {
+                IconButton(
+                    onClick = { controller.listener.onMoreAction(CommentsComposeController.MORE_COMMENTS_BY_OP) },
+                    shapes = IconButtonDefaults.shapes(),
+                ) {
+                    Icon(painterResource(R.drawable.ic_close), contentDescription = "Show all comments")
+                }
             }
         }
     }
@@ -3021,8 +3165,7 @@ private fun CommentNavigationButtons(
         modifier = Modifier
             .shadow(8.dp, RoundedCornerShape(28.dp), clip = false)
             .clip(RoundedCornerShape(28.dp))
-            .background(HarmonicTheme.colors.overlayButton)
-            .border(1.dp, HarmonicTheme.colors.outlineVariant, RoundedCornerShape(28.dp)),
+            .background(HarmonicTheme.colors.overlayButton),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(

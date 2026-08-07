@@ -312,6 +312,8 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         currentSettingsSectionRoute = section.route
     }
 
+    internal fun getCurrentSettingsSectionRoute(): String? = currentSettingsSectionRoute
+
     internal fun onSettingsThemeChanged() {
         settingsNeedsRestart = true
         settingsThemeRevision++
@@ -898,6 +900,12 @@ private fun MainNavigation(
     var activeEditorBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
     }
+    var completedEditorPredictiveBack by remember { mutableStateOf(false) }
+
+    LaunchedEffect(editorRequest?.serial) {
+        if (editorRequest != null) completedEditorPredictiveBack = false
+    }
+
     PredictiveBackHandler(enabled = editorRequest != null) { events ->
         var animation: DefaultActivityPredictiveBackAnimation? = null
         try {
@@ -917,6 +925,7 @@ private fun MainNavigation(
                 return@PredictiveBackHandler
             }
             currentAnimation.finish()
+            completedEditorPredictiveBack = true
             controller.closeEditor()
             activeEditorBackAnimation = null
         } catch (_: CancellationException) {
@@ -1074,20 +1083,25 @@ private fun MainNavigation(
                 settingsPopExit(settingsTransitionOffsetPx)
             },
         ) {
-            controller.lastSettingsRequest?.let { request ->
-                key(request.serial, controller.settingsThemeRevision) {
-                    HarmonicTheme {
-                        SettingsShell(
-                            initialSection = request.initialSectionRoute
-                                ?.let(SettingsSection::fromRoute),
-                            onBackFromSettings = ::closeSettings,
-                            onSectionChanged = controller::updateSettingsSection,
-                            onThemeChanged = {
-                                ThemeUtils.setupTheme(activity)
-                                controller.onSettingsThemeChanged()
-                            },
-                            onRequestRestart = controller::requestSettingsRestart,
-                        )
+            if (settingsRequest != null || !completedSettingsPredictiveBack) {
+                controller.lastSettingsRequest?.let { request ->
+                    key(request.serial, controller.settingsThemeRevision) {
+                        HarmonicTheme {
+                            SettingsShell(
+                                initialSection = (
+                                    controller.getCurrentSettingsSectionRoute()
+                                        ?: request.initialSectionRoute
+                                )
+                                    ?.let(SettingsSection::fromRoute),
+                                onBackFromSettings = ::closeSettings,
+                                onSectionChanged = controller::updateSettingsSection,
+                                onThemeChanged = {
+                                    ThemeUtils.setupTheme(activity)
+                                    controller.onSettingsThemeChanged()
+                                },
+                                onRequestRestart = controller::requestSettingsRestart,
+                            )
+                        }
                     }
                 }
             }
@@ -1117,22 +1131,24 @@ private fun MainNavigation(
                 settingsPopExit(settingsTransitionOffsetPx)
             },
         ) {
-            controller.lastSubmissionsRequest?.let { request ->
-                key(request.serial) {
-                    val coordinator = remember(request.serial) {
-                        SubmissionsCoordinator(
-                            activity,
-                            request.userName,
-                        ) { story, showWebsite ->
-                            controller.prepareToOpenStoryFromSubmissions()
-                            controller.closeSettings()
-                            activity.openStory(story, 0, showWebsite)
+            if (submissionsRequest != null || !completedSubmissionsPredictiveBack) {
+                controller.lastSubmissionsRequest?.let { request ->
+                    key(request.serial) {
+                        val coordinator = remember(request.serial) {
+                            SubmissionsCoordinator(
+                                activity,
+                                request.userName,
+                            ) { story, showWebsite ->
+                                controller.prepareToOpenStoryFromSubmissions()
+                                controller.closeSettings()
+                                activity.openStory(story, 0, showWebsite)
+                            }
                         }
+                        DisposableEffect(coordinator) {
+                            onDispose(coordinator::close)
+                        }
+                        SubmissionsScreen(coordinator.composeController)
                     }
-                    DisposableEffect(coordinator) {
-                        onDispose(coordinator::close)
-                    }
-                    SubmissionsScreen(coordinator.composeController)
                 }
             }
         }
@@ -1151,50 +1167,56 @@ private fun MainNavigation(
                 )
                 .then(activeEditorBackAnimation?.exitModifier ?: Modifier),
             enter = settingsOpenEnter(settingsTransitionOffsetPx),
-            exit = settingsPopExit(settingsTransitionOffsetPx),
+            exit = if (completedEditorPredictiveBack) {
+                ExitTransition.None
+            } else {
+                settingsPopExit(settingsTransitionOffsetPx)
+            },
         ) {
-            controller.lastEditorRequest?.let { request ->
-                key(request.serial) {
-                    Box(Modifier.fillMaxSize()) {
-                        // The editor is a modal sibling of the story navigation. Its opaque
-                        // surface is not itself a pointer target, so keep an explicit barrier
-                        // behind it to prevent taps in field gutters reaching the story layer.
-                        Box(
-                            Modifier
-                                .fillMaxSize()
-                                .pointerInput(Unit) {
-                                    awaitEachGesture {
-                                        do {
-                                            val event = awaitPointerEvent()
-                                            event.changes.forEach { it.consume() }
-                                        } while (event.changes.any { it.pressed })
-                                    }
-                                },
-                        )
+            if (editorRequest != null || !completedEditorPredictiveBack) {
+                controller.lastEditorRequest?.let { request ->
+                    key(request.serial) {
+                        Box(Modifier.fillMaxSize()) {
+                            // The editor is a modal sibling of the story navigation. Its opaque
+                            // surface is not itself a pointer target, so keep an explicit barrier
+                            // behind it to prevent taps in field gutters reaching the story layer.
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .pointerInput(Unit) {
+                                        awaitEachGesture {
+                                            do {
+                                                val event = awaitPointerEvent()
+                                                event.changes.forEach { it.consume() }
+                                            } while (event.changes.any { it.pressed })
+                                        }
+                                    },
+                            )
 
-                        val editorController = remember(request.serial) {
-                            ComposeEditorController(activity)
-                        }
-                        val coordinator = remember(request.serial) {
-                            ComposeEditorCoordinator(
-                                activity,
-                                Bundle(request.arguments),
-                                controller::closeEditor,
+                            val editorController = remember(request.serial) {
+                                ComposeEditorController(activity)
+                            }
+                            val coordinator = remember(request.serial) {
+                                ComposeEditorCoordinator(
+                                    activity,
+                                    Bundle(request.arguments),
+                                    controller::closeEditor,
+                                )
+                            }
+                            SideEffect {
+                                coordinator.attachController(editorController)
+                            }
+                            ComposeEditorScreen(
+                                type = coordinator.type,
+                                parentText = coordinator.parentText,
+                                postTitle = coordinator.postTitle,
+                                user = coordinator.user,
+                                titleMaxLength = coordinator.titleMaxLength,
+                                submitting = editorController.submitting,
+                                onClose = controller::closeEditor,
+                                onSubmit = coordinator::submit,
                             )
                         }
-                        SideEffect {
-                            coordinator.attachController(editorController)
-                        }
-                        ComposeEditorScreen(
-                            type = coordinator.type,
-                            parentText = coordinator.parentText,
-                            postTitle = coordinator.postTitle,
-                            user = coordinator.user,
-                            titleMaxLength = coordinator.titleMaxLength,
-                            submitting = editorController.submitting,
-                            onClose = controller::closeEditor,
-                            onSubmit = coordinator::submit,
-                        )
                     }
                 }
             }
@@ -1337,12 +1359,17 @@ private fun SinglePaneNavigation(
             enter = commentsOpenEnter(),
             exit = if (completedPredictivePop) ExitTransition.None else commentsPopExit(),
         ) {
-            displayedRequest?.let { request ->
-                key(request.serial) {
-                    CommentsPane(
-                        request = request,
-                        controller = controller,
-                    )
+            // AnimatedVisibility can retain its last content for one frame even with a snap
+            // exit. Stop emitting the committed predictive-back destination so removing its
+            // finished graphics transform cannot reveal it again.
+            if (storyRequest != null || !completedPredictivePop) {
+                displayedRequest?.let { request ->
+                    key(request.serial) {
+                        CommentsPane(
+                            request = request,
+                            controller = controller,
+                        )
+                    }
                 }
             }
         }

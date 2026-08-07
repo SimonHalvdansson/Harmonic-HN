@@ -224,6 +224,10 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         storiesCoordinator?.onAccountStateChanged()
     }
 
+    fun onStoryPreviewImageLoaded(storyId: Int) {
+        storiesCoordinator?.onStoryPreviewImageLoaded(storyId)
+    }
+
     fun closeStory() {
         mainNavigationController!!.closeStory()
     }
