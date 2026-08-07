@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.animation.AnimatedContent
@@ -37,6 +39,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Surface
@@ -293,6 +296,7 @@ private fun CommentActionCardContent(
                     CommentsComposeController.COMMENT_ACTION_USER,
                 )
             },
+            shapes = ButtonDefaults.shapes(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = HarmonicTheme.colors.overlayButton,
                 contentColor = Color.White,
@@ -425,6 +429,7 @@ private fun CommentActionCardContent(
                         CommentsComposeController.COMMENT_ACTION_REPLY,
                     )
                 },
+                shapes = ButtonDefaults.shapes(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = HarmonicTheme.colors.overlayButton,
                     contentColor = Color.White,
@@ -471,7 +476,11 @@ private fun RowScope.CommentActionIcon(
             if (isLoading) {
                 LoadingIndicator(Modifier.size(28.dp))
             } else {
-                IconButton(onClick = onClick, enabled = enabled) {
+                IconButton(
+                    onClick = onClick,
+                    enabled = enabled,
+                    shapes = IconButtonDefaults.shapes(),
+                ) {
                     Icon(
                         painterResource(icon),
                         contentDescription = description,
@@ -498,7 +507,7 @@ private fun CommentActionCardPreview() {
     HarmonicTheme {
         Surface(color = HarmonicTheme.colors.surfaceContainerHigh) {
             Column(Modifier.padding(18.dp)) {
-                Button(onClick = {}) {
+                Button(onClick = {}, shapes = ButtonDefaults.shapes()) {
                     Icon(painterResource(R.drawable.ic_account_circle), null)
                     Text("alephnerd", Modifier.padding(start = 8.dp))
                 }

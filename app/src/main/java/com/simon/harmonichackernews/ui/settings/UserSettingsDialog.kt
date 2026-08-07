@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.simon.harmonichackernews.ui.settings
 
 import android.Manifest
@@ -28,6 +30,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -243,6 +246,7 @@ private fun UserLoadError(
         )
         OutlinedButton(
             onClick = onRetry,
+            shapes = ButtonDefaults.shapes(),
             modifier = Modifier.height(56.dp),
         ) {
             Icon(
@@ -459,6 +463,7 @@ private fun UserOutlinedAction(
 ) {
     OutlinedButton(
         onClick = onClick,
+        shapes = ButtonDefaults.shapes(),
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp),

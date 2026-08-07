@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.simon.harmonichackernews.ui.comments
 
 import android.annotation.SuppressLint
@@ -59,6 +61,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -1720,6 +1723,7 @@ private fun SheetButton(
 ) {
     IconButton(
         onClick = onClick,
+        shapes = IconButtonDefaults.shapes(),
         modifier = Modifier.size(56.dp),
     ) {
         Icon(
@@ -2269,6 +2273,7 @@ private fun ArxivPreview(story: Story, settings: CommentDisplaySettings) {
         PreviewInfoRow(R.drawable.ic_library_books, runCatching(info::formatSubjects).getOrNull())
         Button(
             onClick = { Utils.downloadPDF(context, info.pDFURL) },
+            shapes = ButtonDefaults.shapes(),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
@@ -2379,6 +2384,7 @@ private fun NitterPreview(story: Story) {
             }
             Button(
                 onClick = { Utils.launchCustomTab(context, story.url) },
+                shapes = ButtonDefaults.shapes(),
                 modifier = Modifier
                     .padding(bottom = 4.dp)
                     .height(52.dp),
@@ -2439,6 +2445,7 @@ private fun PollOptions(options: List<PollOption>?, onVote: (Int) -> Unit) {
             if (option.loaded) {
                 OutlinedButton(
                     onClick = { onVote(option.id) },
+                    shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("${option.text} (${option.points} ${if (option.points == 1) "point" else "points"})")
@@ -2592,7 +2599,10 @@ private fun HeaderActions(
             Modifier.size(width = 48.dp, height = 58.dp),
             contentAlignment = Alignment.Center,
         ) {
-            IconButton(onClick = { shareExpanded = true }) {
+            IconButton(
+                onClick = { shareExpanded = true },
+                shapes = IconButtonDefaults.shapes(),
+            ) {
                 Icon(
                     painterResource(R.drawable.ic_share),
                     contentDescription = "Share",
@@ -2610,6 +2620,7 @@ private fun HeaderActions(
         if (!hasAccount) {
             IconButton(
                 onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
+                shapes = IconButtonDefaults.shapes(),
                 modifier = Modifier.size(width = 48.dp, height = 58.dp),
             ) {
                 Icon(
@@ -2624,7 +2635,10 @@ private fun HeaderActions(
             Modifier.size(width = 48.dp, height = 58.dp),
             contentAlignment = Alignment.Center,
         ) {
-            IconButton(onClick = { moreExpanded = true }) {
+            IconButton(
+                onClick = { moreExpanded = true },
+                shapes = IconButtonDefaults.shapes(),
+            ) {
                 Icon(
                     painterResource(R.drawable.ic_more_vert),
                     contentDescription = "More options",
@@ -2676,6 +2690,7 @@ private fun HeaderActionButton(
 ) {
     IconButton(
         onClick = onClick,
+        shapes = IconButtonDefaults.shapes(),
         enabled = !action.loading,
         modifier = Modifier.size(width = 48.dp, height = 58.dp),
     ) {
@@ -2909,7 +2924,10 @@ private fun OpFilterBanner(controller: CommentsComposeController) {
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
             )
-            IconButton(onClick = { controller.listener.onMoreAction(CommentsComposeController.MORE_COMMENTS_BY_OP) }) {
+            IconButton(
+                onClick = { controller.listener.onMoreAction(CommentsComposeController.MORE_COMMENTS_BY_OP) },
+                shapes = IconButtonDefaults.shapes(),
+            ) {
                 Icon(painterResource(R.drawable.ic_close), contentDescription = "Show all comments")
             }
         }
@@ -2958,6 +2976,7 @@ private fun HeaderStatus(controller: CommentsComposeController) {
                 )
                 OutlinedButton(
                     onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
+                    shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.padding(top = 8.dp),
                 ) { Text("Try again") }
             }
@@ -2978,6 +2997,7 @@ private fun HeaderStatus(controller: CommentsComposeController) {
             }
             "refresh" -> OutlinedButton(
                 onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
+                shapes = ButtonDefaults.shapes(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),

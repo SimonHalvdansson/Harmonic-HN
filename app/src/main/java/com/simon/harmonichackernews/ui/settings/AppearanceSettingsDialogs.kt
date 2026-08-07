@@ -1,4 +1,7 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class,
+)
 
 package com.simon.harmonichackernews.ui.settings
 
@@ -757,6 +760,7 @@ fun WelcomeSettingsDialog(
                             .fillMaxWidth()
                             .padding(top = 20.dp)
                             .height(56.dp),
+                        shapes = ButtonDefaults.shapes(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondary,
                             contentColor = MaterialTheme.colorScheme.onSecondary,
@@ -788,7 +792,7 @@ private fun StylePresetButton(
         Button(
             onClick = onClick,
             modifier = modifier.height(50.dp),
-            shape = CircleShape,
+            shapes = ButtonDefaults.shapes(shape = CircleShape),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.inverseSurface,
                 contentColor = MaterialTheme.colorScheme.inverseOnSurface,
@@ -804,7 +808,7 @@ private fun StylePresetButton(
         OutlinedButton(
             onClick = onClick,
             modifier = modifier.height(50.dp),
-            shape = CircleShape,
+            shapes = ButtonDefaults.shapes(shape = CircleShape),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         ) {
             Text(

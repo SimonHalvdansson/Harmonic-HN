@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.simon.harmonichackernews.ui.settings
 
 import android.content.Context
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -462,6 +465,7 @@ private fun LocalModelAction(
                 }
                 onRefresh()
             },
+            shapes = IconButtonDefaults.shapes(),
         ) {
             Icon(
                 painter = painterResource(icon),

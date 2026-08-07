@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.simon.harmonichackernews.ui.settings
 
 import android.content.Intent
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -364,6 +367,7 @@ private fun DebugHnIdSetting(
             Spacer(Modifier.width(8.dp))
             OutlinedIconButton(
                 onClick = { openId() },
+                shapes = IconButtonDefaults.shapes(),
                 modifier = Modifier.size(56.dp),
             ) {
                 Icon(

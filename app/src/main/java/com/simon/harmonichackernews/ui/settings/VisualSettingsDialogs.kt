@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.AnimatedVisibility
@@ -24,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -236,6 +239,7 @@ fun ThreadDepthIndicatorsDialog(
                             )
                             mode = option
                         },
+                        shapes = ButtonDefaults.shapes(),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),

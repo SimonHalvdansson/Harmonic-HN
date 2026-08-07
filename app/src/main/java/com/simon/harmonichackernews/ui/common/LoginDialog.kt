@@ -12,10 +12,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -174,7 +176,10 @@ fun LoginDialog(
                         PasswordVisualTransformation()
                     },
                     trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        IconButton(
+                            onClick = { passwordVisible = !passwordVisible },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
                             Icon(
                                 painter = painterResource(
                                     if (passwordVisible) {
@@ -207,7 +212,10 @@ fun LoginDialog(
                     fontSize = 13.sp,
                 )
                 AnimatedVisibility(visible = !showInformation) {
-                    OutlinedButton(onClick = { showInformation = true }) {
+                    OutlinedButton(
+                        onClick = { showInformation = true },
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_info),
                             contentDescription = null,
@@ -250,6 +258,7 @@ fun LoginDialog(
                 )
                 OutlinedButton(
                     onClick = { Utils.launchInExternalBrowser(context, HackerNewsLoginUrl) },
+                    shapes = ButtonDefaults.shapes(),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_open_in_browser),

@@ -52,6 +52,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -59,6 +60,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -940,12 +942,13 @@ private fun FrontPageDatePickerDialog(
             TextButton(
                 onClick = { state.selectedDateMillis?.let(onSelected) },
                 enabled = state.selectedDateMillis != null,
+                shapes = ButtonDefaults.shapes(),
             ) {
                 Text("OK")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) {
                 Text("Cancel")
             }
         },
@@ -1115,7 +1118,10 @@ private fun StoriesList(
                             if (controller.loadMoreLoading) {
                                 LoadingIndicator(modifier = Modifier.size(40.dp))
                             } else {
-                                OutlinedButton(onClick = controller.listener::onLoadMore) {
+                                OutlinedButton(
+                                    onClick = controller.listener::onLoadMore,
+                                    shapes = ButtonDefaults.shapes(),
+                                ) {
                                     Text("Load more")
                                 }
                             }
@@ -1197,6 +1203,7 @@ private fun StoriesHeader(
                 OutlinedButton(
                     onClick = { controller.listener.onShiftFrontDate(-1) },
                     enabled = controller.frontPreviousEnabled,
+                    shapes = ButtonDefaults.shapes(),
                     contentPadding = PaddingValues(0.dp),
                     modifier = Modifier.size(56.dp),
                 ) {
@@ -1204,6 +1211,7 @@ private fun StoriesHeader(
                 }
                 OutlinedButton(
                     onClick = controller.listener::onPickFrontDate,
+                    shapes = ButtonDefaults.shapes(),
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 8.dp)
@@ -1216,6 +1224,7 @@ private fun StoriesHeader(
                 OutlinedButton(
                     onClick = { controller.listener.onShiftFrontDate(1) },
                     enabled = controller.frontNextEnabled,
+                    shapes = ButtonDefaults.shapes(),
                     contentPadding = PaddingValues(0.dp),
                     modifier = Modifier.size(56.dp),
                 ) {
@@ -1348,7 +1357,10 @@ private fun MainHeader(
                 }
             }
         }
-        IconButton(onClick = controller.listener::onOpenSearch) {
+        IconButton(
+            onClick = controller.listener::onOpenSearch,
+            shapes = IconButtonDefaults.shapes(),
+        ) {
             Icon(
                 painterResource(R.drawable.ic_search),
                 "Search",
@@ -1356,7 +1368,10 @@ private fun MainHeader(
             )
         }
         Box {
-            IconButton(onClick = { moreExpanded = true }) {
+            IconButton(
+                onClick = { moreExpanded = true },
+                shapes = IconButtonDefaults.shapes(),
+            ) {
                 Icon(
                     painterResource(R.drawable.ic_more_vert),
                     "More options",
@@ -1412,11 +1427,14 @@ private fun SearchHeader(
                     .weight(1f)
                     .focusRequester(focusRequester),
             )
-            IconButton(onClick = {
-                keyboard?.hide()
-                focusManager.clearFocus()
-                controller.listener.onCloseSearch()
-            }) {
+            IconButton(
+                onClick = {
+                    keyboard?.hide()
+                    focusManager.clearFocus()
+                    controller.listener.onCloseSearch()
+                },
+                shapes = IconButtonDefaults.shapes(),
+            ) {
                 Icon(
                     painterResource(R.drawable.ic_close),
                     "Close search",
@@ -1582,9 +1600,15 @@ private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boole
                 modifier = Modifier.padding(top = 8.dp),
             )
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = controller.listener::onRefresh) { Text("Retry") }
+                Button(
+                    onClick = controller.listener::onRefresh,
+                    shapes = ButtonDefaults.shapes(),
+                ) { Text("Retry") }
                 if (controller.showCachedAction && !searchMode) {
-                    OutlinedButton(onClick = controller.listener::onShowCached) { Text("Show cached") }
+                    OutlinedButton(
+                        onClick = controller.listener::onShowCached,
+                        shapes = ButtonDefaults.shapes(),
+                    ) { Text("Show cached") }
                 }
             }
         }
@@ -1700,9 +1724,9 @@ private fun SavedCommentStoryItem(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                 horizontalArrangement = Arrangement.End,
             ) {
-                OutlinedButton(onClick = onStory) { Text("Story") }
+                OutlinedButton(onClick = onStory, shapes = ButtonDefaults.shapes()) { Text("Story") }
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = onReplies) {
+                Button(onClick = onReplies, shapes = ButtonDefaults.shapes()) {
                     Icon(painterResource(R.drawable.ic_comment), null)
                     Spacer(Modifier.width(6.dp))
                     Text("Replies")

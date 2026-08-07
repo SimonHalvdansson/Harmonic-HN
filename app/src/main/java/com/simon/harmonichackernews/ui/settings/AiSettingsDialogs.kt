@@ -680,6 +680,7 @@ fun AiModelSelectorDialog(
                             )
                             OutlinedButton(
                                 onClick = { catalogReload++ },
+                                shapes = ButtonDefaults.shapes(),
                                 modifier = Modifier.padding(top = 12.dp),
                             ) {
                                 Text("Retry")

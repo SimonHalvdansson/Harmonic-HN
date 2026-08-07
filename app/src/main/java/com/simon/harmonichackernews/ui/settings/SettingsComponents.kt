@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.simon.harmonichackernews.ui.settings
 
 import android.view.WindowManager
@@ -46,6 +48,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -1308,6 +1311,7 @@ fun EditableStringListDialog(
                                 )
                                 IconButton(
                                     onClick = { items = items - item },
+                                    shapes = IconButtonDefaults.shapes(),
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.ic_close),

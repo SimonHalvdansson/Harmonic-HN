@@ -2,8 +2,12 @@ package com.simon.harmonichackernews.ui.submissions
 
 import android.text.Html
 import androidx.activity.ComponentActivity
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
@@ -479,23 +483,33 @@ private fun SubmissionFilterButton(
     modifier: Modifier = Modifier,
 ) {
     val colors = rememberLegacyFilterColors()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val innerCorner by animateDpAsState(
+        targetValue = if (isPressed) 4.dp else 8.dp,
+        animationSpec = spring(
+            dampingRatio = 0.6f,
+            stiffness = 800f,
+        ),
+        label = "submission filter button corners",
+    )
     val shape = if (selected) {
-        RoundedCornerShape(24.dp)
+        RoundedCornerShape(if (isPressed) 12.dp else 24.dp)
     } else {
         when (position) {
             0 -> RoundedCornerShape(
                 topStart = 24.dp,
-                topEnd = 8.dp,
-                bottomEnd = 8.dp,
+                topEnd = innerCorner,
+                bottomEnd = innerCorner,
                 bottomStart = 24.dp,
             )
             2 -> RoundedCornerShape(
-                topStart = 8.dp,
+                topStart = innerCorner,
                 topEnd = 24.dp,
                 bottomEnd = 24.dp,
-                bottomStart = 8.dp,
+                bottomStart = innerCorner,
             )
-            else -> RoundedCornerShape(8.dp)
+            else -> RoundedCornerShape(innerCorner)
         }
     }
     Box(
@@ -512,6 +526,7 @@ private fun SubmissionFilterButton(
                 selected = selected,
                 onClick = onClick,
                 role = Role.RadioButton,
+                interactionSource = interactionSource,
             ),
         contentAlignment = Alignment.Center,
     ) {

@@ -1,8 +1,11 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -94,6 +97,7 @@ fun FiltersTagsSettingsScreen(
                                 Row {
                                     IconButton(
                                         onClick = { tagDialogUser = entry.key },
+                                        shapes = IconButtonDefaults.shapes(),
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.ic_edit),
@@ -105,6 +109,7 @@ fun FiltersTagsSettingsScreen(
                                             Utils.setUserTag(context, entry.key, "")
                                             tagRefresh++
                                         },
+                                        shapes = IconButtonDefaults.shapes(),
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.ic_delete),

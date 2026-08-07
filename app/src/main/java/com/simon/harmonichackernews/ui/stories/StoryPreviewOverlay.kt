@@ -52,6 +52,7 @@ import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -573,7 +574,7 @@ private fun RowScope.StoryPreviewActionIcon(
             if (waiting) {
                 LoadingIndicator(Modifier.size(28.dp))
             } else {
-                IconButton(onClick = onClick) {
+                IconButton(onClick = onClick, shapes = IconButtonDefaults.shapes()) {
                     Icon(
                         painterResource(icon),
                         contentDescription = description,

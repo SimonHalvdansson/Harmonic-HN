@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.simon.harmonichackernews.ui.settings
 
 import android.Manifest
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -218,6 +221,7 @@ private fun DebugNotificationButton(
 ) {
     OutlinedButton(
         onClick = onClick,
+        shapes = ButtonDefaults.shapes(),
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp),

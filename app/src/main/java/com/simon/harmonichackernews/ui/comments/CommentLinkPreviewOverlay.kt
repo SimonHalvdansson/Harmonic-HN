@@ -695,7 +695,11 @@ private fun ReferenceErrorContent(
                             },
                     )
                 } else {
-                    OutlinedButton(onClick = onRetry, modifier = Modifier.height(48.dp)) {
+                    OutlinedButton(
+                        onClick = onRetry,
+                        modifier = Modifier.height(48.dp),
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
                         Icon(
                             painterResource(R.drawable.ic_refresh),
                             contentDescription = null,

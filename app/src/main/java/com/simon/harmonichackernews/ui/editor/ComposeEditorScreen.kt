@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.simon.harmonichackernews.ui.editor
 
 import android.os.Looper
@@ -43,6 +45,7 @@ import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -339,6 +342,7 @@ private fun ComposeEditorTopBar(
     ) {
         IconButton(
             onClick = onClose,
+            shapes = IconButtonDefaults.shapes(),
             modifier = Modifier
                 .size(56.dp)
                 .testTag("compose_editor_close"),
@@ -615,7 +619,11 @@ private fun FormattingButton(
     description: String,
     onClick: () -> Unit,
 ) {
-    IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
+    IconButton(
+        onClick = onClick,
+        shapes = IconButtonDefaults.shapes(),
+        modifier = Modifier.size(48.dp),
+    ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = description,

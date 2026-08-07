@@ -1,9 +1,15 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.simon.harmonichackernews.widget
 
 import androidx.annotation.DimenRes
 import androidx.activity.ComponentActivity
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -207,6 +214,9 @@ private fun WidgetConfigScreen(
                 )
                 .height(dimensionResource(R.dimen.widget_config_confirm_height)),
         ) {
+            val confirmShape = RoundedCornerShape(
+                dimensionResource(R.dimen.widget_config_confirm_corner_radius),
+            )
             Button(
                 onClick = {
                     val selectedFeed = feedOptions[selectedFeedIndex]
@@ -223,9 +233,7 @@ private fun WidgetConfigScreen(
                             R.dimen.widget_config_button_vertical_inset,
                         ),
                     ),
-                shape = RoundedCornerShape(
-                    dimensionResource(R.dimen.widget_config_confirm_corner_radius),
-                ),
+                shapes = ButtonDefaults.shapes(shape = confirmShape),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary,
@@ -300,6 +308,9 @@ private fun WidgetStoryCountSelector(
 ) {
     val options = listOf(8, 16, 24)
     val gap = dimensionResource(R.dimen.widget_config_count_button_gap)
+    val defaultCornerRadius = dimensionResource(
+        R.dimen.widget_config_count_button_corner_radius,
+    )
 
     Row(
         modifier = modifier
@@ -310,9 +321,17 @@ private fun WidgetStoryCountSelector(
     ) {
         options.forEach { option ->
             val isSelected = option == selected
-            val shape = RoundedCornerShape(
-                dimensionResource(R.dimen.widget_config_count_button_corner_radius),
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val cornerRadius by animateDpAsState(
+                targetValue = if (isPressed) defaultCornerRadius / 2 else defaultCornerRadius,
+                animationSpec = spring(
+                    dampingRatio = 0.6f,
+                    stiffness = 800f,
+                ),
+                label = "widget story count button corners",
             )
+            val shape = RoundedCornerShape(cornerRadius)
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -320,6 +339,7 @@ private fun WidgetStoryCountSelector(
                     .selectable(
                         selected = isSelected,
                         role = Role.RadioButton,
+                        interactionSource = interactionSource,
                         onClick = { onSelected(option) },
                     ),
                 contentAlignment = Alignment.Center,
