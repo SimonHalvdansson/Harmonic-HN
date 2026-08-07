@@ -8,6 +8,7 @@ import androidx.annotation.Nullable
 
 object StoryPreviewImageMemoryCache {
     private const val MAX_ENTRIES = 48
+    private const val TINT_CACHE_VERSION = "3"
     private val CACHE = LruCache<String?, ConstantState?>(MAX_ENTRIES)
     private val TINT_CACHE = LruCache<String?, Int?>(MAX_ENTRIES)
 
@@ -67,6 +68,6 @@ object StoryPreviewImageMemoryCache {
     }
 
     private fun getTintKey(storyId: Int, imageUrl: String?, baseColor: Int): String {
-        return getKey(storyId, imageUrl) + ":" + baseColor
+        return getKey(storyId, imageUrl) + ":" + TINT_CACHE_VERSION + ":" + baseColor
     }
 }

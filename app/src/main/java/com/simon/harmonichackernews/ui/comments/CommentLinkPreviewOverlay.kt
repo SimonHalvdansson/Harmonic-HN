@@ -193,7 +193,7 @@ internal fun CommentLinkPreviewOverlay(controller: CommentsComposeController) {
         ) {
             val cardColor = when (state) {
                 is CommentLinkPreviewOverlayState.Reference -> HarmonicTheme.colors.surfaceContainerHigh
-                is CommentLinkPreviewOverlayState.Image -> Color(state.backgroundColor)
+                is CommentLinkPreviewOverlayState.Image -> Color.Transparent
             }
             Surface(
                 modifier = Modifier
@@ -216,7 +216,11 @@ internal fun CommentLinkPreviewOverlay(controller: CommentsComposeController) {
                         scaleY = sharedScaleY * backScale
                         translationX = startTranslationX * (1f - progress) + backTranslationX
                         translationY = startTranslationY * (1f - progress) + backTranslationY
-                        alpha = if (source == null) progress else max(0.7f, progress)
+                        alpha = when {
+                            source == null -> progress
+                            state is CommentLinkPreviewOverlayState.Image -> 1f
+                            else -> max(0.7f, progress)
+                        }
                         transformOrigin = TransformOrigin(
                             if (backDirection > 0f) 0f else 1f,
                             0.5f,
@@ -229,7 +233,7 @@ internal fun CommentLinkPreviewOverlay(controller: CommentsComposeController) {
                     ),
                 shape = RoundedCornerShape(28.dp),
                 color = cardColor,
-                shadowElevation = 8.dp,
+                shadowElevation = if (state is CommentLinkPreviewOverlayState.Image) 0.dp else 8.dp,
             ) {
                 when (state) {
                     is CommentLinkPreviewOverlayState.Reference -> ReferencePreviewCard(
@@ -728,7 +732,6 @@ private fun ImageOnlyPreviewCard(state: CommentLinkPreviewOverlayState.Image) {
             model = ImageRequest.Builder(context)
                 .data(state.imageUrl)
                 .setHeader("User-Agent", NetworkComponent.USER_AGENT)
-                .crossfade(true)
                 .build(),
             contentDescription = state.description,
             modifier = Modifier

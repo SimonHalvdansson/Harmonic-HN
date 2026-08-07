@@ -276,6 +276,10 @@ internal class CommentsWebViewController(
         if (webView == null) {
             return
         }
+        if (predictiveBackScrollFrozen) {
+            restorePredictiveBackScroll()
+            return
+        }
         predictiveBackScrollX = if (touchGestureStartScrollCaptured)
             touchGestureStartScrollX
         else
@@ -285,6 +289,14 @@ internal class CommentsWebViewController(
         else
             webView!!.getScrollY()
         predictiveBackScrollFrozen = true
+        // The back gesture begins with the same edge drag that WebView would otherwise continue
+        // interpreting as page input. Cancel its active gesture, then consume the remaining
+        // stream in the touch listener until predictive back settles.
+        val now = SystemClock.uptimeMillis()
+        val cancel = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
+        webView!!.onTouchEvent(cancel)
+        cancel.recycle()
+        touchGestureStartScrollCaptured = false
         restorePredictiveBackScroll()
     }
 
@@ -300,6 +312,7 @@ internal class CommentsWebViewController(
         }
         restorePredictiveBackScroll()
         predictiveBackScrollFrozen = false
+        touchGestureStartScrollCaptured = false
     }
 
     private fun restorePredictiveBackScroll() {
@@ -1362,10 +1375,20 @@ internal class CommentsWebViewController(
     private fun attachWebView(view: WebView) {
         if (webViewContainer == null) return
         view.setOnTouchListener(OnTouchListener { ignored: View?, event: MotionEvent? ->
-            if (event!!.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                touchGestureStartScrollX = view.getScrollX()
-                touchGestureStartScrollY = view.getScrollY()
-                touchGestureStartScrollCaptured = true
+            if (event == null) return@OnTouchListener false
+            if (predictiveBackScrollFrozen) {
+                restorePredictiveBackScroll()
+                return@OnTouchListener true
+            }
+            when (event.getActionMasked()) {
+                MotionEvent.ACTION_DOWN -> {
+                    touchGestureStartScrollX = view.getScrollX()
+                    touchGestureStartScrollY = view.getScrollY()
+                    touchGestureStartScrollCaptured = true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    touchGestureStartScrollCaptured = false
+                }
             }
             false
         })

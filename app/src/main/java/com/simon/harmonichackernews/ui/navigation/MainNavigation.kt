@@ -26,11 +26,13 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.PaneExpansionAnchor
@@ -52,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -951,6 +954,7 @@ private fun MainNavigation(
         animationSpec = tween(durationMillis = 90, easing = LinearEasing),
         label = "main status bar protection",
     )
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Box(
         modifier = Modifier
@@ -996,8 +1000,14 @@ private fun MainNavigation(
         Spacer(
             modifier = Modifier
                 .fillMaxWidth()
-                .windowInsetsTopHeight(androidx.compose.foundation.layout.WindowInsets.statusBars)
-                .background(statusBarColor)
+                .height(statusBarHeight + 16.dp)
+                .background(
+                    Brush.verticalGradient(
+                        0f to statusBarColor.copy(alpha = 0.92f),
+                        0.58f to statusBarColor.copy(alpha = 0.72f),
+                        1f to statusBarColor.copy(alpha = 0f),
+                    ),
+                )
                 .zIndex(3f),
         )
 
@@ -1273,27 +1283,25 @@ private fun SinglePaneNavigation(
             StoriesPane(controller)
         }
 
-        // The predictive animation has already made Comments fully transparent when it
-        // completes. Remove its AndroidView tree in the same composition as the pop instead of
-        // asking AnimatedVisibility for a snap exit: a snap exit retains the WebView for one
-        // disposal frame and can briefly redraw it over Stories.
-        if (!completedPredictivePop || storyRequest != null) {
-            AnimatedVisibility(
-                visible = storyRequest != null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(1f)
-                    .then(animation?.exitModifier ?: Modifier),
-                enter = commentsOpenEnter(),
-                exit = commentsPopExit(),
-            ) {
-                displayedRequest?.let { request ->
-                    key(request.serial) {
-                        CommentsPane(
-                            request = request,
-                            controller = controller,
-                        )
-                    }
+        // Keep the visibility host alive while Stories is showing. Recreating it with
+        // visible=true skipped the enter transition on every open after a predictive pop.
+        // Predictive back already animates Comments fully away, so that completed path disposes
+        // immediately while ordinary back presses retain the normal pop animation.
+        AnimatedVisibility(
+            visible = storyRequest != null,
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(1f)
+                .then(animation?.exitModifier ?: Modifier),
+            enter = commentsOpenEnter(),
+            exit = if (completedPredictivePop) ExitTransition.None else commentsPopExit(),
+        ) {
+            displayedRequest?.let { request ->
+                key(request.serial) {
+                    CommentsPane(
+                        request = request,
+                        controller = controller,
+                    )
                 }
             }
         }

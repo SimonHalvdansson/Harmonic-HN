@@ -42,6 +42,7 @@ object StoryPreviewImageLoader {
     private const val MAX_MISS_CACHE_SIZE = 1000
     private const val MAX_DISK_CACHE_SIZE = 1000
     private const val LEGACY_TINT_CACHE_KEYS_REMOVED_PER_SAVE = 8
+    private const val PREVIEW_IMAGE_TINT_CACHE_VERSION = "3"
     private const val PREVIEW_IMAGE_CACHE_PREFERENCES =
         "com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES"
     private const val KEY_PREVIEW_IMAGE_CACHE_ORDER =
@@ -745,7 +746,7 @@ object StoryPreviewImageLoader {
             }
             val preferences = getPreviewImageCachePreferences(context)
             val key = StoryPreviewImageLoader.getLinkSummaryKey(normalizedUrl!!)
-            val serialized: String = preferences.getString(key, null)!!
+            val serialized = preferences.getString(key, null) ?: return null
             val result = deserializeLinkSummary(serialized)
             if (result != null) {
                 LINK_SUMMARY_CACHE.put(normalizedUrl, result)
@@ -847,6 +848,8 @@ object StoryPreviewImageLoader {
                 + ":"
                 + baseColor
                 + ":"
+                + PREVIEW_IMAGE_TINT_CACHE_VERSION
+                + ":"
                 + sha256Hex(imageUrl))
     }
 
@@ -856,8 +859,11 @@ object StoryPreviewImageLoader {
         }
 
         val cacheId = key.substring(KEY_PREVIEW_IMAGE_TINT_COLOR.length)
-        val parts = cacheId.split(':', limit = 3)
-        if (parts.size != 3 || parts[2].isEmpty()) {
+        val parts = cacheId.split(':', limit = 4)
+        if (parts.size != 4
+            || parts[2] != PREVIEW_IMAGE_TINT_CACHE_VERSION
+            || parts[3].isEmpty()
+        ) {
             return false
         }
         return parts[0].toIntOrNull() != null && parts[1].toIntOrNull() != null

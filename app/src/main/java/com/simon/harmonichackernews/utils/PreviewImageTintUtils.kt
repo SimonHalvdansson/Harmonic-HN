@@ -19,6 +19,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 object PreviewImageTintUtils {
+    private const val TINT_RESULT_VERSION = "worker-v3"
     private const val TINT_SAMPLE_SIZE = 96
     private const val MIN_CHROMATIC_SOURCE_SATURATION = 0.05f
     private const val CARD_TINT_ALPHA_LIGHT = 0.24f
@@ -248,12 +249,16 @@ object PreviewImageTintUtils {
         paletteTintMode: String?
     ): Boolean {
         return story != null && story.previewImageTintColorLoaded
-                && baseColor == story.previewImageTintBaseColor && (SettingsUtils.getPaletteTintConfigKey(
-            paletteTintMode
-        )
-                == SettingsUtils.getPaletteTintConfigKey(story.previewImageTintMode))
+                && baseColor == story.previewImageTintBaseColor
+                && isTintModeCurrent(story.previewImageTintMode, paletteTintMode)
                 && TextUtils.equals(story.previewImageTintSourceUrl, story.previewImageUrl)
     }
+
+    fun isTintModeCurrent(storedMode: String?, paletteTintMode: String?): Boolean =
+        storedMode == storedTintMode(paletteTintMode)
+
+    fun storedTintMode(paletteTintMode: String?): String =
+        SettingsUtils.getPaletteTintConfigKey(paletteTintMode) + ":" + TINT_RESULT_VERSION
 
     fun clearStoryPreviewImageTintColor(story: Story?) {
         if (story == null) {
@@ -277,7 +282,7 @@ object PreviewImageTintUtils {
         story.previewImageTintColorLoaded = true
         story.previewImageTintSourceUrl = imageUrl
         story.previewImageTintBaseColor = baseColor
-        story.previewImageTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+        story.previewImageTintMode = storedTintMode(paletteTintMode)
         story.previewImageLoadFailed = false
     }
 

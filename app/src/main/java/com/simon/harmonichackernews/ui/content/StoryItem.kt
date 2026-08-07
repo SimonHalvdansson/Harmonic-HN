@@ -263,15 +263,13 @@ fun StoryItem(
         style.cardStyle -> colors.surfaceContainerHigh
         else -> colors.background
     }
-    val cardBackground = if (animateChanges) {
-        androidx.compose.animation.animateColorAsState(
-            targetValue = targetCardBackground,
-            animationSpec = contentTween(),
-            label = "story card tint",
-        ).value
-    } else {
-        targetCardBackground
-    }
+    // Async preview/favicons arrive after the row itself. Keep this one inexpensive animation for
+    // list items so their extracted tint blends in instead of flashing to the palette color.
+    val cardBackground by androidx.compose.animation.animateColorAsState(
+        targetValue = targetCardBackground,
+        animationSpec = contentTween(),
+        label = "story card tint",
+    )
     val shape = RoundedCornerShape(8.dp)
 
     Column(
@@ -431,6 +429,12 @@ private fun LargeStoryPreviewImageContent(
     alpha: Float,
     onDrawableLoaded: (Drawable) -> Unit,
 ) {
+    var imageLoaded by remember(model) { androidx.compose.runtime.mutableStateOf(false) }
+    val loadProgress by animateFloatAsState(
+        targetValue = if (imageLoaded) 1f else 0f,
+        animationSpec = tween(ContentAnimationDuration, easing = ContentMotionEasing),
+        label = "large story image load",
+    )
     AsyncImage(
         model = model,
         contentDescription = null,
@@ -439,9 +443,17 @@ private fun LargeStoryPreviewImageContent(
             .padding(start = inset, top = inset, end = inset, bottom = bottomMargin)
             .height(176.dp)
             .clip(RoundedCornerShape(radius))
-            .renderTransform(alpha = alpha),
+            .renderTransform(
+                alpha = alpha * loadProgress,
+                scaleX = 0.98f + 0.02f * loadProgress,
+                scaleY = 0.98f + 0.02f * loadProgress,
+            ),
         contentScale = ContentScale.Crop,
-        onSuccess = { onDrawableLoaded(it.result.drawable) },
+        onSuccess = {
+            imageLoaded = true
+            onDrawableLoaded(it.result.drawable)
+        },
+        onError = { imageLoaded = true },
     )
 }
 
@@ -567,6 +579,15 @@ private fun StoryTextBlock(
 ) {
     val density = LocalDensity.current
     val context = LocalContext.current
+    val previewModel = model.previewImageUrl ?: model.previewImageRes
+    var previewImageLoaded by remember(previewModel) {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
+    val previewLoadProgress by animateFloatAsState(
+        targetValue = if (previewImageLoaded) 1f else 0f,
+        animationSpec = tween(ContentAnimationDuration, easing = ContentMotionEasing),
+        label = "small story image load",
+    )
     Layout(
         modifier = modifier,
         content = {
@@ -616,7 +637,6 @@ private fun StoryTextBlock(
             } else {
                 Box(Modifier.size(0.dp))
             }
-            val previewModel = model.previewImageUrl ?: model.previewImageRes
             if (previewModel != null && smallImageProgress > 0f) {
                 val softwarePreviewModel = remember(context, previewModel) {
                     ImageRequest.Builder(context)
@@ -631,12 +651,15 @@ private fun StoryTextBlock(
                         .size(width = 72.dp, height = 52.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .renderTransform(
-                            alpha = smallImageProgress * mediaAlpha,
-                            scaleX = 0.92f + 0.08f * smallImageProgress,
-                            scaleY = 0.92f + 0.08f * smallImageProgress,
+                            alpha = smallImageProgress * mediaAlpha * previewLoadProgress,
+                            scaleX = 0.92f + 0.08f * smallImageProgress * previewLoadProgress,
+                            scaleY = 0.92f + 0.08f * smallImageProgress * previewLoadProgress,
                         ),
                     contentScale = ContentScale.Crop,
-                    onSuccess = { onPreviewDrawableLoaded(it.result.drawable) },
+                    onSuccess = {
+                        previewImageLoaded = true
+                        onPreviewDrawableLoaded(it.result.drawable)
+                    },
                 )
             } else {
                 Box(Modifier.size(0.dp))
@@ -784,6 +807,12 @@ private fun StoryFavicon(
     mediaAlpha: Float,
     onDrawableLoaded: (Drawable) -> Unit,
 ) {
+    var imageLoaded by remember(model) { androidx.compose.runtime.mutableStateOf(false) }
+    val loadProgress by animateFloatAsState(
+        targetValue = if (imageLoaded) 1f else 0f,
+        animationSpec = tween(ContentAnimationDuration, easing = ContentMotionEasing),
+        label = "story favicon load",
+    )
     AsyncImage(
         model = model,
         placeholder = painterResource(fallbackRes),
@@ -794,8 +823,12 @@ private fun StoryFavicon(
             .padding(end = 4.dp)
             .size(17.dp)
             .clip(RoundedCornerShape(3.dp))
-            .renderTransform(alpha = mediaAlpha),
-        onSuccess = { onDrawableLoaded(it.result.drawable) },
+            .renderTransform(alpha = mediaAlpha * loadProgress),
+        onSuccess = {
+            imageLoaded = true
+            onDrawableLoaded(it.result.drawable)
+        },
+        onError = { imageLoaded = true },
     )
 }
 

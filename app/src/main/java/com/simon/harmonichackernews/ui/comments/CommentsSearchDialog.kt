@@ -193,7 +193,8 @@ private fun CommentsSearchContent(
                     searchTerm = searchTerm,
                     onToggleExpanded = { onCommentSelected(comment) },
                     onShowActions = { onCommentSelected(comment) },
-                    onReferenceLongClick = {},
+                    onLinkLongClick = { _, _, _ -> },
+                    onReferenceLongClick = { _, _ -> },
                 )
             }
         }

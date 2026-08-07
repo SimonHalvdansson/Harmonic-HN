@@ -89,6 +89,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -106,6 +107,7 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.fromHtml
@@ -128,6 +130,7 @@ import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
+import com.simon.harmonichackernews.ui.content.detectAnnotatedLinkLongPress
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -613,10 +616,6 @@ class CommentsComposeController private constructor(
             sourceCommentId = sourceCommentId.takeIf { it > 0 },
             headerReference = headerReference,
         )
-        if (sourceCommentId > 0) {
-            suppressedCommentIds = suppressedCommentIds + sourceCommentId
-        }
-        if (headerReference) suppressedHeaderReferenceUrl = url
         listener.onLinkPreviewOverlayVisibilityChanged(true)
     }
 
@@ -637,7 +636,6 @@ class CommentsComposeController private constructor(
             sourceBounds = sourceBounds,
             backgroundColor = backgroundColor,
         )
-        headerPreviewSuppressed = true
         listener.onLinkPreviewOverlayVisibilityChanged(true)
     }
 
@@ -669,11 +667,8 @@ class CommentsComposeController private constructor(
     fun completeLinkPreviewDismiss() {
         val state = linkPreviewOverlay ?: return
         when (state) {
-            is CommentLinkPreviewOverlayState.Reference -> {
-                state.sourceCommentId?.let { suppressedCommentIds = suppressedCommentIds - it }
-                if (state.headerReference) suppressedHeaderReferenceUrl = null
-            }
-            is CommentLinkPreviewOverlayState.Image -> headerPreviewSuppressed = false
+            is CommentLinkPreviewOverlayState.Reference -> Unit
+            is CommentLinkPreviewOverlayState.Image -> Unit
         }
         linkPreviewOverlay = null
         linkPreviewVisibleUrl = null
@@ -1179,10 +1174,18 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
                             controller.showCommentActions(item.comment)
                         }
                     },
-                    onReferenceLongClick = { link ->
+                    onLinkLongClick = { url, title, bounds ->
+                        controller.showReferencePreview(
+                            url = url,
+                            title = title,
+                            sourceBounds = bounds,
+                            sourceCommentId = item.comment.id,
+                        )
+                    },
+                    onReferenceLongClick = { link, bounds ->
                         controller.showReferencePreview(
                             link = link,
-                            sourceBounds = controller.commentBoundsFor(item.comment.id),
+                            sourceBounds = bounds,
                             sourceCommentId = item.comment.id,
                         )
                     },
@@ -1459,7 +1462,10 @@ private fun CommentsHeader(
                 ) -> story.previewImageTintColor
                 story.faviconTintColorLoaded &&
                     story.faviconTintBaseColor == tintBaseColor &&
-                    SettingsUtils.getPaletteTintConfigKey(story.faviconTintMode) == paletteTintMode &&
+                    PreviewImageTintUtils.isTintModeCurrent(
+                        story.faviconTintMode,
+                        paletteTintMode,
+                    ) &&
                     story.faviconTintSourceUrl == faviconTintSource -> story.faviconTintColor
                 else -> null
             },
@@ -1589,6 +1595,14 @@ private fun CommentsHeader(
                                 onReferenceLongClick = { link, bounds ->
                                     controller.showReferencePreview(
                                         link = link,
+                                        sourceBounds = bounds,
+                                        headerReference = true,
+                                    )
+                                },
+                                onLinkLongClick = { url, title, bounds ->
+                                    controller.showReferencePreview(
+                                        url = url,
+                                        title = title,
                                         sourceBounds = bounds,
                                         headerReference = true,
                                     )
@@ -1870,6 +1884,7 @@ private fun HeaderStoryBody(
         CollectedReferenceLinks.ReferenceLink,
         androidx.compose.ui.geometry.Rect,
     ) -> Unit,
+    onLinkLongClick: (String, String, androidx.compose.ui.geometry.Rect) -> Unit,
 ) {
     if (story.text.isNullOrBlank()) return
     val context = LocalContext.current
@@ -1895,6 +1910,8 @@ private fun HeaderStoryBody(
     val annotated = remember(bodyHtml, linkStyles, linkListener) {
         htmlToAnnotated(bodyHtml.orEmpty(), linkStyles, linkListener)
     }
+    var textLayout by remember(annotated) { mutableStateOf<TextLayoutResult?>(null) }
+    var textCoordinates by remember(annotated) { mutableStateOf<LayoutCoordinates?>(null) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1904,10 +1921,19 @@ private fun HeaderStoryBody(
         if (annotated.isNotEmpty()) {
             Text(
                 text = annotated,
+                modifier = Modifier
+                    .onGloballyPositioned { textCoordinates = it }
+                    .detectAnnotatedLinkLongPress(
+                        text = annotated,
+                        layoutResult = { textLayout },
+                        coordinates = { textCoordinates },
+                        onLongPress = onLinkLongClick,
+                    ),
                 color = colors.storyNormal,
                 fontFamily = typography.family,
                 fontSize = typography.commentTextSize.sp,
                 style = legacyTextStyle,
+                onTextLayout = { textLayout = it },
             )
         }
         references?.links.orEmpty().forEach { link ->
@@ -2620,6 +2646,10 @@ private fun HeaderActions(
                 },
                 onSortExpanded = { sortExpanded = true },
                 onArchiveExpanded = { archiveExpanded = true },
+                onSubmenuBack = {
+                    sortExpanded = false
+                    archiveExpanded = false
+                },
             )
         }
     }
@@ -2714,12 +2744,66 @@ private fun MoreMenu(
     onDismiss: () -> Unit,
     onSortExpanded: () -> Unit,
     onArchiveExpanded: () -> Unit,
+    onSubmenuBack: () -> Unit,
 ) {
     val story = controller.story
     val commentsCount = controller.comments.size
     val context = LocalContext.current
     val bookmarked = Utils.isBookmarked(context, story.id)
     HarmonicDropdownMenu(expanded = expanded, onDismiss = onDismiss) {
+        if (sortExpanded || archiveExpanded) {
+            DropdownMenuItem(
+                text = {
+                    CommentsMenuText(
+                        if (sortExpanded) "Sort comments" else "View on archive",
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        painterResource(R.drawable.ic_arrow_back),
+                        contentDescription = null,
+                        tint = HarmonicTheme.colors.drawable,
+                    )
+                },
+                onClick = onSubmenuBack,
+            )
+            HorizontalDivider(color = HarmonicTheme.colors.commentDivider)
+        }
+
+        if (sortExpanded) {
+            val options = context.resources.getStringArray(R.array.comment_sorting)
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        CommentsMenuText(
+                            if (option == controller.currentSorting) "✓ $option" else option,
+                        )
+                    },
+                    onClick = {
+                        onDismiss()
+                        controller.listener.onSortComments(option)
+                    },
+                )
+            }
+            return@HarmonicDropdownMenu
+        }
+
+        if (archiveExpanded) {
+            @Composable fun archive(label: String, action: Int) {
+                DropdownMenuItem(
+                    text = { CommentsMenuText(label) },
+                    onClick = {
+                        onDismiss()
+                        controller.listener.onMoreAction(action)
+                    },
+                )
+            }
+            archive("archive.org", CommentsComposeController.MORE_ARCHIVE_ORG)
+            archive("archive.is", CommentsComposeController.MORE_ARCHIVE_IS)
+            archive("archive.today", CommentsComposeController.MORE_ARCHIVE_TODAY)
+            return@HarmonicDropdownMenu
+        }
+
         @Composable fun action(label: String, icon: Int, id: Int) {
             DropdownMenuItem(
                 text = { CommentsMenuText(label) },
@@ -2757,6 +2841,13 @@ private fun MoreMenu(
                         tint = HarmonicTheme.colors.drawable,
                     )
                 },
+                trailingIcon = {
+                    Icon(
+                        painterResource(R.drawable.ic_chevron_right),
+                        contentDescription = null,
+                        tint = HarmonicTheme.colors.drawable,
+                    )
+                },
                 onClick = onSortExpanded,
             )
         }
@@ -2777,39 +2868,16 @@ private fun MoreMenu(
                         tint = HarmonicTheme.colors.drawable,
                     )
                 },
+                trailingIcon = {
+                    Icon(
+                        painterResource(R.drawable.ic_chevron_right),
+                        contentDescription = null,
+                        tint = HarmonicTheme.colors.drawable,
+                    )
+                },
                 onClick = onArchiveExpanded,
             )
         }
-    }
-    HarmonicDropdownMenu(expanded = sortExpanded, onDismiss = onDismiss) {
-        val options = context.resources.getStringArray(R.array.comment_sorting)
-        options.forEach { option ->
-            DropdownMenuItem(
-                text = {
-                    CommentsMenuText(
-                        if (option == controller.currentSorting) "✓ $option" else option,
-                    )
-                },
-                onClick = {
-                    onDismiss()
-                    controller.listener.onSortComments(option)
-                },
-            )
-        }
-    }
-    HarmonicDropdownMenu(expanded = archiveExpanded, onDismiss = onDismiss) {
-        @Composable fun archive(label: String, action: Int) {
-            DropdownMenuItem(
-                text = { CommentsMenuText(label) },
-                onClick = {
-                    onDismiss()
-                    controller.listener.onMoreAction(action)
-                },
-            )
-        }
-        archive("archive.org", CommentsComposeController.MORE_ARCHIVE_ORG)
-        archive("archive.is", CommentsComposeController.MORE_ARCHIVE_IS)
-        archive("archive.today", CommentsComposeController.MORE_ARCHIVE_TODAY)
     }
 }
 

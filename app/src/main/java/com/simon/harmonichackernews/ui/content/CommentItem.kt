@@ -19,6 +19,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -36,17 +39,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.SpanStyle
@@ -55,6 +65,7 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.fromHtml
@@ -321,7 +332,8 @@ fun CommentItem(
     searchTerm: String = "",
     onToggleExpanded: () -> Unit,
     onShowActions: () -> Unit,
-    onReferenceLongClick: (CollectedReferenceLinks.ReferenceLink) -> Unit,
+    onLinkLongClick: (String, String, Rect) -> Unit,
+    onReferenceLongClick: (CollectedReferenceLinks.ReferenceLink, Rect) -> Unit,
 ) {
     val context = LocalContext.current
     val colors = HarmonicTheme.colors
@@ -530,12 +542,27 @@ fun CommentItem(
                             ExitTransition.None
                         },
                     ) {
+                        var textLayout by remember(displayedBody) {
+                            androidx.compose.runtime.mutableStateOf<TextLayoutResult?>(null)
+                        }
+                        var textCoordinates by remember(displayedBody) {
+                            androidx.compose.runtime.mutableStateOf<LayoutCoordinates?>(null)
+                        }
                         Text(
                             text = displayedBody,
+                            modifier = Modifier
+                                .onGloballyPositioned { textCoordinates = it }
+                                .detectAnnotatedLinkLongPress(
+                                    text = displayedBody,
+                                    layoutResult = { textLayout },
+                                    coordinates = { textCoordinates },
+                                    onLongPress = onLinkLongClick,
+                                ),
                             color = colors.storyNormal,
                             fontFamily = typography.family,
                             fontSize = bodySize.sp,
                             style = animatedCommentTextStyle,
+                            onTextLayout = { textLayout = it },
                         )
                     }
 
@@ -559,7 +586,7 @@ fun CommentItem(
                                     fontFamily = typography.family,
                                     textSize = referenceLabelSize,
                                     markerTextSize = typography.referenceMarkerSize,
-                                    onLongClick = { onReferenceLongClick(link) },
+                                    onLongClick = { bounds -> onReferenceLongClick(link, bounds) },
                                 )
                             }
                         }
@@ -592,6 +619,7 @@ private fun RuntimeCommentMeta(
     animateChanges: Boolean,
 ) {
     val colors = HarmonicTheme.colors
+    val metaShape = if (emphasized) RoundedCornerShape(12.dp) else RectangleShape
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -600,12 +628,12 @@ private fun RuntimeCommentMeta(
     ) {
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
+                .clip(metaShape)
                 .background(if (emphasized) colors.surfaceContainerHighest else Color.Transparent)
                 .border(
                     1.dp,
                     if (emphasized) colors.commentDivider else Color.Transparent,
-                    RoundedCornerShape(12.dp),
+                    metaShape,
                 )
                 .padding(
                     horizontal = if (emphasized) 7.dp else 0.dp,
@@ -696,20 +724,22 @@ private fun RuntimeReferenceRow(
     fontFamily: androidx.compose.ui.text.font.FontFamily,
     textSize: Float,
     markerTextSize: Float,
-    onLongClick: () -> Unit,
+    onLongClick: (Rect) -> Unit,
 ) {
     val context = LocalContext.current
     val colors = HarmonicTheme.colors
+    var bounds by remember(link.url) { androidx.compose.runtime.mutableStateOf(Rect.Zero) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .onGloballyPositioned { bounds = it.boundsInWindow() }
             .padding(top = 4.dp)
             .defaultMinSize(minHeight = 38.dp)
             .clip(RoundedCornerShape(6.dp))
             .border(1.dp, colors.commentDivider, RoundedCornerShape(6.dp))
             .combinedClickable(
                 onClick = { Utils.openLinkMaybeHN(context, link.url) },
-                onLongClick = onLongClick,
+                onLongClick = { if (bounds.width > 0f && bounds.height > 0f) onLongClick(bounds) },
             )
             .padding(horizontal = 8.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -771,6 +801,72 @@ private fun preserveLegacyCommentParagraphSpacing(html: String): String = html
     .replace(Regex("</p>\\s*<p", RegexOption.IGNORE_CASE), "</p><br><p")
     .replace(Regex("</div>\\s*<div", RegexOption.IGNORE_CASE), "</div><br><div")
 
+/**
+ * Adds legacy-equivalent long-press handling to links rendered by Compose text without taking
+ * over the normal tap gesture used by [LinkAnnotation].
+ */
+internal fun Modifier.detectAnnotatedLinkLongPress(
+    text: AnnotatedString,
+    layoutResult: () -> TextLayoutResult?,
+    coordinates: () -> LayoutCoordinates?,
+    onLongPress: (url: String, label: String, bounds: Rect) -> Unit,
+): Modifier = pointerInput(text, onLongPress) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        val longPress = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
+        val layout = layoutResult() ?: return@awaitEachGesture
+        val position = longPress.position
+        val offset = layout.getOffsetForPosition(position)
+            .coerceIn(0, text.length.coerceAtLeast(1) - 1)
+        val range = text.getLinkAnnotations(offset, (offset + 1).coerceAtMost(text.length))
+            .firstOrNull { it.item is LinkAnnotation.Url }
+            ?: return@awaitEachGesture
+        val link = range.item as LinkAnnotation.Url
+        val windowBounds = annotatedRangeBoundsInWindow(
+            range.start,
+            range.end,
+            text.length,
+            layout,
+            coordinates(),
+        ) ?: return@awaitEachGesture
+        val label = text.text.substring(range.start, range.end)
+            .trim()
+            .ifBlank { link.url }
+        longPress.consume()
+        onLongPress(link.url, label, windowBounds)
+        do {
+            val event = awaitPointerEvent()
+            event.changes.forEach { it.consume() }
+        } while (event.changes.any { it.pressed })
+    }
+}
+
+private fun annotatedRangeBoundsInWindow(
+    start: Int,
+    end: Int,
+    textLength: Int,
+    layout: TextLayoutResult,
+    coordinates: LayoutCoordinates?,
+): Rect? {
+    if (coordinates == null || !coordinates.isAttached || textLength <= 0) return null
+    val first = start.coerceIn(0, textLength - 1)
+    val lastExclusive = end.coerceIn(first + 1, textLength)
+    var localBounds = layout.getBoundingBox(first)
+    for (offset in (first + 1) until lastExclusive) {
+        localBounds = localBounds.expandToInclude(layout.getBoundingBox(offset))
+    }
+    val topLeft = coordinates.localToWindow(Offset(localBounds.left, localBounds.top))
+    val bottomRight = coordinates.localToWindow(Offset(localBounds.right, localBounds.bottom))
+    return Rect(topLeft, bottomRight)
+}
+
+private fun Rect.expandToInclude(other: Rect): Rect = Rect(
+    left = minOf(left, other.left),
+    top = minOf(top, other.top),
+    right = maxOf(right, other.right),
+    bottom = maxOf(bottom, other.bottom),
+)
+
 @Composable
 private fun CommentMeta(
     model: CommentItemUiModel,
@@ -805,7 +901,12 @@ private fun CommentMeta(
         animationSpec = contentTween(),
         label = "comment meta border",
     )
-    val shape = RoundedCornerShape(12.dp)
+    val cornerRadius by animateDpAsState(
+        targetValue = if (style.emphasizeMeta) 12.dp else 0.dp,
+        animationSpec = contentTween(),
+        label = "comment meta corners",
+    )
+    val shape = RoundedCornerShape(cornerRadius)
 
     Row(
         modifier = Modifier

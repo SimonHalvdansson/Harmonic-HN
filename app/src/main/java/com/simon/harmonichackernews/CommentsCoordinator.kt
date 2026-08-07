@@ -536,7 +536,12 @@ class CommentsCoordinator(
                     max(max(cutoutInsets.right, systemInsets.right), contentPaddingRight)
                 setCommentsContentSideInsets(leftPadding, rightPadding)
 
-                webViewController!!.setContainerPadding(0, systemInsets.top, 0, 0)
+                webViewController!!.setContainerPadding(
+                    leftPadding,
+                    systemInsets.top,
+                    rightPadding,
+                    0,
+                )
 
                 return windowInsets
             }
@@ -640,19 +645,31 @@ class CommentsCoordinator(
     }
 
     fun startInternalPredictiveBack(backEvent: BackEventCompat) {
+        if (composeController?.isWebsiteVisible() == true) {
+            webViewController?.beginPredictiveBackScrollFreeze()
+        }
         backPressedCallback?.handleOnBackStarted(backEvent)
     }
 
     fun updateInternalPredictiveBack(backEvent: BackEventCompat) {
+        webViewController?.maintainPredictiveBackScrollFreeze()
         backPressedCallback?.handleOnBackProgressed(backEvent)
     }
 
     fun cancelInternalPredictiveBack() {
-        backPressedCallback?.handleOnBackCancelled()
+        try {
+            backPressedCallback?.handleOnBackCancelled()
+        } finally {
+            webViewController?.endPredictiveBackScrollFreeze()
+        }
     }
 
     fun commitInternalBack() {
-        backPressedCallback?.takeIf { it.isEnabled }?.handleOnBackPressed()
+        try {
+            backPressedCallback?.takeIf { it.isEnabled }?.handleOnBackPressed()
+        } finally {
+            webViewController?.endPredictiveBackScrollFreeze()
+        }
     }
 
     private fun endCommentsPredictiveBackVisuals() {

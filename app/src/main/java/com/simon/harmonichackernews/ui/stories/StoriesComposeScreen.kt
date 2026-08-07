@@ -30,12 +30,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
@@ -98,6 +101,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.booleanResource
@@ -985,6 +989,10 @@ private fun StoriesList(
     }
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
+    val safeStart = safeDrawingPadding.calculateStartPadding(layoutDirection)
+    val safeEnd = safeDrawingPadding.calculateEndPadding(layoutDirection)
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
     var headerHeightPx by remember(searchMode) { mutableIntStateOf(0) }
     val headerHeight = with(density) { headerHeightPx.toDp() }
@@ -1029,8 +1037,9 @@ private fun StoriesList(
                     .fillMaxSize()
                     .nestedScroll(userScrollConnection),
                 contentPadding = PaddingValues(
-                    start = startInset,
+                    start = startInset + safeStart,
                     top = headerHeight,
+                    end = safeEnd,
                     bottom = bottomPadding + if (controller.showUpdate) 88.dp else 8.dp,
                 ),
             ) {
@@ -1045,13 +1054,20 @@ private fun StoriesList(
                             settings = settings,
                             onStory = { controller.listener.onCommentStoryClick(story) },
                             onReplies = { controller.listener.onCommentRepliesClick(story) },
-                            modifier = Modifier,
+                            modifier = Modifier.animateItem(),
                         )
                     } else if (!story.loaded && !story.loadingFailed) {
-                        StoryLoadingItem(modifier = Modifier)
+                        StoryLoadingItem(modifier = Modifier.animateItem())
                     } else {
                         val pagingAlpha = controller.storyPagingAlphas[story.id] ?: 1f
                         val suppressed = controller.isStorySuppressed(story.id)
+                        var revealed by remember(story.id) { mutableStateOf(false) }
+                        LaunchedEffect(story.id) { revealed = true }
+                        val revealAlpha by animateFloatAsState(
+                            targetValue = if (revealed) 1f else 0f,
+                            animationSpec = tween(220, easing = StoriesEasing),
+                            label = "loaded story reveal",
+                        )
                         val contentVersion = controller.contentVersion
                         val storyRevision = controller.storyRevision(story.id)
                         val model = remember(story, index, settings, contentVersion, storyRevision) {
@@ -1060,13 +1076,11 @@ private fun StoriesList(
                         val style = remember(story, settings, contentVersion, storyRevision) {
                             settings.toItemStyle(story)
                         }
-                        val itemModifier = if (suppressed || pagingAlpha != 1f) {
-                            Modifier.graphicsLayer(
-                                alpha = if (suppressed) 0f else pagingAlpha,
+                        val itemModifier = Modifier
+                            .animateItem()
+                            .graphicsLayer(
+                                alpha = (if (suppressed) 0f else pagingAlpha) * revealAlpha,
                             )
-                        } else {
-                            Modifier
-                        }
                         StoryItem(
                             model = model,
                             style = style,
@@ -1121,6 +1135,10 @@ private fun StoriesHeader(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
+    val safeStart = safeDrawingPadding.calculateStartPadding(layoutDirection)
+    val safeEnd = safeDrawingPadding.calculateEndPadding(layoutDirection)
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
     val compact = controller.displaySettings?.compactHeader == true
@@ -1137,8 +1155,8 @@ private fun StoriesHeader(
             )
             .animateContentSize(tween(220, easing = StoriesEasing)),
     ) {
-        val sideStart = 16.dp + startInset
-        val sideEnd = 16.dp
+        val sideStart = 16.dp + startInset + safeStart
+        val sideEnd = 16.dp + safeEnd
         if (searchMode) {
             SearchHeader(controller, sideStart, sideEnd)
         } else {
@@ -1673,7 +1691,7 @@ private fun Story.toUiModel(
     )
     val currentFaviconTint = faviconTintColorLoaded &&
         faviconTintBaseColor == tintBaseColor &&
-        SettingsUtils.getPaletteTintConfigKey(faviconTintMode) == paletteTintMode &&
+        PreviewImageTintUtils.isTintModeCurrent(faviconTintMode, paletteTintMode) &&
         faviconTintSourceUrl == favicon
     return StoryItemUiModel(
         index = "${position + 1}.",

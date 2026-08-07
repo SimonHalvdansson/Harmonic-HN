@@ -181,9 +181,7 @@ class StoryListState(
                 story.faviconTintSourceUrl,
                 faviconUrl
             )
-            && SettingsUtils.getPaletteTintConfigKey(paletteTintMode) == SettingsUtils.getPaletteTintConfigKey(
-                story.faviconTintMode
-            )
+            && PreviewImageTintUtils.isTintModeCurrent(story.faviconTintMode, paletteTintMode)
         ) {
             return story.faviconTintColor
         }
@@ -196,14 +194,16 @@ class StoryListState(
         ) {
             return
         }
-        val appContext = context.getApplicationContext()
-        hydrateCachedPreviewState(appContext, story)
-        if (tintCardUsingPreview) prefetchFaviconTint(appContext, story)
+        // Keep the Activity's themed context for color resolution. Application context resolves
+        // the custom story-card attribute as transparent, which made otherwise-correct worker
+        // results incompatible with the colors read by Compose.
+        hydrateCachedPreviewState(context, story)
+        if (tintCardUsingPreview) prefetchFaviconTint(context, story)
 
         val previewEnabled = SettingsUtils.STORY_PREVIEW_IMAGE_OFF != previewImageMode
         if (!previewEnabled && !showSummary) return
         if (!TextUtils.isEmpty(story.previewImageUrl)) {
-            if (previewEnabled) prefetchPreviewDrawable(appContext, story)
+            if (previewEnabled) prefetchPreviewDrawable(context, story)
             return
         }
         if (previewRequests.containsKey(story)
@@ -217,7 +217,7 @@ class StoryListState(
         story.linkSummaryLoading = showSummary
         val request =
             loadPreviewContent(
-                appContext,
+                context,
                 story.id,
                 story.url,
                 showSummary,
@@ -238,9 +238,9 @@ class StoryListState(
                         story.linkSummaryDescription =
                             if (summary == null) null else summary.description
                     }
-                    cachePreviewState(appContext, story)
+                    cachePreviewState(context, story)
                     if (previewEnabled && !TextUtils.isEmpty(story.previewImageUrl)) {
-                        prefetchPreviewDrawable(appContext, story)
+                        prefetchPreviewDrawable(context, story)
                     }
                     notifyChanged(story)
                 })
@@ -333,14 +333,34 @@ class StoryListState(
 
     private fun prefetchPreviewDrawable(context: Context, story: Story) {
         if (TextUtils.isEmpty(story.previewImageUrl)
-            || story.previewImageLoaded
             || story.previewImageLoading
             || imagePrefetches.containsKey(story)
         ) {
             return
         }
-        story.previewImageLoading = true
         val imageUrl = story.previewImageUrl
+        val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
+        val tintIsCurrent = tintCardUsingPreview &&
+            PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
+                story,
+                baseColor,
+                paletteTintMode,
+            )
+        if (story.previewImageLoaded && (!tintCardUsingPreview || tintIsCurrent)) {
+            return
+        }
+
+        // A Compose row may have already loaded the image before the background prefetcher gets
+        // its turn. Reuse that software drawable to finish the off-main palette extraction rather
+        // than treating previewImageLoaded as proof that the tint was also produced.
+        StoryPreviewImageMemoryCache.get(story.id, imageUrl)?.let { cachedDrawable ->
+            story.previewImageLoaded = true
+            story.previewImageLoadFailed = false
+            requestTint(context, story, imageUrl, cachedDrawable, false)
+            return
+        }
+
+        story.previewImageLoading = true
         val width = if (SettingsUtils.STORY_PREVIEW_IMAGE_LARGE == previewImageMode)
             context.getResources().getDisplayMetrics().widthPixels
         else
@@ -384,16 +404,19 @@ class StoryListState(
     private fun prefetchFaviconTint(context: Context, story: Story) {
         if (!thumbnails || !TextUtils.isEmpty(story.previewImageUrl)) return
         val faviconUrl = getFaviconUrl(story)
+        val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
+        val mode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
         if (TextUtils.isEmpty(faviconUrl)
             || story.faviconTintColorLoading
             || (story.faviconTintColorLoaded
-                    && TextUtils.equals(story.faviconTintSourceUrl, faviconUrl))
+                    && TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)
+                    && story.faviconTintBaseColor == baseColor
+                    && PreviewImageTintUtils.isTintModeCurrent(story.faviconTintMode, mode))
         ) {
             return
         }
         story.faviconTintSourceUrl = faviconUrl
         story.faviconTintColorLoading = true
-        val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
         val cachedTint = loadCachedPreviewImageTintColor(
             context, story.id, faviconUrl, baseColor
         )
@@ -433,6 +456,13 @@ class StoryListState(
         if (cached != null) {
             applyTint(context, story, sourceUrl, baseColor, cached, favicon)
             return
+        }
+        if (favicon) {
+            story.faviconTintColorLoaded = false
+            story.faviconTintBaseColor = Color.TRANSPARENT
+            story.faviconTintMode = null
+        } else {
+            PreviewImageTintUtils.clearStoryPreviewImageTintColor(story)
         }
         val mode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
         tintExtractor.request(
@@ -478,7 +508,7 @@ class StoryListState(
             story.faviconTintColorLoading = false
             story.faviconTintColorLoadFailed = false
             story.faviconTintBaseColor = baseColor
-            story.faviconTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+            story.faviconTintMode = PreviewImageTintUtils.storedTintMode(paletteTintMode)
         } else if (!PreviewImageTintUtils.applyCachedStoryPreviewImageTintColor(
                 story, sourceUrl, baseColor, paletteTintMode, tintColor
             )
@@ -491,7 +521,13 @@ class StoryListState(
 
     private fun cachePreviewState(context: Context?, story: Story) {
         Utils.cacheStoryPreviewState(context, story)
-        if (story.previewImageTintColorLoaded
+        val baseColor = if (context == null) Color.TRANSPARENT else
+            PreviewImageTintUtils.getTintBaseColor(context)
+        if (PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
+                story,
+                baseColor,
+                paletteTintMode,
+            )
             && !TextUtils.isEmpty(story.previewImageTintSourceUrl)
         ) {
             saveCachedPreviewImageTintColor(
@@ -502,7 +538,14 @@ class StoryListState(
                 story.previewImageTintColor
             )
         }
-        if (story.faviconTintColorLoaded && !TextUtils.isEmpty(story.faviconTintSourceUrl)) {
+        if (story.faviconTintColorLoaded
+            && story.faviconTintBaseColor == baseColor
+            && PreviewImageTintUtils.isTintModeCurrent(
+                story.faviconTintMode,
+                paletteTintMode,
+            )
+            && !TextUtils.isEmpty(story.faviconTintSourceUrl)
+        ) {
             saveCachedPreviewImageTintColor(
                 context,
                 story.id,

@@ -3325,20 +3325,15 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return
         }
 
-        if (story.id > 0 && (requestedPreviewImagePrefetchStoryIds.contains(story.id)
-                || queuedPreviewImagePrefetchStoryIds.contains(story.id))
-        ) {
-            return
-        }
-
         if (previewImagePrefetchRampComplete || previewImagePrefetchRampTargetIndex < 0) {
-            if (story.id > 0) requestedPreviewImagePrefetchStoryIds.add(story.id)
             adapter!!.prefetchPreviewImage(context, story)
             return
         }
 
         if (story.id > 0) {
-            if (!queuedPreviewImagePrefetchStoryIds.add(story.id)) {
+            if (requestedPreviewImagePrefetchStoryIds.contains(story.id)
+                || !queuedPreviewImagePrefetchStoryIds.add(story.id)
+            ) {
                 return
             }
         }
@@ -3435,6 +3430,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         previewImagePrefetchHandler.removeCallbacks(previewImagePrefetchRampRunnable)
         previewImagePrefetchRampScheduled = false
         queuedPreviewImagePrefetchStoryIds.clear()
+        requestedPreviewImagePrefetchStoryIds.clear()
     }
 
     private fun arePreviewImagePrefetchRampStoriesSettled(): Boolean {
