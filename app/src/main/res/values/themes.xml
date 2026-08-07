@@ -44,7 +44,7 @@
         <item name="colorOnPrimary">@color/material_you_neutral_100</item>
         <item name="colorSurfaceContainerHigh">@color/material_you_neutral_variant20</item>
         <item name="storyCardBackgroundColor">@color/material_you_neutral_variant20</item>
-        <item name="settingsHeaderSelectedColor">@color/material_you_neutral_variant20</item>
+        <item name="settingsHeaderSelectedColor">@color/settings_header_selected_material_dark</item>
         <item name="settingsMainToggleColor">@color/material_you_tertiary30</item>
         <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_material_dark</item>
         <item name="settingsSegmentColor">@color/material_you_neutral_variant20</item>
@@ -87,7 +87,7 @@
         <item name="colorOnPrimary">@color/lightBackground</item>
         <item name="colorSurfaceContainerHigh">@color/darkerBackground</item>
         <item name="storyCardBackgroundColor">@color/darkStoryCardBackground</item>
-        <item name="settingsHeaderSelectedColor">@color/darkerBackground</item>
+        <item name="settingsHeaderSelectedColor">@color/settings_header_selected_dark</item>
         <item name="settingsMainToggleColor">@color/colorPrimaryDark</item>
         <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_dark</item>
         <item name="settingsSegmentColor">@color/settings_segment_dark</item>

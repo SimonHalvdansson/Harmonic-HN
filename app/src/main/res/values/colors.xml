@@ -119,6 +119,8 @@
     <color name="material_you_neutral_variant50">#70777C</color>
 
     <color name="settings_header_selected_material_light">#D9DEE2</color>
+    <color name="settings_header_selected_material_dark">@color/material_you_neutral_800</color>
+    <color name="settings_header_selected_dark">#343744</color>
     <color name="settings_main_toggle_light">#C6E9D8</color>
     <color name="settings_main_toggle_white">#C6E9D8</color>
     <color name="settings_main_toggle_text_dark">#FFD9DC</color>
@@ -130,7 +132,7 @@
     <color name="settings_main_toggle_text_hacker_news">#7A3100</color>
     <color name="settings_header_selected_light">#EAE6D2</color>
     <color name="settings_header_selected_white">#E1E3E5</color>
-    <color name="settings_header_selected_black">#151619</color>
+    <color name="settings_header_selected_black">#0D0F11</color>
     <color name="settings_segment_dark">#2B2E3A</color>
     <color name="settings_segment_amoled">#000000</color>
     <color name="settings_segment_gray">#202124</color>
