@@ -5,13 +5,13 @@ import com.simon.harmonichackernews.R
 import kotlin.math.abs
 
 object CommentDepthIndicatorUtils {
-    const val MODE_THEME_DEFAULT: String = "theme_default"
-    const val MODE_MATERIAL_YOU: String = "material_you"
-    const val MODE_COLORS: String = "colors"
-    const val MODE_MONOCHROME: String = "monochrome"
-    const val MODE_NONE: String = "none"
+    const val MODE_THEME_DEFAULT = "theme_default"
+    const val MODE_MATERIAL_YOU = "material_you"
+    const val MODE_COLORS = "colors"
+    const val MODE_MONOCHROME = "monochrome"
+    const val MODE_NONE = "none"
 
-    const val COMMENT_DEPTH_COLOR_COUNT: Int = 7
+    const val COMMENT_DEPTH_COLOR_COUNT = 7
 
     private val COMMENT_DEPTH_COLORS_DARK = intArrayOf(
         R.color.commentIndentIndicatorColor1,
@@ -59,7 +59,7 @@ object CommentDepthIndicatorUtils {
             return getStandardColorResource(ctx, theme, safeIndex)
         }
 
-        if (theme != null && theme.startsWith("material")) {
+        if (theme?.startsWith("material") == true) {
             return COMMENT_DEPTH_COLORS_MATERIAL[safeIndex]
         }
         return getStandardColorResource(ctx, theme, safeIndex)
@@ -76,19 +76,14 @@ object CommentDepthIndicatorUtils {
         return MODE_THEME_DEFAULT
     }
 
-    fun shouldShowIndicators(mode: String): Boolean {
-        return MODE_NONE != sanitizeMode(mode)
-    }
+    fun shouldShowIndicators(mode: String): Boolean = MODE_NONE != sanitizeMode(mode)
 
-    fun getModeLabel(mode: String): String {
-        when (sanitizeMode(mode)) {
-            MODE_MATERIAL_YOU -> return "Material You"
-            MODE_COLORS -> return "Standard"
-            MODE_MONOCHROME -> return "Monochrome"
-            MODE_NONE -> return "None"
-            MODE_THEME_DEFAULT -> return "Theme default"
-            else -> return "Theme default"
-        }
+    fun getModeLabel(mode: String): String = when (sanitizeMode(mode)) {
+        MODE_MATERIAL_YOU -> "Material You"
+        MODE_COLORS -> "Standard"
+        MODE_MONOCHROME -> "Monochrome"
+        MODE_NONE -> "None"
+        else -> "Theme default"
     }
 
     private fun getStandardColorResource(ctx: Context, theme: String?, index: Int): Int {

@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -76,6 +77,7 @@ import kotlin.math.roundToInt
 private const val ContentAnimationDuration = 220
 private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
+@Immutable
 data class StoryItemUiModel(
     val index: String,
     val title: String,
@@ -93,6 +95,7 @@ data class StoryItemUiModel(
     val previewImageTintArgb: Int? = null,
 )
 
+@Immutable
 data class StoryItemStyle(
     val previewImageMode: String,
     val borderlessLargeImage: Boolean,

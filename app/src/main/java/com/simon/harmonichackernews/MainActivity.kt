@@ -10,8 +10,6 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
-import androidx.annotation.NonNull
-import androidx.annotation.Nullable
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -19,14 +17,12 @@ import com.simon.harmonichackernews.CommentsCoordinator.CommentsPaneCallback
 import com.simon.harmonichackernews.StoriesCoordinator.StoryClickListener
 import com.simon.harmonichackernews.data.CommentsScrollProgress
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.UserActions
 import com.simon.harmonichackernews.network.UserActions.CaptchaChallenge
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
 import com.simon.harmonichackernews.ui.debug.CoulombGasContract
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
-import com.simon.harmonichackernews.ui.navigation.MainNavigationHost
 import com.simon.harmonichackernews.ui.navigation.MainNavigationHost.install
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.submissions.SubmissionsContract
@@ -39,7 +35,7 @@ import java.util.WeakHashMap
 
 class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
     var lastPosition: Int = 0
-    var backPressedCallback: OnBackPressedCallback? = null
+    private lateinit var backPressedCallback: OnBackPressedCallback
     private var searchBackEnabled = false
     private var mainNavigationController: MainNavigationController? = null
 
@@ -61,9 +57,9 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         val shouldShowWelcomeDialog = Utils.shouldShowWelcomeDialog(this)
         val justUpdated = Utils.justUpdated(this)
         if (shouldShowWelcomeDialog) {
-            mainNavigationController!!.showWelcomeDialog()
+            mainNavigationController?.showWelcomeDialog()
         } else if (justUpdated && SettingsUtils.shouldShowChangelog(this)) {
-            mainNavigationController!!.showChangelogDialog()
+            mainNavigationController?.showChangelogDialog()
         }
 
         backPressedCallback = object : OnBackPressedCallback(true) {
@@ -84,7 +80,7 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
             }
         }
 
-        onBackPressedDispatcher.addCallback(this, backPressedCallback!!)
+        onBackPressedDispatcher.addCallback(this, backPressedCallback)
         setSearchBackEnabled(false)
     }
 
@@ -95,21 +91,13 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
     }
 
     protected override fun onSaveInstanceState(outState: Bundle) {
-        val storiesCoordinator: StoriesCoordinator? = this.storiesCoordinator
-        if (storiesCoordinator != null) {
-            storiesCoordinator.onSaveInstanceState(outState)
-        }
-        if (mainNavigationController != null) {
-            mainNavigationController!!.saveState(outState)
-        }
+        storiesCoordinator?.onSaveInstanceState(outState)
+        mainNavigationController?.saveState(outState)
         super.onSaveInstanceState(outState)
     }
 
     protected override fun onDestroy() {
-        val storiesCoordinator: StoriesCoordinator? = this.storiesCoordinator
-        if (storiesCoordinator != null) {
-            storiesCoordinator.onDestroy()
-        }
+        storiesCoordinator?.onDestroy()
         if (getCurrentMainActivity() === this) {
             currentMainActivity.clear()
             searchBackEnabled = false
@@ -120,25 +108,22 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
 
     protected override fun onStart() {
         super.onStart()
-        val storiesCoordinator: StoriesCoordinator? = this.storiesCoordinator
-        if (storiesCoordinator != null) storiesCoordinator.onStart()
+        storiesCoordinator?.onStart()
     }
 
     protected override fun onResume() {
         super.onResume()
-        val storiesCoordinator: StoriesCoordinator? = this.storiesCoordinator
-        if (storiesCoordinator != null) storiesCoordinator.onResume()
+        storiesCoordinator?.onResume()
     }
 
     protected override fun onStop() {
-        val storiesCoordinator: StoriesCoordinator? = this.storiesCoordinator
-        if (storiesCoordinator != null) storiesCoordinator.onStop()
+        storiesCoordinator?.onStop()
         super.onStop()
     }
 
     fun setSearchBackEnabled(enabled: Boolean) {
         searchBackEnabled = enabled
-        backPressedCallback!!.isEnabled = enabled
+        backPressedCallback.isEnabled = enabled
         notifySearchBackStateListeners(enabled)
     }
 
@@ -146,67 +131,46 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         challenge: CaptchaChallenge,
         callback: CaptchaResultCallback
     ) {
-        if (mainNavigationController == null) {
+        val controller = mainNavigationController
+        if (controller == null) {
             callback.onCaptchaCancelled()
             return
         }
-        mainNavigationController!!.showCaptchaDialog(challenge, callback)
+        controller.showCaptchaDialog(challenge, callback)
     }
 
     fun showUserDialog(userName: String, onTagChanged: Runnable?) {
-        if (mainNavigationController != null) {
-            mainNavigationController!!.showUserDialog(userName, onTagChanged)
-        }
+        mainNavigationController?.showUserDialog(userName, onTagChanged)
     }
 
     private fun applyWelcomePresetToUi() {
-        val coordinator: StoriesCoordinator? = this.storiesCoordinator
-
-        if (coordinator != null) {
-            coordinator.applyWelcomePresetSettings()
-        }
+        storiesCoordinator?.applyWelcomePresetSettings()
     }
 
     private fun startSearchBackProgress(progress: Float) {
-        val coordinator: StoriesCoordinator? = this.storiesCoordinator
-
-        if (coordinator != null) {
-            coordinator.startSearchBackProgress(progress)
-        }
+        storiesCoordinator?.startSearchBackProgress(progress)
     }
 
     private fun updateSearchBackProgress(progress: Float) {
-        val coordinator: StoriesCoordinator? = this.storiesCoordinator
-
-        if (coordinator != null) {
-            coordinator.updateSearchBackProgress(progress)
-        }
+        storiesCoordinator?.updateSearchBackProgress(progress)
     }
 
     private fun cancelSearchBackProgress() {
-        val coordinator: StoriesCoordinator? = this.storiesCoordinator
-
-        if (coordinator != null) {
-            coordinator.cancelSearchBackProgress()
-        }
+        storiesCoordinator?.cancelSearchBackProgress()
     }
 
     private fun finishSearchBackProgress(): Boolean {
-        val coordinator: StoriesCoordinator? = this.storiesCoordinator
-
-        return coordinator != null && coordinator.finishSearchBackProgress()
+        return storiesCoordinator?.finishSearchBackProgress() == true
     }
 
     private val storiesCoordinator: StoriesCoordinator?
-        get() = if (mainNavigationController == null) null else mainNavigationController!!.getStoriesCoordinator()
+        get() = mainNavigationController?.getStoriesCoordinator()
 
     private fun initializeStoriesCoordinator(savedInstanceState: Bundle?) {
-        val coordinator: StoriesCoordinator = StoriesCoordinator(this, savedInstanceState)
-        mainNavigationController!!.attachStoriesCoordinator(coordinator)
-        val composeController: StoriesComposeController? = coordinator.composeController
-        if (composeController != null) {
-            mainNavigationController!!.attachStoriesComposeController(composeController)
-        }
+        val controller = checkNotNull(mainNavigationController)
+        val coordinator = StoriesCoordinator(this, savedInstanceState)
+        controller.attachStoriesCoordinator(coordinator)
+        coordinator.composeController?.let(controller::attachStoriesComposeController)
     }
 
     interface SearchBackStateListener {
@@ -257,10 +221,7 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
     }
 
     fun onAccountStateChanged() {
-        val coordinator: StoriesCoordinator? = this.storiesCoordinator
-        if (coordinator != null) {
-            coordinator.onAccountStateChanged()
-        }
+        storiesCoordinator?.onAccountStateChanged()
     }
 
     fun closeStory() {
@@ -268,33 +229,23 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
     }
 
     fun showCacheStoriesDialog() {
-        if (mainNavigationController != null) {
-            mainNavigationController!!.showCacheStoriesDialog()
-        }
+        mainNavigationController?.showCacheStoriesDialog()
     }
 
     fun attachStoriesComposeController(controller: StoriesComposeController) {
-        if (mainNavigationController != null) {
-            mainNavigationController!!.attachStoriesComposeController(controller)
-        }
+        mainNavigationController?.attachStoriesComposeController(controller)
     }
 
     fun detachStoriesComposeController(controller: StoriesComposeController) {
-        if (mainNavigationController != null) {
-            mainNavigationController!!.detachStoriesComposeController(controller)
-        }
+        mainNavigationController?.detachStoriesComposeController(controller)
     }
 
     fun attachCommentsComposeController(controller: CommentsComposeController) {
-        if (mainNavigationController != null) {
-            mainNavigationController!!.attachCommentsComposeController(controller)
-        }
+        mainNavigationController?.attachCommentsComposeController(controller)
     }
 
     fun detachCommentsComposeController(controller: CommentsComposeController) {
-        if (mainNavigationController != null) {
-            mainNavigationController!!.detachCommentsComposeController(controller)
-        }
+        mainNavigationController?.detachCommentsComposeController(controller)
     }
 
     @JvmOverloads
@@ -314,22 +265,18 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
     }
 
     private fun openCommentsFromIntent(intent: Intent?): Boolean {
-        if (intent == null || mainNavigationController == null) {
-            return false
-        }
+        if (intent == null) return false
+        val navigationController = mainNavigationController ?: return false
 
-        if (ACTION_OPEN_SETTINGS == intent.getAction()) {
-            mainNavigationController!!.openSettings(
+        if (ACTION_OPEN_SETTINGS == intent.action) {
+            navigationController.openSettings(
                 intent.getStringExtra(EXTRA_SETTINGS_SECTION)
             )
             return true
         }
 
-        if (ComposeEditorContract.ACTION_OPEN_EDITOR == intent.getAction()) {
-            val editorArguments = if (intent.getExtras() == null)
-                Bundle()
-            else
-                Bundle(intent.getExtras())
+        if (ComposeEditorContract.ACTION_OPEN_EDITOR == intent.action) {
+            val editorArguments = intent.extras?.let(::Bundle) ?: Bundle()
             val editorType = editorArguments.getInt(
                 ComposeEditorContract.EXTRA_TYPE,
                 ComposeEditorContract.TYPE_POST
@@ -340,52 +287,49 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
                 Toast.makeText(this, "Invalid comment id", Toast.LENGTH_SHORT).show()
                 return false
             }
-            mainNavigationController!!.openEditor(editorArguments)
+            navigationController.openEditor(editorArguments)
             return true
         }
 
-        if (SubmissionsContract.ACTION_OPEN_SUBMISSIONS == intent.getAction()) {
+        if (SubmissionsContract.ACTION_OPEN_SUBMISSIONS == intent.action) {
             val userName = intent.getStringExtra(SubmissionsContract.EXTRA_USER)
-            if (TextUtils.isEmpty(userName)) {
+            if (userName.isNullOrEmpty()) {
                 Toast.makeText(this, "Invalid username", Toast.LENGTH_SHORT).show()
                 return false
             }
-            mainNavigationController!!.openSubmissions(userName!!)
+            navigationController.openSubmissions(userName)
             return true
         }
 
-        if (CoulombGasContract.ACTION_OPEN == intent.getAction()) {
-            mainNavigationController!!.openCoulombGas()
+        if (CoulombGasContract.ACTION_OPEN == intent.action) {
+            navigationController.openCoulombGas()
             return true
         }
 
-        val arguments = if (intent.getExtras() == null)
-            Bundle()
-        else
-            Bundle(intent.getExtras())
+        val arguments = intent.extras?.let(::Bundle) ?: Bundle()
         var hackerNewsUri: Uri? = null
         var commentsIntent = false
 
-        if (Intent.ACTION_VIEW.equals(intent.getAction(), ignoreCase = true)) {
+        if (Intent.ACTION_VIEW.equals(intent.action, ignoreCase = true)) {
             commentsIntent = true
-            hackerNewsUri = intent.getData()
-        } else if (Intent.ACTION_SEND.equals(intent.getAction(), ignoreCase = true)) {
+            hackerNewsUri = intent.data
+        } else if (Intent.ACTION_SEND.equals(intent.action, ignoreCase = true)) {
             commentsIntent = true
             val sharedText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)
             hackerNewsUri = Utils.getHackerNewsItemUriFromText(
-                if (sharedText == null) null else sharedText.toString()
+                sharedText?.toString()
             )
         }
 
         var itemId = arguments.getInt(CommentsContract.EXTRA_ID, -1)
         if (hackerNewsUri != null && Utils.isHackerNewsItemUri(hackerNewsUri)) {
             try {
-                itemId = hackerNewsUri.getQueryParameter("id")!!.toInt()
-                val fragment = hackerNewsUri.getFragment()
-                if (!TextUtils.isEmpty(fragment) && TextUtils.isDigitsOnly(fragment)) {
+                itemId = checkNotNull(hackerNewsUri.getQueryParameter("id")).toInt()
+                val fragment = hackerNewsUri.fragment
+                if (!fragment.isNullOrEmpty() && TextUtils.isDigitsOnly(fragment)) {
                     arguments.putInt(
                         CommentsContract.EXTRA_SCROLL_TO_COMMENT,
-                        fragment!!.toInt()
+                        fragment.toInt()
                     )
                 }
             } catch (ignored: RuntimeException) {
@@ -408,12 +352,12 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
             CommentsContract.EXTRA_SHOW_WEBSITE,
             arguments.getBoolean(CommentsContract.EXTRA_SHOW_WEBSITE, false)
         )
-        mainNavigationController!!.openStory(arguments)
+        navigationController.openStory(arguments)
         return true
     }
 
     fun restartAfterSettingsChange() {
-        val launchIntent: Intent? = getPackageManager().getLaunchIntentForPackage(getPackageName())
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
         if (launchIntent == null) {
             recreate()
             return
@@ -424,17 +368,16 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
 
     fun setImmersiveContentEnabled(enabled: Boolean) {
         val insetsController = WindowCompat.getInsetsController(
-            getWindow(),
-            getWindow().getDecorView()
+            window,
+            window.decorView
         )
         if (enabled) {
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            insetsController.setSystemBarsBehavior(
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            insetsController.systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            )
             insetsController.hide(WindowInsetsCompat.Type.systemBars())
         } else {
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             insetsController.show(WindowInsetsCompat.Type.systemBars())
         }
     }
@@ -447,8 +390,7 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
 
     public override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        val coordinator: CommentsCoordinator? = this.commentsCoordinator
-        if (coordinator != null) coordinator.onConfigurationChanged(newConfig)
+        commentsCoordinator?.onConfigurationChanged(newConfig)
     }
 
     public override fun onSwitchView(isAtWebView: Boolean) {
@@ -456,7 +398,7 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
     }
 
     private val commentsCoordinator: CommentsCoordinator?
-        get() = if (mainNavigationController == null) null else mainNavigationController!!.getCommentsCoordinator()
+        get() = mainNavigationController?.getCommentsCoordinator()
 
     companion object {
         const val ACTION_OPEN_SETTINGS: String = "com.simon.harmonichackernews.action.OPEN_SETTINGS"
@@ -464,15 +406,12 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
             "com.simon.harmonichackernews.extra.SETTINGS_SECTION"
         var commentsScrollProgresses: ArrayList<CommentsScrollProgress> = ArrayList()
         private val searchBackStateListeners: MutableSet<SearchBackStateListener> =
-            Collections.newSetFromMap<SearchBackStateListener?>(
-                WeakHashMap<SearchBackStateListener?, Boolean?>()
-            )
+            Collections.newSetFromMap(WeakHashMap())
         private var currentMainActivity = WeakReference<MainActivity?>(null)
 
         val isSearchBackActive: Boolean
             get() {
-                val activity: MainActivity? = getCurrentMainActivity()
-                return activity != null && activity.searchBackEnabled
+                return getCurrentMainActivity()?.searchBackEnabled == true
             }
 
         fun addSearchBackStateListener(listener: SearchBackStateListener) {
@@ -485,55 +424,35 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         }
 
         fun startActiveSearchBackProgress(progress: Float) {
-            val activity: MainActivity? = getCurrentMainActivity()
-            if (activity != null) {
-                activity.startSearchBackProgress(progress)
-            }
+            getCurrentMainActivity()?.startSearchBackProgress(progress)
         }
 
         fun updateActiveSearchBackProgress(progress: Float) {
-            val activity: MainActivity? = getCurrentMainActivity()
-            if (activity != null) {
-                activity.updateSearchBackProgress(progress)
-            }
+            getCurrentMainActivity()?.updateSearchBackProgress(progress)
         }
 
         fun cancelActiveSearchBackProgress() {
-            val activity: MainActivity? = getCurrentMainActivity()
-            if (activity != null) {
-                activity.cancelSearchBackProgress()
-            }
+            getCurrentMainActivity()?.cancelSearchBackProgress()
         }
 
         fun finishActiveSearchBackProgress(): Boolean {
-            val activity: MainActivity? = getCurrentMainActivity()
-            return activity != null && activity.finishSearchBackProgress()
+            return getCurrentMainActivity()?.finishSearchBackProgress() == true
         }
 
         fun applyWelcomePresetToActiveUi() {
-            val activity: MainActivity? = getCurrentMainActivity()
-            if (activity != null) {
-                activity.applyWelcomePresetToUi()
-            }
+            getCurrentMainActivity()?.applyWelcomePresetToUi()
         }
 
         fun showLoginPrompt(): Boolean {
-            val activity: MainActivity? = getCurrentMainActivity()
-            if (activity == null || activity.mainNavigationController == null) {
-                return false
-            }
-            activity.mainNavigationController!!.showLoginDialog()
+            val controller = getCurrentMainActivity()?.mainNavigationController ?: return false
+            controller.showLoginDialog()
             return true
         }
 
-        private fun getCurrentMainActivity(): MainActivity? {
-            return currentMainActivity.get()
-        }
+        private fun getCurrentMainActivity(): MainActivity? = currentMainActivity.get()
 
         private fun notifySearchBackStateListeners(enabled: Boolean) {
-            for (listener in searchBackStateListeners) {
-                listener.onSearchBackStateChanged(enabled)
-            }
+            searchBackStateListeners.forEach { it.onSearchBackStateChanged(enabled) }
         }
     }
 }

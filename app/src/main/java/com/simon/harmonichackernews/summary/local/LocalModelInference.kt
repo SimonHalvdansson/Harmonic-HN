@@ -8,6 +8,7 @@ import kotlin.math.min
 object LocalModelInference {
   private val inferenceLock = Any()
   private val engines = mutableMapOf<LocalModelManager.Runtime, LocalInferenceEngine>()
+  private val whitespace = Regex("\\s+")
   private const val LOW_MEMORY_THRESHOLD_BYTES = 8L * 1024L * 1024L * 1024L
   private const val LOW_MEMORY_MAX_WORDS = 500
   private const val DEFAULT_MAX_WORDS = 1500
@@ -92,9 +93,10 @@ object LocalModelInference {
   }
 
   private fun truncateWords(text: String, maxWords: Int): String {
-    val words = text.trim().split(Regex("\\s+"))
+    val trimmedText = text.trim()
+    val words = trimmedText.split(whitespace)
     if (words.size <= maxWords) {
-      return text.trim()
+      return trimmedText
     }
     return words.take(maxWords).joinToString(" ")
   }

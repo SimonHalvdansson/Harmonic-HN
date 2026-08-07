@@ -1,14 +1,10 @@
 package com.simon.harmonichackernews.data
 
-import androidx.annotation.Nullable
 import java.util.Locale
 
 internal object LinkPreviewFormatUtils {
     fun formatCount(count: Int, singular: String, plural: String?): String {
-        if (count == 1) {
-            return "1 " + singular
-        }
-        return kFormat(count) + " " + plural
+        return if (count == 1) "1 $singular" else "${kFormat(count)} $plural"
     }
 
     fun kFormat(number: Int): String {
@@ -25,20 +21,15 @@ internal object LinkPreviewFormatUtils {
     }
 
     fun shortenUrl(url: String?): String? {
-        if (url == null) {
-            return null
+        url ?: return null
+
+        var shortenedUrl = when {
+            url.startsWith("https://") -> url.substring(8)
+            url.startsWith("http://") -> url.substring(7)
+            else -> url
         }
 
-        var shortenedUrl: String = url
-        if (shortenedUrl.startsWith("https://")) {
-            shortenedUrl = shortenedUrl.substring(8)
-        } else if (shortenedUrl.startsWith("http://")) {
-            shortenedUrl = shortenedUrl.substring(7)
-        }
-
-        if (shortenedUrl.startsWith("www.")) {
-            shortenedUrl = shortenedUrl.substring(4)
-        }
+        shortenedUrl = shortenedUrl.removePrefix("www.")
 
         return shortenedUrl
     }

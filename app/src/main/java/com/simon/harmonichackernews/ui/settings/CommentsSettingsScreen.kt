@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -26,9 +25,6 @@ fun CommentsSettingsScreen(
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
-
-    @Suppress("UNUSED_VARIABLE")
-    val observedRefresh = refresh
 
     val displayStyle = SettingsUtils.getPreferredCommentDisplayStyle(context)
     val showBorder = prefs.getBoolean(SettingsUtils.PREF_COMMENT_CARD_BORDER, true)

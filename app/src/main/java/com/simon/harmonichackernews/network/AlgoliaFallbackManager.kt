@@ -13,6 +13,7 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.HNAPICommentLoader.CommentLoadListener
 import com.simon.harmonichackernews.utils.SettingsUtils
+
 class AlgoliaFallbackManager(
     private val context: Context, private val queue: RequestQueue, private val requestTag: Any?,
     private val filteredUsers: Set<String>, private val listener: FallbackListener
@@ -26,15 +27,11 @@ class AlgoliaFallbackManager(
         fun onAllCommentsLoaded(comments: MutableList<Comment>)
     }
 
-    private var treeBuilder: CommentTreeBuilder? = null
-    private val commentLoader: HNAPICommentLoader
-    private val allCommentIds: MutableSet<Int> = HashSet()
-    private val loadedCommentIds: MutableSet<Int> = HashSet()
+    private lateinit var treeBuilder: CommentTreeBuilder
+    private val commentLoader = HNAPICommentLoader(queue, requestTag, filteredUsers, this)
+    private val allCommentIds = mutableSetOf<Int>()
+    private val loadedCommentIds = mutableSetOf<Int>()
     private var totalExpectedComments = 0
-
-    init {
-        this.commentLoader = HNAPICommentLoader(queue, requestTag, filteredUsers, this)
-    }
 
     fun loadComments(storyId: Int, cachedResponse: String?) {
         if (SettingsUtils.shouldUseAlgoliaAPI(context)) {
@@ -42,14 +39,14 @@ class AlgoliaFallbackManager(
                 TAG,
                 "Loading storyId=" + storyId + " with Algolia, hasCachedResponse=" + (cachedResponse != null)
             )
-            loadWithAlgolia(storyId, cachedResponse)
+            loadWithAlgolia(storyId)
         } else {
             Log.d(TAG, "Loading storyId=" + storyId + " with HN API because Algolia is disabled")
             loadWithHNAPI(storyId)
         }
     }
 
-    private fun loadWithAlgolia(storyId: Int, cachedResponse: String?) {
+    private fun loadWithAlgolia(storyId: Int) {
         val url = "https://hn.algolia.com/api/v1/items/" + storyId
 
         val request = StringRequest(
@@ -66,15 +63,16 @@ class AlgoliaFallbackManager(
                     error
                 )
                 // If Algolia fails, try HN API
-                if (error!!.networkResponse != null &&
-                    (error.networkResponse.statusCode == 404 || error.networkResponse.statusCode >= 500) ||
-                    error is TimeoutError
+                val networkResponse = error?.networkResponse
+                if ((networkResponse != null &&
+                        (networkResponse.statusCode == 404 || networkResponse.statusCode >= 500)
+                    ) || error is TimeoutError
                 ) {
                     Log.d(TAG, "Falling back to HN API for storyId=" + storyId)
                     loadWithHNAPI(storyId)
                     listener.onUsingFallback()
                 } else {
-                    listener.onAlgoliaFailed(error.networkResponse == null)
+                    listener.onAlgoliaFailed(networkResponse == null)
                 }
             })
 
@@ -99,22 +97,23 @@ class AlgoliaFallbackManager(
                 if (JSONParser.updateStoryWithOfficialHNResponse(story, response)) {
                     Log.d(
                         TAG, ("HN API story loaded for storyId=" + storyId
-                                + ", topLevelComments=" + (if (story.kids == null) 0 else story.kids!!.size))
+                                + ", topLevelComments=" + (story.kids?.size ?: 0))
                     )
                     listener.onHNAPIStoryLoaded(story)
 
 
                     // Start loading all comments
-                    if (story.kids != null && story.kids!!.size > 0) {
-                        loadAllComments(story.kids!!)
+                    val topLevelIds = story.kids
+                    if (topLevelIds != null && topLevelIds.isNotEmpty()) {
+                        loadAllComments(topLevelIds)
                     } else {
                         // No comments
-                        listener.onAllCommentsLoaded(ArrayList())
+                        listener.onAllCommentsLoaded(mutableListOf())
                     }
                 } else {
                     Log.w(
                         TAG, ("HN API story parse failed for storyId=" + storyId
-                                + ", responseLength=" + (if (response == null) 0 else response.length))
+                                + ", responseLength=" + (response?.length ?: 0))
                     )
                     listener.onHNAPIFailed()
                 }
@@ -159,27 +158,19 @@ class AlgoliaFallbackManager(
     }
 
     override fun onCommentLoaded(comment: Comment) {
-        treeBuilder!!.addComment(comment)
+        treeBuilder.addComment(comment)
         loadedCommentIds.add(comment.id)
 
 
         // Load children if they exist
-        if (comment.kidsIds != null && comment.kidsIds!!.size > 0) {
-            for (childId in comment.kidsIds) {
-                if (!allCommentIds.contains(childId)) {
-                    allCommentIds.add(childId)
-                    totalExpectedComments++
-                    commentLoader.loadComment(childId, comment.depth + 1)
-                }
+        comment.kidsIds?.forEach { childId ->
+            if (allCommentIds.add(childId)) {
+                totalExpectedComments++
+                commentLoader.loadComment(childId, comment.depth + 1)
             }
         }
 
-
-        // Check if all comments are loaded
-        if (loadedCommentIds.size >= totalExpectedComments) {
-            val orderedComments = treeBuilder!!.buildOrderedTree()
-            listener.onAllCommentsLoaded(orderedComments)
-        }
+        notifyIfComplete()
     }
 
     override fun onCommentFailed(commentId: Int) {
@@ -191,10 +182,13 @@ class AlgoliaFallbackManager(
         )
 
 
-        // Check if we're done (including failed ones)
+        notifyIfComplete()
+    }
+
+    private fun notifyIfComplete() {
+        // Failed comments count as processed, so completion includes both outcomes.
         if (loadedCommentIds.size >= totalExpectedComments) {
-            val orderedComments = treeBuilder!!.buildOrderedTree()
-            listener.onAllCommentsLoaded(orderedComments)
+            listener.onAllCommentsLoaded(treeBuilder.buildOrderedTree())
         }
     }
 

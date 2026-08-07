@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import android.content.Context
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -40,8 +41,6 @@ fun AppearanceSettingsScreen(
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-    @Suppress("UNUSED_VARIABLE")
-    val observedRefresh = refreshToken
     val theme = prefs.getString(SettingsUtils.PREF_THEME, SettingsUtils.DEFAULT_THEME)
         ?: SettingsUtils.DEFAULT_THEME
     val nighttimeTheme = prefs.getString(
@@ -197,7 +196,7 @@ fun AppearanceSettingsScreen(
     }
 }
 
-private fun formatNighttimeRange(context: android.content.Context): String {
+private fun formatNighttimeRange(context: Context): String {
     val hours = Utils.getNighttimeHours(context)
     if (DateFormat.is24HourFormat(context)) {
         return String.format(
@@ -211,7 +210,7 @@ private fun formatNighttimeRange(context: android.content.Context): String {
     }
     val formatter = SimpleDateFormat("h:mm a", Locale.getDefault())
     @Suppress("DEPRECATION")
-    return formatter.format(Date(0, 0, 0, hours[0], hours[1])) +
-        " - " +
-        formatter.format(Date(0, 0, 0, hours[2], hours[3]))
+    val start = formatter.format(Date(0, 0, 0, hours[0], hours[1]))
+    val end = formatter.format(Date(0, 0, 0, hours[2], hours[3]))
+    return "$start - $end"
 }

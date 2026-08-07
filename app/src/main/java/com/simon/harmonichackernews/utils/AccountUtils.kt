@@ -1,189 +1,173 @@
 package com.simon.harmonichackernews.utils
 
 import android.content.Context
-import android.content.SharedPreferences
-import android.text.TextUtils
 import com.simon.harmonichackernews.MainActivity
-import kotlin.Triple
 
 object AccountUtils {
     private const val KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME =
         "com.simon.harmonichackernews.KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME"
     private const val KEY_ENCRYPTED_SHARED_PREFERENCES_PASSWORD =
         "com.simon.harmonichackernews.KEY_ENCRYPTED_SHARED_PREFERENCES_PASSWORD"
-    val FAILURE_MODE_NONE: Int = -1
-    const val FAILURE_MODE_MAINKEY: Int = 0
-    const val FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION: Int = 1
-    const val FAILURE_MODE_NO_USERNAME: Int = 3
-    const val FAILURE_MODE_NO_PASSWORD: Int = 4
+    const val FAILURE_MODE_NONE = -1
+    const val FAILURE_MODE_MAINKEY = 0
+    const val FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION = 1
+    const val FAILURE_MODE_NO_USERNAME = 3
+    const val FAILURE_MODE_NO_PASSWORD = 4
 
-    @kotlin.concurrent.Volatile
-    private var cachedHasAccountDetails: kotlin.Boolean? = null
+    @Volatile
+    private var cachedHasAccountDetails: Boolean? = null
 
-
-    fun getAccountUsername(ctx: android.content.Context): kotlin.String? {
-        return SettingsUtils.readStringFromSharedPreferences(
+    fun getAccountUsername(ctx: Context): String? =
+        SettingsUtils.readStringFromSharedPreferences(
             ctx,
-            AccountUtils.KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME
+            KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME,
         )
-    }
 
-    fun setAccountUsername(ctx: android.content.Context, username: kotlin.String?) {
-        AccountUtils.cachedHasAccountDetails = null
+    fun setAccountUsername(ctx: Context, username: String?) {
+        cachedHasAccountDetails = null
         SettingsUtils.saveStringToSharedPreferences(
             ctx,
-            AccountUtils.KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME,
-            username
+            KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME,
+            username,
         )
     }
 
-    fun hasAccountDetails(ctx: android.content.Context): kotlin.Boolean {
-        var cached = AccountUtils.cachedHasAccountDetails
-        if (cached != null) {
-            return cached
-        }
-        kotlin.synchronized(AccountUtils::class.java) {
-            cached = AccountUtils.cachedHasAccountDetails
-            if (cached == null) {
-                val account = AccountUtils.getAccountDetails(ctx)
-                cached =
-                    account.third == AccountUtils.FAILURE_MODE_NONE && !TextUtils.isEmpty(account.first) && !TextUtils.isEmpty(
-                        account.second
-                    )
-                AccountUtils.cachedHasAccountDetails = cached
+    fun hasAccountDetails(ctx: Context): Boolean {
+        cachedHasAccountDetails?.let { return it }
+        return synchronized(this) {
+            cachedHasAccountDetails ?: getAccountDetails(ctx).let { account ->
+                (account.third == FAILURE_MODE_NONE &&
+                    !account.first.isNullOrEmpty() &&
+                    !account.second.isNullOrEmpty()).also {
+                    cachedHasAccountDetails = it
+                }
             }
-            return cached
         }
     }
 
-    fun getAccountDetails(ctx: android.content.Context): kotlin.Triple<kotlin.String?, kotlin.String?, Int?> {
-        val sharedPreferences: SharedPreferences?
-        try {
-            sharedPreferences = EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(ctx)
-        } catch (e: java.lang.Exception) {
+    fun getAccountDetails(ctx: Context): Triple<String?, String?, Int> {
+        val sharedPreferences = try {
+            EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(ctx)
+        } catch (e: Exception) {
             e.printStackTrace()
-            return kotlin.Triple<kotlin.String?, kotlin.String?, Int?>(
+            return Triple(
                 null,
                 null,
-                AccountUtils.FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION
+                FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION,
             )
         }
 
-        val username = AccountUtils.getAccountUsername(ctx)
+        val username = getAccountUsername(ctx)
         val password = sharedPreferences.getString(
-            AccountUtils.KEY_ENCRYPTED_SHARED_PREFERENCES_PASSWORD,
-            null
+            KEY_ENCRYPTED_SHARED_PREFERENCES_PASSWORD,
+            null,
         )
 
-        if (TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
+        if (username.isNullOrEmpty() || password.isNullOrEmpty()) {
             // note we're not logging the password
-            com.simon.harmonichackernews.utils.Utils.log(
-                "Empty check: username " + TextUtils.isEmpty(
-                    username
-                ) + ", pass:" + TextUtils.isEmpty(password)
+            Utils.log(
+                "Empty check: username ${username.isNullOrEmpty()}, " +
+                    "pass:${password.isNullOrEmpty()}",
             )
         }
 
-        if (TextUtils.isEmpty(username)) {
-            return kotlin.Triple<kotlin.String?, kotlin.String?, Int?>(
+        if (username.isNullOrEmpty()) {
+            return Triple(
                 username,
                 password,
-                AccountUtils.FAILURE_MODE_NO_USERNAME
+                FAILURE_MODE_NO_USERNAME,
             )
         }
 
-        if (TextUtils.isEmpty(password)) {
-            return kotlin.Triple<kotlin.String?, kotlin.String?, Int?>(
+        if (password.isNullOrEmpty()) {
+            return Triple(
                 username,
                 password,
-                AccountUtils.FAILURE_MODE_NO_PASSWORD
+                FAILURE_MODE_NO_PASSWORD,
             )
         }
 
         // last resort, all is well, still send migration status
-        return kotlin.Triple<kotlin.String?, kotlin.String?, Int?>(
+        return Triple(
             username,
             password,
-            AccountUtils.FAILURE_MODE_NONE
+            FAILURE_MODE_NONE,
         )
     }
 
-    fun deleteAccountDetails(ctx: android.content.Context) {
-        AccountUtils.cachedHasAccountDetails = null
-        AccountUtils.setAccountDetails(ctx, null, null)
+    fun deleteAccountDetails(ctx: Context) {
+        cachedHasAccountDetails = null
+        setAccountDetails(ctx, null, null)
         val deleted = EncryptedSharedPreferencesHelper.deleteSharedPreferences(ctx)
         if (!deleted) {
-            com.simon.harmonichackernews.utils.Utils.toast(
+            Utils.toast(
                 "Failed to delete EncryptedSharedPreferences",
-                ctx
+                ctx,
             )
         }
     }
 
     fun setAccountDetails(
-        ctx: android.content.Context,
-        username: kotlin.String?,
-        password: kotlin.String?
+        ctx: Context,
+        username: String?,
+        password: String?,
     ) {
-        AccountUtils.cachedHasAccountDetails = null
-        val sharedPreferences: SharedPreferences?
-        try {
-            sharedPreferences = EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(ctx)
-        } catch (e: java.lang.Exception) {
+        cachedHasAccountDetails = null
+        val sharedPreferences = try {
+            EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(ctx)
+        } catch (e: Exception) {
             e.printStackTrace()
             return
         }
 
-        val sharedPrefsEditor: SharedPreferences.Editor = sharedPreferences.edit()
-        sharedPrefsEditor.putString(
-            AccountUtils.KEY_ENCRYPTED_SHARED_PREFERENCES_PASSWORD,
-            password
-        )
-        sharedPrefsEditor.apply()
+        sharedPreferences.edit()
+            .putString(KEY_ENCRYPTED_SHARED_PREFERENCES_PASSWORD, password)
+            .apply()
 
-        AccountUtils.setAccountUsername(ctx, username)
+        setAccountUsername(ctx, username)
     }
 
-    fun showLoginPrompt(ctx: android.content.Context?): kotlin.Boolean {
-        return MainActivity.showLoginPrompt()
-    }
+    fun showLoginPrompt(): Boolean = MainActivity.showLoginPrompt()
+
+    @Suppress("UNUSED_PARAMETER")
+    fun showLoginPrompt(ctx: Context?): Boolean = showLoginPrompt()
 
     fun handlePossibleError(
-        account: kotlin.Triple<kotlin.String?, kotlin.String?, Int?>,
-        showLoginPrompt: kotlin.Boolean,
-        ctx: android.content.Context?
-    ): kotlin.Boolean {
-        if (account.third == AccountUtils.FAILURE_MODE_NONE) {
+        account: Triple<String?, String?, Int>,
+        showLoginPrompt: Boolean,
+        ctx: Context?,
+    ): Boolean {
+        if (account.third == FAILURE_MODE_NONE) {
             return false
         }
 
-        val loginPromptShown = showLoginPrompt && AccountUtils.showLoginPrompt(ctx)
+        val loginPromptShown = showLoginPrompt && this.showLoginPrompt()
 
         when (account.third) {
-            AccountUtils.FAILURE_MODE_MAINKEY -> com.simon.harmonichackernews.utils.Utils.toast(
+            FAILURE_MODE_MAINKEY -> Utils.toast(
                 "Login failed, cause: Couldn't get AndroidX MasterKey",
-                ctx
+                ctx,
             )
 
-            AccountUtils.FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION -> com.simon.harmonichackernews.utils.Utils.toast(
+            FAILURE_MODE_ENCRYPTED_PREFERENCES_EXCEPTION -> Utils.toast(
                 "Login failed, cause: EncryptedSharedPreferences threw exception",
-                ctx
+                ctx,
             )
 
-            AccountUtils.FAILURE_MODE_NO_USERNAME -> {
+            FAILURE_MODE_NO_USERNAME -> {
                 if (!loginPromptShown) {
-                    com.simon.harmonichackernews.utils.Utils.toast(
+                    Utils.toast(
                         "Login failed, cause: No saved username",
-                        ctx
+                        ctx,
                     )
                 }
             }
 
-            AccountUtils.FAILURE_MODE_NO_PASSWORD -> {
+            FAILURE_MODE_NO_PASSWORD -> {
                 if (!loginPromptShown) {
-                    com.simon.harmonichackernews.utils.Utils.toast(
+                    Utils.toast(
                         "Login failed, cause: No saved password",
-                        ctx
+                        ctx,
                     )
                 }
             }

@@ -1,8 +1,6 @@
 package com.simon.harmonichackernews.utils
 
-import android.text.TextUtils
 import com.simon.harmonichackernews.data.Story
-import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.Locale
 import kotlin.math.max
@@ -10,13 +8,13 @@ import kotlin.math.max
 object SearchRelevanceUtils {
     fun sortStoriesByRelevance(stories: MutableList<Story>, query: String?) {
         val normalizedQuery = normalize(query)
-        if (stories == null || stories.size < 2 || TextUtils.isEmpty(normalizedQuery)) {
+        if (stories.size < 2 || normalizedQuery.isEmpty()) {
             return
         }
 
         val relevanceScores: MutableMap<Story, Int> = IdentityHashMap(stories.size)
         for (story in stories) {
-            relevanceScores.put(story, score(story, normalizedQuery))
+            relevanceScores[story] = score(story, normalizedQuery)
         }
 
         stories.sortWith(Comparator { left, right ->
@@ -31,11 +29,7 @@ object SearchRelevanceUtils {
         })
     }
 
-    private fun score(story: Story?, normalizedQuery: String): Int {
-        if (story == null || story.title == null) {
-            return 0
-        }
-
+    private fun score(story: Story, normalizedQuery: String): Int {
         val title = normalize(story.title)
         val phraseIndex = title.indexOf(normalizedQuery)
         if (phraseIndex < 0) {
@@ -59,13 +53,8 @@ object SearchRelevanceUtils {
         return score
     }
 
-    private fun normalize(value: String?): String {
-        if (value == null) {
-            return ""
-        }
-
-        return value.trim { it <= ' ' }.lowercase(Locale.getDefault())
-    }
+    private fun normalize(value: String?): String =
+        value.orEmpty().trim { it <= ' ' }.lowercase(Locale.getDefault())
 
     private fun isWordBoundaryMatch(title: String, start: Int, length: Int): Boolean {
         val end = start + length
@@ -73,6 +62,6 @@ object SearchRelevanceUtils {
     }
 
     private fun isBoundary(title: String, index: Int): Boolean {
-        return index < 0 || index >= title.length || !Character.isLetterOrDigit(title.get(index))
+        return index !in title.indices || !title[index].isLetterOrDigit()
     }
 }

@@ -2037,10 +2037,7 @@ class CommentsCoordinator(
             if (!isCurrentCommentsLoad(loadGeneration, id)) {
                 return@Runnable
             }
-            applyParsedComments(
-                parsedResponse.comments,
-                updateHeaderAfterLoad
-            )
+            applyParsedComments(parsedResponse.comments)
 
             if (!cache && restoreScroll) {
                 // If we're not caching the result, this means we just loaded an old cache.
@@ -2127,10 +2124,8 @@ class CommentsCoordinator(
     private fun cancelPendingCommentsParse() {
         val pendingParse = pendingCommentsParse
         pendingCommentsParse = null
-        if (pendingParse != null && pendingParse.future != null) {
-            pendingParse.future!!.cancel(true)
-            pendingParse.future = null
-        }
+        pendingParse?.future?.cancel(true)
+        pendingParse?.future = null
     }
 
     private fun completeCommentsLoad(updateHeaderAfterLoad: Boolean) {
@@ -2146,31 +2141,22 @@ class CommentsCoordinator(
             refreshHeaderAfterStoryLoad()
         }
         updateNavigationVisibility()
-        val commentsView = this.view
-        if (commentsView == null) {
-            return
-        }
-        commentsView.post(object : Runnable {
-            override fun run() {
-                if (!this@CommentsCoordinator.isCommentsViewActive) {
-                    return
-                }
-                scrollToTargetComment()
-                restorePendingCommentAction()
+        val commentsView = view ?: return
+        commentsView.post {
+            if (!isCommentsViewActive) {
+                return@post
             }
-        })
+            scrollToTargetComment()
+            restorePendingCommentAction()
+        }
     }
 
     private fun restorePendingCommentAction() {
-        if (pendingCommentActionId == -1 || composeController == null) {
-            return
-        }
-        val comment = findCommentById(pendingCommentActionId)
-        if (comment == null) {
-            return
-        }
+        if (pendingCommentActionId == -1) return
+        val controller = composeController ?: return
+        val comment = findCommentById(pendingCommentActionId) ?: return
         pendingCommentActionId = -1
-        composeController!!.restoreCommentActions(comment)
+        controller.restoreCommentActions(comment)
         syncOnBackPressedCallbackEnabledState()
     }
 
@@ -2189,26 +2175,23 @@ class CommentsCoordinator(
         get() = this.view != null && comments != null && allComments != null
 
     private fun isCurrentCommentsLoad(loadGeneration: Int, storyId: Int): Boolean {
-        return loadGeneration == commentsLoadGeneration && story != null && story!!.id == storyId && this.isCommentsViewActive
+        return loadGeneration == commentsLoadGeneration &&
+            story?.id == storyId &&
+            isCommentsViewActive
     }
 
-    private fun applyParsedComments(
-        parsedComments: MutableList<Comment>,
-        headerRefreshWillFollow: Boolean
-    ) {
-        val oldComments = CommentListDiff.copyForDiff(comments!!)
-        val existingCommentsById: MutableMap<Int, Comment?> = HashMap<Int, Comment?>()
-        val sourceComments =
-            this.allCommentsSource
+    private fun applyParsedComments(parsedComments: MutableList<Comment>) {
+        val existingCommentsById = HashMap<Int, Comment>()
+        val sourceComments = allCommentsSource
         for (i in 1..<sourceComments.size) {
-            val comment = sourceComments.get(i)
-            existingCommentsById.put(comment.id, comment)
+            val comment = sourceComments[i]
+            existingCommentsById[comment.id] = comment
         }
 
-        val nextComments: MutableList<Comment> = ArrayList<Comment>(parsedComments.size + 1)
-        nextComments.add(sourceComments.get(0))
+        val nextComments = ArrayList<Comment>(parsedComments.size + 1)
+        nextComments.add(sourceComments[0])
         for (parsedComment in parsedComments) {
-            val existingComment = existingCommentsById.get(parsedComment.id)
+            val existingComment = existingCommentsById[parsedComment.id]
             if (existingComment != null) {
                 CommentListDiff.updateExistingComment(existingComment, parsedComment)
                 nextComments.add(existingComment)
@@ -2228,13 +2211,10 @@ class CommentsCoordinator(
             }
         }
 
-        allComments!!.clear()
-        allComments!!.addAll(nextComments)
-        applyDisplayedComments(
-            getDisplayedCommentsForCurrentFilter(allComments!!),
-            oldComments,
-            !headerRefreshWillFollow
-        )
+        val currentAllComments = checkNotNull(allComments)
+        currentAllComments.clear()
+        currentAllComments.addAll(nextComments)
+        applyDisplayedComments(getDisplayedCommentsForCurrentFilter(currentAllComments))
     }
 
     private val allCommentsSource: MutableList<Comment>
@@ -2252,7 +2232,7 @@ class CommentsCoordinator(
 
     private fun updateDefaultCommentSortOrder(commentsWithHeader: MutableList<Comment>) {
         for (i in 1..<commentsWithHeader.size) {
-            commentsWithHeader.get(i).sortOrder = i
+            commentsWithHeader[i].sortOrder = i
         }
     }
 
@@ -2261,17 +2241,14 @@ class CommentsCoordinator(
             return
         }
 
-        val oldComments = CommentListDiff.copyForDiff(comments!!)
         currentCommentSorting = sortType
-        val sourceComments =
-            this.allCommentsSource
+        val sourceComments = allCommentsSource
         CommentSorter.sort(sourceComments, sortType)
-        applyDisplayedComments(getDisplayedCommentsForCurrentFilter(sourceComments), oldComments)
+        applyDisplayedComments(getDisplayedCommentsForCurrentFilter(sourceComments))
     }
 
     private fun showCommentsByOp() {
-        val sourceComments =
-            this.allCommentsSource
+        val sourceComments = allCommentsSource
         if (!CommentThreadFilter.hasCommentsByOp(story, sourceComments)) {
             return
         }
@@ -2291,34 +2268,35 @@ class CommentsCoordinator(
         }
 
         setCommentsByOpFilterActive(false)
-        applyDisplayedComments(ArrayList<Comment>(this.allCommentsSource))
+        applyDisplayedComments(ArrayList(allCommentsSource))
     }
 
     private fun setCommentsByOpFilterActive(active: Boolean) {
         commentsByOpFilterActive = active
     }
 
-    private fun getDisplayedCommentsForCurrentFilter(sourceComments: MutableList<Comment>): MutableList<Comment> {
+    private fun getDisplayedCommentsForCurrentFilter(
+        sourceComments: List<Comment>
+    ): MutableList<Comment> {
         if (commentsByOpFilterActive) {
             if (CommentThreadFilter.hasCommentsByOp(story, sourceComments)) {
                 return CommentThreadFilter.buildCommentsByOpThreadList(story, sourceComments)
             }
             setCommentsByOpFilterActive(false)
         }
-        return ArrayList<Comment>(sourceComments)
+        return ArrayList(sourceComments)
     }
 
     private fun hasCommentsByOp(): Boolean {
-        return CommentThreadFilter.hasCommentsByOp(story, this.allCommentsSource)
+        return CommentThreadFilter.hasCommentsByOp(story, allCommentsSource)
     }
 
     private fun applyDisplayedComments(
-        nextComments: MutableList<Comment>,
-        oldComments: MutableList<Comment>? = comments?.let(CommentListDiff::copyForDiff),
-        updateBoundHeader: Boolean = true
+        nextComments: List<Comment>
     ) {
-        comments!!.clear()
-        comments!!.addAll(nextComments)
+        val displayedComments = checkNotNull(comments)
+        displayedComments.clear()
+        displayedComments.addAll(nextComments)
         updateNavigationVisibility()
         syncComposeState()
     }
@@ -2329,15 +2307,14 @@ class CommentsCoordinator(
 
     private fun toggleStoryBookmark() {
         val ctx = this.context
-        if (ctx == null || story == null) {
-            return
-        }
+        val currentStory = story
+        if (ctx == null || currentStory == null) return
 
-        val bookmarked = !Utils.isBookmarked(ctx, story!!.id)
+        val bookmarked = !Utils.isBookmarked(ctx, currentStory.id)
         if (bookmarked) {
-            Utils.addBookmark(ctx, story!!.id)
+            Utils.addBookmark(ctx, currentStory.id)
         } else {
-            Utils.removeBookmark(ctx, story!!.id)
+            Utils.removeBookmark(ctx, currentStory.id)
         }
     }
 
@@ -2383,10 +2360,11 @@ class CommentsCoordinator(
             return
         }
 
+        val currentStory = story ?: return
         val intent = ComposeEditorContract.createIntent(requireContext())
-        intent.putExtra(ComposeEditorContract.EXTRA_ID, story!!.id)
-        intent.putExtra(ComposeEditorContract.EXTRA_PARENT_TEXT, story!!.title)
-        intent.putExtra(ComposeEditorContract.EXTRA_POST_TITLE, story!!.title)
+        intent.putExtra(ComposeEditorContract.EXTRA_ID, currentStory.id)
+        intent.putExtra(ComposeEditorContract.EXTRA_PARENT_TEXT, currentStory.title)
+        intent.putExtra(ComposeEditorContract.EXTRA_POST_TITLE, currentStory.title)
         intent.putExtra(
             ComposeEditorContract.EXTRA_TYPE,
             ComposeEditorContract.TYPE_TOP_COMMENT
@@ -2396,17 +2374,16 @@ class CommentsCoordinator(
 
     fun clickVote() {
         val ctx = this.context
-        if (ctx == null || story == null) {
-            return
-        }
+        val currentStory = story
+        if (ctx == null || currentStory == null) return
 
         if (!AccountUtils.hasAccountDetails(ctx)) {
             AccountUtils.showLoginPrompt(requireContext())
             return
         }
 
-        val storyId = story!!.id
-        val storyIsComment = story!!.isComment
+        val storyId = currentStory.id
+        val storyIsComment = currentStory.isComment
         val wasUpvoted = Utils.isUpvoted(ctx, storyId, storyIsComment)
         val newUpvoted = !wasUpvoted
         storyVoteLoading = true
@@ -2435,11 +2412,10 @@ class CommentsCoordinator(
 
     fun clickFavorite() {
         val ctx = this.context
-        if (ctx == null || story == null) {
-            return
-        }
+        val currentStory = story
+        if (ctx == null || currentStory == null) return
 
-        val storyId = story!!.id
+        val storyId = currentStory.id
         val wasFavorited = Utils.isFavorited(ctx, storyId)
         if (!AccountUtils.hasAccountDetails(ctx)) {
             AccountUtils.showLoginPrompt(requireContext())

@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.activity.ComponentActivity
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -27,7 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -60,6 +59,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Response
 import kotlin.coroutines.resume
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -70,6 +70,8 @@ private data class BookmarkFavoriteResult(
     val successful: Boolean,
     val message: String,
 )
+
+private val ConsecutiveWhitespace = Regex("\\s+")
 
 @Composable
 fun AddBookmarksToFavoritesDialog(
@@ -233,7 +235,7 @@ private fun BookmarkTransferAnimation() {
             progress > 0.82f -> (1f - progress) / 0.18f
             else -> 1f
         }.coerceIn(0f, 1f)
-        val storyScale = 0.86f + 0.14f * sin(Math.PI * progress).toFloat()
+        val storyScale = 0.86f + 0.14f * sin(PI * progress).toFloat()
         val arrival = (1f - abs(progress - 0.88f) / 0.12f).coerceAtLeast(0f)
 
         TransferTarget(
@@ -261,7 +263,7 @@ private fun BookmarkTransferAnimation() {
 
 @Composable
 private fun TransferTarget(
-    icon: Int,
+    @DrawableRes icon: Int,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -405,15 +407,17 @@ private suspend fun addBookmarkToFavorites(
 }
 
 private fun formatFavoriteFailure(summary: String?, response: String?): String {
-    val safeSummary = summary?.trim().takeUnless(String?::isNullOrEmpty)
+    val safeSummary = summary?.trim()?.takeIf(String::isNotEmpty)
         ?: "Couldn't add to favorites"
-    var safeResponse = response?.trim().orEmpty()
+    val safeResponse = response?.trim().orEmpty()
     if (safeResponse.isEmpty() || safeResponse == safeSummary) {
         return safeSummary
     }
-    safeResponse = safeResponse.replace('\n', ' ').replace(Regex("\\s+"), " ")
-    if (safeResponse.length > 160) {
-        safeResponse = safeResponse.take(157) + "…"
+    val compactResponse = safeResponse.replace('\n', ' ').replace(ConsecutiveWhitespace, " ")
+    val displayedResponse = if (compactResponse.length > 160) {
+        compactResponse.take(157) + "…"
+    } else {
+        compactResponse
     }
-    return "$safeSummary: $safeResponse"
+    return "$safeSummary: $displayedResponse"
 }

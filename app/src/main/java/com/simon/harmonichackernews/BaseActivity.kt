@@ -5,9 +5,6 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import androidx.activity.ComponentActivity
-import androidx.annotation.NonNull
-import androidx.core.graphics.Insets
-import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.simon.harmonichackernews.utils.ViewUtils
@@ -18,29 +15,21 @@ open class BaseActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
 
-        ViewCompat.setOnApplyWindowInsetsListener(
-            findViewById<View?>(R.id.content),
-            object : OnApplyWindowInsetsListener {
-                override fun onApplyWindowInsets(
-                    v: View,
-                    windowInsets: WindowInsetsCompat
-                ): WindowInsetsCompat {
-                    val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-
-                    navBarHeight = insets.bottom
-
-                    return windowInsets
-                }
-            })
-        ViewUtils.requestApplyInsetsWhenAttached(findViewById<View?>(R.id.content))
+        val content = findViewById<View>(R.id.content)
+        ViewCompat.setOnApplyWindowInsetsListener(content) { _, windowInsets ->
+            navBarHeight = windowInsets
+                .getInsets(WindowInsetsCompat.Type.systemBars())
+                .bottom
+            windowInsets
+        }
+        ViewUtils.requestApplyInsetsWhenAttached(content)
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        val screenHeight = getWindow().getDecorView().getHeight()
-        val actionType = ev.getAction()
+        val screenHeight = window.decorView.height
 
-        if (ev.getY() >= (screenHeight - navBarHeight)) {
-            if (actionType == MotionEvent.ACTION_UP) {
+        if (ev.y >= screenHeight - navBarHeight) {
+            if (ev.action == MotionEvent.ACTION_UP) {
                 // Let the ACTION_UP event through
                 return super.dispatchTouchEvent(ev)
             }
@@ -65,7 +54,6 @@ open class BaseActivity : ComponentActivity() {
             return false
         }
     }
-
 
     companion object {
         private const val TAG = "BaseActivity"

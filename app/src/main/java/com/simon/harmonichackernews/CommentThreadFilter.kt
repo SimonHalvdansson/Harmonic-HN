@@ -1,23 +1,17 @@
 package com.simon.harmonichackernews
 
-import android.text.TextUtils
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
-import java.util.ArrayList
-import java.util.HashMap
-import java.util.HashSet
-import java.util.List
-import java.util.Map
-import java.util.Set
 
 internal object CommentThreadFilter {
-    fun hasCommentsByOp(story: Story?, sourceComments: MutableList<Comment>?): Boolean {
-        if (story == null || TextUtils.isEmpty(story.by) || sourceComments == null) {
+    fun hasCommentsByOp(story: Story?, sourceComments: List<Comment>?): Boolean {
+        val author = story?.by
+        if (author.isNullOrEmpty() || sourceComments == null) {
             return false
         }
 
         for (i in 1..<sourceComments.size) {
-            if (TextUtils.equals(story.by, sourceComments[i].by)) {
+            if (author == sourceComments[i].by) {
                 return true
             }
         }
@@ -26,25 +20,26 @@ internal object CommentThreadFilter {
 
     fun buildCommentsByOpThreadList(
         story: Story?,
-        sourceComments: MutableList<Comment>?
+        sourceComments: List<Comment>?
     ): MutableList<Comment> {
-        val filteredComments: MutableList<Comment> = ArrayList()
-        if (story == null || TextUtils.isEmpty(story.by) || sourceComments == null || sourceComments.isEmpty()) {
-            return filteredComments
+        val author = story?.by
+        if (author.isNullOrEmpty() || sourceComments.isNullOrEmpty()) {
+            return mutableListOf()
         }
 
-        filteredComments.add(sourceComments.get(0))
+        val filteredComments = ArrayList<Comment>()
+        filteredComments.add(sourceComments[0])
 
-        val commentsById: MutableMap<Int, Comment> = HashMap()
+        val commentsById = HashMap<Int, Comment>()
         for (i in 1..<sourceComments.size) {
-            val comment = sourceComments.get(i)
-            commentsById.put(comment.id, comment)
+            val comment = sourceComments[i]
+            commentsById[comment.id] = comment
         }
 
-        val includedCommentIds: MutableSet<Int> = HashSet()
+        val includedCommentIds = HashSet<Int>()
         for (i in 1..<sourceComments.size) {
-            val comment = sourceComments.get(i)
-            if (!TextUtils.equals(story.by, comment.by)) {
+            val comment = sourceComments[i]
+            if (author != comment.by) {
                 continue
             }
 
@@ -56,7 +51,7 @@ internal object CommentThreadFilter {
             )
             val opCommentDepth = comment.depth
             for (j in i + 1..<sourceComments.size) {
-                val candidate = sourceComments.get(j)
+                val candidate = sourceComments[j]
                 if (candidate.depth <= opCommentDepth) {
                     break
                 }
@@ -65,8 +60,8 @@ internal object CommentThreadFilter {
         }
 
         for (i in 1..<sourceComments.size) {
-            val comment = sourceComments.get(i)
-            if (includedCommentIds.contains(comment.id)) {
+            val comment = sourceComments[i]
+            if (comment.id in includedCommentIds) {
                 filteredComments.add(comment)
             }
         }
@@ -81,7 +76,7 @@ internal object CommentThreadFilter {
         var guard = 0
         while (current != null && guard++ < maxDepth) {
             includedCommentIds.add(current.id)
-            current = commentsById.get(current.parent)
+            current = commentsById[current.parent]
         }
     }
 }

@@ -9,6 +9,7 @@ import android.text.Html
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -16,8 +17,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -27,10 +28,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -83,20 +83,24 @@ fun UserSettingsDialog(
     onTagChanged: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
+    val monthNames = remember(resources) {
+        resources.getStringArray(R.array.months).toList()
+    }
     var state by remember(userName) {
         mutableStateOf<ComposeUserState>(ComposeUserState.Loading)
     }
-    var reload by remember { mutableIntStateOf(0) }
-    var tagDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var reload by remember(userName) { mutableIntStateOf(0) }
+    var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
     var currentTag by remember(userName) {
         mutableStateOf(Utils.getUserTag(context, userName))
     }
     var isBlocked by remember(userName) {
-        mutableStateOf(Utils.getFilteredUsers(context).contains(userName))
+        mutableStateOf(userName in Utils.getFilteredUsers(context))
     }
     val requestTag = remember(userName, reload) { Any() }
 
-    DisposableEffect(userName, reload) {
+    DisposableEffect(userName, reload, monthNames) {
         val queue = NetworkComponent.getRequestQueueInstance(context)
         state = ComposeUserState.Loading
         val request = StringRequest(
@@ -104,7 +108,7 @@ fun UserSettingsDialog(
             "https://hacker-news.firebaseio.com/v0/user/${Uri.encode(userName)}.json",
             { response ->
                 state = runCatching {
-                    parseComposeUser(context.resources.getStringArray(R.array.months), response)
+                    parseComposeUser(monthNames, response)
                 }.fold(
                     onSuccess = ComposeUserState::Loaded,
                     onFailure = { ComposeUserState.Error },
@@ -204,7 +208,7 @@ private fun UserLoadingPlaceholder() {
             .padding(top = 4.dp),
     ) {
         listOf(196.dp, 280.dp, 220.dp).forEachIndexed { index, width ->
-            androidx.compose.foundation.layout.Box(
+            Box(
                 modifier = Modifier
                     .padding(top = if (index == 0) 0.dp else 5.dp)
                     .width(width)
@@ -269,8 +273,8 @@ private fun UserLoadedContent(
         AccountUtils.getAccountUsername(context),
         ignoreCase = true,
     )
-    var notificationLoading by remember { mutableStateOf(false) }
-    var notificationStatus by remember { mutableStateOf("") }
+    var notificationLoading by remember(user.id) { mutableStateOf(false) }
+    var notificationStatus by remember(user.id) { mutableStateOf("") }
     var notificationsActive by remember(user.id) {
         mutableStateOf(
             user.id.equals(
@@ -279,7 +283,7 @@ private fun UserLoadedContent(
             ),
         )
     }
-    var permissionActionPending by remember { mutableStateOf(false) }
+    var permissionActionPending by remember(user.id) { mutableStateOf(false) }
 
     fun activateNotifications() {
         notificationLoading = true
@@ -448,7 +452,7 @@ private fun UserLoadedContent(
 @Composable
 private fun UserOutlinedAction(
     label: String,
-    icon: Int,
+    @DrawableRes icon: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -478,7 +482,7 @@ private fun UserOutlinedAction(
 @Composable
 private fun UserTextAction(
     label: String,
-    icon: Int,
+    @DrawableRes icon: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -500,13 +504,13 @@ private fun UserTextAction(
     }
 }
 
-private fun parseComposeUser(months: Array<String>, response: String): ComposeUserInfo {
+private fun parseComposeUser(months: List<String>, response: String): ComposeUserInfo {
     val json = JSONObject(response)
     val created = json.getLong("created")
     val calendar = Calendar.getInstance().apply {
         time = Date(created * 1_000L)
     }
-    val month = months[calendar.get(Calendar.MONTH)]
+    val month = months[calendar[Calendar.MONTH]]
     val karma = Utils.getThousandSeparatedString(json.getInt("karma"))
     val about = if (json.has("about")) {
         @Suppress("DEPRECATION")
@@ -516,9 +520,9 @@ private fun parseComposeUser(months: Array<String>, response: String): ComposeUs
     }
     return ComposeUserInfo(
         id = json.getString("id"),
-        meta = "$karma karma since $month ${calendar.get(Calendar.DAY_OF_MONTH)}, " +
-            calendar.get(Calendar.YEAR),
+        meta = "$karma karma since $month ${calendar[Calendar.DAY_OF_MONTH]}, " +
+            calendar[Calendar.YEAR],
         about = about,
-        hasSubmissions = json.optJSONArray("submitted")?.length()?.let { it > 0 } == true,
+        hasSubmissions = (json.optJSONArray("submitted")?.length() ?: 0) > 0,
     )
 }

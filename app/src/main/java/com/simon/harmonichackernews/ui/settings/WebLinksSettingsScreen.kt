@@ -1,9 +1,9 @@
 package com.simon.harmonichackernews.ui.settings
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -20,9 +20,6 @@ fun WebLinksSettingsScreen(
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
-
-    @Suppress("UNUSED_VARIABLE")
-    val observedRefresh = refresh
 
     val integratedWebView = prefs.getBoolean("pref_webview", true)
     val readerModeEnabled = prefs.getBoolean(
@@ -195,41 +192,46 @@ fun WebLinksSettingsScreen(
                 LinkPreviewSwitch(
                     title = "ArXiV",
                     icon = R.drawable.ic_link_preview_arxiv,
-                    key = "pref_link_preview_arxiv",
-                    default = true,
-                    preferenceVersion = refresh,
+                    checked = prefs.getBoolean("pref_link_preview_arxiv", true),
+                    onCheckedChange = {
+                        prefs.edit().putBoolean("pref_link_preview_arxiv", it).apply()
+                    },
                 )
                 SettingsDivider()
                 LinkPreviewSwitch(
                     title = "GitHub",
                     icon = R.drawable.ic_link_preview_github,
-                    key = "pref_link_preview_github",
-                    default = true,
-                    preferenceVersion = refresh,
+                    checked = prefs.getBoolean("pref_link_preview_github", true),
+                    onCheckedChange = {
+                        prefs.edit().putBoolean("pref_link_preview_github", it).apply()
+                    },
                 )
                 SettingsDivider()
                 LinkPreviewSwitch(
                     title = "GitLab",
                     icon = R.drawable.ic_link_preview_gitlab,
-                    key = "pref_link_preview_gitlab",
-                    default = true,
-                    preferenceVersion = refresh,
+                    checked = prefs.getBoolean("pref_link_preview_gitlab", true),
+                    onCheckedChange = {
+                        prefs.edit().putBoolean("pref_link_preview_gitlab", it).apply()
+                    },
                 )
                 SettingsDivider()
                 LinkPreviewSwitch(
                     title = "Stack Exchange",
                     icon = R.drawable.ic_link_preview_stack_exchange,
-                    key = "pref_link_preview_stack_exchange",
-                    default = true,
-                    preferenceVersion = refresh,
+                    checked = prefs.getBoolean("pref_link_preview_stack_exchange", true),
+                    onCheckedChange = {
+                        prefs.edit().putBoolean("pref_link_preview_stack_exchange", it).apply()
+                    },
                 )
                 SettingsDivider()
                 LinkPreviewSwitch(
                     title = "Wikipedia",
                     icon = R.drawable.ic_link_preview_wikipedia,
-                    key = "pref_link_preview_wikipedia",
-                    default = true,
-                    preferenceVersion = refresh,
+                    checked = prefs.getBoolean("pref_link_preview_wikipedia", true),
+                    onCheckedChange = {
+                        prefs.edit().putBoolean("pref_link_preview_wikipedia", it).apply()
+                    },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
@@ -266,25 +268,18 @@ fun WebLinksSettingsScreen(
 private fun LinkPreviewSwitch(
     title: String,
     icon: Int,
-    key: String,
-    default: Boolean,
-    preferenceVersion: Int,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
 ) {
-    val context = LocalContext.current
-    val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-    @Suppress("UNUSED_EXPRESSION")
-    preferenceVersion
     SwitchSettingRow(
         title = title,
         icon = icon,
-        checked = prefs.getBoolean(key, default),
-        onCheckedChange = {
-            prefs.edit().putBoolean(key, it).apply()
-        },
+        checked = checked,
+        onCheckedChange = onCheckedChange,
     )
 }
 
-private fun preloadSummary(context: android.content.Context): String {
+private fun preloadSummary(context: Context): String {
     val mode = SettingsUtils.shouldPreloadWebView(context)
     val battery = SettingsUtils.getPreloadWebViewMinimumBattery(context)
     if (mode == SettingsUtils.PRELOAD_WEBVIEW_NEVER) {

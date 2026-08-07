@@ -11,70 +11,48 @@ import kotlin.concurrent.Volatile
 import okhttp3.Interceptor
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
-import okhttp3.Request
 
 object NetworkComponent {
     val USER_AGENT: String =
         "Harmonic-HN-Android/" + BuildConfig.VERSION_NAME + "/" + BuildConfig.BUILD_TYPE
 
-    @Volatile
-    var okHttpClientInstance: OkHttpClient? = null
-        get() {
-            if (field == null) {
-                synchronized(NetworkComponent::class.java) {
-                    if (field == null) {
-                        // set up an in-memory cookie store
-                        val userAgentInterceptor =
-                            Interceptor { chain: Interceptor.Chain? ->
-                                val original = chain!!.request()
-                                val withAgent = original.newBuilder()
-                                    .header("User-Agent", USER_AGENT)
-                                    .build()
-                                chain.proceed(withAgent)
-                            }
+    private val userAgentInterceptor = Interceptor { chain ->
+        val request = chain.request().newBuilder()
+            .header("User-Agent", USER_AGENT)
+            .build()
+        chain.proceed(request)
+    }
 
-                        field = OkHttpClient.Builder()
-                            .addInterceptor(userAgentInterceptor)
-                            .build()
-                    }
-                }
-            }
-            return field
-        }
-        private set
+    val okHttpClientInstance: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor(userAgentInterceptor)
+            .build()
+    }
 
     @Volatile
     private var okHttpClientCookieInstance: OkHttpClient? = null
 
     private var requestQueueInstance: RequestQueue? = null
 
-    val okHttpClientInstanceWithCookies: OkHttpClient?
+    val okHttpClientInstanceWithCookies: OkHttpClient
         get() {
-            if (okHttpClientCookieInstance == null) {
-                synchronized(NetworkComponent::class.java) {
-                    if (okHttpClientCookieInstance == null) {
-                        // set up an in-memory cookie store
-                        val cookieManager = CookieManager()
-                        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL)
-
-                        val userAgentInterceptor =
-                            Interceptor { chain: Interceptor.Chain? ->
-                                val original = chain!!.request()
-                                val withAgent = original.newBuilder()
-                                    .header("User-Agent", USER_AGENT)
-                                    .build()
-                                chain.proceed(withAgent)
-                            }
-
-                        okHttpClientCookieInstance = OkHttpClient.Builder()
-                            .cookieJar(JavaNetCookieJar(cookieManager))
-                            .addInterceptor(userAgentInterceptor)
-                            .build()
-                    }
+            okHttpClientCookieInstance?.let { return it }
+            return synchronized(NetworkComponent::class.java) {
+                okHttpClientCookieInstance ?: createCookieClient().also {
+                    okHttpClientCookieInstance = it
                 }
             }
-            return okHttpClientCookieInstance
         }
+
+    private fun createCookieClient(): OkHttpClient {
+        val cookieManager = CookieManager().apply {
+            setCookiePolicy(CookiePolicy.ACCEPT_ALL)
+        }
+        return OkHttpClient.Builder()
+            .cookieJar(JavaNetCookieJar(cookieManager))
+            .addInterceptor(userAgentInterceptor)
+            .build()
+    }
 
     fun resetOkHttpClientCookieInstance() {
         synchronized(NetworkComponent::class.java) {
@@ -87,13 +65,10 @@ object NetworkComponent {
             !(BuildConfig.DEBUG && !Looper.getMainLooper().isCurrentThread())
         ) { "getRequestQueueInstance currently doesn't support multithreaded access" }
 
-        if (requestQueueInstance == null) {
-            requestQueueInstance = Volley.newRequestQueue(
-                context.getApplicationContext(),
-                VolleyOkHttp3StackInterceptors()
-            )
-        }
-        return requestQueueInstance!!
+        return requestQueueInstance ?: Volley.newRequestQueue(
+            context.applicationContext,
+            VolleyOkHttp3StackInterceptors()
+        ).also { requestQueueInstance = it }
     }
 
     fun removeCachedStoryResponses(context: Context?, storyId: Int) {
@@ -102,8 +77,8 @@ object NetworkComponent {
         }
 
         val requestQueue = getRequestQueueInstance(context)
-        requestQueue.getCache().remove("https://hn.algolia.com/api/v1/items/" + storyId)
-        requestQueue.getCache().remove(
+        requestQueue.cache.remove("https://hn.algolia.com/api/v1/items/$storyId")
+        requestQueue.cache.remove(
             "https://hacker-news.firebaseio.com/v0/item/" + storyId + ".json"
         )
     }

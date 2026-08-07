@@ -25,18 +25,17 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.io.BufferedReader
-import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.math.max
 import org.json.JSONArray
 import org.json.JSONObject
 
 object RepliesChecker {
-    const val CHANNEL_ID: kotlin.String = "reply_notifications"
+    const val CHANNEL_ID: String = "reply_notifications"
 
     private const val KEY_USERNAME = "reply_notifications_username"
     private const val KEY_LAST_SEEN_ITEM_ID = "reply_notifications_last_seen_item_id"
@@ -49,30 +48,29 @@ object RepliesChecker {
     private val CHECK_FLEX_MILLIS = 5L * 60L * 1000L
     private const val HN_API_BASE = "https://hacker-news.firebaseio.com/v0/"
 
-    private val EXECUTOR: java.util.concurrent.ExecutorService =
-        java.util.concurrent.Executors.newSingleThreadExecutor()
-    private val MAIN_HANDLER: android.os.Handler = android.os.Handler(Looper.getMainLooper())
+    private val EXECUTOR: ExecutorService = Executors.newSingleThreadExecutor()
+    private val MAIN_HANDLER = Handler(Looper.getMainLooper())
 
     fun enable(
-        ctx: android.content.Context,
-        username: kotlin.String?,
-        callback: RepliesChecker.Callback?
+        ctx: Context,
+        username: String?,
+        callback: Callback?
     ) {
-        val appContext = ctx.getApplicationContext()
-        val normalizedUsername = RepliesChecker.normalizeUsername(username)
+        val appContext = ctx.applicationContext
+        val normalizedUsername = normalizeUsername(username)
         if (TextUtils.isEmpty(normalizedUsername)) {
-            RepliesChecker.postCallback(callback, false)
+            postCallback(callback, false)
             return
         }
 
-        RepliesChecker.EXECUTOR.execute(java.lang.Runnable {
-            val success = RepliesChecker.enableBlocking(appContext, normalizedUsername)
-            RepliesChecker.postCallback(callback, success)
-        })
+        EXECUTOR.execute {
+            val success = enableBlocking(appContext, normalizedUsername)
+            postCallback(callback, success)
+        }
     }
 
-    fun disable(ctx: android.content.Context) {
-        val appContext = ctx.getApplicationContext()
+    fun disable(ctx: Context) {
+        val appContext = ctx.applicationContext
         SettingsUtils.saveStringToSharedPreferences(appContext, RepliesChecker.KEY_USERNAME, null)
         SettingsUtils.saveStringToSharedPreferences(
             appContext,
@@ -81,48 +79,48 @@ object RepliesChecker {
         )
 
         val scheduler: JobScheduler? =
-            appContext.getSystemService(android.content.Context.JOB_SCHEDULER_SERVICE) as JobScheduler?
+            appContext.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler?
         if (scheduler != null) {
             scheduler.cancel(RepliesChecker.JOB_ID)
         }
     }
 
-    fun checkNow(ctx: android.content.Context, callback: RepliesChecker.Callback?) {
-        val appContext = ctx.getApplicationContext()
-        RepliesChecker.EXECUTOR.execute(java.lang.Runnable {
-            val success = RepliesChecker.checkNowBlocking(appContext)
-            RepliesChecker.postCallback(callback, success)
-        })
+    fun checkNow(ctx: Context, callback: Callback?) {
+        val appContext = ctx.applicationContext
+        EXECUTOR.execute {
+            val success = checkNowBlocking(appContext)
+            postCallback(callback, success)
+        }
     }
 
     fun sendLatestDebugNotification(
-        ctx: android.content.Context,
-        username: kotlin.String?,
+        ctx: Context,
+        username: String?,
         callback: DebugNotificationCallback?
     ) {
-        val appContext = ctx.getApplicationContext()
+        val appContext = ctx.applicationContext
         val normalizedUsername = RepliesChecker.normalizeUsername(username)
         if (TextUtils.isEmpty(normalizedUsername)) {
             RepliesChecker.postDebugCallback(callback, DebugNotificationResult.USER_NOT_FOUND)
             return
         }
 
-        RepliesChecker.EXECUTOR.execute(java.lang.Runnable {
+        EXECUTOR.execute {
             val result =
                 RepliesChecker.sendLatestDebugNotificationBlocking(appContext, normalizedUsername)
             RepliesChecker.postDebugCallback(callback, result)
-        })
+        }
     }
 
-    fun notificationsAreActive(ctx: android.content.Context): kotlin.Boolean {
+    fun notificationsAreActive(ctx: Context): Boolean {
         return !TextUtils.isEmpty(RepliesChecker.getConfiguredUsername(ctx))
     }
 
-    fun getConfiguredUsername(ctx: android.content.Context): kotlin.String {
+    fun getConfiguredUsername(ctx: Context): String {
         return SettingsUtils.readStringFromSharedPreferences(ctx, RepliesChecker.KEY_USERNAME, "").orEmpty()
     }
 
-    fun createNotificationChannel(ctx: android.content.Context) {
+    fun createNotificationChannel(ctx: Context) {
         val channel: NotificationChannel = NotificationChannel(
             RepliesChecker.CHANNEL_ID,
             "Replies",
@@ -138,12 +136,12 @@ object RepliesChecker {
     }
 
     private fun enableBlocking(
-        ctx: android.content.Context,
-        username: kotlin.String
-    ): kotlin.Boolean {
+        ctx: Context,
+        username: String
+    ): Boolean {
         try {
             val user: JSONObject? = RepliesChecker.getJsonObject(
-                RepliesChecker.HN_API_BASE + "user/" + android.net.Uri.encode(username) + ".json"
+                RepliesChecker.HN_API_BASE + "user/" + Uri.encode(username) + ".json"
             )
             if (user == null || !username.equals(user.optString("id", ""), ignoreCase = true)) {
                 return false
@@ -167,13 +165,13 @@ object RepliesChecker {
             )
             RepliesChecker.scheduleJob(ctx)
             return true
-        } catch (e: java.lang.Exception) {
+        } catch (e: Exception) {
             e.printStackTrace()
             return false
         }
     }
 
-    private fun checkNowBlocking(ctx: android.content.Context): kotlin.Boolean {
+    private fun checkNowBlocking(ctx: Context): Boolean {
         val username = RepliesChecker.getConfiguredUsername(ctx)
         if (TextUtils.isEmpty(username)) {
             return true
@@ -197,7 +195,7 @@ object RepliesChecker {
             }
 
             val user: JSONObject? = RepliesChecker.getJsonObject(
-                RepliesChecker.HN_API_BASE + "user/" + android.net.Uri.encode(username) + ".json"
+                RepliesChecker.HN_API_BASE + "user/" + Uri.encode(username) + ".json"
             )
             if (user == null) {
                 return false
@@ -213,7 +211,7 @@ object RepliesChecker {
                 return true
             }
 
-            val replies: kotlin.collections.MutableList<Reply> = java.util.ArrayList<Reply>()
+            val replies = mutableListOf<Reply>()
             var highestProcessedReplyId = previousLastSeenItemId
             var checkedSubmissions = 0
 
@@ -234,7 +232,7 @@ object RepliesChecker {
                 }
 
                 val parentTime: Int = parent.optInt("time", 0)
-                if (parentTime > 0 && com.simon.harmonichackernews.utils.Utils.timeInSecondsMoreThanTwoWeeksAgo(
+                if (parentTime > 0 && Utils.timeInSecondsMoreThanTwoWeeksAgo(
                         parentTime
                     )
                 ) {
@@ -253,10 +251,10 @@ object RepliesChecker {
                         continue
                     }
 
-                    highestProcessedReplyId = kotlin.math.max(highestProcessedReplyId, kidId)
+                    highestProcessedReplyId = max(highestProcessedReplyId, kidId)
                     val replyObject: JSONObject? =
                         RepliesChecker.getJsonObject(RepliesChecker.HN_API_BASE + "item/" + kidId + ".json")
-                    val reply = RepliesChecker.parseReply(replyObject, username!!, parentId)
+                    val reply = RepliesChecker.parseReply(replyObject, username, parentId)
                     if (reply != null) {
                         replies.add(reply)
                     }
@@ -266,28 +264,28 @@ object RepliesChecker {
 
             RepliesChecker.showNotifications(ctx, replies)
 
-            val newWatermark = kotlin.math.max(currentMaxItemId, highestProcessedReplyId)
+            val newWatermark = max(currentMaxItemId, highestProcessedReplyId)
             SettingsUtils.saveStringToSharedPreferences(
                 ctx,
                 RepliesChecker.KEY_LAST_SEEN_ITEM_ID,
                 newWatermark.toString()
             )
             return true
-        } catch (e: java.lang.Exception) {
+        } catch (e: Exception) {
             e.printStackTrace()
             return false
         }
     }
 
     private fun sendLatestDebugNotificationBlocking(
-        ctx: android.content.Context,
-        username: kotlin.String
+        ctx: Context,
+        username: String
     ): DebugNotificationResult {
         try {
             val reply = RepliesChecker.findLatestReplyForUser(username)
             if (reply == null) {
                 val user: JSONObject? = RepliesChecker.getJsonObject(
-                    RepliesChecker.HN_API_BASE + "user/" + android.net.Uri.encode(username) + ".json"
+                    RepliesChecker.HN_API_BASE + "user/" + Uri.encode(username) + ".json"
                 )
                 return if (user == null) DebugNotificationResult.USER_NOT_FOUND else DebugNotificationResult.NO_RECENT_REPLY
             }
@@ -295,16 +293,16 @@ object RepliesChecker {
             RepliesChecker.createNotificationChannel(ctx)
             showNotification(ctx, reply)
             return DebugNotificationResult.SENT
-        } catch (e: java.lang.Exception) {
+        } catch (e: Exception) {
             e.printStackTrace()
             return DebugNotificationResult.FAILED
         }
     }
 
-    @kotlin.Throws(java.lang.Exception::class)
-    private fun findLatestReplyForUser(username: kotlin.String): Reply? {
+    @Throws(Exception::class)
+    private fun findLatestReplyForUser(username: String): Reply? {
         val user: JSONObject? = RepliesChecker.getJsonObject(
-            RepliesChecker.HN_API_BASE + "user/" + android.net.Uri.encode(username) + ".json"
+            RepliesChecker.HN_API_BASE + "user/" + Uri.encode(username) + ".json"
         )
         if (user == null) {
             return null
@@ -335,7 +333,7 @@ object RepliesChecker {
             }
 
             val parentTime: Int = parent.optInt("time", 0)
-            if (parentTime > 0 && com.simon.harmonichackernews.utils.Utils.timeInSecondsMoreThanTwoWeeksAgo(
+            if (parentTime > 0 && Utils.timeInSecondsMoreThanTwoWeeksAgo(
                     parentTime
                 )
             ) {
@@ -369,7 +367,7 @@ object RepliesChecker {
 
     private fun parseReply(
         replyObject: JSONObject?,
-        username: kotlin.String,
+        username: String,
         fallbackParentId: Int
     ): Reply? {
         if (replyObject == null || replyObject.optBoolean("deleted") || replyObject.optBoolean("dead")) {
@@ -380,13 +378,13 @@ object RepliesChecker {
             return null
         }
 
-        val by: kotlin.String = replyObject.optString("by", "")
+        val by: String = replyObject.optString("by", "")
         if (TextUtils.isEmpty(by) || username.equals(by, ignoreCase = true)) {
             return null
         }
 
         val time: Int = replyObject.optInt("time", 0)
-        if (time > 0 && com.simon.harmonichackernews.utils.Utils.timeInSecondsMoreThanTwoWeeksAgo(
+        if (time > 0 && Utils.timeInSecondsMoreThanTwoWeeksAgo(
                 time
             )
         ) {
@@ -407,8 +405,8 @@ object RepliesChecker {
     }
 
     private fun showNotifications(
-        ctx: android.content.Context,
-        replies: kotlin.collections.MutableList<Reply>?
+        ctx: Context,
+        replies: MutableList<Reply>?
     ) {
         if (replies == null || replies.isEmpty()) {
             return
@@ -471,15 +469,15 @@ object RepliesChecker {
                     .setAutoCancel(true)
 
             notificationManager.notify(RepliesChecker.GROUP_NOTIFICATION_ID, summaryBuilder.build())
-        } catch (e: java.lang.SecurityException) {
+        } catch (e: SecurityException) {
             e.printStackTrace()
         }
     }
 
     private fun showNotification(
-        ctx: android.content.Context,
+        ctx: Context,
         reply: Reply,
-        grouped: kotlin.Boolean = false
+        grouped: Boolean = false
     ) {
         if (!RepliesChecker.canPostNotifications(ctx)) {
             return
@@ -490,15 +488,15 @@ object RepliesChecker {
                 reply.id,
                 RepliesChecker.buildReplyNotification(ctx, reply, grouped).build()
             )
-        } catch (e: java.lang.SecurityException) {
+        } catch (e: SecurityException) {
             e.printStackTrace()
         }
     }
 
     private fun buildReplyNotification(
-        ctx: android.content.Context,
+        ctx: Context,
         reply: Reply,
-        grouped: kotlin.Boolean
+        grouped: Boolean
     ): NotificationCompat.Builder {
         val builder: NotificationCompat.Builder =
             NotificationCompat.Builder(ctx, RepliesChecker.CHANNEL_ID)
@@ -524,7 +522,7 @@ object RepliesChecker {
         return builder
     }
 
-    private fun canPostNotifications(ctx: android.content.Context): kotlin.Boolean {
+    private fun canPostNotifications(ctx: Context): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
             && ContextCompat.checkSelfPermission(
                 ctx,
@@ -537,11 +535,11 @@ object RepliesChecker {
     }
 
     private fun createReplyPendingIntent(
-        ctx: android.content.Context,
+        ctx: Context,
         reply: Reply,
         requestCode: Int
     ): PendingIntent? {
-        val uri = android.net.Uri.parse("https://news.ycombinator.com/item")
+        val uri = Uri.parse("https://news.ycombinator.com/item")
             .buildUpon()
             .appendQueryParameter(
                 "id",
@@ -566,9 +564,9 @@ object RepliesChecker {
         )
     }
 
-    private fun scheduleJob(ctx: android.content.Context) {
+    private fun scheduleJob(ctx: Context) {
         val scheduler: JobScheduler? =
-            ctx.getSystemService(android.content.Context.JOB_SCHEDULER_SERVICE) as JobScheduler?
+            ctx.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler?
         if (scheduler == null) {
             return
         }
@@ -585,27 +583,23 @@ object RepliesChecker {
         scheduler.schedule(builder.build())
     }
 
-    private fun getLastSeenItemId(ctx: android.content.Context): Int {
+    private fun getLastSeenItemId(ctx: Context): Int {
         try {
             return SettingsUtils.readStringFromSharedPreferences(
                 ctx,
                 RepliesChecker.KEY_LAST_SEEN_ITEM_ID,
                 "0"
             ).orEmpty().toInt()
-        } catch (e: java.lang.NumberFormatException) {
+        } catch (e: NumberFormatException) {
             return 0
         }
     }
 
-    private fun normalizeUsername(username: kotlin.String?): kotlin.String {
-        if (username == null) {
-            return ""
-        }
-        return username.trim { it <= ' ' }
-    }
+    private fun normalizeUsername(username: String?): String =
+        username.orEmpty().trim { it <= ' ' }
 
-    @kotlin.Throws(java.lang.Exception::class)
-    private fun getInt(url: kotlin.String?): Int {
+    @Throws(Exception::class)
+    private fun getInt(url: String?): Int {
         val response = RepliesChecker.getString(url)
         if (TextUtils.isEmpty(response)) {
             return 0
@@ -613,8 +607,8 @@ object RepliesChecker {
         return response.trim { it <= ' ' }.toInt()
     }
 
-    @kotlin.Throws(java.lang.Exception::class)
-    private fun getJsonObject(url: kotlin.String?): JSONObject? {
+    @Throws(Exception::class)
+    private fun getJsonObject(url: String?): JSONObject? {
         val response = RepliesChecker.getString(url)
         if (TextUtils.isEmpty(response) || "null" == response.trim { it <= ' ' }) {
             return null
@@ -622,19 +616,19 @@ object RepliesChecker {
         return JSONObject(response)
     }
 
-    @kotlin.Throws(java.lang.Exception::class)
-    private fun getString(urlString: kotlin.String?): kotlin.String {
-        val connection = java.net.URL(urlString).openConnection() as java.net.HttpURLConnection
-        connection.setConnectTimeout(15000)
-        connection.setReadTimeout(15000)
-        connection.setRequestMethod("GET")
+    @Throws(Exception::class)
+    private fun getString(urlString: String?): String {
+        val connection = URL(urlString).openConnection() as HttpURLConnection
+        connection.connectTimeout = 15000
+        connection.readTimeout = 15000
+        connection.requestMethod = "GET"
         connection.setRequestProperty("User-Agent", "Harmonic-HN")
 
-        val responseCode = connection.getResponseCode()
+        val responseCode = connection.responseCode
         val inputStream = if (responseCode >= 200 && responseCode < 300)
-            connection.getInputStream()
+            connection.inputStream
         else
-            connection.getErrorStream()
+            connection.errorStream
 
         if (inputStream == null) {
             connection.disconnect()
@@ -642,20 +636,20 @@ object RepliesChecker {
         }
 
         try {
-            java.io.BufferedReader(java.io.InputStreamReader(inputStream)).use { reader ->
-                val builder = java.lang.StringBuilder()
-                var line: kotlin.String?
-                while ((reader.readLine().also { line = it }) != null) {
-                    builder.append(line)
+            BufferedReader(InputStreamReader(inputStream)).use { reader ->
+                return buildString {
+                    while (true) {
+                        val line = reader.readLine() ?: break
+                        append(line)
+                    }
                 }
-                return builder.toString()
             }
         } finally {
             connection.disconnect()
         }
     }
 
-    private fun htmlToPlainText(html: kotlin.String?): kotlin.String {
+    private fun htmlToPlainText(html: String?): String {
         if (TextUtils.isEmpty(html)) {
             return "Tap to view the reply."
         }
@@ -666,18 +660,14 @@ object RepliesChecker {
         if (TextUtils.isEmpty(text)) {
             return "Tap to view the reply."
         }
-        return if (text.length > 240) kotlin.String.format(
-            java.util.Locale.US,
-            "%s...",
-            text.substring(0, 237)
-        ) else text
+        return if (text.length > 240) text.substring(0, 237) + "..." else text
     }
 
-    private fun postCallback(callback: RepliesChecker.Callback?, success: kotlin.Boolean) {
+    private fun postCallback(callback: Callback?, success: Boolean) {
         if (callback == null) {
             return
         }
-        RepliesChecker.MAIN_HANDLER.post(java.lang.Runnable { callback.onComplete(success) })
+        MAIN_HANDLER.post { callback.onComplete(success) }
     }
 
     private fun postDebugCallback(
@@ -687,11 +677,11 @@ object RepliesChecker {
         if (callback == null) {
             return
         }
-        RepliesChecker.MAIN_HANDLER.post(java.lang.Runnable { callback.onComplete(result) })
+        MAIN_HANDLER.post { callback.onComplete(result) }
     }
 
     fun interface Callback {
-        fun onComplete(success: kotlin.Boolean)
+        fun onComplete(success: Boolean)
     }
 
     fun interface DebugNotificationCallback {
@@ -708,7 +698,7 @@ object RepliesChecker {
     private class Reply(
         val id: Int,
         val parentId: Int,
-        val by: kotlin.String?,
-        val text: kotlin.String?
+        val by: String?,
+        val text: String?
     )
 }

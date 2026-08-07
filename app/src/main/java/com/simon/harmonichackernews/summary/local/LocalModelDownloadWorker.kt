@@ -5,19 +5,15 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
-import androidx.annotation.NonNull
 import androidx.core.app.NotificationCompat
 import androidx.work.Data
 import androidx.work.ForegroundInfo
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import com.simon.harmonichackernews.ui.settings.SettingsIntents
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.createAiSummary
 import java.io.BufferedInputStream
-import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -28,17 +24,20 @@ import kotlin.math.min
 /** Downloads a local model to app-owned storage, with resumable progress.  */
 class LocalModelDownloadWorker(
     context: Context,
-    workerParams: WorkerParameters
+    workerParams: WorkerParameters,
 ) : Worker(context, workerParams) {
     private var connection: HttpURLConnection? = null
 
     override fun doWork(): Result {
-        val modelId = getInputData().getString(KEY_MODEL_ID)
-        val modelName = getInputData().getString(KEY_MODEL_NAME)
-        val modelUrl = getInputData().getString(KEY_MODEL_URL)
-        val fileName = getInputData().getString(KEY_FILE_NAME)
-        val expectedBytes = getInputData().getLong(KEY_EXPECTED_BYTES, 0L)
-        if (modelId == null || modelName == null || modelUrl == null || fileName == null || expectedBytes <= 0L) {
+        val modelId = inputData.getString(KEY_MODEL_ID)
+        val modelName = inputData.getString(KEY_MODEL_NAME)
+        val modelUrl = inputData.getString(KEY_MODEL_URL)
+        val fileName = inputData.getString(KEY_FILE_NAME)
+        val expectedBytes = inputData.getLong(KEY_EXPECTED_BYTES, 0L)
+        if (
+            modelId == null || modelName == null || modelUrl == null || fileName == null ||
+            expectedBytes <= 0L
+        ) {
             return failure("Invalid model download request")
         }
 
@@ -52,12 +51,16 @@ class LocalModelDownloadWorker(
         }
 
         val outputFile = LocalModelManager.getModelFile(
-            getApplicationContext(), modelId, fileName
+            applicationContext,
+            modelId,
+            fileName,
         )
         val partialFile = LocalModelManager.getPartialModelFile(
-            getApplicationContext(), modelId, fileName
+            applicationContext,
+            modelId,
+            fileName,
         )
-        val parent = partialFile.getParentFile()
+        val parent = partialFile.parentFile
         if (parent == null || (!parent.exists() && !parent.mkdirs())) {
             return failure("Could not create model storage")
         }
@@ -83,26 +86,28 @@ class LocalModelDownloadWorker(
 
         var downloadedBytes = partialFile.length()
         try {
-            connection = URL(modelUrl).openConnection() as HttpURLConnection?
-            connection!!.setConnectTimeout(30000)
-            connection!!.setReadTimeout(60000)
-            connection!!.setInstanceFollowRedirects(true)
-            connection!!.setRequestProperty("Accept-Encoding", "identity")
-            if (downloadedBytes > 0L) {
-                connection!!.setRequestProperty("Range", "bytes=" + downloadedBytes + "-")
+            val activeConnection = (URL(modelUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 30_000
+                readTimeout = 60_000
+                instanceFollowRedirects = true
+                setRequestProperty("Accept-Encoding", "identity")
+                if (downloadedBytes > 0L) {
+                    setRequestProperty("Range", "bytes=$downloadedBytes-")
+                }
             }
-            connection!!.connect()
+            connection = activeConnection
+            activeConnection.connect()
 
-            val responseCode = connection!!.getResponseCode()
+            val responseCode = activeConnection.responseCode
             val resumed = responseCode == HttpURLConnection.HTTP_PARTIAL
             if (responseCode != HttpURLConnection.HTTP_OK && !resumed) {
-                return failure("Model server returned HTTP " + responseCode)
+                return failure("Model server returned HTTP $responseCode")
             }
             if (!resumed) {
                 downloadedBytes = 0L
             }
 
-            BufferedInputStream(connection!!.getInputStream()).use { input ->
+            BufferedInputStream(activeConnection.inputStream).use { input ->
                 FileOutputStream(partialFile, resumed).use { output ->
                     val buffer = ByteArray(BUFFER_SIZE)
                     var lastUpdateAt = 0L
@@ -120,13 +125,13 @@ class LocalModelDownloadWorker(
                             lastUpdateAt = now
                         }
                     }
-                    output.getFD().sync()
+                    output.fd.sync()
                 }
             }
             if (partialFile.length() != expectedBytes) {
                 return failure(
-                    ("Downloaded model size was " + partialFile.length()
-                            + " bytes; expected " + expectedBytes)
+                    "Downloaded model size was ${partialFile.length()} bytes; " +
+                        "expected $expectedBytes",
                 )
             }
             if (outputFile.exists() && !outputFile.delete()) {
@@ -138,41 +143,40 @@ class LocalModelDownloadWorker(
             publishProgress(modelName, expectedBytes, expectedBytes)
             return Result.success()
         } catch (e: IOException) {
-            return failure(getMessage(e))
+            return failure(errorMessage(e))
         } finally {
-            if (connection != null) {
-                connection!!.disconnect()
-                connection = null
-            }
+            connection?.disconnect()
+            connection = null
         }
     }
 
     override fun onStopped() {
-        if (connection != null) {
-            connection!!.disconnect()
-        }
+        connection?.disconnect()
         super.onStopped()
     }
 
-    private fun publishProgress(modelName: String?, receivedBytes: Long, expectedBytes: Long) {
+    private fun publishProgress(modelName: String, receivedBytes: Long, expectedBytes: Long) {
         setProgressAsync(
             Data.Builder()
                 .putLong(KEY_RECEIVED_BYTES, receivedBytes)
-                .build()
+                .build(),
         )
         val percent = min(100L, receivedBytes * 100L / expectedBytes).toInt()
         setForegroundAsync(createForegroundInfo(modelName, percent))
     }
 
-    private fun createForegroundInfo(modelName: String?, percent: Int): ForegroundInfo {
-        val context = getApplicationContext()
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
-        if (manager != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+    private fun createForegroundInfo(modelName: String, percent: Int): ForegroundInfo {
+        val context = applicationContext
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = context.getSystemService(NotificationManager::class.java)
             val channel = NotificationChannel(
-                CHANNEL_ID, "Local model downloads", NotificationManager.IMPORTANCE_LOW
-            )
-            channel.setDescription("Progress for local AI model downloads")
-            manager.createNotificationChannel(channel)
+                CHANNEL_ID,
+                "Local model downloads",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = "Progress for local AI model downloads"
+            }
+            manager?.createNotificationChannel(channel)
         }
 
         val settingsIntent = createAiSummary(context)
@@ -180,48 +184,44 @@ class LocalModelDownloadWorker(
             context,
             0,
             settingsIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val notification: NotificationCompat.Builder =
-            NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.stat_sys_download)
-                .setContentTitle("Downloading " + modelName)
-                .setContentText(percent.toString() + "% complete")
-                .setOnlyAlertOnce(true)
-                .setOngoing(true)
-                .setProgress(100, percent, false)
-        notification.setContentIntent(pendingIntent)
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.stat_sys_download)
+            .setContentTitle("Downloading $modelName")
+            .setContentText("$percent% complete")
+            .setOnlyAlertOnce(true)
+            .setOngoing(true)
+            .setProgress(100, percent, false)
+            .setContentIntent(pendingIntent)
 
-        val notificationId = getId().hashCode()
+        val notificationId = id.hashCode()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             return ForegroundInfo(
-                notificationId, notification.build(),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                notificationId,
+                notification.build(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
             )
         }
         return ForegroundInfo(notificationId, notification.build())
     }
 
-    private fun failure(error: String?): Result {
-        return Result.failure(Data.Builder().putString(KEY_ERROR, error).build())
-    }
+    private fun failure(error: String): Result =
+        Result.failure(Data.Builder().putString(KEY_ERROR, error).build())
 
     companion object {
-        const val KEY_MODEL_ID: String = "model_id"
-        const val KEY_MODEL_NAME: String = "model_name"
-        const val KEY_MODEL_URL: String = "model_url"
-        const val KEY_FILE_NAME: String = "file_name"
-        const val KEY_EXPECTED_BYTES: String = "expected_bytes"
-        const val KEY_RECEIVED_BYTES: String = "received_bytes"
-        const val KEY_ERROR: String = "error"
+        const val KEY_MODEL_ID = "model_id"
+        const val KEY_MODEL_NAME = "model_name"
+        const val KEY_MODEL_URL = "model_url"
+        const val KEY_FILE_NAME = "file_name"
+        const val KEY_EXPECTED_BYTES = "expected_bytes"
+        const val KEY_RECEIVED_BYTES = "received_bytes"
+        const val KEY_ERROR = "error"
 
         private const val CHANNEL_ID = "local_model_download"
-        private val BUFFER_SIZE = 256 * 1024
-        private fun getMessage(throwable: Throwable?): String? {
-            if (throwable == null || throwable.message == null || throwable.message!!.isEmpty()) {
-                return "Unknown download error"
-            }
-            return throwable.message
-        }
+        private const val BUFFER_SIZE = 256 * 1024
+
+        private fun errorMessage(throwable: Throwable): String =
+            throwable.message?.takeIf(String::isNotEmpty) ?: "Unknown download error"
     }
 }

@@ -4,9 +4,8 @@ import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
 import android.os.Process
-import androidx.annotation.Nullable
+import androidx.annotation.DrawableRes
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Observer
 import androidx.preference.PreferenceManager
 import androidx.work.Constraints
 import androidx.work.Data
@@ -14,12 +13,9 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkInfo
-import androidx.work.WorkManager
 import androidx.work.WorkManager.Companion.getInstance
 import com.simon.harmonichackernews.R
 import java.io.File
-import java.util.Arrays
-import java.util.Collections
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
@@ -28,23 +24,23 @@ import kotlin.math.min
 
 /** Catalog and lifecycle for Gemini Nano and downloadable local LLMs.  */
 object LocalModelManager {
-    const val PREF_SELECTED_MODEL: String = "pref_ai_local_model"
-    const val MODEL_GEMINI_NANO: String = "gemini-nano"
-    const val MODEL_E2B: String = "gemma-4-e2b"
-    const val MODEL_E4B: String = "gemma-4-e4b"
-    const val MODEL_BONSAI_17B: String = "bonsai-1.7b"
-    const val MODEL_BONSAI_4B: String = "bonsai-4b"
-    const val MODEL_BONSAI_8B: String = "bonsai-8b"
-    const val MODEL_QWEN_08B: String = "qwen-3.5-0.8b"
-    const val MODEL_NEMOTRON_4B: String = "nemotron-3-nano-4b"
-    const val MODEL_MINISTRAL_3B: String = "ministral-3-3b"
-    const val MODEL_LFM_12B: String = "lfm-2.5-1.2b"
+    const val PREF_SELECTED_MODEL = "pref_ai_local_model"
+    const val MODEL_GEMINI_NANO = "gemini-nano"
+    const val MODEL_E2B = "gemma-4-e2b"
+    const val MODEL_E4B = "gemma-4-e4b"
+    const val MODEL_BONSAI_17B = "bonsai-1.7b"
+    const val MODEL_BONSAI_4B = "bonsai-4b"
+    const val MODEL_BONSAI_8B = "bonsai-8b"
+    const val MODEL_QWEN_08B = "qwen-3.5-0.8b"
+    const val MODEL_NEMOTRON_4B = "nemotron-3-nano-4b"
+    const val MODEL_MINISTRAL_3B = "ministral-3-3b"
+    const val MODEL_LFM_12B = "lfm-2.5-1.2b"
 
     private const val WORK_NAME_PREFIX = "local_ai_model_download_"
     private const val MODELS_DIR = "local_ai_models"
     private const val LEGACY_E2B_FILE_NAME = "gemma-4-E2B-it.litertlm"
     private const val LEGACY_QWEN_EXACT_FILE_NAME = "Qwen3.5-0.8B-hybrid-exact-c2048.litertlm"
-    private val STORAGE_BUFFER_BYTES = 256L * 1024L * 1024L
+    private const val STORAGE_BUFFER_BYTES = 256L * 1024L * 1024L
 
     private val GEMINI_NANO = ModelInfo(
         MODEL_GEMINI_NANO, "Gemini Nano (experimental)", "System managed", "",
@@ -184,18 +180,21 @@ object LocalModelManager {
         Runtime.LLAMA_CPP,
         4096
     )
-    val models: MutableList<ModelInfo> = Collections.unmodifiableList<ModelInfo?>(
-        Arrays.asList<ModelInfo?>(
-            GEMINI_NANO, E2B, E4B,
-            BONSAI_17B, BONSAI_4B, BONSAI_8B, QWEN_08B,
-            NEMOTRON_4B, MINISTRAL_3B, LFM_12B
-        )
+    val models: List<ModelInfo> = listOf(
+        GEMINI_NANO,
+        E2B,
+        E4B,
+        BONSAI_17B,
+        BONSAI_4B,
+        BONSAI_8B,
+        QWEN_08B,
+        NEMOTRON_4B,
+        MINISTRAL_3B,
+        LFM_12B,
     )
 
-    private val LISTENERS: MutableSet<StatusListener> = CopyOnWriteArraySet<StatusListener>()
-    private val CURRENT_WORK: MutableMap<String?, WorkInfo?> =
-        ConcurrentHashMap<String?, WorkInfo?>()
-    private var initialized = false
+    private val listeners = CopyOnWriteArraySet<StatusListener>()
+    private val currentWork = ConcurrentHashMap<String, WorkInfo>()
     private var appContext: Context? = null
 
     val isSupported: Boolean
@@ -205,8 +204,7 @@ object LocalModelManager {
         if (!model.downloadable) {
             return true
         }
-        return isSupported
-                && (model.runtime != Runtime.LITERT_LM || Process.is64Bit())
+        return isSupported && (model.runtime != Runtime.LITERT_LM || Process.is64Bit())
     }
 
     fun getModelUnsupportedReason(model: ModelInfo): String {
@@ -220,19 +218,13 @@ object LocalModelManager {
     }
 
     fun getSelectedModel(context: Context): ModelInfo {
-        val id: String = PreferenceManager.getDefaultSharedPreferences(context)
-            .getString(PREF_SELECTED_MODEL, MODEL_GEMINI_NANO)!!
+        val id = PreferenceManager.getDefaultSharedPreferences(context)
+            .getString(PREF_SELECTED_MODEL, MODEL_GEMINI_NANO)
+            ?: MODEL_GEMINI_NANO
         return getModel(id)
     }
 
-    fun getModel(id: String?): ModelInfo {
-        for (model in models) {
-            if (model.id == id) {
-                return model
-            }
-        }
-        return GEMINI_NANO
-    }
+    fun getModel(id: String?): ModelInfo = models.firstOrNull { it.id == id } ?: GEMINI_NANO
 
     fun selectModel(context: Context, modelId: String?) {
         val model = getModel(modelId)
@@ -256,21 +248,20 @@ object LocalModelManager {
         notifyListeners()
     }
 
-    fun isSelectedModelDownloaded(context: Context): Boolean {
-        return isModelDownloaded(context, getSelectedModel(context))
-    }
+    fun isSelectedModelDownloaded(context: Context): Boolean =
+        isModelDownloaded(context, getSelectedModel(context))
 
     fun isModelDownloaded(context: Context, model: ModelInfo): Boolean {
         if (!model.downloadable) {
             return false
         }
         val file = getModelFile(context, model.id, model.fileName)
-        return file.isFile() && file.length() == model.sizeBytes
+        return file.isFile && file.length() == model.sizeBytes
     }
 
     fun getSelectedModelPath(context: Context): String {
         val model = getSelectedModel(context)
-        return getModelFile(context, model.id, model.fileName).getAbsolutePath()
+        return getModelFile(context, model.id, model.fileName).absolutePath
     }
 
     fun getSelectedStatus(context: Context): Status {
@@ -281,48 +272,51 @@ object LocalModelManager {
     fun getStatus(context: Context, model: ModelInfo): Status {
         initialize(context)
         if (!model.downloadable) {
-            return LocalModelManager.Status(model, State.NOT_DOWNLOADED, 0L, "")
+            return Status(model, State.NOT_DOWNLOADED, 0L, "")
         }
 
         val finalFile = getModelFile(context, model.id, model.fileName)
-        if (finalFile.isFile() && finalFile.length() == model.sizeBytes) {
-            return LocalModelManager.Status(model, State.DOWNLOADED, model.sizeBytes, "")
+        if (finalFile.isFile && finalFile.length() == model.sizeBytes) {
+            return Status(model, State.DOWNLOADED, model.sizeBytes, "")
         }
 
-        val info = CURRENT_WORK.get(model.id)
+        val info = currentWork[model.id]
         if (info != null) {
             val received = info.progress
                 .getLong(LocalModelDownloadWorker.KEY_RECEIVED_BYTES, 0L)
             if (info.state == WorkInfo.State.RUNNING) {
-                return LocalModelManager.Status(model, State.DOWNLOADING, received, "")
+                return Status(model, State.DOWNLOADING, received, "")
             }
             if (info.state == WorkInfo.State.ENQUEUED
                 || info.state == WorkInfo.State.BLOCKED
             ) {
-                return LocalModelManager.Status(model, State.WAITING, received, "")
+                return Status(model, State.WAITING, received, "")
             }
             if (info.state == WorkInfo.State.FAILED) {
                 val error = info.outputData.getString(LocalModelDownloadWorker.KEY_ERROR)
-                return LocalModelManager.Status(
-                    model, State.FAILED, received,
-                    if (error == null) "Model download failed" else error
+                return Status(
+                    model,
+                    State.FAILED,
+                    received,
+                    error ?: "Model download failed",
                 )
             }
         }
 
         val partialFile = getPartialModelFile(context, model.id, model.fileName)
-        if (partialFile.isFile() && partialFile.length() > 0L) {
-            return LocalModelManager.Status(
-                model, State.PARTIALLY_DOWNLOADED,
-                partialFile.length(), ""
+        if (partialFile.isFile && partialFile.length() > 0L) {
+            return Status(
+                model,
+                State.PARTIALLY_DOWNLOADED,
+                partialFile.length(),
+                "",
             )
         }
-        return LocalModelManager.Status(model, State.NOT_DOWNLOADED, 0L, "")
+        return Status(model, State.NOT_DOWNLOADED, 0L, "")
     }
 
-    fun downloadSelectedModel(context: Context): String? {
-        return downloadModel(context, getSelectedModel(context).id)
-    }
+    fun downloadSelectedModel(context: Context): String? =
+        downloadModel(context, getSelectedModel(context).id)
 
     fun downloadModel(context: Context, modelId: String?): String? {
         initialize(context)
@@ -335,7 +329,7 @@ object LocalModelManager {
         }
         val finalFile = getModelFile(context, model.id, model.fileName)
         val partialFile = getPartialModelFile(context, model.id, model.fileName)
-        if (finalFile.isFile() && finalFile.length() == model.sizeBytes) {
+        if (finalFile.isFile && finalFile.length() == model.sizeBytes) {
             return null
         }
         if (isDownloadForModelActive(model.id)) {
@@ -352,9 +346,9 @@ object LocalModelManager {
         if (!root.exists() && !root.mkdirs()) {
             return "Could not create local model storage."
         }
-        if (root.getUsableSpace() < remainingBytes + STORAGE_BUFFER_BYTES) {
-            return ("Not enough free space. " + model.displayName + " needs "
-                    + formatBytes(remainingBytes + STORAGE_BUFFER_BYTES) + " available.")
+        if (root.usableSpace < remainingBytes + STORAGE_BUFFER_BYTES) {
+            val requiredSpace = formatBytes(remainingBytes + STORAGE_BUFFER_BYTES)
+            return "Not enough free space. ${model.displayName} needs $requiredSpace available."
         }
 
         val inputData = Data.Builder()
@@ -373,7 +367,9 @@ object LocalModelManager {
             .addTag(model.id)
             .build()
         getInstance(context).enqueueUniqueWork(
-            getWorkName(model.id), ExistingWorkPolicy.REPLACE, request
+            getWorkName(model.id),
+            ExistingWorkPolicy.REPLACE,
+            request,
         )
         return null
     }
@@ -382,9 +378,9 @@ object LocalModelManager {
         initialize(context)
         val model = getModel(modelId)
         getInstance(context).cancelUniqueWork(getWorkName(model.id))
-            .getResult().addListener(Runnable {
+            .result.addListener({
                 deleteKnownModelFiles(context, model, false)
-                CURRENT_WORK.remove(model.id)
+                currentWork.remove(model.id)
                 notifyListeners()
             }, ContextCompat.getMainExecutor(context))
     }
@@ -413,115 +409,85 @@ object LocalModelManager {
 
     fun addStatusListener(context: Context, listener: StatusListener) {
         initialize(context)
-        LISTENERS.add(listener)
+        listeners.add(listener)
         listener.onStatusChanged(getSelectedStatus(context))
     }
 
-    fun removeStatusListener(listener: StatusListener?) {
-        LISTENERS.remove(listener)
+    fun removeStatusListener(listener: StatusListener) {
+        listeners.remove(listener)
     }
 
     val isDownloadActive: Boolean
-        get() {
-            for (info in CURRENT_WORK.values) {
-                if (isActive(info)) {
-                    return true
-                }
-            }
-            return false
-        }
+        get() = currentWork.values.any(::isActive)
 
     fun getTotalMemoryBytes(context: Context): Long {
-        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager?
-        if (manager == null) {
-            return 0L
-        }
+        val manager = context.getSystemService(ActivityManager::class.java) ?: return 0L
         val memoryInfo = ActivityManager.MemoryInfo()
         manager.getMemoryInfo(memoryInfo)
         return memoryInfo.totalMem
     }
 
-    fun formatBytes(bytes: Long): String {
-        if (bytes >= 1000000000L) {
-            return String.format(Locale.US, "%.2f GB", bytes / 1000000000.0)
-        }
-        if (bytes >= 1000000L) {
-            return String.format(Locale.US, "%.1f MB", bytes / 1000000.0)
-        }
-        return String.format(Locale.US, "%.1f kB", bytes / 1000.0)
+    fun formatBytes(bytes: Long): String = when {
+        bytes >= 1_000_000_000L -> String.format(Locale.US, "%.2f GB", bytes / 1_000_000_000.0)
+        bytes >= 1_000_000L -> String.format(Locale.US, "%.1f MB", bytes / 1_000_000.0)
+        else -> String.format(Locale.US, "%.1f kB", bytes / 1_000.0)
     }
 
-    fun getModelFile(context: Context, modelId: String, fileName: String): File {
-        return File(File(getModelsRoot(context), modelId), fileName)
-    }
+    fun getModelFile(context: Context, modelId: String, fileName: String): File =
+        File(File(getModelsRoot(context), modelId), fileName)
 
-    fun getPartialModelFile(context: Context, modelId: String, fileName: String?): File {
-        return File(File(getModelsRoot(context), modelId), fileName + ".download")
-    }
+    fun getPartialModelFile(context: Context, modelId: String, fileName: String): File =
+        File(File(getModelsRoot(context), modelId), "$fileName.download")
 
     private fun getModelsRoot(context: Context): File {
-        val external = context.getExternalFilesDir(null)
-        val base = if (external == null) context.getFilesDir() else external
+        val base = context.getExternalFilesDir(null) ?: context.filesDir
         return File(base, MODELS_DIR)
     }
 
     @Synchronized
     private fun initialize(context: Context) {
-        if (initialized) {
-            return
-        }
-        initialized = true
-        appContext = context.getApplicationContext()
-        val workManager = WorkManager.Companion.getInstance(appContext!!)
+        if (appContext != null) return
+
+        val initializedContext = context.applicationContext
+        appContext = initializedContext
+        val workManager = getInstance(initializedContext)
         for (model in models) {
             if (model.downloadable) {
                 workManager.getWorkInfosForUniqueWorkLiveData(getWorkName(model.id))
-                    .observeForever(Observer { infos: List<WorkInfo> ->
-                        onWorkInfosChanged(
-                            model.id,
-                            infos
-                        )
-                    })
+                    .observeForever { infos -> onWorkInfosChanged(model.id, infos) }
             }
         }
     }
 
     private fun onWorkInfosChanged(modelId: String, infos: List<WorkInfo>?) {
-        var selected: WorkInfo? = null
-        if (infos != null) {
-            for (info in infos) {
-                if (isActive(info)) {
-                    selected = info
-                    break
-                }
-                if (selected == null && info.state == WorkInfo.State.FAILED) {
-                    selected = info
-                }
-            }
-        }
+        val workInfos = infos.orEmpty()
+        val selected = workInfos.firstOrNull(::isActive)
+            ?: workInfos.firstOrNull { it.state == WorkInfo.State.FAILED }
         if (selected == null) {
-            CURRENT_WORK.remove(modelId)
+            currentWork.remove(modelId)
         } else {
-            CURRENT_WORK.put(modelId, selected)
+            currentWork[modelId] = selected
         }
         notifyListeners()
     }
 
-    private fun isDownloadForModelActive(modelId: String?): Boolean {
-        return isActive(CURRENT_WORK.get(modelId))
+    private fun isDownloadForModelActive(modelId: String): Boolean =
+        currentWork[modelId]?.let(::isActive) == true
+
+    private fun isActive(info: WorkInfo): Boolean = when (info.state) {
+        WorkInfo.State.RUNNING,
+        WorkInfo.State.ENQUEUED,
+        WorkInfo.State.BLOCKED,
+        -> true
+        else -> false
     }
 
-    private fun isActive(info: WorkInfo?): Boolean {
-        return info != null && (info.state == WorkInfo.State.RUNNING || info.state == WorkInfo.State.ENQUEUED || info.state == WorkInfo.State.BLOCKED)
-    }
-
-    private fun getWorkName(modelId: String): String {
-        return WORK_NAME_PREFIX + modelId
-    }
+    private fun getWorkName(modelId: String): String = "$WORK_NAME_PREFIX$modelId"
 
     private fun deleteKnownModelFiles(
-        context: Context, model: ModelInfo,
-        includeFinalFile: Boolean
+        context: Context,
+        model: ModelInfo,
+        includeFinalFile: Boolean,
     ) {
         val partialFile = getPartialModelFile(context, model.id, model.fileName)
         if (partialFile.exists()) {
@@ -534,20 +500,15 @@ object LocalModelManager {
             }
             deleteInferenceCacheFiles(context, model)
         }
-        val modelDir = partialFile.getParentFile()
-        if (modelDir != null) {
+        partialFile.parentFile?.let { modelDir ->
             if (includeFinalFile) {
-                val files = modelDir.listFiles()
-                if (files != null) {
-                    for (file in files) {
-                        if (file.isFile()) {
-                            file.delete()
-                        }
+                modelDir.listFiles().orEmpty().forEach { file ->
+                    if (file.isFile) {
+                        file.delete()
                     }
                 }
             }
-            val children = modelDir.list()
-            if (children != null && children.size == 0) {
+            if (modelDir.list()?.isEmpty() == true) {
                 modelDir.delete()
             }
         }
@@ -556,39 +517,27 @@ object LocalModelManager {
     private fun deleteObsoleteModelFiles(context: Context, model: ModelInfo) {
         val finalFile = getModelFile(context, model.id, model.fileName)
         val partialFile = getPartialModelFile(context, model.id, model.fileName)
-        val modelDir = finalFile.getParentFile()
-        if (modelDir == null) {
-            return
-        }
-        val files = modelDir.listFiles()
-        if (files == null) {
-            return
-        }
-        for (file in files) {
-            if (file.isFile() && (file != finalFile) && (file != partialFile)) {
+        val modelDir = finalFile.parentFile ?: return
+        modelDir.listFiles()?.forEach { file ->
+            if (file.isFile && file != finalFile && file != partialFile) {
                 file.delete()
             }
         }
     }
 
     private fun deleteInferenceCacheFiles(context: Context, model: ModelInfo) {
-        val cacheFiles = context.getCacheDir().listFiles()
-        if (cacheFiles == null) {
-            return
+        val currentPrefix = "${model.fileName}.xnnpack_cache_"
+        val legacyPrefix = when (model.id) {
+            MODEL_E2B -> "$LEGACY_E2B_FILE_NAME.xnnpack_cache_"
+            MODEL_QWEN_08B -> "$LEGACY_QWEN_EXACT_FILE_NAME.xnnpack_cache_"
+            else -> ""
         }
-        val currentPrefix = model.fileName + ".xnnpack_cache_"
-        val legacyPrefix = if (MODEL_E2B == model.id)
-            LEGACY_E2B_FILE_NAME + ".xnnpack_cache_"
-        else
-            if (MODEL_QWEN_08B == model.id)
-                LEGACY_QWEN_EXACT_FILE_NAME + ".xnnpack_cache_"
-            else
-                ""
-        for (cacheFile in cacheFiles) {
-            val name = cacheFile.getName()
-            if (cacheFile.isFile()
-                && (name.startsWith(currentPrefix)
-                        || (!legacyPrefix.isEmpty() && name.startsWith(legacyPrefix)))
+        context.cacheDir.listFiles()?.forEach { cacheFile ->
+            val name = cacheFile.name
+            if (
+                cacheFile.isFile &&
+                (name.startsWith(currentPrefix) ||
+                    (legacyPrefix.isNotEmpty() && name.startsWith(legacyPrefix)))
             ) {
                 cacheFile.delete()
             }
@@ -596,18 +545,13 @@ object LocalModelManager {
     }
 
     private fun notifyListeners() {
-        val context = appContext
-        if (context == null) {
-            return
-        }
+        val context = appContext ?: return
         val status = getStatus(context, getSelectedModel(context))
-        for (listener in LISTENERS) {
-            listener.onStatusChanged(status)
-        }
+        listeners.forEach { it.onStatusChanged(status) }
     }
 
     fun interface StatusListener {
-        fun onStatusChanged(status: Status?)
+        fun onStatusChanged(status: Status)
     }
 
     enum class State {
@@ -626,17 +570,24 @@ object LocalModelManager {
     }
 
     class ModelInfo(
-        val id: String, val displayName: String, val parameterSize: String,
-        val quantization: String, val iconResId: Int, val fileName: String,
-        val url: String, val sizeBytes: Long, val downloadable: Boolean,
-        val runtime: Runtime, val contextTokens: Int
+        val id: String,
+        val displayName: String,
+        val parameterSize: String,
+        val quantization: String,
+        @DrawableRes val iconResId: Int,
+        val fileName: String,
+        val url: String,
+        val sizeBytes: Long,
+        val downloadable: Boolean,
+        val runtime: Runtime,
+        val contextTokens: Int,
     )
 
     class Status(
         val model: ModelInfo,
         val state: State,
         val receivedBytes: Long,
-        val error: String
+        val error: String,
     ) {
         val progressPercent: Int
             get() {

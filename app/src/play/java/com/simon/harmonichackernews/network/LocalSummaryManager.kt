@@ -8,43 +8,41 @@ import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.common.GenAiException
 import com.google.mlkit.genai.summarization.Summarization
 import com.google.mlkit.genai.summarization.SummarizationRequest
-import com.google.mlkit.genai.summarization.SummarizationResult
 import com.google.mlkit.genai.summarization.Summarizer
 import com.google.mlkit.genai.summarization.SummarizerOptions
+import com.simon.harmonichackernews.network.SummaryManager.LocalSummaryAvailabilityCallback
+import com.simon.harmonichackernews.network.SummaryManager.SummaryCallback
 import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.summary.local.LocalModelInference
 import com.simon.harmonichackernews.summary.local.LocalModelManager
-import com.simon.harmonichackernews.network.SummaryManager.LocalSummaryAvailabilityCallback
-import com.simon.harmonichackernews.network.SummaryManager.SummaryCallback
-import com.simon.harmonichackernews.summary.local.LocalModelManager.ModelInfo
 import java.util.concurrent.ExecutionException
 
 /** Play distribution implementation for Gemini Nano and downloadable local models.  */
 internal object LocalSummaryManager {
-    private val TAG = "LocalSummaryManager"
+    private const val TAG = "LocalSummaryManager"
     private const val LOCAL_SUMMARY_MIN_CHARS = 400
     private const val LOCAL_SUMMARY_MAX_WORDS = 3000
+    private val ConsecutiveWhitespace = Regex("\\s+")
 
-    @kotlin.concurrent.Volatile
+    @Volatile
     private var cachedLocalFeatureStatus: Int = Int.MIN_VALUE
 
-    fun canAttemptLocalSummarization(): Boolean {
-        return true
-    }
+    fun canAttemptLocalSummarization(): Boolean = true
 
     fun checkLocalSummaryAvailability(
-        context: Context?, callback: LocalSummaryAvailabilityCallback?
+        context: Context?,
+        callback: LocalSummaryAvailabilityCallback?,
     ) {
         if (context == null || callback == null) {
             SummaryManager.postLocalAvailability(callback, false, false, "Local AI context is unavailable")
             return
         }
-        val appContext: Context = context.getApplicationContext()
-        Thread({
+        val appContext = context.applicationContext
+        Thread {
             var summarizer: Summarizer? = null
             try {
                 summarizer = Summarization.getClient(createLocalSummarizerOptions(appContext))
-                val featureStatus: Int = summarizer.checkFeatureStatus().get()
+                val featureStatus = summarizer.checkFeatureStatus().get()
                 cachedLocalFeatureStatus = featureStatus
                 postResolvedLocalAvailability(callback, featureStatus)
             } catch (exception: ExecutionException) {
@@ -62,19 +60,19 @@ internal object LocalSummaryManager {
                 cachedLocalFeatureStatus = FeatureStatus.UNAVAILABLE
                 postDownloadableModelAvailability(callback)
             } finally {
-                if (summarizer != null) {
-                    summarizer.close()
-                }
+                summarizer?.close()
             }
-        }).start()
+        }.start()
     }
 
     fun summarizeArticle(
-        context: Context?, articleUrl: String?, callback: SummaryCallback?
+        context: Context?,
+        articleUrl: String?,
+        callback: SummaryCallback?,
     ) {
         if (context == null || callback == null) return
-        val appContext: Context = context.getApplicationContext()
-        Thread({
+        val appContext = context.applicationContext
+        Thread {
             try {
                 summarizePreparedTextLocally(
                     appContext,
@@ -83,83 +81,81 @@ internal object LocalSummaryManager {
                 )
             } catch (exception: ExecutionException) {
                 SummaryManager.postFailure(
-                    callback, "Local summarization failed: "
-                            + SummaryManager.getThrowableMessage(exception.cause)
+                    callback,
+                    "Local summarization failed: ${SummaryManager.getThrowableMessage(exception.cause)}",
                 )
             } catch (exception: InterruptedException) {
                 Thread.currentThread().interrupt()
                 SummaryManager.postFailure(callback, "Local summarization was interrupted")
             } catch (exception: Exception) {
                 SummaryManager.postFailure(
-                    callback, "Local summarization failed: "
-                            + SummaryManager.getThrowableMessage(exception)
+                    callback,
+                    "Local summarization failed: ${SummaryManager.getThrowableMessage(exception)}",
                 )
             }
-        }).start()
+        }.start()
     }
 
     fun summarizeText(
-        context: Context?, text: String?, callback: SummaryCallback?
+        context: Context?,
+        text: String?,
+        callback: SummaryCallback?,
     ) {
         if (context == null || callback == null) return
-        val appContext: Context = context.getApplicationContext()
-        Thread({
+        val appContext = context.applicationContext
+        Thread {
             try {
                 summarizePreparedTextLocally(
                     appContext, prepareLocalSummaryInput(text.orEmpty()), callback
                 )
             } catch (exception: ExecutionException) {
                 SummaryManager.postFailure(
-                    callback, "Local summarization failed: "
-                            + SummaryManager.getThrowableMessage(exception.cause)
+                    callback,
+                    "Local summarization failed: ${SummaryManager.getThrowableMessage(exception.cause)}",
                 )
             } catch (exception: InterruptedException) {
                 Thread.currentThread().interrupt()
                 SummaryManager.postFailure(callback, "Local summarization was interrupted")
             } catch (exception: Exception) {
                 SummaryManager.postFailure(
-                    callback, "Local summarization failed: "
-                            + SummaryManager.getThrowableMessage(exception)
+                    callback,
+                    "Local summarization failed: ${SummaryManager.getThrowableMessage(exception)}",
                 )
             }
-        }).start()
+        }.start()
     }
 
     fun isLocalSummaryReady(context: Context?): Boolean {
         if (context == null) return false
-        val selected: ModelInfo =
-            LocalModelManager.getSelectedModel(context)
-        if (LocalModelManager.MODEL_GEMINI_NANO.equals(selected.id)) {
+        val selected = LocalModelManager.getSelectedModel(context)
+        if (selected.id == LocalModelManager.MODEL_GEMINI_NANO) {
             return isLocalFeatureUsable(cachedLocalFeatureStatus)
         }
-        return LocalModelManager.isModelSupported(selected)
-                && LocalModelManager.isSelectedModelDownloaded(context)
-                && LocalAiRuntimeManager.isRuntimeInstalled(context, selected.runtime)
+        return LocalModelManager.isModelSupported(selected) &&
+            LocalModelManager.isSelectedModelDownloaded(context) &&
+            LocalAiRuntimeManager.isRuntimeInstalled(context, selected.runtime)
     }
 
     fun isLocalSummaryConfigurationKnown(context: Context?): Boolean {
         if (context == null) return false
-        val selected: ModelInfo =
-            LocalModelManager.getSelectedModel(context)
-        return !LocalModelManager.MODEL_GEMINI_NANO.equals(selected.id)
-                || cachedLocalFeatureStatus != Int.MIN_VALUE
+        val selected = LocalModelManager.getSelectedModel(context)
+        return selected.id != LocalModelManager.MODEL_GEMINI_NANO ||
+            cachedLocalFeatureStatus != Int.MIN_VALUE
     }
 
-    private fun createLocalSummarizerOptions(context: Context): SummarizerOptions {
-        return SummarizerOptions.builder(context)
+    private fun createLocalSummarizerOptions(context: Context): SummarizerOptions =
+        SummarizerOptions.builder(context)
             .setInputType(SummarizerOptions.InputType.ARTICLE)
             .setOutputType(SummarizerOptions.OutputType.THREE_BULLETS)
             .setLanguage(SummarizerOptions.Language.ENGLISH)
             .build()
-    }
 
-    @kotlin.Throws(ExecutionException::class, InterruptedException::class)
+    @Throws(ExecutionException::class, InterruptedException::class)
     private fun summarizePreparedTextLocally(
         appContext: Context, content: String, callback: SummaryCallback
     ) {
-        val selected: ModelInfo =
-            LocalModelManager.getSelectedModel(appContext)
-        if (!LocalModelManager.MODEL_GEMINI_NANO.equals(selected.id)) {
+        val selected = LocalModelManager.getSelectedModel(appContext)
+        if (selected.id != LocalModelManager.MODEL_GEMINI_NANO) {
             summarizeWithDownloadedLocalModel(appContext, content, callback)
             return
         }
@@ -169,7 +165,7 @@ internal object LocalSummaryManager {
         try {
             availabilityChecker =
                 Summarization.getClient(createLocalSummarizerOptions(appContext))
-            val featureStatus: Int = availabilityChecker.checkFeatureStatus().get()
+            val featureStatus = availabilityChecker.checkFeatureStatus().get()
             cachedLocalFeatureStatus = featureStatus
             if (isLocalFeatureUsable(featureStatus)) {
                 summarizePreparedLocalText(appContext, content, callback)
@@ -182,9 +178,7 @@ internal object LocalSummaryManager {
             cachedLocalFeatureStatus = FeatureStatus.UNAVAILABLE
             throw exception
         } finally {
-            if (availabilityChecker != null) {
-                availabilityChecker.close()
-            }
+            availabilityChecker?.close()
         }
 
         SummaryManager.postFailure(
@@ -196,8 +190,7 @@ internal object LocalSummaryManager {
     private fun summarizeWithDownloadedLocalModel(
         appContext: Context, content: String, callback: SummaryCallback
     ) {
-        val selected: ModelInfo =
-            LocalModelManager.getSelectedModel(appContext)
+        val selected = LocalModelManager.getSelectedModel(appContext)
         if (!LocalModelManager.isModelSupported(selected)) {
             SummaryManager.postFailure(
                 callback, LocalModelManager.getModelUnsupportedReason(selected)
@@ -240,13 +233,13 @@ internal object LocalSummaryManager {
             )
         } catch (exception: Exception) {
             SummaryManager.postFailure(
-                callback, "Local model failed: "
-                        + SummaryManager.getThrowableMessage(exception)
+                callback,
+                "Local model failed: ${SummaryManager.getThrowableMessage(exception)}",
             )
         }
     }
 
-    @kotlin.Throws(ExecutionException::class, InterruptedException::class)
+    @Throws(ExecutionException::class, InterruptedException::class)
     private fun summarizePreparedLocalText(
         appContext: Context, content: String, callback: SummaryCallback
     ) {
@@ -261,22 +254,20 @@ internal object LocalSummaryManager {
             }
 
             summarizer = Summarization.getClient(createLocalSummarizerOptions(appContext))
-            val featureStatus: Int = summarizer.checkFeatureStatus().get()
-            if (featureStatus == FeatureStatus.UNAVAILABLE) {
-                SummaryManager.postFailure(
-                    callback, "Gemini Nano summarization is not available on this device"
-                )
-            } else if (featureStatus == FeatureStatus.DOWNLOADABLE
-                || featureStatus == FeatureStatus.DOWNLOADING
-            ) {
-                downloadLocalFeatureAndSummarize(content, summarizer, callback)
-                summarizerReleased = true
-            } else if (featureStatus == FeatureStatus.AVAILABLE) {
-                runLocalInference(content, summarizer, callback)
-                summarizerReleased = true
-            } else {
-                SummaryManager.postFailure(
-                    callback, "Gemini Nano summarization is not available on this device"
+            when (summarizer.checkFeatureStatus().get()) {
+                FeatureStatus.DOWNLOADABLE,
+                FeatureStatus.DOWNLOADING,
+                -> {
+                    downloadLocalFeatureAndSummarize(content, summarizer, callback)
+                    summarizerReleased = true
+                }
+                FeatureStatus.AVAILABLE -> {
+                    runLocalInference(content, summarizer, callback)
+                    summarizerReleased = true
+                }
+                else -> SummaryManager.postFailure(
+                    callback,
+                    "Gemini Nano summarization is not available on this device",
                 )
             }
         } finally {
@@ -297,8 +288,8 @@ internal object LocalSummaryManager {
             override fun onDownloadFailed(exception: GenAiException) {
                 summarizer.close()
                 SummaryManager.postFailure(
-                    callback, "Gemini Nano download failed: "
-                            + SummaryManager.getThrowableMessage(exception)
+                    callback,
+                    "Gemini Nano download failed: ${SummaryManager.getThrowableMessage(exception)}",
                 )
             }
 
@@ -313,15 +304,15 @@ internal object LocalSummaryManager {
     private fun runLocalInference(
         text: String, summarizer: Summarizer, callback: SummaryCallback
     ) {
-        Thread({
+        Thread {
             try {
                 val request: SummarizationRequest = SummarizationRequest.builder(text).build()
-                val result: SummarizationResult = summarizer.runInference(request).get()
-                SummaryManager.postSuccess(callback, result.getSummary())
+                val result = summarizer.runInference(request).get()
+                SummaryManager.postSuccess(callback, result.summary)
             } catch (exception: ExecutionException) {
                 SummaryManager.postFailure(
-                    callback, "Gemini Nano failed: "
-                            + SummaryManager.getThrowableMessage(exception.cause)
+                    callback,
+                    "Gemini Nano failed: ${SummaryManager.getThrowableMessage(exception.cause)}",
                 )
             } catch (exception: InterruptedException) {
                 Thread.currentThread().interrupt()
@@ -330,53 +321,47 @@ internal object LocalSummaryManager {
                 )
             } catch (exception: Exception) {
                 SummaryManager.postFailure(
-                    callback, "Gemini Nano failed: "
-                            + SummaryManager.getThrowableMessage(exception)
+                    callback,
+                    "Gemini Nano failed: ${SummaryManager.getThrowableMessage(exception)}",
                 )
             } finally {
                 summarizer.close()
             }
-        }).start()
+        }.start()
     }
 
     private fun prepareLocalSummaryInput(text: String): String {
-        val normalized = text.trim().replace(Regex("\\s+"), " ")
+        val normalized = text.trim().replace(ConsecutiveWhitespace, " ")
         if (normalized.isEmpty()) {
             return normalized
         }
 
-        val words = normalized.split(Regex("\\s+"))
+        val words = normalized.split(ConsecutiveWhitespace)
         if (words.size <= LOCAL_SUMMARY_MAX_WORDS) {
             return normalized
         }
 
-        val truncated: StringBuilder = StringBuilder()
-        for (i in 0..<LOCAL_SUMMARY_MAX_WORDS) {
-            if (i > 0) {
-                truncated.append(' ')
-            }
-            truncated.append(words[i])
-        }
-        return truncated.toString()
+        return words.take(LOCAL_SUMMARY_MAX_WORDS).joinToString(" ")
     }
 
-    private fun isLocalFeatureUsable(featureStatus: Int): Boolean {
-        return featureStatus == FeatureStatus.AVAILABLE || featureStatus == FeatureStatus.DOWNLOADABLE || featureStatus == FeatureStatus.DOWNLOADING
+    private fun isLocalFeatureUsable(featureStatus: Int): Boolean = when (featureStatus) {
+        FeatureStatus.AVAILABLE,
+        FeatureStatus.DOWNLOADABLE,
+        FeatureStatus.DOWNLOADING,
+        -> true
+        else -> false
     }
 
-    private fun getLocalFeatureStatusMessage(featureStatus: Int): String {
-        if (featureStatus == FeatureStatus.AVAILABLE) {
-            return ""
-        } else if (featureStatus == FeatureStatus.DOWNLOADABLE) {
-            return "Gemini Nano will download before the first local summary"
-        } else if (featureStatus == FeatureStatus.DOWNLOADING) {
-            return "Gemini Nano is downloading"
-        }
-        return "Gemini Nano not available on this device"
+    private fun getLocalFeatureStatusMessage(featureStatus: Int): String = when (featureStatus) {
+        FeatureStatus.AVAILABLE -> ""
+        FeatureStatus.DOWNLOADABLE -> "Gemini Nano will download before the first local summary"
+        FeatureStatus.DOWNLOADING -> "Gemini Nano is downloading"
+        else -> "Gemini Nano not available on this device"
     }
 
     private fun postResolvedLocalAvailability(
-        callback: LocalSummaryAvailabilityCallback, featureStatus: Int
+        callback: LocalSummaryAvailabilityCallback,
+        featureStatus: Int,
     ) {
         if (isLocalFeatureUsable(featureStatus)) {
             SummaryManager.postLocalAvailability(
@@ -388,7 +373,7 @@ internal object LocalSummaryManager {
     }
 
     private fun postDownloadableModelAvailability(
-        callback: LocalSummaryAvailabilityCallback
+        callback: LocalSummaryAvailabilityCallback,
     ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             SummaryManager.postLocalAvailability(

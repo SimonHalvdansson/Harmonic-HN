@@ -4,118 +4,109 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.widget.RemoteViews
-import android.widget.RemoteViewsService
 import android.widget.RemoteViewsService.RemoteViewsFactory
 import com.simon.harmonichackernews.CommentsContract
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.JSONParser.updateStoryWithHNJson
-import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstance
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.SettingsUtils.shouldIncludeTopLevelDomain
 import com.simon.harmonichackernews.utils.SettingsUtils.shouldShowIndex
-import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.utils.Utils.getTimeAgo
 import com.simon.harmonichackernews.utils.Utils.log
 import java.util.concurrent.TimeUnit
 import kotlin.math.min
-import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
 import org.json.JSONArray
 
 class StoriesRemoteViewsFactory(private val context: Context, private val appWidgetId: Int) :
     RemoteViewsFactory {
-    private val stories: MutableList<Story> = ArrayList<Story>()
+    private val stories = ArrayList<Story>()
     private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate() {
-        log("WidgetFactory onCreate widgetId=" + appWidgetId)
+        log("WidgetFactory onCreate widgetId=$appWidgetId")
     }
 
     override fun onDataSetChanged() {
         val startedAt = System.currentTimeMillis()
         var terminalStatePosted = false
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val skipKey: String = KEY_SKIP_FETCH_PREFIX + appWidgetId
+        val skipKey = KEY_SKIP_FETCH_PREFIX + appWidgetId
         val skipFetch = prefs.getBoolean(skipKey, false)
-        val refreshing: Boolean = isRefreshing(context, appWidgetId)
+        val refreshing = isRefreshing(context, appWidgetId)
 
         log(
-            ("WidgetFactory onDataSetChanged start widgetId=" + appWidgetId
-                    + " skipFetch=" + skipFetch
-                    + " refreshing=" + refreshing
-                    + " inMemoryStories=" + stories.size)
+            "WidgetFactory onDataSetChanged start widgetId=$appWidgetId" +
+                " skipFetch=$skipFetch refreshing=$refreshing inMemoryStories=${stories.size}"
         )
 
         try {
-            if (skipFetch && !stories.isEmpty()) {
+            if (skipFetch && stories.isNotEmpty()) {
                 if (refreshing) {
-                    log("WidgetFactory skip fetch and reconcile refresh widgetId=" + appWidgetId)
+                    log("WidgetFactory skip fetch and reconcile refresh widgetId=$appWidgetId")
                     postRefreshDone()
                     terminalStatePosted = true
                 } else {
-                    log("WidgetFactory skip fetch widgetId=" + appWidgetId)
+                    log("WidgetFactory skip fetch widgetId=$appWidgetId")
                 }
                 return
             }
 
-            var freshStories: MutableList<Story> = ArrayList()
+            var freshStories = ArrayList<Story>()
             var storyFetchErrors = 0
             val visibleStoryCount = WidgetConfigActivity.getStoryCount(context, appWidgetId)
             val fetchStoryCount = WidgetConfigActivity.getFetchStoryCount(context, appWidgetId)
 
-            val client = okHttpClientInstance!!
+            val client = checkNotNull(okHttpClientInstance) {
+                "Network client is unavailable"
+            }
                 .newBuilder()
                 .callTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .build()
 
             val feedUrl = WidgetConfigActivity.getFeedUrl(context, appWidgetId)
-            log("WidgetFactory fetch ids widgetId=" + appWidgetId + " url=" + feedUrl)
+            log("WidgetFactory fetch ids widgetId=$appWidgetId url=$feedUrl")
             val idsRequest = Request.Builder()
                 .url(feedUrl)
                 .build()
 
             client.newCall(idsRequest).execute().use { idsResponse ->
-                if (!idsResponse.isSuccessful || idsResponse.body == null) {
+                val idsBody = idsResponse.takeIf { it.isSuccessful }?.body?.string()
+                if (idsBody == null) {
                     log(
-                        ("WidgetFactory ids request failed widgetId=" + appWidgetId
-                                + " code=" + idsResponse.code)
+                        "WidgetFactory ids request failed widgetId=$appWidgetId" +
+                            " code=${idsResponse.code}"
                     )
                     postRefreshError()
                     terminalStatePosted = true
                     return
                 }
-                val idsBody = idsResponse.body.string()
                 val idsArray = JSONArray(idsBody)
                 val count = min(idsArray.length(), fetchStoryCount)
 
                 log(
-                    ("WidgetFactory ids fetched widgetId=" + appWidgetId
-                            + " totalIds=" + idsArray.length()
-                            + " visibleCount=" + visibleStoryCount
-                            + " fetchTarget=" + fetchStoryCount
-                            + " fetchCount=" + count)
+                    "WidgetFactory ids fetched widgetId=$appWidgetId" +
+                        " totalIds=${idsArray.length()} visibleCount=$visibleStoryCount" +
+                        " fetchTarget=$fetchStoryCount fetchCount=$count"
                 )
                 for (i in 0..<count) {
                     val elapsedMs = System.currentTimeMillis() - startedAt
                     if (elapsedMs > TOTAL_FETCH_TIMEOUT_MS) {
                         log(
-                            ("WidgetFactory total timeout reached widgetId=" + appWidgetId
-                                    + " elapsedMs=" + elapsedMs)
+                            "WidgetFactory total timeout reached widgetId=$appWidgetId" +
+                                " elapsedMs=$elapsedMs"
                         )
                         break
                     }
 
                     val storyId = idsArray.getInt(i)
-                    val storyUrl = "https://hacker-news.firebaseio.com/v0/item/" + storyId + ".json"
+                    val storyUrl =
+                        "https://hacker-news.firebaseio.com/v0/item/$storyId.json"
 
                     val storyRequest = Request.Builder()
                         .url(storyUrl)
@@ -123,8 +114,11 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
 
                     try {
                         client.newCall(storyRequest).execute().use { storyResponse ->
-                            if (storyResponse.isSuccessful && storyResponse.body != null) {
-                                val storyBody = storyResponse.body.string()
+                            val storyBody = storyResponse
+                                .takeIf { it.isSuccessful }
+                                ?.body
+                                ?.string()
+                            if (storyBody != null) {
                                 val story = Story()
                                 story.id = storyId
                                 if (updateStoryWithHNJson(storyBody, story, false)) {
@@ -142,17 +136,16 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
                 }
             }
             if (freshStories.isEmpty()) {
-                log("WidgetFactory no stories fetched widgetId=" + appWidgetId)
+                log("WidgetFactory no stories fetched widgetId=$appWidgetId")
                 postRefreshError()
                 terminalStatePosted = true
                 return
             }
 
             log(
-                ("WidgetFactory fetch complete widgetId=" + appWidgetId
-                        + " stories=" + freshStories.size
-                        + " storyErrors=" + storyFetchErrors
-                        + " elapsedMs=" + (System.currentTimeMillis() - startedAt))
+                "WidgetFactory fetch complete widgetId=$appWidgetId" +
+                    " stories=${freshStories.size} storyErrors=$storyFetchErrors" +
+                    " elapsedMs=${System.currentTimeMillis() - startedAt}"
             )
 
             if (freshStories.size > visibleStoryCount) {
@@ -170,19 +163,18 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
             postRefreshDone()
             terminalStatePosted = true
         } catch (t: Throwable) {
-            log("WidgetFactory onDataSetChanged failed widgetId=" + appWidgetId + " error=" + t)
+            log("WidgetFactory onDataSetChanged failed widgetId=$appWidgetId error=$t")
             postRefreshError()
             terminalStatePosted = true
         } finally {
-            val refreshingNow: Boolean = isRefreshing(context, appWidgetId)
+            val refreshingNow = isRefreshing(context, appWidgetId)
             log(
-                ("WidgetFactory onDataSetChanged end widgetId=" + appWidgetId
-                        + " terminalPosted=" + terminalStatePosted
-                        + " refreshingNow=" + refreshingNow
-                        + " elapsedMs=" + (System.currentTimeMillis() - startedAt))
+                "WidgetFactory onDataSetChanged end widgetId=$appWidgetId" +
+                    " terminalPosted=$terminalStatePosted refreshingNow=$refreshingNow" +
+                    " elapsedMs=${System.currentTimeMillis() - startedAt}"
             )
             if (!terminalStatePosted && refreshingNow) {
-                log("WidgetFactory forcing refresh error widgetId=" + appWidgetId)
+                log("WidgetFactory forcing refresh error widgetId=$appWidgetId")
                 postRefreshError()
             }
         }
@@ -190,24 +182,24 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
 
     private fun postRefreshDone() {
         val widgetId = appWidgetId
-        log("WidgetFactory postRefreshDone queued widgetId=" + widgetId)
-        mainHandler.post(Runnable {
-            log("WidgetFactory postRefreshDone run widgetId=" + widgetId)
+        log("WidgetFactory postRefreshDone queued widgetId=$widgetId")
+        mainHandler.post {
+            log("WidgetFactory postRefreshDone run widgetId=$widgetId")
             StoriesWidgetProvider.updateRefreshDone(context, widgetId)
-        })
+        }
     }
 
     private fun postRefreshError() {
         val widgetId = appWidgetId
-        log("WidgetFactory postRefreshError queued widgetId=" + widgetId)
-        mainHandler.post(Runnable {
-            log("WidgetFactory postRefreshError run widgetId=" + widgetId)
+        log("WidgetFactory postRefreshError queued widgetId=$widgetId")
+        mainHandler.post {
+            log("WidgetFactory postRefreshError run widgetId=$widgetId")
             StoriesWidgetProvider.updateRefreshError(context, widgetId)
-        })
+        }
     }
 
     override fun onDestroy() {
-        log("WidgetFactory onDestroy widgetId=" + appWidgetId + " stories=" + stories.size)
+        log("WidgetFactory onDestroy widgetId=$appWidgetId stories=${stories.size}")
         stories.clear()
     }
 
@@ -220,14 +212,14 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
             return getLoadingView()
         }
 
-        val story = stories.get(position)
+        val story = stories[position]
 
-        val views = RemoteViews(context.getPackageName(), R.layout.widget_story_item)
+        val views = RemoteViews(context.packageName, R.layout.widget_story_item)
 
         // Index
         val showIndex = shouldShowIndex(context)
         views.setViewVisibility(R.id.widget_story_index, if (showIndex) View.VISIBLE else View.GONE)
-        views.setTextViewText(R.id.widget_story_index, (position + 1).toString() + ".")
+        views.setTextViewText(R.id.widget_story_index, "${position + 1}.")
 
         // Title
         views.setTextViewText(R.id.widget_story_title, story.title)
@@ -256,7 +248,7 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
     }
 
     override fun getLoadingView(): RemoteViews {
-        return RemoteViews(context.getPackageName(), R.layout.widget_story_item_loading)
+        return RemoteViews(context.packageName, R.layout.widget_story_item_loading)
     }
 
     override fun getViewTypeCount(): Int {
@@ -265,7 +257,7 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
 
     override fun getItemId(position: Int): Long {
         if (position < stories.size) {
-            return stories.get(position).id.toLong()
+            return stories[position].id.toLong()
         }
         return position.toLong()
     }
@@ -283,7 +275,7 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
         private const val TOTAL_FETCH_TIMEOUT_MS: Long = 60000
 
         fun setSkipFetch(context: Context, appWidgetId: Int, skip: Boolean) {
-            log("WidgetFactory setSkipFetch widgetId=" + appWidgetId + " skip=" + skip)
+            log("WidgetFactory setSkipFetch widgetId=$appWidgetId skip=$skip")
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit().putBoolean(KEY_SKIP_FETCH_PREFIX + appWidgetId, skip).apply()
         }
@@ -293,7 +285,7 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
             val ids = awm.getAppWidgetIds(
                 ComponentName(context, StoriesWidgetProvider::class.java)
             )
-            log("WidgetFactory setSkipFetchAll count=" + ids.size + " skip=" + skip)
+            log("WidgetFactory setSkipFetchAll count=${ids.size} skip=$skip")
             val editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
             for (id in ids) {
                 editor.putBoolean(KEY_SKIP_FETCH_PREFIX + id, skip)
@@ -302,20 +294,18 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
         }
 
         fun setRefreshing(context: Context, appWidgetId: Int, refreshing: Boolean) {
-            log("WidgetFactory setRefreshing widgetId=" + appWidgetId + " refreshing=" + refreshing)
+            log("WidgetFactory setRefreshing widgetId=$appWidgetId refreshing=$refreshing")
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit().putBoolean(KEY_REFRESHING_PREFIX + appWidgetId, refreshing).apply()
         }
 
-        fun isRefreshing(context: Context, appWidgetId: Int): Boolean {
-            return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        fun isRefreshing(context: Context, appWidgetId: Int): Boolean =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .getBoolean(KEY_REFRESHING_PREFIX + appWidgetId, false)
-        }
 
-        fun getLastUpdated(context: Context, appWidgetId: Int): Long {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            return prefs.getLong(KEY_LAST_UPDATED_PREFIX + appWidgetId, 0)
-        }
+        fun getLastUpdated(context: Context, appWidgetId: Int): Long =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getLong(KEY_LAST_UPDATED_PREFIX + appWidgetId, 0)
 
         fun clearPreferences(context: Context, appWidgetId: Int) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

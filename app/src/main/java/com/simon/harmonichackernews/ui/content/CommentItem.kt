@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -91,6 +92,7 @@ import com.simon.harmonichackernews.utils.Utils
 import java.util.Locale
 import kotlin.math.min
 
+@Immutable
 data class CommentItemUiModel(
     val author: String,
     val age: String,
@@ -99,6 +101,7 @@ data class CommentItemUiModel(
     val referenceUrl: String,
 )
 
+@Immutable
 data class CommentItemStyle(
     val cardStyle: Boolean,
     val showCardBorder: Boolean,

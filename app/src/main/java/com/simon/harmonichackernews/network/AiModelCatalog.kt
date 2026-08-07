@@ -1,25 +1,15 @@
 package com.simon.harmonichackernews.network
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
-import androidx.annotation.NonNull
-import androidx.annotation.Nullable
 import androidx.preference.PreferenceManager
 import java.io.IOException
 import java.util.Collections
 import java.util.Locale
-import kotlin.Boolean
-import kotlin.Exception
-import kotlin.Int
-import kotlin.Long
-import kotlin.NumberFormatException
-import kotlin.String
 import kotlin.synchronized
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.Response
@@ -33,7 +23,7 @@ object AiModelCatalog {
 
     private const val MODELS_URL = "https://openrouter.ai/api/v1/models"
     private const val MODEL_URL = "https://openrouter.ai/api/v1/model"
-    private val TWELVE_MONTHS_SECONDS = 365L * 24L * 60L * 60L
+    private const val TWELVE_MONTHS_SECONDS = 365L * 24L * 60L * 60L
     private val MAIN_HANDLER = Handler(Looper.getMainLooper())
     private val CACHE: MutableMap<String, MutableList<Model>> = HashMap()
 
@@ -43,9 +33,9 @@ object AiModelCatalog {
     ): Call? {
         val cacheKey = provider.id + ":" + sort.apiValue
         synchronized(CACHE) {
-            val cached = CACHE.get(cacheKey)
+            val cached = CACHE[cacheKey]
             if (cached != null) {
-                MAIN_HANDLER.post(Runnable { callback.onSuccess(cached) })
+                MAIN_HANDLER.post { callback.onSuccess(cached) }
                 return null
             }
         }
@@ -58,11 +48,11 @@ object AiModelCatalog {
         }
 
         val request = Request.Builder().url(urlBuilder.build()).build()
-        val call = NetworkComponent.okHttpClientInstance!!.newCall(request)
+        val call = NetworkComponent.okHttpClientInstance.newCall(request)
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 if (!call.isCanceled()) {
-                    MAIN_HANDLER.post(Runnable { callback.onError(readableError(e)) })
+                    MAIN_HANDLER.post { callback.onError(readableError(e)) }
                 }
             }
 
@@ -77,17 +67,17 @@ object AiModelCatalog {
                             .getJSONArray("data")
                         val models = parseModels(data, provider)
                         if (models.isEmpty()) {
-                            MAIN_HANDLER.post(Runnable { callback.onError("No compatible text models found") })
+                            MAIN_HANDLER.post { callback.onError("No compatible text models found") }
                             return
                         }
-                        val immutableModels = Collections.unmodifiableList<Model?>(models)
+                        val immutableModels = Collections.unmodifiableList(models)
                         synchronized(CACHE) {
-                            CACHE.put(cacheKey, immutableModels)
+                            CACHE[cacheKey] = immutableModels
                         }
-                        MAIN_HANDLER.post(Runnable { callback.onSuccess(immutableModels) })
+                        MAIN_HANDLER.post { callback.onSuccess(immutableModels) }
                     }
                 } catch (e: Exception) {
-                    MAIN_HANDLER.post(Runnable { callback.onError("OpenRouter returned invalid model data") })
+                    MAIN_HANDLER.post { callback.onError("OpenRouter returned invalid model data") }
                 }
             }
         })
@@ -102,22 +92,22 @@ object AiModelCatalog {
         if (provider.catalogAuthor != null && openRouterId.contains("/")
             && !openRouterId.startsWith(provider.catalogAuthor + "/")
         ) {
-            MAIN_HANDLER.post(Runnable {
+            MAIN_HANDLER.post {
                 callback.onError(
                     "That OpenRouter ID belongs to a different provider"
                 )
-            })
+            }
             return null
         }
         val cached = findCachedModel(openRouterId)
         if (cached != null) {
-            MAIN_HANDLER.post(Runnable { callback.onSuccess(cached) })
+            MAIN_HANDLER.post { callback.onSuccess(cached) }
             return null
         }
 
         val separator = openRouterId.indexOf('/')
         if (separator <= 0 || separator >= openRouterId.length - 1) {
-            MAIN_HANDLER.post(Runnable { callback.onError("Use an OpenRouter ID in provider/model-name format") })
+            MAIN_HANDLER.post { callback.onError("Use an OpenRouter ID in provider/model-name format") }
             return null
         }
 
@@ -126,11 +116,11 @@ object AiModelCatalog {
             .addPathSegment(openRouterId.substring(separator + 1))
             .build()
         val request = Request.Builder().url(url).build()
-        val call = NetworkComponent.okHttpClientInstance!!.newCall(request)
+        val call = NetworkComponent.okHttpClientInstance.newCall(request)
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 if (!call.isCanceled()) {
-                    MAIN_HANDLER.post(Runnable { callback.onError(readableError(e)) })
+                    MAIN_HANDLER.post { callback.onError(readableError(e)) }
                 }
             }
 
@@ -138,23 +128,23 @@ object AiModelCatalog {
                 try {
                     response.use { closeableResponse ->
                         if (!closeableResponse.isSuccessful || closeableResponse.body == null) {
-                            MAIN_HANDLER.post(Runnable {
+                            MAIN_HANDLER.post {
                                 callback.onError(
                                     if (closeableResponse.code == 404)
                                         "Price not found on OpenRouter"
                                     else
                                         "Price unavailable (HTTP " + closeableResponse.code + ")"
                                 )
-                            })
+                            }
                             return
                         }
                         val data = JSONObject(closeableResponse.body.string())
                             .getJSONObject("data")
                         val model = parseModel(data, provider)
-                        MAIN_HANDLER.post(Runnable { callback.onSuccess(model) })
+                        MAIN_HANDLER.post { callback.onSuccess(model) }
                     }
                 } catch (e: Exception) {
-                    MAIN_HANDLER.post(Runnable { callback.onError("Price data could not be read") })
+                    MAIN_HANDLER.post { callback.onError("Price data could not be read") }
                 }
             }
         })
@@ -163,7 +153,7 @@ object AiModelCatalog {
 
     /** Selects the requested first-run default without ever baking a model slug into the app.  */
     fun ensureInitialDefault(context: Context) {
-        val appContext = context.getApplicationContext()
+        val appContext = context.applicationContext
         val prefs = PreferenceManager.getDefaultSharedPreferences(appContext)
         if (prefs.contains(PREF_MODEL)) {
             return
@@ -183,10 +173,8 @@ object AiModelCatalog {
                 }
 
                 val cutoff = System.currentTimeMillis() / 1000L - TWELVE_MONTHS_SECONDS
-                var selected = cheapestModel(models, cutoff)
-                if (selected == null) {
-                    selected = cheapestModel(models, Long.MIN_VALUE)
-                }
+                val selected = cheapestModel(models, cutoff)
+                    ?: cheapestModel(models, Long.MIN_VALUE)
                 if (selected != null) {
                     latestPrefs.edit()
                         .putString(PREF_BASE_URL, AiSummaryProviders.defaultBaseUrl)
@@ -203,7 +191,7 @@ object AiModelCatalog {
 
     /** Chooses a dynamic low-cost model after switching direct providers.  */
     fun ensureProviderDefault(context: Context, provider: AiSummaryProviders.Provider) {
-        val appContext = context.getApplicationContext()
+        val appContext = context.applicationContext
         fetchModels(provider, Sort.PRICE_LOW_TO_HIGH, object : ModelsCallback {
             override fun onSuccess(models: MutableList<Model>) {
                 val prefs = PreferenceManager.getDefaultSharedPreferences(appContext)
@@ -240,7 +228,7 @@ object AiModelCatalog {
             ) {
                 continue
             }
-            uniqueModels.put(model.requestId, model)
+            uniqueModels[model.requestId] = model
         }
         return ArrayList(uniqueModels.values)
     }
@@ -275,7 +263,7 @@ object AiModelCatalog {
         return null
     }
 
-    private fun cheapestModel(models: MutableList<Model>, createdAfter: Long): Model? {
+    private fun cheapestModel(models: List<Model>, createdAfter: Long): Model? {
         var cheapest: Model? = null
         for (model in models) {
             if (model.created < createdAfter || !model.hasPrices()) {
@@ -290,7 +278,7 @@ object AiModelCatalog {
         return cheapest
     }
 
-    private fun parsePrice(pricing: JSONObject?, key: String?): Double {
+    private fun parsePrice(pricing: JSONObject?, key: String): Double {
         if (pricing == null || !pricing.has(key)) {
             return Double.NaN
         }
@@ -302,30 +290,24 @@ object AiModelCatalog {
     }
 
     private fun postHttpError(callback: ModelsCallback, responseCode: Int) {
-        MAIN_HANDLER.post(Runnable {
+        MAIN_HANDLER.post {
             callback.onError(
                 "Could not load models (HTTP " + responseCode + ")"
             )
-        })
+        }
     }
 
     private fun readableError(error: IOException): String {
         val message = error.message
-        return if (message == null || message.trim { it <= ' ' }.isEmpty())
+        return if (message?.trim { it <= ' ' }.isNullOrEmpty())
             "Could not reach OpenRouter"
         else
             "Could not reach OpenRouter: " + message
     }
 
-    enum class Sort(apiValue: String) {
+    enum class Sort(val apiValue: String) {
         POPULAR("most-popular"),
-        PRICE_LOW_TO_HIGH("pricing-low-to-high");
-
-        val apiValue: String?
-
-        init {
-            this.apiValue = apiValue
-        }
+        PRICE_LOW_TO_HIGH("pricing-low-to-high")
     }
 
     interface ModelsCallback {
@@ -344,9 +326,7 @@ object AiModelCatalog {
         val openRouterId: String, val requestId: String, val name: String, val created: Long,
         val inputPrice: Double, val outputPrice: Double, val contextLength: Long
     ) {
-        fun hasPrices(): Boolean {
-            return !inputPrice.isNaN() && !outputPrice.isNaN()
-        }
+        fun hasPrices(): Boolean = !inputPrice.isNaN() && !outputPrice.isNaN()
 
         val isFree: Boolean
             get() = hasPrices() && inputPrice == 0.0 && outputPrice == 0.0
@@ -356,20 +336,14 @@ object AiModelCatalog {
             return if (separator > 0) openRouterId.substring(0, separator) else ""
         }
 
-        fun totalTokenPrice(): kotlin.Double {
-            return inputPrice + outputPrice
-        }
+        fun totalTokenPrice(): Double = inputPrice + outputPrice
 
-        fun formattedInputPrice(): String {
-            return formatPerMillion(inputPrice)
-        }
+        fun formattedInputPrice(): String = formatPerMillion(inputPrice)
 
-        fun formattedOutputPrice(): String {
-            return formatPerMillion(outputPrice)
-        }
+        fun formattedOutputPrice(): String = formatPerMillion(outputPrice)
 
         companion object {
-            private fun formatPerMillion(perTokenPrice: kotlin.Double): String {
+            private fun formatPerMillion(perTokenPrice: Double): String {
                 if (perTokenPrice.isNaN()) {
                     return "—"
                 }

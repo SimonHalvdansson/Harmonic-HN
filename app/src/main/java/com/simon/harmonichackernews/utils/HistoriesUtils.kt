@@ -4,16 +4,14 @@ import android.content.Context
 import com.simon.harmonichackernews.data.History
 
 object HistoriesUtils {
-    const val KEY_SHARED_PREFERENCES_HISTORIES: String = "com.simon.harmonichackernews" +
-            ".KEY_SHARED_PREFERENCES_HISTORIES"
+    const val KEY_SHARED_PREFERENCES_HISTORIES =
+        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_HISTORIES"
 
     fun init(context: Context) {
         histories.clear()
         histories.addAll(loadHistories(context, true))
         historyIds.clear()
-        for (history in histories) {
-            historyIds.add(history.id)
-        }
+        histories.mapTo(historyIds, History::id)
         changeVersion++
     }
 
@@ -34,9 +32,7 @@ object HistoriesUtils {
         }
     }
 
-    fun getHistorybyId(id: Int): History? {
-        return histories.find { it.id == id }
-    }
+    fun getHistoryById(id: Int): History? = histories.find { it.id == id }
 
     fun removeHistoryById(context: Context, id: Int) {
         histories.find { it.id == id }?.let {
@@ -60,9 +56,7 @@ object HistoriesUtils {
         changeVersion++
     }
 
-    fun isHistoryExist(id: Int): Boolean {
-        return historyIds.contains(id)
-    }
+    fun isHistoryExist(id: Int): Boolean = id in historyIds
 
     fun loadHistories(ctx: Context, sorted: Boolean): MutableList<History> {
         return loadHistories(
@@ -107,20 +101,12 @@ object HistoriesUtils {
     }
 
     private fun saveHistories(ctx: Context, histories: MutableList<History>) {
-        val sb = StringBuilder()
-        val size = histories.size
-
-        for (i in 0..<size) {
-            val history = histories[i]
-            sb.append(history.id)
-            sb.append("q")
-            sb.append(history.created)
-            if (i != size - 1) {
-                sb.append("-")
-            }
-        }
-
-        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_SHARED_PREFERENCES_HISTORIES, sb.toString())
+        val serialized = histories.joinToString("-") { "${it.id}q${it.created}" }
+        SettingsUtils.saveStringToSharedPreferences(
+            ctx,
+            KEY_SHARED_PREFERENCES_HISTORIES,
+            serialized,
+        )
     }
 
     private fun addHistoryToStorage(ctx: Context, id: Int, created: Long) {

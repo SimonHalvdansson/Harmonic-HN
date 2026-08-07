@@ -273,8 +273,8 @@ object UserActions {
 
         val main = MAIN_HANDLER
         UserActions.fetchStoryListPage(
-            okHttpClientInstance!!,
-            UserActions.buildStoryListUrl(path!!, day),
+            okHttpClientInstance,
+            UserActions.buildStoryListUrl(path.orEmpty(), day),
             listName,
             commentsPage,
             main,
@@ -296,8 +296,8 @@ object UserActions {
 
         val main = MAIN_HANDLER
         UserActions.fetchStoryListPage(
-            okHttpClientInstance!!,
-            url!!,
+            okHttpClientInstance,
+            url.orEmpty(),
             listName,
             commentsPage,
             main,
@@ -320,7 +320,7 @@ object UserActions {
             .url(buildStoryListUrl("lists"))
             .build()
 
-        okHttpClientInstance!!.newCall(request).enqueue(object : Callback {
+        okHttpClientInstance.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 main.post(Runnable { cb.onFailure("Couldn't fetch HN lists", e.message) })
             }
@@ -483,7 +483,7 @@ object UserActions {
             val itemIds = ArrayList<Int>()
             val commentIds = ArrayList<Int>()
             UserActions.fetchUserItemListPage(
-                client!!,
+                client,
                 buildUserItemListUrl(path, account.first, false),
                 itemIds,
                 commentIds,
@@ -684,7 +684,7 @@ object UserActions {
             .url(url)
             .build()
 
-        okHttpClientInstanceWithCookies!!.newCall(request).enqueue(object : Callback {
+        okHttpClientInstanceWithCookies.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 main.post(Runnable { cb.onFailure("Couldn't load HN item", e.message) })
             }
@@ -793,7 +793,7 @@ object UserActions {
             .url(url)
             .build()
 
-        okHttpClientInstanceWithCookies!!.newCall(request).enqueue(object : Callback {
+        okHttpClientInstanceWithCookies.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 main.post(Runnable { cb.onFailure("Couldn't verify favorite", e.message) })
             }
@@ -1000,7 +1000,7 @@ object UserActions {
     private fun executeLoginRequest(ctx: Context, request: Request, cb: ActionCallback) {
         val main = MAIN_HANDLER
         val client = okHttpClientInstanceWithCookies
-        client!!.newCall(request).enqueue(object : Callback {
+        client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 main.post(Runnable { cb.onFailure("Login failed", e.message) })
             }
@@ -1161,14 +1161,9 @@ object UserActions {
         cb: ActionCallback,
         cookies: Boolean = false
     ) {
-        val client: OkHttpClient?
-        if (cookies) {
-            client = okHttpClientInstanceWithCookies
-        } else {
-            client = okHttpClientInstance
-        }
+        val client = if (cookies) okHttpClientInstanceWithCookies else okHttpClientInstance
 
-        client!!.newCall(request).enqueue(object : Callback {
+        client.newCall(request).enqueue(object : Callback {
             val mainHandler: Handler = MAIN_HANDLER
 
             override fun onResponse(call: Call, response: Response) {

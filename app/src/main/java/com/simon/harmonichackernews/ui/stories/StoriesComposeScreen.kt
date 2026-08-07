@@ -141,7 +141,7 @@ import kotlin.math.roundToInt
  * controller during this migration; adapter notifications are converted to immutable snapshots.
  */
 class StoriesComposeController private constructor(
-    private val activity: ComponentActivity,
+    private val defaultStoryHeightPx: Int,
     internal val listener: Listener,
 ) {
     internal var mainStories by mutableStateOf<List<Story>>(emptyList())
@@ -663,7 +663,7 @@ class StoriesComposeController private constructor(
             bounds.height.roundToInt().takeIf { height -> height > 0 }
         }
         return if (heights.isEmpty()) {
-            (96f * activity.resources.displayMetrics.density).roundToInt()
+            defaultStoryHeightPx
         } else {
             heights.sum() / heights.size
         }
@@ -741,7 +741,11 @@ class StoriesComposeController private constructor(
             activity: ComponentActivity,
             listener: Listener,
         ): StoriesComposeController {
-            return StoriesComposeController(activity, listener)
+            return StoriesComposeController(
+                defaultStoryHeightPx = (96f * activity.resources.displayMetrics.density)
+                    .roundToInt(),
+                listener = listener,
+            )
         }
     }
 }

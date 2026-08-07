@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.debug
 
-import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,16 +12,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
-import com.simon.harmonichackernews.utils.ThemeUtils
-import java.util.Random
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
+import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -46,8 +45,8 @@ private data class GasFrame(
 /** Compose Canvas version of the full-screen Ginibre log-gas Easter egg. */
 @Composable
 internal fun CoulombGasScreen() {
-    val context = LocalContext.current
-    val lightTheme = remember(context) { ThemeUtils.isLightMode(context) }
+    val colors = HarmonicTheme.colors
+    val lightTheme = colors.background.luminance() > colors.onSurface.luminance()
     val density = LocalDensity.current.density
     val palette = remember(lightTheme) { createPalette(lightTheme) }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
@@ -115,10 +114,10 @@ private fun createPalette(lightTheme: Boolean): List<Color> {
     return List(ColorSteps) { index ->
         val progress = index / (ColorSteps - 1f)
         val hue = 225f * (1f - progress)
-        Color(
-            AndroidColor.HSVToColor(
-                floatArrayOf(hue, 0.88f, brightness * progress),
-            ),
+        Color.hsv(
+            hue = hue,
+            saturation = 0.88f,
+            value = brightness * progress,
         )
     }
 }
@@ -140,7 +139,7 @@ private class CoulombGasSimulation(size: IntSize) {
     private var speedColorScale = 1f
 
     init {
-        val random = Random()
+        val random = Random.Default
         val scale = min(size.width, size.height) * WorldToView
         val halfWidth = size.width * 0.5f / scale
         val halfHeight = size.height * 0.5f / scale

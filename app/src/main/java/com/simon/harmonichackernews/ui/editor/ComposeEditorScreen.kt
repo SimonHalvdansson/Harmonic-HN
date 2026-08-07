@@ -58,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -93,7 +94,6 @@ import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
 import kotlin.math.max
 import kotlin.math.min
@@ -625,9 +625,10 @@ private fun SubmitButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val enabledBackground = HarmonicTheme.colors.accent
-    val disabledTarget = if (ThemeUtils.isDarkMode(context)) Color.Black else Color.White
+    val colors = HarmonicTheme.colors
+    val enabledBackground = colors.accent
+    val isDarkTheme = colors.background.luminance() < colors.onSurface.luminance()
+    val disabledTarget = if (isDarkTheme) Color.Black else Color.White
     val disabledBackground = lerp(enabledBackground, disabledTarget, 0.72f)
     val background by androidx.compose.animation.animateColorAsState(
         targetValue = if (enabled) enabledBackground else disabledBackground,

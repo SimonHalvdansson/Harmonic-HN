@@ -20,29 +20,17 @@ import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-import kotlin.Boolean
-import kotlin.Exception
-import kotlin.Long
-import kotlin.Throwable
-import kotlin.Throws
-import kotlin.also
-import kotlin.plus
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
 import okhttp3.ResponseBody
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
 
 object SummaryManager {
     private const val CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 1000
@@ -61,8 +49,9 @@ object SummaryManager {
             com.android.volley.Request.Method.GET, url, null,
             com.android.volley.Response.Listener { response: JSONObject? ->
                 try {
-                    val models = response!!.getJSONArray("data")
-                    val modelNames: MutableList<String> = ArrayList()
+                    val models = response?.getJSONArray("data")
+                        ?: throw JSONException("Missing models response")
+                    val modelNames = mutableListOf<String>()
                     for (i in 0..<models.length()) {
                         modelNames.add(models.getJSONObject(i).getString("id"))
                     }
@@ -73,11 +62,10 @@ object SummaryManager {
             },
             com.android.volley.Response.ErrorListener { error: VolleyError? -> callback.onFailure(error?.message ?: "Unknown error") }
         ) {
-            override fun getHeaders(): MutableMap<kotlin.String?, kotlin.String?> {
-                val headers: MutableMap<kotlin.String?, kotlin.String?> =
-                    HashMap<kotlin.String?, kotlin.String?>()
-                if (!apiKey.isEmpty()) {
-                    headers.put("Authorization", "Bearer " + apiKey)
+            override fun getHeaders(): MutableMap<String, String> {
+                val headers = mutableMapOf<String, String>()
+                if (apiKey.isNotEmpty()) {
+                    headers["Authorization"] = "Bearer $apiKey"
                 }
                 return headers
             }
@@ -89,25 +77,25 @@ object SummaryManager {
     fun summarizeArticle(
         ctx: Context,
         queue: RequestQueue?,
-        articleUrl: kotlin.String,
+        articleUrl: String,
         callback: SummaryCallback
     ) {
-        Thread(Runnable {
+        Thread {
             try {
                 summarizeText(ctx, queue, extractMainContent(articleUrl), callback)
             } catch (e: Exception) {
                 postFailure(callback, "Extraction failed: " + getThrowableMessage(e))
             }
-        }).start()
+        }.start()
     }
 
     fun summarizeText(
         ctx: Context,
         queue: RequestQueue?,
-        text: kotlin.String?,
+        text: String?,
         callback: SummaryCallback
     ) {
-        summarizeWithLLM(ctx, queue, prepareCloudSummaryInput(text), callback)
+        summarizeWithLLM(ctx, prepareCloudSummaryInput(text), callback)
     }
 
     fun canAttemptLocalSummarization(): Boolean {
@@ -120,7 +108,7 @@ object SummaryManager {
 
     fun summarizeArticleWithGeminiNano(
         ctx: Context?,
-        articleUrl: kotlin.String?,
+        articleUrl: String?,
         callback: SummaryCallback?
     ) {
         LocalSummaryManager.summarizeArticle(ctx, articleUrl, callback)
@@ -128,7 +116,7 @@ object SummaryManager {
 
     fun summarizeTextWithGeminiNano(
         ctx: Context?,
-        text: kotlin.String?,
+        text: String?,
         callback: SummaryCallback?
     ) {
         LocalSummaryManager.summarizeText(ctx, text, callback)
@@ -143,7 +131,7 @@ object SummaryManager {
     }
 
     @Throws(IOException::class)
-    fun extractMainContent(url: kotlin.String): kotlin.String {
+    fun extractMainContent(url: String): String {
         val doc = Jsoup.connect(url)
             .userAgent("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36")
             .timeout(10000)
@@ -152,34 +140,29 @@ object SummaryManager {
         return body.text()
     }
 
-    private fun prepareCloudSummaryInput(text: kotlin.String?): kotlin.String {
-        val normalized = if (text == null) "" else text.trim { it <= ' ' }
+    private fun prepareCloudSummaryInput(text: String?): String {
+        val normalized = text.orEmpty().trim { it <= ' ' }
         if (normalized.length > 15000) {
             return normalized.substring(0, 15000)
         }
         return normalized
     }
 
-    fun getThrowableMessage(throwable: Throwable?): kotlin.String? {
-        if (throwable == null || throwable.message == null || throwable.message!!.isEmpty()) {
-            return "Unknown error"
-        }
-        return throwable.message
+    fun getThrowableMessage(throwable: Throwable?): String {
+        return throwable?.message?.takeUnless(String::isEmpty) ?: "Unknown error"
     }
 
     private fun summarizeWithLLM(
         ctx: Context,
-        queue: RequestQueue?,
-        text: kotlin.String?,
+        text: String?,
         callback: SummaryCallback
     ) {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(ctx)
         val apiKey = AiSummaryApiKeyStore.getApiKey(ctx)
-        val baseUrl = PreferenceManager.getDefaultSharedPreferences(ctx)
-            .getString("pref_ai_summary_base_url", defaultBaseUrl)
+        val baseUrl = preferences.getString("pref_ai_summary_base_url", defaultBaseUrl)
         val model = getModelForRequest(
             baseUrl,
-            PreferenceManager.getDefaultSharedPreferences(ctx)
-                .getString("pref_ai_summary_model", "")
+            preferences.getString("pref_ai_summary_model", "")
         )
 
         if (apiKey.isEmpty()) {
@@ -195,30 +178,30 @@ object SummaryManager {
         }
         postDebugInfo(callback, model + " · load —")
 
-        val prompt: kotlin.String = PreferenceManager.getDefaultSharedPreferences(ctx)
-            .getString("pref_ai_summary_system_prompt", SummaryManager.DEFAULT_SYSTEM_PROMPT)!!
-        val streamResponses = PreferenceManager.getDefaultSharedPreferences(ctx)
-            .getBoolean(PREF_STREAM_RESPONSES, true)
+        val prompt = preferences.getString(
+            "pref_ai_summary_system_prompt",
+            DEFAULT_SYSTEM_PROMPT
+        ) ?: DEFAULT_SYSTEM_PROMPT
+        val streamResponses = preferences.getBoolean(PREF_STREAM_RESPONSES, true)
         if (isAnthropicBaseUrl(baseUrl)) {
             summarizeWithAnthropic(
-                queue, baseUrl, apiKey, model, prompt, text,
+                baseUrl, apiKey, model, prompt, text,
                 streamResponses, callback
             )
         } else {
             summarizeWithChatCompletions(
-                queue, baseUrl, apiKey, model, prompt, text,
+                baseUrl, apiKey, model, prompt, text,
                 streamResponses, callback
             )
         }
     }
 
     private fun summarizeWithChatCompletions(
-        queue: RequestQueue?,
-        baseUrl: kotlin.String?,
-        apiKey: kotlin.String?,
-        model: kotlin.String?,
-        prompt: kotlin.String?,
-        text: kotlin.String?,
+        baseUrl: String?,
+        apiKey: String,
+        model: String,
+        prompt: String,
+        text: String?,
         streamResponses: Boolean,
         callback: SummaryCallback
     ) {
@@ -253,12 +236,11 @@ object SummaryManager {
     }
 
     private fun summarizeWithAnthropic(
-        queue: RequestQueue?,
-        baseUrl: kotlin.String?,
-        apiKey: kotlin.String,
-        model: kotlin.String?,
-        prompt: kotlin.String?,
-        text: kotlin.String?,
+        baseUrl: String?,
+        apiKey: String,
+        model: String,
+        prompt: String,
+        text: String?,
         streamResponses: Boolean,
         callback: SummaryCallback
     ) {
@@ -290,7 +272,7 @@ object SummaryManager {
     }
 
     private fun requestSummary(
-        url: kotlin.String,
+        url: String,
         payload: JSONObject,
         requestBuilder: Request.Builder,
         anthropic: Boolean,
@@ -304,7 +286,7 @@ object SummaryManager {
             .header("Accept", if (streamResponses) "text/event-stream" else "application/json")
             .post(requestBody)
             .build()
-        val client = okHttpClientInstance!!.newBuilder()
+        val client = okHttpClientInstance.newBuilder()
             .readTimeout(120, TimeUnit.SECONDS)
             .build()
 
@@ -317,15 +299,11 @@ object SummaryManager {
                 try {
                     response.body.use { body ->
                         if (!response.isSuccessful) {
-                            val errorBody = if (body == null) "" else body.string()
+                            val errorBody = body.string()
                             postFailure(
                                 callback, "API error: "
                                         + getApiErrorMessage(errorBody, response.message)
                             )
-                            return
-                        }
-                        if (body == null) {
-                            postFailure(callback, "API response error")
                             return
                         }
                         if (streamResponses) {
@@ -369,10 +347,10 @@ object SummaryManager {
         BufferedReader(
             InputStreamReader(body.byteStream(), StandardCharsets.UTF_8)
         ).use { reader ->
-            var line: kotlin.String?
-            while ((reader.readLine().also { line = it }) != null) {
-                if (line!!.isEmpty()) {
-                    if (eventData.length > 0) {
+            while (true) {
+                val line = reader.readLine() ?: break
+                if (line.isEmpty()) {
+                    if (eventData.isNotEmpty()) {
                         sawSseData = true
                         if (appendStreamEvent(eventData.toString(), anthropic, summary, callback)) {
                             eventData.setLength(0)
@@ -381,28 +359,28 @@ object SummaryManager {
                         eventData.setLength(0)
                     }
                 } else if (line.startsWith("data:")) {
-                    if (eventData.length > 0) {
+                    if (eventData.isNotEmpty()) {
                         eventData.append('\n')
                     }
                     eventData.append(line.substring(5).trim { it <= ' ' })
                 } else if (!line.startsWith(":")) {
-                    if (plainResponse.length > 0) {
+                    if (plainResponse.isNotEmpty()) {
                         plainResponse.append('\n')
                     }
                     plainResponse.append(line)
                 }
             }
         }
-        if (eventData.length > 0) {
+        if (eventData.isNotEmpty()) {
             sawSseData = true
             appendStreamEvent(eventData.toString(), anthropic, summary, callback)
         }
 
-        if (!sawSseData && summary.length == 0 && plainResponse.length > 0) {
+        if (!sawSseData && summary.isEmpty() && plainResponse.isNotEmpty()) {
             appendNonStreamingResponse(plainResponse.toString(), anthropic, summary, callback)
         }
 
-        if (summary.length == 0) {
+        if (summary.isEmpty()) {
             postFailure(callback, "API response error")
         } else {
             postSuccess(callback, summary.toString())
@@ -411,7 +389,7 @@ object SummaryManager {
 
     @Throws(IOException::class)
     private fun appendStreamEvent(
-        data: kotlin.String,
+        data: String,
         anthropic: Boolean,
         summary: StringBuilder,
         callback: SummaryCallback
@@ -426,15 +404,15 @@ object SummaryManager {
                 throw IOException(getApiErrorMessage(data, "Streaming request failed"))
             }
 
-            val chunk: kotlin.String?
+            val chunk: String?
             if (anthropic) {
-                val delta = event.optJSONObject("delta")
-                chunk = if (delta == null) "" else delta.optString("text", "")
+                chunk = event.optJSONObject("delta")?.optString("text", "").orEmpty()
             } else {
-                val choices = event.optJSONArray("choices")
-                val choice = if (choices == null) null else choices.optJSONObject(0)
-                val delta = if (choice == null) null else choice.optJSONObject("delta")
-                chunk = if (delta == null) "" else delta.optString("content", "")
+                chunk = event.optJSONArray("choices")
+                    ?.optJSONObject(0)
+                    ?.optJSONObject("delta")
+                    ?.optString("content", "")
+                    .orEmpty()
             }
 
             appendSummaryChunk(summary, chunk, callback)
@@ -446,7 +424,7 @@ object SummaryManager {
 
     @Throws(IOException::class)
     private fun appendNonStreamingResponse(
-        responseBody: kotlin.String,
+        responseBody: String,
         anthropic: Boolean,
         summary: StringBuilder,
         callback: SummaryCallback
@@ -456,18 +434,19 @@ object SummaryManager {
 
     @Throws(IOException::class)
     private fun parseNonStreamingResponse(
-        responseBody: kotlin.String,
+        responseBody: String,
         anthropic: Boolean
-    ): kotlin.String? {
+    ): String? {
         try {
             val response = JSONObject(responseBody)
             if (anthropic) {
                 return parseAnthropicSummary(response)
             }
-            val choices = response.optJSONArray("choices")
-            val choice = if (choices == null) null else choices.optJSONObject(0)
-            val message = if (choice == null) null else choice.optJSONObject("message")
-            return if (message == null) "" else message.optString("content", "")
+            return response.optJSONArray("choices")
+                ?.optJSONObject(0)
+                ?.optJSONObject("message")
+                ?.optString("content", "")
+                .orEmpty()
         } catch (e: JSONException) {
             throw IOException("Invalid API response", e)
         }
@@ -475,7 +454,7 @@ object SummaryManager {
 
     private fun appendSummaryChunk(
         summary: StringBuilder,
-        chunk: kotlin.String?,
+        chunk: String?,
         callback: SummaryCallback
     ) {
         if (TextUtils.isEmpty(chunk)) {
@@ -485,7 +464,7 @@ object SummaryManager {
         postProgress(callback, summary.toString())
     }
 
-    private fun parseAnthropicSummary(response: JSONObject): kotlin.String? {
+    private fun parseAnthropicSummary(response: JSONObject): String? {
         val content = response.optJSONArray("content")
         if (content == null) {
             return null
@@ -498,8 +477,8 @@ object SummaryManager {
                 continue
             }
             val text = block.optString("text", "")
-            if (!text.isEmpty()) {
-                if (summary.length > 0) {
+            if (text.isNotEmpty()) {
+                if (summary.isNotEmpty()) {
                     summary.append("\n")
                 }
                 summary.append(text)
@@ -508,7 +487,7 @@ object SummaryManager {
         return summary.toString()
     }
 
-    private fun getApiErrorMessage(body: kotlin.String?, fallback: kotlin.String): kotlin.String? {
+    private fun getApiErrorMessage(body: String?, fallback: String): String? {
         if (TextUtils.isEmpty(body)) {
             return fallback
         }
@@ -519,7 +498,7 @@ object SummaryManager {
                 if (errorObject is JSONObject) {
                     return errorObject.optString("message", fallback)
                 }
-                if (errorObject is kotlin.String) {
+                if (errorObject is String) {
                     return errorObject
                 }
             }
@@ -529,67 +508,67 @@ object SummaryManager {
         }
     }
 
-    private fun joinUrl(baseUrl: kotlin.String?, path: kotlin.String?): kotlin.String {
+    private fun joinUrl(baseUrl: String?, path: String): String {
         return normalizeUrl(baseUrl) + "/" + path
     }
 
-    fun postSuccess(callback: SummaryCallback?, summary: kotlin.String?) {
+    fun postSuccess(callback: SummaryCallback?, summary: String?) {
         if (callback == null) return
-        MAIN_HANDLER.post(Runnable { callback.onSuccess(summary) })
+        MAIN_HANDLER.post { callback.onSuccess(summary) }
     }
 
-    fun postProgress(callback: SummaryCallback?, summary: kotlin.String?) {
+    fun postProgress(callback: SummaryCallback?, summary: String?) {
         if (callback == null) return
-        MAIN_HANDLER.post(Runnable { callback.onProgress(summary) })
+        MAIN_HANDLER.post { callback.onProgress(summary) }
     }
 
-    fun postDebugInfo(callback: SummaryCallback?, debugInfo: kotlin.String?) {
+    fun postDebugInfo(callback: SummaryCallback?, debugInfo: String?) {
         if (callback == null) return
-        MAIN_HANDLER.post(Runnable { callback.onDebugInfo(debugInfo) })
+        MAIN_HANDLER.post { callback.onDebugInfo(debugInfo) }
     }
 
-    fun formatLoadInfo(modelName: kotlin.String?, loadMillis: Long): kotlin.String {
+    fun formatLoadInfo(modelName: String?, loadMillis: Long): String {
         if (loadMillis < 1000L) {
             return modelName + " · " + loadMillis + " ms load"
         }
         return (modelName + " · "
-                + kotlin.String.format(Locale.US, "%.1f s", loadMillis / 1000.0) + " load")
+                + String.format(Locale.US, "%.1f s", loadMillis / 1000.0) + " load")
     }
 
-    fun postFailure(callback: SummaryCallback?, error: kotlin.String?) {
+    fun postFailure(callback: SummaryCallback?, error: String?) {
         if (callback == null) return
-        MAIN_HANDLER.post(Runnable { callback.onFailure(error) })
+        MAIN_HANDLER.post { callback.onFailure(error) }
     }
 
     fun postLocalAvailability(
         callback: LocalSummaryAvailabilityCallback?,
         available: Boolean,
         downloadableFallbackRequired: Boolean,
-        statusMessage: kotlin.String?
+        statusMessage: String?
     ) {
         if (callback == null) return
-        MAIN_HANDLER.post(Runnable {
+        MAIN_HANDLER.post {
             callback.onResult(
                 available, downloadableFallbackRequired, statusMessage
             )
-        })
+        }
     }
 
     interface SummaryCallback {
-        fun onProgress(summary: kotlin.String?) {
+        fun onProgress(summary: String?) {
         }
 
-        fun onDebugInfo(debugInfo: kotlin.String?) {
+        fun onDebugInfo(debugInfo: String?) {
         }
 
-        fun onSuccess(summary: kotlin.String?)
-        fun onFailure(error: kotlin.String?)
+        fun onSuccess(summary: String?)
+        fun onFailure(error: String?)
     }
 
     fun interface LocalSummaryAvailabilityCallback {
         fun onResult(
             available: Boolean, downloadableFallbackRequired: Boolean,
-            statusMessage: kotlin.String?
+            statusMessage: String?
         )
     }
 }

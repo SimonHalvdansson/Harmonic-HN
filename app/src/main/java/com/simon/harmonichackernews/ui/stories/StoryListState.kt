@@ -3,21 +3,15 @@ package com.simon.harmonichackernews.ui.stories
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.Drawable
-import android.text.TextUtils
-import androidx.annotation.NonNull
-import androidx.annotation.Nullable
-import coil.Coil
 import coil.Coil.imageLoader
 import coil.request.Disposable
 import coil.request.ImageRequest
 import coil.target.Target
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.FaviconLoader.getFaviconUrl
 import com.simon.harmonichackernews.network.LinkSummaryLoader
 import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.PreviewContentCallback
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.PreviewImageRequest
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.getCachedLinkSummary
@@ -36,8 +30,7 @@ import kotlin.math.min
 
 /**
  * Non-View state owned by `StoriesCoordinator` while Compose renders the story list.
- * 
- * 
+ *
  * This replaces the old unattached RecyclerView adapter. It deliberately contains only the
  * stateful responsibilities still needed by the Compose screen: pagination, display settings,
  * preview metadata/image prefetch, and card tint caching.
@@ -45,7 +38,7 @@ import kotlin.math.min
 class StoryListState(
     private val stories: MutableList<Story>,
     settings: StoryDisplaySettings,
-    wantedType: Int
+    wantedType: Int,
 ) {
     private val previewRequests: MutableMap<Story, PreviewImageRequest> = IdentityHashMap()
     private val imagePrefetches: MutableMap<Story, Disposable> = IdentityHashMap()
@@ -93,23 +86,20 @@ class StoryListState(
     }
 
     val itemCount: Int
-        get() = this.visibleStoryItemCount + (if (hasLoadMoreButton()) 1 else 0)
+        get() = visibleStoryItemCount + if (hasLoadMoreButton()) 1 else 0
 
     val visibleStoryItemCount: Int
         get() = if (paginationMode) min(
             visibleStoryCount,
-            stories.size
+            stories.size,
         ) else stories.size
 
-    fun hasLoadMoreButton(): Boolean {
-        return loadMoreLoading
-                || showLoadMoreButton
-                || (paginationMode && visibleStoryCount < stories.size)
-    }
+    fun hasLoadMoreButton(): Boolean =
+        loadMoreLoading ||
+            showLoadMoreButton ||
+            (paginationMode && visibleStoryCount < stories.size)
 
-    fun isLoadMoreLoading(): Boolean {
-        return loadMoreLoading
-    }
+    fun isLoadMoreLoading(): Boolean = loadMoreLoading
 
     fun setLoadMoreLoading(loading: Boolean) {
         if (loadMoreLoading == loading) return
@@ -128,7 +118,7 @@ class StoryListState(
     }
 
     fun updateStoryIndicesFromPosition(position: Int) {
-        if (showIndex && position >= 0 && position < this.visibleStoryItemCount) notifyChanged()
+        if (showIndex && position in 0..<visibleStoryItemCount) notifyChanged()
     }
 
     fun notifyDataSetChanged() {
@@ -164,23 +154,22 @@ class StoryListState(
     }
 
     fun resolveStoryCardBackgroundColor(context: Context?, story: Story?): Int {
-        val baseColor = if (context == null)
-            Color.TRANSPARENT
-        else
-            PreviewImageTintUtils.getTintBaseColor(context)
+        val baseColor = context?.let(PreviewImageTintUtils::getTintBaseColor) ?: Color.TRANSPARENT
         if (!tintCardUsingPreview || story == null) return baseColor
-        if ((SettingsUtils.STORY_PREVIEW_IMAGE_OFF != previewImageMode) && !story.previewImageLoadFailed && PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
-                story, baseColor, paletteTintMode
+        if (previewImageMode != SettingsUtils.STORY_PREVIEW_IMAGE_OFF &&
+            !story.previewImageLoadFailed &&
+            PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
+                story,
+                baseColor,
+                paletteTintMode,
             )
         ) {
             return story.previewImageTintColor
         }
         val faviconUrl = getFaviconUrl(story)
         if (story.faviconTintColorLoaded
-            && story.faviconTintBaseColor == baseColor && TextUtils.equals(
-                story.faviconTintSourceUrl,
-                faviconUrl
-            )
+            && story.faviconTintBaseColor == baseColor
+            && story.faviconTintSourceUrl == faviconUrl
             && PreviewImageTintUtils.isTintModeCurrent(story.faviconTintMode, paletteTintMode)
         ) {
             return story.faviconTintColor
@@ -190,7 +179,7 @@ class StoryListState(
 
     fun prefetchPreviewImage(context: Context?, story: Story?) {
         if (context == null || story == null || !story.loaded || story.loadingFailed
-            || story.isComment || TextUtils.isEmpty(story.url)
+            || story.isComment || story.url.isNullOrEmpty()
         ) {
             return
         }
@@ -202,7 +191,7 @@ class StoryListState(
 
         val previewEnabled = SettingsUtils.STORY_PREVIEW_IMAGE_OFF != previewImageMode
         if (!previewEnabled && !showSummary) return
-        if (!TextUtils.isEmpty(story.previewImageUrl)) {
+        if (!story.previewImageUrl.isNullOrEmpty()) {
             if (previewEnabled) prefetchPreviewDrawable(context, story)
             return
         }
@@ -226,7 +215,7 @@ class StoryListState(
                     story.previewImageUrlLoading = false
                     story.linkSummaryLoading = false
                     story.previewImageUrlLoaded = true
-                    if (!TextUtils.isEmpty(imageUrl)) {
+                    if (!imageUrl.isNullOrEmpty()) {
                         setPreviewImageUrl(story, imageUrl)
                         story.previewImageLoadFailed = false
                     } else if (previewEnabled) {
@@ -235,30 +224,28 @@ class StoryListState(
                     }
                     if (showSummary) {
                         story.linkSummaryLoaded = true
-                        story.linkSummaryDescription =
-                            if (summary == null) null else summary.description
+                        story.linkSummaryDescription = summary?.description
                     }
                     cachePreviewState(context, story)
-                    if (previewEnabled && !TextUtils.isEmpty(story.previewImageUrl)) {
+                    if (previewEnabled && !story.previewImageUrl.isNullOrEmpty()) {
                         prefetchPreviewDrawable(context, story)
                     }
                     notifyChanged(story)
                 })
-        previewRequests.put(story, request)
+        previewRequests[story] = request
     }
 
     fun dispose() {
         changedListener = null
-        for (entry
-        in previewRequests.entries) {
-            entry.value!!.cancel()
-            entry.key!!.previewImageUrlLoading = false
-            entry.key!!.linkSummaryLoading = false
+        for ((story, request) in previewRequests) {
+            request.cancel()
+            story.previewImageUrlLoading = false
+            story.linkSummaryLoading = false
         }
         previewRequests.clear()
-        for (entry in imagePrefetches.entries) {
-            entry.value!!.dispose()
-            entry.key!!.previewImageLoading = false
+        for ((story, prefetch) in imagePrefetches) {
+            prefetch.dispose()
+            story.previewImageLoading = false
         }
         imagePrefetches.clear()
         tintExtractor.detach()
@@ -288,9 +275,8 @@ class StoryListState(
         commentTextSize = settings.commentTextSize
     }
 
-    private fun hydrateCachedPreviewState(context: Context?, story: Story) {
-        if (context == null) return
-        if (TextUtils.isEmpty(story.previewImageUrl) && !story.previewImageUrlLoaded) {
+    private fun hydrateCachedPreviewState(context: Context, story: Story) {
+        if (story.previewImageUrl.isNullOrEmpty() && !story.previewImageUrlLoaded) {
             val loaded = isCachedPreviewImageUrlLoaded(
                 context, story.id, story.url
             )
@@ -301,44 +287,45 @@ class StoryListState(
                     )
                 )
                 story.previewImageUrlLoaded = true
-                story.previewImageLoadFailed = TextUtils.isEmpty(story.previewImageUrl)
+                story.previewImageLoadFailed = story.previewImageUrl.isNullOrEmpty()
             }
         }
         if (showSummary && !story.linkSummaryLoaded) {
-            val summary =
-                getCachedLinkSummary(context, story.url)
-            if (summary != null) {
+            getCachedLinkSummary(context, story.url)?.let { summary ->
                 story.linkSummaryLoaded = true
                 story.linkSummaryDescription = summary.description
-                if (TextUtils.isEmpty(story.previewImageUrl)
-                    && !TextUtils.isEmpty(summary.imageUrl)
+                if (story.previewImageUrl.isNullOrEmpty()
+                    && !summary.imageUrl.isNullOrEmpty()
                 ) {
                     setPreviewImageUrl(story, summary.imageUrl)
                     story.previewImageUrlLoaded = true
                 }
             }
         }
-        if (tintCardUsingPreview && !TextUtils.isEmpty(story.previewImageUrl)) {
+        if (tintCardUsingPreview && !story.previewImageUrl.isNullOrEmpty()) {
             val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
             val tint = loadCachedPreviewImageTintColor(
                 context, story.id, story.previewImageUrl, baseColor
             )
             if (tint != null) {
                 PreviewImageTintUtils.applyCachedStoryPreviewImageTintColor(
-                    story, story.previewImageUrl, baseColor, paletteTintMode, tint
+                    story,
+                    story.previewImageUrl,
+                    baseColor,
+                    paletteTintMode,
+                    tint,
                 )
             }
         }
     }
 
     private fun prefetchPreviewDrawable(context: Context, story: Story) {
-        if (TextUtils.isEmpty(story.previewImageUrl)
-            || story.previewImageLoading
+        if (story.previewImageLoading
             || imagePrefetches.containsKey(story)
         ) {
             return
         }
-        val imageUrl = story.previewImageUrl
+        val imageUrl = story.previewImageUrl?.takeIf(String::isNotEmpty) ?: return
         val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
         val tintIsCurrent = tintCardUsingPreview &&
             PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
@@ -362,16 +349,16 @@ class StoryListState(
 
         story.previewImageLoading = true
         val width = if (SettingsUtils.STORY_PREVIEW_IMAGE_LARGE == previewImageMode)
-            context.getResources().getDisplayMetrics().widthPixels
+            context.resources.displayMetrics.widthPixels
         else
-            Utils.pxFromDpInt(context.getResources(), 72f)
+            Utils.pxFromDpInt(context.resources, 72f)
         val height = if (SettingsUtils.STORY_PREVIEW_IMAGE_LARGE == previewImageMode)
             Utils.pxFromDpInt(
-                context.getResources(),
-                LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP.toFloat()
+                context.resources,
+                LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP.toFloat(),
             )
         else
-            Utils.pxFromDpInt(context.getResources(), 54f)
+            Utils.pxFromDpInt(context.resources, 54f)
         val request = ImageRequest.Builder(context)
             .data(imageUrl)
             .setHeader("User-Agent", NetworkComponent.USER_AGENT)
@@ -397,21 +384,20 @@ class StoryListState(
             .build()
         val disposable = imageLoader(context).enqueue(request)
         if (story.previewImageLoading) {
-            imagePrefetches.put(story, disposable)
+            imagePrefetches[story] = disposable
         }
     }
 
     private fun prefetchFaviconTint(context: Context, story: Story) {
-        if (!thumbnails || !TextUtils.isEmpty(story.previewImageUrl)) return
-        val faviconUrl = getFaviconUrl(story)
+        if (!thumbnails || !story.previewImageUrl.isNullOrEmpty()) return
+        val faviconUrl = getFaviconUrl(story)?.takeIf(String::isNotEmpty) ?: return
         val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
         val mode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
-        if (TextUtils.isEmpty(faviconUrl)
-            || story.faviconTintColorLoading
+        if (story.faviconTintColorLoading
             || (story.faviconTintColorLoaded
-                    && TextUtils.equals(story.faviconTintSourceUrl, faviconUrl)
-                    && story.faviconTintBaseColor == baseColor
-                    && PreviewImageTintUtils.isTintModeCurrent(story.faviconTintMode, mode))
+                && story.faviconTintSourceUrl == faviconUrl
+                && story.faviconTintBaseColor == baseColor
+                && PreviewImageTintUtils.isTintModeCurrent(story.faviconTintMode, mode))
         ) {
             return
         }
@@ -424,7 +410,7 @@ class StoryListState(
             applyTint(context, story, faviconUrl, baseColor, cachedTint, true)
             return
         }
-        val size = Utils.pxFromDpInt(context.getResources(), FAVICON_TINT_SIZE_DP.toFloat())
+        val size = Utils.pxFromDpInt(context.resources, FAVICON_TINT_SIZE_DP.toFloat())
         val request = ImageRequest.Builder(context)
             .data(faviconUrl)
             .size(size, size)
@@ -444,13 +430,13 @@ class StoryListState(
     }
 
     private fun requestTint(
-        context: Context?,
+        context: Context,
         story: Story,
         sourceUrl: String?,
-        drawable: Drawable?,
-        favicon: Boolean
+        drawable: Drawable,
+        favicon: Boolean,
     ) {
-        if (!tintCardUsingPreview || context == null) return
+        if (!tintCardUsingPreview) return
         val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
         val cached = StoryPreviewImageMemoryCache.getTintColor(story.id, sourceUrl, baseColor)
         if (cached != null) {
@@ -470,10 +456,11 @@ class StoryListState(
             sourceUrl,
             baseColor,
             mode,
-            if (favicon)
+            if (favicon) {
                 PreviewImageTintExtractor.Source.FAVICON
-            else
-                PreviewImageTintExtractor.Source.PREVIEW_IMAGE,
+            } else {
+                PreviewImageTintExtractor.Source.PREVIEW_IMAGE
+            },
             drawable,
             object : PreviewImageTintExtractor.Callback {
                 override fun onTintReady(tintColor: Int) {
@@ -494,15 +481,15 @@ class StoryListState(
     }
 
     private fun applyTint(
-        context: Context?,
+        context: Context,
         story: Story,
         sourceUrl: String?,
         baseColor: Int,
         tintColor: Int,
-        favicon: Boolean
+        favicon: Boolean,
     ) {
         if (favicon) {
-            if (!TextUtils.equals(story.faviconTintSourceUrl, sourceUrl)) return
+            if (story.faviconTintSourceUrl != sourceUrl) return
             story.faviconTintColor = tintColor
             story.faviconTintColorLoaded = true
             story.faviconTintColorLoading = false
@@ -510,7 +497,11 @@ class StoryListState(
             story.faviconTintBaseColor = baseColor
             story.faviconTintMode = PreviewImageTintUtils.storedTintMode(paletteTintMode)
         } else if (!PreviewImageTintUtils.applyCachedStoryPreviewImageTintColor(
-                story, sourceUrl, baseColor, paletteTintMode, tintColor
+                story,
+                sourceUrl,
+                baseColor,
+                paletteTintMode,
+                tintColor,
             )
         ) {
             return
@@ -519,23 +510,22 @@ class StoryListState(
         notifyChanged(story)
     }
 
-    private fun cachePreviewState(context: Context?, story: Story) {
+    private fun cachePreviewState(context: Context, story: Story) {
         Utils.cacheStoryPreviewState(context, story)
-        val baseColor = if (context == null) Color.TRANSPARENT else
-            PreviewImageTintUtils.getTintBaseColor(context)
+        val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
         if (PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
                 story,
                 baseColor,
                 paletteTintMode,
             )
-            && !TextUtils.isEmpty(story.previewImageTintSourceUrl)
+            && !story.previewImageTintSourceUrl.isNullOrEmpty()
         ) {
             saveCachedPreviewImageTintColor(
                 context,
                 story.id,
                 story.previewImageTintSourceUrl,
                 story.previewImageTintBaseColor,
-                story.previewImageTintColor
+                story.previewImageTintColor,
             )
         }
         if (story.faviconTintColorLoaded
@@ -544,38 +534,33 @@ class StoryListState(
                 story.faviconTintMode,
                 paletteTintMode,
             )
-            && !TextUtils.isEmpty(story.faviconTintSourceUrl)
+            && !story.faviconTintSourceUrl.isNullOrEmpty()
         ) {
             saveCachedPreviewImageTintColor(
                 context,
                 story.id,
                 story.faviconTintSourceUrl,
                 story.faviconTintBaseColor,
-                story.faviconTintColor
+                story.faviconTintColor,
             )
         }
     }
 
     private fun setPreviewImageUrl(story: Story, imageUrl: String?) {
-        if (!TextUtils.equals(story.previewImageUrl, imageUrl)) {
+        if (story.previewImageUrl != imageUrl) {
             PreviewImageTintUtils.clearStoryPreviewImageTintColor(story)
             story.previewImageLoaded = false
         }
         story.previewImageUrl = imageUrl
     }
 
-    private fun getFaviconUrl(story: Story): String? {
-        try {
-            return getFaviconUrl(story.url, faviconProvider)
-        } catch (ignored: Exception) {
-            return null
-        }
-    }
+    private fun getFaviconUrl(story: Story): String? =
+        runCatching { getFaviconUrl(story.url, faviconProvider) }.getOrNull()
 
     private fun notifyChanged(story: Story? = null) = changedListener?.invoke(story)
 
     companion object {
-        const val PAGINATION_PAGE_SIZE: Int = 30
+        const val PAGINATION_PAGE_SIZE = 30
         private const val LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP = 176
         private const val FAVICON_TINT_SIZE_DP = 64
     }

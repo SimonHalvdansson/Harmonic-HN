@@ -1,35 +1,22 @@
 package com.simon.harmonichackernews.utils
 
-import androidx.annotation.NonNull
-import androidx.annotation.Nullable
 import java.io.BufferedInputStream
 import java.io.DataInputStream
 import java.io.IOException
 import java.io.InputStream
-import java.lang.Long
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Arrays
-import kotlin.Boolean
-import kotlin.ByteArray
-import kotlin.Int
-import kotlin.LongArray
-import kotlin.String
-import kotlin.Throws
-import kotlin.code
 
 /** Immutable sorted primitive table for allocation-free blocked-host lookups.  */
 class AdHostBlocklist private constructor(private val sortedHostHashes: LongArray) {
     val isEmpty: Boolean
-        get() = sortedHostHashes.size == 0
+        get() = sortedHostHashes.isEmpty()
 
-    fun size(): Int {
-        return sortedHostHashes.size
-    }
+    fun size(): Int = sortedHostHashes.size
 
-    fun contains(host: String?): Boolean {
-        return host != null && Arrays.binarySearch(sortedHostHashes, hash(host)) >= 0
-    }
+    fun contains(host: String?): Boolean =
+        host != null && Arrays.binarySearch(sortedHostHashes, hash(host)) >= 0
 
     companion object {
         private const val FILE_MAGIC = 0x48414431 // HAD1
@@ -38,9 +25,7 @@ class AdHostBlocklist private constructor(private val sortedHostHashes: LongArra
         private const val FNV_PRIME = 0x100000001b3L
         private val EMPTY = AdHostBlocklist(LongArray(0))
 
-        fun empty(): AdHostBlocklist {
-            return EMPTY
-        }
+        fun empty(): AdHostBlocklist = EMPTY
 
         @Throws(IOException::class)
         fun read(inputStream: InputStream): AdHostBlocklist {
@@ -50,10 +35,10 @@ class AdHostBlocklist private constructor(private val sortedHostHashes: LongArra
                 }
                 val count = input.readInt()
                 if (count < 0 || count > MAX_HOST_COUNT) {
-                    throw IOException("Invalid ad host blocklist size: " + count)
+                    throw IOException("Invalid ad host blocklist size: $count")
                 }
 
-                val encodedHashes = ByteArray(Math.multiplyExact(count, Long.BYTES))
+                val encodedHashes = ByteArray(Math.multiplyExact(count, Long.SIZE_BYTES))
                 input.readFully(encodedHashes)
                 if (input.read() != -1) {
                     throw IOException("Unexpected data after ad host blocklist")
@@ -73,10 +58,10 @@ class AdHostBlocklist private constructor(private val sortedHostHashes: LongArra
             }
         }
 
-        private fun hash(host: String): kotlin.Long {
-            var hash: kotlin.Long = FNV_OFFSET_BASIS
-            for (i in 0..<host.length) {
-                hash = hash xor host.get(i).code.toLong()
+        private fun hash(host: String): Long {
+            var hash = FNV_OFFSET_BASIS
+            for (character in host) {
+                hash = hash xor character.code.toLong()
                 hash *= FNV_PRIME
             }
             return hash

@@ -12,19 +12,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -35,12 +36,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.preference.PreferenceManager
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import com.simon.harmonichackernews.BuildConfig
-import com.simon.harmonichackernews.ui.debug.CoulombGasContract
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.ui.debug.CoulombGasContract
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.Utils
@@ -130,9 +129,6 @@ fun DebugSettingsScreen(
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
     var versionTapCount by remember { mutableIntStateOf(0) }
     var lastVersionTapTime by remember { mutableLongStateOf(0L) }
-
-    @Suppress("UNUSED_VARIABLE")
-    val observedRefresh = refresh
 
     SettingsPage(
         title = "Debug",
@@ -297,15 +293,21 @@ private fun DebugHnIdSetting(
     fun openId() {
         val trimmed = value.trim()
         val id = trimmed.toIntOrNull()
-        error = when {
-            trimmed.isEmpty() || trimmed.any { !it.isDigit() } -> "Enter a numeric HN ID"
-            id == null -> "HN ID is too large"
-            id <= 0 -> "Enter a positive HN ID"
-            else -> null
-        }
-        if (error == null && id != null) {
-            keyboardController?.hide()
-            currentOnOpenId(id)
+        when {
+            trimmed.isEmpty() || trimmed.any { !it.isDigit() } -> {
+                error = "Enter a numeric HN ID"
+            }
+            id == null -> {
+                error = "HN ID is too large"
+            }
+            id <= 0 -> {
+                error = "Enter a positive HN ID"
+            }
+            else -> {
+                error = null
+                keyboardController?.hide()
+                currentOnOpenId(id)
+            }
         }
     }
 

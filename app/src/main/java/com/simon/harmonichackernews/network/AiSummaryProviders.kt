@@ -1,13 +1,13 @@
 package com.simon.harmonichackernews.network
 
-import androidx.annotation.Nullable
-import java.util.Locale
-
 object AiSummaryProviders {
     const val PROVIDER_OPENAI: String = "openai"
     const val PROVIDER_ANTHROPIC: String = "anthropic"
     const val PROVIDER_OPENROUTER: String = "openrouter"
     const val PROVIDER_GOOGLE: String = "google"
+    private val ROUTING_VARIANTS = listOf(
+        ":free", ":floor", ":nitro", ":online", ":extended", ":exacto"
+    )
 
     val OPENAI: Provider = Provider(
         PROVIDER_OPENAI,
@@ -41,7 +41,7 @@ object AiSummaryProviders {
         "google"
     )
 
-    val PROVIDERS: Array<Provider> = arrayOf<Provider>(
+    val PROVIDERS: List<Provider> = listOf(
         OPENAI,
         ANTHROPIC,
         defaultProvider,
@@ -57,28 +57,21 @@ object AiSummaryProviders {
             return defaultProvider
         }
 
-        for (provider in PROVIDERS) {
-            if (normalizeUrl(provider.baseUrl) == normalizedUrl) {
-                return provider
-            }
-        }
+        PROVIDERS.firstOrNull { normalizeUrl(it.baseUrl) == normalizedUrl }?.let { return it }
 
         val lowerUrl = normalizedUrl.lowercase()
-        if (lowerUrl.contains("api.openai.com")) {
-            return OPENAI
-        } else if (lowerUrl.contains("api.anthropic.com")) {
-            return ANTHROPIC
-        } else if (lowerUrl.contains("openrouter.ai")) {
-            return defaultProvider
-        } else if (lowerUrl.contains("generativelanguage.googleapis.com")) {
-            return GOOGLE
+        return when {
+            "api.openai.com" in lowerUrl -> OPENAI
+            "api.anthropic.com" in lowerUrl -> ANTHROPIC
+            "openrouter.ai" in lowerUrl -> defaultProvider
+            "generativelanguage.googleapis.com" in lowerUrl -> GOOGLE
+            else -> null
         }
-        return null
     }
 
     fun getModelForRequest(baseUrl: String?, model: String?): String {
         val provider = getProviderForBaseUrl(baseUrl)
-        val requestModel = if (model == null) "" else model.trim { it <= ' ' }
+        val requestModel = model.orEmpty().trim { it <= ' ' }
         if (provider == null || PROVIDER_OPENROUTER == provider.id) {
             return requestModel
         }
@@ -86,7 +79,7 @@ object AiSummaryProviders {
     }
 
     fun toProviderModelId(provider: Provider, openRouterModelId: String?): String {
-        var modelId = if (openRouterModelId == null) "" else openRouterModelId.trim { it <= ' ' }
+        var modelId = openRouterModelId.orEmpty().trim { it <= ' ' }
         if (PROVIDER_OPENROUTER == provider.id || provider.catalogAuthor == null) {
             return modelId
         }
@@ -98,10 +91,7 @@ object AiSummaryProviders {
 
         // OpenRouter routing variants are not part of direct-provider model IDs. Match only
         // known suffixes so direct IDs such as OpenAI fine-tunes beginning with "ft:" survive.
-        val routingVariants: Array<String> = arrayOf(
-            ":free", ":floor", ":nitro", ":online", ":extended", ":exacto"
-        )
-        for (routingVariant in routingVariants) {
+        for (routingVariant in ROUTING_VARIANTS) {
             if (modelId.endsWith(routingVariant)) {
                 modelId = modelId.substring(0, modelId.length - routingVariant.length)
                 break
@@ -111,7 +101,7 @@ object AiSummaryProviders {
     }
 
     fun toOpenRouterModelId(provider: Provider, providerModelId: String?): String {
-        val modelId = if (providerModelId == null) "" else providerModelId.trim { it <= ' ' }
+        val modelId = providerModelId.orEmpty().trim { it <= ' ' }
         if (modelId.isEmpty() || PROVIDER_OPENROUTER == provider.id
             || provider.catalogAuthor == null || modelId.contains("/")
         ) {
@@ -140,12 +130,11 @@ object AiSummaryProviders {
     }
 
     fun isAnthropicBaseUrl(baseUrl: String?): Boolean {
-        val provider = getProviderForBaseUrl(baseUrl)
-        return provider != null && PROVIDER_ANTHROPIC == provider.id
+        return getProviderForBaseUrl(baseUrl)?.id == PROVIDER_ANTHROPIC
     }
 
     fun normalizeUrl(url: String?): String {
-        var normalized = if (url == null) "" else url.trim { it <= ' ' }
+        var normalized = url.orEmpty().trim { it <= ' ' }
         while (normalized.endsWith("/") && normalized.length > 1) {
             normalized = normalized.substring(0, normalized.length - 1)
         }

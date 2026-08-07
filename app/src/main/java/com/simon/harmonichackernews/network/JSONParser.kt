@@ -10,10 +10,7 @@ import com.simon.harmonichackernews.utils.Utils
 import java.io.IOException
 import java.io.InterruptedIOException
 import java.io.StringReader
-import java.util.Collections
-import java.util.Comparator
 import java.util.Locale
-import java.util.function.ToIntFunction
 import kotlin.math.max
 import org.json.JSONArray
 import org.json.JSONException
@@ -68,7 +65,7 @@ object JSONParser {
             story.clicked = false
 
             val url = optStringOrNull(hit, "url")
-            if (url != null && (url != JSON_NULL_LITERAL) && !url.isEmpty()) {
+            if (!url.isNullOrEmpty() && url != JSON_NULL_LITERAL) {
                 story.url = url
                 story.isLink = true
             } else {
@@ -283,19 +280,21 @@ object JSONParser {
         story.pdfTitle = null
         story.videoTitle = null
 
-        val lastTitleCharacter = story.title!!.get(story.title!!.length - 1)
+        val title = story.title ?: return
+        val url = story.url ?: return
+        val lastTitleCharacter = title.last()
         val mayHaveTitleSuffix = lastTitleCharacter == ']' || lastTitleCharacter == ')'
         val pdfTitle = if (mayHaveTitleSuffix)
-            JSONParser.stripTitleSuffixOrNull(story.title!!, PDF_SUFFIXES)
+            stripTitleSuffixOrNull(title, PDF_SUFFIXES)
         else
             null
 
-        if (JSONParser.endsWithIgnoreCase(story.url!!, ".pdf")) {
-            story.pdfTitle = if (pdfTitle == null) story.title else pdfTitle
+        if (endsWithIgnoreCase(url, ".pdf")) {
+            story.pdfTitle = pdfTitle ?: title
         } else if (pdfTitle != null) {
             story.pdfTitle = pdfTitle
         } else if (mayHaveTitleSuffix) {
-            story.videoTitle = JSONParser.stripTitleSuffixOrNull(story.title!!, VIDEO_SUFFIXES)
+            story.videoTitle = stripTitleSuffixOrNull(title, VIDEO_SUFFIXES)
         }
     }
 
@@ -327,8 +326,8 @@ object JSONParser {
     ): AlgoliaCommentsResponse {
         val reader = JsonReader(StringReader(response))
         val result = AlgoliaCommentsResponse()
-        val topLevelComments: MutableList<Comment> = ArrayList<Comment>()
-        val activeFilteredUsers = if (filteredUsers != null && !filteredUsers.isEmpty())
+        val topLevelComments = mutableListOf<Comment>()
+        val activeFilteredUsers = if (!filteredUsers.isNullOrEmpty())
             filteredUsers
         else
             null
@@ -365,7 +364,7 @@ object JSONParser {
         reader.endObject()
         reader.close()
 
-        if (prioTop != null && prioTop.size > 0 && topLevelComments.size > 1) {
+        if (prioTop != null && prioTop.isNotEmpty() && topLevelComments.size > 1) {
             sortTopLevelComments(topLevelComments, prioTop)
         }
 
@@ -436,7 +435,7 @@ object JSONParser {
         comment.children = childCount
         comment.childComments = childComments ?: mutableListOf()
 
-        if (!comment.childComments.isEmpty()) {
+        if (comment.childComments.isNotEmpty()) {
             comment.childComments.sortWith(compareByDescending { it.children })
         }
 
@@ -497,10 +496,10 @@ object JSONParser {
     private fun flattenComments(source: MutableList<Comment>, destination: MutableList<Comment>) {
         val sourceSize = source.size
         for (i in 0..<sourceSize) {
-            val comment = source.get(i)
+            val comment = source[i]
             destination.add(comment)
-            if (comment.childComments != null && !comment.childComments.isEmpty()) {
-                JSONParser.flattenComments(comment.childComments, destination)
+            if (comment.childComments.isNotEmpty()) {
+                flattenComments(comment.childComments, destination)
                 comment.childComments = mutableListOf()
             }
         }
@@ -961,10 +960,11 @@ object JSONParser {
             if (jsonObject.has("kids")) {
                 val kidsArray = jsonObject.getJSONArray("kids")
                 val kidCount = kidsArray.length()
-                story.kids = IntArray(kidCount)
+                val kids = IntArray(kidCount)
                 for (i in 0..<kidCount) {
-                    story.kids!![i] = kidsArray.getInt(i)
+                    kids[i] = kidsArray.getInt(i)
                 }
+                story.kids = kids
             }
 
             val url = optStringOrNull(jsonObject, "url")
@@ -1017,10 +1017,11 @@ object JSONParser {
             val kidCount = kidsArray.length()
             comment.children = kidCount
             // Store kids for later loading
-            comment.kidsIds = IntArray(kidCount)
+            val kidsIds = IntArray(kidCount)
             for (i in 0..<kidCount) {
-                comment.kidsIds!![i] = kidsArray.getInt(i)
+                kidsIds[i] = kidsArray.getInt(i)
             }
+            comment.kidsIds = kidsIds
         } else {
             comment.children = 0
             comment.kidsIds = null

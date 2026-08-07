@@ -4,20 +4,16 @@ import android.R
 import android.content.Context
 import android.util.TypedValue
 import androidx.annotation.ColorInt
-import androidx.annotation.NonNull
-import androidx.annotation.Nullable
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.insets.GradientProtection
-import androidx.core.view.insets.Protection
 import androidx.core.view.insets.ProtectionLayout
-import java.util.Collections
 
 object StatusBarProtectionUtils {
     @ColorInt
     fun getPaneBackgroundColor(context: Context): Int {
         val typedValue = TypedValue()
-        context.getTheme().resolveAttribute(R.attr.colorBackground, typedValue, true)
+        context.theme.resolveAttribute(R.attr.colorBackground, typedValue, true)
         if (typedValue.resourceId != 0) {
             return ContextCompat.getColor(context, typedValue.resourceId)
         }
@@ -26,7 +22,7 @@ object StatusBarProtectionUtils {
 
     fun setTopProtection(
         layout: ProtectionLayout?,
-        @ColorInt color: Int
+        @ColorInt color: Int,
     ) {
         setTopProtection(layout, true, color)
     }
@@ -34,21 +30,19 @@ object StatusBarProtectionUtils {
     fun setTopProtection(
         layout: ProtectionLayout?,
         enabled: Boolean,
-        @ColorInt color: Int
+        @ColorInt color: Int,
     ) {
         if (layout == null) {
             return
         }
 
         if (!enabled) {
-            layout.setProtections(mutableListOf<Protection?>())
+            layout.setProtections(emptyList())
             return
         }
 
         layout.setProtections(
-            mutableListOf<Protection?>(
-                GradientProtection(WindowInsetsCompat.Side.TOP, color)
-            )
+            listOf(GradientProtection(WindowInsetsCompat.Side.TOP, color)),
         )
     }
 }

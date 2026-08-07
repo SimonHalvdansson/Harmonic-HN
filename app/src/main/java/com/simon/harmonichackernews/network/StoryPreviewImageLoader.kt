@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
-import androidx.annotation.Nullable
 import com.simon.harmonichackernews.network.LinkSummaryLoader.buildYoutubeOEmbedUrl
 import com.simon.harmonichackernews.network.LinkSummaryLoader.extract
 import com.simon.harmonichackernews.network.LinkSummaryLoader.extractYoutubeOEmbedSummary
@@ -17,18 +16,7 @@ import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
-import java.util.Iterator
 import java.util.Locale
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
-import kotlin.collections.HashSet
-import kotlin.collections.LinkedHashSet
-import kotlin.collections.MutableIterator
-import kotlin.collections.MutableList
-import kotlin.collections.MutableMap
-import kotlin.collections.MutableSet
-import kotlin.collections.indices
-import kotlin.collections.remove
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl
@@ -125,14 +113,14 @@ object StoryPreviewImageLoader {
         forceRefresh: Boolean,
         callback: PreviewContentCallback
     ): PreviewImageRequest {
-        val appContext = if (context == null) null else context.getApplicationContext()
+        val appContext = context?.applicationContext
         val previewImageRequest = PendingPreviewImageRequest(
             appContext,
             storyId,
             callback
         )
         val normalizedPageUrl = normalizeHttpUrl(pageUrl)
-        if (TextUtils.isEmpty(normalizedPageUrl)) {
+        if (normalizedPageUrl.isNullOrEmpty()) {
             postResult(previewImageRequest, null, null)
             return previewImageRequest
         }
@@ -162,7 +150,7 @@ object StoryPreviewImageLoader {
             }
         }
 
-        if (StoryPreviewImageLoader.isLikelyImageUrl(normalizedPageUrl!!)) {
+        if (StoryPreviewImageLoader.isLikelyImageUrl(normalizedPageUrl)) {
             saveCachedPreviewImageUrl(appContext, previewImageCacheEntryId, normalizedPageUrl)
             postResult(previewImageRequest, normalizedPageUrl, null)
             return previewImageRequest
@@ -170,8 +158,7 @@ object StoryPreviewImageLoader {
 
         val youtubeOEmbedUrl = buildYoutubeOEmbedUrl(normalizedPageUrl)
         val youtubeOEmbedRequest = !TextUtils.isEmpty(youtubeOEmbedUrl)
-        val requestUrl: String =
-            (if (youtubeOEmbedRequest) youtubeOEmbedUrl else normalizedPageUrl)!!
+        val requestUrl = if (youtubeOEmbedRequest) youtubeOEmbedUrl.orEmpty() else normalizedPageUrl
         val acceptHeader = if (youtubeOEmbedRequest)
             "application/json"
         else
@@ -211,7 +198,7 @@ object StoryPreviewImageLoader {
             .get()
             .build()
 
-        val call = okHttpClientInstance!!.newCall(request)
+        val call = okHttpClientInstance.newCall(request)
         val requestBatch = pendingBatch
         synchronized(StoryPreviewImageLoader::class.java) {
             if (PENDING_CALLBACKS.get(normalizedPageUrl) === requestBatch) {
@@ -934,16 +921,15 @@ object StoryPreviewImageLoader {
                     return
                 }
                 cancelled = true
-                if (pageUrl == null || batch == null) {
-                    return
-                }
+                val attachedPageUrl = pageUrl ?: return
+                val attachedBatch = batch ?: return
 
-                batch!!.requests.remove(this)
-                if (batch!!.requests.isEmpty() && PENDING_CALLBACKS.get(pageUrl) === batch) {
-                    PENDING_CALLBACKS.remove(pageUrl)
-                    if (batch!!.call != null) {
-                        batch!!.call!!.cancel()
-                    }
+                attachedBatch.requests.remove(this)
+                if (attachedBatch.requests.isEmpty() &&
+                    PENDING_CALLBACKS[attachedPageUrl] === attachedBatch
+                ) {
+                    PENDING_CALLBACKS.remove(attachedPageUrl)
+                    attachedBatch.call?.cancel()
                 }
                 pageUrl = null
                 batch = null

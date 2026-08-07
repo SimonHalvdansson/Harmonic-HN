@@ -7,17 +7,11 @@ import com.android.volley.toolbox.BaseHttpStack
 import com.android.volley.toolbox.HttpResponse
 import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstance
 import java.io.IOException
-import java.io.InputStream
 import java.util.concurrent.TimeUnit
-import okhttp3.Call
 import okhttp3.Headers
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
-import okhttp3.ResponseBody
 
 class VolleyOkHttp3StackInterceptors : BaseHttpStack() {
     @Throws(IOException::class, AuthFailureError::class)
@@ -25,7 +19,7 @@ class VolleyOkHttp3StackInterceptors : BaseHttpStack() {
         request: Request<*>,
         additionalHeaders: MutableMap<String?, String?>
     ): HttpResponse {
-        val clientBuilder = okHttpClientInstance!!.newBuilder()
+        val clientBuilder = okHttpClientInstance.newBuilder()
         val timeoutMs = request.getTimeoutMs()
 
         clientBuilder.connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
@@ -58,24 +52,17 @@ class VolleyOkHttp3StackInterceptors : BaseHttpStack() {
 
         val code = okHttpResponse.code
         val body = okHttpResponse.body
-        val content: InputStream = (if (body == null) null else body.byteStream())!!
-        val contentLength = if (body == null) 0 else body.contentLength().toInt()
+        val content = body.byteStream()
+        val contentLength = body.contentLength().toInt()
         val responseHeaders = mapHeaders(okHttpResponse.headers)
         //okHttpResponse.close();
         return HttpResponse(code, responseHeaders, contentLength, content)
     }
 
-    private fun mapHeaders(responseHeaders: Headers): MutableList<Header?> {
-        val headers: MutableList<Header?> = ArrayList<Header?>()
-        var i = 0
-        val len = responseHeaders.size
-        while (i < len) {
-            val name = responseHeaders.name(i)
-            val value = responseHeaders.value(i)
-            headers.add(Header(name, value))
-            i++
+    private fun mapHeaders(responseHeaders: Headers): MutableList<Header> {
+        return MutableList(responseHeaders.size) { index ->
+            Header(responseHeaders.name(index), responseHeaders.value(index))
         }
-        return headers
     }
 
     companion object {

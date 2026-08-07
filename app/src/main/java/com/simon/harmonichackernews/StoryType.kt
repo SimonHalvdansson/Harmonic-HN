@@ -2,13 +2,11 @@ package com.simon.harmonichackernews
 
 import android.content.Context
 import android.content.res.Resources
-import android.text.TextUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
-import java.util.Arrays
 import kotlin.math.min
 
-enum class StoryType @JvmOverloads constructor(
+enum class StoryType(
     val label: String,
     val hackerNewsPath: String? = null,
     private val additionalFrontpage: Boolean = false,
@@ -36,25 +34,25 @@ enum class StoryType @JvmOverloads constructor(
     UNKNOWN("");
 
     val isAlgolia: Boolean
-        get() = this == StoryType.LAST_24_HOURS || this == StoryType.LAST_48_HOURS || this == StoryType.LAST_WEEK
+        get() = this == LAST_24_HOURS || this == LAST_48_HOURS || this == LAST_WEEK
 
     val isActive: Boolean
-        get() = this == StoryType.ACTIVE
+        get() = this == ACTIVE
 
     val isFront: Boolean
-        get() = this == StoryType.FRONT
+        get() = this == FRONT
 
     val isBookmarks: Boolean
-        get() = this == StoryType.BOOKMARKS
+        get() = this == BOOKMARKS
 
     val isHistory: Boolean
-        get() = this == StoryType.HISTORY
+        get() = this == HISTORY
 
     val isFavorites: Boolean
-        get() = this == StoryType.FAVORITES
+        get() = this == FAVORITES
 
     val isUpvoted: Boolean
-        get() = this == StoryType.UPVOTED
+        get() = this == UPVOTED
 
     val isUserItemList: Boolean
         get() = this.isFavorites || this.isUpvoted
@@ -78,16 +76,14 @@ enum class StoryType @JvmOverloads constructor(
     }
 
     val hackerNewsUrl: String?
-        get() {
-            when (this) {
-                StoryType.TOP_STORIES -> return Utils.URL_TOP
-                StoryType.NEW_STORIES -> return Utils.URL_NEW
-                StoryType.BEST_STORIES -> return Utils.URL_BEST
-                StoryType.ASK_HN -> return Utils.URL_ASK
-                StoryType.SHOW_HN -> return Utils.URL_SHOW
-                StoryType.HN_JOBS -> return Utils.URL_JOBS
-                else -> return null
-            }
+        get() = when (this) {
+            TOP_STORIES -> Utils.URL_TOP
+            NEW_STORIES -> Utils.URL_NEW
+            BEST_STORIES -> Utils.URL_BEST
+            ASK_HN -> Utils.URL_ASK
+            SHOW_HN -> Utils.URL_SHOW
+            HN_JOBS -> Utils.URL_JOBS
+            else -> null
         }
 
     companion object {
@@ -97,8 +93,8 @@ enum class StoryType @JvmOverloads constructor(
             showUserItemLists: Boolean
         ): ArrayList<CharSequence> {
             val sortingOptions = resources.getStringArray(R.array.sorting_options)
-            val labels = ArrayList<CharSequence>(Arrays.asList(*sortingOptions))
-            var additionalFrontpageIndex: Int = getLabelIndex(labels, StoryType.BOOKMARKS.label)
+            val labels = sortingOptions.mapTo(ArrayList<CharSequence>(sortingOptions.size)) { it }
+            var additionalFrontpageIndex = getLabelIndex(labels, BOOKMARKS.label)
             if (additionalFrontpageIndex < 0) {
                 additionalFrontpageIndex =
                     min(SettingsUtils.getJobsIndex(resources) + 1, labels.size)
@@ -110,7 +106,7 @@ enum class StoryType @JvmOverloads constructor(
                 }
             }
             if (showUserItemLists) {
-                val bookmarksIndex: Int = getLabelIndex(labels, StoryType.BOOKMARKS.label)
+                val bookmarksIndex = getLabelIndex(labels, BOOKMARKS.label)
                 val favoritesIndex = if (bookmarksIndex >= 0) bookmarksIndex + 1 else min(
                     SettingsUtils.getBookmarksIndex(resources) + 1, labels.size
                 )
@@ -132,44 +128,32 @@ enum class StoryType @JvmOverloads constructor(
             enabledFrontpages: Set<String>?
         ): ArrayList<CharSequence> {
             val startingPageOptions = resources.getStringArray(R.array.starting_page_options)
-            val labels = ArrayList<CharSequence>(Arrays.asList(*startingPageOptions))
+            val labels = startingPageOptions.mapTo(
+                ArrayList<CharSequence>(startingPageOptions.size)
+            ) { it }
             for (type in additionalFrontpages) {
-                if (enabledFrontpages != null && enabledFrontpages.contains(type.label)) {
+                if (type.label in enabledFrontpages.orEmpty()) {
                     labels.add(type.label)
                 }
             }
             return labels
         }
 
-        private val additionalFrontpages: Array<StoryType>
-            get() = arrayOf<StoryType>(
-                StoryType.CLASSIC,
-                StoryType.BEST_COMMENTS,
-                StoryType.HIGHLIGHTS,
-                StoryType.ACTIVE,
-                StoryType.FRONT
-            )
+        private val additionalFrontpages = listOf(
+            CLASSIC,
+            BEST_COMMENTS,
+            HIGHLIGHTS,
+            ACTIVE,
+            FRONT
+        )
 
-        private fun getLabelIndex(labels: ArrayList<CharSequence>, label: String): Int {
-            for (i in labels.indices) {
-                if (TextUtils.equals(labels.get(i), label)) {
-                    return i
-                }
-            }
-            return -1
-        }
+        private fun getLabelIndex(labels: List<CharSequence>, label: String): Int =
+            labels.indexOfFirst { it.contentEquals(label) }
 
         fun fromLabel(label: CharSequence?): StoryType {
-            if (label == null) {
-                return StoryType.UNKNOWN
-            }
-
-            for (type in StoryType.entries) {
-                if (TextUtils.equals(type.label, label)) {
-                    return type
-                }
-            }
-            return StoryType.UNKNOWN
+            return label?.let { value ->
+                entries.firstOrNull { type -> type.label.contentEquals(value) }
+            } ?: UNKNOWN
         }
     }
 }

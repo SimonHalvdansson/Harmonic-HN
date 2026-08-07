@@ -1,18 +1,18 @@
 package com.simon.harmonichackernews
 
-import androidx.annotation.Nullable
 import androidx.lifecycle.ViewModel
 import com.simon.harmonichackernews.data.Story
+
 /** Keeps the in-memory story screen state while its activity is recreated.  */
 class StoriesViewModel : ViewModel() {
     var state: State? = null
 
     class State {
-        val mainStories: ArrayList<Story> = ArrayList()
-        val searchStories: ArrayList<Story> = ArrayList()
-        val bookmarkStories: ArrayList<Story> = ArrayList()
-        val userItemListStories: ArrayList<Story> = ArrayList()
-        val userItemListCommentIds: MutableSet<Int> = HashSet()
+        val mainStories = ArrayList<Story>()
+        val searchStories = ArrayList<Story>()
+        val bookmarkStories = ArrayList<Story>()
+        val userItemListStories = ArrayList<Story>()
+        val userItemListCommentIds = HashSet<Int>()
 
         var mainTypeLabel: String? = null
         var searchTypeLabel: String? = null

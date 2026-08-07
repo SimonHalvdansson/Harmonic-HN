@@ -20,30 +20,18 @@ object BackgroundJSONParser {
      * @param callback Callback to receive results on main thread
      */
     fun parseAlgoliaJson(jsonResponse: String?, callback: AlgoliaParseCallback): Future<*>? {
-        return executorService.submit(object : Runnable {
-            override fun run() {
-                try {
-                    val stories = JSONParser.algoliaJsonToStories(jsonResponse.orEmpty())
-                    if (Thread.interrupted()) {
-                        return
-                    }
-
-                    // Post result to main thread
-                    mainHandler.post(object : Runnable {
-                        override fun run() {
-                            callback.onParseSuccess(stories)
-                        }
-                    })
-                } catch (e: JSONException) {
-                    if (Thread.interrupted()) {
-                        return
-                    }
-                    mainHandler.post(object : Runnable {
-                        override fun run() {
-                            callback.onParseError(e)
-                        }
-                    })
+        return executorService.submit(Runnable parseTask@ {
+            try {
+                val stories = JSONParser.algoliaJsonToStories(jsonResponse.orEmpty())
+                if (Thread.interrupted()) {
+                    return@parseTask
                 }
+                mainHandler.post { callback.onParseSuccess(stories) }
+            } catch (e: JSONException) {
+                if (Thread.interrupted()) {
+                    return@parseTask
+                }
+                mainHandler.post { callback.onParseError(e) }
             }
         })
     }
@@ -73,12 +61,12 @@ object BackgroundJSONParser {
                 if (Thread.interrupted()) {
                     return@parseTask
                 }
-                mainHandler.post(Runnable { callback.onParseSuccess(response) })
+                mainHandler.post { callback.onParseSuccess(response) }
             } catch (e: IOException) {
                 if (Thread.interrupted()) {
                     return@parseTask
                 }
-                mainHandler.post(Runnable { callback.onParseError(e) })
+                mainHandler.post { callback.onParseError(e) }
             }
         })
     }

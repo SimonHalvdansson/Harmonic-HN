@@ -4,7 +4,7 @@ import android.text.Spanned
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.Utils
 import java.io.Serializable
-import java.util.Collections
+
 class Comment : Serializable {
     var by: String? = null
     var id: Int = 0
@@ -44,15 +44,11 @@ class Comment : Serializable {
     val expandedAnchorText: String?
         get() {
             val currentText = text
-            if (currentText === cachedExpandedAnchorTextSource
-                || (currentText != null
-                        && currentText == cachedExpandedAnchorTextSource)
-            ) {
+            if (currentText == cachedExpandedAnchorTextSource) {
                 return cachedExpandedAnchorText
             }
 
-            val expandedText =
-                Utils.expandShortenedAnchorText(currentText)
+            val expandedText = Utils.expandShortenedAnchorText(currentText)
             cachedExpandedAnchorTextSource = currentText
             cachedExpandedAnchorText = expandedText
             return expandedText

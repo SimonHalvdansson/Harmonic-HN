@@ -254,13 +254,14 @@ class Story {
         val masterStory = Story()
         masterStory.id = targetId
         masterStory.title = if (hasText(commentMasterTitle)) commentMasterTitle else title
-        val hasMasterUrl: Boolean = hasText(commentMasterUrl)
-        masterStory.url = if (hasMasterUrl)
+        val hasMasterUrl = hasText(commentMasterUrl)
+        val masterUrl = if (hasMasterUrl)
             commentMasterUrl
         else
             "https://news.ycombinator.com/item?id=" + targetId
-        masterStory.isLink = hasMasterUrl
-                && !masterStory.url!!.startsWith("https://news.ycombinator.com/item?id=")
+        masterStory.url = masterUrl
+        masterStory.isLink = hasMasterUrl &&
+            !masterUrl.orEmpty().startsWith("https://news.ycombinator.com/item?id=")
         masterStory.by = commentMasterBy
         masterStory.score = commentMasterScore
         masterStory.time = commentMasterTime
@@ -269,9 +270,7 @@ class Story {
         return masterStory
     }
 
-    fun hasExtraInfo(): Boolean {
-        return linkPreviewLoading || hasLoadedLinkPreview()
-    }
+    fun hasExtraInfo(): Boolean = linkPreviewLoading || hasLoadedLinkPreview()
 
     fun hasLoadedLinkPreview(): Boolean {
         return arxivInfo != null || gitLabInfo != null || repoInfo != null || stackExchangeInfo != null || wikiInfo != null || nitterInfo != null
@@ -279,7 +278,7 @@ class Story {
 
     companion object {
         private fun hasText(value: String?): Boolean {
-            return value != null && !value.isEmpty()
+            return !value.isNullOrEmpty()
         }
     }
 }

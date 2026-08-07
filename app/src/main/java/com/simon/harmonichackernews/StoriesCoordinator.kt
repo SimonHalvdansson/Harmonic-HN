@@ -3468,18 +3468,17 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         lastVisibleItem: Int
     ) {
         val context = this.context
-        if (context == null || adapter == null || stories == null || stories!!.isEmpty()
-            || SettingsUtils.STORY_PREVIEW_IMAGE_OFF == adapter!!.previewImageMode
-        ) {
-            return
-        }
+        val currentAdapter = adapter
+        val currentStories = stories
+        if (context == null || currentAdapter == null || currentStories.isNullOrEmpty()) return
+        if (SettingsUtils.STORY_PREVIEW_IMAGE_OFF == currentAdapter.previewImageMode) return
 
         val firstIndex = if (firstVisibleItem == NO_POSITION) 0 else max(0, firstVisibleItem)
         var lastIndex = if (lastVisibleItem == NO_POSITION) min(
-            this.initialLoadCount - 1, stories!!.size - 1
-        ) else min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, stories!!.size - 1)
-        if (adapter!!.paginationMode) {
-            lastIndex = min(lastIndex, adapter!!.visibleStoryCount - 1)
+            initialLoadCount - 1, currentStories.size - 1
+        ) else min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, currentStories.size - 1)
+        if (currentAdapter.paginationMode) {
+            lastIndex = min(lastIndex, currentAdapter.visibleStoryCount - 1)
         }
 
         if (lastIndex < firstIndex) {
@@ -3488,7 +3487,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
 
         beginPreviewImagePrefetchRamp(lastIndex)
         for (i in firstIndex..lastIndex) {
-            requestPreviewImagePrefetch(context, stories!!.get(i))
+            requestPreviewImagePrefetch(context, currentStories[i])
         }
     }
 
@@ -3890,52 +3889,33 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         }
     }
 
-    fun currentTypeIsAlgolia(): Boolean {
-        return this.currentStoryType.isAlgolia
-    }
+    fun currentTypeIsAlgolia(): Boolean = currentStoryType.isAlgolia
 
-    private fun currentTypeIsActive(): Boolean {
-        return this.currentStoryType.isActive
-    }
+    private fun currentTypeIsActive(): Boolean = currentStoryType.isActive
 
-    private fun currentTypeIsFront(): Boolean {
-        return this.currentStoryType.isFront
-    }
+    private fun currentTypeIsFront(): Boolean = currentStoryType.isFront
 
-    private fun currentTypeIsScrapedFrontpage(): Boolean {
-        return this.currentStoryType.isScrapedFrontpage
-    }
+    private fun currentTypeIsScrapedFrontpage(): Boolean = currentStoryType.isScrapedFrontpage
 
-    private fun isBookmarksType(type: Int): Boolean {
-        return getStoryType(type).isBookmarks
-    }
+    private fun isBookmarksType(type: Int): Boolean = getStoryType(type).isBookmarks
 
-    private fun isHistoryType(type: Int): Boolean {
-        return getStoryType(type).isHistory
-    }
+    private fun isHistoryType(type: Int): Boolean = getStoryType(type).isHistory
 
-    private fun isFavoritesType(type: Int): Boolean {
-        return getStoryType(type).isFavorites
-    }
+    private fun isFavoritesType(type: Int): Boolean = getStoryType(type).isFavorites
 
-    private fun isUpvotedType(type: Int): Boolean {
-        return getStoryType(type).isUpvoted
-    }
+    private fun isUpvotedType(type: Int): Boolean = getStoryType(type).isUpvoted
 
-    private fun isUserItemListType(type: Int): Boolean {
-        return getStoryType(type).isUserItemList
-    }
+    private fun isUserItemListType(type: Int): Boolean = getStoryType(type).isUserItemList
 
-    private fun currentTypeUsesSavedItemFilter(): Boolean {
-        return this.currentStoryType.usesSavedItemFilter()
-    }
+    private fun currentTypeUsesSavedItemFilter(): Boolean = currentStoryType.usesSavedItemFilter()
 
     private fun currentSavedItemSourceHasItems(): Boolean {
-        if (isBookmarksType(adapter!!.type)) {
-            return !bookmarkStories.isEmpty()
+        val type = checkNotNull(adapter).type
+        if (isBookmarksType(type)) {
+            return bookmarkStories.isNotEmpty()
         }
-        if (isUserItemListType(adapter!!.type)) {
-            return !userItemListStories.isEmpty()
+        if (isUserItemListType(type)) {
+            return userItemListStories.isNotEmpty()
         }
         return false
     }
@@ -3950,9 +3930,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         else
             UserItemListRepository.Source.FAVORITES
 
-    private fun currentTypeUsesCommentRows(): Boolean {
-        return this.currentStoryType.usesCommentRows()
-    }
+    private fun currentTypeUsesCommentRows(): Boolean = currentStoryType.usesCommentRows()
 
     private val currentStoryType: StoryType
         get() = getStoryType(adapter!!.type)
@@ -3972,7 +3950,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         }
 
         val typeAdapterList = buildTypeAdapterList(ctx)
-        return if (type < typeAdapterList.size) typeAdapterList.get(type) else null
+        return typeAdapterList.getOrNull(type)
     }
 
     private fun getTypeIndex(label: CharSequence?): Int {
@@ -3980,14 +3958,8 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return -1
         }
 
-        val typeLabels = buildTypeAdapterList(requireContext())
-        for (i in typeLabels.indices) {
-            if (TextUtils.equals(label, typeLabels.get(i))) {
-                return i
-            }
-        }
-
-        return -1
+        return buildTypeAdapterList(requireContext())
+            .indexOfFirst { it.contentEquals(label) }
     }
 
     private fun updateAdapterCommentRows() {
@@ -4026,9 +3998,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         }
         predictiveSearchBackInProgress = true
         predictiveSearchBackProgress = max(0f, min(1f, progress))
-        if (composeController != null) {
-            composeController!!.beginPredictiveBack(predictiveSearchBackProgress)
-        }
+        composeController?.beginPredictiveBack(predictiveSearchBackProgress)
     }
 
     fun updateSearchBackProgress(progress: Float) {
@@ -4042,9 +4012,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         }
 
         predictiveSearchBackProgress = max(0f, min(1f, progress))
-        if (composeController != null) {
-            composeController!!.updatePredictiveBack(predictiveSearchBackProgress)
-        }
+        composeController?.updatePredictiveBack(predictiveSearchBackProgress)
     }
 
     fun cancelSearchBackProgress() {
@@ -4056,9 +4024,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         predictiveSearchBackInProgress = false
         predictiveSearchBackProgress = 0f
         useSearchStoryList()
-        if (composeController != null) {
-            composeController!!.cancelPredictiveBack()
-        }
+        composeController?.cancelPredictiveBack()
         updateHeader(false)
     }
 
@@ -4073,8 +4039,9 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         if (!finishSearchBackFromCurrentVisualState) {
             return exitSearch()
         }
-        if (composeController != null) {
-            composeController!!.commitPredictiveBack()
+        val controller = composeController
+        if (controller != null) {
+            controller.commitPredictiveBack()
             finishSearchBackFromCurrentVisualState = false
             return true
         }
@@ -4113,8 +4080,8 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
 
     companion object {
         private const val TAG = "StoriesCoordinator"
-        private val NO_POSITION = -1
-        private val NO_PENDING_LINK_SUMMARY_STORY_ID = -1
+        private const val NO_POSITION = -1
+        private const val NO_PENDING_LINK_SUMMARY_STORY_ID = -1
         private const val STATE_LINK_SUMMARY_STORY_ID =
             "com.simon.harmonichackernews.STATE_LINK_SUMMARY_STORY_ID"
 

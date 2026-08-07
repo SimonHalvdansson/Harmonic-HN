@@ -3,13 +3,9 @@ package com.simon.harmonichackernews
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import android.text.TextUtils
-import androidx.annotation.NonNull
-import androidx.annotation.Nullable
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.Response
-import com.android.volley.VolleyError
 import com.android.volley.toolbox.StringRequest
 import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader
 import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader.DownloadCallback
@@ -44,8 +40,8 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
     var progress: Int = 0
         private set
     private var progressStatus: String = CACHE_PROGRESS_STATUS_CACHING
-    private val pendingArticleDownloads: ArrayDeque<ArticleDownload> = ArrayDeque<ArticleDownload>()
-    private val activeArticleDownloads: MutableSet<Call> = HashSet<Call>()
+    private val pendingArticleDownloads = ArrayDeque<ArticleDownload>()
+    private val activeArticleDownloads = HashSet<Call>()
     private var articleSnapshotDownloader: ArticleSnapshotDownloader? = null
     private var articleDownloadGeneration = 0
 
@@ -59,8 +55,8 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         articleSnapshotDownloader = null
         progressAnimationGeneration++
         progressHandler.removeCallbacksAndMessages(null)
-        this.isCachingStories = false
-        this.isProgressVisible = false
+        isCachingStories = false
+        isProgressVisible = false
         resetProgressState()
     }
 
@@ -68,11 +64,11 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         get() = max(cacheStoriesTotal, 1)
 
     fun getProgressStatus(): String {
-        return if (this.isCachingStories) this.cachingStatus else progressStatus
+        return if (isCachingStories) cachingStatus else progressStatus
     }
 
     fun cacheStories() {
-        if (this.isCachingStories) {
+        if (isCachingStories) {
             return
         }
 
@@ -91,7 +87,7 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
             null
         val request = StringRequest(
             Request.Method.GET, Utils.URL_TOP,
-            Response.Listener { response: String? ->
+            Response.Listener { response: String ->
                 try {
                     val arr = JSONArray(response)
                     val storyCount = storiesToCache
@@ -108,57 +104,55 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
                         val storyRequest = StringRequest(
                             Request.Method.GET,
                             url,
-                            Response.Listener { storyResponse: String? ->
+                            Response.Listener { storyResponse: String ->
                                 Utils.cacheStory(context, id, storyResponse)
                                 if (cacheArticles) {
                                     cacheStoryArticleSnapshot(
                                         id,
-                                        storyResponse!!,
+                                        storyResponse,
                                         articleFailures,
-                                        Runnable { onCacheStoryFinished(remaining) })
+                                        { onCacheStoryFinished(remaining) })
                                 } else {
                                     onCacheStoryFinished(remaining)
                                 }
                             },
-                            Response.ErrorListener { error: VolleyError? ->
+                            Response.ErrorListener {
                                 onCacheStoryFinished(remaining)
                             })
                         storyRequest.setTag(callbacks.requestTag)
-                        queue.add<String?>(storyRequest)
+                        queue.add(storyRequest)
                     }
                 } catch (e: JSONException) {
                     e.printStackTrace()
                     finishProgress(CACHE_PROGRESS_STATUS_FAILED)
                 }
-            }, Response.ErrorListener { error: VolleyError? ->
-                finishProgress(
-                    CACHE_PROGRESS_STATUS_FAILED
-                )
+            }, Response.ErrorListener {
+                finishProgress(CACHE_PROGRESS_STATUS_FAILED)
             })
 
         request.setTag(callbacks.requestTag)
-        queue.add<String?>(request)
+        queue.add(request)
     }
 
     private fun startProgress(total: Int) {
         progressHandler.removeCallbacksAndMessages(null)
         progressAnimationGeneration++
-        this.isCachingStories = true
-        this.isProgressVisible = true
+        isCachingStories = true
+        isProgressVisible = true
         cacheStoriesTotal = max(total, 1)
-        this.progress = 0
+        progress = 0
         progressStatus = CACHE_PROGRESS_STATUS_CACHING
         callbacks.onCacheProgressChanged()
     }
 
     private fun incrementProgress() {
-        this.progress = min(this.progress + 1, cacheStoriesTotal)
+        progress = min(progress + 1, cacheStoriesTotal)
         callbacks.onCacheProgressChanged()
     }
 
     private fun finishProgress(status: String = CACHE_PROGRESS_STATUS_FINISHED) {
-        this.isCachingStories = false
-        this.isProgressVisible = true
+        isCachingStories = false
+        isProgressVisible = true
         progressStatus = status
         callbacks.onCacheProgressChanged()
 
@@ -167,7 +161,7 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
             if (progressAnimationGeneration != animationGeneration) {
                 return@progressTask
             }
-            this.isProgressVisible = false
+            isProgressVisible = false
             resetProgressState()
             callbacks.onCacheProgressChanged()
         }, CACHE_PROGRESS_FINISHED_HOLD_MS)
@@ -175,12 +169,13 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
 
     private fun resetProgressState() {
         cacheStoriesTotal = 1
-        this.progress = 0
+        progress = 0
         progressStatus = CACHE_PROGRESS_STATUS_CACHING
     }
 
     private val cachingStatus: String
-        get() = "Caching " + cacheStoriesTotal + (if (cacheStoriesTotal == 1) " story" else " stories")
+        get() = "Caching $cacheStoriesTotal" +
+            if (cacheStoriesTotal == 1) " story" else " stories"
 
     private fun onCacheStoryFinished(remaining: IntArray) {
         incrementProgress()
@@ -196,26 +191,25 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         id: Int,
         storyJson: String,
         articleFailures: IntArray,
-        onComplete: Runnable
+        onComplete: () -> Unit
     ) {
         if (articleSnapshotDownloader == null) {
-            onComplete.run()
+            onComplete()
             return
         }
 
         try {
             val storyObject = JSONObject(storyJson)
             if (!storyObject.has("url") || storyObject.isNull("url")) {
-                onComplete.run()
+                onComplete()
                 return
             }
 
             val articleUrl = storyObject.optString("url", "")
-            if (TextUtils.isEmpty(articleUrl) || !(articleUrl.startsWith("http://") || articleUrl.startsWith(
-                    "https://"
-                ))
+            if (articleUrl.isEmpty() ||
+                !(articleUrl.startsWith("http://") || articleUrl.startsWith("https://"))
             ) {
-                onComplete.run()
+                onComplete()
                 return
             }
 
@@ -228,20 +222,17 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         } catch (e: JSONException) {
             e.printStackTrace()
             articleFailures[0]++
-            onComplete.run()
+            onComplete()
         }
     }
 
     private fun startPendingArticleDownloads() {
-        val downloader = articleSnapshotDownloader
-        if (downloader == null) {
-            return
-        }
+        val downloader = articleSnapshotDownloader ?: return
 
         while (activeArticleDownloads.size < MAX_CONCURRENT_ARTICLE_DOWNLOADS
-            && !pendingArticleDownloads.isEmpty()
+            && pendingArticleDownloads.isNotEmpty()
         ) {
-            val download = pendingArticleDownloads.remove()
+            val download = pendingArticleDownloads.removeFirst()
             if (download.generation != articleDownloadGeneration) {
                 continue
             }
@@ -249,7 +240,7 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
             val call = downloader.download(
                 download.storyId,
                 download.articleUrl,
-                DownloadCallback downloadCallback@ { completedCall: Call?, success: Boolean ->
+                DownloadCallback downloadCallback@ { completedCall: Call, success: Boolean ->
                     if (download.generation != articleDownloadGeneration) {
                         return@downloadCallback
                     }
@@ -257,12 +248,12 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
                     if (!success) {
                         download.articleFailures[0]++
                     }
-                    download.onComplete.run()
+                    download.onComplete()
                     startPendingArticleDownloads()
                 })
             if (call == null) {
                 download.articleFailures[0]++
-                download.onComplete.run()
+                download.onComplete()
                 continue
             }
             activeArticleDownloads.add(call)
@@ -273,7 +264,7 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         val storyId: Int,
         val articleUrl: String,
         val articleFailures: IntArray,
-        val onComplete: Runnable,
+        val onComplete: () -> Unit,
         val generation: Int
     )
 

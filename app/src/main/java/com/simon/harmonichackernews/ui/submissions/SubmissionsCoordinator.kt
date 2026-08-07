@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.ui.submissions
 
 import android.net.Uri
-import androidx.annotation.NonNull
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.Response
@@ -21,20 +20,17 @@ import org.json.JSONException
 
 /** Networking and filtering state for a Compose submissions destination.  */
 class SubmissionsCoordinator(
-    activity: MainActivity,
-    userName: String,
-    navigator: Navigator
+    private val activity: MainActivity,
+    private val userName: String,
+    private val navigator: Navigator,
 ) {
     fun interface Navigator {
         fun openStory(story: Story, showWebsite: Boolean)
     }
 
-    private val activity: MainActivity
-    private val userName: String
-    private val navigator: Navigator
-    private val submissions: ArrayList<Story> = ArrayList()
-    private val allSubmissions: ArrayList<Story> = ArrayList<Story>()
-    private val queue: RequestQueue
+    private val submissions = mutableListOf<Story>()
+    private val allSubmissions = mutableListOf<Story>()
+    private val queue: RequestQueue = NetworkComponent.getRequestQueueInstance(activity)
     private val requestTag = Any()
     val composeController: SubmissionsComposeController
     private var submissionsParseTask: Future<*>? = null
@@ -42,21 +38,17 @@ class SubmissionsCoordinator(
     private var submissionsLoading = false
     private var submissionsLoadedSuccessfully = false
     private var submissionsRequestGeneration = 0
-    private var submissionsHitsPerPage: Int = ALGOLIA_HITS_INCREMENT
+    private var submissionsHitsPerPage = ALGOLIA_HITS_INCREMENT
     private var submissionsCanLoadMore = false
-    private var submissionFilter: Int = SUBMISSION_FILTER_BOTH
+    private var submissionFilter = SubmissionFilter.BOTH
 
     init {
-        this.activity = activity
-        this.userName = userName
-        this.navigator = navigator
-        queue = NetworkComponent.getRequestQueueInstance(activity)
         composeController = SubmissionsComposeController.create(
             activity,
             userName,
             submissionFilter,
             object : SubmissionsComposeController.Listener {
-                override fun onFilterSelected(filter: Int) {
+                override fun onFilterSelected(filter: SubmissionFilter) {
                     if (submissionFilter == filter) return
                     submissionFilter = filter
                     applySubmissionFilter()
@@ -110,27 +102,26 @@ class SubmissionsCoordinator(
 
     private fun applySubmissionFilter() {
         submissions.clear()
-        for (story in allSubmissions) {
-            if (shouldShowStoryForSubmissionFilter(story)) submissions.add(story)
-        }
+        allSubmissions.filterTo(submissions, ::shouldShowStoryForSubmissionFilter)
         composeController.updateContent(
-            ArrayList(submissions),
+            submissions.toList(),
             submissionFilter,
-            !allSubmissions.isEmpty(),
+            allSubmissions.isNotEmpty(),
             submissionsCanLoadMore,
             submissionsLoadedSuccessfully,
-            this.emptyViewText
+            emptyViewText,
         )
     }
 
-    private fun shouldShowStoryForSubmissionFilter(story: Story): Boolean {
-        if (submissionFilter == SUBMISSION_FILTER_STORIES) return !story.isComment
-        if (submissionFilter == SUBMISSION_FILTER_COMMENTS) return story.isComment
-        return true
-    }
+    private fun shouldShowStoryForSubmissionFilter(story: Story): Boolean =
+        when (submissionFilter) {
+            SubmissionFilter.STORIES -> !story.isComment
+            SubmissionFilter.COMMENTS -> story.isComment
+            SubmissionFilter.BOTH -> true
+        }
 
     private fun openCommentMasterStory(story: Story) {
-        val masterStory: Story? = story.toCommentMasterStory()
+        val masterStory = story.toCommentMasterStory()
         if (masterStory == null) {
             openComments(story, false)
             return
@@ -140,8 +131,8 @@ class SubmissionsCoordinator(
             return
         }
 
-        val url = "https://hacker-news.firebaseio.com/v0/item/" + masterStory.id + ".json"
-        val request: StringRequest = StringRequest(
+        val url = "https://hacker-news.firebaseio.com/v0/item/${masterStory.id}.json"
+        val request = StringRequest(
             Request.Method.GET, url,
             Response.Listener { response: String? ->
                 try {
@@ -150,11 +141,11 @@ class SubmissionsCoordinator(
                     e.printStackTrace()
                 }
                 if (submissions.contains(story)) composeController.refreshStoryRows()
-                val refreshed: Story? = story.toCommentMasterStory()
-                openComments(if (refreshed != null) refreshed else masterStory, false)
-            }, Response.ErrorListener { error: VolleyError? -> openComments(masterStory, false) })
+                val refreshed = story.toCommentMasterStory()
+                openComments(refreshed ?: masterStory, false)
+            }, Response.ErrorListener { _: VolleyError? -> openComments(masterStory, false) })
         request.setTag(requestTag)
-        queue.add<String?>(request)
+        queue.add(request)
     }
 
     private fun openComments(story: Story, showWebsite: Boolean) {
@@ -176,12 +167,12 @@ class SubmissionsCoordinator(
 
         val url = Uri.parse("https://hn.algolia.com/api/v1/search_by_date")
             .buildUpon()
-            .appendQueryParameter("tags", "author_" + userName)
+            .appendQueryParameter("tags", "author_$userName")
             .appendQueryParameter("hitsPerPage", submissionsHitsPerPage.toString())
             .build()
             .toString()
 
-        val request: StringRequest = StringRequest(
+        val request = StringRequest(
             Request.Method.GET, url,
             Response.Listener { response: String? ->
                 submissionsParseTask = BackgroundJSONParser.parseAlgoliaJson(
@@ -212,12 +203,11 @@ class SubmissionsCoordinator(
                 finishLoading(requestGeneration)
             })
         request.setTag(requestTag)
-        queue.add<String?>(request)
+        queue.add(request)
     }
 
     private fun cancelSubmissionsParseTask() {
-        if (submissionsParseTask == null) return
-        submissionsParseTask!!.cancel(true)
+        submissionsParseTask?.cancel(true)
         submissionsParseTask = null
     }
 
@@ -231,27 +221,24 @@ class SubmissionsCoordinator(
 
     private fun updateEmptyView() {
         composeController.updateContent(
-            ArrayList(submissions),
+            submissions.toList(),
             submissionFilter,
-            !allSubmissions.isEmpty(),
+            allSubmissions.isNotEmpty(),
             submissionsCanLoadMore,
             submissionsLoadedSuccessfully,
-            this.emptyViewText
+            emptyViewText,
         )
     }
 
     private val emptyViewText: String
-        get() {
-            if (allSubmissions.isEmpty()) return "No submissions"
-            if (submissionFilter == SUBMISSION_FILTER_STORIES) return "No stories"
-            if (submissionFilter == SUBMISSION_FILTER_COMMENTS) return "No comments"
-            return "No submissions"
+        get() = when {
+            allSubmissions.isEmpty() -> "No submissions"
+            submissionFilter == SubmissionFilter.STORIES -> "No stories"
+            submissionFilter == SubmissionFilter.COMMENTS -> "No comments"
+            else -> "No submissions"
         }
 
     companion object {
-        private const val SUBMISSION_FILTER_STORIES = 0
-        private const val SUBMISSION_FILTER_BOTH = 1
-        private const val SUBMISSION_FILTER_COMMENTS = 2
         private const val ALGOLIA_HITS_INCREMENT = 200
     }
 }

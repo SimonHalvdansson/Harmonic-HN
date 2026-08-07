@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.data
 
-import android.text.TextUtils
 import com.simon.harmonichackernews.utils.ArxivResolver
 
 class ArxivInfo {
@@ -13,24 +12,22 @@ class ArxivInfo {
 
     var publishedDate: String? = null
 
-    fun concatNames(): String? {
-        return TextUtils.join(", ", authors)
-    }
+    fun concatNames(): String? = authors.joinToString(", ")
 
     fun formatDate(): String {
         return publishedDate!!.substring(0, 10)
     }
 
     fun formatSubjects(): String {
-        val allSubjects = StringBuilder(ArxivResolver.resolveFull(primaryCategory))
-
-        for (secondaryCategory in secondaryCategories) {
-            allSubjects.append("; ").append(ArxivResolver.resolveFull(secondaryCategory))
+        return buildString {
+            append(ArxivResolver.resolveFull(primaryCategory))
+            secondaryCategories.forEach { category ->
+                append("; ")
+                append(ArxivResolver.resolveFull(category))
+            }
         }
-        return allSubjects.toString()
     }
 
     val pDFURL: String
-        get() = "https://arxiv.org/pdf/" + arxivID + ".pdf"
+        get() = "https://arxiv.org/pdf/$arxivID.pdf"
 }
-

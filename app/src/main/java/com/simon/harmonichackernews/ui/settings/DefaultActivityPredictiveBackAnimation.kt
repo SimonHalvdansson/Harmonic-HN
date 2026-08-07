@@ -247,9 +247,7 @@ private fun Modifier.withLayoutCorners(
         context.getScreenInfo(density)
     }
 
-    if (screenInfo == null) {
-        return block(LayoutCorners())
-    }
+    screenInfo ?: return block(LayoutCorners())
 
     val rootView = LocalView.current
     val layoutDirection = LocalLayoutDirection.current
@@ -344,7 +342,7 @@ private fun getLayoutCorners(
 }
 
 private fun layoutCorner(radius: Dp?, isFixed: Boolean): LayoutCorner =
-    if (radius == null) LayoutCorner() else LayoutCorner(radius = radius, isFixed = isFixed)
+    radius?.let { LayoutCorner(radius = it, isFixed = isFixed) } ?: LayoutCorner()
 
 private fun getBoundsOnScreen(rootView: View, boundsInRoot: Rect): Rect {
     val rootViewLeftTopOnScreen = IntArray(2)

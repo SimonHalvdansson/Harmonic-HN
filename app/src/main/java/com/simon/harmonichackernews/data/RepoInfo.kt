@@ -15,17 +15,11 @@ class RepoInfo {
     var watching: Int = 0
     var forks: Int = 0
 
-    fun formatStars(): String {
-        return formatCount(stars, "star", "stars")
-    }
+    fun formatStars(): String = formatCount(stars, "star", "stars")
 
-    fun formatWatching(): String {
-        return kFormat(watching) + " watching"
-    }
+    fun formatWatching(): String = "${kFormat(watching)} watching"
 
-    fun formatForks(): String {
-        return formatCount(forks, "fork", "forks")
-    }
+    fun formatForks(): String = formatCount(forks, "fork", "forks")
 
     val shortenedUrl: String?
         get() = shortenUrl(website)

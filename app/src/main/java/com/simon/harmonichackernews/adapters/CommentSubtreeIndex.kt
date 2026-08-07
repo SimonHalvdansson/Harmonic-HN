@@ -4,25 +4,24 @@ import com.simon.harmonichackernews.data.Comment
 internal class CommentSubtreeIndex {
     private var lastChildIndexByPosition: IntArray? = null
 
-    fun getLastChildIndex(comments: MutableList<Comment>, position: Int): Int {
-        if (lastChildIndexByPosition == null
-            || lastChildIndexByPosition!!.size != comments.size
-        ) {
-            rebuild(comments)
+    fun getLastChildIndex(comments: List<Comment>, position: Int): Int {
+        val cachedIndexes = lastChildIndexByPosition
+        if (cachedIndexes != null && cachedIndexes.size == comments.size) {
+            return cachedIndexes[position]
         }
-        return lastChildIndexByPosition!![position]
+        return rebuild(comments)[position]
     }
 
     fun invalidate() {
         lastChildIndexByPosition = null
     }
 
-    private fun rebuild(comments: MutableList<Comment>) {
+    private fun rebuild(comments: List<Comment>): IntArray {
         val commentCount = comments.size
         val lastChildIndexes = IntArray(commentCount)
         if (commentCount <= 1) {
             lastChildIndexByPosition = lastChildIndexes
-            return
+            return lastChildIndexes
         }
 
         val openCommentPositions = IntArray(commentCount - 1)
@@ -42,5 +41,6 @@ internal class CommentSubtreeIndex {
             lastChildIndexes[openCommentPositions[--openCommentCount]] = commentCount - 1
         }
         lastChildIndexByPosition = lastChildIndexes
+        return lastChildIndexes
     }
 }

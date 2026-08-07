@@ -6,15 +6,17 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,6 +25,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,8 +35,8 @@ import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +50,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.Font
@@ -64,9 +69,12 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.FontUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.runtime.LaunchedEffect
+
+private val PreloadWebViewOptions = listOf(
+    SettingsUtils.PRELOAD_WEBVIEW_ALWAYS to "Always",
+    SettingsUtils.PRELOAD_WEBVIEW_ONLY_WIFI to "Only on WiFi",
+    SettingsUtils.PRELOAD_WEBVIEW_NEVER to "Never",
+)
 
 @Composable
 fun FontSelectionDialog(
@@ -102,7 +110,7 @@ fun FontSelectionDialog(
                     .fillMaxWidth()
                     .heightIn(max = 580.dp)
                     .selectableGroup(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                contentPadding = PaddingValues(
                     top = 4.dp,
                     bottom = 8.dp,
                 ),
@@ -196,25 +204,21 @@ fun PreloadWebViewDialog(
                         .padding(top = 12.dp)
                         .selectableGroup(),
                 ) {
-                    listOf(
-                        SettingsUtils.PRELOAD_WEBVIEW_ALWAYS to "Always",
-                        SettingsUtils.PRELOAD_WEBVIEW_ONLY_WIFI to "Only on WiFi",
-                        SettingsUtils.PRELOAD_WEBVIEW_NEVER to "Never",
-                    ).forEach { option ->
+                    PreloadWebViewOptions.forEach { (value, label) ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .defaultMinSize(minHeight = 48.dp)
                                 .selectable(
-                                    selected = mode == option.first,
+                                    selected = mode == value,
                                     role = Role.RadioButton,
-                                    onClick = { mode = option.first },
+                                    onClick = { mode = value },
                                 ),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            SettingsRadioButton(selected = mode == option.first)
+                            SettingsRadioButton(selected = mode == value)
                             Text(
-                                text = option.second,
+                                text = label,
                                 modifier = Modifier.padding(start = 4.dp),
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 16.sp,
@@ -524,10 +528,8 @@ private fun StringListEditorDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 8.dp),
-                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement
-                            .spacedBy(8.dp),
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement
-                            .spacedBy(0.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
                     ) {
                         suggestions.forEach { suggestion ->
                             AssistChip(
@@ -555,6 +557,12 @@ fun UserTagDialog(
     var tag by remember(userName, currentTag) { mutableStateOf(currentTag) }
     val focusRequester = remember { FocusRequester() }
 
+    fun saveTag() {
+        val saved = tag.trim()
+        Utils.setUserTag(context, userName, saved)
+        onSaved(saved)
+    }
+
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
@@ -567,12 +575,12 @@ fun UserTagDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(
-                        horizontal = androidx.compose.ui.res.dimensionResource(
+                        horizontal = dimensionResource(
                             R.dimen.compose_settings_dialog_content_padding,
                         ),
                     )
                     .padding(
-                        bottom = androidx.compose.ui.res.dimensionResource(
+                        bottom = dimensionResource(
                             R.dimen.compose_settings_dialog_content_padding,
                         ),
                     ),
@@ -583,7 +591,7 @@ fun UserTagDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(
-                            androidx.compose.ui.res.dimensionResource(
+                            dimensionResource(
                                 R.dimen.compose_settings_dialog_single_line_field_height,
                             ),
                         )
@@ -591,34 +599,28 @@ fun UserTagDialog(
                     label = { Text("Tag") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            val saved = tag.trim()
-                            Utils.setUserTag(context, userName, saved)
-                            onSaved(saved)
-                        },
-                    ),
+                    keyboardActions = KeyboardActions(onDone = { saveTag() }),
                 )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            top = androidx.compose.ui.res.dimensionResource(
+                            top = dimensionResource(
                                 R.dimen.compose_settings_tag_field_button_gap,
                             ),
                         ),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+                    horizontalArrangement = Arrangement.End,
                 ) {
                     SettingsDialogOutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier
                             .height(
-                                androidx.compose.ui.res.dimensionResource(
+                                dimensionResource(
                                     R.dimen.compose_settings_tag_button_height,
                                 ),
                             )
                             .widthIn(
-                                min = androidx.compose.ui.res.dimensionResource(
+                                min = dimensionResource(
                                     R.dimen.compose_settings_tag_cancel_button_min_width,
                                 ),
                             ),
@@ -627,25 +629,21 @@ fun UserTagDialog(
                     }
                     Spacer(
                         Modifier.width(
-                            androidx.compose.ui.res.dimensionResource(
+                            dimensionResource(
                                 R.dimen.compose_settings_tag_button_gap,
                             ),
                         ),
                     )
                     SettingsDialogOutlinedButton(
-                        onClick = {
-                            val saved = tag.trim()
-                            Utils.setUserTag(context, userName, saved)
-                            onSaved(saved)
-                        },
+                        onClick = { saveTag() },
                         modifier = Modifier
                             .height(
-                                androidx.compose.ui.res.dimensionResource(
+                                dimensionResource(
                                     R.dimen.compose_settings_tag_button_height,
                                 ),
                             )
                             .widthIn(
-                                min = androidx.compose.ui.res.dimensionResource(
+                                min = dimensionResource(
                                     R.dimen.compose_settings_tag_button_min_width,
                                 ),
                             ),

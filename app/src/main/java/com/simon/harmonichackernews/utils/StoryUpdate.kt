@@ -3,21 +3,20 @@ package com.simon.harmonichackernews.utils
 import com.simon.harmonichackernews.data.Story
 
 object StoryUpdate {
-    var storyUpdateListener: StoryUpdateListener? = null
+    @Volatile
+    private var storyUpdateListener: StoryUpdateListener? = null
 
     fun updateStory(story: Story?) {
-        if (storyUpdateListener != null) {
-            storyUpdateListener!!.callback(story)
-        }
+        storyUpdateListener?.callback(story)
     }
 
     fun setStoryUpdatedListener(storyUpdateListener: StoryUpdateListener?) {
-        StoryUpdate.storyUpdateListener = storyUpdateListener
+        this.storyUpdateListener = storyUpdateListener
     }
 
     fun clearStoryUpdatedListener(storyUpdateListener: StoryUpdateListener?) {
-        if (StoryUpdate.storyUpdateListener === storyUpdateListener) {
-            StoryUpdate.storyUpdateListener = null
+        if (this.storyUpdateListener === storyUpdateListener) {
+            this.storyUpdateListener = null
         }
     }
 

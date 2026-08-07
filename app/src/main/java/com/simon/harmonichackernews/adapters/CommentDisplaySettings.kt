@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.adapters
 
 import android.content.Context
-import androidx.annotation.NonNull
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
@@ -30,16 +29,11 @@ class CommentDisplaySettings private constructor(
     val hasAccountDetails: Boolean,
     val canProvideSummary: Boolean
 ) {
-    val paletteTintMode: String
-    val preferredTextSize: Float
-    val commentDepthIndicatorMode: String
-
-    init {
-        this.paletteTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
-        this.preferredTextSize = SettingsUtils.clampCommentTextSize(preferredTextSize)
-        this.commentDepthIndicatorMode =
-            CommentDepthIndicatorUtils.sanitizeMode(commentDepthIndicatorMode)
-    }
+    val paletteTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+    val preferredTextSize = SettingsUtils.clampCommentTextSize(preferredTextSize)
+    val commentDepthIndicatorMode = CommentDepthIndicatorUtils.sanitizeMode(
+        commentDepthIndicatorMode
+    )
 
     companion object {
         fun from(

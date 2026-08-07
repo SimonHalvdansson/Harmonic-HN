@@ -22,9 +22,8 @@ fun Context.defaultBrowserPackageName(): String? {
         ?.takeUnless { it in InvalidDefaultBrowsers }
 }
 
-fun Context.isInvalidViewHandlerPackage(packageName: String?): Boolean {
-    return packageName != null && packageName in InvalidDefaultBrowsers
-}
+fun Context.isInvalidViewHandlerPackage(packageName: String?): Boolean =
+    packageName != null && packageName in InvalidDefaultBrowsers
 
 /**
  * A list of package names that may be incorrectly resolved as usable browsers by
@@ -35,7 +34,7 @@ fun Context.isInvalidViewHandlerPackage(packageName: String?): Boolean {
  *
  * Some of them may only be present on certain manufacturer's devices.
  */
-private val InvalidDefaultBrowsers = listOf(
+private val InvalidDefaultBrowsers = setOf(
     "android",
     // Honor
     "com.hihonor.android.internal.app",

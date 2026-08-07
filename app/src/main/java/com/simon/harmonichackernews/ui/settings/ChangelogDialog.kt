@@ -49,6 +49,7 @@ internal fun SettingsChangelogDialog(
     onOpenGithub: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    val markdown = remember(context) { Changelog.getMarkdown(context).orEmpty() }
     val scrollState = rememberScrollState()
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
@@ -60,7 +61,7 @@ internal fun SettingsChangelogDialog(
         },
         text = {
             ChangelogMarkdown(
-                markdown = Changelog.getMarkdown(context).orEmpty(),
+                markdown = markdown,
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(scrollState),

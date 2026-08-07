@@ -30,28 +30,27 @@ class HNAPICommentLoader(
             Response.Listener { response: String? ->
                 try {
                     val comment = JSONParser.parseOfficialHNCommentResponse(response.orEmpty())
-                    if (comment != null && comment.by != null && !filteredUsers.contains(
-                            comment.by!!.lowercase(
-                                Locale.getDefault()
-                            )
-                        )
+                    val author = comment?.by
+                    if (comment != null && author != null &&
+                        author.lowercase(Locale.getDefault()) !in filteredUsers
                     ) {
                         comment.depth = depth
                         listener.onCommentLoaded(comment)
                     } else {
                         Log.w(
-                            TAG, ("Skipping HN API comment, commentId=" + commentId
-                                    + ", parsed=" + (comment != null)
-                                    + ", hasAuthor=" + (comment != null && comment.by != null)
-                                    + ", responseLength=" + (if (response == null) 0 else response.length))
+                            TAG,
+                            "Skipping HN API comment, commentId=$commentId" +
+                                ", parsed=${comment != null}" +
+                                ", hasAuthor=${author != null}" +
+                                ", responseLength=${response?.length ?: 0}"
                         )
                         listener.onCommentFailed(commentId)
                     }
                 } catch (e: JSONException) {
                     Log.w(
                         TAG,
-                        ("Failed to parse HN API comment, commentId=" + commentId
-                                + ", responseLength=" + (if (response == null) 0 else response.length)),
+                        "Failed to parse HN API comment, commentId=$commentId" +
+                            ", responseLength=${response?.length ?: 0}",
                         e
                     )
                     listener.onCommentFailed(commentId)
@@ -60,9 +59,8 @@ class HNAPICommentLoader(
             Response.ErrorListener { error: VolleyError? ->
                 Log.w(
                     TAG,
-                    "HN API comment request failed, commentId=" + commentId + ": " + VolleyErrorUtils.describe(
-                        error
-                    ),
+                    "HN API comment request failed, commentId=$commentId: " +
+                        VolleyErrorUtils.describe(error),
                     error
                 )
                 listener.onCommentFailed(commentId)

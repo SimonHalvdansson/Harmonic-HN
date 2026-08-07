@@ -6,9 +6,5 @@ class CommentsScrollProgress {
     var storyId: Int = 0
     var topCommentId: Int = 0
     var topCommentOffset: Int = 0
-    var collapsedIDs: HashSet<Int>
-
-    init {
-        collapsedIDs = HashSet()
-    }
+    var collapsedIDs: HashSet<Int> = HashSet()
 }

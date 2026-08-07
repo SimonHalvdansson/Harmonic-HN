@@ -28,7 +28,7 @@ object ArchiveOrgUrlGetter {
                     callback.onFailure("Failed to parse archive.org API response")
                 }
             }, Response.ErrorListener { error: VolleyError? ->
-                error!!.printStackTrace()
+                error?.printStackTrace()
                 callback.onFailure("Couldn't connect to archive.org API")
             })
 

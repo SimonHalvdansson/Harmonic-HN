@@ -4,8 +4,6 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
-import androidx.annotation.NonNull
-import androidx.annotation.Nullable
 import com.simon.harmonichackernews.data.WikipediaInfo
 import com.simon.harmonichackernews.linkpreview.WikipediaGetter
 import com.simon.harmonichackernews.linkpreview.WikipediaGetter.getFirstParagraphText
@@ -90,11 +88,11 @@ object LinkSummaryLoader {
             return SummaryRequest {}
         }
 
-        if (hackerNewsItemRequest) {
+        if (hackerNewsItemRequest && hackerNewsItemId != null) {
             return LinkSummaryLoader.loadHackerNewsItem(
                 context,
                 normalizedPageUrl,
-                hackerNewsItemId!!,
+                hackerNewsItemId,
                 fallbackTitle,
                 callback
             )
@@ -109,13 +107,13 @@ object LinkSummaryLoader {
             )
         }
 
+        val requestUrl = when {
+            youtubeOEmbedRequest -> youtubeOEmbedUrl.orEmpty()
+            redditOEmbedRequest -> redditOEmbedUrl.orEmpty()
+            else -> normalizedPageUrl
+        }
         val request = Request.Builder()
-            .url(
-                (if (youtubeOEmbedRequest)
-                    youtubeOEmbedUrl
-                else
-                    if (redditOEmbedRequest) redditOEmbedUrl else normalizedPageUrl)!!
-            )
+            .url(requestUrl)
             .header(
                 "Accept", if (oEmbedRequest)
                     "application/json"
@@ -124,11 +122,11 @@ object LinkSummaryLoader {
             )
             .get()
             .build()
-        val call = NetworkComponent.okHttpClientInstance!!.newCall(request)
+        val call = NetworkComponent.okHttpClientInstance.newCall(request)
         call.enqueue(object : okhttp3.Callback {
             override fun onFailure(call: Call, e: IOException) {
                 if (!call.isCanceled()) {
-                    LinkSummaryLoader.postFailure(callback, getFailureMessage(e)!!)
+                    LinkSummaryLoader.postFailure(callback, getFailureMessage(e))
                 }
             }
 
@@ -197,7 +195,7 @@ object LinkSummaryLoader {
                     }
                 } catch (e: Exception) {
                     if (!call.isCanceled()) {
-                        LinkSummaryLoader.postFailure(callback, getFailureMessage(e)!!)
+                        LinkSummaryLoader.postFailure(callback, getFailureMessage(e))
                     }
                 }
             }
@@ -226,11 +224,11 @@ object LinkSummaryLoader {
     }
 
     private fun isPositiveInteger(value: String?): Boolean {
-        if (TextUtils.isEmpty(value)) {
+        if (value.isNullOrEmpty()) {
             return false
         }
-        for (index in 0..<value!!.length) {
-            if (!Character.isDigit(value.get(index))) {
+        for (character in value) {
+            if (!Character.isDigit(character)) {
                 return false
             }
         }
@@ -253,11 +251,11 @@ object LinkSummaryLoader {
             .header("Accept", "application/json")
             .get()
             .build()
-        val call = NetworkComponent.okHttpClientInstance!!.newCall(request)
+        val call = NetworkComponent.okHttpClientInstance.newCall(request)
         call.enqueue(object : okhttp3.Callback {
             override fun onFailure(call: Call, e: IOException) {
                 if (!call.isCanceled()) {
-                    LinkSummaryLoader.postFailure(callback, getFailureMessage(e)!!)
+                    LinkSummaryLoader.postFailure(callback, getFailureMessage(e))
                 }
             }
 
@@ -290,7 +288,7 @@ object LinkSummaryLoader {
                     }
                 } catch (e: Exception) {
                     if (!call.isCanceled()) {
-                        LinkSummaryLoader.postFailure(callback, getFailureMessage(e)!!)
+                        LinkSummaryLoader.postFailure(callback, getFailureMessage(e))
                     }
                 }
             }
@@ -563,12 +561,9 @@ object LinkSummaryLoader {
                     output.write(buffer, 0, bytesRead)
                 }
 
-                var charset = StandardCharsets.UTF_8
-                val mediaType = body.contentType()
-                if (mediaType != null) {
-                    charset = mediaType.charset(StandardCharsets.UTF_8)
-                }
-                return kotlin.text.String(output.toByteArray(), charset!!)
+                val charset = body.contentType()?.charset(StandardCharsets.UTF_8)
+                    ?: StandardCharsets.UTF_8
+                return String(output.toByteArray(), charset)
             }
         }
     }
@@ -697,11 +692,12 @@ object LinkSummaryLoader {
         if (TextUtils.isEmpty(contentType)) {
             return ""
         }
-        val separator = contentType!!.indexOf(';')
-        return (if (separator >= 0) contentType.substring(
+        val normalizedContentType = contentType ?: return ""
+        val separator = normalizedContentType.indexOf(';')
+        return (if (separator >= 0) normalizedContentType.substring(
             0,
             separator
-        ) else contentType).trim { it <= ' ' }
+        ) else normalizedContentType).trim { it <= ' ' }
     }
 
     private fun getHost(url: String): String {
@@ -714,7 +710,7 @@ object LinkSummaryLoader {
             return null
         }
 
-        val parsedUrl = url!!.toHttpUrlOrNull()
+        val parsedUrl = url?.toHttpUrlOrNull()
         return if (parsedUrl == null || !isHttpScheme(parsedUrl)) null else parsedUrl.toString()
     }
 
@@ -722,9 +718,8 @@ object LinkSummaryLoader {
         return "http" == url.scheme || "https" == url.scheme
     }
 
-    private fun getFailureMessage(error: Exception): String? {
-        return if (TextUtils.isEmpty(error.message)) "The page could not be read" else error.message
-    }
+    private fun getFailureMessage(error: Exception): String =
+        error.message?.takeUnless { it.isEmpty() } ?: "The page could not be read"
 
     private fun postFailure(callback: Callback, message: String) {
         MAIN_HANDLER.post(Runnable { callback.onFailure(message) })

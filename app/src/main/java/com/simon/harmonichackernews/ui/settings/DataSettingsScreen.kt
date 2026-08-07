@@ -26,7 +26,6 @@ import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.util.Calendar
-import java.util.HashSet
 
 @Composable
 fun DataSettingsScreen(
@@ -42,17 +41,14 @@ fun DataSettingsScreen(
     var overwriteBookmarksOnImport by rememberSaveable { mutableStateOf(true) }
     var favoriteIds by remember { mutableStateOf<IntArray?>(null) }
 
-    @Suppress("UNUSED_VARIABLE")
-    val observedRefresh = refresh + localRefresh
-
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain"),
     ) { uri ->
-        if (uri != null) {
+        uri?.let { outputUri ->
             runCatching {
                 Utils.writeInFile(
                     context,
-                    uri,
+                    outputUri,
                     SettingsUtils.readStringFromSharedPreferences(
                         context,
                         Utils.KEY_SHARED_PREFERENCES_BOOKMARKS,
@@ -67,11 +63,11 @@ fun DataSettingsScreen(
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
-        if (uri != null) {
+        uri?.let { inputUri ->
             runCatching {
                 importBookmarks(
                     context = context,
-                    uri = uri,
+                    uri = inputUri,
                     overwrite = overwriteBookmarksOnImport,
                 )
             }.onSuccess { importedCount ->
@@ -314,7 +310,7 @@ private fun importBookmarks(
     }
 
     val current = Utils.loadBookmarks(context, false)
-    val currentIds = HashSet(current.map(Bookmark::id))
+    val currentIds = current.mapTo(hashSetOf(), Bookmark::id)
     var added = 0
     imported.forEach { bookmark ->
         if (currentIds.add(bookmark.id)) {

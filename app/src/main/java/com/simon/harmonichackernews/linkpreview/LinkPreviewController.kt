@@ -44,12 +44,12 @@ class LinkPreviewController(private val story: Story?, private val callbacks: Ca
                 url,
                 context,
                 object : ArxivAbstractGetter.GetterCallback {
-                    override fun onSuccess(arxivInfo: ArxivInfo?) {
+                    override fun onSuccess(arxivInfo: ArxivInfo) {
                         currentStory.arxivInfo = arxivInfo
                         setLinkPreviewLoading(false)
                     }
 
-                    override fun onFailure(reason: String?) {
+                    override fun onFailure(reason: String) {
                         setLinkPreviewLoading(false)
                     }
                 })
@@ -62,24 +62,24 @@ class LinkPreviewController(private val story: Story?, private val callbacks: Ca
                 url,
                 context,
                 object : GitHubInfoGetter.GetterCallback {
-                    override fun onSuccess(repoInfo: RepoInfo?) {
+                    override fun onSuccess(repoInfo: RepoInfo) {
                         currentStory.repoInfo = repoInfo
                         setLinkPreviewLoading(false)
                     }
 
-                    override fun onFailure(reason: String?) {
+                    override fun onFailure(reason: String) {
                         setLinkPreviewLoading(false)
                     }
                 })
         } else if (isValidGitLabUrl(url) && SettingsUtils.shouldUseLinkPreviewGitLab(context)) {
             setLinkPreviewLoading(true)
             getInfo(url, context, object : GitLabInfoGetter.GetterCallback {
-                override fun onSuccess(gitLabInfo: GitLabInfo?) {
+                override fun onSuccess(gitLabInfo: GitLabInfo) {
                     currentStory.gitLabInfo = gitLabInfo
                     setLinkPreviewLoading(false)
                 }
 
-                override fun onFailure(reason: String?) {
+                override fun onFailure(reason: String) {
                     setLinkPreviewLoading(false)
                 }
             })
@@ -92,12 +92,12 @@ class LinkPreviewController(private val story: Story?, private val callbacks: Ca
                 url,
                 context,
                 object : StackExchangeGetter.GetterCallback {
-                    override fun onSuccess(stackExchangeInfo: StackExchangeInfo?) {
+                    override fun onSuccess(stackExchangeInfo: StackExchangeInfo) {
                         currentStory.stackExchangeInfo = stackExchangeInfo
                         setLinkPreviewLoading(false)
                     }
 
-                    override fun onFailure(reason: String?) {
+                    override fun onFailure(reason: String) {
                         setLinkPreviewLoading(false)
                     }
                 })

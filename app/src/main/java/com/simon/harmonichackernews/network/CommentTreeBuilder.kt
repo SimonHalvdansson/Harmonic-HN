@@ -1,39 +1,29 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.Comment
-import kotlin.math.min
 
 class CommentTreeBuilder(private val topLevelIds: IntArray) {
-    private val commentMap: MutableMap<Int, Comment> = HashMap()
-    private val childrenMap: MutableMap<Int, MutableList<Comment>> = HashMap()
+    private val commentMap = mutableMapOf<Int, Comment>()
+    private val childrenMap = mutableMapOf<Int, MutableList<Comment>>()
 
     fun addComment(comment: Comment) {
-        commentMap.put(comment.id, comment)
-
+        commentMap[comment.id] = comment
 
         // Add to children map if it has a parent
         if (comment.parent != 0) {
-            var list = childrenMap.get(comment.parent)
-            if (list == null) {
-                list = ArrayList()
-                childrenMap.put(comment.parent, list)
-            }
-            list.add(comment)
+            childrenMap.getOrPut(comment.parent) { mutableListOf() }.add(comment)
         }
     }
 
     fun buildOrderedTree(): MutableList<Comment> {
-        val orderedComments: MutableList<Comment> = ArrayList()
-
+        val orderedComments = mutableListOf<Comment>()
 
         // Process top-level comments in the order specified by topLevelIds
         for (topLevelId in topLevelIds) {
-            val topComment = commentMap.get(topLevelId)
-            if (topComment != null) {
-                topComment.depth = 0
-                orderedComments.add(topComment)
-                addChildrenToList(orderedComments, topComment, 1)
-            }
+            val topComment = commentMap[topLevelId] ?: continue
+            topComment.depth = 0
+            orderedComments.add(topComment)
+            addChildrenToList(orderedComments, topComment, 1)
         }
 
         return orderedComments
@@ -44,32 +34,24 @@ class CommentTreeBuilder(private val topLevelIds: IntArray) {
         parent: Comment,
         depth: Int
     ) {
-        var children = childrenMap.get(parent.id)
-        if (children == null) return
-
+        var children = childrenMap[parent.id] ?: return
 
         // Sort children by the order they appear in parent's kidsIds if available
-        if (parent.kidsIds != null && parent.kidsIds!!.size > 0) {
-            val childrenById: MutableMap<Int, Comment> = HashMap(children.size)
+        val childIds = parent.kidsIds
+        if (childIds != null && childIds.isNotEmpty()) {
+            val childrenById = HashMap<Int, Comment>(children.size)
             for (child in children) {
                 // Match the previous nested search, which selected the first child
                 // with a given ID if duplicate objects were ever added.
-                if (!childrenById.containsKey(child.id)) {
-                    childrenById.put(child.id, child)
-                }
+                childrenById.putIfAbsent(child.id, child)
             }
 
-            val orderedChildren: MutableList<Comment> =
-                ArrayList<Comment>(min(children.size, parent.kidsIds!!.size))
-            for (childId in parent.kidsIds) {
-                val child = childrenById.get(childId)
-                if (child != null) {
-                    orderedChildren.add(child)
-                }
+            val orderedChildren = ArrayList<Comment>(minOf(children.size, childIds.size))
+            for (childId in childIds) {
+                childrenById[childId]?.let(orderedChildren::add)
             }
             children = orderedChildren
         }
-
 
         // Add children and their subtrees
         for (child in children) {

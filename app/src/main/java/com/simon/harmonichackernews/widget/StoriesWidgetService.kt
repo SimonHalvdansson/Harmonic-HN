@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.widget
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.widget.RemoteViewsService
-import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.utils.Utils.log
 
 class StoriesWidgetService : RemoteViewsService() {
@@ -12,7 +11,7 @@ class StoriesWidgetService : RemoteViewsService() {
             AppWidgetManager.EXTRA_APPWIDGET_ID,
             AppWidgetManager.INVALID_APPWIDGET_ID
         )
-        log("WidgetService onGetViewFactory widgetId=" + appWidgetId)
-        return StoriesRemoteViewsFactory(getApplicationContext(), appWidgetId)
+        log("WidgetService onGetViewFactory widgetId=$appWidgetId")
+        return StoriesRemoteViewsFactory(applicationContext, appWidgetId)
     }
 }

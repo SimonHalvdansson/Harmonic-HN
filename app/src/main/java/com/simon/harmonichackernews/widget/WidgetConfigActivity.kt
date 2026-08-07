@@ -3,10 +3,8 @@ package com.simon.harmonichackernews.widget
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.ThemeUtils.setupTheme
 import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.widget.WidgetConfigComposeHost.install
@@ -22,14 +20,10 @@ class WidgetConfigActivity : ComponentActivity() {
         setResult(RESULT_CANCELED)
 
         // Get widget ID from intent
-        val intent = getIntent()
-        val extras = intent.getExtras()
-        if (extras != null) {
-            appWidgetId = extras.getInt(
-                AppWidgetManager.EXTRA_APPWIDGET_ID,
-                AppWidgetManager.INVALID_APPWIDGET_ID
-            )
-        }
+        appWidgetId = intent.getIntExtra(
+            AppWidgetManager.EXTRA_APPWIDGET_ID,
+            AppWidgetManager.INVALID_APPWIDGET_ID
+        )
 
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
             finish()
@@ -43,16 +37,11 @@ class WidgetConfigActivity : ComponentActivity() {
         install(
             this,
             getStoryCount(this, appWidgetId),
-            WidgetConfigComposeHost.Listener { feedUrl: String, feedName: String, storyCount: Int ->
-                this.confirmConfiguration(
-                    feedUrl,
-                    feedName,
-                    storyCount
-                )
-            })
+            WidgetConfigComposeHost.Listener(::confirmConfiguration)
+        )
     }
 
-    private fun confirmConfiguration(feedUrl: String?, feedName: String?, storyCount: Int) {
+    private fun confirmConfiguration(feedUrl: String, feedName: String, storyCount: Int) {
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         prefs.edit()
             .putString(KEY_FEED_TYPE_PREFIX + appWidgetId, feedUrl)
@@ -74,14 +63,14 @@ class WidgetConfigActivity : ComponentActivity() {
         private const val STORY_COUNT_SMALL = 8
         private const val STORY_COUNT_MEDIUM = 16
         private const val STORY_COUNT_LARGE = 24
-        private val DEFAULT_STORY_COUNT: Int = STORY_COUNT_MEDIUM
+        private const val DEFAULT_STORY_COUNT = STORY_COUNT_MEDIUM
 
         fun getFeedUrl(context: Context, appWidgetId: Int): String {
             val prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             return prefs.getString(
-                WidgetConfigActivity.Companion.KEY_FEED_TYPE_PREFIX + appWidgetId,
-                com.simon.harmonichackernews.utils.Utils.URL_TOP
-            )!!
+                KEY_FEED_TYPE_PREFIX + appWidgetId,
+                Utils.URL_TOP
+            ) ?: Utils.URL_TOP
         }
 
         fun getFeedName(context: Context, appWidgetId: Int): String? {
@@ -92,30 +81,21 @@ class WidgetConfigActivity : ComponentActivity() {
         fun getStoryCount(context: Context, appWidgetId: Int): Int {
             val prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             val storyCount = prefs.getInt(KEY_STORY_COUNT_PREFIX + appWidgetId, DEFAULT_STORY_COUNT)
-            if (storyCount == STORY_COUNT_SMALL || storyCount == STORY_COUNT_MEDIUM || storyCount == STORY_COUNT_LARGE) {
-                return storyCount
+            return when (storyCount) {
+                STORY_COUNT_SMALL, STORY_COUNT_MEDIUM, STORY_COUNT_LARGE -> storyCount
+                10 -> STORY_COUNT_SMALL
+                20 -> STORY_COUNT_MEDIUM
+                30, 40 -> STORY_COUNT_LARGE
+                else -> DEFAULT_STORY_COUNT
             }
-            if (storyCount == 10) {
-                return STORY_COUNT_SMALL
-            }
-            if (storyCount == 20) {
-                return STORY_COUNT_MEDIUM
-            }
-            if (storyCount == 30 || storyCount == 40) {
-                return STORY_COUNT_LARGE
-            }
-            return DEFAULT_STORY_COUNT
         }
 
         fun getFetchStoryCount(context: Context, appWidgetId: Int): Int {
-            val visibleStoryCount: Int = getStoryCount(context, appWidgetId)
-            if (visibleStoryCount == STORY_COUNT_SMALL) {
-                return 10
+            return when (getStoryCount(context, appWidgetId)) {
+                STORY_COUNT_SMALL -> 10
+                STORY_COUNT_LARGE -> 28
+                else -> 20
             }
-            if (visibleStoryCount == STORY_COUNT_LARGE) {
-                return 28
-            }
-            return 20
         }
 
         fun clearPreferences(context: Context, appWidgetId: Int) {

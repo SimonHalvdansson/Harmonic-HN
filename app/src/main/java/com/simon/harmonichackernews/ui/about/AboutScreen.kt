@@ -110,7 +110,7 @@ fun AboutScreen(
     ) {
         HarmonicTopAppBar(
             title = "About",
-            onBack = onBack.takeIf { showNavigation },
+            onBack = if (showNavigation) onBack else null,
         )
 
         Column(

@@ -29,9 +29,6 @@ fun FiltersTagsSettingsScreen(
     var tagDialogUser by rememberSaveable { mutableStateOf<String?>(null) }
     var profileUser by rememberSaveable { mutableStateOf<String?>(null) }
 
-    @Suppress("UNUSED_VARIABLE")
-    val observedRefresh = refresh + tagRefresh
-
     val tags = Utils.getUserTagsWithOriginalUsernames(context)
         .entries
         .sortedBy { it.key.lowercase() }

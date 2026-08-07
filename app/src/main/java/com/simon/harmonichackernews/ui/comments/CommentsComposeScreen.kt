@@ -150,7 +150,7 @@ import kotlin.math.roundToInt
  * surface is Compose; immutable list snapshots turn controller updates into normal state changes.
  */
 class CommentsComposeController private constructor(
-    private val activity: ComponentActivity,
+    private val shouldSmoothScroll: () -> Boolean,
     initialStory: Story,
     internal val initialShowWebsite: Boolean,
     internal val accountUser: String?,
@@ -377,7 +377,7 @@ class CommentsComposeController private constructor(
             serial = ++requestSerial,
             forward = true,
             topLevelOnly = topLevelOnly,
-            animate = SettingsUtils.shouldSmoothScrollComments(activity),
+            animate = shouldSmoothScroll(),
             scaleLongScrollSpeed = scaleLongScrollSpeed,
         )
     }
@@ -387,7 +387,7 @@ class CommentsComposeController private constructor(
             serial = ++requestSerial,
             forward = false,
             topLevelOnly = topLevelOnly,
-            animate = SettingsUtils.shouldSmoothScrollComments(activity),
+            animate = shouldSmoothScroll(),
             scaleLongScrollSpeed = scaleLongScrollSpeed,
         )
     }
@@ -397,7 +397,7 @@ class CommentsComposeController private constructor(
             serial = ++requestSerial,
             forward = false,
             topLevelOnly = true,
-            animate = SettingsUtils.shouldSmoothScrollComments(activity),
+            animate = shouldSmoothScroll(),
             scaleLongScrollSpeed = true,
             edge = NavigationEdge.First,
         )
@@ -408,7 +408,7 @@ class CommentsComposeController private constructor(
             serial = ++requestSerial,
             forward = true,
             topLevelOnly = true,
-            animate = SettingsUtils.shouldSmoothScrollComments(activity),
+            animate = shouldSmoothScroll(),
             scaleLongScrollSpeed = true,
             edge = NavigationEdge.Last,
         )
@@ -424,7 +424,7 @@ class CommentsComposeController private constructor(
             serial = ++requestSerial,
             commentId = commentId,
             topOffsetPx = topOffsetPx,
-            animate = animate && SettingsUtils.shouldSmoothScrollComments(activity),
+            animate = animate && shouldSmoothScroll(),
             searchResult = false,
         )
     }
@@ -434,7 +434,7 @@ class CommentsComposeController private constructor(
             serial = ++requestSerial,
             commentId = commentId,
             topOffsetPx = topInsetPx,
-            animate = SettingsUtils.shouldSmoothScrollComments(activity),
+            animate = shouldSmoothScroll(),
             searchResult = true,
         )
     }
@@ -837,7 +837,7 @@ class CommentsComposeController private constructor(
             accountUser: String?,
             listener: Listener,
         ): CommentsComposeController = CommentsComposeController(
-            activity = activity,
+            shouldSmoothScroll = { SettingsUtils.shouldSmoothScrollComments(activity) },
             initialStory = story,
             initialShowWebsite = showWebsite,
             accountUser = accountUser,

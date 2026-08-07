@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import android.content.Context
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedVisibility
@@ -65,9 +66,6 @@ fun AiSummarySettingsScreen(
     var nanoAvailable by remember { mutableStateOf(false) }
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
 
-    @Suppress("UNUSED_VARIABLE")
-    val observedRefresh = preferenceRefresh + localRefresh
-
     LaunchedEffect(Unit) {
         AiModelCatalog.ensureInitialDefault(context)
         if (!SummaryManager.canAttemptLocalSummarization()) {
@@ -77,10 +75,8 @@ fun AiSummarySettingsScreen(
         }
     }
 
-    DisposableEffect(activity) {
-        if (activity == null) {
-            onDispose {}
-        } else {
+    if (activity != null) {
+        DisposableEffect(activity) {
             val modelListener = LocalModelManager.StatusListener {
                 localRefresh++
             }
@@ -164,7 +160,7 @@ fun AiSummarySettingsScreen(
         title = "AI summarization",
         showNavigation = showNavigation,
         onBack = onBack,
-        contentVersion = observedRefresh,
+        contentVersion = preferenceRefresh + localRefresh,
     ) {
         item {
             SettingsMainToggle(
@@ -313,10 +309,9 @@ private fun LocalModelsPanel(
     onRefresh: () -> Unit,
 ) {
     val context = LocalContext.current
-    val selectedModel = LocalModelManager.getSelectedModel(context)
-
-    @Suppress("UNUSED_VARIABLE")
-    val observedRefresh = refresh
+    val selectedModel = remember(context, refresh) {
+        LocalModelManager.getSelectedModel(context)
+    }
 
     Column(
         modifier = Modifier
@@ -539,7 +534,7 @@ private fun localModelSummary(
     return "$description\n$state"
 }
 
-private fun cloudConfigurationComplete(context: android.content.Context): Boolean {
+private fun cloudConfigurationComplete(context: Context): Boolean {
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     return !prefs.getString(
         KeyAiBaseUrl,
@@ -550,7 +545,7 @@ private fun cloudConfigurationComplete(context: android.content.Context): Boolea
         !prefs.getString(KeyAiSystemPrompt, DefaultSystemPrompt).isNullOrBlank()
 }
 
-private fun selectFirstReadyLocalModelOrClear(context: android.content.Context) {
+private fun selectFirstReadyLocalModelOrClear(context: Context) {
     val readyModel = LocalModelManager.models.firstOrNull { model ->
         model.downloadable &&
             LocalModelManager.isModelSupported(model) &&

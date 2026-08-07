@@ -1,14 +1,9 @@
 package com.simon.harmonichackernews.adapters
 
 import android.content.Context
-import androidx.annotation.NonNull
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.ui.stories.StoryListState
 import com.simon.harmonichackernews.utils.SettingsUtils
-import java.util.Objects
-import kotlin.Boolean
-import kotlin.Int
-import kotlin.String
 
 class StoryDisplaySettings private constructor(
     val showPoints: Boolean,
@@ -33,11 +28,7 @@ class StoryDisplaySettings private constructor(
     val font: String,
     commentTextSize: Float
 ) {
-    val commentTextSize: Float
-
-    init {
-        this.commentTextSize = SettingsUtils.clampCommentTextSize(commentTextSize)
-    }
+    val commentTextSize = SettingsUtils.clampCommentTextSize(commentTextSize)
 
     fun withShowIndex(showIndex: Boolean): StoryDisplaySettings {
         return StoryDisplaySettings(
@@ -171,7 +162,7 @@ class StoryDisplaySettings private constructor(
             itemsChanged = true
         }
 
-        return StoryDisplaySettings.UpdateResult(
+        return UpdateResult(
             itemsChanged,
             requiresRebuild,
             previewImageModeChanged,
@@ -180,7 +171,7 @@ class StoryDisplaySettings private constructor(
         )
     }
 
-    class UpdateResult(
+    data class UpdateResult(
         val itemsChanged: Boolean,
         val requiresRebuild: Boolean,
         val previewImageModeChanged: Boolean,

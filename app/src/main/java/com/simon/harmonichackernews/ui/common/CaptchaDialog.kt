@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.ui.common
 
 import android.annotation.SuppressLint
-import android.text.TextUtils
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -114,7 +113,7 @@ fun CaptchaDialog(
             error = null
             webView.evaluateJavascript(CaptchaResponseScript) { value ->
                 val response = decodeJavascriptString(value)
-                if (TextUtils.isEmpty(response)) {
+                if (response.isEmpty()) {
                     error = incompleteError
                 } else {
                     onCaptchaResponse(response)

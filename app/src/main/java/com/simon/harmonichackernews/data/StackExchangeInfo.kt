@@ -14,17 +14,11 @@ class StackExchangeInfo {
     var isAnswered: Boolean = false
     var hasAcceptedAnswer: Boolean = false
 
-    fun formatScore(): String {
-        return formatCount(score, "point", "points")
-    }
+    fun formatScore(): String = formatCount(score, "point", "points")
 
-    fun formatAnswerCount(): String {
-        return formatCount(answerCount, "answer", "answers")
-    }
+    fun formatAnswerCount(): String = formatCount(answerCount, "answer", "answers")
 
-    fun formatViewCount(): String {
-        return formatCount(viewCount, "view", "views")
-    }
+    fun formatViewCount(): String = formatCount(viewCount, "view", "views")
 
     fun formatAnswerState(): String {
         if (hasAcceptedAnswer) {
@@ -44,33 +38,10 @@ class StackExchangeInfo {
             return null
         }
 
-        val builder = StringBuilder()
-        for (i in currentTags.indices) {
-            if (i > 0) {
-                builder.append(", ")
-            }
-            builder.append(currentTags[i])
-        }
-        return builder.toString()
+        return currentTags.joinToString(", ")
     }
 
-    fun formatBy(): String? {
-        if (questionText != null) {
-            return questionText
-        }
+    fun formatBy(): String? = questionText ?: author?.let { "$it on $site" } ?: site
 
-        if (author == null) {
-            return site
-        }
-
-        return author + " on " + site
-    }
-
-    fun formatAuthor(): String? {
-        if (author == null) {
-            return site
-        }
-
-        return author
-    }
+    fun formatAuthor(): String? = author ?: site
 }

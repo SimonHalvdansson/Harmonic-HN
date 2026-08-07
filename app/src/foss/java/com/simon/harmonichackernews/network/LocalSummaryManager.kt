@@ -10,33 +10,32 @@ import com.simon.harmonichackernews.network.SummaryManager.postLocalAvailability
 internal object LocalSummaryManager {
     private const val UNAVAILABLE_MESSAGE = "Local AI is not included in the FOSS distribution."
 
-    fun canAttemptLocalSummarization(): Boolean {
-        return false
-    }
+    fun canAttemptLocalSummarization(): Boolean = false
 
     fun checkLocalSummaryAvailability(
-        context: Context?, callback: LocalSummaryAvailabilityCallback?
+        context: Context?,
+        callback: LocalSummaryAvailabilityCallback?,
     ) {
         postLocalAvailability(callback, false, false, UNAVAILABLE_MESSAGE)
     }
 
     fun summarizeArticle(
-        context: Context?, articleUrl: String?, callback: SummaryCallback?
+        context: Context?,
+        articleUrl: String?,
+        callback: SummaryCallback?,
     ) {
         postFailure(callback, UNAVAILABLE_MESSAGE)
     }
 
     fun summarizeText(
-        context: Context?, text: String?, callback: SummaryCallback?
+        context: Context?,
+        text: String?,
+        callback: SummaryCallback?,
     ) {
         postFailure(callback, UNAVAILABLE_MESSAGE)
     }
 
-    fun isLocalSummaryReady(context: Context?): Boolean {
-        return false
-    }
+    fun isLocalSummaryReady(context: Context?): Boolean = false
 
-    fun isLocalSummaryConfigurationKnown(context: Context?): Boolean {
-        return true
-    }
+    fun isLocalSummaryConfigurationKnown(context: Context?): Boolean = true
 }

@@ -8,21 +8,17 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.content.res.Resources
 import android.net.ConnectivityManager
-import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.Uri
-import android.os.AsyncTask
 import android.text.TextUtils
 import android.util.Log
 import android.util.TypedValue
 import android.webkit.URLUtil
 import android.widget.Toast
-import androidx.annotation.NonNull
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION
 import androidx.core.content.ContextCompat
-import androidx.core.util.Pair
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.MainActivity
@@ -32,176 +28,148 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.network.SummaryManager
-import java.io.BufferedReader
-import java.io.BufferedWriter
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.io.InputStream
 import java.io.InputStreamReader
-import java.io.OutputStream
-import java.io.OutputStreamWriter
 import java.math.BigDecimal
 import java.net.URI
 import java.text.NumberFormat
-import java.util.Collections
-import java.util.Iterator
 import java.util.Locale
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.regex.Matcher
 import java.util.regex.Pattern
-import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
-import org.jsoup.select.Elements
 
 object Utils {
-    private val HN_ITEM_URL_PATTERN: java.util.regex.Pattern = java.util.regex.Pattern.compile(
+    private val HN_ITEM_URL_PATTERN: Pattern = Pattern.compile(
         "https?://news\\.ycombinator\\.com/item\\?[^\\s<>\"']+",
-        java.util.regex.Pattern.CASE_INSENSITIVE
+        Pattern.CASE_INSENSITIVE
     )
-    private val LINKIFY_ANCHOR_PATTERN: java.util.regex.Pattern =
-        java.util.regex.Pattern.compile("(?is)<a\\b[^>]*>.*?</a>")
-    private val LINKIFY_URL_PATTERN: java.util.regex.Pattern = java.util.regex.Pattern.compile(
+    private val LINKIFY_ANCHOR_PATTERN: Pattern =
+        Pattern.compile("(?is)<a\\b[^>]*>.*?</a>")
+    private val LINKIFY_URL_PATTERN: Pattern = Pattern.compile(
         ("(https?:(?:/{1}|(?:&#x2F;)|(?:&#47;))"
                 + "(?:/{1}|(?:&#x2F;)|(?:&#47;))"
                 + "(?=[^\\s<>\"]*\\.)[^\\s<>\"]+)")
     )
     private const val LINKIFY_TRAILING_PUNCTUATION = ".,;:!?)"
 
-    private const val SECOND_MILLIS: kotlin.Long = 1000
-    private val MINUTE_MILLIS = 60 * com.simon.harmonichackernews.utils.Utils.SECOND_MILLIS
-    private val HOUR_MILLIS = 60 * com.simon.harmonichackernews.utils.Utils.MINUTE_MILLIS
-    private val DAY_MILLIS = 24 * com.simon.harmonichackernews.utils.Utils.HOUR_MILLIS
-    private val YEAR_MILLIS = 365 * com.simon.harmonichackernews.utils.Utils.DAY_MILLIS
-
-    const val KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL"
-    const val KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET"
-    const val KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS"
     private const val MAX_CACHED_STORIES = 200
-    val MAX_CACHED_ARTICLE_BYTES: kotlin.Long = 5L * 1024L * 1024L
+    const val MAX_CACHED_ARTICLE_BYTES = 5L * 1024L * 1024L
     private const val STORY_CACHE_DIR = "story_cache"
     private const val STORY_CACHE_FULL_DIR = "full"
     private const val STORY_CACHE_SUMMARY_DIR = "summary"
     private const val STORY_CACHE_FILE_SUFFIX = ".json"
-    const val GLOBAL_SHARED_PREFERENCES_KEY: kotlin.String =
+    const val GLOBAL_SHARED_PREFERENCES_KEY: String =
         "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY"
 
-    const val KEY_SHARED_PREFERENCES_BOOKMARKS: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_BOOKMARKS: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_BOOKMARKS"
-    const val KEY_SHARED_PREFERENCES_USER_TAGS: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_USER_TAGS: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_USER_TAGS"
-    const val KEY_SHARED_PREFERENCES_FIRST_TIME: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_FIRST_TIME: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FIRST_TIME"
-    const val KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN"
-    const val KEY_SHARED_PREFERENCES_LAST_VERSION: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_LAST_VERSION: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION"
-    const val KEY_SHARED_PREFERENCES_FAVORITES: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_FAVORITES: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FAVORITES"
-    const val KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS"
-    const val KEY_SHARED_PREFERENCES_UPVOTED: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_UPVOTED: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_UPVOTED"
-    const val KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS: kotlin.String =
+    const val KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS"
 
-    const val KEY_NIGHTTIME_FROM_HOUR: kotlin.String =
+    const val KEY_NIGHTTIME_FROM_HOUR: String =
         "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_HOUR"
-    const val KEY_NIGHTTIME_FROM_MINUTE: kotlin.String =
+    const val KEY_NIGHTTIME_FROM_MINUTE: String =
         "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_MINUTE"
-    const val KEY_NIGHTTIME_TO_HOUR: kotlin.String =
+    const val KEY_NIGHTTIME_TO_HOUR: String =
         "com.simon.harmonichackernews.KEY_NIGHTTIME_TO_HOUR"
-    const val KEY_NIGHTTIME_TO_MINUTE: kotlin.String =
+    const val KEY_NIGHTTIME_TO_MINUTE: String =
         "com.simon.harmonichackernews.KEY_NIGHTTIME_TO_MINUTE"
 
-    const val URL_TOP: kotlin.String = "https://hacker-news.firebaseio.com/v0/topstories.json"
-    const val URL_NEW: kotlin.String = "https://hacker-news.firebaseio.com/v0/newstories.json"
-    const val URL_BEST: kotlin.String = "https://hacker-news.firebaseio.com/v0/beststories.json"
-    const val URL_ASK: kotlin.String = "https://hacker-news.firebaseio.com/v0/askstories.json"
-    const val URL_SHOW: kotlin.String = "https://hacker-news.firebaseio.com/v0/showstories.json"
-    const val URL_JOBS: kotlin.String = "https://hacker-news.firebaseio.com/v0/jobstories.json"
+    const val URL_TOP: String = "https://hacker-news.firebaseio.com/v0/topstories.json"
+    const val URL_NEW: String = "https://hacker-news.firebaseio.com/v0/newstories.json"
+    const val URL_BEST: String = "https://hacker-news.firebaseio.com/v0/beststories.json"
+    const val URL_ASK: String = "https://hacker-news.firebaseio.com/v0/askstories.json"
+    const val URL_SHOW: String = "https://hacker-news.firebaseio.com/v0/showstories.json"
+    const val URL_JOBS: String = "https://hacker-news.firebaseio.com/v0/jobstories.json"
 
-    @kotlin.concurrent.Volatile
+    @Volatile
     var adservers: AdHostBlocklist = AdHostBlocklist.empty()
-    private val adserversLoading = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val adserversLoading = AtomicBoolean(false)
+    private val backgroundExecutor = Executors.newSingleThreadExecutor()
 
-    fun log(s: kotlin.String) {
-        android.util.Log.d("HARMONIC_TAG", s)
+    fun log(s: String) {
+        Log.d("HARMONIC_TAG", s)
     }
 
-    fun log(i: kotlin.Long) {
-        android.util.Log.d("HARMONIC_TAG", i.toString())
+    fun log(i: Long) {
+        Log.d("HARMONIC_TAG", i.toString())
     }
 
     fun log(i: Int) {
-        android.util.Log.d("HARMONIC_TAG", i.toString())
+        Log.d("HARMONIC_TAG", i.toString())
     }
 
-    fun log(i: kotlin.Float) {
-        android.util.Log.d("HARMONIC_TAG", i.toString())
+    fun log(i: Float) {
+        Log.d("HARMONIC_TAG", i.toString())
     }
 
-    fun log(b: kotlin.Boolean) {
-        android.util.Log.d("HARMONIC_TAG", b.toString())
+    fun log(b: Boolean) {
+        Log.d("HARMONIC_TAG", b.toString())
     }
 
-    fun toast(s: kotlin.String?, ctx: android.content.Context?) {
+    fun toast(s: String?, ctx: Context?) {
         Toast.makeText(ctx, s, Toast.LENGTH_SHORT).show()
     }
 
-    @kotlin.Throws(java.lang.Exception::class)
-    fun getDomainName(url: kotlin.String): kotlin.String {
-        var url = url
-        val commonHttpDomain = com.simon.harmonichackernews.utils.Utils.getCommonHttpDomain(url)
+    @Throws(Exception::class)
+    fun getDomainName(url: String): String {
+        val commonHttpDomain = getCommonHttpDomain(url)
         if (commonHttpDomain != null) {
             return commonHttpDomain
         }
 
-        if (url.endsWith("#")) {
-            url = url.substring(0, url.length - 1)
-        }
-        val uri = java.net.URI(url)
-        val domain = uri.getHost()
+        val domain = URI(url.removeSuffix("#")).host
         return if (domain.startsWith("www.")) domain.substring(4) else domain
     }
 
-    private fun getCommonHttpDomain(url: kotlin.String?): kotlin.String? {
+    private fun getCommonHttpDomain(url: String?): String? {
         // Story URLs overwhelmingly use this shape. Keep uncommon authorities and malformed
         // URLs on the URI parser so the fast path does not broaden the accepted input.
-        if (url == null) {
-            return null
-        }
+        url ?: return null
 
-        val hostStart: Int
-        if (url.startsWith("https://")) {
-            hostStart = 8
-        } else if (url.startsWith("http://")) {
-            hostStart = 7
-        } else {
-            return null
+        val hostStart = when {
+            url.startsWith("https://") -> 8
+            url.startsWith("http://") -> 7
+            else -> return null
         }
 
         val length = url.length
-        if (hostStart >= length || !com.simon.harmonichackernews.utils.Utils.hasOnlyCommonUriCharacters(
-                url
-            )
-        ) {
+        if (hostStart >= length || !hasOnlyCommonUriCharacters(url)) {
             return null
         }
 
         var authorityEnd = length
         for (i in hostStart..<length) {
-            val character = url.get(i)
+            val character = url[i]
             if (character == '/' || character == '?' || character == '#') {
                 authorityEnd = i
                 break
@@ -213,7 +181,7 @@ object Utils {
 
         var hostEnd = authorityEnd
         for (i in hostStart..<authorityEnd) {
-            val character = url.get(i)
+            val character = url[i]
             if (character == '@' || character == '[' || character == ']') {
                 return null
             }
@@ -223,8 +191,8 @@ object Utils {
                     return null
                 }
                 for (portIndex in i + 1..<authorityEnd) {
-                    val portCharacter = url.get(portIndex)
-                    if (portCharacter < '0' || portCharacter > '9') {
+                    val portCharacter = url[portIndex]
+                    if (portCharacter !in '0'..'9') {
                         return null
                     }
                 }
@@ -238,28 +206,27 @@ object Utils {
         var labelStart = hostStart
         var containsLetter = false
         for (i in hostStart..<hostEnd) {
-            val character = url.get(i)
+            val character = url[i]
             if (character == '.') {
-                if (i == labelStart || url.get(i - 1) == '-') {
+                if (i == labelStart || url[i - 1] == '-') {
                     return null
                 }
                 labelStart = i + 1
                 continue
             }
 
-            val isLetter = (character >= 'a' && character <= 'z')
-                    || (character >= 'A' && character <= 'Z')
-            val isDigit = character >= '0' && character <= '9'
+            val isLetter = character in 'a'..'z' || character in 'A'..'Z'
+            val isDigit = character in '0'..'9'
             if (!isLetter && !isDigit && character != '-') {
                 return null
             }
             if (i == labelStart && character == '-') {
                 return null
             }
-            containsLetter = containsLetter or isLetter
+            containsLetter = containsLetter || isLetter
         }
 
-        val finalHostCharacter = url.get(hostEnd - 1)
+        val finalHostCharacter = url[hostEnd - 1]
         if (finalHostCharacter == '-' || !containsLetter) {
             return null
         }
@@ -268,15 +235,15 @@ object Utils {
         return if (domain.startsWith("www.")) domain.substring(4) else domain
     }
 
-    private fun hasOnlyCommonUriCharacters(url: kotlin.String): kotlin.Boolean {
+    private fun hasOnlyCommonUriCharacters(url: String): Boolean {
         var sawFragment = false
         var i = 0
         while (i < url.length) {
-            val character = url.get(i)
-            val unreserved = (character >= 'a' && character <= 'z')
-                    || (character >= 'A' && character <= 'Z')
-                    || (character >= '0' && character <= '9')
-                    || character == '-' || character == '.' || character == '_' || character == '~'
+            val character = url[i]
+            val unreserved = character in 'a'..'z'
+                    || character in 'A'..'Z'
+                    || character in '0'..'9'
+                    || character in "-._~"
             if (unreserved
                 || character == ':' || character == '/' || character == '?' || character == '@' || character == '!' || character == '$' || character == '&' || character == '\'' || character == '(' || character == ')' || character == '*' || character == '+' || character == ',' || character == ';' || character == '='
             ) {
@@ -288,33 +255,29 @@ object Utils {
                 i++
                 continue
             }
-            if (character != '%' || i + 2 >= url.length || !com.simon.harmonichackernews.utils.Utils.isHexDigit(
-                    url.get(i + 1)
-                ) || !com.simon.harmonichackernews.utils.Utils.isHexDigit(url.get(i + 2))
+            if (character != '%' || i + 2 >= url.length || !isHexDigit(
+                    url[i + 1]
+                ) || !isHexDigit(url[i + 2])
             ) {
                 return false
             }
-            i += 2
-            i++
+            i += 3
         }
         return true
     }
 
-    private fun isHexDigit(character: Char): kotlin.Boolean {
-        return (character >= '0' && character <= '9')
-                || (character >= 'a' && character <= 'f')
-                || (character >= 'A' && character <= 'F')
-    }
+    private fun isHexDigit(character: Char): Boolean =
+        character in '0'..'9' || character in 'a'..'f' || character in 'A'..'F'
 
     fun formatDomainNameForDisplay(
-        domain: kotlin.String?,
-        includeTopLevelDomain: kotlin.Boolean
-    ): kotlin.String? {
-        if (includeTopLevelDomain || TextUtils.isEmpty(domain)) {
+        domain: String?,
+        includeTopLevelDomain: Boolean
+    ): String? {
+        if (includeTopLevelDomain || domain.isNullOrEmpty()) {
             return domain
         }
 
-        val lastDotIndex = domain!!.lastIndexOf('.')
+        val lastDotIndex = domain.lastIndexOf('.')
         if (lastDotIndex <= 0) {
             return domain
         }
@@ -322,98 +285,95 @@ object Utils {
         return domain.substring(0, lastDotIndex)
     }
 
-    fun loadAdservers(resources: android.content.res.Resources) {
-        if (!com.simon.harmonichackernews.utils.Utils.adservers.isEmpty || !com.simon.harmonichackernews.utils.Utils.adserversLoading.compareAndSet(
+    fun loadAdservers(resources: Resources) {
+        if (!adservers.isEmpty || !adserversLoading.compareAndSet(
                 false,
                 true
             )
         ) {
             return
         }
-        val r: java.lang.Runnable = object : java.lang.Runnable {
-            override fun run() {
-                try {
-                    val blocklist = AdHostBlocklist.read(
-                        resources.openRawResource(R.raw.adblockserverlist)
-                    )
-                    if (!blocklist.isEmpty) {
-                        com.simon.harmonichackernews.utils.Utils.adservers = blocklist
-                    }
-                } catch (e: java.io.IOException) {
-                    android.util.Log.e("HARMONIC_TAG", "Failed to load ad host blocklist", e)
-                } finally {
-                    com.simon.harmonichackernews.utils.Utils.adserversLoading.set(false)
+        backgroundExecutor.execute {
+            try {
+                val blocklist = AdHostBlocklist.read(
+                    resources.openRawResource(R.raw.adblockserverlist)
+                )
+                if (!blocklist.isEmpty) {
+                    adservers = blocklist
                 }
+            } catch (e: IOException) {
+                Log.e("HARMONIC_TAG", "Failed to load ad host blocklist", e)
+            } finally {
+                adserversLoading.set(false)
             }
         }
-        AsyncTask.execute(r)
     }
 
-    fun cacheStory(ctx: android.content.Context?, id: Int, data: kotlin.String?) {
-        if (ctx == null || id <= 0 || TextUtils.isEmpty(data) || JSONParser.ALGOLIA_ERROR_STRING == data) {
+    fun cacheStory(ctx: Context?, id: Int, data: String?) {
+        if (ctx == null || id <= 0 || data.isNullOrEmpty() || JSONParser.ALGOLIA_ERROR_STRING == data) {
             return
         }
 
-        com.simon.harmonichackernews.utils.Utils.writeCachedStoryFiles(ctx, id, data)
+        writeCachedStoryFiles(ctx, id, data)
 
         val sharedPreferences: SharedPreferences = ctx.getSharedPreferences(
-            com.simon.harmonichackernews.utils.Utils.GLOBAL_SHARED_PREFERENCES_KEY,
-            android.content.Context.MODE_PRIVATE
+            GLOBAL_SHARED_PREFERENCES_KEY,
+            Context.MODE_PRIVATE
         )
         var cachedStories = SettingsUtils.readStringSetFromSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
+            KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
         )
-        com.simon.harmonichackernews.utils.Utils.addCachedStoryIndexEntry(
+        addCachedStoryIndexEntry(
             cachedStories,
             id,
-            java.lang.System.currentTimeMillis()
+            System.currentTimeMillis()
         )
-        com.simon.harmonichackernews.utils.Utils.evictOldCachedStories(ctx, cachedStories)
+        evictOldCachedStories(ctx, cachedStories)
 
         sharedPreferences.edit()
             .putStringSet(
-                com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS,
+                KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS,
                 cachedStories
             )
             .apply()
     }
 
-    fun loadCachedStory(ctx: android.content.Context?, id: Int): kotlin.String? {
+    fun loadCachedStory(ctx: Context?, id: Int): String? {
         if (ctx == null || id <= 0) {
             return null
         }
 
-        return com.simon.harmonichackernews.utils.Utils.readStringFromFile(
-            com.simon.harmonichackernews.utils.Utils.getCachedStoryFullFile(
+        return readStringFromFile(
+            getCachedStoryFullFile(
                 ctx,
                 id
             )
         )
     }
 
-    fun loadCachedStorySummary(ctx: android.content.Context?, story: Story?): kotlin.Boolean {
+    fun loadCachedStorySummary(ctx: Context?, story: Story?): Boolean {
         if (ctx == null || story == null || story.id <= 0) {
             return false
         }
 
-        var summary = com.simon.harmonichackernews.utils.Utils.readStringFromFile(
-            com.simon.harmonichackernews.utils.Utils.getCachedStorySummaryFile(
+        var summary = readStringFromFile(
+            getCachedStorySummaryFile(
                 ctx,
                 story.id
             )
         )
-        if (TextUtils.isEmpty(summary)) {
-            val fullStory = com.simon.harmonichackernews.utils.Utils.readStringFromFile(
-                com.simon.harmonichackernews.utils.Utils.getCachedStoryFullFile(
+        if (summary.isNullOrEmpty()) {
+            val fullStory = readStringFromFile(
+                getCachedStoryFullFile(
                     ctx,
                     story.id
                 )
             )
             summary = JSONParser.compactAlgoliaStoryResponse(fullStory, story.id)
-            if (!TextUtils.isEmpty(summary)) {
-                com.simon.harmonichackernews.utils.Utils.writeStringToFile(
-                    com.simon.harmonichackernews.utils.Utils.getCachedStorySummaryFile(
+            if (!summary.isNullOrEmpty()) {
+                writeStringToFile(
+                    getCachedStorySummaryFile(
                         ctx,
                         story.id
                     ), summary
@@ -424,21 +384,20 @@ object Utils {
         return JSONParser.updateStoryWithCachedStorySummary(story, summary)
     }
 
-    fun cacheStoryPreviewState(ctx: android.content.Context?, story: Story?) {
-        if (ctx == null || story == null || story.id <= 0 || (!story.previewImageUrlLoaded && TextUtils.isEmpty(
-                story.previewImageUrl
-            )
-                    && !story.faviconTintColorLoaded)
+    fun cacheStoryPreviewState(ctx: Context?, story: Story?) {
+        if (ctx == null || story == null || story.id <= 0 ||
+            (!story.previewImageUrlLoaded && story.previewImageUrl.isNullOrEmpty() &&
+                    !story.faviconTintColorLoaded)
         ) {
             return
         }
 
-        val appContext = ctx.getApplicationContext()
+        val appContext = ctx.applicationContext
         val previewState: Story = Story()
         previewState.id = story.id
         previewState.previewImageUrl = story.previewImageUrl
         previewState.previewImageUrlLoaded =
-            story.previewImageUrlLoaded || !TextUtils.isEmpty(story.previewImageUrl)
+            story.previewImageUrlLoaded || !story.previewImageUrl.isNullOrEmpty()
         previewState.previewImageLoadFailed = story.previewImageLoadFailed
         previewState.previewImageTintColor = story.previewImageTintColor
         previewState.previewImageTintColorLoaded = story.previewImageTintColorLoaded
@@ -451,52 +410,49 @@ object Utils {
         previewState.faviconTintBaseColor = story.faviconTintBaseColor
         previewState.faviconTintMode = story.faviconTintMode
 
-        AsyncTask.execute(java.lang.Runnable {
-            com.simon.harmonichackernews.utils.Utils.writeCachedStoryPreviewState(
-                appContext,
-                previewState
-            )
-        })
+        backgroundExecutor.execute {
+            writeCachedStoryPreviewState(appContext, previewState)
+        }
     }
 
-    fun getCachedPostCount(ctx: android.content.Context?): Int {
+    fun getCachedPostCount(ctx: Context?): Int {
         if (ctx == null) {
             return 0
         }
 
-        return com.simon.harmonichackernews.utils.Utils.getCachedPostIds(ctx).size
+        return getCachedPostIds(ctx).size
     }
 
-    fun clearPostCache(ctx: android.content.Context?): Int {
+    fun clearPostCache(ctx: Context?): Int {
         if (ctx == null) {
             return 0
         }
 
-        val cachedPostIds = com.simon.harmonichackernews.utils.Utils.getCachedPostIds(ctx)
+        val cachedPostIds = getCachedPostIds(ctx)
         val sharedPreferences: SharedPreferences = ctx.getSharedPreferences(
-            com.simon.harmonichackernews.utils.Utils.GLOBAL_SHARED_PREFERENCES_KEY,
-            android.content.Context.MODE_PRIVATE
+            GLOBAL_SHARED_PREFERENCES_KEY,
+            Context.MODE_PRIVATE
         )
         val editor: SharedPreferences.Editor = sharedPreferences.edit()
 
-        for (key in sharedPreferences.getAll().keys) {
-            if (key.startsWith(com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
+        for (key in sharedPreferences.all.keys) {
+            if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
                 editor.remove(key)
-            } else if (key.startsWith(com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET)) {
+            } else if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET)) {
                 editor.remove(key)
             }
         }
 
-        editor.remove(com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
+        editor.remove(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
             .apply()
 
-        com.simon.harmonichackernews.utils.Utils.deleteFileOrDirectory(
-            com.simon.harmonichackernews.utils.Utils.getStoryCacheDir(
+        deleteFileOrDirectory(
+            getStoryCacheDir(
                 ctx
             )
         )
-        com.simon.harmonichackernews.utils.Utils.deleteFileOrDirectory(
-            com.simon.harmonichackernews.utils.Utils.getArticleCacheDir(
+        deleteFileOrDirectory(
+            getArticleCacheDir(
                 ctx
             )
         )
@@ -506,136 +462,122 @@ object Utils {
         return cachedPostIds.size
     }
 
-    fun removeStoryFromCaches(ctx: android.content.Context?, id: Int) {
+    fun removeStoryFromCaches(ctx: Context?, id: Int) {
         if (ctx == null || id <= 0) {
             return
         }
 
         val sharedPreferences: SharedPreferences =
             ctx.getSharedPreferences(
-                com.simon.harmonichackernews.utils.Utils.GLOBAL_SHARED_PREFERENCES_KEY,
-                android.content.Context.MODE_PRIVATE
+                GLOBAL_SHARED_PREFERENCES_KEY,
+                Context.MODE_PRIVATE
             )
         val cachedStories = SettingsUtils.readStringSetFromSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
+            KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
         )
-        com.simon.harmonichackernews.utils.Utils.removeCachedStoryIndexEntry(cachedStories, id)
+        removeCachedStoryIndexEntry(cachedStories, id)
 
         sharedPreferences.edit()
-            .remove(com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id)
-            .remove(com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id)
+            .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id)
+            .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id)
             .putStringSet(
-                com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS,
+                KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS,
                 cachedStories
             )
             .apply()
 
-        com.simon.harmonichackernews.utils.Utils.deleteCachedStoryFiles(ctx, id)
+        deleteCachedStoryFiles(ctx, id)
 
-        val articleFile = com.simon.harmonichackernews.utils.Utils.getArticleCacheFile(ctx, id)
+        val articleFile = getArticleCacheFile(ctx, id)
         if (articleFile.exists() && !articleFile.delete()) {
             articleFile.deleteOnExit()
         }
     }
 
-    private fun getCachedPostIds(ctx: android.content.Context): kotlin.collections.MutableSet<Int?> {
-        val cachedPostIds: kotlin.collections.MutableSet<Int?> = java.util.HashSet<Int?>()
+    private fun getCachedPostIds(ctx: Context): MutableSet<Int> {
+        val cachedPostIds = mutableSetOf<Int>()
 
         val cachedStories = SettingsUtils.readStringSetFromSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
+            KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
         )
-        if (cachedStories != null) {
-            for (cachedStory in cachedStories) {
+        cachedStories?.forEach { cachedStory ->
                 val id =
-                    com.simon.harmonichackernews.utils.Utils.getCachedStoryIndexEntryId(cachedStory)
+                    getCachedStoryIndexEntryId(cachedStory)
                 if (id > 0) {
                     cachedPostIds.add(id)
                 }
-            }
         }
 
         val sharedPreferences: SharedPreferences = ctx.getSharedPreferences(
-            com.simon.harmonichackernews.utils.Utils.GLOBAL_SHARED_PREFERENCES_KEY,
-            android.content.Context.MODE_PRIVATE
+            GLOBAL_SHARED_PREFERENCES_KEY,
+            Context.MODE_PRIVATE
         )
-        for (key in sharedPreferences.getAll().keys) {
-            if (key.startsWith(com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
+        for (key in sharedPreferences.all.keys) {
+            if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
                 addCachedPostId(
                     cachedPostIds,
                     key,
-                    com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL
+                    KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL
                 )
             }
         }
 
-        val articleCacheDir = com.simon.harmonichackernews.utils.Utils.getArticleCacheDir(ctx)
-        val cachedArticleFiles = articleCacheDir.listFiles()
-        if (cachedArticleFiles != null) {
-            for (cachedArticleFile in cachedArticleFiles) {
-                com.simon.harmonichackernews.utils.Utils.addCachedPostId(
+        val articleCacheDir = getArticleCacheDir(ctx)
+        articleCacheDir.listFiles()?.forEach { cachedArticleFile ->
+                addCachedPostId(
                     cachedPostIds,
-                    cachedArticleFile.getName(),
+                    cachedArticleFile.name,
                     "",
                     ".html"
                 )
-            }
         }
 
-        com.simon.harmonichackernews.utils.Utils.addCachedPostIdsFromStoryCacheDir(
+        addCachedPostIdsFromStoryCacheDir(
             cachedPostIds,
-            com.simon.harmonichackernews.utils.Utils.getCachedStoryFullDir(ctx)
+            getCachedStoryFullDir(ctx)
         )
-        com.simon.harmonichackernews.utils.Utils.addCachedPostIdsFromStoryCacheDir(
+        addCachedPostIdsFromStoryCacheDir(
             cachedPostIds,
-            com.simon.harmonichackernews.utils.Utils.getCachedStorySummaryDir(ctx)
+            getCachedStorySummaryDir(ctx)
         )
 
         return cachedPostIds
     }
 
     private fun addCachedStoryIndexEntry(
-        cachedStories: kotlin.collections.MutableSet<kotlin.String>,
+        cachedStories: MutableSet<String>,
         id: Int,
-        time: kotlin.Long
+        time: Long
     ) {
-        com.simon.harmonichackernews.utils.Utils.removeCachedStoryIndexEntry(cachedStories, id)
-        cachedStories.add(id.toString() + "-" + time)
+        removeCachedStoryIndexEntry(cachedStories, id)
+        cachedStories.add("$id-$time")
     }
 
     private fun removeCachedStoryIndexEntry(
-        cachedStories: kotlin.collections.MutableSet<kotlin.String>?,
+        cachedStories: MutableSet<String>?,
         id: Int
     ) {
-        if (cachedStories == null) {
-            return
-        }
-
-        val iterator = cachedStories.iterator()
-        while (iterator.hasNext()) {
-            val cached = iterator.next()
-            val cachedId =
-                com.simon.harmonichackernews.utils.Utils.getCachedStoryIndexEntryId(cached)
-            if (cachedId <= 0 || cachedId == id) {
-                iterator.remove()
-            }
+        cachedStories?.removeAll { cached ->
+            val cachedId = getCachedStoryIndexEntryId(cached)
+            cachedId <= 0 || cachedId == id
         }
     }
 
     private fun evictOldCachedStories(
-        ctx: android.content.Context,
-        cachedStories: kotlin.collections.MutableSet<kotlin.String>
+        ctx: Context,
+        cachedStories: MutableSet<String>
     ) {
-        while (cachedStories.size > com.simon.harmonichackernews.utils.Utils.MAX_CACHED_STORIES) {
-            var oldestEntry: kotlin.String? = null
-            var oldestTime: kotlin.Long = -1
+        while (cachedStories.size > MAX_CACHED_STORIES) {
+            var oldestEntry: String? = null
+            var oldestTime: Long = -1
             var oldestId = -1
 
             for (cachedStory in cachedStories) {
                 val id =
-                    com.simon.harmonichackernews.utils.Utils.getCachedStoryIndexEntryId(cachedStory)
-                val time = com.simon.harmonichackernews.utils.Utils.getCachedStoryIndexEntryTime(
+                    getCachedStoryIndexEntryId(cachedStory)
+                val time = getCachedStoryIndexEntryTime(
                     cachedStory
                 )
                 if (id <= 0 || time < 0) {
@@ -655,88 +597,58 @@ object Utils {
 
             cachedStories.remove(oldestEntry)
             if (oldestId > 0) {
-                com.simon.harmonichackernews.utils.Utils.deleteCachedStoryFiles(ctx, oldestId)
-                com.simon.harmonichackernews.utils.Utils.deleteCachedArticleSnapshot(ctx, oldestId)
+                deleteCachedStoryFiles(ctx, oldestId)
+                deleteCachedArticleSnapshot(ctx, oldestId)
             }
         }
     }
 
-    private fun getCachedStoryIndexEntryId(entry: kotlin.String?): Int {
-        val idAndDate: kotlin.Array<kotlin.String?> =
-            if (entry == null) kotlin.arrayOfNulls<kotlin.String>(0) else entry.split("-".toRegex())
-                .dropLastWhile { it.isEmpty() }.toTypedArray()
-        if (idAndDate.size != 2) {
-            return -1
-        }
-        try {
-            return idAndDate[0]!!.toInt()
-        } catch (e: java.lang.NumberFormatException) {
-            return -1
-        }
-    }
+    private fun getCachedStoryIndexEntryId(entry: String?): Int =
+        entry?.split('-')?.takeIf { it.size == 2 }?.first()?.toIntOrNull() ?: -1
 
-    private fun getCachedStoryIndexEntryTime(entry: kotlin.String?): kotlin.Long {
-        val idAndDate: kotlin.Array<kotlin.String?> =
-            if (entry == null) kotlin.arrayOfNulls<kotlin.String>(0) else entry.split("-".toRegex())
-                .dropLastWhile { it.isEmpty() }.toTypedArray()
-        if (idAndDate.size != 2) {
-            return -1
-        }
-        try {
-            return idAndDate[1]!!.toLong()
-        } catch (e: java.lang.NumberFormatException) {
-            return -1
-        }
-    }
+    private fun getCachedStoryIndexEntryTime(entry: String?): Long =
+        entry?.split('-')?.takeIf { it.size == 2 }?.last()?.toLongOrNull() ?: -1
 
     private fun addCachedPostIdsFromStoryCacheDir(
-        cachedPostIds: kotlin.collections.MutableSet<Int?>,
-        cacheDir: java.io.File
+        cachedPostIds: MutableSet<Int>,
+        cacheDir: File
     ) {
-        val cachedStoryFiles = cacheDir.listFiles()
-        if (cachedStoryFiles == null) {
-            return
-        }
-
-        for (cachedStoryFile in cachedStoryFiles) {
-            com.simon.harmonichackernews.utils.Utils.addCachedPostId(
+        cacheDir.listFiles()?.forEach { cachedStoryFile ->
+            addCachedPostId(
                 cachedPostIds,
-                cachedStoryFile.getName(),
+                cachedStoryFile.name,
                 "",
-                com.simon.harmonichackernews.utils.Utils.STORY_CACHE_FILE_SUFFIX
+                STORY_CACHE_FILE_SUFFIX
             )
         }
     }
 
     private fun addCachedPostId(
-        cachedPostIds: kotlin.collections.MutableSet<Int?>,
-        value: kotlin.String,
-        prefix: kotlin.String,
-        suffix: kotlin.String = ""
+        cachedPostIds: MutableSet<Int>,
+        value: String,
+        prefix: String,
+        suffix: String = ""
     ) {
         if (!value.startsWith(prefix) || !value.endsWith(suffix)) {
             return
         }
 
         val end = value.length - suffix.length
-        try {
-            cachedPostIds.add(value.substring(prefix.length, end).toInt())
-        } catch (ignored: java.lang.NumberFormatException) {
-        }
+        value.substring(prefix.length, end).toIntOrNull()?.let(cachedPostIds::add)
     }
 
-    private fun writeCachedStoryFiles(ctx: android.content.Context, id: Int, data: kotlin.String?) {
-        com.simon.harmonichackernews.utils.Utils.writeStringToFile(
-            com.simon.harmonichackernews.utils.Utils.getCachedStoryFullFile(
+    private fun writeCachedStoryFiles(ctx: Context, id: Int, data: String?) {
+        writeStringToFile(
+            getCachedStoryFullFile(
                 ctx,
                 id
             ), data
         )
 
-        val summary: kotlin.String? = JSONParser.compactAlgoliaStoryResponse(data, id)
-        if (!TextUtils.isEmpty(summary)) {
-            com.simon.harmonichackernews.utils.Utils.writeStringToFile(
-                com.simon.harmonichackernews.utils.Utils.getCachedStorySummaryFile(
+        val summary: String? = JSONParser.compactAlgoliaStoryResponse(data, id)
+        if (!summary.isNullOrEmpty()) {
+            writeStringToFile(
+                getCachedStorySummaryFile(
                     ctx,
                     id
                 ), summary
@@ -744,17 +656,17 @@ object Utils {
         }
     }
 
-    private fun writeCachedStoryPreviewState(ctx: android.content.Context, previewState: Story) {
+    private fun writeCachedStoryPreviewState(ctx: Context, previewState: Story) {
         val summaryFile =
-            com.simon.harmonichackernews.utils.Utils.getCachedStorySummaryFile(ctx, previewState.id)
+            getCachedStorySummaryFile(ctx, previewState.id)
         if (!summaryFile.exists()) {
             return
         }
 
-        var summary = com.simon.harmonichackernews.utils.Utils.readStringFromFile(summaryFile)
-        if (TextUtils.isEmpty(summary)) {
-            val fullStory = com.simon.harmonichackernews.utils.Utils.readStringFromFile(
-                com.simon.harmonichackernews.utils.Utils.getCachedStoryFullFile(
+        var summary = readStringFromFile(summaryFile)
+        if (summary.isNullOrEmpty()) {
+            val fullStory = readStringFromFile(
+                getCachedStoryFullFile(
                     ctx,
                     previewState.id
                 )
@@ -762,215 +674,176 @@ object Utils {
             summary = JSONParser.compactAlgoliaStoryResponse(fullStory, previewState.id)
         }
 
-        val updatedSummary: kotlin.String? =
+        val updatedSummary: String? =
             JSONParser.updateCachedStorySummaryPreviewState(summary, previewState)
-        if (!TextUtils.isEmpty(updatedSummary) && !TextUtils.equals(summary, updatedSummary)) {
-            com.simon.harmonichackernews.utils.Utils.writeStringToFile(summaryFile, updatedSummary)
+        if (!updatedSummary.isNullOrEmpty() && summary != updatedSummary) {
+            writeStringToFile(summaryFile, updatedSummary)
         }
     }
 
-    private fun getStoryCacheDir(ctx: android.content.Context): java.io.File {
-        return java.io.File(
-            ctx.getFilesDir(),
-            com.simon.harmonichackernews.utils.Utils.STORY_CACHE_DIR
+    private fun getStoryCacheDir(ctx: Context): File {
+        return File(
+            ctx.filesDir,
+            STORY_CACHE_DIR
         )
     }
 
-    private fun getCachedStoryFullDir(ctx: android.content.Context): java.io.File {
-        return java.io.File(
-            com.simon.harmonichackernews.utils.Utils.getStoryCacheDir(ctx),
-            com.simon.harmonichackernews.utils.Utils.STORY_CACHE_FULL_DIR
+    private fun getCachedStoryFullDir(ctx: Context): File {
+        return File(
+            getStoryCacheDir(ctx),
+            STORY_CACHE_FULL_DIR
         )
     }
 
-    private fun getCachedStorySummaryDir(ctx: android.content.Context): java.io.File {
-        return java.io.File(
-            com.simon.harmonichackernews.utils.Utils.getStoryCacheDir(ctx),
-            com.simon.harmonichackernews.utils.Utils.STORY_CACHE_SUMMARY_DIR
+    private fun getCachedStorySummaryDir(ctx: Context): File {
+        return File(
+            getStoryCacheDir(ctx),
+            STORY_CACHE_SUMMARY_DIR
         )
     }
 
-    private fun getCachedStoryFullFile(ctx: android.content.Context, id: Int): java.io.File {
-        return java.io.File(
-            com.simon.harmonichackernews.utils.Utils.getCachedStoryFullDir(ctx),
-            id.toString() + com.simon.harmonichackernews.utils.Utils.STORY_CACHE_FILE_SUFFIX
+    private fun getCachedStoryFullFile(ctx: Context, id: Int): File {
+        return File(
+            getCachedStoryFullDir(ctx),
+            id.toString() + STORY_CACHE_FILE_SUFFIX
         )
     }
 
-    private fun getCachedStorySummaryFile(ctx: android.content.Context, id: Int): java.io.File {
-        return java.io.File(
-            com.simon.harmonichackernews.utils.Utils.getCachedStorySummaryDir(ctx),
-            id.toString() + com.simon.harmonichackernews.utils.Utils.STORY_CACHE_FILE_SUFFIX
+    private fun getCachedStorySummaryFile(ctx: Context, id: Int): File {
+        return File(
+            getCachedStorySummaryDir(ctx),
+            id.toString() + STORY_CACHE_FILE_SUFFIX
         )
     }
 
-    private fun deleteCachedStoryFiles(ctx: android.content.Context, id: Int) {
-        val fullFile = com.simon.harmonichackernews.utils.Utils.getCachedStoryFullFile(ctx, id)
+    private fun deleteCachedStoryFiles(ctx: Context, id: Int) {
+        val fullFile = getCachedStoryFullFile(ctx, id)
         if (fullFile.exists() && !fullFile.delete()) {
             fullFile.deleteOnExit()
         }
 
         val summaryFile =
-            com.simon.harmonichackernews.utils.Utils.getCachedStorySummaryFile(ctx, id)
+            getCachedStorySummaryFile(ctx, id)
         if (summaryFile.exists() && !summaryFile.delete()) {
             summaryFile.deleteOnExit()
         }
     }
 
-    private fun readStringFromFile(file: java.io.File?): kotlin.String? {
+    private fun readStringFromFile(file: File?): String? {
         if (file == null || !file.exists()) {
             return null
         }
 
-        var inputStream: java.io.FileInputStream? = null
         try {
-            inputStream = java.io.FileInputStream(file)
-            val reader = java.io.BufferedReader(java.io.InputStreamReader(inputStream, "UTF-8"))
-            val builder = java.lang.StringBuilder()
-            var line: kotlin.String?
-            while ((reader.readLine().also { line = it }) != null) {
-                builder.append(line).append('\n')
-            }
-            return builder.toString()
-        } catch (e: java.io.IOException) {
-            e.printStackTrace()
-            return null
-        } finally {
-            if (inputStream != null) {
-                try {
-                    inputStream.close()
-                } catch (ignored: java.io.IOException) {
+            return FileInputStream(file).bufferedReader(Charsets.UTF_8).use { reader ->
+                buildString {
+                    reader.forEachLine { line -> append(line).append('\n') }
                 }
             }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            return null
         }
     }
 
-    private fun writeStringToFile(file: java.io.File?, data: kotlin.String?): kotlin.Boolean {
-        if (file == null || TextUtils.isEmpty(data)) {
+    private fun writeStringToFile(file: File?, data: String?): Boolean {
+        if (file == null || data.isNullOrEmpty()) {
             return false
         }
 
-        var outputStream: java.io.FileOutputStream? = null
         try {
-            val parent = file.getParentFile()
+            val parent = file.parentFile
             if (parent != null && !parent.exists() && !parent.mkdirs()) {
                 return false
             }
-            outputStream = java.io.FileOutputStream(file)
-            outputStream.write(data!!.toByteArray(kotlin.text.charset("UTF-8")))
+            FileOutputStream(file).use { outputStream ->
+                outputStream.write(data.toByteArray(Charsets.UTF_8))
+            }
             return true
-        } catch (e: java.io.IOException) {
+        } catch (e: IOException) {
             e.printStackTrace()
             return false
-        } finally {
-            if (outputStream != null) {
-                try {
-                    outputStream.close()
-                } catch (ignored: java.io.IOException) {
-                }
-            }
         }
     }
 
-    fun loadCachedArticleSnapshot(ctx: android.content.Context?, id: Int): kotlin.String? {
+    fun loadCachedArticleSnapshot(ctx: Context?, id: Int): String? {
         if (ctx == null || id <= 0) {
             return null
         }
 
-        val cacheFile = com.simon.harmonichackernews.utils.Utils.getArticleCacheFile(ctx, id)
+        val cacheFile = getArticleCacheFile(ctx, id)
         if (!cacheFile.exists()) {
             return null
         }
-        if (cacheFile.length() <= 0L || cacheFile.length() > com.simon.harmonichackernews.utils.Utils.MAX_CACHED_ARTICLE_BYTES) {
-            com.simon.harmonichackernews.utils.Utils.deleteCachedArticleSnapshot(ctx, id)
+        if (cacheFile.length() <= 0L || cacheFile.length() > MAX_CACHED_ARTICLE_BYTES) {
+            deleteCachedArticleSnapshot(ctx, id)
             return null
         }
-        cacheFile.setLastModified(java.lang.System.currentTimeMillis())
+        cacheFile.setLastModified(System.currentTimeMillis())
 
-        var inputStream: java.io.FileInputStream? = null
         try {
-            inputStream = java.io.FileInputStream(cacheFile)
-            var charset = SettingsUtils.readStringFromSharedPreferences(
+            val charsetName = SettingsUtils.readStringFromSharedPreferences(
                 ctx,
-                com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id
-            )
-            if (TextUtils.isEmpty(charset)) {
-                charset = "UTF-8"
-            }
-            val reader = java.io.BufferedReader(
-                java.io.InputStreamReader(inputStream, charset)
-            )
-            val builder = java.lang.StringBuilder()
-            var line: kotlin.String?
-            while ((reader.readLine().also { line = it }) != null) {
-                builder.append(line).append('\n')
-            }
-            return builder.toString()
-        } catch (e: java.io.IOException) {
-            e.printStackTrace()
-            return null
-        } finally {
-            if (inputStream != null) {
-                try {
-                    inputStream.close()
-                } catch (ignored: java.io.IOException) {
+                KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id
+            ).orEmpty().ifEmpty { "UTF-8" }
+            return InputStreamReader(FileInputStream(cacheFile), charsetName).buffered().use { reader ->
+                buildString {
+                    reader.forEachLine { line -> append(line).append('\n') }
                 }
             }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            return null
         }
     }
 
-    fun loadCachedArticleUrl(ctx: android.content.Context?, id: Int): kotlin.String? {
+    fun loadCachedArticleUrl(ctx: Context?, id: Int): String? {
         if (ctx == null || id <= 0) {
             return null
         }
         return SettingsUtils.readStringFromSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id
+            KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id
         )
     }
 
-    fun deleteCachedArticleSnapshot(ctx: android.content.Context?, id: Int) {
+    fun deleteCachedArticleSnapshot(ctx: Context?, id: Int) {
         if (ctx == null || id <= 0) {
             return
         }
 
-        val cacheFile = com.simon.harmonichackernews.utils.Utils.getArticleCacheFile(ctx, id)
+        val cacheFile = getArticleCacheFile(ctx, id)
         if (cacheFile.exists() && !cacheFile.delete()) {
             cacheFile.deleteOnExit()
         }
         ctx.getSharedPreferences(
-            com.simon.harmonichackernews.utils.Utils.GLOBAL_SHARED_PREFERENCES_KEY,
-            android.content.Context.MODE_PRIVATE
+            GLOBAL_SHARED_PREFERENCES_KEY,
+            Context.MODE_PRIVATE
         )
             .edit()
-            .remove(com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id)
-            .remove(com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id)
+            .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id)
+            .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id)
             .apply()
     }
 
-    fun getArticleCacheDir(ctx: android.content.Context): java.io.File {
-        return java.io.File(ctx.getFilesDir(), "article_cache")
+    fun getArticleCacheDir(ctx: Context): File {
+        return File(ctx.filesDir, "article_cache")
     }
 
-    fun getArticleCacheFile(ctx: android.content.Context, id: Int): java.io.File {
-        return java.io.File(
-            com.simon.harmonichackernews.utils.Utils.getArticleCacheDir(ctx),
+    fun getArticleCacheFile(ctx: Context, id: Int): File {
+        return File(
+            getArticleCacheDir(ctx),
             id.toString() + ".html"
         )
     }
 
-    private fun deleteFileOrDirectory(file: java.io.File?) {
+    private fun deleteFileOrDirectory(file: File?) {
         if (file == null || !file.exists()) {
             return
         }
 
-        if (file.isDirectory()) {
-            val children = file.listFiles()
-            if (children != null) {
-                for (child in children) {
-                    com.simon.harmonichackernews.utils.Utils.deleteFileOrDirectory(child)
-                }
-            }
+        if (file.isDirectory) {
+            file.listFiles()?.forEach(::deleteFileOrDirectory)
         }
 
         if (!file.delete()) {
@@ -978,79 +851,54 @@ object Utils {
         }
     }
 
-    fun hasCachedStories(ctx: android.content.Context): kotlin.Boolean {
+    fun hasCachedStories(ctx: Context): Boolean {
         val cached = SettingsUtils.readStringSetFromSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
+            KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
         )
-        if (cached == null) {
-            return false
+        val limit = System.currentTimeMillis() - 24 * 60 * 60 * 1000
+        return cached.any { entry ->
+            val id = getCachedStoryIndexEntryId(entry)
+            val time = getCachedStoryIndexEntryTime(entry)
+            id > 0 && time >= limit && loadCachedStoryForStoriesList(ctx, id) != null
         }
-
-        val limit = java.lang.System.currentTimeMillis() - 24 * 60 * 60 * 1000
-        for (entry in cached) {
-            val id = com.simon.harmonichackernews.utils.Utils.getCachedStoryIndexEntryId(entry)
-            val time = com.simon.harmonichackernews.utils.Utils.getCachedStoryIndexEntryTime(entry)
-            if (id > 0 && time >= limit && com.simon.harmonichackernews.utils.Utils.loadCachedStoryForStoriesList(
-                    ctx,
-                    id
-                ) != null
-            ) {
-                return true
-            }
-        }
-        return false
     }
 
-    fun loadCachedStories(ctx: android.content.Context): java.util.ArrayList<Story> {
+    fun loadCachedStories(ctx: Context): ArrayList<Story> {
         val cached = SettingsUtils.readStringSetFromSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
+            KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
         )
-        val stories: java.util.ArrayList<Story> = java.util.ArrayList()
-        if (cached == null) {
-            return stories
-        }
+        val stories = arrayListOf<Story>()
+        val limit = System.currentTimeMillis() - 24 * 60 * 60 * 1000
 
-        val limit = java.lang.System.currentTimeMillis() - 24 * 60 * 60 * 1000
-
-        val orderedIds: kotlin.collections.MutableList<androidx.core.util.Pair<kotlin.Long, Int>> =
-            java.util.ArrayList()
+        val orderedIds = mutableListOf<Pair<Long, Int>>()
 
         for (entry in cached) {
-            val id = com.simon.harmonichackernews.utils.Utils.getCachedStoryIndexEntryId(entry)
-            val time = com.simon.harmonichackernews.utils.Utils.getCachedStoryIndexEntryTime(entry)
+            val id = getCachedStoryIndexEntryId(entry)
+            val time = getCachedStoryIndexEntryTime(entry)
             if (id <= 0 || time < 0) continue
             if (time < limit) continue
 
-            orderedIds.add(androidx.core.util.Pair(time, id))
+            orderedIds += time to id
         }
 
-        //dont replace, is there for old API compatibility
         orderedIds.sortBy { it.first }
 
         for (pair in orderedIds) {
-            val story: Story? =
-                com.simon.harmonichackernews.utils.Utils.loadCachedStoryForStoriesList(
-                    ctx,
-                    pair.second
-                )
-            if (story != null) {
-                stories.add(story)
-            }
+            loadCachedStoryForStoriesList(ctx, pair.second)?.let(stories::add)
         }
 
         return stories
     }
 
-    private fun loadCachedStoryForStoriesList(ctx: android.content.Context?, id: Int): Story? {
-        val story: Story = Story()
-        story.id = id
-        var loaded = com.simon.harmonichackernews.utils.Utils.loadCachedStorySummary(ctx, story)
+    private fun loadCachedStoryForStoriesList(ctx: Context?, id: Int): Story? {
+        val story = Story().apply { this.id = id }
+        var loaded = loadCachedStorySummary(ctx, story)
         if (!loaded) {
-            val fullStory = com.simon.harmonichackernews.utils.Utils.loadCachedStory(ctx, id)
-            val summary: kotlin.String? = JSONParser.compactAlgoliaStoryResponse(fullStory, id)
-            loaded = !TextUtils.isEmpty(summary) && JSONParser.updateStoryWithCachedStorySummary(
+            val fullStory = loadCachedStory(ctx, id)
+            val summary = JSONParser.compactAlgoliaStoryResponse(fullStory, id)
+            loaded = !summary.isNullOrEmpty() && JSONParser.updateStoryWithCachedStorySummary(
                 story,
                 summary
             )
@@ -1064,25 +912,25 @@ object Utils {
     }
 
     fun loadBookmarks(
-        ctx: android.content.Context,
-        sorted: kotlin.Boolean
-    ): java.util.ArrayList<com.simon.harmonichackernews.data.Bookmark> {
-        return com.simon.harmonichackernews.utils.Utils.loadBookmarks(
+        ctx: Context,
+        sorted: Boolean
+    ): ArrayList<Bookmark> {
+        return loadBookmarks(
             sorted,
             SettingsUtils.readStringFromSharedPreferences(
                 ctx,
-                com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_BOOKMARKS
+                KEY_SHARED_PREFERENCES_BOOKMARKS
             )
         )
     }
 
     fun loadBookmarks(
-        sorted: kotlin.Boolean,
-        bookmarksString: kotlin.String?
-    ): java.util.ArrayList<com.simon.harmonichackernews.data.Bookmark> {
+        sorted: Boolean,
+        bookmarksString: String?
+    ): ArrayList<Bookmark> {
         /* Format is {{ID}}q{{TIME}}-{{ID}}q{{TIME}}... */
 
-        val bookmarks = java.util.ArrayList<com.simon.harmonichackernews.data.Bookmark>()
+        val bookmarks = ArrayList<Bookmark>()
 
         if (bookmarksString == null || bookmarksString.isEmpty()) {
             return bookmarks
@@ -1091,13 +939,13 @@ object Utils {
         val pairs =
             bookmarksString.split("-".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         for (pair in pairs) {
-            val b = com.simon.harmonichackernews.data.Bookmark()
             val info = pair.split("q".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
 
             if (info.size == 2) {
-                b.id = info[0].toInt()
-                b.created = info[1].toLong()
-                bookmarks.add(b)
+                bookmarks += Bookmark().apply {
+                    id = info[0].toInt()
+                    created = info[1].toLong()
+                }
             }
         }
 
@@ -1108,117 +956,98 @@ object Utils {
         return bookmarks
     }
 
-    fun isBookmarked(ctx: android.content.Context, id: Int): kotlin.Boolean {
-        val bookmarks = com.simon.harmonichackernews.utils.Utils.loadBookmarks(ctx, false)
-        for (b in bookmarks) {
-            if (b.id == id) {
-                return true
-            }
-        }
-
-        return false
+    fun isBookmarked(ctx: Context, id: Int): Boolean {
+        return loadBookmarks(ctx, false).any { it.id == id }
     }
 
     fun saveBookmarks(
-        ctx: android.content.Context,
-        bookmarks: java.util.ArrayList<com.simon.harmonichackernews.data.Bookmark>
+        ctx: Context,
+        bookmarks: ArrayList<Bookmark>
     ) {
-        com.simon.harmonichackernews.utils.Utils.saveBookmarkList(
+        saveBookmarkList(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_BOOKMARKS,
+            KEY_SHARED_PREFERENCES_BOOKMARKS,
             bookmarks
         )
     }
 
     private fun saveBookmarkList(
-        ctx: android.content.Context,
-        key: kotlin.String?,
-        bookmarks: java.util.ArrayList<com.simon.harmonichackernews.data.Bookmark>
+        ctx: Context,
+        key: String?,
+        bookmarks: List<Bookmark>
     ) {
-        val sb = java.lang.StringBuilder()
-        val size = bookmarks.size
-
-        for (i in 0..<size) {
-            val b = bookmarks.get(i)
-            sb.append(b.id)
-            sb.append("q")
-            sb.append(b.created)
-            if (i != size - 1) {
-                sb.append("-")
-            }
+        val value = bookmarks.joinToString("-") { bookmark ->
+            "${bookmark.id}q${bookmark.created}"
         }
-
-        SettingsUtils.saveStringToSharedPreferences(ctx, key, sb.toString())
+        SettingsUtils.saveStringToSharedPreferences(ctx, key, value)
     }
 
-    fun addBookmark(ctx: android.content.Context, id: Int) {
-        if (com.simon.harmonichackernews.utils.Utils.isBookmarked(ctx, id)) {
+    fun addBookmark(ctx: Context, id: Int) {
+        if (isBookmarked(ctx, id)) {
             return
         }
 
-        val bookmarks = com.simon.harmonichackernews.utils.Utils.loadBookmarks(ctx, false)
-        val b = com.simon.harmonichackernews.data.Bookmark()
-        b.id = id
-        b.created = java.lang.System.currentTimeMillis()
-        bookmarks.add(b)
-        com.simon.harmonichackernews.utils.Utils.saveBookmarks(ctx, bookmarks)
+        val bookmarks = loadBookmarks(ctx, false)
+        bookmarks += Bookmark().apply {
+            this.id = id
+            created = System.currentTimeMillis()
+        }
+        saveBookmarks(ctx, bookmarks)
     }
 
-    fun removeBookmark(ctx: android.content.Context, id: Int) {
-        val bookmarks = com.simon.harmonichackernews.utils.Utils.loadBookmarks(ctx, false)
+    fun removeBookmark(ctx: Context, id: Int) {
+        val bookmarks = loadBookmarks(ctx, false)
 
-        for (bookmark in bookmarks) {
-            if (bookmark.id == id) {
-                bookmarks.remove(bookmark)
-                break
-            }
+        val index = bookmarks.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            bookmarks.removeAt(index)
         }
 
-        com.simon.harmonichackernews.utils.Utils.saveBookmarks(ctx, bookmarks)
+        saveBookmarks(ctx, bookmarks)
     }
 
     fun loadFavorites(
-        ctx: android.content.Context,
-        sorted: kotlin.Boolean
-    ): java.util.ArrayList<com.simon.harmonichackernews.data.Bookmark> {
-        return com.simon.harmonichackernews.utils.Utils.loadSavedItemList(
+        ctx: Context,
+        sorted: Boolean
+    ): ArrayList<Bookmark> {
+        return loadSavedItemList(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_FAVORITES,
+            KEY_SHARED_PREFERENCES_FAVORITES,
             sorted
         )
     }
 
     fun loadUpvoted(
-        ctx: android.content.Context,
-        sorted: kotlin.Boolean
-    ): java.util.ArrayList<com.simon.harmonichackernews.data.Bookmark> {
-        return com.simon.harmonichackernews.utils.Utils.loadSavedItemList(
+        ctx: Context,
+        sorted: Boolean
+    ): ArrayList<Bookmark> {
+        return loadSavedItemList(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_UPVOTED,
+            KEY_SHARED_PREFERENCES_UPVOTED,
             sorted
         )
     }
 
-    fun loadFavoriteCommentIds(ctx: android.content.Context): kotlin.collections.MutableSet<Int> {
+    fun loadFavoriteCommentIds(ctx: Context): MutableSet<Int> {
         return SettingsUtils.readIntSetFromSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS
+            KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS
         )
     }
 
-    fun loadUpvotedCommentIds(ctx: android.content.Context): kotlin.collections.MutableSet<Int> {
+    fun loadUpvotedCommentIds(ctx: Context): MutableSet<Int> {
         return SettingsUtils.readIntSetFromSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS
+            KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS
         )
     }
 
     private fun loadSavedItemList(
-        ctx: android.content.Context,
-        key: kotlin.String?,
-        sorted: kotlin.Boolean
-    ): java.util.ArrayList<com.simon.harmonichackernews.data.Bookmark> {
-        val items = com.simon.harmonichackernews.utils.Utils.loadBookmarks(
+        ctx: Context,
+        key: String?,
+        sorted: Boolean
+    ): ArrayList<Bookmark> {
+        val items = loadBookmarks(
             false,
             SettingsUtils.readStringFromSharedPreferences(ctx, key)
         )
@@ -1228,219 +1057,206 @@ object Utils {
         return items
     }
 
-    fun isFavorited(ctx: android.content.Context, id: Int): kotlin.Boolean {
-        val favorites = com.simon.harmonichackernews.utils.Utils.loadFavorites(ctx, false)
-        for (favorite in favorites) {
-            if (favorite.id == id) {
-                return true
-            }
-        }
-
-        return false
+    fun isFavorited(ctx: Context, id: Int): Boolean {
+        return loadFavorites(ctx, false).any { it.id == id }
     }
 
-    fun isUpvoted(ctx: android.content.Context, id: Int, comment: kotlin.Boolean): kotlin.Boolean {
+    fun isUpvoted(ctx: Context, id: Int, comment: Boolean): Boolean {
         if (comment) {
-            return com.simon.harmonichackernews.utils.Utils.loadUpvotedCommentIds(ctx).contains(id)
+            return loadUpvotedCommentIds(ctx).contains(id)
         }
 
-        val upvoted = com.simon.harmonichackernews.utils.Utils.loadUpvoted(ctx, false)
-        for (item in upvoted) {
-            if (item.id == id) {
-                return true
-            }
-        }
-
-        return false
+        return loadUpvoted(ctx, false).any { it.id == id }
     }
 
     fun saveFavorites(
-        ctx: android.content.Context,
-        favorites: java.util.ArrayList<com.simon.harmonichackernews.data.Bookmark>
+        ctx: Context,
+        favorites: ArrayList<Bookmark>
     ) {
-        com.simon.harmonichackernews.utils.Utils.saveBookmarkList(
+        saveBookmarkList(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_FAVORITES,
+            KEY_SHARED_PREFERENCES_FAVORITES,
             favorites
         )
     }
 
-    fun saveFavoriteIds(ctx: android.content.Context, ids: kotlin.collections.MutableList<Int>) {
-        com.simon.harmonichackernews.utils.Utils.saveSavedItemIds(
+    fun saveFavoriteIds(ctx: Context, ids: MutableList<Int>) {
+        saveSavedItemIds(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_FAVORITES,
+            KEY_SHARED_PREFERENCES_FAVORITES,
             ids
         )
     }
 
     fun saveFavoriteCommentIds(
-        ctx: android.content.Context,
-        ids: kotlin.collections.MutableSet<Int>
+        ctx: Context,
+        ids: MutableSet<Int>
     ) {
         SettingsUtils.saveIntSetToSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS,
+            KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS,
             ids
         )
     }
 
-    fun saveUpvotedIds(ctx: android.content.Context, ids: kotlin.collections.MutableList<Int>) {
-        com.simon.harmonichackernews.utils.Utils.saveSavedItemIds(
+    fun saveUpvotedIds(ctx: Context, ids: MutableList<Int>) {
+        saveSavedItemIds(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_UPVOTED,
+            KEY_SHARED_PREFERENCES_UPVOTED,
             ids
         )
     }
 
     fun saveUpvotedCommentIds(
-        ctx: android.content.Context,
-        ids: kotlin.collections.MutableSet<Int>
+        ctx: Context,
+        ids: MutableSet<Int>
     ) {
         SettingsUtils.saveIntSetToSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS,
+            KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS,
             ids
         )
     }
 
     private fun saveSavedItemIds(
-        ctx: android.content.Context,
-        key: kotlin.String?,
-        ids: kotlin.collections.MutableList<Int>
+        ctx: Context,
+        key: String?,
+        ids: MutableList<Int>
     ) {
-        val items = java.util.ArrayList<com.simon.harmonichackernews.data.Bookmark>()
-        val seenIds: kotlin.collections.MutableSet<Int> = java.util.HashSet()
-        val now = java.lang.System.currentTimeMillis()
+        val items = ArrayList<Bookmark>()
+        val seenIds = mutableSetOf<Int>()
+        val now = System.currentTimeMillis()
 
         for (id in ids) {
             if (!seenIds.add(id)) {
                 continue
             }
 
-            val item = com.simon.harmonichackernews.data.Bookmark()
-            item.id = id
-            item.created = now - items.size
-            items.add(item)
-        }
-
-        com.simon.harmonichackernews.utils.Utils.saveBookmarkList(ctx, key, items)
-    }
-
-    fun addFavorite(ctx: android.content.Context, id: Int) {
-        if (com.simon.harmonichackernews.utils.Utils.isFavorited(ctx, id)) {
-            return
-        }
-
-        val favorites = com.simon.harmonichackernews.utils.Utils.loadFavorites(ctx, false)
-        val favorite = com.simon.harmonichackernews.data.Bookmark()
-        favorite.id = id
-        favorite.created = java.lang.System.currentTimeMillis()
-        favorites.add(favorite)
-        com.simon.harmonichackernews.utils.Utils.saveFavorites(ctx, favorites)
-    }
-
-    fun setFavorite(ctx: android.content.Context, id: Int, favorite: kotlin.Boolean) {
-        if (favorite) {
-            com.simon.harmonichackernews.utils.Utils.addFavorite(ctx, id)
-        } else {
-            com.simon.harmonichackernews.utils.Utils.removeFavorite(ctx, id)
-        }
-    }
-
-    fun removeFavorite(ctx: android.content.Context, id: Int) {
-        val favorites = com.simon.harmonichackernews.utils.Utils.loadFavorites(ctx, false)
-
-        for (favorite in favorites) {
-            if (favorite.id == id) {
-                favorites.remove(favorite)
-                break
+            items += Bookmark().apply {
+                this.id = id
+                created = now - items.size
             }
         }
 
-        com.simon.harmonichackernews.utils.Utils.saveFavorites(ctx, favorites)
+        saveBookmarkList(ctx, key, items)
+    }
+
+    fun addFavorite(ctx: Context, id: Int) {
+        if (isFavorited(ctx, id)) {
+            return
+        }
+
+        val favorites = loadFavorites(ctx, false)
+        favorites += Bookmark().apply {
+            this.id = id
+            created = System.currentTimeMillis()
+        }
+        saveFavorites(ctx, favorites)
+    }
+
+    fun setFavorite(ctx: Context, id: Int, favorite: Boolean) {
+        if (favorite) {
+            addFavorite(ctx, id)
+        } else {
+            removeFavorite(ctx, id)
+        }
+    }
+
+    fun removeFavorite(ctx: Context, id: Int) {
+        val favorites = loadFavorites(ctx, false)
+
+        val index = favorites.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            favorites.removeAt(index)
+        }
+
+        saveFavorites(ctx, favorites)
     }
 
     fun setUpvoted(
-        ctx: android.content.Context,
+        ctx: Context,
         id: Int,
-        comment: kotlin.Boolean,
-        upvoted: kotlin.Boolean
+        comment: Boolean,
+        upvoted: Boolean
     ) {
         if (comment) {
             val upvotedCommentIds =
-                com.simon.harmonichackernews.utils.Utils.loadUpvotedCommentIds(ctx)
+                loadUpvotedCommentIds(ctx)
             if (upvoted) {
                 upvotedCommentIds.add(id)
             } else {
                 upvotedCommentIds.remove(id)
             }
-            com.simon.harmonichackernews.utils.Utils.saveUpvotedCommentIds(ctx, upvotedCommentIds)
+            saveUpvotedCommentIds(ctx, upvotedCommentIds)
             return
         }
 
-        val upvotedItems = com.simon.harmonichackernews.utils.Utils.loadUpvoted(ctx, false)
-        for (item in upvotedItems) {
-            if (item.id == id) {
-                if (!upvoted) {
-                    upvotedItems.remove(item)
-                    com.simon.harmonichackernews.utils.Utils.saveBookmarkList(
-                        ctx,
-                        com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_UPVOTED,
-                        upvotedItems
-                    )
-                }
-                return
+        val upvotedItems = loadUpvoted(ctx, false)
+        val existingIndex = upvotedItems.indexOfFirst { it.id == id }
+        if (existingIndex >= 0) {
+            if (!upvoted) {
+                upvotedItems.removeAt(existingIndex)
+                saveBookmarkList(
+                    ctx,
+                    KEY_SHARED_PREFERENCES_UPVOTED,
+                    upvotedItems
+                )
             }
+            return
         }
 
         if (upvoted) {
-            val item = com.simon.harmonichackernews.data.Bookmark()
-            item.id = id
-            item.created = java.lang.System.currentTimeMillis()
-            upvotedItems.add(item)
-            com.simon.harmonichackernews.utils.Utils.saveBookmarkList(
+            upvotedItems += Bookmark().apply {
+                this.id = id
+                created = System.currentTimeMillis()
+            }
+            saveBookmarkList(
                 ctx,
-                com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_UPVOTED,
+                KEY_SHARED_PREFERENCES_UPVOTED,
                 upvotedItems
             )
         }
     }
 
-    fun getThousandSeparatedString(n: Int): kotlin.String {
-        val bd = java.math.BigDecimal(n)
-        val formatter = java.text.NumberFormat.getInstance(java.util.Locale("en_US"))
+    fun getThousandSeparatedString(n: Int): String {
+        val bd = BigDecimal(n)
+        val formatter = NumberFormat.getInstance(Locale.US)
 
         return formatter.format(bd.toLong())
     }
 
-    fun getFilterWords(ctx: android.content.Context): java.util.ArrayList<kotlin.String> {
-        return com.simon.harmonichackernews.utils.Utils.getCommaSeparatedPreference(
+    fun getFilterWords(ctx: Context): ArrayList<String> {
+        return getCommaSeparatedPreference(
             ctx,
             "pref_filter"
         )
     }
 
-    fun getFilterDomains(ctx: android.content.Context): java.util.ArrayList<kotlin.String> {
-        return com.simon.harmonichackernews.utils.Utils.getCommaSeparatedPreference(
+    fun getFilterDomains(ctx: Context): ArrayList<String> {
+        return getCommaSeparatedPreference(
             ctx,
             "pref_filter_domains"
         )
     }
 
-    fun getFilteredUsers(ctx: android.content.Context): kotlin.collections.MutableSet<kotlin.String> {
-        return com.simon.harmonichackernews.utils.Utils.getCommaSeparatedPreferenceSet(
+    fun getFilteredUsers(ctx: Context): MutableSet<String> {
+        return getCommaSeparatedPreferenceSet(
             ctx,
             "pref_filter_users",
             true
         )
     }
 
-    fun removeFilteredUser(ctx: android.content.Context, username: kotlin.String?): kotlin.Boolean {
-        if (TextUtils.isEmpty(username)) return false
+    fun removeFilteredUser(ctx: Context, username: String?): Boolean {
+        val normalizedUsername = username
+            ?.takeUnless(String::isEmpty)
+            ?.lowercase(Locale.getDefault())
+            ?.trim { it <= ' ' }
+            ?: return false
 
-        val users = com.simon.harmonichackernews.utils.Utils.getFilteredUsers(ctx)
-        users.remove(username!!.lowercase(java.util.Locale.getDefault()).trim { it <= ' ' })
-        com.simon.harmonichackernews.utils.Utils.saveCommaSeparatedPreferenceSet(
+        val users = getFilteredUsers(ctx)
+        users.remove(normalizedUsername)
+        saveCommaSeparatedPreferenceSet(
             ctx,
             "pref_filter_users",
             users
@@ -1449,12 +1265,16 @@ object Utils {
         return true
     }
 
-    fun addFilteredUser(ctx: android.content.Context, username: kotlin.String?): kotlin.Boolean {
-        if (TextUtils.isEmpty(username)) return false
+    fun addFilteredUser(ctx: Context, username: String?): Boolean {
+        val normalizedUsername = username
+            ?.takeUnless(String::isEmpty)
+            ?.lowercase(Locale.getDefault())
+            ?.trim { it <= ' ' }
+            ?: return false
 
-        val users = com.simon.harmonichackernews.utils.Utils.getFilteredUsers(ctx)
-        users.add(username!!.lowercase(java.util.Locale.getDefault()).trim { it <= ' ' })
-        com.simon.harmonichackernews.utils.Utils.saveCommaSeparatedPreferenceSet(
+        val users = getFilteredUsers(ctx)
+        users.add(normalizedUsername)
+        saveCommaSeparatedPreferenceSet(
             ctx,
             "pref_filter_users",
             users
@@ -1464,41 +1284,41 @@ object Utils {
     }
 
     private fun getCommaSeparatedPreference(
-        ctx: android.content.Context,
-        key: kotlin.String?
-    ): java.util.ArrayList<kotlin.String> {
-        return com.simon.harmonichackernews.utils.Utils.getCommaSeparatedPreference(ctx, key, false)
+        ctx: Context,
+        key: String?
+    ): ArrayList<String> {
+        return getCommaSeparatedPreference(ctx, key, false)
     }
 
     private fun getCommaSeparatedPreference(
-        ctx: android.content.Context,
-        key: kotlin.String?,
-        lowercase: kotlin.Boolean
-    ): java.util.ArrayList<kotlin.String> {
-        val prefs: SharedPreferences =
-            androidx.preference.PreferenceManager.getDefaultSharedPreferences(ctx)
-        var prefText: kotlin.String? = prefs.getString(key, null)
-
-        val values = java.util.ArrayList<kotlin.String>()
-        if (!TextUtils.isEmpty(prefText)) {
-            if (lowercase) {
-                prefText = prefText!!.lowercase(java.util.Locale.getDefault())
-            }
-            for (value in prefText!!.split(",".toRegex()).dropLastWhile { it.isEmpty() }
-                .toTypedArray()) {
-                values.add(value.trim { it <= ' ' })
-            }
+        ctx: Context,
+        key: String?,
+        lowercase: Boolean
+    ): ArrayList<String> {
+        val prefText = PreferenceManager.getDefaultSharedPreferences(ctx)
+            .getString(key, null)
+            .orEmpty()
+        if (prefText.isEmpty()) {
+            return arrayListOf()
         }
-        return values
+
+        val normalizedText = if (lowercase) {
+            prefText.lowercase(Locale.getDefault())
+        } else {
+            prefText
+        }
+        return normalizedText.split(',')
+            .dropLastWhile(String::isEmpty)
+            .mapTo(ArrayList()) { it.trim { character -> character <= ' ' } }
     }
 
     private fun getCommaSeparatedPreferenceSet(
-        ctx: android.content.Context,
-        key: kotlin.String?,
-        lowercase: kotlin.Boolean
-    ): kotlin.collections.MutableSet<kotlin.String> {
-        return java.util.HashSet<kotlin.String>(
-            com.simon.harmonichackernews.utils.Utils.getCommaSeparatedPreference(
+        ctx: Context,
+        key: String?,
+        lowercase: Boolean
+    ): MutableSet<String> {
+        return HashSet(
+            getCommaSeparatedPreference(
                 ctx,
                 key,
                 lowercase
@@ -1507,57 +1327,49 @@ object Utils {
     }
 
     private fun saveCommaSeparatedPreferenceSet(
-        ctx: android.content.Context,
-        key: kotlin.String?,
-        values: kotlin.collections.MutableSet<kotlin.String>
+        ctx: Context,
+        key: String?,
+        values: MutableSet<String>
     ) {
-        androidx.preference.PreferenceManager.getDefaultSharedPreferences(ctx)
+        PreferenceManager.getDefaultSharedPreferences(ctx)
             .edit()
-            .putString(key, com.simon.harmonichackernews.utils.Utils.joinCommaSeparated(values))
+            .putString(key, joinCommaSeparated(values))
             .apply()
     }
 
-    private fun joinCommaSeparated(values: kotlin.collections.MutableSet<kotlin.String>): kotlin.String {
-        val sb = java.lang.StringBuilder()
-        val iter = values.iterator()
-        while (iter.hasNext()) {
-            sb.append(iter.next())
-            if (iter.hasNext()) {
-                sb.append(",")
-            }
-        }
-        return sb.toString()
+    private fun joinCommaSeparated(values: Set<String>): String = values.joinToString(",")
+
+    fun getUserTags(ctx: Context): MutableMap<String, String> {
+        return readUserTags(ctx, true)
     }
 
-    fun getUserTags(ctx: android.content.Context): kotlin.collections.MutableMap<kotlin.String, kotlin.String> {
-        return com.simon.harmonichackernews.utils.Utils.readUserTags(ctx, true)
-    }
-
-    fun getUserTagsWithOriginalUsernames(ctx: android.content.Context): kotlin.collections.MutableMap<kotlin.String, kotlin.String> {
-        return com.simon.harmonichackernews.utils.Utils.readUserTags(ctx, false)
+    fun getUserTagsWithOriginalUsernames(ctx: Context): MutableMap<String, String> {
+        return readUserTags(ctx, false)
     }
 
     private fun readUserTags(
-        ctx: android.content.Context,
-        normalizeUsernames: kotlin.Boolean
-    ): kotlin.collections.MutableMap<kotlin.String, kotlin.String> {
+        ctx: Context,
+        normalizeUsernames: Boolean
+    ): MutableMap<String, String> {
         val jsonString = SettingsUtils.readStringFromSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_USER_TAGS
+            KEY_SHARED_PREFERENCES_USER_TAGS
         )
-        val map: kotlin.collections.MutableMap<kotlin.String, kotlin.String> = java.util.HashMap()
-        if (!TextUtils.isEmpty(jsonString)) {
+        val map = mutableMapOf<String, String>()
+        if (!jsonString.isNullOrEmpty()) {
             try {
-                val obj: JSONObject = JSONObject(jsonString)
-                val keys: kotlin.collections.MutableIterator<kotlin.String> = obj.keys()
+                val obj = JSONObject(jsonString)
+                val keys = obj.keys()
                 while (keys.hasNext()) {
                     val key = keys.next()
-                    val value: kotlin.String = obj.optString(key, "")
+                    val value = obj.optString(key, "")
                     val username = key.trim { it <= ' ' }
-                    map.put(
-                        if (normalizeUsernames) username.lowercase(java.util.Locale.getDefault()) else username,
-                        value
-                    )
+                    val normalizedUsername = if (normalizeUsernames) {
+                        username.lowercase(Locale.getDefault())
+                    } else {
+                        username
+                    }
+                    map[normalizedUsername] = value
                 }
             } catch (e: JSONException) {
                 // Invalid JSON in prefs; just start fresh
@@ -1567,276 +1379,183 @@ object Utils {
         return map
     }
 
-    fun getUserTag(ctx: android.content.Context, username: kotlin.String?): kotlin.String {
-        if (TextUtils.isEmpty(username)) return ""
-        val map = com.simon.harmonichackernews.utils.Utils.getUserTags(ctx)
-        val tag = map.get(username!!.lowercase(java.util.Locale.getDefault()).trim { it <= ' ' })
-        return if (tag == null) "" else tag
+    fun getUserTag(ctx: Context, username: String?): String {
+        val normalizedUsername = username
+            ?.takeUnless(String::isEmpty)
+            ?.lowercase(Locale.getDefault())
+            ?.trim { it <= ' ' }
+            ?: return ""
+        return getUserTags(ctx)[normalizedUsername].orEmpty()
     }
 
-    fun setUserTag(ctx: android.content.Context, username: kotlin.String?, tag: kotlin.String?) {
-        if (TextUtils.isEmpty(username)) return
-        val map = com.simon.harmonichackernews.utils.Utils.getUserTagsWithOriginalUsernames(ctx)
-        val key = username!!.trim { it <= ' ' }
-        val savedUsernames: kotlin.collections.MutableIterator<kotlin.String> = map.keys.iterator()
-        while (savedUsernames.hasNext()) {
-            val savedUsername = savedUsernames.next()
-            if (savedUsername.equals(key, ignoreCase = true)) {
-                savedUsernames.remove()
-            }
-        }
-        if (!TextUtils.isEmpty(tag)) {
-            map.put(key, tag!!.trim { it <= ' ' })
+    fun setUserTag(ctx: Context, username: String?, tag: String?) {
+        val key = username?.takeUnless(String::isEmpty)?.trim { it <= ' ' } ?: return
+        val map = getUserTagsWithOriginalUsernames(ctx)
+        map.keys.removeAll { savedUsername -> savedUsername.equals(key, ignoreCase = true) }
+        if (!tag.isNullOrEmpty()) {
+            map[key] = tag.trim { it <= ' ' }
         }
         // Convert back to JSON
-        val obj: JSONObject = JSONObject()
-        for (e in map.entries) {
+        val obj = JSONObject()
+        for ((savedUsername, savedTag) in map) {
             try {
-                obj.put(e.key, e.value)
+                obj.put(savedUsername, savedTag)
             } catch (ex: JSONException) {
                 ex.printStackTrace()
             }
         }
         SettingsUtils.saveStringToSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_USER_TAGS,
+            KEY_SHARED_PREFERENCES_USER_TAGS,
             obj.toString()
         )
     }
 
-    fun shouldShowWelcomeDialog(ctx: android.content.Context): kotlin.Boolean {
+    fun shouldShowWelcomeDialog(ctx: Context): Boolean {
         val sharedPref: SharedPreferences = ctx.getSharedPreferences(
-            com.simon.harmonichackernews.utils.Utils.GLOBAL_SHARED_PREFERENCES_KEY,
-            android.content.Context.MODE_PRIVATE
+            GLOBAL_SHARED_PREFERENCES_KEY,
+            Context.MODE_PRIVATE
         )
         return !sharedPref.getBoolean(
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN,
+            KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN,
             false
         )
     }
 
-    fun markWelcomeDialogShown(ctx: android.content.Context) {
+    fun markWelcomeDialogShown(ctx: Context) {
         val sharedPref: SharedPreferences = ctx.getSharedPreferences(
-            com.simon.harmonichackernews.utils.Utils.GLOBAL_SHARED_PREFERENCES_KEY,
-            android.content.Context.MODE_PRIVATE
+            GLOBAL_SHARED_PREFERENCES_KEY,
+            Context.MODE_PRIVATE
         )
         sharedPref.edit().putBoolean(
-            com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN,
+            KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN,
             true
         ).apply()
     }
 
-    fun justUpdated(ctx: android.content.Context): kotlin.Boolean {
+    fun justUpdated(ctx: Context): Boolean {
         val sharedPref: SharedPreferences = ctx.getSharedPreferences(
-            com.simon.harmonichackernews.utils.Utils.GLOBAL_SHARED_PREFERENCES_KEY,
-            android.content.Context.MODE_PRIVATE
+            GLOBAL_SHARED_PREFERENCES_KEY,
+            Context.MODE_PRIVATE
         )
-        if (com.simon.harmonichackernews.BuildConfig.VERSION_CODE > sharedPref.getInt(
-                com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_LAST_VERSION,
+        if (BuildConfig.VERSION_CODE > sharedPref.getInt(
+                KEY_SHARED_PREFERENCES_LAST_VERSION,
                 -1
             )
         ) {
             sharedPref.edit().putInt(
-                com.simon.harmonichackernews.utils.Utils.KEY_SHARED_PREFERENCES_LAST_VERSION,
-                com.simon.harmonichackernews.BuildConfig.VERSION_CODE
+                KEY_SHARED_PREFERENCES_LAST_VERSION,
+                BuildConfig.VERSION_CODE
             ).apply()
             return true
         }
         return false
     }
 
-    fun getTimeAgo(time: kotlin.Long): kotlin.String {
-        var time = time
-        if (time < 1000000000000L) {
-            // if timestamp given in seconds, convert to millis
-            time *= 1000
-        }
-
-        val now = java.lang.System.currentTimeMillis()
-        if (time > now || time <= 0) {
-            return "?"
-        }
-
-        val diff = now - time
-        if (diff < com.simon.harmonichackernews.utils.Utils.MINUTE_MILLIS) {
-            return "just now"
-        } else if (diff < 2 * com.simon.harmonichackernews.utils.Utils.MINUTE_MILLIS) {
-            return "1m"
-        } else if (diff < 50 * com.simon.harmonichackernews.utils.Utils.MINUTE_MILLIS) {
-            return (diff / com.simon.harmonichackernews.utils.Utils.MINUTE_MILLIS).toString() + "m"
-        } else if (diff < 120 * com.simon.harmonichackernews.utils.Utils.MINUTE_MILLIS) {
-            return "1h"
-        } else if (diff < 24 * com.simon.harmonichackernews.utils.Utils.HOUR_MILLIS) {
-            return (diff / com.simon.harmonichackernews.utils.Utils.HOUR_MILLIS).toString() + "h"
-        } else if (diff < 48 * com.simon.harmonichackernews.utils.Utils.HOUR_MILLIS) {
-            return "1d"
-        } else if (diff < 365 * com.simon.harmonichackernews.utils.Utils.DAY_MILLIS) {
-            return (diff / com.simon.harmonichackernews.utils.Utils.DAY_MILLIS).toString() + "d"
-        } else if (diff < 2 * com.simon.harmonichackernews.utils.Utils.YEAR_MILLIS) {
-            return "1y"
-        } else {
-            return (diff / com.simon.harmonichackernews.utils.Utils.YEAR_MILLIS).toString() + "y"
-        }
+    fun getTimeAgo(time: Long): String {
+        return RelativeTimeFormatter.format(time, System.currentTimeMillis())
     }
 
-    fun isOnWiFi(ctx: android.content.Context): kotlin.Boolean {
+    fun isOnWiFi(ctx: Context): Boolean {
         val connectivityManager: ConnectivityManager =
-            ctx.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network: android.net.Network? = connectivityManager.getActiveNetwork()
-        if (network == null) {
-            return false
-        }
-        val networkCapabilities: NetworkCapabilities? =
-            connectivityManager.getNetworkCapabilities(network)
-
-        return networkCapabilities != null && networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+            ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val networkCapabilities = connectivityManager.getNetworkCapabilities(network)
+        return networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
     }
 
-    @kotlin.jvm.JvmOverloads
+    @JvmOverloads
     fun launchCustomTab(
-        ctx: android.content.Context,
-        url: kotlin.String?,
-        shareable: kotlin.Boolean = true
+        ctx: Context,
+        url: String?,
+        shareable: Boolean = true
     ) {
-        var url = url
-        if (url != null) {
-            if (SettingsUtils.shouldUseExternalBrowser(ctx) || !com.simon.harmonichackernews.utils.Utils.isCustomTabSupported(
-                    ctx
+        val originalUrl = url ?: return
+        if (SettingsUtils.shouldUseExternalBrowser(ctx) || !isCustomTabSupported(ctx)) {
+            launchInExternalBrowser(ctx, originalUrl)
+            return
+        }
+
+        try {
+            createCustomTabsIntent(ctx, shareable).launchUrl(ctx, Uri.parse(originalUrl))
+        } catch (e: Exception) {
+            e.printStackTrace()
+
+            try {
+                createCustomTabsIntent(ctx, shareable).launchUrl(
+                    ctx,
+                    Uri.parse(URLUtil.guessUrl(originalUrl))
                 )
-            ) {
-                com.simon.harmonichackernews.utils.Utils.launchInExternalBrowser(ctx, url)
-            } else {
+            } catch (_: Exception) {
+                val fallbackUrl = originalUrl.takeIf {
+                    it.startsWith("http://") || it.startsWith("https://")
+                } ?: "http://$originalUrl"
                 try {
-                    val builder: CustomTabsIntent.Builder = CustomTabsIntent.Builder()
-                    builder.setShareState(if (shareable) CustomTabsIntent.SHARE_STATE_ON else CustomTabsIntent.SHARE_STATE_OFF)
-
-                    val colorBuilder: CustomTabColorSchemeParams.Builder =
-                        CustomTabColorSchemeParams.Builder()
-                    colorBuilder.setToolbarColor(
-                        ContextCompat.getColor(
-                            ctx,
-                            com.simon.harmonichackernews.utils.ThemeUtils.getBackgroundColorResource(
-                                ctx
-                            )
-                        )
-                    )
-                    builder.setDefaultColorSchemeParams(colorBuilder.build())
-
-                    val customTabsIntent: CustomTabsIntent = builder.build()
-
-                    customTabsIntent.launchUrl(ctx, android.net.Uri.parse(url))
-                } catch (e: java.lang.Exception) {
-                    e.printStackTrace()
-
-                    try {
-                        val builder: CustomTabsIntent.Builder = CustomTabsIntent.Builder()
-                        builder.setShareState(if (shareable) CustomTabsIntent.SHARE_STATE_ON else CustomTabsIntent.SHARE_STATE_OFF)
-
-                        val colorBuilder: CustomTabColorSchemeParams.Builder =
-                            CustomTabColorSchemeParams.Builder()
-                        colorBuilder.setToolbarColor(
-                            ContextCompat.getColor(
-                                ctx,
-                                com.simon.harmonichackernews.utils.ThemeUtils.getBackgroundColorResource(
-                                    ctx
-                                )
-                            )
-                        )
-                        builder.setDefaultColorSchemeParams(colorBuilder.build())
-
-                        val customTabsIntent: CustomTabsIntent = builder.build()
-
-                        customTabsIntent.launchUrl(
-                            ctx,
-                            android.net.Uri.parse(android.webkit.URLUtil.guessUrl(url))
-                        )
-                    } catch (e1: java.lang.Exception) {
-                        try {
-                            if (!url.startsWith("http://") && !url.startsWith("https://")) url =
-                                "http://" + url
-
-                            val builder: CustomTabsIntent.Builder = CustomTabsIntent.Builder()
-                            builder.setShareState(if (shareable) CustomTabsIntent.SHARE_STATE_ON else CustomTabsIntent.SHARE_STATE_OFF)
-
-                            val colorBuilder: CustomTabColorSchemeParams.Builder =
-                                CustomTabColorSchemeParams.Builder()
-                            colorBuilder.setToolbarColor(
-                                ContextCompat.getColor(
-                                    ctx,
-                                    com.simon.harmonichackernews.utils.ThemeUtils.getBackgroundColorResource(
-                                        ctx
-                                    )
-                                )
-                            )
-                            builder.setDefaultColorSchemeParams(colorBuilder.build())
-
-                            val customTabsIntent: CustomTabsIntent = builder.build()
-
-                            customTabsIntent.launchUrl(ctx, android.net.Uri.parse(url))
-                        } catch (e2: java.lang.Exception) {
-                            com.simon.harmonichackernews.utils.Utils.launchInExternalBrowser(
-                                ctx,
-                                url
-                            )
-                        }
-                    }
+                    createCustomTabsIntent(ctx, shareable).launchUrl(ctx, Uri.parse(fallbackUrl))
+                } catch (_: Exception) {
+                    launchInExternalBrowser(ctx, fallbackUrl)
                 }
             }
         }
     }
 
-    fun launchInExternalBrowser(ctx: android.content.Context, url: kotlin.String) {
-        var url = url
+    private fun createCustomTabsIntent(ctx: Context, shareable: Boolean): CustomTabsIntent {
+        val colorScheme = CustomTabColorSchemeParams.Builder()
+            .setToolbarColor(
+                ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx))
+            )
+            .build()
+        return CustomTabsIntent.Builder()
+            .setShareState(
+                if (shareable) CustomTabsIntent.SHARE_STATE_ON
+                else CustomTabsIntent.SHARE_STATE_OFF
+            )
+            .setDefaultColorSchemeParams(colorScheme)
+            .build()
+    }
+
+    fun launchInExternalBrowser(ctx: Context, url: String) {
         try {
-            com.simon.harmonichackernews.utils.Utils.openExternalUrl(ctx, url)
-        } catch (e: java.lang.Exception) {
+            openExternalUrl(ctx, url)
+        } catch (e: Exception) {
             // failed for the first time, let's try to guess a fix to the url
             try {
-                com.simon.harmonichackernews.utils.Utils.openExternalUrl(
-                    ctx,
-                    android.webkit.URLUtil.guessUrl(url)
-                )
-            } catch (e1: java.lang.Exception) {
+                openExternalUrl(ctx, URLUtil.guessUrl(url))
+            } catch (_: Exception) {
                 // automated fix didn't work, let's try to do it manually
+                val fallbackUrl = url.takeIf {
+                    it.startsWith("http://") || it.startsWith("https://")
+                } ?: "http://$url"
                 try {
-                    if (!url.startsWith("http://") && !url.startsWith("https://")) url =
-                        "http://" + url
-                    com.simon.harmonichackernews.utils.Utils.openExternalUrl(ctx, url)
-                } catch (e2: java.lang.Exception) {
-                    Toast.makeText(ctx, "Couldn't open link to: " + url, Toast.LENGTH_SHORT).show()
+                    openExternalUrl(ctx, fallbackUrl)
+                } catch (_: Exception) {
+                    Toast.makeText(
+                        ctx,
+                        "Couldn't open link to: $fallbackUrl",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
     }
 
-    private fun openExternalUrl(ctx: android.content.Context, url: kotlin.String?) {
-        val browserIntent: Intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-        val packageName =
-            com.simon.harmonichackernews.utils.Utils.getPackageForExternalUrl(ctx, browserIntent)
-        if (packageName != null) {
-            browserIntent.setPackage(packageName)
-        }
+    private fun openExternalUrl(ctx: Context, url: String) {
+        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        getPackageForExternalUrl(ctx, browserIntent)?.let(browserIntent::setPackage)
         ctx.startActivity(browserIntent)
     }
 
     private fun getPackageForExternalUrl(
-        ctx: android.content.Context,
+        ctx: Context,
         browserIntent: Intent
-    ): kotlin.String? {
-        val defaultBrowserPackageName = ctx.defaultBrowserPackageName()
-        if (defaultBrowserPackageName == null) {
-            return null
-        }
-
-        val resolveInfo: ResolveInfo? = ctx.getPackageManager()
+    ): String? {
+        val defaultBrowserPackageName = ctx.defaultBrowserPackageName() ?: return null
+        val resolveInfo = ctx.packageManager
             .resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
-        var resolvedPackageName: kotlin.String? = null
-        if (resolveInfo != null && resolveInfo.activityInfo != null) {
-            resolvedPackageName = resolveInfo.activityInfo.packageName
-        }
+        val resolvedPackageName = resolveInfo?.activityInfo?.packageName
 
         // force browser only when VIEW resolves to Harmonic itself (self-loop) or a known bad resolver.
-        if (ctx.getPackageName() == resolvedPackageName
+        if (ctx.packageName == resolvedPackageName
             || ctx.isInvalidViewHandlerPackage(resolvedPackageName)
         ) {
             return defaultBrowserPackageName
@@ -1845,80 +1564,67 @@ object Utils {
         return null
     }
 
-    fun downloadPDF(context: android.content.Context, pdfUrl: kotlin.String?): kotlin.Boolean {
-        val intent: Intent = Intent(Intent.ACTION_VIEW)
-        intent.setData(android.net.Uri.parse(pdfUrl))
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    fun downloadPDF(context: Context, pdfUrl: String?): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            data = Uri.parse(pdfUrl)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
 
         // Check if there's an app that can handle this intent
-        if (intent.resolveActivity(context.getPackageManager()) != null) {
+        if (intent.resolveActivity(context.packageManager) != null) {
             context.startActivity(intent)
             return true
         }
         return false
     }
 
-    fun isCustomTabSupported(context: android.content.Context): kotlin.Boolean {
-        return !com.simon.harmonichackernews.utils.Utils.getCustomTabsPackages(context).isEmpty()
+    fun isCustomTabSupported(context: Context): Boolean {
+        return getCustomTabsPackages(context).isNotEmpty()
     }
 
     /**
      * Returns a list of packages that support Custom Tabs.
      */
-    fun getCustomTabsPackages(context: android.content.Context): java.util.ArrayList<ResolveInfo?> {
-        val pm: PackageManager = context.getPackageManager()
+    private fun getCustomTabsPackages(context: Context): List<ResolveInfo> {
+        val pm = context.packageManager
         // Get default VIEW intent handler.
-        val activityIntent: Intent = Intent()
+        val activityIntent = Intent()
             .setAction(Intent.ACTION_VIEW)
             .addCategory(Intent.CATEGORY_BROWSABLE)
-            .setData(android.net.Uri.fromParts("http", "", null))
+            .setData(Uri.fromParts("http", "", null))
 
         // Get all apps that can handle VIEW intents.
-        val resolvedActivityList: kotlin.collections.MutableList<ResolveInfo> =
-            pm.queryIntentActivities(activityIntent, 0)
-        val packagesSupportingCustomTabs: java.util.ArrayList<ResolveInfo?> =
-            java.util.ArrayList<ResolveInfo?>()
-        for (info in resolvedActivityList) {
-            val serviceIntent: Intent = Intent()
-            serviceIntent.setAction(ACTION_CUSTOM_TABS_CONNECTION)
-            serviceIntent.setPackage(info.activityInfo.packageName)
-            // Check if this package also resolves the Custom Tabs service.
-            if (pm.resolveService(serviceIntent, 0) != null) {
-                packagesSupportingCustomTabs.add(info)
+        return pm.queryIntentActivities(activityIntent, 0).filter { info ->
+            val serviceIntent = Intent().apply {
+                action = ACTION_CUSTOM_TABS_CONNECTION
+                setPackage(info.activityInfo.packageName)
             }
+            // Check if this package also resolves the Custom Tabs service.
+            pm.resolveService(serviceIntent, 0) != null
         }
-
-        return packagesSupportingCustomTabs
     }
 
-    fun getColorViaAttr(ctx: android.content.Context, attr: Int): Int {
-        val typedValue = android.util.TypedValue()
+    fun getColorViaAttr(ctx: Context, attr: Int): Int {
+        val typedValue = TypedValue()
         val theme = ctx.theme
         theme.resolveAttribute(attr, typedValue, true)
         return typedValue.data
     }
 
-    @kotlin.Throws(java.io.IOException::class)
-    fun writeInFile(ctx: android.content.Context, uri: android.net.Uri, text: kotlin.String?) {
-        val outputStream: java.io.OutputStream?
-        outputStream = ctx.getContentResolver().openOutputStream(uri)
-        val bw = java.io.BufferedWriter(java.io.OutputStreamWriter(outputStream))
-        bw.write(text)
-        bw.flush()
-        bw.close()
+    @Throws(IOException::class)
+    fun writeInFile(ctx: Context, uri: Uri, text: String?) {
+        val outputStream = checkNotNull(ctx.contentResolver.openOutputStream(uri))
+        outputStream.bufferedWriter().use { writer -> writer.write(text) }
     }
 
-    @kotlin.Throws(java.io.IOException::class)
-    fun readFileContent(ctx: android.content.Context, uri: android.net.Uri): kotlin.String {
-        val inputStream = ctx.getContentResolver().openInputStream(uri)
-        val reader = java.io.BufferedReader(java.io.InputStreamReader(inputStream))
-        val stringBuilder = java.lang.StringBuilder()
-        var currentline: kotlin.String?
-        while ((reader.readLine().also { currentline = it }) != null) {
-            stringBuilder.append(currentline)
+    @Throws(IOException::class)
+    fun readFileContent(ctx: Context, uri: Uri): String {
+        val inputStream = checkNotNull(ctx.contentResolver.openInputStream(uri))
+        return inputStream.bufferedReader().use { reader ->
+            buildString {
+                reader.forEachLine(::append)
+            }
         }
-        inputStream!!.close()
-        return stringBuilder.toString()
     }
 
     /**
@@ -1930,21 +1636,21 @@ object Utils {
      * and next day's `finalTime`
      */
     fun isTimeBetweenTwoTimes(
-        initialTime: kotlin.Long,
-        finalTime: kotlin.Long,
-        currentTime: kotlin.Long
-    ): kotlin.Boolean {
-        var finalTime = finalTime
-        var currentTime = currentTime
-        if (finalTime < initialTime) {
-            finalTime += java.util.concurrent.TimeUnit.DAYS.toMinutes(1)
+        initialTime: Long,
+        finalTime: Long,
+        currentTime: Long
+    ): Boolean {
+        var normalizedFinalTime = finalTime
+        var normalizedCurrentTime = currentTime
+        if (normalizedFinalTime < initialTime) {
+            normalizedFinalTime += TimeUnit.DAYS.toMinutes(1)
         }
 
-        if (currentTime < initialTime) {
-            currentTime += java.util.concurrent.TimeUnit.DAYS.toMinutes(1)
+        if (normalizedCurrentTime < initialTime) {
+            normalizedCurrentTime += TimeUnit.DAYS.toMinutes(1)
         }
 
-        return initialTime <= currentTime && currentTime < finalTime
+        return normalizedCurrentTime in initialTime..<normalizedFinalTime
     }
 
     fun setNighttimeHours(
@@ -1952,107 +1658,102 @@ object Utils {
         fromMinute: Int,
         toHour: Int,
         toMinute: Int,
-        ctx: android.content.Context
+        ctx: Context
     ) {
         SettingsUtils.saveStringToSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_NIGHTTIME_FROM_HOUR,
-            fromHour.toString() + ""
+            KEY_NIGHTTIME_FROM_HOUR,
+            fromHour.toString()
         )
         SettingsUtils.saveStringToSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_NIGHTTIME_FROM_MINUTE,
-            fromMinute.toString() + ""
+            KEY_NIGHTTIME_FROM_MINUTE,
+            fromMinute.toString()
         )
         SettingsUtils.saveStringToSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_NIGHTTIME_TO_HOUR,
-            toHour.toString() + ""
+            KEY_NIGHTTIME_TO_HOUR,
+            toHour.toString()
         )
         SettingsUtils.saveStringToSharedPreferences(
             ctx,
-            com.simon.harmonichackernews.utils.Utils.KEY_NIGHTTIME_TO_MINUTE,
-            toMinute.toString() + ""
+            KEY_NIGHTTIME_TO_MINUTE,
+            toMinute.toString()
         )
     }
 
-    fun getNighttimeHours(ctx: android.content.Context): IntArray {
-        return kotlin.intArrayOf(
+    fun getNighttimeHours(ctx: Context): IntArray {
+        return intArrayOf(
             SettingsUtils.readStringFromSharedPreferences(
                 ctx,
-                com.simon.harmonichackernews.utils.Utils.KEY_NIGHTTIME_FROM_HOUR,
+                KEY_NIGHTTIME_FROM_HOUR,
                 "21"
-            )!!.toInt(),
+            )?.toIntOrNull() ?: 21,
             SettingsUtils.readStringFromSharedPreferences(
                 ctx,
-                com.simon.harmonichackernews.utils.Utils.KEY_NIGHTTIME_FROM_MINUTE,
+                KEY_NIGHTTIME_FROM_MINUTE,
                 "0"
-            )!!.toInt(),
+            )?.toIntOrNull() ?: 0,
             SettingsUtils.readStringFromSharedPreferences(
                 ctx,
-                com.simon.harmonichackernews.utils.Utils.KEY_NIGHTTIME_TO_HOUR,
+                KEY_NIGHTTIME_TO_HOUR,
                 "6"
-            )!!.toInt(),
+            )?.toIntOrNull() ?: 6,
             SettingsUtils.readStringFromSharedPreferences(
                 ctx,
-                com.simon.harmonichackernews.utils.Utils.KEY_NIGHTTIME_TO_MINUTE,
+                KEY_NIGHTTIME_TO_MINUTE,
                 "0"
-            )!!.toInt()
+            )?.toIntOrNull() ?: 0
         )
     }
 
-    fun timeInSecondsMoreThanTwoWeeksAgo(time: Int): kotlin.Boolean {
-        return (java.lang.System.currentTimeMillis() - (time.toLong()) * 1000) / 1000 / 60 / 60 / 24 > 14
+    fun timeInSecondsMoreThanTwoWeeksAgo(time: Int): Boolean {
+        return System.currentTimeMillis() - time.toLong() * 1_000 > TimeUnit.DAYS.toMillis(14)
     }
 
-    fun timeInSecondsMoreThanTwoHoursAgo(time: Int): kotlin.Boolean {
-        return (java.lang.System.currentTimeMillis() - (time.toLong()) * 1000) / 1000 / 60 / 60 > 2
+    fun timeInSecondsMoreThanTwoHoursAgo(time: Int): Boolean {
+        return System.currentTimeMillis() - time.toLong() * 1_000 > TimeUnit.HOURS.toMillis(2)
     }
 
-    fun pxFromDp(resources: android.content.res.Resources, dp: kotlin.Float): kotlin.Float {
-        return dp * resources.getDisplayMetrics().density
+    fun pxFromDp(resources: Resources, dp: Float): Float {
+        return dp * resources.displayMetrics.density
     }
 
-    fun pxFromDpInt(resources: android.content.res.Resources, dp: kotlin.Float): Int {
-        return java.lang.Math.round(
-            com.simon.harmonichackernews.utils.Utils.pxFromDp(
-                resources,
-                dp
-            )
-        )
+    fun pxFromDpInt(resources: Resources, dp: Float): Int {
+        return Math.round(pxFromDp(resources, dp))
     }
 
-    fun isTablet(res: android.content.res.Resources): kotlin.Boolean {
+    fun isTablet(res: Resources): Boolean {
         return res.getBoolean(R.bool.is_tablet)
     }
 
-    fun openLinkMaybeHN(context: android.content.Context?, href: kotlin.String?) {
-        if (context == null || TextUtils.isEmpty(href)) {
+    fun openLinkMaybeHN(context: Context?, href: String?) {
+        if (context == null || href.isNullOrEmpty()) {
             return
         }
 
-        val uri = android.net.Uri.parse(href)
+        val uri = Uri.parse(href)
 
         // Validate the scheme (http or https)
-        val scheme = uri.getScheme()
+        val scheme = uri.scheme
         if ("http".equals(scheme, ignoreCase = true) || "https".equals(scheme, ignoreCase = true)) {
             // Validate the host and path
             if ("news.ycombinator.com".equals(
-                    uri.getHost(),
+                    uri.host,
                     ignoreCase = true
-                ) && "/item" == uri.getPath()
+                ) && "/item" == uri.path
             ) {
-                val id = com.simon.harmonichackernews.utils.Utils.parseHackerNewsItemId(
+                val id = parseHackerNewsItemId(
                     uri.getQueryParameter("id")
                 )
                 if (id > 0) {
                     var scrollToCommentId = -1
                     val parsedFragment =
-                        com.simon.harmonichackernews.utils.Utils.parseHackerNewsItemId(uri.getFragment())
+                        parseHackerNewsItemId(uri.fragment)
                     if (parsedFragment > 0) {
                         scrollToCommentId = parsedFragment
                     }
-                    com.simon.harmonichackernews.utils.Utils.openCommentsActivity(
+                    openCommentsActivity(
                         id,
                         scrollToCommentId,
                         context
@@ -2065,28 +1766,18 @@ object Utils {
         launchCustomTab(context, href)
     }
 
-    private fun parseHackerNewsItemId(value: kotlin.String?): Int {
-        if (TextUtils.isEmpty(value) || !TextUtils.isDigitsOnly(value)) {
-            return -1
-        }
+    private fun parseHackerNewsItemId(value: String?): Int =
+        value?.takeIf(TextUtils::isDigitsOnly)?.toIntOrNull()?.takeIf { it > 0 } ?: -1
 
-        try {
-            val id = value!!.toInt()
-            return if (id > 0) id else -1
-        } catch (ignored: java.lang.NumberFormatException) {
-            return -1
-        }
-    }
-
-    fun getHackerNewsItemUriFromText(text: kotlin.String?): android.net.Uri? {
+    fun getHackerNewsItemUriFromText(text: String?): Uri? {
         if (text == null) return null
 
-        val matcher = com.simon.harmonichackernews.utils.Utils.HN_ITEM_URL_PATTERN.matcher(text)
+        val matcher = HN_ITEM_URL_PATTERN.matcher(text)
         while (matcher.find()) {
             val url =
-                com.simon.harmonichackernews.utils.Utils.trimTrailingUrlPunctuation(matcher.group())
-            val uri = android.net.Uri.parse(url)
-            if (com.simon.harmonichackernews.utils.Utils.isHackerNewsItemUri(uri)) {
+                trimTrailingUrlPunctuation(matcher.group())
+            val uri = Uri.parse(url)
+            if (isHackerNewsItemUri(uri)) {
                 return uri
             }
         }
@@ -2094,42 +1785,30 @@ object Utils {
         return null
     }
 
-    fun isHackerNewsItemUri(uri: android.net.Uri?): kotlin.Boolean {
+    fun isHackerNewsItemUri(uri: Uri?): Boolean {
         if (uri == null) return false
 
-        val scheme = uri.getScheme()
+        val scheme = uri.scheme
         if (!"http".equals(scheme, ignoreCase = true) && !"https".equals(
                 scheme,
                 ignoreCase = true
             )
         ) return false
-        if (!"news.ycombinator.com".equals(uri.getHost(), ignoreCase = true)) return false
-        if ("/item" != uri.getPath()) return false
+        if (!"news.ycombinator.com".equals(uri.host, ignoreCase = true)) return false
+        if ("/item" != uri.path) return false
 
         val sId = uri.getQueryParameter("id")
-        return sId != null && !sId.isEmpty() && TextUtils.isDigitsOnly(sId)
+        return !sId.isNullOrEmpty() && TextUtils.isDigitsOnly(sId)
     }
 
-    private fun trimTrailingUrlPunctuation(url: kotlin.String): kotlin.String {
-        var url = url
-        while (!url.isEmpty()) {
-            val last = url.get(url.length - 1)
-            if (last == '.' || last == ',' || last == ';' || last == ':' || last == ')' || last == ']') {
-                url = url.substring(0, url.length - 1)
-            } else {
-                break
-            }
-        }
-        return url
-    }
+    private fun trimTrailingUrlPunctuation(url: String): String =
+        url.trimEnd { it in ".,;:)]" }
 
-    fun openCommentsActivity(id: Int, scrollToCommentId: Int, context: android.content.Context) {
-        if (context is MainActivity
-            && (context as MainActivity).openCommentsItem(id, scrollToCommentId)
-        ) {
+    fun openCommentsActivity(id: Int, scrollToCommentId: Int, context: Context) {
+        if (context is MainActivity && context.openCommentsItem(id, scrollToCommentId)) {
             return
         }
-        val builder = android.net.Uri.parse("https://news.ycombinator.com/item").buildUpon()
+        val builder = Uri.parse("https://news.ycombinator.com/item").buildUpon()
             .appendQueryParameter("id", id.toString())
         if (scrollToCommentId > 0) {
             builder.fragment(scrollToCommentId.toString())
@@ -2145,68 +1824,61 @@ object Utils {
         context.startActivity(intent)
     }
 
-    fun canProvideSummary(ctx: android.content.Context): kotlin.Boolean {
-        val prefs: SharedPreferences =
-            androidx.preference.PreferenceManager.getDefaultSharedPreferences(ctx)
+    fun canProvideSummary(ctx: Context): Boolean {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
         if (prefs.contains("pref_ai_summary_enabled")
             && !prefs.getBoolean("pref_ai_summary_enabled", false)
         ) {
             return false
         }
-        val mode: kotlin.String = prefs.getString("pref_ai_summary_mode", "cloud") ?: "cloud"
-        if ("local" == mode) {
+        val mode = prefs.getString("pref_ai_summary_mode", "cloud") ?: "cloud"
+        if (mode == "local") {
             return SummaryManager.canAttemptLocalSummarization()
         }
         return AiSummaryApiKeyStore.hasApiKey(ctx)
     }
 
-    fun isAiSummaryEnabled(ctx: android.content.Context): kotlin.Boolean {
-        val prefs: SharedPreferences =
-            androidx.preference.PreferenceManager.getDefaultSharedPreferences(ctx)
+    fun isAiSummaryEnabled(ctx: Context): Boolean {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
         if (prefs.contains("pref_ai_summary_enabled")) {
             return prefs.getBoolean("pref_ai_summary_enabled", false)
         }
-        return com.simon.harmonichackernews.utils.Utils.isAiSummaryEnabledByDefault(ctx)
+        return isAiSummaryEnabledByDefault(ctx)
     }
 
-    private fun isAiSummaryEnabledByDefault(ctx: android.content.Context): kotlin.Boolean {
-        return SummaryManager.canAttemptLocalSummarization()
-                || AiSummaryApiKeyStore.hasApiKey(ctx)
+    private fun isAiSummaryEnabledByDefault(ctx: Context): Boolean =
+        SummaryManager.canAttemptLocalSummarization() || AiSummaryApiKeyStore.hasApiKey(ctx)
+
+    fun isNetworkAvailable(context: Context): Boolean {
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                ?: return false
+        val network = connectivityManager.activeNetwork ?: return false
+        return connectivityManager.getNetworkCapabilities(network)
+            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
     }
 
-    fun isNetworkAvailable(context: android.content.Context): kotlin.Boolean {
-        val cm: ConnectivityManager? =
-            context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as ConnectivityManager?
-        if (cm == null) return false
-
-        val net: android.net.Network? = cm.getActiveNetwork()
-        if (net == null) return false
-        val caps: NetworkCapabilities? = cm.getNetworkCapabilities(net)
-        return caps != null &&
-                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
-
-    fun linkify(input: kotlin.String?): kotlin.String? {
-        if (input == null || input.isEmpty()) return input
+    fun linkify(input: String?): String? {
+        if (input.isNullOrEmpty()) return input
         if (!input.contains("http:") && !input.contains("https:")) return input
 
         // Existing <a>...</a> blocks: keep as-is
-        val out = java.lang.StringBuilder(input.length)
-        val a = com.simon.harmonichackernews.utils.Utils.LINKIFY_ANCHOR_PATTERN.matcher(input)
+        val out = StringBuilder(input.length)
+        val a = LINKIFY_ANCHOR_PATTERN.matcher(input)
         var idx = 0
 
         // Helper-like inline blocks only
         while (a.find()) {
             val segment = input.substring(idx, a.start())
-            val m = com.simon.harmonichackernews.utils.Utils.LINKIFY_URL_PATTERN.matcher(segment)
-            val sb = java.lang.StringBuffer(segment.length)
+            val m = LINKIFY_URL_PATTERN.matcher(segment)
+            val sb = StringBuffer(segment.length)
 
             while (m.find()) {
-                val rep = com.simon.harmonichackernews.utils.Utils.getString(
+                val rep = createLinkReplacement(
                     m,
-                    com.simon.harmonichackernews.utils.Utils.LINKIFY_TRAILING_PUNCTUATION
+                    LINKIFY_TRAILING_PUNCTUATION
                 )
-                m.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(rep))
+                m.appendReplacement(sb, Matcher.quoteReplacement(rep))
             }
             m.appendTail(sb)
             out.append(sb)
@@ -2218,14 +1890,14 @@ object Utils {
 
         // Tail after last <a>
         val segment = input.substring(idx)
-        val m = com.simon.harmonichackernews.utils.Utils.LINKIFY_URL_PATTERN.matcher(segment)
-        val sb = java.lang.StringBuffer(segment.length)
+        val m = LINKIFY_URL_PATTERN.matcher(segment)
+        val sb = StringBuffer(segment.length)
         while (m.find()) {
-            val rep = com.simon.harmonichackernews.utils.Utils.getString(
+            val rep = createLinkReplacement(
                 m,
-                com.simon.harmonichackernews.utils.Utils.LINKIFY_TRAILING_PUNCTUATION
+                LINKIFY_TRAILING_PUNCTUATION
             )
-            m.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(rep))
+            m.appendReplacement(sb, Matcher.quoteReplacement(rep))
         }
         m.appendTail(sb)
         out.append(sb)
@@ -2233,52 +1905,50 @@ object Utils {
         return out.toString()
     }
 
-    private fun getString(m: java.util.regex.Matcher, trailing: kotlin.String): kotlin.String {
-        val u = m.group()
+    private fun createLinkReplacement(matcher: Matcher, trailing: String): String {
+        val url = matcher.group()
 
         // Trim common trailing punctuation
-        var end = u.length
-        while (end > 0 && trailing.indexOf(u.get(end - 1)) >= 0) end--
+        var end = url.length
+        while (end > 0 && url[end - 1] in trailing) end--
 
         // Balance unmatched ')'
-        if (end > 0 && u.get(end - 1) == ')') {
+        if (end > 0 && url[end - 1] == ')') {
             var opens = 0
             var closes = 0
             for (i in 0..<end) {
-                val c = u.get(i)
+                val c = url[i]
                 if (c == '(') opens++
                 else if (c == ')') closes++
             }
             if (closes > opens) end--
         }
 
-        val core = u.substring(0, end)
-        val rest = u.substring(end)
+        val core = url.substring(0, end)
+        val rest = url.substring(end)
 
         // Normalize HTML-escaped slashes in the URL for href and text
         val normalized = core
             .replace("&#x2F;", "/")
             .replace("&#47;", "/")
 
-        val rep = "<a href=\"" + normalized + "\">" + normalized + "</a>" + rest
-        return rep
+        return "<a href=\"$normalized\">$normalized</a>$rest"
     }
 
-    fun expandShortenedAnchorText(inputHtml: kotlin.String?): kotlin.String? {
-        if (inputHtml == null || inputHtml.isEmpty() || !inputHtml.contains("<a")) {
+    fun expandShortenedAnchorText(inputHtml: String?): String? {
+        if (inputHtml.isNullOrEmpty() || !inputHtml.contains("<a")) {
             return inputHtml
         }
 
-        val document: org.jsoup.nodes.Document =
-            Jsoup.parse(inputHtml, "", org.jsoup.parser.Parser.htmlParser())
+        val document = Jsoup.parse(inputHtml, "", Parser.htmlParser())
         val links = document.select("a[href]")
 
         for (link in links) {
             val href = link.attr("href")
             val linkText = link.text()
 
-            val decodedHref: kotlin.String = Jsoup.parse(href).text()
-            val decodedLinkText: kotlin.String = Jsoup.parse(linkText).text()
+            val decodedHref = Jsoup.parse(href).text()
+            val decodedLinkText = Jsoup.parse(linkText).text()
 
             if (decodedLinkText.endsWith("...")) {
                 val linkTextPrefix = decodedLinkText.substring(0, decodedLinkText.length - 3)

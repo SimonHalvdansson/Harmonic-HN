@@ -25,42 +25,48 @@ internal class CommentsWebViewHost(context: Context) {
     val progressIndicator: LinearProgressIndicator
 
     init {
-        root = ProtectionLayout(context)
-        root.setId(R.id.list_protection)
-        root.setLayoutParams(matchParentParams())
+        root = ProtectionLayout(context).apply {
+            id = R.id.list_protection
+            layoutParams = matchParentParams()
+        }
 
-        val content = FrameLayout(context)
-        content.setClipChildren(false)
-        content.setClipToPadding(false)
+        val content = FrameLayout(context).apply {
+            clipChildren = false
+            clipToPadding = false
+        }
         root.addView(content, matchParentParams())
 
-        webViewContainer = FrameLayout(context)
-        webViewContainer.setId(R.id.webview_container)
-        val webViewContainerParams: FrameLayout.LayoutParams = matchParentFrameParams()
-        webViewContainerParams.bottomMargin = Utils.pxFromDpInt(context.getResources(), 68f)
+        webViewContainer = FrameLayout(context).apply {
+            id = R.id.webview_container
+        }
+        val webViewContainerParams = matchParentFrameParams().apply {
+            bottomMargin = Utils.pxFromDpInt(context.resources, 68f)
+        }
         content.addView(webViewContainer, webViewContainerParams)
 
-        webViewBackdrop = View(context)
-        webViewBackdrop.setId(R.id.comments_webview_backdrop)
-        webViewBackdrop.setAlpha(0f)
-        webViewBackdrop.setBackgroundColor(Color.WHITE)
+        webViewBackdrop = View(context).apply {
+            id = R.id.comments_webview_backdrop
+            alpha = 0f
+            setBackgroundColor(Color.WHITE)
+        }
         webViewContainer.addView(webViewBackdrop, matchParentFrameParams())
 
         downloadButton = MaterialButton(
             context,
             null,
             com.google.android.material.R.attr.materialIconButtonOutlinedStyle
-        )
-        downloadButton.setId(R.id.webview_download)
-        downloadButton.setText("Download file")
-        downloadButton.setIconResource(R.drawable.ic_file_download)
-        downloadButton.setTextColor(
-            MaterialColors.getColor(
-                downloadButton,
-                R.attr.storyColorNormal
+        ).apply {
+            id = R.id.webview_download
+            text = "Download file"
+            setIconResource(R.drawable.ic_file_download)
+            setTextColor(
+                MaterialColors.getColor(
+                    this,
+                    R.attr.storyColorNormal
+                )
             )
-        )
-        downloadButton.setVisibility(View.GONE)
+            visibility = View.GONE
+        }
         val downloadParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -68,9 +74,10 @@ internal class CommentsWebViewHost(context: Context) {
         )
         webViewContainer.addView(downloadButton, downloadParams)
 
-        progressIndicator = LinearProgressIndicator(context)
-        progressIndicator.setId(R.id.webview_progress)
-        progressIndicator.setVisibility(View.GONE)
+        progressIndicator = LinearProgressIndicator(context).apply {
+            id = R.id.webview_progress
+            visibility = View.GONE
+        }
         webViewContainer.addView(
             progressIndicator, FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -78,10 +85,11 @@ internal class CommentsWebViewHost(context: Context) {
             )
         )
 
-        fullscreenContainer = FrameLayout(context)
-        fullscreenContainer.setId(R.id.comments_fullscreen_container)
-        fullscreenContainer.setBackgroundColor(Color.BLACK)
-        fullscreenContainer.setVisibility(View.GONE)
+        fullscreenContainer = FrameLayout(context).apply {
+            id = R.id.comments_fullscreen_container
+            setBackgroundColor(Color.BLACK)
+            visibility = View.GONE
+        }
         content.addView(fullscreenContainer, matchParentFrameParams())
     }
 

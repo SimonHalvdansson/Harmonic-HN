@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
@@ -68,6 +69,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.dimensionResource
@@ -338,6 +340,9 @@ fun SettingsListScreen(
     val settingsCardShape = RoundedCornerShape(
         dimensionResource(R.dimen.settings_list_segment_corner_radius),
     )
+    val visibleEntries = MainSettingsEntries.filter {
+        it.section != SettingsSection.Debug || BuildConfig.DEBUG
+    }
     val navigationBarPadding =
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -372,31 +377,20 @@ fun SettingsListScreen(
                         .fillMaxWidth()
                         .clip(settingsCardShape),
                 ) {
-                    MainSettingsEntries
-                        .filter { it.section != SettingsSection.Debug || BuildConfig.DEBUG }
-                        .forEachIndexed { index, entry ->
-                            SettingsNavigationRow(
-                                title = entry.section.title,
-                                icon = entry.icon,
-                                selected = showSelection && (
-                                    selectedSection == entry.section ||
-                                    (
-                                        entry.section == SettingsSection.About &&
-                                            selectedSection == SettingsSection.Licenses
-                                        )
-                                    ),
-                                onClick = { onSectionSelected(entry.section) },
-                            )
-                            if (
-                                index != MainSettingsEntries
-                                    .filter {
-                                        it.section != SettingsSection.Debug || BuildConfig.DEBUG
-                                    }
-                                    .lastIndex
-                            ) {
-                                SettingsDivider()
-                            }
+                    visibleEntries.forEachIndexed { index, entry ->
+                        val isSelected = selectedSection == entry.section ||
+                            entry.section == SettingsSection.About &&
+                            selectedSection == SettingsSection.Licenses
+                        SettingsNavigationRow(
+                            title = entry.section.title,
+                            icon = entry.icon,
+                            selected = showSelection && isSelected,
+                            onClick = { onSectionSelected(entry.section) },
+                        )
+                        if (index != visibleEntries.lastIndex) {
+                            SettingsDivider()
                         }
+                    }
                 }
             }
         }
@@ -897,16 +891,14 @@ fun SegmentedSetting(
                             },
                             shape,
                         )
-                        .then(
-                            Modifier.border(
-                                1.dp,
-                                if (isSelected) {
-                                    selectedBackground
-                                } else {
-                                    HarmonicTheme.colors.outlineVariant
-                                },
-                                shape,
-                            ),
+                        .border(
+                            1.dp,
+                            if (isSelected) {
+                                selectedBackground
+                            } else {
+                                HarmonicTheme.colors.outlineVariant
+                            },
+                            shape,
                         )
                         .clip(shape)
                         .selectable(
@@ -1129,8 +1121,7 @@ fun ItemsDialog(
                     ),
                 ),
             ) {
-                items(options) { option ->
-                    val index = options.indexOf(option)
+                itemsIndexed(options) { index, option ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1393,7 +1384,7 @@ fun TextEntryDialog(
 
 @Composable
 fun rememberPreferenceRefresh(): Int {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val preferences = remember(context) {
         PreferenceManager.getDefaultSharedPreferences(context)
     }

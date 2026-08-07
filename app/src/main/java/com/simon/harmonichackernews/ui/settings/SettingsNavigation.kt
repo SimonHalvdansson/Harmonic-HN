@@ -63,7 +63,7 @@ import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.Utils
-import java.util.concurrent.CancellationException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -292,7 +292,7 @@ fun SettingsShell(
         onSectionChanged(selectedSection)
     }
 
-    val showDetailNavigationState = rememberUpdatedState(showDetailNavigation)
+    val currentShowDetailNavigation by rememberUpdatedState(showDetailNavigation)
     val activityTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
     val backAnimationScope = rememberCoroutineScope()
     var activeBackAnimation by remember {
@@ -407,7 +407,7 @@ fun SettingsShell(
         ) {
             SettingsListScreen(
                 selectedSection = selectedSection,
-                showSelection = !showDetailNavigationState.value,
+                showSelection = !currentShowDetailNavigation,
                 onBack = onBackFromSettings,
                 onSectionSelected = { navigateTo(it) },
             )
@@ -416,7 +416,7 @@ fun SettingsShell(
         entry<SettingsDetailDestination>(
             metadata = ListDetailSceneStrategy.detailPane(),
         ) { destination ->
-            val singlePane = showDetailNavigationState.value
+            val singlePane = currentShowDetailNavigation
             val detailContent: @Composable (SettingsSection) -> Unit = { section ->
                 when (section) {
                     SettingsSection.Appearance -> AppearanceSettingsScreen(

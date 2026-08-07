@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews
 
 import android.net.Uri
-import android.text.TextUtils
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.utils.SearchRelevanceUtils
 import java.util.Locale
@@ -23,11 +22,11 @@ internal class StorySearchController {
         dateRangeIndex = 0
         minimumPointsIndex = 0
         minimumCommentsIndex = 0
-        this.isOnlyClicked = false
+        isOnlyClicked = false
     }
 
     fun toggleOnlyClicked() {
-        this.isOnlyClicked = !this.isOnlyClicked
+        isOnlyClicked = !isOnlyClicked
     }
 
     val sortLabel: String
@@ -44,22 +43,19 @@ internal class StorySearchController {
 
     fun getCurrentTopStoriesStartTime(storyType: StoryType?): Int {
         val currentTime = (System.currentTimeMillis() / 1000).toInt()
-        if (storyType == StoryType.LAST_24_HOURS) {
-            return currentTime - 60 * 60 * 24
-        } else if (storyType == StoryType.LAST_48_HOURS) {
-            return currentTime - 60 * 60 * 48
-        } else if (storyType == StoryType.LAST_WEEK) {
-            return currentTime - 60 * 60 * 24 * 7
+        return when (storyType) {
+            StoryType.LAST_24_HOURS -> currentTime - 60 * 60 * 24
+            StoryType.LAST_48_HOURS -> currentTime - 60 * 60 * 48
+            StoryType.LAST_WEEK -> currentTime - 60 * 60 * 24 * 7
+            else -> currentTime
         }
-
-        return currentTime
     }
 
     fun buildTopStoriesUrl(startTime: Int, hitsPerPage: Int): String {
         return Uri.parse("https://hn.algolia.com/api/v1/search")
             .buildUpon()
             .appendQueryParameter("tags", "story")
-            .appendQueryParameter("numericFilters", "created_at_i>" + startTime)
+            .appendQueryParameter("numericFilters", "created_at_i>$startTime")
             .appendQueryParameter("hitsPerPage", hitsPerPage.toString())
             .build()
             .toString()
@@ -76,25 +72,25 @@ internal class StorySearchController {
             .appendQueryParameter("hitsPerPage", hitsPerPage.toString())
             .appendQueryParameter("typoTolerance", "min")
 
-        val numericFilters: MutableList<String> = ArrayList()
-        val days: Int = SEARCH_DATE_RANGE_DAYS[dateRangeIndex]
+        val numericFilters = ArrayList<String>()
+        val days = SEARCH_DATE_RANGE_DAYS[dateRangeIndex]
         if (days > 0) {
             val startTime = (System.currentTimeMillis() / 1000L) - (days * 24L * 60L * 60L)
-            numericFilters.add("created_at_i>=" + startTime)
+            numericFilters.add("created_at_i>=$startTime")
         }
 
-        val minimumPoints: Int = SEARCH_MINIMUM_POINTS[minimumPointsIndex]
+        val minimumPoints = SEARCH_MINIMUM_POINTS[minimumPointsIndex]
         if (minimumPoints > 0) {
-            numericFilters.add("points>=" + minimumPoints)
+            numericFilters.add("points>=$minimumPoints")
         }
 
-        val minimumComments: Int = SEARCH_MINIMUM_COMMENTS[minimumCommentsIndex]
+        val minimumComments = SEARCH_MINIMUM_COMMENTS[minimumCommentsIndex]
         if (minimumComments > 0) {
-            numericFilters.add("num_comments>=" + minimumComments)
+            numericFilters.add("num_comments>=$minimumComments")
         }
 
-        if (!numericFilters.isEmpty()) {
-            builder.appendQueryParameter("numericFilters", TextUtils.join(",", numericFilters))
+        if (numericFilters.isNotEmpty()) {
+            builder.appendQueryParameter("numericFilters", numericFilters.joinToString(","))
         }
 
         return builder.build().toString()
@@ -105,7 +101,7 @@ internal class StorySearchController {
     }
 
     fun normalizeQuery(query: String?): String {
-        return if (query == null) "" else query.trim { it <= ' ' }.lowercase(Locale.getDefault())
+        return query.orEmpty().trim { it <= ' ' }.lowercase(Locale.getDefault())
     }
 
     fun shouldIncludeOnlyClickedStory(
@@ -120,7 +116,7 @@ internal class StorySearchController {
             return false
         }
 
-        val minimumTime = this.minimumTimeSeconds
+        val minimumTime = minimumTimeSeconds
         if (minimumTime > 0 && story.time < minimumTime) {
             return false
         }

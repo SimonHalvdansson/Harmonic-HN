@@ -10,6 +10,8 @@ import android.content.Context
  * stale preferences and shared main-source code fail closed without linking Play Feature Delivery.
  */
 object LocalAiRuntimeManager {
+    private const val UNAVAILABLE_MESSAGE = "Local AI is not included in the FOSS distribution."
+
     fun isLocalAiIncluded(): Boolean = false
 
     fun addStatusListener(context: Context, listener: StatusListener) {
@@ -31,7 +33,7 @@ object LocalAiRuntimeManager {
     }
 
     fun requestRuntimeAndModelDownload(context: Context, modelId: String): String? {
-        return "Local AI is not included in the FOSS distribution."
+        return UNAVAILABLE_MESSAGE
     }
 
     fun cancelRuntimeInstall(
@@ -40,11 +42,9 @@ object LocalAiRuntimeManager {
     ) {
     }
 
-    fun getRuntimeLabel(runtime: LocalModelManager.Runtime): String {
-        return if (runtime == LocalModelManager.Runtime.GEMINI_NANO)
-            "Gemini Nano"
-        else
-            "local AI runtime"
+    fun getRuntimeLabel(runtime: LocalModelManager.Runtime): String = when (runtime) {
+        LocalModelManager.Runtime.GEMINI_NANO -> "Gemini Nano"
+        else -> "local AI runtime"
     }
 
     fun getEngineClassName(runtime: LocalModelManager.Runtime): String {
@@ -66,16 +66,12 @@ object LocalAiRuntimeManager {
     }
 
     class Status internal constructor(val runtime: LocalModelManager.Runtime) {
-        val state: State
+        val state: State = State.NOT_INSTALLED
         val bytesDownloaded: Long = 0L
         val totalBytes: Long = 0L
-        val error: String = "Local AI is not included in the FOSS distribution."
+        val error: String = UNAVAILABLE_MESSAGE
         val pendingModelId: String = ""
         val sessionId: Int = 0
-
-        init {
-            state = State.NOT_INSTALLED
-        }
 
         val isActive: Boolean
             get() = false

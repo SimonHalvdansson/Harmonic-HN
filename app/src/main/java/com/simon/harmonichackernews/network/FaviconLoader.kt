@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
-import coil.Coil
 import coil.Coil.imageLoader
 import coil.request.ImageRequest
 import coil.target.ImageViewTarget
@@ -12,7 +11,6 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
-import java.util.Objects
 
 object FaviconLoader {
     @JvmOverloads
@@ -40,9 +38,8 @@ object FaviconLoader {
         fadeIn: Boolean = false
     ) {
         try {
-            FaviconLoader.loadFaviconForHost(
-                story.getDisplayDomain(true)!!, into, ctx, faviconProvider, fadeIn
-            )
+            val host = story.getDisplayDomain(true) ?: return
+            loadFaviconForHost(host, into, ctx, faviconProvider, fadeIn)
         } catch (ignored: Exception) {
         }
     }
@@ -58,10 +55,8 @@ object FaviconLoader {
         if (faviconUrl == into.getTag(R.id.favicon_request_url)) {
             return
         }
-        val faviconSize = Utils.pxFromDpInt(ctx.getResources(), 17f)
-        val webDrawable = Objects.requireNonNull<Drawable?>(
-            ContextCompat.getDrawable(ctx, R.drawable.ic_public)
-        )
+        val faviconSize = Utils.pxFromDpInt(ctx.resources, 17f)
+        val webDrawable = checkNotNull(ContextCompat.getDrawable(ctx, R.drawable.ic_public))
         applyFaviconThumbnailShape(into)
         into.setTag(R.id.favicon_request_url, faviconUrl)
 
@@ -104,10 +99,10 @@ object FaviconLoader {
     }
 
     private fun applyFaviconThumbnailShape(into: ImageView) {
-        if (into.getBackground() == null) {
+        if (into.background == null) {
             into.setBackgroundResource(R.drawable.favicon_thumbnail_background)
         }
-        into.setClipToOutline(true)
+        into.clipToOutline = true
     }
 
     @Throws(Exception::class)
@@ -120,11 +115,10 @@ object FaviconLoader {
     }
 
     private fun getFaviconUrlForHost(host: String, faviconProvider: String?): String {
-        when (SettingsUtils.sanitizeFaviconProvider(faviconProvider)) {
-            SettingsUtils.FAVICON_PROVIDER_TWENTY -> return "https://twenty-icons.com/" + host
-            SettingsUtils.FAVICON_PROVIDER_GOOGLE -> return "https://www.google.com/s2/favicons?domain=" + host + "&sz=128"
-            SettingsUtils.FAVICON_PROVIDER_DUCKDUCKGO -> return "https://icons.duckduckgo.com/ip3/" + host + ".ico"
-            else -> return "https://www.google.com/s2/favicons?domain=" + host + "&sz=128"
+        return when (SettingsUtils.sanitizeFaviconProvider(faviconProvider)) {
+            SettingsUtils.FAVICON_PROVIDER_TWENTY -> "https://twenty-icons.com/$host"
+            SettingsUtils.FAVICON_PROVIDER_DUCKDUCKGO -> "https://icons.duckduckgo.com/ip3/$host.ico"
+            else -> "https://www.google.com/s2/favicons?domain=$host&sz=128"
         }
     }
 }

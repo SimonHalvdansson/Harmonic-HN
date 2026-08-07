@@ -2,15 +2,17 @@ package com.simon.harmonichackernews.ui.settings
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.graphics.Color
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoryType
@@ -38,11 +40,8 @@ fun StoriesSettingsScreen(
     val resources = LocalResources.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
-    var localRefresh by remember { mutableStateOf(0) }
+    var localRefresh by remember { mutableIntStateOf(0) }
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
-
-    @Suppress("UNUSED_VARIABLE")
-    val observedRefresh = refresh
 
     val previewImageMode = SettingsUtils.getPreferredStoryPreviewImageMode(context)
     val borderlessLarge = prefs.getBoolean(
@@ -404,7 +403,7 @@ fun StoriesSettingsScreen(
                 prefs.edit()
                     .putStringSet(
                         SettingsUtils.PREF_ADDITIONAL_FRONTPAGES,
-                        HashSet(SettingsUtils.sanitizeAdditionalFrontpages(it)),
+                        SettingsUtils.sanitizeAdditionalFrontpages(it).toSet(),
                     )
                     .apply()
                 onRequestRestart()
@@ -435,7 +434,7 @@ private fun hotnessLabel(value: String): String = when (value) {
     else -> "Never"
 }
 
-private fun refreshStoryWidgets(context: android.content.Context) {
+private fun refreshStoryWidgets(context: Context) {
     val manager = AppWidgetManager.getInstance(context)
     val ids = manager.getAppWidgetIds(
         ComponentName(context, StoriesWidgetProvider::class.java),

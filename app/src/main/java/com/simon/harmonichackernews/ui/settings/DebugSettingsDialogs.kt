@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.annotation.DrawableRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,11 @@ import com.simon.harmonichackernews.network.RepliesChecker
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
+private enum class DebugNotificationAction {
+    Enable,
+    Test,
+}
+
 @Composable
 fun DebugNotificationsDialog(
     onDismiss: () -> Unit,
@@ -50,7 +56,7 @@ fun DebugNotificationsDialog(
         )
     }
     var loading by remember { mutableStateOf(false) }
-    var pendingAction by remember { mutableStateOf<String?>(null) }
+    var pendingAction by remember { mutableStateOf<DebugNotificationAction?>(null) }
     var notificationsActive by remember {
         mutableStateOf(RepliesChecker.notificationsAreActive(context))
     }
@@ -97,13 +103,14 @@ fun DebugNotificationsDialog(
             status = "Notification permission denied."
         } else {
             when (action) {
-                "enable" -> enableNotifications(username.trim())
-                "test" -> testNotification(username.trim())
+                DebugNotificationAction.Enable -> enableNotifications(username.trim())
+                DebugNotificationAction.Test -> testNotification(username.trim())
+                null -> Unit
             }
         }
     }
 
-    fun runWithNotificationPermission(action: String) {
+    fun runWithNotificationPermission(action: DebugNotificationAction) {
         val requestedUsername = username.trim()
         if (requestedUsername.isEmpty()) {
             error = "Enter a username"
@@ -121,10 +128,9 @@ fun DebugNotificationsDialog(
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
         }
-        if (action == "enable") {
-            enableNotifications(requestedUsername)
-        } else {
-            testNotification(requestedUsername)
+        when (action) {
+            DebugNotificationAction.Enable -> enableNotifications(requestedUsername)
+            DebugNotificationAction.Test -> testNotification(requestedUsername)
         }
     }
 
@@ -174,14 +180,14 @@ fun DebugNotificationsDialog(
                     label = "Test notification",
                     icon = R.drawable.ic_notifications,
                     enabled = username.isNotBlank() && !loading,
-                    onClick = { runWithNotificationPermission("test") },
+                    onClick = { runWithNotificationPermission(DebugNotificationAction.Test) },
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 DebugNotificationButton(
                     label = "Activate",
                     icon = R.drawable.ic_notifications,
                     enabled = username.isNotBlank() && !loading,
-                    onClick = { runWithNotificationPermission("enable") },
+                    onClick = { runWithNotificationPermission(DebugNotificationAction.Enable) },
                 )
                 if (notificationsActive) {
                     DebugNotificationButton(
@@ -205,7 +211,7 @@ fun DebugNotificationsDialog(
 @Composable
 private fun DebugNotificationButton(
     label: String,
-    icon: Int,
+    @DrawableRes icon: Int,
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

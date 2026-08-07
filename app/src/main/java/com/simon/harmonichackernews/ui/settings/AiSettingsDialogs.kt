@@ -28,6 +28,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -40,7 +42,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -86,8 +87,6 @@ import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.Call
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 
 private val AiMonoFontFamily = FontFamily(
     Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
@@ -266,7 +265,7 @@ fun AiSummaryBaseUrlDialog(
         )
         val newProvider = AiSummaryProviders.getProviderForBaseUrl(savedUrl)
         val editor = prefs.edit().putString(AiModelCatalog.PREF_BASE_URL, savedUrl)
-        if (newProvider != null && (oldProvider == null || newProvider.id != oldProvider.id)) {
+        if (newProvider != null && newProvider.id != oldProvider?.id) {
             val translated = if (oldProvider == null) {
                 ""
             } else {
@@ -469,7 +468,7 @@ fun AiModelSelectorDialog(
             object : AiModelCatalog.ModelsCallback {
                 override fun onSuccess(models: MutableList<AiModelCatalog.Model>) {
                     if (disposed) return
-                    val safeModels = models.orEmpty()
+                    val safeModels = models.toList()
                     catalogState = AiModelCatalogState.Loaded(
                         if (filter == AiModelFilter.Free) {
                             safeModels.filter(AiModelCatalog.Model::isFree)
@@ -926,6 +925,7 @@ private fun AiModelRow(
 
 @Composable
 private fun AiModelProviderIcon(providerSlug: String) {
+    val context = LocalContext.current
     var iconData by remember(providerSlug) { mutableStateOf<Any?>(null) }
 
     DisposableEffect(providerSlug) {
@@ -954,8 +954,7 @@ private fun AiModelProviderIcon(providerSlug: String) {
             fontSize = 12.sp,
         )
         iconData?.let { resolvedIcon ->
-            val context = LocalContext.current
-            val request = remember(resolvedIcon) {
+            val request = remember(context, resolvedIcon) {
                 ImageRequest.Builder(context)
                     .data(resolvedIcon)
                     .setHeader("User-Agent", NetworkComponent.USER_AGENT)

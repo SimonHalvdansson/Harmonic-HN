@@ -90,23 +90,25 @@ import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 
-const val SUBMISSION_FILTER_STORIES = 0
-const val SUBMISSION_FILTER_BOTH = 1
-const val SUBMISSION_FILTER_COMMENTS = 2
+enum class SubmissionFilter {
+    STORIES,
+    BOTH,
+    COMMENTS,
+}
 
 /**
  * State bridge used by the submissions coordinator inside MainActivity's Compose navigation.
  */
 class SubmissionsComposeController internal constructor(
-    private val activity: ComponentActivity,
     internal val userName: String,
-    initialFilter: Int,
+    initialFilter: SubmissionFilter,
+    initialDisplaySettings: StoryDisplaySettings,
     internal val listener: Listener,
 ) {
 
     internal var submissions by mutableStateOf<List<Story>>(emptyList())
         private set
-    internal var selectedFilter by mutableIntStateOf(initialFilter)
+    internal var selectedFilter by mutableStateOf(initialFilter)
         private set
     internal var showFilter by mutableStateOf(false)
         private set
@@ -122,9 +124,7 @@ class SubmissionsComposeController internal constructor(
         private set
     internal var emptyText by mutableStateOf("No submissions")
         private set
-    internal var displaySettings by mutableStateOf(
-        StoryDisplaySettings.from(activity).withShowIndex(false),
-    )
+    internal var displaySettings by mutableStateOf(initialDisplaySettings)
         private set
     internal var contentVersion by mutableIntStateOf(0)
         private set
@@ -140,7 +140,7 @@ class SubmissionsComposeController internal constructor(
 
     fun updateContent(
         submissions: List<Story>,
-        selectedFilter: Int,
+        selectedFilter: SubmissionFilter,
         showFilter: Boolean,
         canLoadMore: Boolean,
         loadedSuccessfully: Boolean,
@@ -208,7 +208,7 @@ class SubmissionsComposeController internal constructor(
     )
 
     interface Listener {
-        fun onFilterSelected(filter: Int)
+        fun onFilterSelected(filter: SubmissionFilter)
         fun onRefresh()
         fun onStoryLinkClick(story: Story)
         fun onStoryCommentsClick(story: Story)
@@ -222,13 +222,14 @@ class SubmissionsComposeController internal constructor(
         fun create(
             activity: ComponentActivity,
             userName: String,
-            initialFilter: Int,
+            initialFilter: SubmissionFilter,
             listener: Listener,
         ): SubmissionsComposeController {
             return SubmissionsComposeController(
-                activity = activity,
                 userName = userName,
                 initialFilter = initialFilter,
+                initialDisplaySettings = StoryDisplaySettings.from(activity)
+                    .withShowIndex(false),
                 listener = listener,
             )
         }
@@ -312,7 +313,7 @@ internal fun SubmissionsScreen(controller: SubmissionsComposeController) {
 private fun SubmissionsList(
     userName: String,
     submissions: List<Story>,
-    selectedFilter: Int,
+    selectedFilter: SubmissionFilter,
     showFilter: Boolean,
     canLoadMore: Boolean,
     loadedSuccessfully: Boolean,
@@ -402,11 +403,11 @@ private fun SubmissionsList(
 @Composable
 private fun SubmissionsHeader(
     userName: String,
-    selectedFilter: Int,
+    selectedFilter: SubmissionFilter,
     showFilter: Boolean,
     compact: Boolean,
     sideMargin: androidx.compose.ui.unit.Dp,
-    onFilterSelected: (Int) -> Unit,
+    onFilterSelected: (SubmissionFilter) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -444,23 +445,23 @@ private fun SubmissionsHeader(
             ) {
                 SubmissionFilterButton(
                     label = "Stories",
-                    selected = selectedFilter == SUBMISSION_FILTER_STORIES,
+                    selected = selectedFilter == SubmissionFilter.STORIES,
                     position = 0,
-                    onClick = { onFilterSelected(SUBMISSION_FILTER_STORIES) },
+                    onClick = { onFilterSelected(SubmissionFilter.STORIES) },
                     modifier = Modifier.weight(1f),
                 )
                 SubmissionFilterButton(
                     label = "Both",
-                    selected = selectedFilter == SUBMISSION_FILTER_BOTH,
+                    selected = selectedFilter == SubmissionFilter.BOTH,
                     position = 1,
-                    onClick = { onFilterSelected(SUBMISSION_FILTER_BOTH) },
+                    onClick = { onFilterSelected(SubmissionFilter.BOTH) },
                     modifier = Modifier.weight(1f),
                 )
                 SubmissionFilterButton(
                     label = "Comments",
-                    selected = selectedFilter == SUBMISSION_FILTER_COMMENTS,
+                    selected = selectedFilter == SubmissionFilter.COMMENTS,
                     position = 2,
-                    onClick = { onFilterSelected(SUBMISSION_FILTER_COMMENTS) },
+                    onClick = { onFilterSelected(SubmissionFilter.COMMENTS) },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -1059,7 +1060,7 @@ private fun SubmissionsScreenPreview() {
     }
     val listener = remember {
         object : SubmissionsComposeController.Listener {
-            override fun onFilterSelected(filter: Int) = Unit
+            override fun onFilterSelected(filter: SubmissionFilter) = Unit
             override fun onRefresh() = Unit
             override fun onStoryLinkClick(story: Story) = Unit
             override fun onStoryCommentsClick(story: Story) = Unit
@@ -1073,7 +1074,7 @@ private fun SubmissionsScreenPreview() {
         SubmissionsList(
             userName = "pg",
             submissions = listOf(comment, story),
-            selectedFilter = SUBMISSION_FILTER_BOTH,
+            selectedFilter = SubmissionFilter.BOTH,
             showFilter = true,
             canLoadMore = false,
             loadedSuccessfully = true,

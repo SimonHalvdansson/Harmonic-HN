@@ -2,23 +2,15 @@ package com.simon.harmonichackernews.network
 
 import android.os.Handler
 import android.os.Looper
-import androidx.annotation.NonNull
-import androidx.annotation.Nullable
 import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstance
 import java.io.IOException
-import java.nio.charset.StandardCharsets
-import java.util.ArrayDeque
-import java.util.Locale
-import java.util.regex.Pattern
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
 
 /** Resolves the provider artwork embedded in OpenRouter provider pages.  */
 object OpenRouterProviderIconLoader {
@@ -26,41 +18,36 @@ object OpenRouterProviderIconLoader {
     private const val REQUEST_SPACING_MS = 120L
     private const val RETRY_DELAY_MS = 750L
     private const val MAX_ATTEMPTS = 3
-    private val UNSUPPORTED_DISPLAY_P3_STYLE: Pattern = Pattern.compile(
+    private val UNSUPPORTED_DISPLAY_P3_STYLE = Regex(
         "\\sstyle=(\"[^\"]*color\\(display-p3[^\"]*\"|'[^']*color\\(display-p3[^']*')",
-        Pattern.CASE_INSENSITIVE
+        RegexOption.IGNORE_CASE
     )
     private val MAIN_HANDLER = Handler(Looper.getMainLooper())
-    private val CACHE: MutableMap<String, Any> = HashMap()
-    private val IN_FLIGHT: MutableMap<String, MutableList<CallbackListener>> = HashMap()
+    private val CACHE = mutableMapOf<String, Any>()
+    private val IN_FLIGHT = mutableMapOf<String, MutableList<CallbackListener>>()
     private val QUEUE = ArrayDeque<String>()
     private var queueRunning = false
 
     fun resolve(providerSlug: String?, listener: CallbackListener) {
-        val normalizedSlug = if (providerSlug == null)
-            ""
-        else
-            providerSlug.trim { it <= ' ' }.lowercase()
+        val normalizedSlug = providerSlug.orEmpty().trim { it <= ' ' }.lowercase()
         if (normalizedSlug.isEmpty()) {
-            MAIN_HANDLER.post(Runnable { listener.onResolved(normalizedSlug, null) })
+            MAIN_HANDLER.post { listener.onResolved(normalizedSlug, null) }
             return
         }
 
         var startQueue = false
         synchronized(CACHE) {
-            val cached = CACHE.get(normalizedSlug)
+            val cached = CACHE[normalizedSlug]
             if (cached != null) {
-                MAIN_HANDLER.post(Runnable { listener.onResolved(normalizedSlug, cached) })
+                MAIN_HANDLER.post { listener.onResolved(normalizedSlug, cached) }
                 return
             }
-            var waiting = IN_FLIGHT.get(normalizedSlug)
+            val waiting = IN_FLIGHT[normalizedSlug]
             if (waiting != null) {
                 waiting.add(listener)
                 return
             }
-            waiting = ArrayList()
-            waiting.add(listener)
-            IN_FLIGHT.put(normalizedSlug, waiting)
+            IN_FLIGHT[normalizedSlug] = mutableListOf(listener)
             QUEUE.add(normalizedSlug)
             if (!queueRunning) {
                 queueRunning = true
@@ -74,15 +61,17 @@ object OpenRouterProviderIconLoader {
 
     private fun requestNext(delayMs: Long) {
         MAIN_HANDLER.postDelayed(Runnable queueTask@ {
-            val providerSlug: String?
-            synchronized(CACHE) {
-                providerSlug = QUEUE.poll()
-                if (providerSlug == null) {
-                    queueRunning = false
-                    return@queueTask
+            val providerSlug = synchronized(CACHE) {
+                QUEUE.removeFirstOrNull().also {
+                    if (it == null) {
+                        queueRunning = false
+                    }
                 }
             }
-            requestProviderPage(providerSlug!!, 1)
+            if (providerSlug == null) {
+                return@queueTask
+            }
+            requestProviderPage(providerSlug, 1)
         }, delayMs)
     }
 
@@ -91,7 +80,7 @@ object OpenRouterProviderIconLoader {
             .addPathSegment(normalizedSlug)
             .build()
         val request = Request.Builder().url(providerUrl).build()
-        okHttpClientInstance!!.newCall(request).enqueue(object : Callback {
+        okHttpClientInstance.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 retryOrFinish(normalizedSlug, attempt, null)
             }
@@ -101,9 +90,10 @@ object OpenRouterProviderIconLoader {
                 var retryable = false
                 try {
                     response.use { closeableResponse ->
-                        if (closeableResponse.isSuccessful && closeableResponse.body != null) {
+                        val body = closeableResponse.body
+                        if (closeableResponse.isSuccessful && body != null) {
                             val page = Jsoup.parse(
-                                closeableResponse.body.string(), providerUrl.toString()
+                                body.string(), providerUrl.toString()
                             )
                             iconUrl = findProviderIcon(page, normalizedSlug)
                         } else {
@@ -114,12 +104,13 @@ object OpenRouterProviderIconLoader {
                 } catch (ignored: Exception) {
                     // Provider initials remain visible when OpenRouter changes or rejects the page.
                 }
+                val resolvedIconUrl = iconUrl
                 if (retryable) {
-                    retryOrFinish(normalizedSlug, attempt, iconUrl)
-                } else if (iconUrl != null && OpenRouterProviderIconLoader.isSvgUrl(iconUrl!!)) {
-                    OpenRouterProviderIconLoader.fetchSvg(normalizedSlug, iconUrl!!)
+                    retryOrFinish(normalizedSlug, attempt, resolvedIconUrl)
+                } else if (resolvedIconUrl != null && isSvgUrl(resolvedIconUrl)) {
+                    fetchSvg(normalizedSlug, resolvedIconUrl)
                 } else {
-                    finish(normalizedSlug, iconUrl)
+                    finish(normalizedSlug, resolvedIconUrl)
                 }
             }
         })
@@ -127,7 +118,7 @@ object OpenRouterProviderIconLoader {
 
     private fun fetchSvg(providerSlug: String, iconUrl: String) {
         val request = Request.Builder().url(iconUrl).build()
-        okHttpClientInstance!!.newCall(request).enqueue(object : Callback {
+        okHttpClientInstance.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 finish(providerSlug, iconUrl)
             }
@@ -135,14 +126,14 @@ object OpenRouterProviderIconLoader {
             override fun onResponse(call: Call, response: Response) {
                 try {
                     response.use { closeableResponse ->
-                        if (!closeableResponse.isSuccessful || closeableResponse.body == null) {
+                        val body = closeableResponse.body
+                        if (!closeableResponse.isSuccessful || body == null) {
                             finish(providerSlug, iconUrl)
                             return
                         }
-                        val rawSvg: ByteArray? = closeableResponse.body.bytes()
-                        val svg = kotlin.text.String(rawSvg!!, StandardCharsets.UTF_8)
-                        val sanitized = UNSUPPORTED_DISPLAY_P3_STYLE.matcher(svg).replaceAll("")
-                        finish(providerSlug, sanitized.toByteArray(StandardCharsets.UTF_8))
+                        val svg = body.bytes().decodeToString()
+                        val sanitized = UNSUPPORTED_DISPLAY_P3_STYLE.replace(svg, "")
+                        finish(providerSlug, sanitized.encodeToByteArray())
                     }
                 } catch (ignored: Exception) {
                     finish(providerSlug, iconUrl)
@@ -170,7 +161,7 @@ object OpenRouterProviderIconLoader {
     }
 
     private fun findProviderIcon(page: Document, providerSlug: String): String? {
-        val expectedAlt = "Favicon for " + providerSlug
+        val expectedAlt = "Favicon for $providerSlug"
         for (image in page.select("img[alt][src]")) {
             if (!expectedAlt.equals(image.attr("alt").trim { it <= ' ' }, ignoreCase = true)) {
                 continue
@@ -197,11 +188,9 @@ object OpenRouterProviderIconLoader {
             listeners = IN_FLIGHT.remove(providerSlug)
         }
         if (listeners != null) {
-            MAIN_HANDLER.post(Runnable {
-                for (listener in listeners) {
-                    listener.onResolved(providerSlug, iconData)
-                }
-            })
+            MAIN_HANDLER.post {
+                listeners.forEach { it.onResolved(providerSlug, iconData) }
+            }
         }
         requestNext(REQUEST_SPACING_MS)
     }

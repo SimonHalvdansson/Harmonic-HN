@@ -4,13 +4,9 @@ import com.android.volley.VolleyError
 
 internal object VolleyErrorUtils {
     fun describe(error: VolleyError?): String {
-        if (error == null) {
-            return "unknown VolleyError"
-        }
-        val status = if (error.networkResponse == null)
-            "noNetworkResponse"
-        else
-            "statusCode=" + error.networkResponse.statusCode
-        return error.javaClass.getSimpleName() + ", " + status + ", message=" + error.message
+        error ?: return "unknown VolleyError"
+        val status = error.networkResponse?.let { "statusCode=${it.statusCode}" }
+            ?: "noNetworkResponse"
+        return "${error.javaClass.simpleName}, $status, message=${error.message}"
     }
 }

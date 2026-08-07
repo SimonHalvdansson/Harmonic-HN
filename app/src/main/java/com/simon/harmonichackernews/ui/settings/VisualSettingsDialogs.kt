@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -27,6 +28,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,12 +41,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.preference.PreferenceManager
+import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
+
+private data class FaviconProviderOption(
+    val value: String,
+    val label: String,
+)
+
+private val FaviconProviderOptions = listOf(
+    FaviconProviderOption(SettingsUtils.FAVICON_PROVIDER_GOOGLE, "Google"),
+    FaviconProviderOption(SettingsUtils.FAVICON_PROVIDER_DUCKDUCKGO, "DuckDuckGo"),
+    FaviconProviderOption(SettingsUtils.FAVICON_PROVIDER_TWENTY, "Twenty icons"),
+)
 
 @Composable
 fun FaviconProviderDialog(
@@ -53,11 +68,6 @@ fun FaviconProviderDialog(
     val context = LocalContext.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val selected = SettingsUtils.getPreferredFaviconProvider(context)
-    val providers = listOf(
-        SettingsUtils.FAVICON_PROVIDER_GOOGLE to "Google",
-        SettingsUtils.FAVICON_PROVIDER_DUCKDUCKGO to "DuckDuckGo",
-        SettingsUtils.FAVICON_PROVIDER_TWENTY to "Twenty icons",
-    )
 
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
@@ -70,22 +80,22 @@ fun FaviconProviderDialog(
                     .padding(top = 4.dp, bottom = 8.dp)
                     .selectableGroup(),
             ) {
-                providers.forEach { provider ->
+                FaviconProviderOptions.forEach { provider ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .defaultMinSize(minHeight = 76.dp)
                             .selectable(
-                                selected = provider.first == selected,
+                                selected = provider.value == selected,
                                 role = Role.RadioButton,
                                 onClick = {
                                     prefs.edit()
                                         .putString(
                                             SettingsUtils.PREF_FAVICON_PROVIDER,
-                                            provider.first,
+                                            provider.value,
                                         )
                                         .apply()
-                                    onProviderSelected(provider.first)
+                                    onProviderSelected(provider.value)
                                     onDismiss()
                                 },
                             )
@@ -94,7 +104,7 @@ fun FaviconProviderDialog(
                     ) {
                         Image(
                             painter = painterResource(
-                                SettingsUtils.getFaviconProviderIconResource(provider.first),
+                                SettingsUtils.getFaviconProviderIconResource(provider.value),
                             ),
                             contentDescription = null,
                             modifier = Modifier.size(32.dp),
@@ -105,7 +115,7 @@ fun FaviconProviderDialog(
                                 .padding(start = 16.dp),
                         ) {
                             Text(
-                                text = provider.second,
+                                text = provider.label,
                                 color = HarmonicTheme.colors.storyNormal,
                                 fontFamily = ProductSansFontFamily,
                                 fontWeight = FontWeight.Bold,
@@ -113,7 +123,7 @@ fun FaviconProviderDialog(
                                 lineHeight = 20.sp,
                             )
                             Text(
-                                text = FaviconLoader.getFaviconUrlSchema(provider.first),
+                                text = FaviconLoader.getFaviconUrlSchema(provider.value),
                                 color = HarmonicTheme.colors.storyDisabled,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 12.sp,
@@ -121,7 +131,7 @@ fun FaviconProviderDialog(
                             )
                         }
                         SettingsRadioButton(
-                            selected = provider.first == selected,
+                            selected = provider.value == selected,
                             modifier = Modifier.padding(start = 12.dp),
                         )
                     }
@@ -146,8 +156,8 @@ fun ThreadDepthIndicatorsDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    var mode by androidx.compose.runtime.remember {
-        androidx.compose.runtime.mutableStateOf(
+    var mode by remember {
+        mutableStateOf(
             SettingsUtils.getPreferredCommentDepthIndicatorMode(context),
         )
     }
@@ -162,7 +172,7 @@ fun ThreadDepthIndicatorsDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 600.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 8.dp),
+                contentPadding = PaddingValues(bottom = 8.dp),
             ) {
                 item {
                     Column(
@@ -232,7 +242,7 @@ fun ThreadDepthIndicatorsDialog(
                     ) {
                         if (selected) {
                             Icon(
-                                painter = painterResource(com.simon.harmonichackernews.R.drawable.ic_check),
+                                painter = painterResource(R.drawable.ic_check),
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
                             )

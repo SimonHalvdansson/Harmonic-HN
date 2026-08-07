@@ -104,16 +104,12 @@ internal class CommentsWebViewController(
     }
 
     private val webViewHandler = Handler(Looper.getMainLooper())
-    val initializeRunnable: Runnable = Runnable { this.initialize() }
-    private val webViewBackdropFadeInRunnable: Runnable = object : Runnable {
-        override fun run() {
-            if (webViewBackdrop != null) {
-                webViewBackdrop!!.animate()
-                    .alpha(1f)
-                    .setDuration(300)
-                    .start()
-            }
-        }
+    val initializeRunnable = Runnable(::initialize)
+    private val webViewBackdropFadeInRunnable = Runnable {
+        webViewBackdrop?.animate()
+            ?.alpha(1f)
+            ?.setDuration(300)
+            ?.start()
     }
 
     private var webView: WebView? = null
@@ -185,8 +181,8 @@ internal class CommentsWebViewController(
         progressIndicator: LinearProgressIndicator
     ) {
         this.progressIndicator = progressIndicator
-        this.progressIndicator!!.setVisibility(View.GONE)
-        this.progressIndicator!!.setProgress(0)
+        progressIndicator.visibility = View.GONE
+        progressIndicator.progress = 0
         webView = null
         downloadButton = host.downloadButton
         webViewContainer = host.webViewContainer
@@ -226,7 +222,7 @@ internal class CommentsWebViewController(
         initialize()
         if (webView != null && !startedLoading) {
             startedLoading = true
-            loadUrl(story!!.url)
+            loadUrl(story?.url)
         }
         callbacks.onSwitchView(true)
     }
@@ -249,7 +245,7 @@ internal class CommentsWebViewController(
         }
 
         val generation = webViewLoadGeneration
-        targetWebView!!.evaluateJavascript(
+        checkNotNull(targetWebView).evaluateJavascript(
             "(function() { return document.body ? (document.body.innerText || '') : ''; })();",
             ValueCallback { result: String? ->
                 if (generation != webViewLoadGeneration || !canReadLoadedPageText(targetWebView)) {
@@ -261,21 +257,17 @@ internal class CommentsWebViewController(
         )
     }
 
-    fun canGoBack(): Boolean {
-        return webView != null && webView!!.canGoBack()
-    }
+    fun canGoBack(): Boolean = webView?.canGoBack() == true
 
     val isShowingCustomView: Boolean
         get() = customView != null
 
     fun willExpandBottomSheetOnBack(): Boolean {
-        return !this.isShowingCustomView && webView != null && !webView!!.canGoBack()
+        return !isShowingCustomView && webView?.canGoBack() == false
     }
 
     fun beginPredictiveBackScrollFreeze() {
-        if (webView == null) {
-            return
-        }
+        val currentWebView = webView ?: return
         if (predictiveBackScrollFrozen) {
             restorePredictiveBackScroll()
             return
@@ -283,18 +275,18 @@ internal class CommentsWebViewController(
         predictiveBackScrollX = if (touchGestureStartScrollCaptured)
             touchGestureStartScrollX
         else
-            webView!!.getScrollX()
+            currentWebView.scrollX
         predictiveBackScrollY = if (touchGestureStartScrollCaptured)
             touchGestureStartScrollY
         else
-            webView!!.getScrollY()
+            currentWebView.scrollY
         predictiveBackScrollFrozen = true
         // The back gesture begins with the same edge drag that WebView would otherwise continue
         // interpreting as page input. Cancel its active gesture, then consume the remaining
         // stream in the touch listener until predictive back settles.
         val now = SystemClock.uptimeMillis()
         val cancel = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
-        webView!!.onTouchEvent(cancel)
+        currentWebView.onTouchEvent(cancel)
         cancel.recycle()
         touchGestureStartScrollCaptured = false
         restorePredictiveBackScroll()
@@ -316,10 +308,11 @@ internal class CommentsWebViewController(
     }
 
     private fun restorePredictiveBackScroll() {
-        if (webView != null && (webView!!.getScrollX() != predictiveBackScrollX
-                    || webView!!.getScrollY() != predictiveBackScrollY)
+        val currentWebView = webView ?: return
+        if (currentWebView.scrollX != predictiveBackScrollX ||
+            currentWebView.scrollY != predictiveBackScrollY
         ) {
-            webView!!.scrollTo(predictiveBackScrollX, predictiveBackScrollY)
+            currentWebView.scrollTo(predictiveBackScrollX, predictiveBackScrollY)
         }
     }
 
@@ -335,70 +328,60 @@ internal class CommentsWebViewController(
     }
 
     fun setContainerVisibility(visibility: Int) {
-        if (webViewContainer != null) {
-            webViewContainer!!.setVisibility(visibility)
-        }
+        webViewContainer?.visibility = visibility
     }
 
     fun setContainerPadding(left: Int, top: Int, right: Int, bottom: Int) {
-        if (webViewContainer != null) {
-            webViewContainer!!.setPadding(left, top, right, bottom)
-        }
+        webViewContainer?.setPadding(left, top, right, bottom)
     }
 
     fun setContainerLayoutParams(params: ViewGroup.LayoutParams?) {
-        if (webViewContainer != null) {
-            webViewContainer!!.setLayoutParams(params)
-        }
+        webViewContainer?.layoutParams = params
     }
 
     fun setContainerBackgroundColor(color: Int) {
-        if (webViewContainer != null) {
-            webViewContainer!!.setBackgroundColor(color)
-        }
+        webViewContainer?.setBackgroundColor(color)
     }
 
     fun goBackFromVisibleWebView() {
-        if (webView == null || !webView!!.canGoBack()) {
-            return
-        }
-        if (downloadButton != null && downloadButton!!.getVisibility() == View.VISIBLE && webView!!.getVisibility() == View.GONE) {
-            webView!!.setVisibility(View.VISIBLE)
-            downloadButton!!.setVisibility(View.GONE)
+        val currentWebView = webView?.takeIf { it.canGoBack() } ?: return
+        val currentDownloadButton = downloadButton
+        if (currentDownloadButton?.visibility == View.VISIBLE &&
+            currentWebView.visibility == View.GONE
+        ) {
+            currentWebView.visibility = View.VISIBLE
+            currentDownloadButton.visibility = View.GONE
         } else if (showingErrorPage) {
             showingErrorPage = false
-            if (webView!!.canGoBackOrForward(-2)) {
-                webView!!.goBackOrForward(-2)
+            if (currentWebView.canGoBackOrForward(-2)) {
+                currentWebView.goBackOrForward(-2)
             } else {
-                webView!!.goBack()
+                currentWebView.goBack()
             }
         } else {
-            webView!!.goBack()
+            currentWebView.goBack()
         }
     }
 
     fun retryLastFailedUrl() {
-        if (!TextUtils.isEmpty(lastFailedWebViewUrl)) {
-            retryingFailedWebViewUrl = true
-            loadUrl(lastFailedWebViewUrl)
-        }
+        val failedUrl = lastFailedWebViewUrl?.takeUnless(String::isEmpty) ?: return
+        retryingFailedWebViewUrl = true
+        loadUrl(failedUrl)
     }
 
     fun reload() {
-        if (webView != null) {
-            webView!!.reload()
-        }
+        webView?.reload()
     }
 
     fun openCurrentOrStoryUrlInBrowser() {
         val intent = Intent(Intent.ACTION_VIEW)
         try {
-            checkNotNull(webView) { "WebView not available" }
-            intent.setData(Uri.parse(webView!!.getUrl()))
+            val currentUrl = checkNotNull(webView?.url) { "WebView URL not available" }
+            intent.data = Uri.parse(currentUrl)
             coordinator.startActivity(intent)
         } catch (e: Exception) {
             try {
-                intent.setData(Uri.parse(story!!.url))
+                intent.data = Uri.parse(checkNotNull(story?.url))
                 coordinator.startActivity(intent)
             } catch (e2: Exception) {
                 Utils.toast("Couldn't open URL", coordinator.context)
@@ -407,15 +390,16 @@ internal class CommentsWebViewController(
     }
 
     fun disableAdBlockAndReload() {
-        this.isBlockingAds = false
-        if (webView == null) {
-            return
-        }
-        webView!!.reload()
+        isBlockingAds = false
+        val currentWebView = webView ?: return
+        currentWebView.reload()
 
-        val snackbar =
-            Snackbar.make(webView!!, "Disabled AdBlock, refreshing WebView", Snackbar.LENGTH_SHORT)
-        ViewCompat.setElevation(snackbar.getView(), Utils.pxFromDp(coordinator.resources, 24f))
+        val snackbar = Snackbar.make(
+            currentWebView,
+            "Disabled AdBlock, refreshing WebView",
+            Snackbar.LENGTH_SHORT
+        )
+        ViewCompat.setElevation(snackbar.view, Utils.pxFromDp(coordinator.resources, 24f))
         snackbar.show()
     }
 
@@ -426,12 +410,11 @@ internal class CommentsWebViewController(
         if (webView == null) {
             initialize()
         }
-        val context = coordinator.context
-        if (webView == null || context == null || coordinator.view == null) {
-            return
-        }
+        val context = coordinator.context ?: return
+        val currentWebView = webView ?: return
+        if (coordinator.view == null) return
 
-        val currentUrl = webView!!.getUrl()
+        val currentUrl = currentWebView.url
         if (showingErrorPage || PDF_LOADER_URL == currentUrl || isErrorPageUrl(currentUrl)) {
             Toast.makeText(context, "Reader mode unavailable for this page", Toast.LENGTH_SHORT)
                 .show()
@@ -440,8 +423,11 @@ internal class CommentsWebViewController(
 
         val enableReaderMode = !readerModeEnabled
         readerModeDisabledForCurrentPage = !enableReaderMode
-        if (!startedLoading || TextUtils.isEmpty(currentUrl) || (webView!!.getProgress() < 100 && webViewLoadInProgress)) {
-            if (TextUtils.isEmpty(story!!.url)) {
+        if (!startedLoading || currentUrl.isNullOrEmpty() ||
+            (currentWebView.progress < 100 && webViewLoadInProgress)
+        ) {
+            val storyUrl = story?.url
+            if (storyUrl.isNullOrEmpty()) {
                 Toast.makeText(context, "Reader mode unavailable for this page", Toast.LENGTH_SHORT)
                     .show()
                 return
@@ -449,7 +435,7 @@ internal class CommentsWebViewController(
             readerModePending = true
             if (!startedLoading) {
                 startedLoading = true
-                loadUrl(story.url)
+                loadUrl(storyUrl)
             }
             Toast.makeText(
                 context,
@@ -471,10 +457,10 @@ internal class CommentsWebViewController(
     }
 
     private fun applyReaderMode(enable: Boolean, showFeedback: Boolean = true) {
-        val context = coordinator.context
-        if (!readerModeFeatureEnabled || webView == null || context == null || coordinator.view == null) {
-            return
-        }
+        if (!readerModeFeatureEnabled) return
+        val context = coordinator.context ?: return
+        val targetWebView = webView ?: return
+        if (coordinator.view == null) return
 
         val script = getReaderModeScript(context)
         if (TextUtils.isEmpty(script)) {
@@ -488,9 +474,8 @@ internal class CommentsWebViewController(
         val command = (script
                 + "\nHarmonicReaderMode.setTheme(" + getReaderModeThemeJson(context) + ");"
                 + "\nHarmonicReaderMode." + (if (enable) "enable" else "disable") + "();")
-        val targetWebView = webView
         val generation = webViewLoadGeneration
-        targetWebView!!.evaluateJavascript(command, ValueCallback { result: String? ->
+        targetWebView.evaluateJavascript(command, ValueCallback { result: String? ->
             val callbackContext = coordinator.context
             if (callbackContext == null || targetWebView !== webView || generation != webViewLoadGeneration || coordinator.view == null) {
                 return@ValueCallback
@@ -540,7 +525,7 @@ internal class CommentsWebViewController(
             return
         }
 
-        val script = getReaderModeScript(context!!)
+        val script = getReaderModeScript(checkNotNull(context))
         if (TextUtils.isEmpty(script)) {
             setReaderModeUnavailableNow()
             return
@@ -888,23 +873,22 @@ internal class CommentsWebViewController(
     }
 
     fun toggleDarkMode() {
-        if (webView == null) {
-            return
-        }
+        val currentWebView = webView ?: return
+        val settings = currentWebView.settings
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             WebSettingsCompat.setAlgorithmicDarkeningAllowed(
-                webView!!.getSettings(),
-                !WebSettingsCompat.isAlgorithmicDarkeningAllowed(webView!!.getSettings())
+                settings,
+                !WebSettingsCompat.isAlgorithmicDarkeningAllowed(settings)
             )
         } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
-            if (WebSettingsCompat.getForceDark(webView!!.getSettings()) == WebSettingsCompat.FORCE_DARK_ON) {
+            if (WebSettingsCompat.getForceDark(settings) == WebSettingsCompat.FORCE_DARK_ON) {
                 WebSettingsCompat.setForceDark(
-                    webView!!.getSettings(),
+                    settings,
                     WebSettingsCompat.FORCE_DARK_OFF
                 )
             } else {
                 WebSettingsCompat.setForceDark(
-                    webView!!.getSettings(),
+                    settings,
                     WebSettingsCompat.FORCE_DARK_ON
                 )
             }
@@ -923,33 +907,33 @@ internal class CommentsWebViewController(
             return
         }
 
-        webView = this.orInflateWebView
-        if (webView == null) {
-            return
-        }
+        val currentWebView = orInflateWebView ?: return
+        webView = currentWebView
         initializedWebView = true
 
         if (this.isBlockingAds && Utils.adservers.isEmpty) {
             Utils.loadAdservers(context.getResources())
         }
 
-        webView!!.setWebViewClient(MyWebViewClient())
+        currentWebView.webViewClient = MyWebViewClient()
 
-        webView!!.getSettings().setBuiltInZoomControls(true)
-        webView!!.getSettings().setDisplayZoomControls(false)
-        webView!!.getSettings().setJavaScriptEnabled(true)
-        webView!!.getSettings().setDomStorageEnabled(true)
-        webView!!.getSettings().setGeolocationEnabled(true)
-        webView!!.getSettings().setDatabaseEnabled(true)
-        webView!!.getSettings().setUseWideViewPort(true)
-        webView!!.getSettings().setLoadWithOverviewMode(true)
-        webView!!.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT)
+        currentWebView.settings.apply {
+            builtInZoomControls = true
+            displayZoomControls = false
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            setGeolocationEnabled(true)
+            databaseEnabled = true
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            cacheMode = WebSettings.LOAD_DEFAULT
+        }
 
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
-        cookieManager.setAcceptThirdPartyCookies(webView, true)
+        cookieManager.setAcceptThirdPartyCookies(currentWebView, true)
 
-        webView!!.setDownloadListener(object : DownloadListener {
+        currentWebView.setDownloadListener(object : DownloadListener {
             override fun onDownloadStart(
                 url: String, userAgent: String?,
                 contentDisposition: String?, mimetype: String?,
@@ -959,14 +943,14 @@ internal class CommentsWebViewController(
                         "https://"
                     ))
                 ) {
-                    downloadPdf(url, contentDisposition, mimetype, webView!!.getContext())
+                    downloadPdf(url, contentDisposition, mimetype, currentWebView.context)
                 } else {
                     showDownloadButton(url, contentDisposition, mimetype)
                 }
             }
         })
 
-        webView!!.setWebChromeClient(object : WebChromeClient() {
+        currentWebView.webChromeClient = object : WebChromeClient() {
             override fun onShowCustomView(view: View, callback: CustomViewCallback) {
                 if (coordinator.context == null || coordinator.view == null || fullscreenContainer == null || webViewContainer == null) {
                     callback.onCustomViewHidden()
@@ -982,26 +966,26 @@ internal class CommentsWebViewController(
             override fun onProgressChanged(view: WebView, newProgress: Int) {
                 updateWebViewProgress(view, newProgress)
             }
-        })
+        }
 
         if (matchWebviewTheme && ThemeUtils.isDarkMode(context)) {
             if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView!!.getSettings(), true)
+                WebSettingsCompat.setAlgorithmicDarkeningAllowed(currentWebView.settings, true)
             } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
                 WebSettingsCompat.setForceDark(
-                    webView!!.getSettings(),
+                    currentWebView.settings,
                     WebSettingsCompat.FORCE_DARK_ON
                 )
             }
         }
 
-        webView!!.setBackgroundColor(Color.TRANSPARENT)
+        currentWebView.setBackgroundColor(Color.TRANSPARENT)
 
         if (shouldPreloadStoryUrl(context) || showWebsite || linkPreviewController.shouldInitializeWebViewForPreview(
                 context
             )
         ) {
-            loadUrl(story!!.url)
+            loadUrl(story?.url)
             startedLoading = true
         }
     }
@@ -1032,12 +1016,12 @@ internal class CommentsWebViewController(
         webViewLoadUiSettled = false
         webViewLoadCommittedVisible = false
 
-        if (webViewBackdrop != null) {
-            webViewBackdrop!!.removeCallbacks(webViewBackdropFadeInRunnable)
-            webViewBackdrop!!.animate().cancel()
-            webViewBackdrop!!.setAlpha(0f)
-            webViewBackdrop!!.setVisibility(View.VISIBLE)
-            webViewBackdrop!!.postDelayed(webViewBackdropFadeInRunnable, 2000)
+        webViewBackdrop?.apply {
+            removeCallbacks(webViewBackdropFadeInRunnable)
+            animate().cancel()
+            alpha = 0f
+            visibility = View.VISIBLE
+            postDelayed(webViewBackdropFadeInRunnable, 2000)
         }
 
         showWebViewProgress(0)
@@ -1095,16 +1079,17 @@ internal class CommentsWebViewController(
 
         val current = currentProgressIndicator.getProgress()
         if (newProgress > current) {
-            progressAnimator = ValueAnimator.ofInt(current, newProgress)
-            progressAnimator!!.setDuration(400)
-            progressAnimator!!.addUpdateListener(AnimatorUpdateListener { anim: ValueAnimator? ->
+            val animator = ValueAnimator.ofInt(current, newProgress)
+            progressAnimator = animator
+            animator.duration = 400
+            animator.addUpdateListener(AnimatorUpdateListener { anim: ValueAnimator? ->
                 if (progressAnimator !== anim || progressIndicator !== currentProgressIndicator) {
                     return@AnimatorUpdateListener
                 }
-                val animatedValue = anim!!.getAnimatedValue() as Int
-                currentProgressIndicator.setProgress(animatedValue)
+                val animatedValue = checkNotNull(anim).animatedValue as Int
+                currentProgressIndicator.progress = animatedValue
             })
-            progressAnimator!!.start()
+            animator.start()
         } else {
             currentProgressIndicator.setProgress(newProgress)
         }
@@ -1140,14 +1125,12 @@ internal class CommentsWebViewController(
     }
 
     private fun hideWebViewLoadingBackdrop() {
-        if (webViewBackdrop == null) {
-            return
+        webViewBackdrop?.apply {
+            removeCallbacks(webViewBackdropFadeInRunnable)
+            animate().cancel()
+            visibility = View.GONE
+            alpha = 0f
         }
-
-        webViewBackdrop!!.removeCallbacks(webViewBackdropFadeInRunnable)
-        webViewBackdrop!!.animate().cancel()
-        webViewBackdrop!!.setVisibility(View.GONE)
-        webViewBackdrop!!.setAlpha(0f)
     }
 
     private fun showCustomErrorPage(
@@ -1155,12 +1138,17 @@ internal class CommentsWebViewController(
         failingUrl: String?,
         errorPageType: ErrorPageType
     ) {
-        if (!isCurrentWebViewCallback(view) || showingErrorPage || showingCachedArticlePage) {
+        val currentWebView = view
+        if (!isCurrentWebViewCallback(currentWebView) ||
+            currentWebView == null ||
+            showingErrorPage ||
+            showingCachedArticlePage
+        ) {
             return
         }
         linkPreviewController.onWebViewOfflineFallback(coordinator.context)
         if ((errorPageType == ErrorPageType.DNS || errorPageType == ErrorPageType.OFFLINE)
-            && loadCachedArticleSnapshot(view, failingUrl)
+            && loadCachedArticleSnapshot(currentWebView, failingUrl)
         ) {
             return
         }
@@ -1168,16 +1156,15 @@ internal class CommentsWebViewController(
             lastFailedWebViewUrl = failingUrl
         } else if (lastRequestedWebViewUrl != null) {
             lastFailedWebViewUrl = lastRequestedWebViewUrl
-        } else if (view!!.getUrl() != null && !TextUtils.isEmpty(view.getUrl()) && !isErrorPageUrl(
-                view.getUrl()
-            )
+        } else if (!currentWebView.url.isNullOrEmpty() &&
+            !isErrorPageUrl(currentWebView.url)
         ) {
-            lastFailedWebViewUrl = view.getUrl()
+            lastFailedWebViewUrl = currentWebView.url
         }
         retryingFailedWebViewUrl = false
-        view!!.stopLoading()
-        finishWebViewLoadUi(view, webViewLoadGeneration, false)
-        clearWebViewHistoryOnNextFinish = !view.canGoBack()
+        currentWebView.stopLoading()
+        finishWebViewLoadUi(currentWebView, webViewLoadGeneration, false)
+        clearWebViewHistoryOnNextFinish = !currentWebView.canGoBack()
         showingErrorPage = true
         showingCachedArticlePage = false
         loadUrl(getErrorPageUrl(errorPageType))
@@ -1197,9 +1184,11 @@ internal class CommentsWebViewController(
             (currentCustomView.getParent() as ViewGroup).removeView(currentCustomView)
         }
 
-        fullscreenContainer!!.removeAllViews()
-        fullscreenContainer!!.setVisibility(View.GONE)
-        webViewContainer!!.setVisibility(View.VISIBLE)
+        checkNotNull(fullscreenContainer).apply {
+            removeAllViews()
+            visibility = View.GONE
+        }
+        checkNotNull(webViewContainer).visibility = View.VISIBLE
         callbacks.onFullscreenChanged(false)
 
         setFullscreenSystemBarsHidden(false)
@@ -1213,7 +1202,7 @@ internal class CommentsWebViewController(
     }
 
     fun loadStoryUrl() {
-        loadUrl(story!!.url)
+        loadUrl(story?.url)
     }
 
     private fun showCustomView(view: View, callback: CustomViewCallback) {
@@ -1228,15 +1217,16 @@ internal class CommentsWebViewController(
             (view.getParent() as ViewGroup).removeView(view)
         }
 
-        fullscreenContainer!!.removeAllViews()
-        fullscreenContainer!!.addView(
+        val currentFullscreenContainer = checkNotNull(fullscreenContainer)
+        currentFullscreenContainer.removeAllViews()
+        currentFullscreenContainer.addView(
             view, FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
         )
-        fullscreenContainer!!.setVisibility(View.VISIBLE)
-        webViewContainer!!.setVisibility(View.GONE)
+        currentFullscreenContainer.visibility = View.VISIBLE
+        checkNotNull(webViewContainer).visibility = View.GONE
         callbacks.onFullscreenChanged(true)
 
         setFullscreenSystemBarsHidden(true)
@@ -1281,49 +1271,48 @@ internal class CommentsWebViewController(
     }
 
     private fun loadUrl(url: String?, pdfFilePath: String? = null) {
-        var url = url
-        var pdfFilePath = pdfFilePath
+        var targetUrl = url
+        var targetPdfFilePath = pdfFilePath
         var context = coordinator.context
         if (webView == null && integratedWebview) {
             initialize()
             context = coordinator.context
         }
-        if (webView == null || context == null || coordinator.view == null) {
-            return
-        }
-        if (TextUtils.isEmpty(url)) {
-            return
-        }
+        val targetWebView = webView ?: return
+        if (context == null || coordinator.view == null || targetUrl.isNullOrEmpty()) return
 
-        val archiveRedirectUrl = SettingsUtils.getArchiveRedirectUrl(context, url)
+        val archiveRedirectUrl = SettingsUtils.getArchiveRedirectUrl(context, targetUrl)
         if (archiveRedirectUrl != null) {
-            url = archiveRedirectUrl
+            targetUrl = archiveRedirectUrl
         }
 
-        if (PDF_LOADER_URL == url) {
-            pdfFilePath = if (!TextUtils.isEmpty(pdfFilePath)) pdfFilePath else currentPdfFilePath
-            if (TextUtils.isEmpty(pdfFilePath)) {
+        if (PDF_LOADER_URL == targetUrl) {
+            targetPdfFilePath = targetPdfFilePath
+                ?.takeUnless(String::isEmpty)
+                ?: currentPdfFilePath
+            if (targetPdfFilePath.isNullOrEmpty()) {
                 retryingFailedWebViewUrl = false
                 return
             }
         }
 
-        if (!isErrorPageUrl(url)) {
+        if (!isErrorPageUrl(targetUrl)) {
             showingErrorPage = false
             showingCachedArticlePage = false
             setReaderModeEnabled(false)
             readerModeDisabledForCurrentPage = false
-            lastRequestedWebViewUrl = url
-            if (PDF_LOADER_URL != url) {
+            lastRequestedWebViewUrl = targetUrl
+            if (PDF_LOADER_URL != targetUrl) {
                 currentPdfFilePath = null
             }
         }
-        if (PDF_LOADER_URL == url) {
-            currentPdfFilePath = pdfFilePath
+        if (PDF_LOADER_URL == targetUrl) {
+            val resolvedPdfFilePath = checkNotNull(targetPdfFilePath)
+            currentPdfFilePath = resolvedPdfFilePath
             setReaderModeUnavailableNow()
             clearPdfAndroidJavascriptBridge()
-            pdfAndroidJavascriptBridge = PdfAndroidJavascriptBridge(
-                pdfFilePath!!,
+            val bridge = PdfAndroidJavascriptBridge(
+                resolvedPdfFilePath,
                 object : PdfAndroidJavascriptBridge.Callbacks {
                     override fun onFailure() {
                     }
@@ -1331,27 +1320,28 @@ internal class CommentsWebViewController(
                     override fun onLoad() {
                     }
                 })
+            pdfAndroidJavascriptBridge = bridge
 
-            webView!!.addJavascriptInterface(
-                pdfAndroidJavascriptBridge!!,
+            targetWebView.addJavascriptInterface(
+                bridge,
                 "PdfAndroidJavascriptBridge"
             )
-            webView!!.setInitialScale(100)
-            webView!!.getSettings().setLoadWithOverviewMode(true)
-            webView!!.getSettings().setUseWideViewPort(true)
+            targetWebView.setInitialScale(100)
+            targetWebView.settings.loadWithOverviewMode = true
+            targetWebView.settings.useWideViewPort = true
         } else if (pdfAndroidJavascriptBridge != null) {
-            webView!!.removeJavascriptInterface("PdfAndroidJavascriptBridge")
+            targetWebView.removeJavascriptInterface("PdfAndroidJavascriptBridge")
             clearPdfAndroidJavascriptBridge()
         }
 
-        url = linkPreviewController.prepareWebViewLoad(context, webView, url.orEmpty())
-        if (TextUtils.isEmpty(url)) {
+        targetUrl = linkPreviewController.prepareWebViewLoad(context, targetWebView, targetUrl)
+        if (targetUrl.isEmpty()) {
             return
         }
-        beginWebViewLoad(webView!!, url)
-        updateReaderModeAvailabilityForLoadStart(url, webViewLoadGeneration)
-        webView!!.loadUrl(url)
-        if (isErrorPageUrl(url)) {
+        beginWebViewLoad(targetWebView, targetUrl)
+        updateReaderModeAvailabilityForLoadStart(targetUrl, webViewLoadGeneration)
+        targetWebView.loadUrl(targetUrl)
+        if (isErrorPageUrl(targetUrl)) {
             showingErrorPage = true
             showingCachedArticlePage = false
         }
@@ -1365,15 +1355,17 @@ internal class CommentsWebViewController(
             if (webViewContainer == null) {
                 return null
             }
-            webView = WebView(webViewContainer!!.getContext())
-            webView!!.setId(R.id.comments_webview)
-            attachWebView(webView!!)
-            return webView
+            val createdWebView = WebView(checkNotNull(webViewContainer).context).apply {
+                id = R.id.comments_webview
+            }
+            webView = createdWebView
+            attachWebView(createdWebView)
+            return createdWebView
         }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun attachWebView(view: WebView) {
-        if (webViewContainer == null) return
+        val container = webViewContainer ?: return
         view.setOnTouchListener(OnTouchListener { ignored: View?, event: MotionEvent? ->
             if (event == null) return@OnTouchListener false
             if (predictiveBackScrollFrozen) {
@@ -1392,9 +1384,9 @@ internal class CommentsWebViewController(
             }
             false
         })
-        webViewContainer!!.addView(
+        container.addView(
             view,
-            min(1, webViewContainer!!.getChildCount()),
+            min(1, container.childCount),
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -1425,10 +1417,11 @@ internal class CommentsWebViewController(
     }
 
     private fun showDownloadButton(url: String?, contentDisposition: String?, mimetype: String?) {
-        if (webView != null && downloadButton != null) {
-            webView!!.setVisibility(View.GONE)
-            downloadButton!!.setVisibility(View.VISIBLE)
-            downloadButton!!.setOnClickListener(object : View.OnClickListener {
+        val currentWebView = webView ?: return
+        val currentDownloadButton = downloadButton ?: return
+        currentWebView.visibility = View.GONE
+        currentDownloadButton.visibility = View.VISIBLE
+        currentDownloadButton.setOnClickListener(object : View.OnClickListener {
                 override fun onClick(view: View) {
                     try {
                         val request = DownloadManager.Request(Uri.parse(url))
@@ -1453,14 +1446,13 @@ internal class CommentsWebViewController(
                         Utils.launchInExternalBrowser(coordinator.requireActivity(), url.orEmpty())
                     }
                 }
-            })
-        }
+        })
     }
 
     fun requestSummary(onDone: Runnable) {
         if (webView == null || !startedLoading) {
             startedLoading = true
-            loadUrl(story!!.url)
+            loadUrl(story?.url)
         }
 
         if (webView == null) {
@@ -1475,8 +1467,9 @@ internal class CommentsWebViewController(
             SUMMARY_LOAD_TIMEOUT_MS
         )
 
-        if (!webViewLoadInProgress || webView!!.getProgress() >= 100) {
-            completePendingSummaryIfReady(webView)
+        val currentWebView = webView
+        if (!webViewLoadInProgress || (currentWebView?.progress ?: 0) >= 100) {
+            completePendingSummaryIfReady(currentWebView)
         }
     }
 
@@ -1521,7 +1514,7 @@ internal class CommentsWebViewController(
             return
         }
         pendingSummaryOnDone = null
-        story!!.summary = summary
+        story?.summary = summary
         webViewHandler.post(onDone)
     }
 
@@ -1537,18 +1530,18 @@ internal class CommentsWebViewController(
 
     private fun loadCachedArticleSnapshot(view: WebView?, failingUrl: String?): Boolean {
         val context = coordinator.context
-        if (view == null || context == null || coordinator.view == null || story == null || !story.isLink || story.id <= 0) {
-            return false
-        }
+        val currentStory = story
+        if (view == null || context == null || coordinator.view == null ||
+            currentStory == null || !currentStory.isLink || currentStory.id <= 0
+        ) return false
 
-        val html = Utils.loadCachedArticleSnapshot(context, story.id)
-        if (TextUtils.isEmpty(html)) {
-            return false
-        }
+        val html = Utils.loadCachedArticleSnapshot(context, currentStory.id)
+            ?.takeUnless(String::isEmpty)
+            ?: return false
 
-        var baseUrl = Utils.loadCachedArticleUrl(context, story.id)
+        var baseUrl = Utils.loadCachedArticleUrl(context, currentStory.id)
         if (TextUtils.isEmpty(baseUrl)) {
-            baseUrl = if (!TextUtils.isEmpty(failingUrl)) failingUrl else story.url
+            baseUrl = if (!TextUtils.isEmpty(failingUrl)) failingUrl else currentStory.url
         }
 
         lastFailedWebViewUrl = if (!TextUtils.isEmpty(failingUrl)) failingUrl else baseUrl
@@ -1558,7 +1551,7 @@ internal class CommentsWebViewController(
         view.stopLoading()
         clearWebViewHistoryOnNextFinish = true
         Toast.makeText(context, "Showing cached webview content", Toast.LENGTH_SHORT).show()
-        view.loadDataWithBaseURL(baseUrl, html!!, "text/html", "UTF-8", null)
+        view.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null)
         return true
     }
 
@@ -1609,10 +1602,8 @@ internal class CommentsWebViewController(
     }
 
     private fun clearPdfAndroidJavascriptBridge() {
-        if (pdfAndroidJavascriptBridge != null) {
-            pdfAndroidJavascriptBridge!!.cleanUp()
-            pdfAndroidJavascriptBridge = null
-        }
+        pdfAndroidJavascriptBridge?.cleanUp()
+        pdfAndroidJavascriptBridge = null
     }
 
     private fun restartWebView() {
@@ -1625,9 +1616,11 @@ internal class CommentsWebViewController(
         destroy()
 
         try {
-            webView = WebView(context)
-            webView!!.setId(R.id.comments_webview)
-            attachWebView(webView!!)
+            val recreatedWebView = WebView(context).apply {
+                id = R.id.comments_webview
+            }
+            webView = recreatedWebView
+            attachWebView(recreatedWebView)
             initialize()
         } catch (e: RuntimeException) {
             webView = null
@@ -1639,24 +1632,18 @@ internal class CommentsWebViewController(
     fun onDestroyView(rootView: View?) {
         hideCustomView(false)
 
-        if (rootView != null) {
-            rootView.removeCallbacks(this.initializeRunnable)
-        }
-        if (downloadButton != null) {
-            downloadButton!!.setOnClickListener(null)
-        }
-        if (webViewBackdrop != null) {
-            webViewBackdrop!!.removeCallbacks(webViewBackdropFadeInRunnable)
-            webViewBackdrop!!.animate().cancel()
+        rootView?.removeCallbacks(initializeRunnable)
+        downloadButton?.setOnClickListener(null)
+        webViewBackdrop?.apply {
+            removeCallbacks(webViewBackdropFadeInRunnable)
+            animate().cancel()
         }
         destroy()
     }
 
     private fun cancelProgressAnimator() {
-        if (progressAnimator != null) {
-            progressAnimator!!.cancel()
-            progressAnimator = null
-        }
+        progressAnimator?.cancel()
+        progressAnimator = null
     }
 
     fun clearViewReferences() {
@@ -1675,10 +1662,11 @@ internal class CommentsWebViewController(
     private inner class MyWebViewClient : WebViewClient() {
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
-            if (!isCurrentWebViewCallback(view)) {
+            val currentView = view
+            if (!isCurrentWebViewCallback(currentView) || currentView == null) {
                 return
             }
-            beginWebViewLoad(view!!, url)
+            beginWebViewLoad(currentView, url)
             if (!isErrorPageUrl(url)) {
                 setReaderModeEnabled(false)
                 readerModeDisabledForCurrentPage = false
@@ -1689,19 +1677,21 @@ internal class CommentsWebViewController(
 
         override fun onPageCommitVisible(view: WebView?, url: String?) {
             super.onPageCommitVisible(view, url)
-            if (!isCurrentWebViewCallback(view)) {
+            val currentView = view
+            if (!isCurrentWebViewCallback(currentView) || currentView == null) {
                 return
             }
             webViewLoadCommittedVisible = true
-            scheduleVisibleCommitSettle(view!!)
+            scheduleVisibleCommitSettle(currentView)
         }
 
         override fun onPageFinished(view: WebView?, url: String?) {
             super.onPageFinished(view, url)
-            if (!isCurrentWebViewCallback(view)) {
+            val currentView = view
+            if (!isCurrentWebViewCallback(currentView) || currentView == null) {
                 return
             }
-            finishWebViewLoadUi(view!!, webViewLoadGeneration, true)
+            finishWebViewLoadUi(currentView, webViewLoadGeneration, true)
 
             if (retryingFailedWebViewUrl) {
                 retryingFailedWebViewUrl = false
@@ -1711,12 +1701,12 @@ internal class CommentsWebViewController(
 
             if (clearWebViewHistoryOnNextFinish) {
                 clearWebViewHistoryOnNextFinish = false
-                view.post(Runnable {
-                    if (isCurrentWebViewCallback(view)) {
-                        view.clearHistory()
+                currentView.post {
+                    if (isCurrentWebViewCallback(currentView)) {
+                        currentView.clearHistory()
                         callbacks.syncOnBackPressedCallbackEnabledState()
                     }
-                })
+                }
             }
 
             linkPreviewController.onWebViewPageFinished(coordinator.context, view, url)

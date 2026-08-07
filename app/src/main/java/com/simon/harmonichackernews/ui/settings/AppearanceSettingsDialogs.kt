@@ -3,6 +3,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import android.text.format.DateFormat
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
@@ -44,7 +45,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -270,17 +270,17 @@ private fun ThemePreview(
     option: ComposeThemeOption,
     modifier: Modifier = Modifier,
 ) {
-    val palettes = themePreviewPalettes(option.value)
+    val (primaryPalette, secondaryPalette) = themePreviewPalettes(option.value)
     Box(
         modifier = modifier,
     ) {
         ThemePreviewLayer(
-            palette = palettes.second ?: palettes.first,
+            palette = secondaryPalette ?: primaryPalette,
             modifier = Modifier.fillMaxWidth().height(72.dp),
         )
-        if (palettes.second != null) {
+        if (secondaryPalette != null) {
             ThemePreviewLayer(
-                palette = palettes.first,
+                palette = primaryPalette,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(72.dp)
@@ -517,7 +517,7 @@ fun NighttimeRangeDialog(
     onRangeSelected: () -> Unit,
 ) {
     val context = LocalContext.current
-    val current = remember { Utils.getNighttimeHours(context) }
+    val current = remember(context) { Utils.getNighttimeHours(context) }
     val is24Hour = DateFormat.is24HourFormat(context)
     val fromState = rememberTimePickerState(
         initialHour = current[0],
@@ -897,7 +897,7 @@ private fun WelcomeStoryPreview(
 }
 
 private data class PalettePreviewSample(
-    val drawable: Int,
+    @DrawableRes val drawable: Int,
     val title: String,
     val meta: String,
 )
@@ -1211,7 +1211,7 @@ private fun PalettePreviewCard(
 ) {
     val context = LocalContext.current
     val baseColor = HarmonicTheme.colors.surfaceContainerHigh
-    val targetColor = remember(sample.drawable, configKey, baseColor) {
+    val targetColor = remember(context, sample.drawable, configKey, baseColor) {
         ContextCompat.getDrawable(context, sample.drawable)?.let { drawable ->
             runCatching {
                 Color(
