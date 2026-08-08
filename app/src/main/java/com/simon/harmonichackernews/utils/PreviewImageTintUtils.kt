@@ -8,8 +8,8 @@ import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.text.TextUtils
 import androidx.core.graphics.ColorUtils
-import androidx.palette.graphics.Palette
-import androidx.palette.graphics.Palette.Swatch
+import com.kmpalette.palette.graphics.Palette
+import com.kmpalette.palette.graphics.Palette.Swatch
 import com.google.android.material.color.MaterialColors
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
@@ -19,7 +19,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 object PreviewImageTintUtils {
-    private const val TINT_RESULT_VERSION = "worker-v3"
+    private const val TINT_RESULT_VERSION = "worker-v4-kmpalette"
     private const val TINT_SAMPLE_SIZE = 96
     private const val MIN_CHROMATIC_SOURCE_SATURATION = 0.05f
     private const val CARD_TINT_ALPHA_LIGHT = 0.24f
@@ -84,7 +84,9 @@ object PreviewImageTintUtils {
         }
 
         val paletteTintConfigKey = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
-        val palette = Palette.from(bitmap)
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        val palette = Palette.Builder(pixels, bitmap.width, bitmap.height)
             .maximumColorCount(16)
             .generate()
         val swatch = chooseCardTintSwatch(palette, paletteTintConfigKey)
@@ -97,7 +99,7 @@ object PreviewImageTintUtils {
             (if (darkBase) CARD_TINT_ALPHA_DARK else CARD_TINT_ALPHA_LIGHT)
                     * SettingsUtils.getPaletteTintStrengthMultiplier(paletteTintConfigKey)
         )
-        val hsl = swatch.getHsl()
+        val hsl = swatch.hsl
         var targetSaturation = clamp01(
             hsl[1] * SettingsUtils.getPaletteTintColorfulnessMultiplier(paletteTintConfigKey)
         )
@@ -304,43 +306,43 @@ object PreviewImageTintUtils {
     private fun chooseCardTintSwatch(palette: Palette, paletteTintMode: String?): Swatch? {
         when (SettingsUtils.sanitizePaletteTintMode(paletteTintMode)) {
             SettingsUtils.PALETTE_TINT_VIBRANT -> return firstSwatch(
-                palette.getVibrantSwatch(),
-                palette.getLightVibrantSwatch(),
-                palette.getDarkVibrantSwatch(),
-                palette.getDominantSwatch(),
-                palette.getMutedSwatch(),
-                palette.getLightMutedSwatch(),
-                palette.getDarkMutedSwatch()
+                palette.vibrantSwatch,
+                palette.lightVibrantSwatch,
+                palette.darkVibrantSwatch,
+                palette.dominantSwatch,
+                palette.mutedSwatch,
+                palette.lightMutedSwatch,
+                palette.darkMutedSwatch
             )
 
             SettingsUtils.PALETTE_TINT_DOMINANT -> return firstSwatch(
-                palette.getDominantSwatch(),
-                palette.getMutedSwatch(),
-                palette.getVibrantSwatch(),
-                palette.getLightMutedSwatch(),
-                palette.getLightVibrantSwatch(),
-                palette.getDarkMutedSwatch(),
-                palette.getDarkVibrantSwatch()
+                palette.dominantSwatch,
+                palette.mutedSwatch,
+                palette.vibrantSwatch,
+                palette.lightMutedSwatch,
+                palette.lightVibrantSwatch,
+                palette.darkMutedSwatch,
+                palette.darkVibrantSwatch
             )
 
             SettingsUtils.PALETTE_TINT_DEFAULT -> return firstSwatch(
-                palette.getMutedSwatch(),
-                palette.getLightMutedSwatch(),
-                palette.getDarkMutedSwatch(),
-                palette.getVibrantSwatch(),
-                palette.getLightVibrantSwatch(),
-                palette.getDarkVibrantSwatch(),
-                palette.getDominantSwatch()
+                palette.mutedSwatch,
+                palette.lightMutedSwatch,
+                palette.darkMutedSwatch,
+                palette.vibrantSwatch,
+                palette.lightVibrantSwatch,
+                palette.darkVibrantSwatch,
+                palette.dominantSwatch
             )
 
             else -> return firstSwatch(
-                palette.getMutedSwatch(),
-                palette.getLightMutedSwatch(),
-                palette.getDarkMutedSwatch(),
-                palette.getVibrantSwatch(),
-                palette.getLightVibrantSwatch(),
-                palette.getDarkVibrantSwatch(),
-                palette.getDominantSwatch()
+                palette.mutedSwatch,
+                palette.lightMutedSwatch,
+                palette.darkMutedSwatch,
+                palette.vibrantSwatch,
+                palette.lightVibrantSwatch,
+                palette.darkVibrantSwatch,
+                palette.dominantSwatch
             )
         }
     }

@@ -150,6 +150,12 @@ private val CommonLicensesAfterLocalAi = listOf(
         "MIT License",
         "https://github.com/fleeksoft/ksoup",
     ),
+    LicenseEntry(
+        "KMPalette",
+        "Jordan Dixon",
+        "Apache License 2.0",
+        "https://github.com/jordond/kmpalette",
+    ),
 )
 
 @Composable

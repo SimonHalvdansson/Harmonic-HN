@@ -241,7 +241,7 @@ dependencies {
     implementation(libs.coil.network.ktor3)
     implementation(libs.coil.svg)
     implementation(libs.ksoup)
-    implementation(libs.androidx.palette)
+    implementation(libs.kmpalette.androidx.palette)
     debugLLMImplementation(libs.mlkit.genai.summarization)
     debugLLMImplementation(libs.play.feature.delivery)
     debugLLMFastImplementation(libs.mlkit.genai.summarization)
