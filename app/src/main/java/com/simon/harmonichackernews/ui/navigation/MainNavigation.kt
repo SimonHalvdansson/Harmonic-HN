@@ -207,6 +207,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     private var captchaRequestSerial = 0
     private var userRequestSerial = 0
     private var currentSettingsSectionRoute: String? = null
+    private var settingsThemeChangedRequestSerial = -1
     private var settingsNeedsRestart = false
     private var storiesCoordinator: StoriesCoordinator? = null
     private var commentsCoordinator: CommentsCoordinator? = null
@@ -312,9 +313,15 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         currentSettingsSectionRoute = section.route
     }
 
-    internal fun getCurrentSettingsSectionRoute(): String? = currentSettingsSectionRoute
+    internal fun getInitialSettingsSectionRoute(request: MainSettingsRequest): String? =
+        if (settingsThemeChangedRequestSerial == request.serial) {
+            currentSettingsSectionRoute
+        } else {
+            request.initialSectionRoute
+        }
 
     internal fun onSettingsThemeChanged() {
+        settingsThemeChangedRequestSerial = settingsRequest?.serial ?: -1
         settingsNeedsRestart = true
         settingsThemeRevision++
     }
@@ -1088,10 +1095,8 @@ private fun MainNavigation(
                     key(request.serial, controller.settingsThemeRevision) {
                         HarmonicTheme {
                             SettingsShell(
-                                initialSection = (
-                                    controller.getCurrentSettingsSectionRoute()
-                                        ?: request.initialSectionRoute
-                                )
+                                initialSection = controller
+                                    .getInitialSettingsSectionRoute(request)
                                     ?.let(SettingsSection::fromRoute),
                                 onBackFromSettings = ::closeSettings,
                                 onSectionChanged = controller::updateSettingsSection,

@@ -114,6 +114,8 @@ private const val TransformDurationMillis = 280
 private const val PredictiveBackTranslationXDp = 56f
 private const val PredictiveBackTranslationYDp = 18f
 private const val TextStorySummaryMaxChars = 600
+private val StoryPreviewShape = RoundedCornerShape(28.dp)
+private val StoryPreviewShadowElevation = 8.dp
 
 @Composable
 internal fun StoryPreviewOverlay(controller: StoriesComposeController) {
@@ -277,24 +279,32 @@ internal fun StoryPreviewOverlay(controller: StoriesComposeController) {
                         .fillMaxWidth()
                         .then(
                             if (page == pagerState.currentPage) {
+                                Modifier.onGloballyPositioned {
+                                    targetBounds = it.boundsInWindow()
+                                }
+                            } else {
                                 Modifier
-                                    .onGloballyPositioned { targetBounds = it.boundsInWindow() }
-                                    .graphicsLayer {
-                                        val sharedScaleX = startScaleX + (1f - startScaleX) * progress
-                                        val sharedScaleY = startScaleY + (1f - startScaleY) * progress
-                                        val backScale = 1f - 0.1f * predictiveEased
-                                        scaleX = sharedScaleX * backScale
-                                        scaleY = sharedScaleY * backScale
-                                        translationX = startTranslationX * (1f - progress) + backTranslationX
-                                        translationY = startTranslationY * (1f - progress) + backTranslationY
-                                        alpha = if (sourceBounds == null) progress else max(0.7f, progress)
-                                        transformOrigin = TransformOrigin(
-                                            if (backDirection > 0f) 0f else 1f,
-                                            0.5f,
-                                        )
-                                    }
-                            } else Modifier
+                            },
                         )
+                        .graphicsLayer {
+                            shadowElevation = StoryPreviewShadowElevation.toPx()
+                            shape = StoryPreviewShape
+                            clip = false
+                            if (page == pagerState.currentPage) {
+                                val sharedScaleX = startScaleX + (1f - startScaleX) * progress
+                                val sharedScaleY = startScaleY + (1f - startScaleY) * progress
+                                val backScale = 1f - 0.1f * predictiveEased
+                                scaleX = sharedScaleX * backScale
+                                scaleY = sharedScaleY * backScale
+                                translationX = startTranslationX * (1f - progress) + backTranslationX
+                                translationY = startTranslationY * (1f - progress) + backTranslationY
+                                alpha = if (sourceBounds == null) progress else max(0.7f, progress)
+                                transformOrigin = TransformOrigin(
+                                    if (backDirection > 0f) 0f else 1f,
+                                    0.5f,
+                                )
+                            }
+                        }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -363,9 +373,9 @@ private fun StoryPreviewCard(
 
     Surface(
         modifier = modifier.animateContentSize(tween(220, easing = FastOutSlowInEasing)),
-        shape = RoundedCornerShape(28.dp),
+        shape = StoryPreviewShape,
         color = cardColor,
-        shadowElevation = 8.dp,
+        shadowElevation = 0.dp,
     ) {
         Column(
             modifier = Modifier
@@ -540,7 +550,6 @@ private fun StoryPreviewCard(
                             if (hasAccount) story.descendants.toString() else "Comments",
                             maxLines = 1,
                             overflow = TextOverflow.Clip,
-                            fontFamily = ProductSansFontFamily,
                             fontSize = 13.sp,
                         )
                     }
