@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.utils;
 
 import static androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -1572,6 +1573,11 @@ public class Utils {
 
     public static boolean isTablet(Resources res) {
         return res.getBoolean(R.bool.is_tablet);
+    }
+
+    @SuppressLint("InlinedApi")
+    public static boolean isFoldableDevice(Context context) {
+        return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE);
     }
 
     public static void openLinkMaybeHN(Context context, String href) {

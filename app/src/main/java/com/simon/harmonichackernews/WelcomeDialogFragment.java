@@ -115,7 +115,9 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
     @Override
     public void onStart() {
         super.onStart();
-        if (getActivity() instanceof DialogHostActivity) {
+        // On an unfolded foldable the dialog is shown across the whole wide window, so cap its
+        // width like the expanded dialog host used to
+        if (Utils.isFoldableDevice(requireContext())) {
             DialogWindowUtils.applyMaxWidth(getDialog());
         }
     }

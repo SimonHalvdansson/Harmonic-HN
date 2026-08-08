@@ -80,7 +80,6 @@ import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
-import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils;
 import com.simon.harmonichackernews.utils.SettingsUtils;
@@ -1783,7 +1782,7 @@ public class StoriesFragment extends Fragment {
         Context ctx = getContext();
         if (ctx == null
                 || !(getActivity() instanceof MainActivity)
-                || FoldableSplitInitializer.isFoldableSplitEnabled(ctx)
+                || Utils.isFoldableDevice(ctx)
                 || !Utils.isTablet(getResources())) {
             return 0;
         }
@@ -3117,8 +3116,10 @@ public class StoriesFragment extends Fragment {
     }
 
     private boolean isFoldableSplitLayout() {
+        // The stories list stays visible when a story is opened, so the link summary can stay too
         return isAdded()
-                && FoldableSplitInitializer.isFoldableSplitEnabled(requireContext());
+                && Utils.isFoldableDevice(requireContext())
+                && isTabletSplitLayout();
     }
 
     private boolean isTabletSplitLayout() {
