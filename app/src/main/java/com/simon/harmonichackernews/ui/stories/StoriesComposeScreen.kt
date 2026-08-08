@@ -94,6 +94,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -103,7 +104,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -292,6 +292,7 @@ class StoriesComposeController private constructor(
 
     private var requestSerial = 0
     private val storyBounds = mutableMapOf<Int, Rect>()
+    private val storyItemHeights = mutableMapOf<Int, Int>()
     private val storyRevisions = mutableMapOf<Int, MutableIntState>()
     private val suppressedStoryIds = mutableStateOf<Set<Int>>(emptySet())
 
@@ -402,6 +403,7 @@ class StoriesComposeController private constructor(
             searchStories.forEach { add(it.id) }
         }
         storyRevisions.keys.retainAll(currentStoryIds)
+        storyItemHeights.keys.retainAll(currentStoryIds)
         contentVersion++
     }
 
@@ -667,18 +669,14 @@ class StoriesComposeController private constructor(
         val start = minOf(first, second)
         val end = maxOf(first, second)
         return (start until end).sumOf { index ->
-            storyBounds[activeStories[index].id]
-                ?.height
-                ?.roundToInt()
+            storyItemHeights[activeStories[index].id]
                 ?.coerceAtLeast(1)
                 ?: averageStoryHeight()
         }
     }
 
     private fun averageStoryHeight(): Int {
-        val heights = storyBounds.values.mapNotNull { bounds ->
-            bounds.height.roundToInt().takeIf { height -> height > 0 }
-        }
+        val heights = storyItemHeights.values.filter { it > 0 }
         return if (heights.isEmpty()) {
             defaultStoryHeightPx
         } else {
@@ -689,6 +687,11 @@ class StoriesComposeController private constructor(
     internal fun updateStoryBounds(storyId: Int, bounds: Rect) {
         if (bounds.width <= 0f || bounds.height <= 0f) return
         if (storyBounds[storyId] != bounds) storyBounds[storyId] = bounds
+    }
+
+    internal fun updateStoryItemHeight(storyId: Int, heightPx: Int) {
+        if (heightPx <= 0) return
+        if (storyItemHeights[storyId] != heightPx) storyItemHeights[storyId] = heightPx
     }
 
     internal fun isStorySuppressed(storyId: Int): Boolean = storyId in suppressedStoryIds.value
@@ -885,10 +888,13 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
             exit = fadeOut(tween(140, easing = StoriesEasing)),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .zIndex(2f)
                 .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp),
         ) {
             ExtendedFloatingActionButton(
                 onClick = controller.listener::onRefresh,
+                containerColor = HarmonicTheme.colors.overlayButton,
+                contentColor = Color.White,
                 icon = {
                     Icon(painterResource(R.drawable.ic_refresh), contentDescription = null)
                 },
@@ -1070,20 +1076,23 @@ private fun StoriesList(
                     key = { _, story -> "${if (searchMode) "search" else "main"}-${story.id}" },
                     contentType = { _, story -> if (story.isComment) "comment" else "story" },
                 ) { index, story ->
+                    val itemBoundsModifier = Modifier.onGloballyPositioned { bounds ->
+                        controller.updateStoryItemHeight(story.id, bounds.size.height)
+                    }
                     if (story.isComment) {
                         SavedCommentStoryItem(
                             story = story,
                             settings = settings,
                             onStory = { controller.listener.onCommentStoryClick(story) },
                             onReplies = { controller.listener.onCommentRepliesClick(story) },
-                            modifier = Modifier.animateItem(),
+                            modifier = Modifier.animateItem().then(itemBoundsModifier),
                         )
                     } else if (!story.loaded && !story.loadingFailed) {
-                        StoryLoadingItem(modifier = Modifier.animateItem())
+                        StoryLoadingItem(modifier = Modifier.animateItem().then(itemBoundsModifier))
                     } else {
                         val pagingAlpha = controller.storyPagingAlphas[story.id] ?: 1f
                         val suppressed = controller.isStorySuppressed(story.id)
-                        var revealed by remember(story.id) { mutableStateOf(false) }
+                        var revealed by rememberSaveable(story.id) { mutableStateOf(false) }
                         LaunchedEffect(story.id) { revealed = true }
                         val revealAlpha by animateFloatAsState(
                             targetValue = if (revealed) 1f else 0f,
@@ -1103,24 +1112,26 @@ private fun StoriesList(
                             .graphicsLayer(
                                 alpha = (if (suppressed) 0f else pagingAlpha) * revealAlpha,
                             )
-                        StoryItem(
-                            model = model,
-                            style = style,
-                            modifier = itemModifier,
-                            listItem = true,
-                            onLinkClick = { controller.listener.onLinkClick(story) },
-                            onLinkLongClick = { controller.listener.onStoryLongClick(story) },
-                            onCommentClick = { controller.listener.onCommentClick(story) },
-                            onBoundsChanged = { bounds ->
-                                controller.updateStoryBounds(story.id, bounds)
-                            },
-                            onPreviewLoadFailed = {
-                                if (!story.previewImageLoadFailed) {
-                                    story.previewImageLoadFailed = true
-                                    controller.invalidateStory(story.id)
-                                }
-                            },
-                        )
+                        Box(modifier = itemBoundsModifier) {
+                            StoryItem(
+                                model = model,
+                                style = style,
+                                modifier = itemModifier,
+                                listItem = true,
+                                onLinkClick = { controller.listener.onLinkClick(story) },
+                                onLinkLongClick = { controller.listener.onStoryLongClick(story) },
+                                onCommentClick = { controller.listener.onCommentClick(story) },
+                                onBoundsChanged = { bounds ->
+                                    controller.updateStoryBounds(story.id, bounds)
+                                },
+                                onPreviewLoadFailed = {
+                                    if (!story.previewImageLoadFailed) {
+                                        story.previewImageLoadFailed = true
+                                        controller.invalidateStory(story.id)
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
 

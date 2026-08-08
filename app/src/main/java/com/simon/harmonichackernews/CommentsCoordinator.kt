@@ -27,6 +27,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.preference.PreferenceManager
 import androidx.webkit.WebViewFeature
+import com.android.volley.DefaultRetryPolicy
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.VolleyError
@@ -1901,40 +1902,70 @@ class CommentsCoordinator(
         for (optionId in pollOptionIds) {
             val pollOption = PollOption()
             pollOption.loaded = false
+            pollOption.loadFailed = false
             pollOption.id = optionId
             story!!.pollOptionArrayList!!.add(pollOption)
         }
 
-        for (optionId in pollOptionIds) {
-            val url = "https://hacker-news.firebaseio.com/v0/item/" + optionId + ".json"
+        loadNextPollOption(pollOptionIds, 0)
+    }
 
-            val stringRequest = StringRequest(
-                Request.Method.GET, url,
-                com.android.volley.Response.Listener { response: String? ->
-                    if (!this.isCommentsViewActive) {
-                        return@Listener
-                    }
-                    try {
-                        for (pollOption in story!!.pollOptionArrayList.orEmpty()) {
-                            if (pollOption.id == optionId) {
-                                pollOption.loaded = true
-
-                                val jsonObject = JSONObject(response ?: return@Listener)
-                                pollOption.points = jsonObject.getInt("score")
-                                pollOption.text =
-                                    JSONParser.preprocessHtml(jsonObject.getString("text"))
-
-                                notifyHeaderChanged()
-                            }
-                        }
-                    } catch (e: JSONException) {
-                        e.printStackTrace()
-                    }
-                }, com.android.volley.Response.ErrorListener { error: VolleyError? -> })
-
-            stringRequest.setTag(requestTag)
-            queue!!.add<String?>(stringRequest)
+    private fun loadNextPollOption(pollOptionIds: IntArray, index: Int) {
+        if (!this.isCommentsViewActive || queue == null || index >= pollOptionIds.size) {
+            return
         }
+
+        val optionId = pollOptionIds[index]
+        val url = "https://hacker-news.firebaseio.com/v0/item/" + optionId + ".json"
+        val stringRequest = StringRequest(
+            Request.Method.GET, url,
+            com.android.volley.Response.Listener { response: String? ->
+                if (!this.isCommentsViewActive) {
+                    return@Listener
+                }
+
+                val pollOption = story!!.pollOptionArrayList
+                    ?.firstOrNull { it.id == optionId }
+                if (pollOption != null) {
+                    try {
+                        val jsonObject = JSONObject(response ?: "")
+                        val text = JSONParser.preprocessHtml(jsonObject.getString("text"))
+                        if (text.isNullOrBlank()) {
+                            throw JSONException("Poll option text is empty")
+                        }
+                        pollOption.points = jsonObject.getInt("score")
+                        pollOption.text = text
+                        pollOption.loaded = true
+                    } catch (e: JSONException) {
+                        pollOption.loadFailed = true
+                        Log.w(TAG, "Poll option response was invalid for id=$optionId", e)
+                    }
+                    notifyHeaderChanged()
+                }
+                loadNextPollOption(pollOptionIds, index + 1)
+            }, com.android.volley.Response.ErrorListener { error: VolleyError? ->
+                if (!this.isCommentsViewActive) {
+                    return@ErrorListener
+                }
+
+                story!!.pollOptionArrayList
+                    ?.firstOrNull { it.id == optionId }
+                    ?.loadFailed = true
+                Log.w(
+                    TAG,
+                    "Poll option request failed for id=$optionId: ${error?.message}",
+                )
+                notifyHeaderChanged()
+                loadNextPollOption(pollOptionIds, index + 1)
+            },
+        )
+        stringRequest.retryPolicy = DefaultRetryPolicy(
+            10000,
+            2,
+            DefaultRetryPolicy.DEFAULT_BACKOFF_MULT,
+        )
+        stringRequest.setTag(requestTag)
+        queue!!.add<String?>(stringRequest)
     }
 
     private fun handleJsonResponse(

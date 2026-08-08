@@ -162,7 +162,9 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
                 return@progressTask
             }
             isProgressVisible = false
-            resetProgressState()
+            // Keep the completed status while AnimatedVisibility runs its exit animation. The
+            // content remains composed during that animation, so resetting it here would briefly
+            // replace "Finished" with "Caching stories" before the progress block is hidden.
             callbacks.onCacheProgressChanged()
         }, CACHE_PROGRESS_FINISHED_HOLD_MS)
     }

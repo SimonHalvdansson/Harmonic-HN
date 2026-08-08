@@ -107,6 +107,7 @@ import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.min
 
 private const val TransformDurationMillis = 280
 private const val PredictiveBackTranslationXDp = 56f
@@ -175,12 +176,32 @@ internal fun StoryPreviewOverlay(controller: StoriesComposeController) {
 
             val delta = position - lastPagerPosition
             if (delta != 0f && state.stories.size > 1) {
-                val segment = if (delta > 0f) lower else (ceil(position).toInt() - 1)
-                    .coerceAtLeast(0)
-                    .coerceAtMost(state.stories.lastIndex - 1)
-                val first = state.stories[segment]
-                val second = state.stories[segment + 1]
-                pendingListScroll += delta * controller.getStoryPagingDistance(first.id, second.id)
+                var cursor = lastPagerPosition
+                if (position > lastPagerPosition) {
+                    while (cursor < position) {
+                        val segment = floor(cursor).toInt()
+                            .coerceAtLeast(0)
+                            .coerceAtMost(state.stories.lastIndex - 1)
+                        val end = min(position, segment + 1f)
+                        val first = state.stories[segment]
+                        val second = state.stories[segment + 1]
+                        pendingListScroll += (end - cursor) *
+                            controller.getStoryPagingDistance(first.id, second.id)
+                        cursor = end
+                    }
+                } else {
+                    while (cursor > position) {
+                        val segment = (ceil(cursor).toInt() - 1)
+                            .coerceAtLeast(0)
+                            .coerceAtMost(state.stories.lastIndex - 1)
+                        val end = max(position, segment.toFloat())
+                        val first = state.stories[segment]
+                        val second = state.stories[segment + 1]
+                        pendingListScroll += (end - cursor) *
+                            controller.getStoryPagingDistance(first.id, second.id)
+                        cursor = end
+                    }
+                }
                 val wholePixels = if (pendingListScroll > 0f) {
                     floor(pendingListScroll).toInt()
                 } else {

@@ -133,7 +133,6 @@ import coil.compose.AsyncImage
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Comment
-import com.simon.harmonichackernews.data.PollOption
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
@@ -1520,6 +1519,17 @@ private fun CommentsHeader(
     // Story is a mutable Java model. Network link previews, votes, summaries, and image metadata
     // update that instance in place, so include the bridge revision in the snapshot key.
     val story = remember(controller.story, contentVersion) { controller.story }
+    val pollOptions = remember(story.pollOptionArrayList, contentVersion) {
+        story.pollOptionArrayList?.map { option ->
+            PollOptionUi(
+                id = option.id,
+                loaded = option.loaded,
+                loadFailed = option.loadFailed,
+                text = option.text,
+                points = option.points,
+            )
+        }
+    }
     val storyPosterTag = remember(story.by, contentVersion) {
         Utils.getUserTag(context, story.by)
     }
@@ -1726,7 +1736,7 @@ private fun CommentsHeader(
                                     },
                                 )
                                 LinkPreviewContent(story, contentVersion, settings)
-                                PollOptions(story.pollOptionArrayList, controller.listener::onPollOption)
+                                PollOptions(pollOptions, controller.listener::onPollOption)
                                 StorySummary(story, settings)
                                 HeaderMeta(story, settings, storyPosterTag)
                             }
@@ -2578,7 +2588,7 @@ private fun PreviewCompactInfo(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun PollOptions(options: List<PollOption>?, onVote: (Int) -> Unit) {
+private fun PollOptions(options: List<PollOptionUi>?, onVote: (Int) -> Unit) {
     if (options == null) return
     Column(
         modifier = Modifier
@@ -2595,6 +2605,14 @@ private fun PollOptions(options: List<PollOption>?, onVote: (Int) -> Unit) {
                 ) {
                     Text("${option.text} (${option.points} ${if (option.points == 1) "point" else "points"})")
                 }
+            } else if (option.loadFailed) {
+                Text(
+                    "Unable to load this option",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    color = HarmonicTheme.colors.textSecondary,
+                )
             } else {
                 LoadingIndicator(
                     modifier = Modifier
@@ -2605,6 +2623,14 @@ private fun PollOptions(options: List<PollOption>?, onVote: (Int) -> Unit) {
         }
     }
 }
+
+private data class PollOptionUi(
+    val id: Int,
+    val loaded: Boolean,
+    val loadFailed: Boolean,
+    val text: String?,
+    val points: Int,
+)
 
 @Composable
 private fun StorySummary(
