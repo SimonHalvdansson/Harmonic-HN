@@ -4,9 +4,16 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
-import coil.Coil.imageLoader
-import coil.request.ImageRequest
-import coil.target.ImageViewTarget
+import coil3.Image
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.request.crossfade
+import coil3.request.error
+import coil3.request.fallback
+import coil3.request.placeholder
+import coil3.request.target
+import coil3.target.ImageViewTarget
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.utils.SettingsUtils
@@ -74,20 +81,20 @@ object FaviconLoader {
             .fallback(webDrawable)
             .crossfade(fadeIn)
             .target(object : ImageViewTarget(into) {
-                override fun onStart(placeholder: Drawable?) {
+                override fun onStart(placeholder: Image?) {
                     if (faviconUrl == into.getTag(R.id.favicon_request_url)) {
                         super.onStart(placeholder)
                     }
                 }
 
-                override fun onError(error: Drawable?) {
+                override fun onError(error: Image?) {
                     if (faviconUrl == into.getTag(R.id.favicon_request_url)) {
                         into.setTag(R.id.favicon_request_url, null)
                         super.onError(error)
                     }
                 }
 
-                override fun onSuccess(result: Drawable) {
+                override fun onSuccess(result: Image) {
                     if (faviconUrl == into.getTag(R.id.favicon_request_url)) {
                         super.onSuccess(result)
                     }
@@ -95,7 +102,7 @@ object FaviconLoader {
             })
             .build()
 
-        imageLoader(ctx).enqueue(request)
+        ctx.imageLoader.enqueue(request)
     }
 
     private fun applyFaviconThumbnailShape(into: ImageView) {

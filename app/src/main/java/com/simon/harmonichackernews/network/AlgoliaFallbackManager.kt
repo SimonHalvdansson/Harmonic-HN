@@ -2,13 +2,6 @@ package com.simon.harmonichackernews.network
 
 import android.content.Context
 import android.util.Log
-import com.android.volley.DefaultRetryPolicy
-import com.android.volley.Request
-import com.android.volley.RequestQueue
-import com.android.volley.Response
-import com.android.volley.TimeoutError
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.StringRequest
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.HNAPICommentLoader.CommentLoadListener
@@ -50,14 +43,14 @@ class AlgoliaFallbackManager(
         val url = "https://hn.algolia.com/api/v1/items/" + storyId
 
         val request = StringRequest(
-            Request.Method.GET, url,
-            Response.Listener { response: String? ->
+            QueueRequest.Method.GET, url,
+            QueueResponse.Listener { response: String? ->
                 listener.onAlgoliaSuccess(response)
             },
-            Response.ErrorListener { error: VolleyError? ->
+            QueueResponse.ErrorListener { error: NetworkError? ->
                 Log.w(
                     TAG,
-                    "Algolia request failed for storyId=" + storyId + ": " + VolleyErrorUtils.describe(
+                    "Algolia request failed for storyId=" + storyId + ": " + NetworkErrorUtils.describe(
                         error
                     ),
                     error
@@ -66,7 +59,7 @@ class AlgoliaFallbackManager(
                 val networkResponse = error?.networkResponse
                 if ((networkResponse != null &&
                         (networkResponse.statusCode == 404 || networkResponse.statusCode >= 500)
-                    ) || error is TimeoutError
+                    ) || error is NetworkTimeoutError
                 ) {
                     Log.d(TAG, "Falling back to HN API for storyId=" + storyId)
                     loadWithHNAPI(storyId)
@@ -76,7 +69,7 @@ class AlgoliaFallbackManager(
                 }
             })
 
-        request.setTag(requestTag)
+        request.tag = requestTag
         request.setRetryPolicy(
             DefaultRetryPolicy(
                 15000,
@@ -91,8 +84,8 @@ class AlgoliaFallbackManager(
         val url = "https://hacker-news.firebaseio.com/v0/item/" + storyId + ".json"
 
         val request = StringRequest(
-            Request.Method.GET, url,
-            Response.Listener { response: String? ->
+            QueueRequest.Method.GET, url,
+            QueueResponse.Listener { response: String? ->
                 val story = Story()
                 if (JSONParser.updateStoryWithOfficialHNResponse(story, response)) {
                     Log.d(
@@ -118,10 +111,10 @@ class AlgoliaFallbackManager(
                     listener.onHNAPIFailed()
                 }
             },
-            Response.ErrorListener { error: VolleyError? ->
+            QueueResponse.ErrorListener { error: NetworkError? ->
                 Log.w(
                     TAG,
-                    "HN API story request failed for storyId=" + storyId + ": " + VolleyErrorUtils.describe(
+                    "HN API story request failed for storyId=" + storyId + ": " + NetworkErrorUtils.describe(
                         error
                     ),
                     error
@@ -129,7 +122,7 @@ class AlgoliaFallbackManager(
                 listener.onHNAPIFailed()
             })
 
-        request.setTag(requestTag)
+        request.tag = requestTag
         request.setRetryPolicy(
             DefaultRetryPolicy(
                 15000,

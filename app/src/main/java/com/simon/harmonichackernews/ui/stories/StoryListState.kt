@@ -3,15 +3,19 @@ package com.simon.harmonichackernews.ui.stories
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.Drawable
-import coil.Coil.imageLoader
-import coil.request.Disposable
-import coil.request.ImageRequest
-import coil.target.Target
+import coil3.Image
+import coil3.asDrawable
+import coil3.imageLoader
+import coil3.request.Disposable
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.target.Target
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader.getFaviconUrl
 import com.simon.harmonichackernews.network.LinkSummaryLoader
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.PreviewContentCallback
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.PreviewImageRequest
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.getCachedLinkSummary
@@ -361,11 +365,11 @@ class StoryListState(
             Utils.pxFromDpInt(context.resources, 54f)
         val request = ImageRequest.Builder(context)
             .data(imageUrl)
-            .setHeader("User-Agent", NetworkComponent.USER_AGENT)
+            .networkHeader("User-Agent", NetworkComponent.USER_AGENT)
             .size(width, height)
             .allowHardware(!tintCardUsingPreview)
             .target(object : Target {
-                override fun onError(error: Drawable?) {
+                override fun onError(error: Image?) {
                     imagePrefetches.remove(story)
                     story.previewImageLoading = false
                     if (story.previewImageUrl == imageUrl) {
@@ -376,19 +380,20 @@ class StoryListState(
                     }
                 }
 
-                override fun onSuccess(result: Drawable) {
+                override fun onSuccess(result: Image) {
+                    val drawable = result.asDrawable(context.resources)
                     imagePrefetches.remove(story)
                     story.previewImageLoading = false
                     story.previewImageLoaded = true
                     story.previewImageLoadFailed = false
-                    StoryPreviewImageMemoryCache.put(story.id, imageUrl, result)
-                    requestTint(context, story, imageUrl, result, false)
+                    StoryPreviewImageMemoryCache.put(story.id, imageUrl, drawable)
+                    requestTint(context, story, imageUrl, drawable, false)
                     cachePreviewState(context, story)
                     notifyChanged(story)
                 }
             })
             .build()
-        val disposable = imageLoader(context).enqueue(request)
+        val disposable = context.imageLoader.enqueue(request)
         if (story.previewImageLoading) {
             imagePrefetches[story] = disposable
         }
@@ -422,17 +427,23 @@ class StoryListState(
             .size(size, size)
             .allowHardware(false)
             .target(object : Target {
-                override fun onError(error: Drawable?) {
+                override fun onError(error: Image?) {
                     story.faviconTintColorLoading = false
                     story.faviconTintColorLoadFailed = true
                 }
 
-                override fun onSuccess(result: Drawable) {
-                    requestTint(context, story, faviconUrl, result, true)
+                override fun onSuccess(result: Image) {
+                    requestTint(
+                        context,
+                        story,
+                        faviconUrl,
+                        result.asDrawable(context.resources),
+                        true,
+                    )
                 }
             })
             .build()
-        imageLoader(context).enqueue(request)
+        context.imageLoader.enqueue(request)
     }
 
     private fun requestTint(

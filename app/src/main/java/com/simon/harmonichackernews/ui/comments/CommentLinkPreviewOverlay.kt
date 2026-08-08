@@ -84,12 +84,15 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.asDrawable
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.LinkSummaryLoader
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -552,7 +555,7 @@ private fun ReferencePreviewImage(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(imageUrl)
-                    .setHeader("User-Agent", NetworkComponent.USER_AGENT)
+                    .networkHeader("User-Agent", NetworkComponent.USER_AGENT)
                     .crossfade(true)
                     .build(),
                 contentDescription = stringResource(
@@ -565,7 +568,7 @@ private fun ReferencePreviewImage(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = if (expanded) ContentScale.Fit else ContentScale.Crop,
                 onSuccess = { success ->
-                    val drawable = success.result.drawable
+                    val drawable = success.result.image.asDrawable(context.resources)
                     if (drawable.intrinsicWidth > 0 && drawable.intrinsicHeight > 0) {
                         onImageRatio(drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight)
                     }
@@ -737,7 +740,7 @@ private fun ImageOnlyPreviewCard(state: CommentLinkPreviewOverlayState.Image) {
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(state.imageUrl)
-                .setHeader("User-Agent", NetworkComponent.USER_AGENT)
+                .networkHeader("User-Agent", NetworkComponent.USER_AGENT)
                 .build(),
             contentDescription = state.description,
             modifier = Modifier
@@ -745,7 +748,7 @@ private fun ImageOnlyPreviewCard(state: CommentLinkPreviewOverlayState.Image) {
                 .aspectRatio(imageRatio.coerceIn(0.35f, 4f)),
             contentScale = ContentScale.Fit,
             onSuccess = { success ->
-                val drawable = success.result.drawable
+                val drawable = success.result.image.asDrawable(context.resources)
                 if (drawable.intrinsicWidth > 0 && drawable.intrinsicHeight > 0) {
                     imageRatio = drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight
                 }

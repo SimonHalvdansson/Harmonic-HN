@@ -47,7 +47,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
-import okhttp3.Response
+import com.simon.harmonichackernews.network.HttpResponse
 
 private const val HackerNewsLoginUrl = "https://news.ycombinator.com/login"
 
@@ -71,7 +71,7 @@ fun LoginDialog(
     val captchaCancelled = stringResource(R.string.login_dialog_captcha_cancelled)
     val credentialsValid = username.isNotBlank() && password.isNotEmpty()
 
-    fun finishLogin(response: Response) {
+    fun finishLogin(response: HttpResponse) {
         response.close()
         loading = false
         Utils.toast(loginSuccess, context)
@@ -93,7 +93,7 @@ fun LoginDialog(
             challenge,
             response,
             object : UserActions.ActionCallback {
-                override fun onSuccess(response: Response) = finishLogin(response)
+                override fun onSuccess(response: HttpResponse) = finishLogin(response)
 
                 override fun onFailure(summary: String?, response: String?) = failLogin()
 
@@ -113,7 +113,7 @@ fun LoginDialog(
         UserActions.login(
             context,
             object : UserActions.ActionCallback {
-                override fun onSuccess(response: Response) = finishLogin(response)
+                override fun onSuccess(response: HttpResponse) = finishLogin(response)
 
                 override fun onFailure(summary: String?, response: String?) = failLogin()
 

@@ -15,9 +15,9 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.util.Pair
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstance
-import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstanceWithCookies
-import com.simon.harmonichackernews.network.NetworkComponent.resetOkHttpClientCookieInstance
+import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
+import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstanceWithCookies
+import com.simon.harmonichackernews.network.NetworkComponent.resetHttpClientCookieInstance
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.io.IOException
@@ -25,18 +25,18 @@ import java.util.Objects
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import kotlin.Triple
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.FormBody
-import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
 import org.jetbrains.annotations.NotNull
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Document
+import com.fleeksoft.ksoup.nodes.Element
+
+private typealias Call = HttpCall
+private typealias Callback = HttpCallback
+private typealias HttpUrl = NetworkUrl
+private typealias Request = HttpRequest
+private typealias Response = HttpResponse
+
+private fun String.toHttpUrlOrNull(): HttpUrl? = toNetworkUrlOrNull()
 
 object UserActions {
     private const val BASE_WEB_URL = "https://news.ycombinator.com"
@@ -273,7 +273,7 @@ object UserActions {
 
         val main = MAIN_HANDLER
         UserActions.fetchStoryListPage(
-            okHttpClientInstance,
+            httpClientInstance,
             UserActions.buildStoryListUrl(path.orEmpty(), day),
             listName,
             commentsPage,
@@ -296,7 +296,7 @@ object UserActions {
 
         val main = MAIN_HANDLER
         UserActions.fetchStoryListPage(
-            okHttpClientInstance,
+            httpClientInstance,
             url.orEmpty(),
             listName,
             commentsPage,
@@ -316,11 +316,11 @@ object UserActions {
 
     fun fetchHackerNewsListLinks(ctx: Context, cb: StoryRowsCallback) {
         val main = MAIN_HANDLER
-        val request: Request = Request.Builder()
+        val request: Request = HttpRequest.Builder()
             .url(buildStoryListUrl("lists"))
             .build()
 
-        okHttpClientInstance.newCall(request).enqueue(object : Callback {
+        httpClientInstance.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 main.post(Runnable { cb.onFailure("Couldn't fetch HN lists", e.message) })
             }
@@ -335,7 +335,7 @@ object UserActions {
 
                 try {
                     val body = if (response.body == null) "" else response.body.string()
-                    val document = Jsoup.parse(body, BASE_WEB_URL + "/")
+                    val document = Ksoup.parse(body, baseUri = BASE_WEB_URL + "/")
                     val linkRows = parseHackerNewsListLinks(document)
                     main.post(Runnable { cb.onSuccess(linkRows) })
                 } catch (e: Exception) {
@@ -417,14 +417,14 @@ object UserActions {
     }
 
     private fun fetchStoryListPage(
-        client: OkHttpClient,
+        client: KtorHttpClient,
         url: String,
         listName: String?,
         commentsPage: Boolean,
         main: Handler,
         cb: StoryListCallback
     ) {
-        val request = Request.Builder()
+        val request = HttpRequest.Builder()
             .url(url)
             .build()
 
@@ -445,7 +445,7 @@ object UserActions {
                     val itemIds = ArrayList<Int>()
                     val commentIds = ArrayList<Int>()
                     val body = if (response.body == null) "" else response.body.string()
-                    val document = Jsoup.parse(body, BASE_WEB_URL + "/")
+                    val document = Ksoup.parse(body, baseUri = BASE_WEB_URL + "/")
                     addHackerNewsItemIds(document, itemIds, commentIds, commentsPage)
 
                     val moreLink = document.selectFirst("a.morelink[href]")
@@ -477,9 +477,9 @@ object UserActions {
         val main = MAIN_HANDLER
         val fetch = Runnable {
             val client = if (loginRequired)
-                okHttpClientInstanceWithCookies
+                httpClientInstanceWithCookies
             else
-                okHttpClientInstance
+                httpClientInstance
             val itemIds = ArrayList<Int>()
             val commentIds = ArrayList<Int>()
             UserActions.fetchUserItemListPage(
@@ -549,7 +549,7 @@ object UserActions {
     }
 
     private fun fetchUserItemListPage(
-        client: OkHttpClient,
+        client: KtorHttpClient,
         url: String,
         itemIds: MutableList<Int>,
         commentIds: MutableList<Int>,
@@ -559,7 +559,7 @@ object UserActions {
         main: Handler,
         cb: UserItemListCallback
     ) {
-        val request = Request.Builder()
+        val request = HttpRequest.Builder()
             .url(url)
             .build()
 
@@ -578,7 +578,7 @@ object UserActions {
 
                 try {
                     val body = if (response.body == null) "" else response.body.string()
-                    val document = Jsoup.parse(body, BASE_WEB_URL + "/")
+                    val document = Ksoup.parse(body, baseUri = BASE_WEB_URL + "/")
                     val pageItemIds: MutableList<Int> = ArrayList<Int>()
                     addHackerNewsItemIds(document, pageItemIds)
                     for (id in pageItemIds) {
@@ -680,11 +680,11 @@ object UserActions {
             .addQueryParameter(ITEM_PARAM_ID, id.toString())
             .build()
 
-        val request = Request.Builder()
+        val request = HttpRequest.Builder()
             .url(url)
             .build()
 
-        okHttpClientInstanceWithCookies.newCall(request).enqueue(object : Callback {
+        httpClientInstanceWithCookies.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 main.post(Runnable { cb.onFailure("Couldn't load HN item", e.message) })
             }
@@ -725,7 +725,7 @@ object UserActions {
                         return
                     }
 
-                    val document = Jsoup.parse(body, BASE_WEB_URL + "/")
+                    val document = Ksoup.parse(body, baseUri = BASE_WEB_URL + "/")
                     val itemTitle = findHackerNewsItemTitle(document, id)
                     if (!TextUtils.isEmpty(itemTitle)) {
                         main.post(Runnable { cb.onItemTitleLoaded(id, itemTitle) })
@@ -752,7 +752,7 @@ object UserActions {
                         return
                     }
 
-                    val favoriteRequest = Request.Builder()
+                    val favoriteRequest = HttpRequest.Builder()
                         .url(linkResult.actionUrl!!)
                         .build()
 
@@ -789,11 +789,11 @@ object UserActions {
             .addQueryParameter(ITEM_PARAM_ID, id.toString())
             .build()
 
-        val request = Request.Builder()
+        val request = HttpRequest.Builder()
             .url(url)
             .build()
 
-        okHttpClientInstanceWithCookies.newCall(request).enqueue(object : Callback {
+        httpClientInstanceWithCookies.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 main.post(Runnable { cb.onFailure("Couldn't verify favorite", e.message) })
             }
@@ -866,7 +866,7 @@ object UserActions {
     }
 
     private fun findFavoriteLink(body: String, id: Int, favorite: Boolean): FavoriteLinkResult {
-        val document = Jsoup.parse(body, BASE_WEB_URL + "/")
+        val document = Ksoup.parse(body, baseUri = BASE_WEB_URL + "/")
         return findFavoriteLink(document, id, favorite)
     }
 
@@ -919,14 +919,14 @@ object UserActions {
             return
         }
 
-        val request = Request.Builder()
+        val request = HttpRequest.Builder()
             .url(
                 BASE_WEB_URL.toHttpUrlOrNull()!!.newBuilder()
                     .addPathSegment(VOTE_PATH)
                     .build()
             )
             .post(
-                FormBody.Builder()
+                FormRequestBody.Builder()
                     .add(LOGIN_PARAM_ACCT, account.first!!)
                     .add(LOGIN_PARAM_PW, account.second!!)
                     .add(VOTE_PARAM_ID, itemId)
@@ -946,14 +946,14 @@ object UserActions {
             return
         }
 
-        val request = Request.Builder()
+        val request = HttpRequest.Builder()
             .url(
                 BASE_WEB_URL.toHttpUrlOrNull()!!.newBuilder()
                     .addPathSegment(COMMENT_PATH)
                     .build()
             )
             .post(
-                FormBody.Builder()
+                FormRequestBody.Builder()
                     .add(LOGIN_PARAM_ACCT, account.first!!)
                     .add(LOGIN_PARAM_PW, account.second!!)
                     .add(COMMENT_PARAM_PARENT, itemId)
@@ -982,24 +982,24 @@ object UserActions {
         }
 
         // Build login form
-        val form = FormBody.Builder()
+        val form = FormRequestBody.Builder()
             .add(LOGIN_PARAM_ACCT, account.first!!)
             .add(LOGIN_PARAM_PW, account.second!!)
             .add(LOGIN_PARAM_GOTO, gotoPath)
             .build()
 
-        val request = Request.Builder()
+        val request = HttpRequest.Builder()
             .url(BASE_WEB_URL + "/" + LOGIN_PATH)
             .post(form)
             .build()
 
-        resetOkHttpClientCookieInstance()
+        resetHttpClientCookieInstance()
         executeLoginRequest(ctx, request, cb)
     }
 
     private fun executeLoginRequest(ctx: Context, request: Request, cb: ActionCallback) {
         val main = MAIN_HANDLER
-        val client = okHttpClientInstanceWithCookies
+        val client = httpClientInstanceWithCookies
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 main.post(Runnable { cb.onFailure("Login failed", e.message) })
@@ -1141,13 +1141,13 @@ object UserActions {
             return
         }
         val fnid = m.group(1)
-        val submitForm = FormBody.Builder()
+        val submitForm = FormRequestBody.Builder()
             .add("fnid", fnid!!)
             .add("fnop", "submit-page")
             .add("title", title)
             .add("url", url)
             .add("text", text)
-        val submitReq = Request.Builder()
+        val submitReq = HttpRequest.Builder()
             .url(BASE_WEB_URL + "/" + SUBMIT_POST_PATH)
             .post(submitForm.build())
             .build()
@@ -1161,7 +1161,7 @@ object UserActions {
         cb: ActionCallback,
         cookies: Boolean = false
     ) {
-        val client = if (cookies) okHttpClientInstanceWithCookies else okHttpClientInstance
+        val client = if (cookies) httpClientInstanceWithCookies else httpClientInstance
 
         client.newCall(request).enqueue(object : Callback {
             val mainHandler: Handler = MAIN_HANDLER
@@ -1197,7 +1197,7 @@ object UserActions {
                             )
                         }
                     } else {
-                        // HN will send a 302 → the new post, but OkHttp follows redirects by default.
+                        // HN sends a 302 to the new post; Ktor follows redirects by default.
                         cb.onSuccess(response)
                     }
                 })
@@ -1225,13 +1225,13 @@ object UserActions {
     }
 
     private fun buildCaptchaRequest(challenge: CaptchaChallenge, captchaResponse: String): Request {
-        val formBuilder = FormBody.Builder()
+        val formBuilder = FormRequestBody.Builder()
         for (field in challenge.getFormFields()!!) {
             formBuilder.add(field.first!!, (if (field.second == null) "" else field.second)!!)
         }
         formBuilder.add(CAPTCHA_RESPONSE_PARAM, captchaResponse)
 
-        return Request.Builder()
+        return HttpRequest.Builder()
             .url(challenge.actionUrl)
             .post(formBuilder.build())
             .build()
@@ -1242,7 +1242,7 @@ object UserActions {
     }
 
     private fun parseCaptchaChallenge(body: String, cookies: Boolean): CaptchaChallenge? {
-        val document = Jsoup.parse(body, BASE_WEB_URL + "/")
+        val document = Ksoup.parse(body, baseUri = BASE_WEB_URL + "/")
         val form = document.selectFirst("form[action]")
         val captcha = document.selectFirst(".g-recaptcha[data-sitekey]")
 
@@ -1279,7 +1279,7 @@ object UserActions {
                 continue
             }
 
-            formFields.add(Pair<String?, String?>(name, input.`val`()))
+            formFields.add(Pair<String?, String?>(name, input.value()))
         }
 
         return CaptchaChallenge(actionUrl, siteKey, formFields, cookies)

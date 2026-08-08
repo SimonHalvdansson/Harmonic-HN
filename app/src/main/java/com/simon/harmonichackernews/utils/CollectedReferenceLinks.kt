@@ -5,13 +5,13 @@ import java.util.Collections
 import java.util.Locale
 import java.util.regex.Matcher
 import java.util.regex.Pattern
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
-import org.jsoup.nodes.Node
-import org.jsoup.nodes.TextNode
-import org.jsoup.parser.Parser
-import org.jsoup.select.Elements
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Document
+import com.fleeksoft.ksoup.nodes.Element
+import com.fleeksoft.ksoup.nodes.Node
+import com.fleeksoft.ksoup.nodes.TextNode
+import com.fleeksoft.ksoup.parser.Parser
+import com.fleeksoft.ksoup.select.Elements
 
 object CollectedReferenceLinks {
     private val REFERENCE_MARKER_PATTERN: Pattern =
@@ -28,7 +28,7 @@ object CollectedReferenceLinks {
             return Result.Companion.empty(inputHtml)
         }
 
-        val document = Jsoup.parse(inputHtml, "", Parser.htmlParser())
+        val document = Ksoup.parse(inputHtml, Parser.htmlParser(), "")
         document.outputSettings().prettyPrint(false)
 
         val body = document.body()
@@ -334,7 +334,7 @@ object CollectedReferenceLinks {
     }
 
     private fun parseReferenceFragment(html: String?): MutableList<ReferenceLink> {
-        val fragment = Jsoup.parseBodyFragment(if (html == null) "" else html, "")
+        val fragment = Ksoup.parseBodyFragment(if (html == null) "" else html, "")
         fragment.outputSettings().prettyPrint(false)
         val text = normalizeReferenceWhitespace(fragment.body().text())
         if (!startsWithReferenceMarker(text)) {
@@ -349,7 +349,7 @@ object CollectedReferenceLinks {
     }
 
     private fun parseUnnumberedLinkFragment(html: String?): MutableList<ReferenceLink> {
-        val fragment = Jsoup.parseBodyFragment(if (html == null) "" else html, "")
+        val fragment = Ksoup.parseBodyFragment(if (html == null) "" else html, "")
         fragment.outputSettings().prettyPrint(false)
         val text = normalizeReferenceWhitespace(fragment.body().text())
         if (text.isEmpty() || startsWithReferenceMarker(text)) {
@@ -599,7 +599,7 @@ object CollectedReferenceLinks {
 
     private fun normalizeUrl(value: String?): String {
         val url = trimTrailingUrlPunctuation(
-            Jsoup.parse(if (value == null) "" else value).text().trim { it <= ' ' }
+            Ksoup.parse(if (value == null) "" else value).text().trim { it <= ' ' }
                 .replace("&#x2F;", "/")
                 .replace("&#47;", "/"))
         if (url.startsWith("//")) {
@@ -616,7 +616,7 @@ object CollectedReferenceLinks {
 
     private fun normalizeBareUrl(value: String?): String {
         val url = trimTrailingUrlPunctuation(
-            Jsoup.parse(if (value == null) "" else value).text().trim { it <= ' ' }
+            Ksoup.parse(if (value == null) "" else value).text().trim { it <= ' ' }
                 .replace("&#x2F;", "/")
                 .replace("&#47;", "/"))
         if (url.startsWith("/") && !url.startsWith("//")) {

@@ -2,8 +2,8 @@ package com.simon.harmonichackernews.linkpreview
 
 import android.content.Context
 import android.net.Uri
-import com.android.volley.Request
-import com.android.volley.toolbox.StringRequest
+import com.simon.harmonichackernews.network.QueueRequest as Request
+import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.data.GitLabInfo
 import com.simon.harmonichackernews.network.NetworkComponent
 import java.util.Locale
@@ -25,7 +25,7 @@ object GitLabInfoGetter {
             Request.Method.GET,
             apiUrl,
             { response ->
-                runCatching { parseResponse(response) }
+                runCatching { parseResponse(response.orEmpty()) }
                     .onSuccess(callback::onSuccess)
                     .onFailure { error ->
                         error.printStackTrace()
@@ -33,7 +33,7 @@ object GitLabInfoGetter {
                     }
             },
             { error ->
-                error.printStackTrace()
+                error?.printStackTrace()
                 callback.onFailure("Couldn't connect to GitLab API")
             },
         )

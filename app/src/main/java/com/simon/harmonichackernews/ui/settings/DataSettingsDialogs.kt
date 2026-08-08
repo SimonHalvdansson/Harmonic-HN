@@ -57,7 +57,7 @@ import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
-import okhttp3.Response
+import com.simon.harmonichackernews.network.HttpResponse
 import kotlin.coroutines.resume
 import kotlin.math.PI
 import kotlin.math.abs
@@ -375,7 +375,7 @@ private suspend fun addBookmarkToFavorites(
                 }
             }
 
-            override fun onSuccess(response: Response) {
+            override fun onSuccess(response: HttpResponse) {
                 response.close()
                 Utils.setFavorite(activity, id, true)
                 if (continuation.isActive) {

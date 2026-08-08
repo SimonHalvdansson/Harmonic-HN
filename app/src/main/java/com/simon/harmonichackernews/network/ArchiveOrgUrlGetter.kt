@@ -1,18 +1,13 @@
 package com.simon.harmonichackernews.network
 
 import android.content.Context
-import com.android.volley.Request
-import com.android.volley.RequestQueue
-import com.android.volley.Response
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.StringRequest
 import org.json.JSONObject
 
 object ArchiveOrgUrlGetter {
     fun getArchiveUrl(url: String?, ctx: Context, callback: GetterCallback) {
         val stringRequest = StringRequest(
-            Request.Method.GET, "https://archive.org/wayback/available?url=" + url,
-            Response.Listener { response: String? ->
+            QueueRequest.Method.GET, "https://archive.org/wayback/available?url=" + url,
+            QueueResponse.Listener { response: String? ->
                 try {
                     val mainObject = JSONObject(response)
                     val archivedSnapshots = mainObject.getJSONObject("archived_snapshots")
@@ -27,7 +22,7 @@ object ArchiveOrgUrlGetter {
                 } catch (e: Exception) {
                     callback.onFailure("Failed to parse archive.org API response")
                 }
-            }, Response.ErrorListener { error: VolleyError? ->
+            }, QueueResponse.ErrorListener { error: NetworkError? ->
                 error?.printStackTrace()
                 callback.onFailure("Couldn't connect to archive.org API")
             })

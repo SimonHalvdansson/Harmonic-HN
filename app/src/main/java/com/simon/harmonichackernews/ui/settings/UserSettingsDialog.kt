@@ -51,9 +51,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import com.android.volley.DefaultRetryPolicy
-import com.android.volley.Request
-import com.android.volley.toolbox.StringRequest
+import com.simon.harmonichackernews.network.DefaultRetryPolicy
+import com.simon.harmonichackernews.network.QueueRequest as Request
+import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.submissions.SubmissionsContract
 import com.simon.harmonichackernews.network.NetworkComponent
@@ -111,7 +111,7 @@ fun UserSettingsDialog(
             "https://hacker-news.firebaseio.com/v0/user/${Uri.encode(userName)}.json",
             { response ->
                 state = runCatching {
-                    parseComposeUser(monthNames, response)
+                    parseComposeUser(monthNames, response.orEmpty())
                 }.fold(
                     onSuccess = ComposeUserState::Loaded,
                     onFailure = { ComposeUserState.Error },

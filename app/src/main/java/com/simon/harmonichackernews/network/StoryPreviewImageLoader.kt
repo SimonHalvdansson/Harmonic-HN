@@ -10,19 +10,13 @@ import com.simon.harmonichackernews.network.LinkSummaryLoader.extract
 import com.simon.harmonichackernews.network.LinkSummaryLoader.extractYoutubeOEmbedSummary
 import com.simon.harmonichackernews.network.LinkSummaryLoader.isYoutubeVideoUrl
 import com.simon.harmonichackernews.network.LinkSummaryLoader.readBoundedBody
-import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstance
+import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
 import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.Locale
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.Request
-import okhttp3.Response
 import org.json.JSONObject
 
 object StoryPreviewImageLoader {
@@ -192,13 +186,13 @@ object StoryPreviewImageLoader {
             PENDING_CALLBACKS.put(normalizedPageUrl, pendingBatch)
         }
 
-        val request = Request.Builder()
+        val request = HttpRequest.Builder()
             .url(requestUrl)
             .header("Accept", acceptHeader)
             .get()
             .build()
 
-        val call = okHttpClientInstance.newCall(request)
+        val call = httpClientInstance.newCall(request)
         val requestBatch = pendingBatch
         synchronized(StoryPreviewImageLoader::class.java) {
             if (PENDING_CALLBACKS.get(normalizedPageUrl) === requestBatch) {
@@ -208,12 +202,12 @@ object StoryPreviewImageLoader {
             }
         }
 
-        call.enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        call.enqueue(object : HttpCallback {
+            override fun onFailure(call: HttpCall, e: IOException) {
                 StoryPreviewImageLoader.finish(normalizedPageUrl, requestBatch!!, null, null)
             }
 
-            override fun onResponse(call: Call, response: Response) {
+            override fun onResponse(call: HttpCall, response: HttpResponse) {
                 try {
                     response.use { closeableResponse ->
                         if (!closeableResponse.isSuccessful) {
@@ -238,8 +232,17 @@ object StoryPreviewImageLoader {
                             return
                         }
 
-                        val responseBody =
-                            readBoundedBody(closeableResponse.body)
+                        val responseBody = readBoundedBody(
+                            closeableResponse.body ?: run {
+                                StoryPreviewImageLoader.finish(
+                                    normalizedPageUrl,
+                                    requestBatch!!,
+                                    null,
+                                    null
+                                )
+                                return
+                            }
+                        )
                         if (youtubeOEmbedRequest) {
                             val summary = extractYoutubeOEmbedSummary(
                                 responseBody,
@@ -254,7 +257,7 @@ object StoryPreviewImageLoader {
                             return
                         }
 
-                        val baseUrl = closeableResponse.request.url.toString()
+                        val baseUrl = closeableResponse.requestUrl.toString()
                         val summary = extract(
                             responseBody,
                             null,
@@ -314,19 +317,19 @@ object StoryPreviewImageLoader {
             return null
         }
 
-        val parsedUrl: HttpUrl? = url?.toHttpUrlOrNull()
+        val parsedUrl: NetworkUrl? = url?.toNetworkUrlOrNull()
         if (parsedUrl == null || !isHttpScheme(parsedUrl)) {
             return null
         }
         return parsedUrl.toString()
     }
 
-    private fun isHttpScheme(url: HttpUrl): Boolean {
+    private fun isHttpScheme(url: NetworkUrl): Boolean {
         return "http" == url.scheme || "https" == url.scheme
     }
 
     private fun isLikelyImageUrl(url: String): Boolean {
-        val parsedUrl: HttpUrl? = url.toHttpUrlOrNull()
+        val parsedUrl: NetworkUrl? = url.toNetworkUrlOrNull()
         if (parsedUrl == null) {
             return false
         }
@@ -891,7 +894,7 @@ object StoryPreviewImageLoader {
 
     private class PendingPreviewImageBatch {
         val requests: MutableList<PendingPreviewImageRequest> = ArrayList()
-        var call: Call? = null
+        var call: HttpCall? = null
     }
 
     private class PendingPreviewImageRequest(

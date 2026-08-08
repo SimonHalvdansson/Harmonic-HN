@@ -27,11 +27,12 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.preference.PreferenceManager
 import androidx.webkit.WebViewFeature
-import com.android.volley.DefaultRetryPolicy
-import com.android.volley.Request
-import com.android.volley.RequestQueue
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.StringRequest
+import com.simon.harmonichackernews.network.DefaultRetryPolicy
+import com.simon.harmonichackernews.network.NetworkError
+import com.simon.harmonichackernews.network.QueueRequest as Request
+import com.simon.harmonichackernews.network.RequestQueue
+import com.simon.harmonichackernews.network.QueueResponse as Response
+import com.simon.harmonichackernews.network.StringRequest
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.CommentsWebViewController.PageTextCallback
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
@@ -62,7 +63,7 @@ import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.utils.ViewUtils
-import okhttp3.Response
+import com.simon.harmonichackernews.network.HttpResponse as ActionHttpResponse
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
@@ -1028,7 +1029,7 @@ class CommentsCoordinator(
             UserActions.setFavorite(
                 ctx, comment.id, newFavorited,
                 object : ActionCallback {
-                    override fun onSuccess(response: Response) {
+                    override fun onSuccess(response: ActionHttpResponse) {
                         if (composeController != null) {
                             composeController!!.setCommentActionFavoriteLoading(
                                 comment.id, false
@@ -1065,7 +1066,7 @@ class CommentsCoordinator(
                 && composeController!!.isCommentActionDownvoted(comment.id)
         composeController!!.setCommentActionVoteLoading(comment.id, action)
         val callback: ActionCallback = object : ActionCallback {
-            override fun onSuccess(response: Response) {
+            override fun onSuccess(response: ActionHttpResponse) {
                 val upvoted = action == CommentsComposeController.COMMENT_ACTION_UPVOTE
                 val downvoted = action == CommentsComposeController.COMMENT_ACTION_DOWNVOTE
                 Utils.setUpvoted(ctx, comment.id, true, upvoted)
@@ -1867,7 +1868,7 @@ class CommentsCoordinator(
 
         val stringRequest = StringRequest(
             Request.Method.GET, url,
-            com.android.volley.Response.Listener { response: String? ->
+            Response.Listener { response: String? ->
                 if (!this.isCommentsViewActive) {
                     return@Listener
                 }
@@ -1881,13 +1882,13 @@ class CommentsCoordinator(
                     story!!.pollOptions = hnStory.pollOptions
                     maybeLoadPollOptions()
                 }
-            }, com.android.volley.Response.ErrorListener { error: VolleyError? ->
+            }, Response.ErrorListener { error: NetworkError? ->
                 if (this.isCommentsViewActive) {
                     pollOptionsLookupStarted = false
                 }
             })
 
-        stringRequest.setTag(requestTag)
+        stringRequest.tag = requestTag
         queue!!.add<String?>(stringRequest)
     }
 
@@ -1919,7 +1920,7 @@ class CommentsCoordinator(
         val url = "https://hacker-news.firebaseio.com/v0/item/" + optionId + ".json"
         val stringRequest = StringRequest(
             Request.Method.GET, url,
-            com.android.volley.Response.Listener { response: String? ->
+            Response.Listener { response: String? ->
                 if (!this.isCommentsViewActive) {
                     return@Listener
                 }
@@ -1943,7 +1944,7 @@ class CommentsCoordinator(
                     notifyHeaderChanged()
                 }
                 loadNextPollOption(pollOptionIds, index + 1)
-            }, com.android.volley.Response.ErrorListener { error: VolleyError? ->
+            }, Response.ErrorListener { error: NetworkError? ->
                 if (!this.isCommentsViewActive) {
                     return@ErrorListener
                 }
@@ -1964,7 +1965,7 @@ class CommentsCoordinator(
             2,
             DefaultRetryPolicy.DEFAULT_BACKOFF_MULT,
         )
-        stringRequest.setTag(requestTag)
+        stringRequest.tag = requestTag
         queue!!.add<String?>(stringRequest)
     }
 
@@ -2435,7 +2436,7 @@ class CommentsCoordinator(
         syncComposeState()
 
         val cb: ActionCallback = object : ActionCallback {
-            override fun onSuccess(response: Response) {
+            override fun onSuccess(response: ActionHttpResponse) {
                 Utils.setUpvoted(ctx, storyId, storyIsComment, newUpvoted)
                 storyVoteLoading = false
                 syncComposeState()
@@ -2471,7 +2472,7 @@ class CommentsCoordinator(
         storyFavoriteLoading = true
         syncComposeState()
         UserActions.setFavorite(ctx, storyId, newFavorited, object : ActionCallback {
-            override fun onSuccess(response: Response) {
+            override fun onSuccess(response: ActionHttpResponse) {
                 Utils.setFavorite(ctx, storyId, newFavorited)
                 storyFavoriteLoading = false
                 syncComposeState()

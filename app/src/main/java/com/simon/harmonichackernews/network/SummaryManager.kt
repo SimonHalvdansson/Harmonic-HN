@@ -5,32 +5,18 @@ import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
 import androidx.preference.PreferenceManager
-import com.android.volley.RequestQueue
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.JsonObjectRequest
 import com.simon.harmonichackernews.network.AiSummaryProviders.defaultBaseUrl
 import com.simon.harmonichackernews.network.AiSummaryProviders.getModelForRequest
 import com.simon.harmonichackernews.network.AiSummaryProviders.isAnthropicBaseUrl
 import com.simon.harmonichackernews.network.AiSummaryProviders.normalizeUrl
-import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstance
+import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
-import java.io.BufferedReader
 import java.io.IOException
-import java.io.InputStreamReader
-import java.nio.charset.StandardCharsets
 import java.util.Locale
-import java.util.concurrent.TimeUnit
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.ResponseBody
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
-import org.jsoup.Jsoup
+import com.fleeksoft.ksoup.Ksoup
 
 object SummaryManager {
     private const val CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 1000
@@ -46,8 +32,8 @@ object SummaryManager {
         val url = joinUrl(baseUrl, "models")
 
         val request: JsonObjectRequest = object : JsonObjectRequest(
-            com.android.volley.Request.Method.GET, url, null,
-            com.android.volley.Response.Listener { response: JSONObject? ->
+            QueueRequest.Method.GET, url, null,
+            QueueResponse.Listener { response: JSONObject? ->
                 try {
                     val models = response?.getJSONArray("data")
                         ?: throw JSONException("Missing models response")
@@ -60,7 +46,7 @@ object SummaryManager {
                     callback.onFailure("Failed to parse models")
                 }
             },
-            com.android.volley.Response.ErrorListener { error: VolleyError? -> callback.onFailure(error?.message ?: "Unknown error") }
+            QueueResponse.ErrorListener { error: NetworkError? -> callback.onFailure(error?.message ?: "Unknown error") }
         ) {
             override fun getHeaders(): MutableMap<String, String> {
                 val headers = mutableMapOf<String, String>()
@@ -132,10 +118,23 @@ object SummaryManager {
 
     @Throws(IOException::class)
     fun extractMainContent(url: String): String {
-        val doc = Jsoup.connect(url)
-            .userAgent("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36")
-            .timeout(10000)
+        val request = HttpRequest.Builder()
+            .url(url)
+            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36")
             .get()
+            .build()
+        val html = httpClientInstance.newBuilder()
+            .readTimeoutMillis(10_000)
+            .build()
+            .newCall(request)
+            .execute()
+            .use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException("Article returned HTTP ${response.code}")
+                }
+                response.body?.string() ?: throw IOException("Article response had no body")
+            }
+        val doc = Ksoup.parse(html, baseUri = url)
         val body = doc.body()
         return body.text()
     }
@@ -229,7 +228,7 @@ object SummaryManager {
         }
 
         requestSummary(
-            url, payload, Request.Builder()
+            url, payload, HttpRequest.Builder()
                 .header("Authorization", "Bearer " + apiKey), false,
             streamResponses, callback
         )
@@ -264,7 +263,7 @@ object SummaryManager {
         }
 
         requestSummary(
-            url, payload, Request.Builder()
+            url, payload, HttpRequest.Builder()
                 .header("x-api-key", apiKey)
                 .header("anthropic-version", "2023-06-01"), true,
             streamResponses, callback
@@ -274,30 +273,36 @@ object SummaryManager {
     private fun requestSummary(
         url: String,
         payload: JSONObject,
-        requestBuilder: Request.Builder,
+        requestBuilder: HttpRequest.Builder,
         anthropic: Boolean,
         streamResponses: Boolean,
         callback: SummaryCallback
     ) {
-        val requestBody: RequestBody =
-            payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        val requestBody: HttpRequestBody = payload.toString().toHttpRequestBody(
+            "application/json; charset=utf-8".toHttpMediaType()
+        )
         val request = requestBuilder
             .url(url)
             .header("Accept", if (streamResponses) "text/event-stream" else "application/json")
             .post(requestBody)
             .build()
-        val client = okHttpClientInstance.newBuilder()
-            .readTimeout(120, TimeUnit.SECONDS)
+        val client = httpClientInstance.newBuilder()
+            .readTimeoutMillis(120_000)
             .build()
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        client.newCall(request).enqueue(object : HttpCallback {
+            override fun onFailure(call: HttpCall, e: IOException) {
                 postFailure(callback, "API error: " + getThrowableMessage(e))
             }
 
-            override fun onResponse(call: Call, response: okhttp3.Response) {
+            override fun onResponse(call: HttpCall, response: HttpResponse) {
                 try {
-                    response.body.use { body ->
+                    response.use {
+                        val body = response.body
+                        if (body == null) {
+                            postFailure(callback, "API response had no body")
+                            return
+                        }
                         if (!response.isSuccessful) {
                             val errorBody = body.string()
                             postFailure(
@@ -321,7 +326,7 @@ object SummaryManager {
 
     @Throws(IOException::class)
     private fun readSummaryResponse(
-        body: ResponseBody,
+        body: HttpResponseBody,
         anthropic: Boolean,
         callback: SummaryCallback
     ) {
@@ -335,7 +340,7 @@ object SummaryManager {
 
     @Throws(IOException::class)
     private fun readSummaryStream(
-        body: ResponseBody,
+        body: HttpResponseBody,
         anthropic: Boolean,
         callback: SummaryCallback
     ) {
@@ -344,11 +349,9 @@ object SummaryManager {
         val plainResponse = StringBuilder()
         var sawSseData = false
 
-        BufferedReader(
-            InputStreamReader(body.byteStream(), StandardCharsets.UTF_8)
-        ).use { reader ->
-            while (true) {
-                val line = reader.readLine() ?: break
+        val source = body.source()
+        while (true) {
+                val line = source.readUtf8Line() ?: break
                 if (line.isEmpty()) {
                     if (eventData.isNotEmpty()) {
                         sawSseData = true
@@ -369,7 +372,6 @@ object SummaryManager {
                     }
                     plainResponse.append(line)
                 }
-            }
         }
         if (eventData.isNotEmpty()) {
             sawSseData = true

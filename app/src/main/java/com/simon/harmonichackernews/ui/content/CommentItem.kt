@@ -80,7 +80,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.google.android.material.color.MaterialColors
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Comment

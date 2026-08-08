@@ -1,8 +1,8 @@
 package com.simon.harmonichackernews.linkpreview
 
 import android.content.Context
-import com.android.volley.Request
-import com.android.volley.toolbox.StringRequest
+import com.simon.harmonichackernews.network.QueueRequest as Request
+import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.network.NetworkComponent
 import org.json.JSONObject
@@ -24,7 +24,7 @@ object GitHubInfoGetter {
             Request.Method.GET,
             apiUrl,
             { response ->
-                runCatching { parseResponse(response) }
+                runCatching { parseResponse(response.orEmpty()) }
                     .onSuccess(callback::onSuccess)
                     .onFailure { error ->
                         error.printStackTrace()
@@ -32,7 +32,7 @@ object GitHubInfoGetter {
                     }
             },
             { error ->
-                error.printStackTrace()
+                error?.printStackTrace()
                 callback.onFailure("Couldn't connect to GitHub API")
             },
         )

@@ -2,8 +2,8 @@ package com.simon.harmonichackernews.linkpreview
 
 import android.content.Context
 import android.util.Xml
-import com.android.volley.Request
-import com.android.volley.toolbox.StringRequest
+import com.simon.harmonichackernews.network.QueueRequest as Request
+import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.data.ArxivInfo
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.utils.ArxivResolver
@@ -27,7 +27,7 @@ object ArxivAbstractGetter {
             "https://export.arxiv.org/api/query?id_list=$arxivId",
             { response ->
                 try {
-                    parseResponse(response, arxivId)?.let(callback::onSuccess)
+                    parseResponse(response.orEmpty(), arxivId)?.let(callback::onSuccess)
                         ?: callback.onFailure("Data not found")
                 } catch (error: XmlPullParserException) {
                     error.printStackTrace()
@@ -38,7 +38,7 @@ object ArxivAbstractGetter {
                 }
             },
             { error ->
-                error.printStackTrace()
+                error?.printStackTrace()
                 callback.onFailure("Couldn't connect to ArXiv API")
             },
         )

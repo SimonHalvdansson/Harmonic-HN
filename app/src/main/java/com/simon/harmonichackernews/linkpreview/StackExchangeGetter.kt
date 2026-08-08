@@ -2,14 +2,14 @@ package com.simon.harmonichackernews.linkpreview
 
 import android.content.Context
 import android.net.Uri
-import com.android.volley.Request
-import com.android.volley.toolbox.StringRequest
+import com.simon.harmonichackernews.network.QueueRequest as Request
+import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.data.StackExchangeInfo
 import com.simon.harmonichackernews.network.NetworkComponent
 import java.util.Locale
 import org.json.JSONObject
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Document
 
 object StackExchangeGetter {
     private val siteParams = mapOf(
@@ -60,7 +60,7 @@ object StackExchangeGetter {
             apiUrl,
             { response ->
                 try {
-                    val items = JSONObject(response).getJSONArray("items")
+                    val items = JSONObject(response.orEmpty()).getJSONArray("items")
                     if (items.length() == 0) {
                         callback.onFailure("Stack Exchange question not found")
                     } else {
@@ -72,7 +72,7 @@ object StackExchangeGetter {
                 }
             },
             { error ->
-                error.printStackTrace()
+                error?.printStackTrace()
                 callback.onFailure("Couldn't connect to Stack Exchange API")
             },
         )
@@ -126,12 +126,12 @@ object StackExchangeGetter {
         }
 
     private fun cleanText(text: String?): String? =
-        text?.takeUnless(String::isEmpty)?.let { Jsoup.parse(it).text() }
+        text?.takeUnless(String::isEmpty)?.let { Ksoup.parse(it).text() }
 
     private fun cleanBodyText(html: String?): String? {
         if (html.isNullOrEmpty()) return null
 
-        val document = Jsoup.parse(html)
+        val document = Ksoup.parse(html)
         document.outputSettings(Document.OutputSettings().prettyPrint(false))
         document.select("br").append("\\n")
         document.select("p, pre, blockquote, ul, ol").before("\\n")

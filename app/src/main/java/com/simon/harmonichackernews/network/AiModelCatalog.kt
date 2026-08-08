@@ -8,11 +8,6 @@ import java.io.IOException
 import java.util.Collections
 import java.util.Locale
 import kotlin.synchronized
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.Request
-import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -30,7 +25,7 @@ object AiModelCatalog {
     fun fetchModels(
         provider: AiSummaryProviders.Provider, sort: Sort,
         callback: ModelsCallback
-    ): Call? {
+    ): HttpCall? {
         val cacheKey = provider.id + ":" + sort.apiValue
         synchronized(CACHE) {
             val cached = CACHE[cacheKey]
@@ -40,23 +35,23 @@ object AiModelCatalog {
             }
         }
 
-        val urlBuilder = MODELS_URL.toHttpUrl().newBuilder()
+        val urlBuilder = MODELS_URL.toNetworkUrl().newBuilder()
             .addQueryParameter("output_modalities", "text")
             .addQueryParameter("sort", sort.apiValue)
         if (provider.catalogProvider != null) {
             urlBuilder.addQueryParameter("providers", provider.catalogProvider)
         }
 
-        val request = Request.Builder().url(urlBuilder.build()).build()
-        val call = NetworkComponent.okHttpClientInstance.newCall(request)
-        call.enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        val request = HttpRequest.Builder().url(urlBuilder.build()).build()
+        val call = NetworkComponent.httpClientInstance.newCall(request)
+        call.enqueue(object : HttpCallback {
+            override fun onFailure(call: HttpCall, e: IOException) {
                 if (!call.isCanceled()) {
                     MAIN_HANDLER.post { callback.onError(readableError(e)) }
                 }
             }
 
-            override fun onResponse(call: Call, response: Response) {
+            override fun onResponse(call: HttpCall, response: HttpResponse) {
                 try {
                     response.use { closeableResponse ->
                         if (!closeableResponse.isSuccessful || closeableResponse.body == null) {
@@ -87,7 +82,7 @@ object AiModelCatalog {
     fun resolveModel(
         provider: AiSummaryProviders.Provider, enteredModelId: String?,
         callback: ModelCallback
-    ): Call? {
+    ): HttpCall? {
         val openRouterId = AiSummaryProviders.toOpenRouterModelId(provider, enteredModelId)
         if (provider.catalogAuthor != null && openRouterId.contains("/")
             && !openRouterId.startsWith(provider.catalogAuthor + "/")
@@ -111,20 +106,20 @@ object AiModelCatalog {
             return null
         }
 
-        val url = MODEL_URL.toHttpUrl().newBuilder()
+        val url = MODEL_URL.toNetworkUrl().newBuilder()
             .addPathSegment(openRouterId.substring(0, separator))
             .addPathSegment(openRouterId.substring(separator + 1))
             .build()
-        val request = Request.Builder().url(url).build()
-        val call = NetworkComponent.okHttpClientInstance.newCall(request)
-        call.enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        val request = HttpRequest.Builder().url(url).build()
+        val call = NetworkComponent.httpClientInstance.newCall(request)
+        call.enqueue(object : HttpCallback {
+            override fun onFailure(call: HttpCall, e: IOException) {
                 if (!call.isCanceled()) {
                     MAIN_HANDLER.post { callback.onError(readableError(e)) }
                 }
             }
 
-            override fun onResponse(call: Call, response: Response) {
+            override fun onResponse(call: HttpCall, response: HttpResponse) {
                 try {
                     response.use { closeableResponse ->
                         if (!closeableResponse.isSuccessful || closeableResponse.body == null) {

@@ -44,8 +44,8 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern
 import org.json.JSONException
 import org.json.JSONObject
-import org.jsoup.Jsoup
-import org.jsoup.parser.Parser
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.parser.Parser
 
 object Utils {
     private val HN_ITEM_URL_PATTERN: Pattern = Pattern.compile(
@@ -1940,15 +1940,15 @@ object Utils {
             return inputHtml
         }
 
-        val document = Jsoup.parse(inputHtml, "", Parser.htmlParser())
+        val document = Ksoup.parse(inputHtml, Parser.htmlParser(), "")
         val links = document.select("a[href]")
 
         for (link in links) {
             val href = link.attr("href")
             val linkText = link.text()
 
-            val decodedHref = Jsoup.parse(href).text()
-            val decodedLinkText = Jsoup.parse(linkText).text()
+            val decodedHref = Ksoup.parse(href).text()
+            val decodedLinkText = Ksoup.parse(linkText).text()
 
             if (decodedLinkText.endsWith("...")) {
                 val linkTextPrefix = decodedLinkText.substring(0, decodedLinkText.length - 3)

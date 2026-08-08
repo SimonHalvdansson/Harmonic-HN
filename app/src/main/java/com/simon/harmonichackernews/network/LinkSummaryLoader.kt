@@ -13,23 +13,15 @@ import com.simon.harmonichackernews.network.HtmlDescriptionExtractor.chooseDescr
 import com.simon.harmonichackernews.utils.Utils
 import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.io.InputStream
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.regex.Pattern
 import kotlin.math.min
-import okhttp3.Call
-import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.MediaType
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.ResponseBody
 import org.json.JSONObject
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Document
+import com.fleeksoft.ksoup.nodes.Element
 
 object LinkSummaryLoader {
     private const val HACKER_NEWS_ITEM_CONTENT_TYPE = "application/vnd.hacker-news.item+json"
@@ -64,7 +56,7 @@ object LinkSummaryLoader {
         fallbackTitle: String?,
         callback: Callback
     ): SummaryRequest {
-        val parsedUrl = pageUrl.toHttpUrlOrNull()
+        val parsedUrl = pageUrl.toNetworkUrlOrNull()
         if (parsedUrl == null || !isHttpScheme(parsedUrl)) {
             postFailure(callback, "This link does not use HTTP or HTTPS")
             return SummaryRequest {}
@@ -112,7 +104,7 @@ object LinkSummaryLoader {
             redditOEmbedRequest -> redditOEmbedUrl.orEmpty()
             else -> normalizedPageUrl
         }
-        val request = Request.Builder()
+        val request = HttpRequest.Builder()
             .url(requestUrl)
             .header(
                 "Accept", if (oEmbedRequest)
@@ -122,15 +114,15 @@ object LinkSummaryLoader {
             )
             .get()
             .build()
-        val call = NetworkComponent.okHttpClientInstance.newCall(request)
-        call.enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        val call = NetworkComponent.httpClientInstance.newCall(request)
+        call.enqueue(object : HttpCallback {
+            override fun onFailure(call: HttpCall, e: IOException) {
                 if (!call.isCanceled()) {
                     LinkSummaryLoader.postFailure(callback, getFailureMessage(e))
                 }
             }
 
-            override fun onResponse(call: Call, response: Response) {
+            override fun onResponse(call: HttpCall, response: HttpResponse) {
                 try {
                     response.use { closeableResponse ->
                         if (!closeableResponse.isSuccessful) {
@@ -179,7 +171,7 @@ object LinkSummaryLoader {
                             return
                         }
 
-                        val finalUrl = closeableResponse.request.url.toString()
+                        val finalUrl = closeableResponse.requestUrl.toString()
                         val result = extract(
                             readBoundedBody(closeableResponse.body),
                             fallbackTitle,
@@ -208,7 +200,7 @@ object LinkSummaryLoader {
                 && HACKER_NEWS_ITEM_CONTENT_TYPE == result.contentType
     }
 
-    private fun getHackerNewsItemId(url: HttpUrl): String? {
+    private fun getHackerNewsItemId(url: NetworkUrl): String? {
         if (!"news.ycombinator.com".equals(url.host, ignoreCase = true)
             || "/item" != url.encodedPath
         ) {
@@ -246,20 +238,20 @@ object LinkSummaryLoader {
         fallbackTitle: String?,
         callback: Callback
     ): SummaryRequest {
-        val request = Request.Builder()
+        val request = HttpRequest.Builder()
             .url(HACKER_NEWS_ITEM_API + itemId + ".json")
             .header("Accept", "application/json")
             .get()
             .build()
-        val call = NetworkComponent.okHttpClientInstance.newCall(request)
-        call.enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        val call = NetworkComponent.httpClientInstance.newCall(request)
+        call.enqueue(object : HttpCallback {
+            override fun onFailure(call: HttpCall, e: IOException) {
                 if (!call.isCanceled()) {
                     LinkSummaryLoader.postFailure(callback, getFailureMessage(e))
                 }
             }
 
-            override fun onResponse(call: Call, response: Response) {
+            override fun onResponse(call: HttpCall, response: HttpResponse) {
                 try {
                     response.use { closeableResponse ->
                         if (!closeableResponse.isSuccessful) {
@@ -388,7 +380,7 @@ object LinkSummaryLoader {
         if (TextUtils.isEmpty(html)) {
             return ""
         }
-        return clean(Jsoup.parseBodyFragment(html).body().text())
+        return clean(Ksoup.parseBodyFragment(html.orEmpty()).body().text())
     }
 
     private fun loadWikipediaSummary(
@@ -442,7 +434,7 @@ object LinkSummaryLoader {
             return null
         }
 
-        val endpoint = YOUTUBE_OEMBED_ENDPOINT.toHttpUrlOrNull()
+        val endpoint = YOUTUBE_OEMBED_ENDPOINT.toNetworkUrlOrNull()
         if (endpoint == null) {
             return null
         }
@@ -463,7 +455,7 @@ object LinkSummaryLoader {
             return null
         }
 
-        val endpoint = REDDIT_OEMBED_ENDPOINT.toHttpUrlOrNull()
+        val endpoint = REDDIT_OEMBED_ENDPOINT.toNetworkUrlOrNull()
         if (endpoint == null) {
             return null
         }
@@ -480,7 +472,7 @@ object LinkSummaryLoader {
             return false
         }
 
-        val parsedUrl = url!!.toHttpUrlOrNull()
+        val parsedUrl = url!!.toNetworkUrlOrNull()
         if (parsedUrl == null || !isHttpScheme(parsedUrl)) {
             return false
         }
@@ -539,7 +531,7 @@ object LinkSummaryLoader {
     }
 
     @Throws(IOException::class)
-    fun readBoundedBody(body: ResponseBody): String {
+    fun readBoundedBody(body: HttpResponseBody): String {
         val contentLength = body.contentLength()
         if (contentLength > MAX_RESPONSE_BYTES) {
             throw IOException("The page is too large to preview")
@@ -548,23 +540,23 @@ object LinkSummaryLoader {
         val initialCapacity =
             if (contentLength > 0) min(contentLength, MAX_RESPONSE_BYTES.toLong()).toInt() else
                 8192
-        body.byteStream().use { input ->
-            ByteArrayOutputStream(initialCapacity).use { output ->
-                val buffer = ByteArray(8192)
-                var totalBytes = 0
-                var bytesRead: Int
-                while ((input.read(buffer).also { bytesRead = it }) != -1) {
-                    totalBytes += bytesRead
-                    if (totalBytes > MAX_RESPONSE_BYTES) {
-                        throw IOException("The page is too large to preview")
-                    }
-                    output.write(buffer, 0, bytesRead)
+        ByteArrayOutputStream(initialCapacity).use { output ->
+            val source = body.source()
+            val buffer = ByteArray(8192)
+            var totalBytes = 0
+            while (true) {
+                val bytesRead = source.read(buffer)
+                if (bytesRead == -1) break
+                totalBytes += bytesRead
+                if (totalBytes > MAX_RESPONSE_BYTES) {
+                    throw IOException("The page is too large to preview")
                 }
-
-                val charset = body.contentType()?.charset(StandardCharsets.UTF_8)
-                    ?: StandardCharsets.UTF_8
-                return String(output.toByteArray(), charset)
+                output.write(buffer, 0, bytesRead)
             }
+
+            val charset = body.contentType()?.charset(StandardCharsets.UTF_8)
+                ?: StandardCharsets.UTF_8
+            return String(output.toByteArray(), charset)
         }
     }
 
@@ -574,7 +566,7 @@ object LinkSummaryLoader {
         contentType: String?,
         finalUrl: String
     ): Result {
-        val document = Jsoup.parse(html, finalUrl)
+        val document = Ksoup.parse(html, baseUri = finalUrl)
         val title = firstNonEmpty(
             metaContent(document, "meta[property=og:title]"),
             metaContent(document, "meta[name=twitter:title]"),
@@ -640,9 +632,9 @@ object LinkSummaryLoader {
             if (TextUtils.isEmpty(candidate) || candidate.trim { it <= ' ' }.startsWith("data:")) {
                 continue
             }
-            val parsedBase = baseUrl.toHttpUrlOrNull()
+            val parsedBase = baseUrl.toNetworkUrlOrNull()
             val parsedImage = if (parsedBase == null)
-                candidate.trim { it <= ' ' }.toHttpUrlOrNull()
+                candidate.trim { it <= ' ' }.toNetworkUrlOrNull()
             else
                 parsedBase.resolve(candidate.trim { it <= ' ' })
             if (parsedImage != null && isHttpScheme(parsedImage)) {
@@ -701,7 +693,7 @@ object LinkSummaryLoader {
     }
 
     private fun getHost(url: String): String {
-        val parsedUrl = url.toHttpUrlOrNull()
+        val parsedUrl = url.toNetworkUrlOrNull()
         return if (parsedUrl == null) "" else parsedUrl.host
     }
 
@@ -710,11 +702,11 @@ object LinkSummaryLoader {
             return null
         }
 
-        val parsedUrl = url?.toHttpUrlOrNull()
+        val parsedUrl = url?.toNetworkUrlOrNull()
         return if (parsedUrl == null || !isHttpScheme(parsedUrl)) null else parsedUrl.toString()
     }
 
-    private fun isHttpScheme(url: HttpUrl): Boolean {
+    private fun isHttpScheme(url: NetworkUrl): Boolean {
         return "http" == url.scheme || "https" == url.scheme
     }
 

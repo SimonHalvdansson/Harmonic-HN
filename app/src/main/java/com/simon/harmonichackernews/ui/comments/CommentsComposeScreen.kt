@@ -131,7 +131,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
+import coil3.asDrawable
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Comment
@@ -1974,7 +1975,11 @@ private fun HeaderPreviewImage(
                 previewLoadFailed = false
                 story.previewImageLoadFailed = false
                 onPreviewLoaded()
-                calculateTint(state.result.drawable, context, tintBaseColor)?.let(onTintLoaded)
+                calculateTint(
+                    state.result.image.asDrawable(context.resources),
+                    context,
+                    tintBaseColor,
+                )?.let(onTintLoaded)
             },
             onError = {
                 previewLoadFailed = true

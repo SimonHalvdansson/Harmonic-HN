@@ -226,7 +226,6 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.core)
-    implementation(libs.androidx.palette)
     implementation(libs.androidx.preference)
     implementation(libs.androidx.security)
     implementation(libs.androidx.webkit)
@@ -234,12 +233,14 @@ dependencies {
 
     implementation(libs.materialui)
 
-    implementation(libs.volley)
-    implementation(libs.bundles.okhttp)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
     implementation(libs.coil)
     implementation(libs.coil.compose)
+    implementation(libs.coil.network.ktor3)
     implementation(libs.coil.svg)
-    implementation(libs.jsoup)
+    implementation(libs.ksoup)
+    implementation(libs.androidx.palette)
     debugLLMImplementation(libs.mlkit.genai.summarization)
     debugLLMImplementation(libs.play.feature.delivery)
     debugLLMFastImplementation(libs.mlkit.genai.summarization)
@@ -247,10 +248,6 @@ dependencies {
     playReleaseImplementation(libs.mlkit.genai.summarization)
     playReleaseImplementation(libs.play.feature.delivery)
     implementation(libs.androidx.work)
-
-    implementation(libs.markwon.core)
-    implementation(libs.markwon.ext.latex)
-    implementation(libs.markwon.inline.parser)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)

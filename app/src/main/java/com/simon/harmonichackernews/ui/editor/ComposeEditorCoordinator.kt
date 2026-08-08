@@ -9,7 +9,7 @@ import com.simon.harmonichackernews.network.UserActions.ActionCallback
 import com.simon.harmonichackernews.network.UserActions.CaptchaChallenge
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
 import com.simon.harmonichackernews.utils.Utils
-import okhttp3.Response
+import com.simon.harmonichackernews.network.HttpResponse
 
 /** Owns submission side effects while the editor itself is a MainActivity Compose destination.  */
 class ComposeEditorCoordinator(
@@ -86,7 +86,7 @@ class ComposeEditorCoordinator(
             url,
             activity,
             object : ActionCallback {
-                override fun onSuccess(response: Response) {
+                override fun onSuccess(response: HttpResponse) {
                     Toast.makeText(
                         activity,
                         "Post submitted, it might take a minute to show up",
@@ -150,7 +150,7 @@ class ComposeEditorCoordinator(
             commentText,
             activity,
             object : ActionCallback {
-                override fun onSuccess(response: Response) {
+                override fun onSuccess(response: HttpResponse) {
                     Toast.makeText(
                         activity,
                         "Comment posted, it might take a minute to show up",

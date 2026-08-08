@@ -2,15 +2,10 @@ package com.simon.harmonichackernews.network
 
 import android.os.Handler
 import android.os.Looper
-import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstance
+import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
 import java.io.IOException
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.Request
-import okhttp3.Response
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Document
 
 /** Resolves the provider artwork embedded in OpenRouter provider pages.  */
 object OpenRouterProviderIconLoader {
@@ -76,24 +71,24 @@ object OpenRouterProviderIconLoader {
     }
 
     private fun requestProviderPage(normalizedSlug: String, attempt: Int) {
-        val providerUrl = OPENROUTER_URL.toHttpUrl().newBuilder()
+        val providerUrl = OPENROUTER_URL.toNetworkUrl().newBuilder()
             .addPathSegment(normalizedSlug)
             .build()
-        val request = Request.Builder().url(providerUrl).build()
-        okHttpClientInstance.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        val request = HttpRequest.Builder().url(providerUrl).build()
+        httpClientInstance.newCall(request).enqueue(object : HttpCallback {
+            override fun onFailure(call: HttpCall, e: IOException) {
                 retryOrFinish(normalizedSlug, attempt, null)
             }
 
-            override fun onResponse(call: Call, response: Response) {
+            override fun onResponse(call: HttpCall, response: HttpResponse) {
                 var iconUrl: String? = null
                 var retryable = false
                 try {
                     response.use { closeableResponse ->
                         val body = closeableResponse.body
                         if (closeableResponse.isSuccessful && body != null) {
-                            val page = Jsoup.parse(
-                                body.string(), providerUrl.toString()
+                            val page = Ksoup.parse(
+                                body.string(), baseUri = providerUrl.toString()
                             )
                             iconUrl = findProviderIcon(page, normalizedSlug)
                         } else {
@@ -117,13 +112,13 @@ object OpenRouterProviderIconLoader {
     }
 
     private fun fetchSvg(providerSlug: String, iconUrl: String) {
-        val request = Request.Builder().url(iconUrl).build()
-        okHttpClientInstance.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        val request = HttpRequest.Builder().url(iconUrl).build()
+        httpClientInstance.newCall(request).enqueue(object : HttpCallback {
+            override fun onFailure(call: HttpCall, e: IOException) {
                 finish(providerSlug, iconUrl)
             }
 
-            override fun onResponse(call: Call, response: Response) {
+            override fun onResponse(call: HttpCall, response: HttpResponse) {
                 try {
                     response.use { closeableResponse ->
                         val body = closeableResponse.body
@@ -168,7 +163,7 @@ object OpenRouterProviderIconLoader {
             }
             val iconUrl = image.absUrl("src")
             try {
-                val parsed = iconUrl.toHttpUrl()
+                val parsed = iconUrl.toNetworkUrl()
                 if ("https" == parsed.scheme || "http" == parsed.scheme) {
                     return parsed.toString()
                 }

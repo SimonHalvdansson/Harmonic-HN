@@ -3,10 +3,10 @@ package com.simon.harmonichackernews
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import com.android.volley.Request
-import com.android.volley.RequestQueue
-import com.android.volley.Response
-import com.android.volley.toolbox.StringRequest
+import com.simon.harmonichackernews.network.QueueRequest as Request
+import com.simon.harmonichackernews.network.RequestQueue
+import com.simon.harmonichackernews.network.QueueResponse as Response
+import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader
 import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader.DownloadCallback
 import com.simon.harmonichackernews.utils.SettingsUtils
@@ -14,7 +14,7 @@ import com.simon.harmonichackernews.utils.Utils
 import java.util.ArrayDeque
 import kotlin.math.max
 import kotlin.math.min
-import okhttp3.Call
+import com.simon.harmonichackernews.network.HttpCall
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -41,7 +41,7 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         private set
     private var progressStatus: String = CACHE_PROGRESS_STATUS_CACHING
     private val pendingArticleDownloads = ArrayDeque<ArticleDownload>()
-    private val activeArticleDownloads = HashSet<Call>()
+    private val activeArticleDownloads = HashSet<HttpCall>()
     private var articleSnapshotDownloader: ArticleSnapshotDownloader? = null
     private var articleDownloadGeneration = 0
 
@@ -87,9 +87,9 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
             null
         val request = StringRequest(
             Request.Method.GET, Utils.URL_TOP,
-            Response.Listener { response: String ->
+            Response.Listener { response: String? ->
                 try {
-                    val arr = JSONArray(response)
+                    val arr = JSONArray(response.orEmpty())
                     val storyCount = storiesToCache
                     if (storyCount == 0) {
                         finishProgress(CACHE_PROGRESS_STATUS_EMPTY)
@@ -104,12 +104,13 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
                         val storyRequest = StringRequest(
                             Request.Method.GET,
                             url,
-                            Response.Listener { storyResponse: String ->
-                                Utils.cacheStory(context, id, storyResponse)
+                            Response.Listener { storyResponse: String? ->
+                                val storyJson = storyResponse.orEmpty()
+                                Utils.cacheStory(context, id, storyJson)
                                 if (cacheArticles) {
                                     cacheStoryArticleSnapshot(
                                         id,
-                                        storyResponse,
+                                        storyJson,
                                         articleFailures,
                                         { onCacheStoryFinished(remaining) })
                                 } else {
@@ -119,7 +120,7 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
                             Response.ErrorListener {
                                 onCacheStoryFinished(remaining)
                             })
-                        storyRequest.setTag(callbacks.requestTag)
+                        storyRequest.tag = callbacks.requestTag
                         queue.add(storyRequest)
                     }
                 } catch (e: JSONException) {
@@ -130,7 +131,7 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
                 finishProgress(CACHE_PROGRESS_STATUS_FAILED)
             })
 
-        request.setTag(callbacks.requestTag)
+        request.tag = callbacks.requestTag
         queue.add(request)
     }
 
@@ -242,7 +243,7 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
             val call = downloader.download(
                 download.storyId,
                 download.articleUrl,
-                DownloadCallback downloadCallback@ { completedCall: Call, success: Boolean ->
+                DownloadCallback downloadCallback@ { completedCall: HttpCall, success: Boolean ->
                     if (download.generation != articleDownloadGeneration) {
                         return@downloadCallback
                     }

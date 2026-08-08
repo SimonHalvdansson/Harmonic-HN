@@ -1,11 +1,11 @@
 package com.simon.harmonichackernews.ui.submissions
 
 import android.net.Uri
-import com.android.volley.Request
-import com.android.volley.RequestQueue
-import com.android.volley.Response
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.StringRequest
+import com.simon.harmonichackernews.network.NetworkError
+import com.simon.harmonichackernews.network.QueueRequest as Request
+import com.simon.harmonichackernews.network.RequestQueue
+import com.simon.harmonichackernews.network.QueueResponse as Response
+import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
@@ -143,8 +143,8 @@ class SubmissionsCoordinator(
                 if (submissions.contains(story)) composeController.refreshStoryRows()
                 val refreshed = story.toCommentMasterStory()
                 openComments(refreshed ?: masterStory, false)
-            }, Response.ErrorListener { _: VolleyError? -> openComments(masterStory, false) })
-        request.setTag(requestTag)
+            }, Response.ErrorListener { _: NetworkError? -> openComments(masterStory, false) })
+        request.tag = requestTag
         queue.add(request)
     }
 
@@ -198,11 +198,11 @@ class SubmissionsCoordinator(
                         }
                     })
             },
-            Response.ErrorListener { error: VolleyError? ->
+            Response.ErrorListener { error: NetworkError? ->
                 error?.printStackTrace()
                 finishLoading(requestGeneration)
             })
-        request.setTag(requestTag)
+        request.tag = requestTag
         queue.add(request)
     }
 

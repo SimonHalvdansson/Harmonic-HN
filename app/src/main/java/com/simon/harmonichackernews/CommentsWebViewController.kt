@@ -70,7 +70,7 @@ import java.io.RandomAccessFile
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 import kotlin.math.min
-import okhttp3.Call
+import com.simon.harmonichackernews.network.HttpCall
 import org.json.JSONArray
 import org.json.JSONException
 
@@ -1406,7 +1406,7 @@ internal class CommentsWebViewController(
         val fileDownloader = FileDownloader(ctx)
         Toast.makeText(ctx, "Loading PDF...", Toast.LENGTH_LONG).show()
         fileDownloader.downloadFile(url, PDF_MIME_TYPE, object : FileDownloaderCallback {
-            override fun onFailure(call: Call?, e: IOException?) {
+            override fun onFailure(call: HttpCall?, e: IOException?) {
                 showDownloadButton(url, contentDisposition, mimetype)
             }
 

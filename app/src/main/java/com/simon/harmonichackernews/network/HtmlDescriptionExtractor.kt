@@ -4,8 +4,8 @@ import java.util.Locale
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import kotlin.math.min
-import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
+import com.fleeksoft.ksoup.nodes.Document
+import com.fleeksoft.ksoup.nodes.Element
 
 /** Conservative fallback extraction for pages whose description metadata is not useful.  */
 internal object HtmlDescriptionExtractor {

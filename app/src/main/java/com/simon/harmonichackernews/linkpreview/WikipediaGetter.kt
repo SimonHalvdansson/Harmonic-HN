@@ -1,13 +1,14 @@
 package com.simon.harmonichackernews.linkpreview
 
 import android.content.Context
-import com.android.volley.Request
-import com.android.volley.toolbox.StringRequest
+import com.simon.harmonichackernews.network.QueueRequest as Request
+import com.simon.harmonichackernews.network.QueuedRequest
+import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.data.WikipediaInfo
 import com.simon.harmonichackernews.network.NetworkComponent
 import org.json.JSONObject
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Document
 
 object WikipediaGetter {
     private val wikipediaUrlRegex = Regex("^https?://en\\.wikipedia\\.org/wiki/.+")
@@ -17,7 +18,7 @@ object WikipediaGetter {
 
     fun isValidWikipediaUrl(url: String): Boolean = wikipediaUrlRegex.matches(url)
 
-    fun getInfo(wikipediaUrl: String, ctx: Context, callback: GetterCallback): Request<*>? {
+    fun getInfo(wikipediaUrl: String, ctx: Context, callback: GetterCallback): QueuedRequest<*>? {
         val title = wikipediaUrl
             .substringAfter("en.wikipedia.org/wiki/", missingDelimiterValue = "")
             .takeIf(String::isNotEmpty)
@@ -33,7 +34,7 @@ object WikipediaGetter {
             apiUrl,
             { response ->
                 try {
-                    val json = JSONObject(response)
+                    val json = JSONObject(response.orEmpty())
                     val pages = json.getJSONObject("query").getJSONObject("pages")
                     val page = pages.getJSONObject(pages.keys().next())
                     val summary = page.optString("extract")
@@ -55,7 +56,7 @@ object WikipediaGetter {
                 }
             },
             { error ->
-                error.printStackTrace()
+                error?.printStackTrace()
                 callback.onFailure("Couldn't connect to Wikipedia API")
             },
         )
@@ -64,7 +65,7 @@ object WikipediaGetter {
     }
 
     private fun sanitizeSummaryHtml(summaryHtml: String): Document {
-        val document = Jsoup.parseBodyFragment(summaryHtml)
+        val document = Ksoup.parseBodyFragment(summaryHtml)
 
         // HtmlTextView cannot render rich MediaWiki content such as charts or tables. Remove
         // these elements with their contents so embedded SVG labels and CSS are not shown as
@@ -89,7 +90,7 @@ object WikipediaGetter {
     fun getFirstParagraphText(summaryHtml: String?): String {
         if (summaryHtml.isNullOrEmpty()) return ""
 
-        val document = Jsoup.parse(summaryHtml)
+        val document = Ksoup.parse(summaryHtml)
         val firstParagraph = document.selectFirst("p")
         return firstParagraph?.text() ?: document.text()
     }

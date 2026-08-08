@@ -1,12 +1,6 @@
 package com.simon.harmonichackernews.network
 
 import android.util.Log
-import com.android.volley.DefaultRetryPolicy
-import com.android.volley.Request
-import com.android.volley.RequestQueue
-import com.android.volley.Response
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.StringRequest
 import com.simon.harmonichackernews.data.Comment
 import java.util.Locale
 import org.json.JSONException
@@ -26,8 +20,8 @@ class HNAPICommentLoader(
         val url = "https://hacker-news.firebaseio.com/v0/item/" + commentId + ".json"
 
         val request = StringRequest(
-            Request.Method.GET, url,
-            Response.Listener { response: String? ->
+            QueueRequest.Method.GET, url,
+            QueueResponse.Listener { response: String? ->
                 try {
                     val comment = JSONParser.parseOfficialHNCommentResponse(response.orEmpty())
                     val author = comment?.by
@@ -56,17 +50,17 @@ class HNAPICommentLoader(
                     listener.onCommentFailed(commentId)
                 }
             },
-            Response.ErrorListener { error: VolleyError? ->
+            QueueResponse.ErrorListener { error: NetworkError? ->
                 Log.w(
                     TAG,
                     "HN API comment request failed, commentId=$commentId: " +
-                        VolleyErrorUtils.describe(error),
+                        NetworkErrorUtils.describe(error),
                     error
                 )
                 listener.onCommentFailed(commentId)
             })
 
-        request.setTag(requestTag)
+        request.tag = requestTag
         request.setRetryPolicy(
             DefaultRetryPolicy(
                 10000,

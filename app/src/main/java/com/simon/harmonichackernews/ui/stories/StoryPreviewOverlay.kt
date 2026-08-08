@@ -87,14 +87,16 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.LinkSummaryLoader
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -426,7 +428,7 @@ private fun StoryPreviewCard(
                         currentImageUrl != null -> AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(currentImageUrl)
-                                .setHeader("User-Agent", NetworkComponent.USER_AGENT)
+                                .networkHeader("User-Agent", NetworkComponent.USER_AGENT)
                                 .crossfade(true)
                                 .build(),
                             contentDescription = null,

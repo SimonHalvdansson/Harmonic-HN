@@ -5,9 +5,14 @@ import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
 import androidx.annotation.NonNull
+import com.simon.harmonichackernews.network.HttpCall
+import com.simon.harmonichackernews.network.HttpCallback
+import com.simon.harmonichackernews.network.HttpRequest
+import com.simon.harmonichackernews.network.HttpResponse
 import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstance
+import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.AtomicMoveNotSupportedException
@@ -22,16 +27,6 @@ import java.util.concurrent.ThreadFactory
 import java.util.concurrent.TimeUnit
 import java.util.function.ToLongFunction
 import kotlin.math.max
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.ResponseBody
-import okio.Buffer
-import okio.BufferedSink
-import okio.Okio
-import okio.buffer
-import okio.sink
 
 class FileDownloader(ctx: Context) {
     private val mCacheDir: File?
@@ -86,9 +81,9 @@ class FileDownloader(ctx: Context) {
             return
         }
 
-        val request: Request
+        val request: HttpRequest
         try {
-            request = Request.Builder().url(url)
+            request = HttpRequest.Builder().url(url)
                 .header("Accept", mimeType)
                 .build()
         } catch (e: IllegalArgumentException) {
@@ -97,13 +92,13 @@ class FileDownloader(ctx: Context) {
             return
         }
 
-        okHttpClientInstance!!.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        httpClientInstance.newCall(request).enqueue(object : HttpCallback {
+            override fun onFailure(call: HttpCall, e: IOException) {
                 tempFile.delete()
                 deliverFailure(callback, call, e)
             }
 
-            override fun onResponse(call: Call, response: Response) {
+            override fun onResponse(call: HttpCall, response: HttpResponse) {
                 try {
                     response.use { closeableResponse ->
                         if (!closeableResponse.isSuccessful) {
@@ -119,20 +114,20 @@ class FileDownloader(ctx: Context) {
                         if (body.contentLength() > MAX_CACHE_SIZE_BYTES) {
                             throw IOException("PDF is larger than the 250 MiB viewer limit")
                         }
-                        tempFile.sink().buffer().use { sink ->
-                            val buffer = Buffer()
+                        FileOutputStream(tempFile).use { output ->
+                            val source = body.source()
+                            val buffer = ByteArray(8 * 1024)
                             var downloadedBytes = 0L
-                            var bytesRead: Long
-                            while ((body.source().read(buffer, 8 * 1024L)
-                                    .also { bytesRead = it }) != -1L
-                            ) {
+                            while (true) {
+                                val bytesRead = source.read(buffer)
+                                if (bytesRead == -1) break
                                 downloadedBytes += bytesRead
                                 if (downloadedBytes > MAX_CACHE_SIZE_BYTES) {
                                     throw IOException(
                                         "PDF is larger than the 250 MiB viewer limit"
                                     )
                                 }
-                                sink.write(buffer, bytesRead)
+                                output.write(buffer, 0, bytesRead)
                             }
                         }
                         if (tempFile.length() <= 0L) {
@@ -150,7 +145,7 @@ class FileDownloader(ctx: Context) {
     }
 
     private fun finishDownload(
-        call: Call?,
+        call: HttpCall?,
         tempFile: File,
         outputFile: File,
         callback: FileDownloaderCallback
@@ -220,14 +215,14 @@ class FileDownloader(ctx: Context) {
 
     private fun deliverFailure(
         callback: FileDownloaderCallback,
-        call: Call?,
+        call: HttpCall?,
         exception: IOException?
     ) {
         mMainHandler.post(Runnable { callback.onFailure(call, exception) })
     }
 
     interface FileDownloaderCallback {
-        fun onFailure(call: Call?, e: IOException?)
+        fun onFailure(call: HttpCall?, e: IOException?)
         fun onSuccess(filePath: String?)
     }
 

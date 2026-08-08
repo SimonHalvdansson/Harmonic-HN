@@ -73,20 +73,21 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.preference.PreferenceManager
-import coil.compose.AsyncImage
-import coil.decode.SvgDecoder
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.AiModelCatalog
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.network.OpenRouterProviderIconLoader
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import okhttp3.Call
+import com.simon.harmonichackernews.network.HttpCall
 
 private val AiMonoFontFamily = FontFamily(
     Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
@@ -409,8 +410,8 @@ fun AiModelSelectorDialog(
     var priceState by remember {
         mutableStateOf<AiModelPriceState>(AiModelPriceState.Empty)
     }
-    val catalogCall = remember { arrayOfNulls<Call>(1) }
-    val priceCall = remember { arrayOfNulls<Call>(1) }
+    val catalogCall = remember { arrayOfNulls<HttpCall>(1) }
+    val priceCall = remember { arrayOfNulls<HttpCall>(1) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -958,17 +959,8 @@ private fun AiModelProviderIcon(providerSlug: String) {
             val request = remember(context, resolvedIcon) {
                 ImageRequest.Builder(context)
                     .data(resolvedIcon)
-                    .setHeader("User-Agent", NetworkComponent.USER_AGENT)
+                    .networkHeader("User-Agent", NetworkComponent.USER_AGENT)
                     .crossfade(100)
-                    .apply {
-                        if (
-                            resolvedIcon is ByteArray ||
-                            resolvedIcon is String &&
-                            resolvedIcon.contains(".svg", ignoreCase = true)
-                        ) {
-                            decoderFactory(SvgDecoder.Factory())
-                        }
-                    }
                     .build()
             }
             AsyncImage(

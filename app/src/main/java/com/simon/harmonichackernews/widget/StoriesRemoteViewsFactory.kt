@@ -13,14 +13,13 @@ import com.simon.harmonichackernews.CommentsContract
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.JSONParser.updateStoryWithHNJson
-import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstance
+import com.simon.harmonichackernews.network.HttpRequest
+import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
 import com.simon.harmonichackernews.utils.SettingsUtils.shouldIncludeTopLevelDomain
 import com.simon.harmonichackernews.utils.SettingsUtils.shouldShowIndex
 import com.simon.harmonichackernews.utils.Utils.getTimeAgo
 import com.simon.harmonichackernews.utils.Utils.log
-import java.util.concurrent.TimeUnit
 import kotlin.math.min
-import okhttp3.Request
 import org.json.JSONArray
 
 class StoriesRemoteViewsFactory(private val context: Context, private val appWidgetId: Int) :
@@ -62,16 +61,16 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
             val visibleStoryCount = WidgetConfigActivity.getStoryCount(context, appWidgetId)
             val fetchStoryCount = WidgetConfigActivity.getFetchStoryCount(context, appWidgetId)
 
-            val client = checkNotNull(okHttpClientInstance) {
+            val client = checkNotNull(httpClientInstance) {
                 "Network client is unavailable"
             }
                 .newBuilder()
-                .callTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .readTimeoutMillis(CALL_TIMEOUT_SECONDS * 1_000L)
                 .build()
 
             val feedUrl = WidgetConfigActivity.getFeedUrl(context, appWidgetId)
             log("WidgetFactory fetch ids widgetId=$appWidgetId url=$feedUrl")
-            val idsRequest = Request.Builder()
+            val idsRequest = HttpRequest.Builder()
                 .url(feedUrl)
                 .build()
 
@@ -108,7 +107,7 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
                     val storyUrl =
                         "https://hacker-news.firebaseio.com/v0/item/$storyId.json"
 
-                    val storyRequest = Request.Builder()
+                    val storyRequest = HttpRequest.Builder()
                         .url(storyUrl)
                         .build()
 

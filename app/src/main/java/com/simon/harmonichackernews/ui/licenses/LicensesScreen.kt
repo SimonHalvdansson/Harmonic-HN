@@ -67,10 +67,10 @@ private val CommonLicensesBeforeLocalAi = listOf(
         "https://developer.android.com/jetpack/androidx",
     ),
     LicenseEntry(
-        "Volley",
-        "Google",
+        "Ktor",
+        "JetBrains",
         "Apache License 2.0",
-        "https://github.com/google/volley",
+        "https://ktor.io/",
     ),
     LicenseEntry(
         "Material Components",
@@ -121,14 +121,8 @@ private val CommonLicensesAfterLocalAi = listOf(
         "https://github.com/Kotlin/kotlinx.coroutines",
     ),
     LicenseEntry(
-        "OkHttp",
-        "Square",
-        "Apache License 2.0",
-        "https://square.github.io/okhttp/",
-    ),
-    LicenseEntry(
         "Coil",
-        "Instacart",
+        "Coil contributors",
         "Apache License 2.0",
         "https://coil-kt.github.io/coil/",
     ),
@@ -151,16 +145,10 @@ private val CommonLicensesAfterLocalAi = listOf(
         "https://github.com/hidroh/materialistic",
     ),
     LicenseEntry(
-        "jsoup",
-        "Jonathan Hedley",
+        "Ksoup",
+        "FleekSoft",
         "MIT License",
-        "https://jsoup.org/",
-    ),
-    LicenseEntry(
-        "Markwon",
-        "Noties",
-        "Apache License 2.0",
-        "https://noties.io/Markwon/",
+        "https://github.com/fleeksoft/ksoup",
     ),
 )
 

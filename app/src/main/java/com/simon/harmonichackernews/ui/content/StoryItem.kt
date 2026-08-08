@@ -70,8 +70,10 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.asDrawable
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import kotlin.math.roundToInt
 
 private const val ContentAnimationDuration = 220
@@ -455,6 +457,7 @@ private fun LargeStoryPreviewImageContent(
     onDrawableLoaded: (Drawable) -> Unit,
     onLoadFailed: () -> Unit,
 ) {
+    val context = LocalContext.current
     var imageLoaded by remember(model) { androidx.compose.runtime.mutableStateOf(false) }
     val loadProgress by animateFloatAsState(
         targetValue = if (imageLoaded) 1f else 0f,
@@ -477,7 +480,7 @@ private fun LargeStoryPreviewImageContent(
         contentScale = ContentScale.Crop,
         onSuccess = {
             imageLoaded = true
-            onDrawableLoaded(it.result.drawable)
+            onDrawableLoaded(it.result.image.asDrawable(context.resources))
         },
         onError = {
             imageLoaded = true
@@ -690,7 +693,7 @@ private fun StoryTextBlock(
                     contentScale = ContentScale.Crop,
                     onSuccess = {
                         previewImageLoaded = true
-                        onPreviewDrawableLoaded(it.result.drawable)
+                        onPreviewDrawableLoaded(it.result.image.asDrawable(context.resources))
                     },
                     onError = {
                         previewImageLoaded = true
@@ -843,6 +846,7 @@ private fun StoryFavicon(
     mediaAlpha: Float,
     onDrawableLoaded: (Drawable) -> Unit,
 ) {
+    val context = LocalContext.current
     var imageLoaded by remember(model) { androidx.compose.runtime.mutableStateOf(false) }
     val loadProgress by animateFloatAsState(
         targetValue = if (imageLoaded) 1f else 0f,
@@ -862,7 +866,7 @@ private fun StoryFavicon(
             .renderTransform(alpha = mediaAlpha * loadProgress),
         onSuccess = {
             imageLoaded = true
-            onDrawableLoaded(it.result.drawable)
+            onDrawableLoaded(it.result.image.asDrawable(context.resources))
         },
         onError = { imageLoaded = true },
     )

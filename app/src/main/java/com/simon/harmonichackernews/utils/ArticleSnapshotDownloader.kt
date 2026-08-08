@@ -6,8 +6,13 @@ import android.os.Looper
 import androidx.annotation.NonNull
 import androidx.annotation.Nullable
 import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.network.NetworkComponent.okHttpClientInstance
-import java.io.BufferedInputStream
+import com.simon.harmonichackernews.network.HttpCall
+import com.simon.harmonichackernews.network.HttpCallback
+import com.simon.harmonichackernews.network.HttpMediaType
+import com.simon.harmonichackernews.network.HttpRequest
+import com.simon.harmonichackernews.network.HttpResponse
+import com.simon.harmonichackernews.network.HttpResponseBody
+import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -20,12 +25,6 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.function.ToLongFunction
 import kotlin.math.max
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.MediaType
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.ResponseBody
 
 class ArticleSnapshotDownloader(context: Context) {
     private val appContext: Context
@@ -39,10 +38,10 @@ class ArticleSnapshotDownloader(context: Context) {
         storyId: Int,
         articleUrl: String,
         callback: DownloadCallback
-    ): Call? {
-        val request: Request
+    ): HttpCall? {
+        val request: HttpRequest
         try {
-            request = Request.Builder()
+            request = HttpRequest.Builder()
                 .url(articleUrl)
                 .header("Accept", "text/html,application/xhtml+xml")
                 .build()
@@ -50,13 +49,13 @@ class ArticleSnapshotDownloader(context: Context) {
             return null
         }
 
-        val call = okHttpClientInstance!!.newCall(request)
-        call.enqueue(object : Callback {
-            override fun onFailure(failedCall: Call, e: IOException) {
+        val call = httpClientInstance.newCall(request)
+        call.enqueue(object : HttpCallback {
+            override fun onFailure(failedCall: HttpCall, e: IOException) {
                 deliverResult(callback, failedCall, false)
             }
 
-            override fun onResponse(completedCall: Call, response: Response) {
+            override fun onResponse(completedCall: HttpCall, response: HttpResponse) {
                 var success = false
                 var tempFile: File? = null
                 try {
@@ -182,14 +181,14 @@ class ArticleSnapshotDownloader(context: Context) {
 
     private fun deliverResult(
         callback: DownloadCallback,
-        call: Call,
+        call: HttpCall,
         success: Boolean
     ) {
         mainHandler.post(Runnable { callback.onComplete(call, success) })
     }
 
     fun interface DownloadCallback {
-        fun onComplete(call: Call, success: Boolean)
+        fun onComplete(call: HttpCall, success: Boolean)
     }
 
     companion object {
@@ -200,7 +199,7 @@ class ArticleSnapshotDownloader(context: Context) {
         private const val TEMP_FILE_SUFFIX = ".download"
         private val CACHE_LOCK = Any()
 
-        private fun isHtml(contentType: MediaType?): Boolean {
+        private fun isHtml(contentType: HttpMediaType?): Boolean {
             if (contentType == null) {
                 return false
             }
@@ -212,26 +211,25 @@ class ArticleSnapshotDownloader(context: Context) {
 
         @Throws(IOException::class)
         private fun streamBodyToFile(
-            body: ResponseBody,
+            body: HttpResponseBody,
             outputFile: File
         ) {
             var downloadedBytes = 0L
-            BufferedInputStream(body.byteStream()).use { inputStream ->
-                FileOutputStream(outputFile).use { outputStream ->
-                    val buffer = ByteArray(BUFFER_SIZE_BYTES)
-                    var bytesRead: Int
-                    while ((inputStream.read(buffer).also { bytesRead = it }) != -1) {
-                        downloadedBytes += bytesRead.toLong()
-                        if (downloadedBytes > Utils.MAX_CACHED_ARTICLE_BYTES) {
-                            throw IOException("Article HTML exceeds the 5 MiB cache limit")
-                        }
-                        outputStream.write(buffer, 0, bytesRead)
+            FileOutputStream(outputFile).use { outputStream ->
+                val source = body.source()
+                val buffer = ByteArray(BUFFER_SIZE_BYTES)
+                var bytesRead: Int
+                while ((source.read(buffer).also { bytesRead = it }) != -1) {
+                    downloadedBytes += bytesRead.toLong()
+                    if (downloadedBytes > Utils.MAX_CACHED_ARTICLE_BYTES) {
+                        throw IOException("Article HTML exceeds the 5 MiB cache limit")
                     }
-                    if (downloadedBytes == 0L) {
-                        throw IOException("Article response was empty")
-                    }
-                    outputStream.getFD().sync()
+                    outputStream.write(buffer, 0, bytesRead)
                 }
+                if (downloadedBytes == 0L) {
+                    throw IOException("Article response was empty")
+                }
+                outputStream.fd.sync()
             }
         }
 

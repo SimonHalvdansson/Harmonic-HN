@@ -15,10 +15,11 @@ import android.widget.Toast
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.ViewModelProvider
-import com.android.volley.Request
-import com.android.volley.RequestQueue
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.StringRequest
+import com.simon.harmonichackernews.network.NetworkError
+import com.simon.harmonichackernews.network.QueueRequest as Request
+import com.simon.harmonichackernews.network.RequestQueue
+import com.simon.harmonichackernews.network.QueueResponse as Response
+import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.StorySearchController.StoryFilter
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
@@ -51,7 +52,7 @@ import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StoryUpdate.StoryUpdateListener
 import com.simon.harmonichackernews.utils.Utils
-import okhttp3.Response
+import com.simon.harmonichackernews.network.HttpResponse as ActionHttpResponse
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -1794,7 +1795,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             adapter!!.notifyItemChanged(currentPosition)
         }
         val callback: ActionCallback = object : ActionCallback {
-            override fun onSuccess(response: Response) {
+            override fun onSuccess(response: ActionHttpResponse) {
                 if (response != null) {
                     response.close()
                 }
@@ -1849,7 +1850,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         UserActions.setFavorite(
             context, story.id, newFavorited,
             object : ActionCallback {
-                override fun onSuccess(response: Response) {
+                override fun onSuccess(response: ActionHttpResponse) {
                     if (response != null) {
                         response.close()
                     }
@@ -2230,7 +2231,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         val stringRequest = StringRequest(
             Request.Method.GET,
             url,
-            com.android.volley.Response.Listener { response: String? ->
+            Response.Listener { response: String? ->
                 if (!this.isAdded || adapter == null) {
                     return@Listener
                 }
@@ -2252,7 +2253,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                     false
                 )
             },
-            com.android.volley.Response.ErrorListener { error: VolleyError? ->
+            Response.ErrorListener { error: NetworkError? ->
                 openComments(
                     masterStory,
                     position,
@@ -2260,7 +2261,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                 )
             })
 
-        stringRequest.setTag(requestTag)
+        stringRequest.tag = requestTag
         queue!!.add<String?>(stringRequest)
     }
 
@@ -2421,8 +2422,8 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         val url = "https://hacker-news.firebaseio.com/v0/item/" + story.id + ".json"
 
         val stringRequest = StringRequest(
-            Request.Method.GET, url,
-            com.android.volley.Response.Listener { response: String? ->
+            Request.Method.GET, url.orEmpty(),
+            Response.Listener { response: String? ->
                 if (!isCurrentStoryLoad(story, startedAt)) {
                     return@Listener
                 }
@@ -2475,7 +2476,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                     updatePreviewImagePrefetchRampCompletion()
                     enqueueStoryRowChange(story, loadGeneration)
                 }
-            }, com.android.volley.Response.ErrorListener { error: VolleyError? ->
+            }, Response.ErrorListener { error: NetworkError? ->
                 if (!isCurrentStoryLoad(story, startedAt)) {
                     return@ErrorListener
                 }
@@ -2499,7 +2500,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                 }
             })
 
-        stringRequest.setTag(requestTag)
+        stringRequest.tag = requestTag
         queue!!.add<String?>(stringRequest)
     }
 
@@ -2672,7 +2673,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
 
         val stringRequest = StringRequest(
             Request.Method.GET, storyListUrl,
-            com.android.volley.Response.Listener { response: String? ->
+            Response.Listener { response: String? ->
                 if (!isCurrentStoryListGeneration(refreshGeneration)) {
                     Log.d(
                         TAG,
@@ -2721,7 +2722,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                         e
                     )
                 }
-            }, com.android.volley.Response.ErrorListener { error: VolleyError? ->
+            }, Response.ErrorListener { error: NetworkError? ->
                 if (!isCurrentStoryListGeneration(refreshGeneration)) {
                     Log.d(
                         TAG,
@@ -2743,7 +2744,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             })
 
         updateHeader()
-        stringRequest.setTag(requestTag)
+        stringRequest.tag = requestTag
         queue!!.add<String?>(stringRequest)
     }
 
@@ -3001,7 +3002,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         updateHeader()
     }
 
-    private fun isRateLimitedError(error: VolleyError?): Boolean {
+    private fun isRateLimitedError(error: NetworkError?): Boolean {
         return error != null && error.networkResponse != null && error.networkResponse.statusCode == 429
     }
 
@@ -3076,8 +3077,8 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
 
         val url = "https://hacker-news.firebaseio.com/v0/item/" + parentId + ".json"
         val stringRequest = StringRequest(
-            Request.Method.GET, url,
-            com.android.volley.Response.Listener { response: String? ->
+            Request.Method.GET, url.orEmpty(),
+            Response.Listener { response: String? ->
                 if (!isCurrentStoryListGeneration(loadGeneration)) {
                     return@Listener
                 }
@@ -3109,13 +3110,13 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                 } catch (e: JSONException) {
                     e.printStackTrace()
                 }
-            }, com.android.volley.Response.ErrorListener { error: VolleyError? ->
+            }, Response.ErrorListener { error: NetworkError? ->
                 if (attempt < 2 && isCurrentStoryListGeneration(loadGeneration)) {
                     loadCommentMaster(story, parentId, attempt + 1, loadGeneration)
                 }
             })
 
-        stringRequest.setTag(requestTag)
+        stringRequest.tag = requestTag
         queue!!.add<String?>(stringRequest)
     }
 
@@ -3669,7 +3670,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             val url = "https://hacker-news.firebaseio.com/v0/item/" + history.id + ".json"
             val stringRequest = StringRequest(
                 Request.Method.GET, url,
-                com.android.volley.Response.Listener { response: String? ->
+                Response.Listener { response: String? ->
                     if (requestGeneration != algoliaRequestGeneration) {
                         return@Listener
                     }
@@ -3692,7 +3693,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                         failedRequests,
                         matchedStories
                     )
-                }, com.android.volley.Response.ErrorListener { error: VolleyError? ->
+                }, Response.ErrorListener { error: NetworkError? ->
                     if (requestGeneration != algoliaRequestGeneration) {
                         return@ErrorListener
                     }
@@ -3707,7 +3708,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                 })
 
             stringRequest.setShouldCache(false)
-            stringRequest.setTag(requestTag)
+            stringRequest.tag = requestTag
             queue!!.add<String?>(stringRequest)
         }
 
@@ -3782,10 +3783,10 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             clearStories()
         }
         val stringRequest = StringRequest(
-            Request.Method.GET, url,
-            com.android.volley.Response.Listener { response: String? ->
+            Request.Method.GET, url.orEmpty(),
+            Response.Listener { response: String? ->
                 // Parse JSON on background thread
-                BackgroundJSONParser.parseAlgoliaJson(response, object : AlgoliaParseCallback {
+                BackgroundJSONParser.parseAlgoliaJson(response.orEmpty(), object : AlgoliaParseCallback {
                     override fun onParseSuccess(parsedStories: MutableList<Story>) {
                         if (requestGeneration != algoliaRequestGeneration) {
                             return
@@ -3859,7 +3860,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                         error.printStackTrace()
                     }
                 })
-            }, com.android.volley.Response.ErrorListener { error: VolleyError? ->
+            }, Response.ErrorListener { error: NetworkError? ->
                 if (requestGeneration != algoliaRequestGeneration) {
                     return@ErrorListener
                 }
@@ -3885,7 +3886,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         updateHeader()
 
         stringRequest.setShouldCache(false)
-        stringRequest.setTag(requestTag)
+        stringRequest.tag = requestTag
         queue!!.add<String?>(stringRequest)
     }
 
