@@ -68,11 +68,6 @@
             app:icon="@drawable/ic_horizontal_split"
             app:title="Compact header" />
 
-        <com.simon.harmonichackernews.settings.SplitPaneRatioPreference
-            app:singleLineTitle="false"
-            app:key="pref_split_pane_ratio"
-            app:title="Split view ratio" />
-
     </PreferenceCategory>
 
     <PreferenceCategory

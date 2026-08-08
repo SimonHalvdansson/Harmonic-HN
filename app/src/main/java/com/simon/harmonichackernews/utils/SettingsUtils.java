@@ -721,7 +721,7 @@ public class SettingsUtils {
     }
 
     public static int getDefaultSplitPaneRatio(Context ctx) {
-        if (FoldableSplitInitializer.isFoldableSplitEnabled(ctx)) {
+        if (Utils.isFoldableDevice(ctx)) {
             return DEFAULT_FOLDABLE_SPLIT_PANE_RATIO;
         }
         return clampSplitPaneRatio(ctx.getResources().getInteger(R.integer.default_split_pane_ratio));

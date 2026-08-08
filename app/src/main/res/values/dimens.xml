@@ -7,7 +7,7 @@
     <dimen name="extra_pane_padding">0dp</dimen>
     <dimen name="settings_extra_pane_padding">0dp</dimen>
     <dimen name="comments_header_top_padding">24dp</dimen>
-    <dimen name="margin_between_panes">0dp</dimen>
+    <dimen name="split_pane_divider_width">24dp</dimen>
 
     <dimen name="comments_header_text_size">12dp</dimen>
     <dimen name="comments_header_action_padding">0dp</dimen>
