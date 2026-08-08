@@ -1,23 +1,35 @@
 package com.simon.harmonichackernews.network
 
 import android.text.TextUtils
-import android.util.JsonReader
-import android.util.JsonToken
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.Utils
 import java.io.IOException
 import java.io.InterruptedIOException
-import java.io.StringReader
 import java.util.Locale
 import kotlin.math.max
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
 import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
 import com.simon.harmonichackernews.serialization.JsonException as JSONException
 import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 object JSONParser {
     const val ALGOLIA_ERROR_STRING: String = "{\"status\":404,\"error\":\"Not Found\"}"
+    private val ALGOLIA_JSON = Json { ignoreUnknownKeys = true }
     private const val JSON_NULL_LITERAL = "null"
     private val PDF_SUFFIXES = arrayOf<String>(" [pdf]", "[pdf]", " (pdf)", "(pdf)")
     private val VIDEO_SUFFIXES = arrayOf<String>(" [video]", "[video]", " (video)", "(video)")
@@ -324,97 +336,51 @@ object JSONParser {
         prioTop: IntArray?,
         filteredUsers: Set<String>?
     ): AlgoliaCommentsResponse {
-        val reader = JsonReader(StringReader(response))
-        val result = AlgoliaCommentsResponse()
-        val topLevelComments = mutableListOf<Comment>()
-        val activeFilteredUsers = if (!filteredUsers.isNullOrEmpty())
-            filteredUsers
-        else
-            null
-
-        reader.beginObject()
-        while (reader.hasNext()) {
-            val name = reader.nextName()
-            when (name) {
-                "title" -> result.title = nextStringOrDefault(reader, result.title)
-                "points" -> result.points = nextIntOrDefault(reader, result.points)
-                "created_at_i" -> result.createdAt = nextIntOrDefault(reader, result.createdAt)
-                "type" -> result.type = nextStringOrDefault(reader, result.type)
-                "author" -> result.author = nextStringOrDefault(reader, result.author)
-                "story_id" -> result.storyId = nextIntOrDefault(reader, result.storyId)
-                "parent_id" -> result.parentId = nextIntOrDefault(reader, result.parentId)
-                "story_title" -> result.storyTitle = nextStringOrDefault(reader, result.storyTitle)
-                "url" -> result.url = nextStringOrDefault(reader, result.url)
-                "text" -> result.text = nextStringOrDefault(reader, result.text)
-                "id" -> result.id = nextIntOrDefault(reader, result.id)
-                "children" -> {
-                    reader.beginArray()
-                    while (reader.hasNext()) {
-                        val comment = parseAlgoliaComment(reader, 0, activeFilteredUsers)
-                        if (comment != null) {
-                            topLevelComments.add(comment)
-                        }
-                    }
-                    reader.endArray()
-                }
-
-                else -> reader.skipValue()
+        try {
+            val payload = ALGOLIA_JSON.decodeFromString<AlgoliaCommentsPayload>(response.orEmpty())
+            val result = AlgoliaCommentsResponse().apply {
+                title = payload.title
+                points = payload.points
+                createdAt = payload.createdAt
+                type = payload.type
+                author = payload.author
+                storyId = payload.storyId
+                parentId = payload.parentId
+                storyTitle = payload.storyTitle
+                url = payload.url
+                text = payload.text
+                id = payload.id
             }
-        }
-        reader.endObject()
-        reader.close()
+            val activeFilteredUsers = filteredUsers?.takeUnless(Set<String>::isEmpty)
+            val topLevelComments = payload.children
+                .mapNotNull { parseAlgoliaComment(it, 0, activeFilteredUsers) }
+                .toMutableList()
 
-        if (prioTop != null && prioTop.isNotEmpty() && topLevelComments.size > 1) {
-            sortTopLevelComments(topLevelComments, prioTop)
-        }
+            if (prioTop != null && prioTop.isNotEmpty() && topLevelComments.size > 1) {
+                sortTopLevelComments(topLevelComments, prioTop)
+            }
 
-        flattenComments(topLevelComments, result.comments)
-        return result
+            flattenComments(topLevelComments, result.comments)
+            return result
+        } catch (error: SerializationException) {
+            throw IOException("Invalid Algolia comments JSON", error)
+        } catch (error: IllegalArgumentException) {
+            throw IOException("Invalid Algolia comments JSON", error)
+        }
     }
 
-    @Throws(IOException::class)
     private fun parseAlgoliaComment(
-        reader: JsonReader,
+        payload: AlgoliaCommentPayload,
         depth: Int,
         filteredUsers: Set<String>?
     ): Comment? {
         throwIfInterrupted()
-        var rawText = ""
-        var author = ""
-        var parentId = 0
-        var createdAt = 0
-        var id = 0
-        var childCount = 0
-        var childComments: MutableList<Comment>? = null
-
-        reader.beginObject()
-        while (reader.hasNext()) {
-            val name = reader.nextName()
-            when (name) {
-                "text" -> rawText = nextStringOrDefault(reader, "").trim { it <= ' ' }
-                "author" -> author = nextStringOrDefault(reader, "").trim { it <= ' ' }
-                "parent_id" -> parentId = nextIntOrDefault(reader, parentId)
-                "created_at_i" -> createdAt = nextIntOrDefault(reader, createdAt)
-                "id" -> id = nextIntOrDefault(reader, id)
-                "children" -> {
-                    reader.beginArray()
-                    while (reader.hasNext()) {
-                        childCount++
-                        val childComment = parseAlgoliaComment(reader, depth + 1, filteredUsers)
-                        if (childComment != null) {
-                            if (childComments == null) {
-                                childComments = ArrayList()
-                            }
-                            childComments.add(childComment)
-                        }
-                    }
-                    reader.endArray()
-                }
-
-                else -> reader.skipValue()
-            }
-        }
-        reader.endObject()
+        val rawText = payload.text.trim { it <= ' ' }
+        val author = payload.author.trim { it <= ' ' }
+        val childCount = payload.children.size
+        val childComments = payload.children
+            .mapNotNull { parseAlgoliaComment(it, depth + 1, filteredUsers) }
+            .toMutableList()
         throwIfInterrupted()
 
         if (rawText.isEmpty() || JSON_NULL_LITERAL.equals(rawText, ignoreCase = true)) {
@@ -426,14 +392,14 @@ object JSONParser {
 
         val comment = Comment()
         comment.depth = depth
-        comment.parent = parentId
+        comment.parent = payload.parentId
         comment.expanded = true
         comment.by = author
         comment.text = preprocessHtml(rawText)
-        comment.time = createdAt
-        comment.id = id
+        comment.time = payload.createdAt
+        comment.id = payload.id
         comment.children = childCount
-        comment.childComments = childComments ?: mutableListOf()
+        comment.childComments = childComments
 
         if (comment.childComments.isNotEmpty()) {
             comment.childComments.sortWith(compareByDescending { it.children })
@@ -449,39 +415,88 @@ object JSONParser {
         }
     }
 
-    @Throws(IOException::class)
-    private fun nextStringOrDefault(reader: JsonReader, defaultValue: String): String {
-        val token = reader.peek()
-        if (token == JsonToken.NULL) {
-            reader.nextNull()
-            return defaultValue
-        }
-        if (token == JsonToken.STRING || token == JsonToken.NUMBER) {
-            return reader.nextString()
-        }
-        reader.skipValue()
-        return defaultValue
-    }
+    @Serializable
+    private data class AlgoliaCommentsPayload(
+        @Serializable(with = FlexibleStringSerializer::class)
+        val title: String = "",
+        @Serializable(with = FlexibleIntSerializer::class)
+        val points: Int = 0,
+        @SerialName("created_at_i")
+        @Serializable(with = FlexibleIntSerializer::class)
+        val createdAt: Int = 0,
+        @Serializable(with = FlexibleStringSerializer::class)
+        val type: String = "",
+        @Serializable(with = FlexibleStringSerializer::class)
+        val author: String = "",
+        @SerialName("story_id")
+        @Serializable(with = FlexibleIntSerializer::class)
+        val storyId: Int = 0,
+        @SerialName("parent_id")
+        @Serializable(with = FlexibleIntSerializer::class)
+        val parentId: Int = 0,
+        @SerialName("story_title")
+        @Serializable(with = FlexibleStringSerializer::class)
+        val storyTitle: String = "",
+        @Serializable(with = FlexibleStringSerializer::class)
+        val url: String = "",
+        @Serializable(with = FlexibleStringSerializer::class)
+        val text: String = "",
+        @Serializable(with = FlexibleIntSerializer::class)
+        val id: Int = 0,
+        val children: List<AlgoliaCommentPayload> = emptyList(),
+    )
 
-    @Throws(IOException::class)
-    private fun nextIntOrDefault(reader: JsonReader, defaultValue: Int): Int {
-        val token = reader.peek()
-        if (token == JsonToken.NULL) {
-            reader.nextNull()
-            return defaultValue
-        }
-        if (token == JsonToken.NUMBER) {
-            return reader.nextInt()
-        }
-        if (token == JsonToken.STRING) {
-            try {
-                return reader.nextString().toInt()
-            } catch (ignored: NumberFormatException) {
-                return defaultValue
+    @Serializable
+    private data class AlgoliaCommentPayload(
+        @Serializable(with = FlexibleStringSerializer::class)
+        val text: String = "",
+        @Serializable(with = FlexibleStringSerializer::class)
+        val author: String = "",
+        @SerialName("parent_id")
+        @Serializable(with = FlexibleIntSerializer::class)
+        val parentId: Int = 0,
+        @SerialName("created_at_i")
+        @Serializable(with = FlexibleIntSerializer::class)
+        val createdAt: Int = 0,
+        @Serializable(with = FlexibleIntSerializer::class)
+        val id: Int = 0,
+        val children: List<AlgoliaCommentPayload> = emptyList(),
+    )
+
+    private object FlexibleStringSerializer : KSerializer<String> {
+        override val descriptor: SerialDescriptor =
+            PrimitiveSerialDescriptor("FlexibleString", PrimitiveKind.STRING)
+
+        override fun deserialize(decoder: Decoder): String {
+            val jsonDecoder = decoder as? JsonDecoder ?: return decoder.decodeString()
+            val primitive = jsonDecoder.decodeJsonElement() as? JsonPrimitive ?: return ""
+            return if (primitive.isString || primitive.doubleOrNull != null) {
+                primitive.content
+            } else {
+                ""
             }
         }
-        reader.skipValue()
-        return defaultValue
+
+        override fun serialize(encoder: Encoder, value: String) = encoder.encodeString(value)
+    }
+
+    private object FlexibleIntSerializer : KSerializer<Int> {
+        override val descriptor: SerialDescriptor =
+            PrimitiveSerialDescriptor("FlexibleInt", PrimitiveKind.INT)
+
+        override fun deserialize(decoder: Decoder): Int {
+            val jsonDecoder = decoder as? JsonDecoder ?: return decoder.decodeInt()
+            val primitive = jsonDecoder.decodeJsonElement() as? JsonPrimitive ?: return 0
+            if (primitive.isString) {
+                return primitive.content.toIntOrNull() ?: 0
+            }
+            primitive.intOrNull?.let { return it }
+            val doubleValue = primitive.doubleOrNull ?: return 0
+            val intValue = doubleValue.toInt()
+            return if (intValue.toDouble() == doubleValue) intValue else 0
+        }
+
+        override fun serialize(encoder: Encoder, value: Int) = encoder.encodeInt(value)
     }
 
     private fun sortTopLevelComments(comments: MutableList<Comment>, prioTop: IntArray) {

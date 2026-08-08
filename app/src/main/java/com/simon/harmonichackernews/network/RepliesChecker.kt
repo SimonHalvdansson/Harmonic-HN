@@ -24,10 +24,6 @@ import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.max
@@ -44,12 +40,18 @@ object RepliesChecker {
 
     private const val JOB_ID = 98372
     private const val MAX_SUBMISSIONS_PER_CHECK = 1000
+    private const val HTTP_TIMEOUT_MILLIS = 15_000L
     private val CHECK_INTERVAL_MILLIS = 30L * 60L * 1000L
     private val CHECK_FLEX_MILLIS = 5L * 60L * 1000L
     private const val HN_API_BASE = "https://hacker-news.firebaseio.com/v0/"
 
     private val EXECUTOR: ExecutorService = Executors.newSingleThreadExecutor()
     private val MAIN_HANDLER = Handler(Looper.getMainLooper())
+    private val HTTP_CLIENT: KtorHttpClient by lazy {
+        NetworkComponent.httpClientInstance.newBuilder()
+            .readTimeoutMillis(HTTP_TIMEOUT_MILLIS)
+            .build()
+    }
 
     fun enable(
         ctx: Context,
@@ -618,34 +620,12 @@ object RepliesChecker {
 
     @Throws(Exception::class)
     private fun getString(urlString: String?): String {
-        val connection = URL(urlString).openConnection() as HttpURLConnection
-        connection.connectTimeout = 15000
-        connection.readTimeout = 15000
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("User-Agent", "Harmonic-HN")
-
-        val responseCode = connection.responseCode
-        val inputStream = if (responseCode >= 200 && responseCode < 300)
-            connection.inputStream
-        else
-            connection.errorStream
-
-        if (inputStream == null) {
-            connection.disconnect()
-            return ""
-        }
-
-        try {
-            BufferedReader(InputStreamReader(inputStream)).use { reader ->
-                return buildString {
-                    while (true) {
-                        val line = reader.readLine() ?: break
-                        append(line)
-                    }
-                }
-            }
-        } finally {
-            connection.disconnect()
+        val request = HttpRequest.Builder()
+            .url(requireNotNull(urlString) { "Reply check URL is required" })
+            .get()
+            .build()
+        return HTTP_CLIENT.newCall(request).execute().use { response ->
+            response.body.string()
         }
     }
 

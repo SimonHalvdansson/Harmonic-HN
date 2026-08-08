@@ -1,16 +1,12 @@
 package com.simon.harmonichackernews.linkpreview
 
 import android.content.Context
-import android.util.Xml
+import com.fleeksoft.ksoup.Ksoup
+import com.simon.harmonichackernews.data.ArxivInfo
 import com.simon.harmonichackernews.network.QueueRequest as Request
 import com.simon.harmonichackernews.network.StringRequest
-import com.simon.harmonichackernews.data.ArxivInfo
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.utils.ArxivResolver
-import java.io.IOException
-import java.io.StringReader
-import org.xmlpull.v1.XmlPullParser
-import org.xmlpull.v1.XmlPullParserException
 
 object ArxivAbstractGetter {
     private val arxivUrlRegex = Regex(
@@ -29,10 +25,7 @@ object ArxivAbstractGetter {
                 try {
                     parseResponse(response.orEmpty(), arxivId)?.let(callback::onSuccess)
                         ?: callback.onFailure("Data not found")
-                } catch (error: XmlPullParserException) {
-                    error.printStackTrace()
-                    callback.onFailure("Failed to parse ArXiv API response")
-                } catch (error: IOException) {
+                } catch (error: IllegalArgumentException) {
                     error.printStackTrace()
                     callback.onFailure("Failed to parse ArXiv API response")
                 }
@@ -45,44 +38,21 @@ object ArxivAbstractGetter {
         NetworkComponent.getRequestQueueInstance(ctx).add(request)
     }
 
-    @Throws(XmlPullParserException::class, IOException::class)
     private fun parseResponse(response: String, arxivId: String): ArxivInfo? {
-        val parser = Xml.newPullParser().apply {
-            setInput(StringReader(response))
+        val document = Ksoup.parseXml(response)
+        val entry = document.getElementsByTag("entry").firstOrNull() ?: return null
+        val abstractText = entry.getElementsByTag("summary").firstOrNull()?.wholeText().orEmpty()
+        val authors = entry.getElementsByTag("author").mapNotNull { author ->
+            author.getElementsByTag("name").firstOrNull()?.text()
         }
-        var eventType = parser.eventType
-        var abstractText = ""
-        val authors = mutableListOf<String?>()
-        var primaryCategory = ""
-        val secondaryCategories = mutableListOf<String?>()
-        var publishedDate = ""
-
-        while (eventType != XmlPullParser.END_DOCUMENT) {
-            if (eventType == XmlPullParser.START_TAG) {
-                when (parser.name) {
-                    "summary" -> {
-                        parser.next()
-                        abstractText = parser.text
-                    }
-                    "name" -> {
-                        parser.next()
-                        authors += parser.text
-                    }
-                    "primary_category" -> {
-                        primaryCategory = parser.getAttributeValue(null, "term")
-                    }
-                    "category" -> {
-                        val category = parser.getAttributeValue(null, "term")
-                        if (category != primaryCategory) secondaryCategories += category
-                    }
-                    "published" -> {
-                        parser.next()
-                        publishedDate = parser.text
-                    }
-                }
-            }
-            eventType = parser.next()
-        }
+        val primaryCategory = (
+            entry.getElementsByTag("arxiv:primary_category").firstOrNull()
+                ?: entry.getElementsByTag("primary_category").firstOrNull()
+            )?.attr("term").orEmpty()
+        val secondaryCategories = entry.getElementsByTag("category")
+            .map { it.attr("term") }
+            .filter { it != primaryCategory }
+        val publishedDate = entry.getElementsByTag("published").firstOrNull()?.text().orEmpty()
 
         if (
             abstractText.isEmpty() ||
