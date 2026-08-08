@@ -269,7 +269,8 @@ class StoriesComposeController private constructor(
         private set
     internal var headerPinnedForPreview by mutableStateOf(false)
         private set
-    internal val storyPagingAlphas = mutableStateMapOf<Int, Float>()
+    internal val storyPagingAlphas: Map<Int, Float>
+        field = mutableStateMapOf()
     internal var storyPreviewOverlay by mutableStateOf<StoryPreviewOverlayState?>(null)
         private set
     internal var storyPreviewDismissRequest by mutableIntStateOf(0)

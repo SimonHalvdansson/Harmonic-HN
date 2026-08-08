@@ -98,7 +98,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     private var userItemListCommentIds: MutableSet<Int> = HashSet<Int>()
     private var queue: RequestQueue? = null
     private val requestTag = Any()
-    private val loadingStoryStartTimes: MutableMap<Int, Long?> = HashMap<Int, Long?>()
+    private val loadingStoryStartTimes = mutableMapOf<Int, Long>()
     private var filterWords: java.util.ArrayList<String>? = null
     private var filterDomains: java.util.ArrayList<String>? = null
     private var filteredUsers: MutableSet<String>? = null
@@ -122,9 +122,8 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     private var lastSearch: String? = ""
     private var algoliaRequestGeneration = 0
     private var storyListGeneration = 0
-    private val pendingStoryRowChangeGenerations: MutableMap<Int, Int> = HashMap<Int, Int>()
-    private val pendingStoryRemovals: MutableMap<Int, PendingStoryRemoval?> =
-        HashMap<Int, PendingStoryRemoval?>()
+    private val pendingStoryRowChangeGenerations = mutableMapOf<Int, Int>()
+    private val pendingStoryRemovals = mutableMapOf<Int, PendingStoryRemoval>()
     private var algoliaLoading = false
     private var activeAlgoliaUrl: String? = null
     private var algoliaLoadMoreInProgress = false
@@ -965,7 +964,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
 
         // Story requests frequently finish during a fling. Keep the model update, but coalesce
         // the adapter notifications until holders are no longer rapidly moving through scrap.
-        pendingStoryRowChangeGenerations.put(story.id, loadGeneration)
+        pendingStoryRowChangeGenerations[story.id] = loadGeneration
         postPendingStoryAdapterUpdateIfNotSettling()
     }
 
@@ -978,12 +977,10 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return
         }
 
-        val pendingRemoval = pendingStoryRemovals.get(story.id)
+        val pendingRemoval = pendingStoryRemovals[story.id]
         if (pendingRemoval == null || pendingRemoval.generation != loadGeneration) {
-            pendingStoryRemovals.put(
-                story.id,
+            pendingStoryRemovals[story.id] =
                 PendingStoryRemoval(loadGeneration, updateHeader)
-            )
         } else {
             pendingRemoval.updateHeader = pendingRemoval.updateHeader or updateHeader
         }
@@ -999,22 +996,21 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         val currentGeneration = storyListGeneration
         var shouldUpdateHeader = false
         val removalIds = java.util.ArrayList<Int>()
-        for (entry in pendingStoryRemovals.entries) {
-            val removal: PendingStoryRemoval = entry.value!!
+        for ((storyId, removal) in pendingStoryRemovals) {
             if (removal.generation == currentGeneration) {
-                removalIds.add(entry.key)
+                removalIds.add(storyId)
                 shouldUpdateHeader = shouldUpdateHeader or removal.updateHeader
             }
         }
         pendingStoryRemovals.clear()
         for (storyId in removalIds) {
-            val position = findStoryPositionById(storyId!!)
+            val position = findStoryPositionById(storyId)
             if (position >= 0) {
                 removeStoryAt(position, currentGeneration, false)
             }
         }
         pendingStoryRowChangeGenerations.clear()
-        if (!removalIds.isEmpty()) {
+        if (removalIds.isNotEmpty()) {
             loadVisibleStories(currentGeneration)
         }
         if (shouldUpdateHeader) {
@@ -2344,7 +2340,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return false
         }
 
-        val startedAt = loadingStoryStartTimes.get(story.id)
+        val startedAt = loadingStoryStartTimes[story.id]
         if (startedAt == null) {
             return false
         }
@@ -2360,7 +2356,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     private fun markStoryLoadStarted(story: Story?): Long {
         val startedAt = System.currentTimeMillis()
         if (story != null) {
-            loadingStoryStartTimes.put(story.id, startedAt)
+            loadingStoryStartTimes[story.id] = startedAt
         }
         return startedAt
     }
@@ -2376,7 +2372,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return
         }
 
-        val currentStartedAt = loadingStoryStartTimes.get(story.id)
+        val currentStartedAt = loadingStoryStartTimes[story.id]
         if (currentStartedAt != null && currentStartedAt == startedAt) {
             loadingStoryStartTimes.remove(story.id)
         }
@@ -2387,7 +2383,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return false
         }
 
-        val currentStartedAt = loadingStoryStartTimes.get(story.id)
+        val currentStartedAt = loadingStoryStartTimes[story.id]
         return currentStartedAt != null && currentStartedAt == startedAt
     }
 
@@ -2400,7 +2396,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return
         }
 
-        val pendingRemoval = pendingStoryRemovals.get(story.id)
+        val pendingRemoval = pendingStoryRemovals[story.id]
         if (pendingRemoval != null && pendingRemoval.generation == loadGeneration) {
             return
         }
@@ -3228,8 +3224,8 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     }
 
     private fun syncUserItemListStoriesToIds(
-        itemIds: MutableList<Int>,
-        commentIds: MutableSet<Int>
+        itemIds: List<Int>,
+        commentIds: Set<Int>
     ): Boolean {
         if (itemIdsMatchUserItemListStories(itemIds, commentIds)) {
             return false
@@ -3240,15 +3236,15 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     }
 
     private fun itemIdsMatchUserItemListStories(
-        itemIds: MutableList<Int>,
-        commentIds: MutableSet<Int>?
+        itemIds: List<Int>,
+        commentIds: Set<Int>
     ): Boolean {
         if (userItemListStories.size != itemIds.size || userItemListCommentIds != commentIds) {
             return false
         }
 
         for (i in userItemListStories.indices) {
-            if (userItemListStories.get(i).id != itemIds.get(i)) {
+            if (userItemListStories[i].id != itemIds[i]) {
                 return false
             }
         }
@@ -3257,8 +3253,8 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     }
 
     private fun replaceUserItemListStoriesWithIds(
-        itemIds: MutableList<Int>,
-        commentIds: MutableSet<Int>
+        itemIds: List<Int>,
+        commentIds: Set<Int>
     ) {
         val existingStories: MutableMap<Int, Story> = HashMap<Int, Story>()
         for (story in (if (userItemListStories.isEmpty()) stories else userItemListStories)!!) {
@@ -3267,13 +3263,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
 
         val refreshedStories = java.util.ArrayList<Story>()
         for (id in itemIds) {
-            val existingStory = existingStories.get(id)
-            val story = if (existingStory != null) existingStory else Story(
-                "Loading...",
-                id!!,
-                false,
-                false
-            )
+            val story = existingStories[id] ?: Story("Loading...", id, false, false)
             if (commentIds.contains(id)) {
                 story.isComment = true
             }
@@ -3284,7 +3274,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         clearLoadingStoryState()
         userItemListStories.clear()
         userItemListStories.addAll(refreshedStories)
-        userItemListCommentIds = HashSet<Int>(commentIds)
+        userItemListCommentIds = commentIds.toMutableSet()
         replaceStories(this.filteredSavedItemStories, true)
         loadInitialVisibleStories()
         updateHeader()

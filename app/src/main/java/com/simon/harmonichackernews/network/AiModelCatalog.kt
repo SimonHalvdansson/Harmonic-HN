@@ -5,7 +5,6 @@ import android.os.Handler
 import android.os.Looper
 import androidx.preference.PreferenceManager
 import java.io.IOException
-import java.util.Collections
 import java.util.Locale
 import kotlin.synchronized
 import org.json.JSONArray
@@ -20,7 +19,7 @@ object AiModelCatalog {
     private const val MODEL_URL = "https://openrouter.ai/api/v1/model"
     private const val TWELVE_MONTHS_SECONDS = 365L * 24L * 60L * 60L
     private val MAIN_HANDLER = Handler(Looper.getMainLooper())
-    private val CACHE: MutableMap<String, MutableList<Model>> = HashMap()
+    private val CACHE = mutableMapOf<String, List<Model>>()
 
     fun fetchModels(
         provider: AiSummaryProviders.Provider, sort: Sort,
@@ -65,7 +64,7 @@ object AiModelCatalog {
                             MAIN_HANDLER.post { callback.onError("No compatible text models found") }
                             return
                         }
-                        val immutableModels = Collections.unmodifiableList(models)
+                        val immutableModels = models.toList()
                         synchronized(CACHE) {
                             CACHE[cacheKey] = immutableModels
                         }
@@ -155,7 +154,7 @@ object AiModelCatalog {
         }
 
         fetchModels(AiSummaryProviders.OPENAI, Sort.PRICE_LOW_TO_HIGH, object : ModelsCallback {
-            override fun onSuccess(models: MutableList<Model>) {
+            override fun onSuccess(models: List<Model>) {
                 val latestPrefs = PreferenceManager.getDefaultSharedPreferences(appContext)
                 val baseUrl = latestPrefs.getString(
                     PREF_BASE_URL,
@@ -188,7 +187,7 @@ object AiModelCatalog {
     fun ensureProviderDefault(context: Context, provider: AiSummaryProviders.Provider) {
         val appContext = context.applicationContext
         fetchModels(provider, Sort.PRICE_LOW_TO_HIGH, object : ModelsCallback {
-            override fun onSuccess(models: MutableList<Model>) {
+            override fun onSuccess(models: List<Model>) {
                 val prefs = PreferenceManager.getDefaultSharedPreferences(appContext)
                 val currentProvider = AiSummaryProviders.getProviderForBaseUrl(
                     prefs.getString(PREF_BASE_URL, AiSummaryProviders.defaultBaseUrl)
@@ -210,8 +209,8 @@ object AiModelCatalog {
     private fun parseModels(
         data: JSONArray,
         provider: AiSummaryProviders.Provider
-    ): MutableList<Model> {
-        val uniqueModels: MutableMap<String, Model> = LinkedHashMap()
+    ): List<Model> {
+        val uniqueModels = linkedMapOf<String, Model>()
         for (i in 0..<data.length()) {
             val item = data.optJSONObject(i)
             if (item == null) {
@@ -225,7 +224,7 @@ object AiModelCatalog {
             }
             uniqueModels[model.requestId] = model
         }
-        return ArrayList(uniqueModels.values)
+        return uniqueModels.values.toList()
     }
 
     private fun parseModel(item: JSONObject, provider: AiSummaryProviders.Provider): Model {
@@ -258,31 +257,16 @@ object AiModelCatalog {
         return null
     }
 
-    private fun cheapestModel(models: List<Model>, createdAfter: Long): Model? {
-        var cheapest: Model? = null
-        for (model in models) {
-            if (model.created < createdAfter || !model.hasPrices()) {
-                continue
-            }
-            if (cheapest == null || model.totalTokenPrice() < cheapest.totalTokenPrice() || (model.totalTokenPrice() == cheapest.totalTokenPrice()
-                        && model.created > cheapest.created)
-            ) {
-                cheapest = model
-            }
-        }
-        return cheapest
-    }
+    private fun cheapestModel(models: List<Model>, createdAfter: Long): Model? =
+        models.asSequence()
+            .filter { it.created >= createdAfter && it.hasPrices() }
+            .minWithOrNull(
+                compareBy<Model>(Model::totalTokenPrice)
+                    .thenByDescending(Model::created)
+            )
 
-    private fun parsePrice(pricing: JSONObject?, key: String): Double {
-        if (pricing == null || !pricing.has(key)) {
-            return Double.NaN
-        }
-        try {
-            return pricing.optString(key).toDouble()
-        } catch (e: NumberFormatException) {
-            return Double.NaN
-        }
-    }
+    private fun parsePrice(pricing: JSONObject?, key: String): Double =
+        pricing?.takeIf { it.has(key) }?.optString(key)?.toDoubleOrNull() ?: Double.NaN
 
     private fun postHttpError(callback: ModelsCallback, responseCode: Int) {
         MAIN_HANDLER.post {
@@ -292,13 +276,10 @@ object AiModelCatalog {
         }
     }
 
-    private fun readableError(error: IOException): String {
-        val message = error.message
-        return if (message?.trim { it <= ' ' }.isNullOrEmpty())
-            "Could not reach OpenRouter"
-        else
-            "Could not reach OpenRouter: " + message
-    }
+    private fun readableError(error: IOException): String =
+        error.message?.trim()?.takeIf(String::isNotEmpty)?.let {
+            "Could not reach OpenRouter: $it"
+        } ?: "Could not reach OpenRouter"
 
     enum class Sort(val apiValue: String) {
         POPULAR("most-popular"),
@@ -306,7 +287,7 @@ object AiModelCatalog {
     }
 
     interface ModelsCallback {
-        fun onSuccess(models: MutableList<Model>)
+        fun onSuccess(models: List<Model>)
 
         fun onError(message: String?)
     }

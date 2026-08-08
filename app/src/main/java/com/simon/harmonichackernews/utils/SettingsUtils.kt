@@ -160,7 +160,7 @@ object SettingsUtils {
         return intSet
     }
 
-    fun saveIntSetToSharedPreferences(ctx: Context, key: String?, set: MutableSet<Int>) {
+    fun saveIntSetToSharedPreferences(ctx: Context, key: String?, set: Set<Int>) {
         val stringSet: MutableSet<String> = HashSet<String>(set.size)
 
         for (integer in set) {

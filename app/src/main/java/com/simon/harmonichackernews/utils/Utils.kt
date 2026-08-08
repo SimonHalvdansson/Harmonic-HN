@@ -1080,7 +1080,7 @@ object Utils {
         )
     }
 
-    fun saveFavoriteIds(ctx: Context, ids: MutableList<Int>) {
+    fun saveFavoriteIds(ctx: Context, ids: List<Int>) {
         saveSavedItemIds(
             ctx,
             KEY_SHARED_PREFERENCES_FAVORITES,
@@ -1090,7 +1090,7 @@ object Utils {
 
     fun saveFavoriteCommentIds(
         ctx: Context,
-        ids: MutableSet<Int>
+        ids: Set<Int>
     ) {
         SettingsUtils.saveIntSetToSharedPreferences(
             ctx,
@@ -1099,7 +1099,7 @@ object Utils {
         )
     }
 
-    fun saveUpvotedIds(ctx: Context, ids: MutableList<Int>) {
+    fun saveUpvotedIds(ctx: Context, ids: List<Int>) {
         saveSavedItemIds(
             ctx,
             KEY_SHARED_PREFERENCES_UPVOTED,
@@ -1109,7 +1109,7 @@ object Utils {
 
     fun saveUpvotedCommentIds(
         ctx: Context,
-        ids: MutableSet<Int>
+        ids: Set<Int>
     ) {
         SettingsUtils.saveIntSetToSharedPreferences(
             ctx,
@@ -1121,7 +1121,7 @@ object Utils {
     private fun saveSavedItemIds(
         ctx: Context,
         key: String?,
-        ids: MutableList<Int>
+        ids: List<Int>
     ) {
         val items = ArrayList<Bookmark>()
         val seenIds = mutableSetOf<Int>()

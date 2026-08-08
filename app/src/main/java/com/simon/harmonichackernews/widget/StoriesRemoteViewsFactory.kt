@@ -20,6 +20,8 @@ import com.simon.harmonichackernews.utils.SettingsUtils.shouldShowIndex
 import com.simon.harmonichackernews.utils.Utils.getTimeAgo
 import com.simon.harmonichackernews.utils.Utils.log
 import kotlin.math.min
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 import org.json.JSONArray
 
 class StoriesRemoteViewsFactory(private val context: Context, private val appWidgetId: Int) :
@@ -32,7 +34,7 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
     }
 
     override fun onDataSetChanged() {
-        val startedAt = System.currentTimeMillis()
+        val startedAt = TimeSource.Monotonic.markNow()
         var terminalStatePosted = false
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val skipKey = KEY_SKIP_FETCH_PREFIX + appWidgetId
@@ -94,11 +96,11 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
                         " fetchTarget=$fetchStoryCount fetchCount=$count"
                 )
                 for (i in 0..<count) {
-                    val elapsedMs = System.currentTimeMillis() - startedAt
-                    if (elapsedMs > TOTAL_FETCH_TIMEOUT_MS) {
+                    val elapsed = startedAt.elapsedNow()
+                    if (elapsed > TOTAL_FETCH_TIMEOUT) {
                         log(
                             "WidgetFactory total timeout reached widgetId=$appWidgetId" +
-                                " elapsedMs=$elapsedMs"
+                                " elapsedMs=${elapsed.inWholeMilliseconds}"
                         )
                         break
                     }
@@ -144,7 +146,7 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
             log(
                 "WidgetFactory fetch complete widgetId=$appWidgetId" +
                     " stories=${freshStories.size} storyErrors=$storyFetchErrors" +
-                    " elapsedMs=${System.currentTimeMillis() - startedAt}"
+                    " elapsedMs=${startedAt.elapsedNow().inWholeMilliseconds}"
             )
 
             if (freshStories.size > visibleStoryCount) {
@@ -170,7 +172,7 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
             log(
                 "WidgetFactory onDataSetChanged end widgetId=$appWidgetId" +
                     " terminalPosted=$terminalStatePosted refreshingNow=$refreshingNow" +
-                    " elapsedMs=${System.currentTimeMillis() - startedAt}"
+                    " elapsedMs=${startedAt.elapsedNow().inWholeMilliseconds}"
             )
             if (!terminalStatePosted && refreshingNow) {
                 log("WidgetFactory forcing refresh error widgetId=$appWidgetId")
@@ -271,7 +273,7 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
         private const val KEY_SKIP_FETCH_PREFIX = "skip_fetch_"
         private const val KEY_REFRESHING_PREFIX = "refreshing_"
         private const val CALL_TIMEOUT_SECONDS: Long = 15
-        private const val TOTAL_FETCH_TIMEOUT_MS: Long = 60000
+        private val TOTAL_FETCH_TIMEOUT = 60.seconds
 
         fun setSkipFetch(context: Context, appWidgetId: Int, skip: Boolean) {
             log("WidgetFactory setSkipFetch widgetId=$appWidgetId skip=$skip")

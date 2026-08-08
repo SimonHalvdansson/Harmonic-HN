@@ -14,20 +14,12 @@ internal object UserItemListRepository {
     }
 
     fun loadCachedSnapshot(context: Context?, source: Source): Snapshot {
-        val itemIds = ArrayList<Int>()
-        if (context == null) {
-            return Snapshot(itemIds, HashSet())
-        }
+        if (context == null) return Snapshot(emptyList(), emptySet())
 
-        val items = loadCache(context, source)
-        val seenItemIds = HashSet<Int>(items.size)
-        for (item in items) {
-            if (seenItemIds.add(item.id)) {
-                itemIds.add(item.id)
-            }
-        }
-
-        itemIds.sortDescending()
+        val itemIds = loadCache(context, source)
+            .map(Bookmark::id)
+            .distinct()
+            .sortedDescending()
         return Snapshot(itemIds, loadCommentIds(context, source))
     }
 
@@ -49,19 +41,8 @@ internal object UserItemListRepository {
         val cachedItems = loadCache(context, source)
         val cachedCommentIds = loadCommentIds(context, source)
 
-        if (cachedItems.size != snapshot.itemIds.size
-            || cachedCommentIds != snapshot.commentIds
-        ) {
-            return false
-        }
-
-        for (i in cachedItems.indices) {
-            if (cachedItems[i].id != snapshot.itemIds[i]) {
-                return false
-            }
-        }
-
-        return true
+        return cachedItems.map(Bookmark::id) == snapshot.itemIds &&
+            cachedCommentIds == snapshot.commentIds
     }
 
     fun saveIds(
@@ -81,37 +62,21 @@ internal object UserItemListRepository {
         }
     }
 
-    private fun loadCommentIds(context: Context, source: Source): MutableSet<Int> =
+    private fun loadCommentIds(context: Context, source: Source): Set<Int> =
         when (source) {
             Source.UPVOTED -> Utils.loadUpvotedCommentIds(context)
             Source.FAVORITES -> Utils.loadFavoriteCommentIds(context)
         }
 
-    private fun normalizeItemIds(itemIds: List<Int>): ArrayList<Int> {
-        val normalizedItemIds = ArrayList<Int>(itemIds.size)
-        val seenItemIds = HashSet<Int>(itemIds.size)
-        for (id in itemIds) {
-            if (seenItemIds.add(id)) {
-                normalizedItemIds.add(id)
-            }
-        }
-
-        normalizedItemIds.sortDescending()
-        return normalizedItemIds
-    }
+    private fun normalizeItemIds(itemIds: List<Int>): List<Int> =
+        itemIds.distinct().sortedDescending()
 
     private fun normalizeCommentIds(
         itemIds: List<Int>,
         commentIds: List<Int>
-    ): MutableSet<Int> {
+    ): Set<Int> {
         val itemIdSet = itemIds.toHashSet()
-        val normalizedCommentIds = HashSet<Int>()
-        for (id in commentIds) {
-            if (id in itemIdSet) {
-                normalizedCommentIds.add(id)
-            }
-        }
-        return normalizedCommentIds
+        return commentIds.filterTo(mutableSetOf()) { it in itemIdSet }
     }
 
     internal enum class Source {
@@ -119,5 +84,5 @@ internal object UserItemListRepository {
         UPVOTED
     }
 
-    internal class Snapshot(val itemIds: ArrayList<Int>, val commentIds: MutableSet<Int>)
+    internal data class Snapshot(val itemIds: List<Int>, val commentIds: Set<Int>)
 }

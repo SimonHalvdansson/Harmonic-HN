@@ -3168,6 +3168,14 @@ private fun OpFilterBanner(controller: CommentsComposeController) {
     }
 }
 
+private enum class HeaderStatusState {
+    Loading,
+    Failed,
+    Empty,
+    Refresh,
+    None,
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HeaderStatus(controller: CommentsComposeController) {
@@ -3177,11 +3185,11 @@ private fun HeaderStatus(controller: CommentsComposeController) {
         controller.comments.size <= 1
     AnimatedContent(
         targetState = when {
-            controller.loadingFailed -> "failed"
-            showLoading -> "loading"
-            showEmpty -> "empty"
-            controller.showUpdate -> "refresh"
-            else -> "none"
+            controller.loadingFailed -> HeaderStatusState.Failed
+            showLoading -> HeaderStatusState.Loading
+            showEmpty -> HeaderStatusState.Empty
+            controller.showUpdate -> HeaderStatusState.Refresh
+            else -> HeaderStatusState.None
         },
         transitionSpec = {
             (fadeIn() + expandVertically()).togetherWith(fadeOut() + shrinkVertically())
@@ -3189,13 +3197,13 @@ private fun HeaderStatus(controller: CommentsComposeController) {
         label = "comments header status",
     ) { state ->
         when (state) {
-            "loading" -> Box(
+            HeaderStatusState.Loading -> Box(
                 Modifier
                     .fillMaxWidth()
                     .padding(top = if (controller.commentsLoaded) 16.dp else 44.dp, bottom = 18.dp),
                 contentAlignment = Alignment.Center,
             ) { LoadingIndicator(Modifier.size(42.dp)) }
-            "failed" -> Column(
+            HeaderStatusState.Failed -> Column(
                 Modifier
                     .fillMaxWidth()
                     .padding(20.dp),
@@ -3214,7 +3222,7 @@ private fun HeaderStatus(controller: CommentsComposeController) {
                     modifier = Modifier.padding(top = 8.dp),
                 ) { Text("Try again") }
             }
-            "empty" -> Column(
+            HeaderStatusState.Empty -> Column(
                 Modifier
                     .fillMaxWidth()
                     .padding(24.dp),
@@ -3229,7 +3237,7 @@ private fun HeaderStatus(controller: CommentsComposeController) {
                     fontSize = 20.sp,
                 )
             }
-            "refresh" -> OutlinedButton(
+            HeaderStatusState.Refresh -> OutlinedButton(
                 onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier
@@ -3239,7 +3247,7 @@ private fun HeaderStatus(controller: CommentsComposeController) {
                 Icon(painterResource(R.drawable.ic_refresh), null)
                 Text("Tap to refresh", Modifier.padding(start = 8.dp))
             }
-            else -> Spacer(Modifier.height(0.dp))
+            HeaderStatusState.None -> Spacer(Modifier.height(0.dp))
         }
     }
 }

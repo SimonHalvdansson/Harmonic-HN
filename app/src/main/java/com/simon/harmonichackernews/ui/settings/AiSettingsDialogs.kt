@@ -467,7 +467,7 @@ fun AiModelSelectorDialog(
             provider,
             sort,
             object : AiModelCatalog.ModelsCallback {
-                override fun onSuccess(models: MutableList<AiModelCatalog.Model>) {
+                override fun onSuccess(models: List<AiModelCatalog.Model>) {
                     if (disposed) return
                     val safeModels = models.toList()
                     catalogState = AiModelCatalogState.Loaded(
@@ -688,37 +688,33 @@ fun AiModelSelectorDialog(
                             }
                         }
 
-                        is AiModelCatalogState.Loaded -> {
-                            if (state.models.isEmpty()) {
-                                Text(stringResource(R.string.ai_model_no_free))
-                            } else {
-                                LazyColumn(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .fillMaxHeight(),
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                        start = 16.dp,
-                                        top = 4.dp,
-                                        end = 16.dp,
-                                        bottom = 12.dp,
-                                    ),
-                                ) {
-                                    items(
-                                        state.models,
-                                        key = AiModelCatalog.Model::openRouterId,
-                                    ) { model ->
-                                        AiModelRow(
-                                            model = model,
-                                            selected = model.requestId == modelInput.trim(),
-                                            onClick = {
-                                                modelInput = model.requestId
-                                                modelError = null
-                                                priceState =
-                                                    AiModelPriceState.Resolved(model)
-                                            },
-                                        )
-                                    }
-                                }
+                        is AiModelCatalogState.Loaded if state.models.isEmpty() ->
+                            Text(stringResource(R.string.ai_model_no_free))
+
+                        is AiModelCatalogState.Loaded -> LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                start = 16.dp,
+                                top = 4.dp,
+                                end = 16.dp,
+                                bottom = 12.dp,
+                            ),
+                        ) {
+                            items(
+                                state.models,
+                                key = AiModelCatalog.Model::openRouterId,
+                            ) { model ->
+                                AiModelRow(
+                                    model = model,
+                                    selected = model.requestId == modelInput.trim(),
+                                    onClick = {
+                                        modelInput = model.requestId
+                                        modelError = null
+                                        priceState = AiModelPriceState.Resolved(model)
+                                    },
+                                )
                             }
                         }
                     }

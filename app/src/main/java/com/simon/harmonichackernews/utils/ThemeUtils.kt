@@ -1,20 +1,16 @@
 package com.simon.harmonichackernews.utils
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
-import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.SettingsUtils.getSelectableNighttimeTheme
 import com.simon.harmonichackernews.utils.SettingsUtils.shouldUseSpecialNighttimeTheme
 import com.simon.harmonichackernews.utils.SettingsUtils.shouldUseTransparentStatusBar
-import java.util.Arrays
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
@@ -37,6 +33,12 @@ object ThemeUtils {
      * [source 2](https://cs.android.com/android/platform/superproject/+/master:frameworks/base/core/res/remote_color_resources_res/values/colors.xml;l=67)
      */
     private val defaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b)
+    private val dynamicThemes = setOf(
+        "material_daynight",
+        "darklight_daynight",
+        "amoledwhite_daynight",
+    )
+    private val darkThemes = setOf("amoled", "dark", "gray", "hacker", "material_dark")
 
     fun setupTheme(activity: ComponentActivity) {
         val theme = getPreferredTheme(activity)
@@ -90,51 +92,38 @@ object ThemeUtils {
     }
 
     fun isDarkMode(ctx: Context, theme: String?): Boolean {
-        val dynamicThemes = mutableListOf<String?>(
-            "material_daynight",
-            "darklight_daynight",
-            "amoledwhite_daynight"
-        )
-        val darkThemes = mutableListOf<String?>("amoled", "dark", "gray", "hacker", "material_dark")
-
-        if (dynamicThemes.contains(theme)) {
-            return uiModeNight(ctx)
+        return when (theme) {
+            in dynamicThemes -> uiModeNight(ctx)
+            in darkThemes -> true
+            else -> false
         }
-        return darkThemes.contains(theme)
     }
 
-    fun isDarkMode(ctx: Context): Boolean {
-        val theme = getPreferredTheme(ctx)
-        return isDarkMode(ctx, theme)
-    }
+    fun isDarkMode(ctx: Context): Boolean = isDarkMode(ctx, getPreferredTheme(ctx))
 
-    fun isLightMode(ctx: Context): Boolean {
-        return !isDarkMode(ctx)
-    }
+    fun isLightMode(ctx: Context): Boolean = !isDarkMode(ctx)
 
-    fun uiModeNight(ctx: Context): Boolean {
-        val currentNightMode =
-            ctx.getResources().getConfiguration().uiMode and Configuration.UI_MODE_NIGHT_MASK
-        return currentNightMode == Configuration.UI_MODE_NIGHT_YES
-    }
+    fun uiModeNight(ctx: Context): Boolean =
+        (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
 
-    fun getBackgroundColorResource(ctx: Context): Int {
-        val theme = getPreferredTheme(ctx)
-        when (theme) {
-            "amoled" -> return android.R.color.black
-            "hacker" -> return R.color.hackerBackground
-            "gray" -> return R.color.grayBackground
-            "light" -> return R.color.lightBackground
-            "hacker_news" -> return R.color.hackerNewsBackground
-            "white" -> return R.color.whiteBackground
-            "material_dark" -> return R.color.material_you_neutral_900
-            "material_light" -> return R.color.material_you_neutral_50
-            "material_daynight" -> return if (uiModeNight(ctx)) R.color.material_you_neutral_900 else R.color.material_you_neutral_50
-            "darklight_daynight" -> return if (uiModeNight(ctx)) R.color.background else R.color.lightBackground
-            "amoledwhite_daynight" -> return if (uiModeNight(ctx)) android.R.color.black else R.color.whiteBackground
-            "dark" -> return R.color.background
-            else -> return R.color.background
-        }
+    fun getBackgroundColorResource(ctx: Context): Int = when (getPreferredTheme(ctx)) {
+        "amoled" -> android.R.color.black
+        "hacker" -> R.color.hackerBackground
+        "gray" -> R.color.grayBackground
+        "light" -> R.color.lightBackground
+        "hacker_news" -> R.color.hackerNewsBackground
+        "white" -> R.color.whiteBackground
+        "material_dark" -> R.color.material_you_neutral_900
+        "material_light" -> R.color.material_you_neutral_50
+        "material_daynight" ->
+            if (uiModeNight(ctx)) R.color.material_you_neutral_900
+            else R.color.material_you_neutral_50
+        "darklight_daynight" ->
+            if (uiModeNight(ctx)) R.color.background else R.color.lightBackground
+        "amoledwhite_daynight" ->
+            if (uiModeNight(ctx)) android.R.color.black else R.color.whiteBackground
+        else -> R.color.background
     }
 
     fun getPreferredTheme(ctx: Context): String {
