@@ -91,6 +91,7 @@ data class StoryItemUiModel(
     val previewImageRes: Int?,
     val faviconUrl: String? = null,
     val previewImageUrl: String? = null,
+    val previewImageLoadFailed: Boolean = false,
     val faviconTintArgb: Int? = null,
     val previewImageTintArgb: Int? = null,
 )
@@ -140,6 +141,7 @@ fun StoryItem(
     onLinkLongClick: (() -> Unit)? = null,
     onCommentClick: (() -> Unit)? = null,
     onBoundsChanged: ((Rect) -> Unit)? = null,
+    onPreviewLoadFailed: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val colors = HarmonicTheme.colors
@@ -187,9 +189,24 @@ fun StoryItem(
     } else {
         if (style.dimmed) 0.6f else 1f
     }
-    val paletteKey = style.paletteTintConfigKey
-    val faviconSource = model.faviconUrl ?: model.faviconRes
     val previewSource = model.previewImageUrl ?: model.previewImageRes
+    var previewImageLoadFailed by remember(previewSource, model.previewImageLoadFailed) {
+        androidx.compose.runtime.mutableStateOf(model.previewImageLoadFailed)
+    }
+    val displayedModel = if (previewImageLoadFailed) {
+        model.copy(previewImageUrl = null, previewImageRes = null)
+    } else {
+        model
+    }
+    val handlePreviewLoadFailed = {
+        if (!previewImageLoadFailed) {
+            previewImageLoadFailed = true
+            onPreviewLoadFailed?.invoke()
+        }
+    }
+    val paletteKey = style.paletteTintConfigKey
+    val faviconSource = displayedModel.faviconUrl ?: displayedModel.faviconRes
+    val displayedPreviewSource = displayedModel.previewImageUrl ?: displayedModel.previewImageRes
     var loadedFaviconTintColor by remember(
         faviconSource,
         paletteKey,
@@ -198,11 +215,11 @@ fun StoryItem(
         androidx.compose.runtime.mutableStateOf(model.faviconTintArgb?.let(::Color))
     }
     var loadedPreviewTintColor by remember(
-        previewSource,
+        displayedPreviewSource,
         paletteKey,
-        model.previewImageTintArgb,
+        displayedModel.previewImageTintArgb,
     ) {
-        androidx.compose.runtime.mutableStateOf(model.previewImageTintArgb?.let(::Color))
+        androidx.compose.runtime.mutableStateOf(displayedModel.previewImageTintArgb?.let(::Color))
     }
     val baseTintColor = remember(context) {
         Color(PreviewImageTintUtils.getTintBaseColor(context))
@@ -220,12 +237,12 @@ fun StoryItem(
     }
     val previewResourceTintColor = remember(
         context,
-        model.previewImageRes,
-        model.previewImageUrl,
+        displayedModel.previewImageRes,
+        displayedModel.previewImageUrl,
         paletteKey,
     ) {
-        if (model.previewImageUrl == null) {
-            model.previewImageRes?.let {
+        if (displayedModel.previewImageUrl == null) {
+            displayedModel.previewImageRes?.let {
                 calculatePreviewTint(
                     drawable = AppCompatResources.getDrawable(context, it),
                     fallback = baseTintColor,
@@ -239,7 +256,7 @@ fun StoryItem(
     val onPreviewDrawableLoaded: (Drawable) -> Unit = { drawable ->
         if (!listItem &&
             style.previewImageMode != SettingsUtils.STORY_PREVIEW_IMAGE_OFF &&
-            model.previewImageTintArgb == null
+            displayedModel.previewImageTintArgb == null
         ) {
             loadedPreviewTintColor = calculatePreviewTint(drawable, baseTintColor, context)
         }
@@ -256,7 +273,7 @@ fun StoryItem(
         null
     }
     val usePreviewTint = style.previewImageMode != SettingsUtils.STORY_PREVIEW_IMAGE_OFF &&
-        previewSource != null
+        displayedPreviewSource != null
     val targetCardBackground = when {
         style.tintCard && usePreviewTint -> loadedPreviewTintColor
             ?: previewResourceTintColor
@@ -319,8 +336,9 @@ fun StoryItem(
                 LargeStoryPreviewImage(
                     visible = style.previewImageMode == SettingsUtils.STORY_PREVIEW_IMAGE_LARGE,
                     borderless = style.borderlessLargeImage,
-                    model = model.previewImageUrl ?: model.previewImageRes,
+                    model = displayedPreviewSource,
                     onDrawableLoaded = onPreviewDrawableLoaded,
+                    onLoadFailed = handlePreviewLoadFailed,
                     alpha = clickedMediaAlpha,
                     animateChanges = animateChanges,
                 )
@@ -329,7 +347,7 @@ fun StoryItem(
                     commentsOnLeftProgress = alignmentProgress,
                     content = {
                         StoryLinkContent(
-                            model = model,
+                            model = displayedModel,
                             style = style,
                             typography = typography,
                             titleSize = titleSize,
@@ -337,6 +355,7 @@ fun StoryItem(
                             metaSize = metaSize,
                             alignmentProgress = alignmentProgress,
                             onPreviewDrawableLoaded = onPreviewDrawableLoaded,
+                            onPreviewLoadFailed = handlePreviewLoadFailed,
                             onFaviconDrawableLoaded = onFaviconDrawableLoaded,
                             mediaAlpha = clickedMediaAlpha,
                             animateChanges = animateChanges,
@@ -364,6 +383,7 @@ private fun LargeStoryPreviewImage(
     borderless: Boolean,
     model: Any?,
     onDrawableLoaded: (Drawable) -> Unit,
+    onLoadFailed: () -> Unit,
     alpha: Float,
     animateChanges: Boolean,
 ) {
@@ -409,6 +429,7 @@ private fun LargeStoryPreviewImage(
                 radius = radius,
                 alpha = alpha,
                 onDrawableLoaded = onDrawableLoaded,
+                onLoadFailed = onLoadFailed,
             )
         }
     } else if (visible && model != null) {
@@ -419,6 +440,7 @@ private fun LargeStoryPreviewImage(
             radius = radius,
             alpha = alpha,
             onDrawableLoaded = onDrawableLoaded,
+            onLoadFailed = onLoadFailed,
         )
     }
 }
@@ -431,6 +453,7 @@ private fun LargeStoryPreviewImageContent(
     radius: androidx.compose.ui.unit.Dp,
     alpha: Float,
     onDrawableLoaded: (Drawable) -> Unit,
+    onLoadFailed: () -> Unit,
 ) {
     var imageLoaded by remember(model) { androidx.compose.runtime.mutableStateOf(false) }
     val loadProgress by animateFloatAsState(
@@ -456,7 +479,10 @@ private fun LargeStoryPreviewImageContent(
             imageLoaded = true
             onDrawableLoaded(it.result.drawable)
         },
-        onError = { imageLoaded = true },
+        onError = {
+            imageLoaded = true
+            onLoadFailed()
+        },
     )
 }
 
@@ -470,6 +496,7 @@ private fun StoryLinkContent(
     metaSize: Float,
     alignmentProgress: Float,
     onPreviewDrawableLoaded: (Drawable) -> Unit,
+    onPreviewLoadFailed: () -> Unit,
     onFaviconDrawableLoaded: (Drawable) -> Unit,
     mediaAlpha: Float,
     animateChanges: Boolean,
@@ -554,6 +581,7 @@ private fun StoryLinkContent(
             summaryProgress = summaryProgress,
             metaProgress = metaProgress,
             onPreviewDrawableLoaded = onPreviewDrawableLoaded,
+            onPreviewLoadFailed = onPreviewLoadFailed,
             onFaviconDrawableLoaded = onFaviconDrawableLoaded,
             mediaAlpha = mediaAlpha,
             animateChanges = animateChanges,
@@ -575,6 +603,7 @@ private fun StoryTextBlock(
     summaryProgress: Float,
     metaProgress: Float,
     onPreviewDrawableLoaded: (Drawable) -> Unit,
+    onPreviewLoadFailed: () -> Unit,
     onFaviconDrawableLoaded: (Drawable) -> Unit,
     mediaAlpha: Float,
     animateChanges: Boolean,
@@ -662,6 +691,10 @@ private fun StoryTextBlock(
                     onSuccess = {
                         previewImageLoaded = true
                         onPreviewDrawableLoaded(it.result.drawable)
+                    },
+                    onError = {
+                        previewImageLoaded = true
+                        onPreviewLoadFailed()
                     },
                 )
             } else {

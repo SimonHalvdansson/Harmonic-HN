@@ -3919,6 +3919,15 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         }
     }
 
+    fun onStoryPreviewImageLoadFailed(storyId: Int) {
+        if (storyId <= 0) return
+        stories?.firstOrNull { it.id == storyId }?.let { story ->
+            story.previewImageLoadFailed = true
+            context?.let { Utils.cacheStoryPreviewState(it, story) }
+            composeController?.invalidateStory(storyId)
+        }
+    }
+
     fun currentTypeIsAlgolia(): Boolean = currentStoryType.isAlgolia
 
     private fun currentTypeIsActive(): Boolean = currentStoryType.isActive

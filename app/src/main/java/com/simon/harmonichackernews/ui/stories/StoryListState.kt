@@ -368,6 +368,12 @@ class StoryListState(
                 override fun onError(error: Drawable?) {
                     imagePrefetches.remove(story)
                     story.previewImageLoading = false
+                    if (story.previewImageUrl == imageUrl) {
+                        story.previewImageLoadFailed = true
+                        PreviewImageTintUtils.clearStoryPreviewImageTintColor(story)
+                        cachePreviewState(context, story)
+                        notifyChanged(story)
+                    }
                 }
 
                 override fun onSuccess(result: Drawable) {

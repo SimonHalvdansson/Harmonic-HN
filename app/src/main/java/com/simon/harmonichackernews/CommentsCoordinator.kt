@@ -719,6 +719,10 @@ class CommentsCoordinator(
                     story?.id?.takeIf { it > 0 }?.let(activity::onStoryPreviewImageLoaded)
                 }
 
+                override fun onHeaderPreviewLoadFailed() {
+                    story?.id?.takeIf { it > 0 }?.let(activity::onStoryPreviewImageLoadFailed)
+                }
+
                 override fun onHeaderAction(action: Int) {
                     if (action == CommentsComposeController.HEADER_ACTION_USER) {
                         clickUser()
@@ -1157,13 +1161,19 @@ class CommentsCoordinator(
             return
         }
         val windowStatusBarColor =
-            if (SettingsUtils.shouldUseTransparentStatusBar(requireContext()))
+            if (activity.isAdaptiveTwoPaneNavigation ||
+                SettingsUtils.shouldUseTransparentStatusBar(requireContext())
+            )
                 Color.TRANSPARENT
             else
                 statusBarColor
         if (requireActivity().getWindow().getStatusBarColor() != windowStatusBarColor) {
             requireActivity().getWindow().setStatusBarColor(windowStatusBarColor)
         }
+    }
+
+    fun onAdaptiveLayoutChanged() {
+        updateCommentsStatusBarAppearance()
     }
 
     private fun shouldShowCommentsStatusBarProtection(): Boolean {

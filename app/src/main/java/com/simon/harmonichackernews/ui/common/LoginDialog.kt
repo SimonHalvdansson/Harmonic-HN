@@ -221,7 +221,10 @@ fun LoginDialog(
                             contentDescription = null,
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.login_dialog_how_it_works))
+                        Text(
+                            text = stringResource(R.string.login_dialog_how_it_works),
+                            lineHeight = 16.sp,
+                        )
                     }
                 }
                 AnimatedVisibility(visible = showInformation) {

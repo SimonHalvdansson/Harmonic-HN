@@ -8,8 +8,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
@@ -466,14 +464,13 @@ private fun RowScope.CommentActionIcon(
         contentAlignment = Alignment.Center,
     ) {
         AnimatedContent(
-            targetState = loading,
+            targetState = CommentActionVisual(icon, description, loading),
             transitionSpec = {
-                (fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.72f))
-                    .togetherWith(fadeOut(tween(90)) + scaleOut(tween(90), targetScale = 0.72f))
+                fadeIn(tween(150)).togetherWith(fadeOut(tween(150)))
             },
             label = "comment action icon",
-        ) { isLoading ->
-            if (isLoading) {
+        ) { visual ->
+            if (visual.loading) {
                 LoadingIndicator(Modifier.size(28.dp))
             } else {
                 IconButton(
@@ -482,8 +479,8 @@ private fun RowScope.CommentActionIcon(
                     shapes = IconButtonDefaults.shapes(),
                 ) {
                     Icon(
-                        painterResource(icon),
-                        contentDescription = description,
+                        painterResource(visual.icon),
+                        contentDescription = visual.description,
                         tint = HarmonicTheme.colors.drawable,
                     )
                 }
@@ -491,6 +488,12 @@ private fun RowScope.CommentActionIcon(
         }
     }
 }
+
+private data class CommentActionVisual(
+    val icon: Int,
+    val description: String,
+    val loading: Boolean,
+)
 
 @Preview(name = "Comment actions phone", device = Devices.PHONE, showBackground = true)
 @Preview(name = "Comment actions tablet", device = Devices.TABLET, showBackground = true)

@@ -1114,6 +1114,12 @@ private fun StoriesList(
                             onBoundsChanged = { bounds ->
                                 controller.updateStoryBounds(story.id, bounds)
                             },
+                            onPreviewLoadFailed = {
+                                if (!story.previewImageLoadFailed) {
+                                    story.previewImageLoadFailed = true
+                                    controller.invalidateStory(story.id)
+                                }
+                            },
                         )
                     }
                 }
@@ -1851,6 +1857,7 @@ private fun Story.toUiModel(
         previewImageRes = null,
         faviconUrl = favicon,
         previewImageUrl = previewImageUrl,
+        previewImageLoadFailed = previewImageLoadFailed,
         faviconTintArgb = faviconTintColor.takeIf { currentFaviconTint },
         previewImageTintArgb = previewImageTintColor.takeIf { currentPreviewTint },
     )

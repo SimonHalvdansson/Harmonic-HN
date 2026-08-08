@@ -56,6 +56,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -65,6 +66,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
@@ -513,6 +515,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     internal fun updateAdaptiveState(twoPane: Boolean, foldable: Boolean) {
         adaptiveTwoPane = twoPane
         adaptiveFoldable = foldable
+        commentsCoordinator?.onAdaptiveLayoutChanged()
     }
 
     fun saveState(outState: Bundle) {
@@ -674,6 +677,28 @@ private fun MainNavigation(
 
     val storyRequest = controller.storyRequest
     val storyOpenedFromSubmissions = controller.storyOpenedFromSubmissions
+    val paneStatusBarColor = HarmonicTheme.colors.background
+    val commentsController = controller.commentsComposeController
+    val targetStatusBarColor = if (storyRequest != null && commentsController != null) {
+        lerp(
+            paneStatusBarColor,
+            commentsController.statusBarHeaderColor ?: paneStatusBarColor,
+            commentsController.statusBarHeaderCoverage,
+        )
+    } else {
+        paneStatusBarColor
+    }
+    val statusBarColor by animateColorAsState(
+        targetValue = targetStatusBarColor,
+        animationSpec = if (completedPredictivePop) {
+            snap()
+        } else {
+            tween(durationMillis = 90, easing = LinearEasing)
+        },
+        label = "main status bar protection",
+    )
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+
     LaunchedEffect(storyRequest?.serial) {
         storyRequest ?: return@LaunchedEffect
         // A completed predictive pop keeps its snap exit policy while the detail is hidden.
@@ -711,6 +736,9 @@ private fun MainNavigation(
                 CommentsPane(
                     request = request,
                     controller = controller,
+                    statusBarColor = statusBarColor,
+                    statusBarHeight = statusBarHeight,
+                    drawStatusBarProtection = isTwoPane,
                 )
             }
         }
@@ -969,23 +997,6 @@ private fun MainNavigation(
         currentInfo = SceneInfo(sceneState.currentScene),
     )
     val settingsTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
-    val paneStatusBarColor = HarmonicTheme.colors.background
-    val commentsController = controller.commentsComposeController
-    val targetStatusBarColor = if (storyRequest != null && commentsController != null) {
-        lerp(
-            paneStatusBarColor,
-            commentsController.statusBarHeaderColor ?: paneStatusBarColor,
-            commentsController.statusBarHeaderCoverage,
-        )
-    } else {
-        paneStatusBarColor
-    }
-    val statusBarColor by animateColorAsState(
-        targetValue = targetStatusBarColor,
-        animationSpec = tween(durationMillis = 90, easing = LinearEasing),
-        label = "main status bar protection",
-    )
-    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Box(
         modifier = Modifier
@@ -1024,23 +1035,12 @@ private fun MainNavigation(
                     animation = activeBackAnimation,
                     completedPredictivePop = completedPredictivePop,
                     showStoriesPane = !storyOpenedFromSubmissions,
+                    storiesStatusBarColor = paneStatusBarColor,
+                    commentsStatusBarColor = statusBarColor,
+                    statusBarHeight = statusBarHeight,
                 )
             }
         }
-
-        Spacer(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(statusBarHeight + 16.dp)
-                .background(
-                    Brush.verticalGradient(
-                        0f to statusBarColor.copy(alpha = 0.92f),
-                        0.58f to statusBarColor.copy(alpha = 0.72f),
-                        1f to statusBarColor.copy(alpha = 0f),
-                    ),
-                )
-                .zIndex(3f),
-        )
 
         controller.storiesComposeController?.let { storiesController ->
             if (storiesController.storyPreviewOverlay != null) {
@@ -1309,6 +1309,9 @@ private fun SinglePaneNavigation(
     animation: DefaultActivityPredictiveBackAnimation?,
     completedPredictivePop: Boolean,
     showStoriesPane: Boolean,
+    storiesStatusBarColor: Color,
+    commentsStatusBarColor: Color,
+    statusBarHeight: Dp,
 ) {
     val storyRequest = controller.storyRequest
     val displayedRequest = storyRequest ?: controller.lastStoryRequest
@@ -1349,6 +1352,10 @@ private fun SinglePaneNavigation(
                 .then(animation?.enterModifier ?: Modifier),
         ) {
             StoriesPane(controller)
+            StatusBarProtection(
+                color = storiesStatusBarColor,
+                statusBarHeight = statusBarHeight,
+            )
         }
 
         // Keep the visibility host alive while Stories is showing. Recreating it with
@@ -1373,6 +1380,9 @@ private fun SinglePaneNavigation(
                         CommentsPane(
                             request = request,
                             controller = controller,
+                            statusBarColor = commentsStatusBarColor,
+                            statusBarHeight = statusBarHeight,
+                            drawStatusBarProtection = true,
                         )
                     }
                 }
@@ -1393,6 +1403,9 @@ private fun StoriesPane(controller: MainNavigationController) {
 private fun CommentsPane(
     request: MainStoryRequest,
     controller: MainNavigationController,
+    statusBarColor: Color = Color.Transparent,
+    statusBarHeight: Dp = 0.dp,
+    drawStatusBarProtection: Boolean = false,
 ) {
     val activity = LocalActivity.current as MainActivity
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -1436,8 +1449,33 @@ private fun CommentsPane(
                     CommentsScaffold(commentsController)
                 }
             }
+            if (drawStatusBarProtection) {
+                StatusBarProtection(
+                    color = statusBarColor,
+                    statusBarHeight = statusBarHeight,
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun StatusBarProtection(
+    color: Color,
+    statusBarHeight: Dp,
+) {
+    Spacer(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(statusBarHeight + 16.dp)
+            .background(
+                Brush.verticalGradient(
+                    0f to color.copy(alpha = 0.92f),
+                    0.58f to color.copy(alpha = 0.72f),
+                    1f to color.copy(alpha = 0f),
+                ),
+            ),
+    )
 }
 
 private const val NavigationTransitionDurationMillis = 450

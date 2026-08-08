@@ -228,6 +228,10 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         storiesCoordinator?.onStoryPreviewImageLoaded(storyId)
     }
 
+    fun onStoryPreviewImageLoadFailed(storyId: Int) {
+        storiesCoordinator?.onStoryPreviewImageLoadFailed(storyId)
+    }
+
     fun closeStory() {
         mainNavigationController!!.closeStory()
     }

@@ -17,8 +17,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -343,6 +341,14 @@ private fun StoryPreviewCard(
     val favoriteLoading = controller.storyPreviewFavoriteLoadingId == story.id
     val imageUrl = summaryState.result?.imageUrl?.takeIf(String::isNotBlank)
         ?: story.previewImageUrl?.takeIf(String::isNotBlank)
+    var imageLoadFailed by remember(story.id, imageUrl) {
+        mutableStateOf(
+            imageUrl != null &&
+                story.previewImageLoadFailed &&
+                story.previewImageUrl == imageUrl,
+        )
+    }
+    val displayedImageUrl = imageUrl?.takeIf { !imageLoadFailed }
     val description = if (story.isLink) {
         summaryState.result?.description?.takeIf(String::isNotBlank)
     } else {
@@ -389,7 +395,7 @@ private fun StoryPreviewCard(
                     .clickable { controller.onStoryPreviewNavigate(page, story.isLink) },
             ) {
                 AnimatedContent(
-                    targetState = imageUrl to (summaryState.loading && story.isLink),
+                    targetState = displayedImageUrl to (summaryState.loading && story.isLink),
                     transitionSpec = {
                         fadeIn(tween(220)).togetherWith(fadeOut(tween(150)))
                     },
@@ -407,6 +413,17 @@ private fun StoryPreviewCard(
                                 .fillMaxWidth()
                                 .aspectRatio(2.15f),
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            onError = {
+                                imageLoadFailed = true
+                                if (story.previewImageUrl.isNullOrBlank()) {
+                                    story.previewImageUrl = currentImageUrl
+                                    story.previewImageUrlLoaded = true
+                                }
+                                if (story.previewImageUrl == currentImageUrl) {
+                                    story.previewImageLoadFailed = true
+                                    controller.invalidateStory(story.id)
+                                }
+                            },
                         )
                         imageLoading -> StoryPreviewShimmer(
                             Modifier
@@ -573,20 +590,19 @@ private fun RowScope.StoryPreviewActionIcon(
         contentAlignment = Alignment.Center,
     ) {
         AnimatedContent(
-            targetState = loading,
+            targetState = StoryPreviewActionVisual(icon, description, loading),
             transitionSpec = {
-                (fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.72f))
-                    .togetherWith(fadeOut(tween(90)) + scaleOut(tween(90), targetScale = 0.72f))
+                fadeIn(tween(150)).togetherWith(fadeOut(tween(150)))
             },
             label = "story preview action",
-        ) { waiting ->
-            if (waiting) {
+        ) { visual ->
+            if (visual.loading) {
                 LoadingIndicator(Modifier.size(28.dp))
             } else {
                 IconButton(onClick = onClick, shapes = IconButtonDefaults.shapes()) {
                     Icon(
-                        painterResource(icon),
-                        contentDescription = description,
+                        painterResource(visual.icon),
+                        contentDescription = visual.description,
                         tint = HarmonicTheme.colors.drawable,
                     )
                 }
@@ -594,6 +610,12 @@ private fun RowScope.StoryPreviewActionIcon(
         }
     }
 }
+
+private data class StoryPreviewActionVisual(
+    val icon: Int,
+    val description: String,
+    val loading: Boolean,
+)
 
 private data class StorySummaryState(
     val loading: Boolean,

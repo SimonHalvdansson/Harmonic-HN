@@ -244,7 +244,7 @@ fun CommentItem(
         animationSpec = contentTween(),
         label = "comment indicator visibility",
     )
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(if (style.cardStyle) 8.dp else 0.dp)
 
     Column(
         modifier = modifier

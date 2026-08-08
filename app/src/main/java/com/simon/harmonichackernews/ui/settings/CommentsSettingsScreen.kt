@@ -262,7 +262,6 @@ fun CommentsSettingsScreen(
                         "details" to "Details",
                     ),
                     selected = if (swapTap) "details" else "visibility",
-                    buttonHeightRes = R.dimen.compose_settings_comment_tap_action_button_height,
                     onSelected = {
                         prefs.edit()
                             .putBoolean("pref_comments_swap_long", it == "details")

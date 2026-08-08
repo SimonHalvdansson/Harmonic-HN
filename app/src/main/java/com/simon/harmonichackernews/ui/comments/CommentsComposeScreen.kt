@@ -17,8 +17,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
@@ -788,6 +786,7 @@ class CommentsComposeController private constructor(
         fun onLinkPreviewOverlayVisibilityChanged(showing: Boolean)
         fun onHeaderClick()
         fun onHeaderPreviewLoaded()
+        fun onHeaderPreviewLoadFailed()
         fun onHeaderAction(action: Int)
         fun onShareAction(action: Int)
         fun onMoreAction(action: Int)
@@ -1676,6 +1675,7 @@ private fun CommentsHeader(
                                     tintBaseColor = tintBaseColor,
                                     onTintLoaded = { loadedTint = it },
                                     onPreviewLoaded = controller.listener::onHeaderPreviewLoaded,
+                                    onPreviewLoadFailed = controller.listener::onHeaderPreviewLoadFailed,
                                     onClick = controller.listener::onHeaderClick,
                                     onLongClick = { bounds ->
                                         story.previewImageUrl?.takeIf(String::isNotBlank)?.let { imageUrl ->
@@ -1730,7 +1730,11 @@ private fun CommentsHeader(
                                 StorySummary(story, settings)
                                 HeaderMeta(story, settings, storyPosterTag)
                             }
-                            HeaderActions(controller, settings)
+                            HeaderActions(
+                                controller = controller,
+                                settings = settings,
+                                contentVersion = contentVersion,
+                            )
                         }
                     }
                 }
@@ -1898,6 +1902,7 @@ private fun HeaderPreviewImage(
     tintBaseColor: Int,
     onTintLoaded: (Int) -> Unit,
     onPreviewLoaded: () -> Unit,
+    onPreviewLoadFailed: () -> Unit,
     onClick: () -> Unit,
     onLongClick: (androidx.compose.ui.geometry.Rect) -> Unit,
 ) {
@@ -1905,13 +1910,21 @@ private fun HeaderPreviewImage(
     var previewUrl by remember(story.id, story.previewImageUrl) {
         mutableStateOf(story.previewImageUrl)
     }
+    var previewLoadFailed by remember(story.id, story.previewImageUrl) {
+        mutableStateOf(story.previewImageLoadFailed)
+    }
     var bounds by remember(story.id) { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
-    DisposableEffect(story.id, story.url, visible) {
-        val request = if (visible && story.isLink && !story.url.isNullOrBlank()) {
+    DisposableEffect(story.id, story.url, visible, story.previewImageLoadFailed) {
+        val request = if (
+            visible && story.isLink && !story.url.isNullOrBlank() && !story.previewImageLoadFailed
+        ) {
             StoryPreviewImageLoader.loadPreviewContent(context, story.id, story.url, false) { url, _ ->
                 story.previewImageUrl = url
                 story.previewImageUrlLoaded = true
+                story.previewImageLoadFailed = url.isNullOrBlank()
                 previewUrl = url
+                previewLoadFailed = url.isNullOrBlank()
+                if (url.isNullOrBlank()) onPreviewLoadFailed()
             }
         } else {
             null
@@ -1919,7 +1932,7 @@ private fun HeaderPreviewImage(
         onDispose { request?.cancel() }
     }
     AnimatedVisibility(
-        visible = visible && !previewUrl.isNullOrBlank() && !story.previewImageLoadFailed,
+        visible = visible && !previewUrl.isNullOrBlank() && !previewLoadFailed,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
     ) {
@@ -1939,8 +1952,15 @@ private fun HeaderPreviewImage(
                 ),
             contentScale = ContentScale.Crop,
             onSuccess = { state ->
+                previewLoadFailed = false
+                story.previewImageLoadFailed = false
                 onPreviewLoaded()
                 calculateTint(state.result.drawable, context, tintBaseColor)?.let(onTintLoaded)
+            },
+            onError = {
+                previewLoadFailed = true
+                story.previewImageLoadFailed = true
+                onPreviewLoadFailed()
             },
         )
     }
@@ -2697,6 +2717,7 @@ private fun HeaderMetaItem(icon: Int, label: String, typography: com.simon.harmo
 private fun HeaderActions(
     controller: CommentsComposeController,
     settings: CommentDisplaySettings,
+    contentVersion: Int,
 ) {
     val context = LocalContext.current
     val story = controller.story
@@ -2709,7 +2730,9 @@ private fun HeaderActions(
     var archiveExpanded by remember { mutableStateOf(false) }
     val upvoted = Utils.isUpvoted(context, story.id, story.isComment)
     val favorited = Utils.isFavorited(context, story.id)
-    val bookmarked = Utils.isBookmarked(context, story.id)
+    val bookmarked = remember(contentVersion, story.id) {
+        Utils.isBookmarked(context, story.id)
+    }
     val actions = buildList {
         add(HeaderAction(R.drawable.ic_account_circle, "User", CommentsComposeController.HEADER_ACTION_USER))
         if (canReply) add(HeaderAction(R.drawable.ic_comment, if (story.isComment) "Reply to comment" else "Reply to post", CommentsComposeController.HEADER_ACTION_REPLY))
@@ -2794,6 +2817,7 @@ private fun HeaderActions(
                 controller = controller,
                 settings = settings,
                 bookmarksEnabled = bookmarksEnabled,
+                contentVersion = contentVersion,
                 onDismiss = {
                     moreExpanded = false
                     sortExpanded = false
@@ -2839,8 +2863,7 @@ private fun HeaderActionButton(
             AnimatedContent(
                 targetState = HeaderActionVisual(action.icon, action.label, action.loading),
                 transitionSpec = {
-                    (fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.72f)) togetherWith
-                        (fadeOut(tween(90)) + scaleOut(tween(90), targetScale = 0.72f))
+                    fadeIn(tween(150)) togetherWith fadeOut(tween(150))
                 },
                 label = "${action.label} loading transition",
             ) { visual ->
@@ -2922,6 +2945,7 @@ private fun MoreMenu(
     controller: CommentsComposeController,
     settings: CommentDisplaySettings,
     bookmarksEnabled: Boolean,
+    contentVersion: Int,
     onDismiss: () -> Unit,
     onSortExpanded: () -> Unit,
     onArchiveExpanded: () -> Unit,
@@ -2930,7 +2954,9 @@ private fun MoreMenu(
     val story = controller.story
     val commentsCount = controller.comments.size
     val context = LocalContext.current
-    val bookmarked = Utils.isBookmarked(context, story.id)
+    val bookmarked = remember(contentVersion, story.id) {
+        Utils.isBookmarked(context, story.id)
+    }
     HarmonicDropdownMenu(expanded = expanded, onDismiss = onDismiss) {
         if (sortExpanded || archiveExpanded) {
             DropdownMenuItem(
