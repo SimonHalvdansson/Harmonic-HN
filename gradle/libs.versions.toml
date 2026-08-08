@@ -9,6 +9,7 @@ coil = "3.5.0"
 ksoup = "0.2.6"
 ktor = "3.5.1"
 kmpalette = "4.0.0-beta02"
+kotlinx-serialization = "1.11.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -47,6 +48,7 @@ materialui = "com.google.android.material:material:1.14.0"
 
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 
 ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
 coil = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }

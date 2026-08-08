@@ -5,7 +5,7 @@ import com.simon.harmonichackernews.network.QueueRequest as Request
 import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.network.NetworkComponent
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 object GitHubInfoGetter {
     private val githubUrlRegex = Regex("^https?://github\\.com/[^/]+/[^/]+(/.*)?$")

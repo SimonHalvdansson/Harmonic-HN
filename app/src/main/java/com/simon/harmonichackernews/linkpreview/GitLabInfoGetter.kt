@@ -7,7 +7,7 @@ import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.data.GitLabInfo
 import com.simon.harmonichackernews.network.NetworkComponent
 import java.util.Locale
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 object GitLabInfoGetter {
     fun isValidGitLabUrl(url: String?): Boolean = getProjectPath(url) != null

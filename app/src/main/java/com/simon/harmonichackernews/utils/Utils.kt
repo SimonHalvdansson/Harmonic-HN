@@ -42,8 +42,8 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.regex.Matcher
 import java.util.regex.Pattern
-import org.json.JSONException
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonException as JSONException
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.parser.Parser
 

@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import android.content.Context
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 object ArchiveOrgUrlGetter {
     fun getArchiveUrl(url: String?, ctx: Context, callback: GetterCallback) {

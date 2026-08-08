@@ -6,7 +6,7 @@ import com.simon.harmonichackernews.network.QueuedRequest
 import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.data.WikipediaInfo
 import com.simon.harmonichackernews.network.NetworkComponent
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Document
 

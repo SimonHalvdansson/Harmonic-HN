@@ -7,8 +7,8 @@ import android.webkit.WebView
 import com.simon.harmonichackernews.data.NitterInfo
 import java.net.MalformedURLException
 import java.net.URL
-import org.json.JSONArray
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 object NitterGetter {
     fun isValidNitterUrl(url: String?): Boolean {

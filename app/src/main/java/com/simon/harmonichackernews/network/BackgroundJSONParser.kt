@@ -8,7 +8,7 @@ import java.io.IOException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
-import org.json.JSONException
+import com.simon.harmonichackernews.serialization.JsonException as JSONException
 
 object BackgroundJSONParser {
     private val executorService: ExecutorService = Executors.newSingleThreadExecutor()

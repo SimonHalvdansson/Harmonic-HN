@@ -15,9 +15,9 @@ import java.util.ArrayDeque
 import kotlin.math.max
 import kotlin.math.min
 import com.simon.harmonichackernews.network.HttpCall
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
+import com.simon.harmonichackernews.serialization.JsonException as JSONException
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 internal class StoryCacheController(private val callbacks: Callbacks) {
     internal interface Callbacks {

@@ -7,8 +7,8 @@ import androidx.preference.PreferenceManager
 import java.io.IOException
 import java.util.Locale
 import kotlin.synchronized
-import org.json.JSONArray
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 /** OpenRouter-backed model discovery and pricing for every supported cloud provider.  */
 object AiModelCatalog {

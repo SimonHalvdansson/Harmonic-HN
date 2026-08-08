@@ -12,9 +12,9 @@ import java.io.InterruptedIOException
 import java.io.StringReader
 import java.util.Locale
 import kotlin.math.max
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
+import com.simon.harmonichackernews.serialization.JsonException as JSONException
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 object JSONParser {
     const val ALGOLIA_ERROR_STRING: String = "{\"status\":404,\"error\":\"Not Found\"}"
@@ -785,7 +785,7 @@ object JSONParser {
     }
 
     @Throws(JSONException::class)
-    private fun optStringOrNull(`object`: JSONObject, key: String?): String? {
+    private fun optStringOrNull(`object`: JSONObject, key: String): String? {
         val value = `object`.opt(key)
         if (value == null) {
             return null

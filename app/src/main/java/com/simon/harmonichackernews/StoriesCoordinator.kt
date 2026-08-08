@@ -53,9 +53,9 @@ import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StoryUpdate.StoryUpdateListener
 import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.network.HttpResponse as ActionHttpResponse
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
+import com.simon.harmonichackernews.serialization.JsonException as JSONException
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date

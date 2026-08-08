@@ -22,7 +22,7 @@ import com.simon.harmonichackernews.utils.Utils.log
 import kotlin.math.min
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
-import org.json.JSONArray
+import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
 
 class StoriesRemoteViewsFactory(private val context: Context, private val appWidgetId: Int) :
     RemoteViewsFactory {

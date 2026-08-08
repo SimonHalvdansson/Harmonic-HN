@@ -62,7 +62,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 import java.util.Calendar
 import java.util.Date
 

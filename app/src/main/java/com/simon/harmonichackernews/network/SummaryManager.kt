@@ -13,9 +13,9 @@ import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import java.io.IOException
 import java.util.Locale
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
+import com.simon.harmonichackernews.serialization.JsonException as JSONException
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 import com.fleeksoft.ksoup.Ksoup
 
 object SummaryManager {

@@ -31,8 +31,8 @@ import java.net.URL
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.max
-import org.json.JSONArray
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 object RepliesChecker {
     const val CHANNEL_ID: String = "reply_notifications"

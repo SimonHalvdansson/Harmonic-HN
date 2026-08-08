@@ -16,7 +16,7 @@ import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.util.concurrent.Future
-import org.json.JSONException
+import com.simon.harmonichackernews.serialization.JsonException as JSONException
 
 /** Networking and filtering state for a Compose submissions destination.  */
 class SubmissionsCoordinator(

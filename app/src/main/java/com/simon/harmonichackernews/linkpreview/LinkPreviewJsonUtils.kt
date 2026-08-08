@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.linkpreview
 
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 internal object LinkPreviewJsonUtils {
     fun getString(jsonObject: JSONObject, key: String): String? =

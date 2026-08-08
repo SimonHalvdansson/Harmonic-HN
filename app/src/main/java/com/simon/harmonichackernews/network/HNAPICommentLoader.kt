@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.network
 import android.util.Log
 import com.simon.harmonichackernews.data.Comment
 import java.util.Locale
-import org.json.JSONException
+import com.simon.harmonichackernews.serialization.JsonException as JSONException
 
 class HNAPICommentLoader(
     private val queue: RequestQueue,

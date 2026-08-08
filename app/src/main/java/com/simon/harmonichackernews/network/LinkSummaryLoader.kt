@@ -18,7 +18,7 @@ import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.regex.Pattern
 import kotlin.math.min
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Document
 import com.fleeksoft.ksoup.nodes.Element
@@ -358,10 +358,7 @@ object LinkSummaryLoader {
             parts.add(Utils.getTimeAgo(time.toLong()))
         }
         if (comment) {
-            val replies = if (item.optJSONArray("kids") == null)
-                0
-            else
-                item.optJSONArray("kids").length()
+            val replies = item.optJSONArray("kids")?.length() ?: 0
             if (replies > 0) {
                 parts.add(formatCount(replies, "reply", "replies"))
             }

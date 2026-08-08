@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.Locale
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 object StoryPreviewImageLoader {
     private const val MAX_CACHE_SIZE = 300

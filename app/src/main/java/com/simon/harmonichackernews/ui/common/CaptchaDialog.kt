@@ -43,8 +43,8 @@ import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import org.json.JSONArray
-import org.json.JSONException
+import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
+import com.simon.harmonichackernews.serialization.JsonException as JSONException
 
 private const val HackerNewsBaseUrl = "https://news.ycombinator.com/"
 private const val CaptchaResponseScript =

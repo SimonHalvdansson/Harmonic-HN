@@ -71,8 +71,8 @@ import java.nio.charset.StandardCharsets
 import java.util.Locale
 import kotlin.math.min
 import com.simon.harmonichackernews.network.HttpCall
-import org.json.JSONArray
-import org.json.JSONException
+import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
+import com.simon.harmonichackernews.serialization.JsonException as JSONException
 
 internal class CommentsWebViewController(
     private val coordinator: CommentsCoordinator,

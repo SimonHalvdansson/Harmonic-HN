@@ -64,8 +64,8 @@ import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.utils.ViewUtils
 import com.simon.harmonichackernews.network.HttpResponse as ActionHttpResponse
-import org.json.JSONException
-import org.json.JSONObject
+import com.simon.harmonichackernews.serialization.JsonException as JSONException
+import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 import java.io.IOException
 import java.util.concurrent.Future
 import java.util.regex.Pattern
