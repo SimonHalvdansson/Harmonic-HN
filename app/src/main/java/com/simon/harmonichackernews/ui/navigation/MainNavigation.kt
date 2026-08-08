@@ -122,7 +122,7 @@ import kotlinx.coroutines.withContext
 private data object StoriesDestination : NavKey
 
 private data class CommentsDestination(
-    val requestSerial: Int,
+    val request: MainStoryRequest,
 ) : NavKey
 
 internal data class MainStoryRequest(
@@ -678,7 +678,7 @@ private fun MainNavigation(
     )
     val backStack = remember(controller) {
         mutableStateListOf<NavKey>(StoriesDestination).apply {
-            controller.storyRequest?.let { add(CommentsDestination(it.serial)) }
+            controller.storyRequest?.let { add(CommentsDestination(it)) }
         }
     }
     val backAnimationScope = rememberCoroutineScope()
@@ -728,9 +728,10 @@ private fun MainNavigation(
         // exit transition for one hidden frame, which could briefly resurrect Comments.
         completedPredictivePop = false
         if (backStack.lastOrNull() is CommentsDestination) {
-            backStack.removeLastOrNull()
+            backStack[backStack.lastIndex] = CommentsDestination(storyRequest)
+        } else {
+            backStack.add(CommentsDestination(storyRequest))
         }
-        backStack.add(CommentsDestination(storyRequest.serial))
     }
     LaunchedEffect(controller.closeRequest) {
         if (controller.closeRequest > 0 && backStack.lastOrNull() is CommentsDestination) {
@@ -755,19 +756,13 @@ private fun MainNavigation(
         entry<CommentsDestination>(
             metadata = ListDetailSceneStrategy.detailPane(),
         ) { destination ->
-            val request = controller.storyRequest
-                ?.takeIf { it.serial == destination.requestSerial }
-            if (request == null) {
-                EmptyCommentsScreen()
-            } else {
-                CommentsPane(
-                    request = request,
-                    controller = controller,
-                    statusBarColor = statusBarColor,
-                    statusBarHeight = statusBarHeight,
-                    drawStatusBarProtection = isTwoPane,
-                )
-            }
+            CommentsPane(
+                request = destination.request,
+                controller = controller,
+                statusBarColor = statusBarColor,
+                statusBarHeight = statusBarHeight,
+                drawStatusBarProtection = isTwoPane,
+            )
         }
     }
 
