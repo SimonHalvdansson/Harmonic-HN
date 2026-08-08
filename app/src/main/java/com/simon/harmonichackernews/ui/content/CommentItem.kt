@@ -747,11 +747,7 @@ private fun RuntimeCommentMeta(
                         val scale = 0.72f + 0.28f * replyCountIndicatorProgress
                         scaleX = scale
                         scaleY = scale
-                        alpha = if (hiddenReplyCount != null) {
-                            1f
-                        } else {
-                            replyCountIndicatorProgress
-                        }
+                        alpha = replyCountIndicatorProgress
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(
                             pivotFractionX = 1f,
                             pivotFractionY = 0.5f,

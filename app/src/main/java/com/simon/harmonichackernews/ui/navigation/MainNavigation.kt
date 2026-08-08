@@ -197,6 +197,8 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         private set
     internal var storyOpenedFromSubmissions by mutableStateOf(false)
         private set
+    internal var storyOpenedFromSettings by mutableStateOf(false)
+        private set
     internal var coulombGasVisible by mutableStateOf(false)
         private set
     internal var closeRequest by mutableIntStateOf(0)
@@ -273,13 +275,19 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         storyOpenedFromSubmissions =
             savedState?.getBoolean(STATE_STORY_OPENED_FROM_SUBMISSIONS, false) == true &&
                 storyRequest != null && submissionsRequest != null
+        storyOpenedFromSettings =
+            savedState?.getBoolean(STATE_STORY_OPENED_FROM_SETTINGS, false) == true &&
+                storyRequest != null && settingsRequest != null
         coulombGasVisible = savedState?.getBoolean(STATE_COULOMB_GAS_VISIBLE, false) == true
     }
 
     fun openStory(arguments: Bundle) {
         restoredCommentsState = null
         restoredCommentsRequestSerial = -1
-        settingsRequest = null
+        if (settingsRequest != null) {
+            storyOpenedFromSettings = true
+            settingsRequest = null
+        }
         if (!storyOpenedFromSubmissions) {
             submissionsRequest = null
         }
@@ -298,6 +306,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     fun openSettings(sectionRoute: String?) {
         submissionsRequest = null
         storyOpenedFromSubmissions = false
+        storyOpenedFromSettings = false
         editorRequest = null
         coulombGasVisible = false
         currentSettingsSectionRoute = sectionRoute
@@ -410,6 +419,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         settingsRequest = null
         submissionsRequest = null
         storyOpenedFromSubmissions = false
+        storyOpenedFromSettings = false
         coulombGasVisible = false
         MainEditorRequest(++editorRequestSerial, Bundle(arguments)).also {
             editorRequest = it
@@ -504,8 +514,14 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     }
 
     internal fun detailRemovedFromBackStack() {
+        val restoreSettings = storyOpenedFromSettings
+        val restoreSettingsSection = currentSettingsSectionRoute
         storyRequest = null
         storyOpenedFromSubmissions = false
+        storyOpenedFromSettings = false
+        if (restoreSettings) {
+            openSettings(restoreSettingsSection)
+        }
         // Keep the outgoing detail content alive until AnimatedVisibility has finished its
         // exit. Clearing the Compose controller here leaves the WebView's white surface as
         // the only outgoing layer for a frame, which flashes over Stories during back.
@@ -529,7 +545,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
                 outState.putBundle(STATE_COMMENTS_STATE, commentsState)
             }
         }
-        if (settingsRequest != null) {
+        if (settingsRequest != null || storyOpenedFromSettings) {
             outState.putBoolean(STATE_SETTINGS_OPEN, true)
             outState.putInt(STATE_SETTINGS_REQUEST_SERIAL, settingsRequestSerial)
             outState.putString(STATE_SETTINGS_SECTION, currentSettingsSectionRoute)
@@ -554,6 +570,10 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         outState.putBoolean(
             STATE_STORY_OPENED_FROM_SUBMISSIONS,
             storyOpenedFromSubmissions,
+        )
+        outState.putBoolean(
+            STATE_STORY_OPENED_FROM_SETTINGS,
+            storyOpenedFromSettings,
         )
         outState.putBoolean(STATE_COULOMB_GAS_VISIBLE, coulombGasVisible)
     }
@@ -580,6 +600,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         const val STATE_SUBMISSIONS_USER = "main_navigation_submissions_user"
         const val STATE_STORY_OPENED_FROM_SUBMISSIONS =
             "main_navigation_story_opened_from_submissions"
+        const val STATE_STORY_OPENED_FROM_SETTINGS = "main_navigation_story_opened_from_settings"
         const val STATE_COULOMB_GAS_VISIBLE = "main_navigation_coulomb_gas_visible"
     }
 }
@@ -677,6 +698,7 @@ private fun MainNavigation(
 
     val storyRequest = controller.storyRequest
     val storyOpenedFromSubmissions = controller.storyOpenedFromSubmissions
+    val storyOpenedFromSettings = controller.storyOpenedFromSettings
     val paneStatusBarColor = HarmonicTheme.colors.background
     val commentsController = controller.commentsComposeController
     val targetStatusBarColor = if (storyRequest != null && commentsController != null) {
@@ -722,7 +744,12 @@ private fun MainNavigation(
                 detailPlaceholder = { EmptyCommentsScreen() },
             ),
         ) {
-            StoriesPane(controller)
+            StoriesPane(
+                controller = controller,
+                statusBarColor = paneStatusBarColor,
+                statusBarHeight = statusBarHeight,
+                drawStatusBarProtection = true,
+            )
         }
 
         entry<CommentsDestination>(
@@ -852,7 +879,7 @@ private fun MainNavigation(
         }
     }
 
-    PredictiveBackHandler(enabled = settingsRequest != null) { events ->
+    PredictiveBackHandler(enabled = settingsRequest != null && !storyOpenedFromSettings) { events ->
         var animation: DefaultActivityPredictiveBackAnimation? = null
         try {
             events.collect { event ->
@@ -1008,7 +1035,7 @@ private fun MainNavigation(
                 .fillMaxSize()
                 .then(
                     if (
-                        settingsRequest != null ||
+                        (settingsRequest != null && !storyOpenedFromSettings) ||
                         (submissionsRequest != null && !storyOpenedFromSubmissions) ||
                         editorRequest != null ||
                         coulombGasVisible
@@ -1070,9 +1097,10 @@ private fun MainNavigation(
             visible = settingsRequest != null,
             modifier = Modifier
                 .fillMaxSize()
-                .zIndex(5f)
+                .zIndex(if (storyOpenedFromSettings) -1f else 5f)
                 .then(
                     if (
+                        (settingsRequest != null && !storyOpenedFromSettings) ||
                         submissionsRequest != null ||
                         editorRequest != null ||
                         coulombGasVisible
@@ -1393,9 +1421,20 @@ private fun SinglePaneNavigation(
 }
 
 @Composable
-private fun StoriesPane(controller: MainNavigationController) {
+private fun StoriesPane(
+    controller: MainNavigationController,
+    statusBarColor: Color = Color.Transparent,
+    statusBarHeight: Dp = 0.dp,
+    drawStatusBarProtection: Boolean = false,
+) {
     Box(Modifier.fillMaxSize()) {
         controller.storiesComposeController?.let { StoriesScreen(it) }
+        if (drawStatusBarProtection) {
+            StatusBarProtection(
+                color = statusBarColor,
+                statusBarHeight = statusBarHeight,
+            )
+        }
     }
 }
 

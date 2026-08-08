@@ -23,6 +23,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -97,6 +98,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -456,6 +458,11 @@ class CommentsComposeController private constructor(
     }
 
     fun showCommentActions(comment: Comment) {
+        // Long presses can arrive from multiple comments before Compose has a chance to render
+        // the overlay. Keep the overlay single-owner so a rejected second request cannot leave
+        // its source comment suppressed without a corresponding dialog.
+        if (commentActionOverlay != null) return
+
         requestStopScroll()
         commentActionDismissRequest = 0
         commentActionPredictiveBackProgress = 0f
@@ -463,15 +470,17 @@ class CommentsComposeController private constructor(
             comment = comment,
             sourceBounds = commentBounds[comment.id],
         )
-        suppressedCommentIds = suppressedCommentIds + comment.id
+        suppressedCommentIds = setOf(comment.id)
         listener.onCommentActionOverlayVisibilityChanged(true)
     }
 
     fun restoreCommentActions(comment: Comment) {
+        if (commentActionOverlay != null) return
+
         commentActionDismissRequest = 0
         commentActionPredictiveBackProgress = 0f
         commentActionOverlay = CommentActionOverlayState(comment, sourceBounds = null)
-        suppressedCommentIds = suppressedCommentIds + comment.id
+        suppressedCommentIds = setOf(comment.id)
         listener.onCommentActionOverlayVisibilityChanged(true)
     }
 
@@ -3252,14 +3261,26 @@ private fun CommentNavigationButtons(
         ) {
             Icon(painterResource(R.drawable.ic_keyboard_arrow_up_dark), "Previous top-level comment", tint = Color.Unspecified)
         }
-        Icon(
-            painterResource(R.drawable.ic_explore_dark),
-            contentDescription = null,
+        Box(
             modifier = Modifier
-                .padding(horizontal = 10.dp)
-                .size(28.dp),
-            tint = Color.Unspecified,
-        )
+                .size(48.dp)
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        do {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { it.consume() }
+                        } while (event.changes.any { it.pressed })
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_explore_dark),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = Color.Unspecified,
+            )
+        }
         Box(
             modifier = Modifier
                 .size(56.dp)

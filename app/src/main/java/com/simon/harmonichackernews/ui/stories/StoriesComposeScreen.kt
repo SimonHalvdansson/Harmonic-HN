@@ -1582,7 +1582,9 @@ private fun SearchHeader(
 @Composable
 private fun SearchOptionChip(label: String, labels: List<String>, onSelected: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    Box {
+    Box(
+        modifier = Modifier.animateContentSize(tween(220, easing = StoriesEasing)),
+    ) {
         FilterChip(
             selected = false,
             onClick = { expanded = true },
