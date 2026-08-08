@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -93,6 +94,24 @@ import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.util.Locale
 import kotlin.math.min
+
+internal class AnnotatedLinkGestureState {
+    private var suppressNextLinkClick = false
+
+    fun beginGesture() {
+        suppressNextLinkClick = false
+    }
+
+    fun markLongPress() {
+        suppressNextLinkClick = true
+    }
+
+    fun consumeSuppressedLinkClick(): Boolean {
+        val suppressed = suppressNextLinkClick
+        suppressNextLinkClick = false
+        return suppressed
+    }
+}
 
 @Immutable
 data class CommentItemUiModel(
@@ -403,9 +422,12 @@ fun CommentItem(
             ),
         )
     }
-    val linkListener = remember(context) {
+    val linkGestureState = remember { AnnotatedLinkGestureState() }
+    val linkListener = remember(context, linkGestureState) {
         LinkInteractionListener { annotation ->
-            if (annotation is LinkAnnotation.Url) {
+            if (annotation is LinkAnnotation.Url &&
+                !linkGestureState.consumeSuppressedLinkClick()
+            ) {
                 Utils.openLinkMaybeHN(context, annotation.url)
             }
         }
@@ -564,6 +586,7 @@ fun CommentItem(
                                     text = displayedBody,
                                     layoutResult = { textLayout },
                                     coordinates = { textCoordinates },
+                                    linkGestureState = linkGestureState,
                                     onLongPress = onLinkLongClick,
                                 ),
                             color = colors.storyNormal,
@@ -839,10 +862,12 @@ internal fun Modifier.detectAnnotatedLinkLongPress(
     text: AnnotatedString,
     layoutResult: () -> TextLayoutResult?,
     coordinates: () -> LayoutCoordinates?,
+    linkGestureState: AnnotatedLinkGestureState,
     onLongPress: (url: String, label: String, bounds: Rect) -> Unit,
-): Modifier = pointerInput(text, onLongPress) {
+): Modifier = pointerInput(text, linkGestureState, onLongPress) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
+        linkGestureState.beginGesture()
         val longPress = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
         val layout = layoutResult() ?: return@awaitEachGesture
         val position = longPress.position
@@ -863,9 +888,13 @@ internal fun Modifier.detectAnnotatedLinkLongPress(
             .trim()
             .ifBlank { link.url }
         longPress.consume()
+        linkGestureState.markLongPress()
         onLongPress(link.url, label, windowBounds)
         do {
-            val event = awaitPointerEvent()
+            // The link's internal combinedClickable plays its click sound during the Main pass,
+            // before invoking the listener. Consume the remainder in Initial so releasing after
+            // the preview is treated as a canceled gesture instead of a click.
+            val event = awaitPointerEvent(PointerEventPass.Initial)
             event.changes.forEach { it.consume() }
         } while (event.changes.any { it.pressed })
     }

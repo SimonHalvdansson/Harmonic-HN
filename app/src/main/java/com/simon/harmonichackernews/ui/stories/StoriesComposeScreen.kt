@@ -1168,7 +1168,13 @@ private fun StoriesHeader(
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
     val compact = controller.displaySettings?.compactHeader == true
     val topSpacing = if (compact) 20.dp else 40.dp
-    val bottomSpacing = if (compact) 10.dp else 26.dp
+    val bottomSpacing = if (!searchMode && controller.lastUpdatedText != null) {
+        if (compact) 4.dp else 8.dp
+    } else if (compact) {
+        10.dp
+    } else {
+        26.dp
+    }
 
     Column(
         modifier = modifier

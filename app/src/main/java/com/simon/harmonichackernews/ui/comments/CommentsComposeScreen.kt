@@ -139,6 +139,7 @@ import com.simon.harmonichackernews.data.PollOption
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
+import com.simon.harmonichackernews.ui.content.AnnotatedLinkGestureState
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
@@ -1090,6 +1091,7 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
                 comments = visibleComments,
                 forward = request.forward,
                 topLevelOnly = request.topLevelOnly,
+                topOffsetPx = topInsetPx,
             )
         }
         val listIndex = target + 1
@@ -1478,18 +1480,34 @@ private fun findNavigationTarget(
     comments: List<VisibleComment>,
     forward: Boolean,
     topLevelOnly: Boolean,
+    topOffsetPx: Int,
 ): Int {
-    if (comments.isEmpty()) return 0
-    val first = (state.firstVisibleItemIndex - 1).coerceIn(0, comments.lastIndex)
+    if (comments.isEmpty()) return -1
+
+    // The header is a separate LazyColumn item. Use the last comment whose top has reached the
+    // navigation anchor as the current position; the first comment may be well below the header
+    // while the header is still visible. This also keeps a preceding reply from becoming the
+    // current target when a top-level comment is anchored just below the inset.
+    val current = state.layoutInfo.visibleItemsInfo
+        .asSequence()
+        .filter { item ->
+            item.index > 0 &&
+                item.index - 1 in comments.indices &&
+                item.offset <= topOffsetPx
+        }
+        .maxByOrNull { it.index }
+        ?.index
+        ?.minus(1)
+        ?: -1
     val range = if (forward) {
-        (first + 1)..comments.lastIndex
+        (current + 1)..comments.lastIndex
     } else {
-        (first - 1 downTo 0)
+        (current - 1 downTo 0)
     }
     for (index in range) {
         if (!topLevelOnly || comments[index].comment.depth == 0) return index
     }
-    return first
+    return if (forward) comments.lastIndex else -1
 }
 
 @Composable
@@ -2007,9 +2025,14 @@ private fun HeaderStoryBody(
             style = SpanStyle(colors.link, textDecoration = TextDecoration.Underline),
         )
     }
-    val linkListener = remember(context) {
+    val linkGestureState = remember { AnnotatedLinkGestureState() }
+    val linkListener = remember(context, linkGestureState) {
         LinkInteractionListener { link ->
-            if (link is LinkAnnotation.Url) Utils.openLinkMaybeHN(context, link.url)
+            if (link is LinkAnnotation.Url &&
+                !linkGestureState.consumeSuppressedLinkClick()
+            ) {
+                Utils.openLinkMaybeHN(context, link.url)
+            }
         }
     }
     val annotated = remember(bodyHtml, linkStyles, linkListener) {
@@ -2032,6 +2055,7 @@ private fun HeaderStoryBody(
                         text = annotated,
                         layoutResult = { textLayout },
                         coordinates = { textCoordinates },
+                        linkGestureState = linkGestureState,
                         onLongPress = onLinkLongClick,
                     ),
                 color = colors.storyNormal,

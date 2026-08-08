@@ -344,7 +344,7 @@ fun SettingsListScreen(
         dimensionResource(R.dimen.settings_list_segment_corner_radius),
     )
     val visibleEntries = MainSettingsEntries.filter {
-        it.section != SettingsSection.Debug || BuildConfig.DEBUG
+        it.section != SettingsSection.Debug || BuildConfig.DEBUG_SETTINGS_ENABLED
     }
     val navigationBarPadding =
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
