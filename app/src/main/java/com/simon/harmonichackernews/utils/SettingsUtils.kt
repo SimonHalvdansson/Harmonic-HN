@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.BatteryManager
 import android.text.TextUtils
 import androidx.preference.PreferenceManager
+import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils.sanitizeMode
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils.clearTintColorCaches
@@ -98,7 +99,7 @@ object SettingsUtils {
     const val MAX_PALETTE_TINT_TONE: Int = 20
     val COMMENT_DISPLAY_STYLE_STANDARD: String = STORY_DISPLAY_STYLE_STANDARD
     val COMMENT_DISPLAY_STYLE_CARD: String = STORY_DISPLAY_STYLE_CARD
-    const val DEFAULT_STORY_TEXT_SIZE: Float = 17.5f
+    const val DEFAULT_STORY_TEXT_SIZE: Float = TextPreferences.DEFAULT_STORY_TEXT_SIZE
     const val DEFAULT_STORY_META_TEXT_SIZE: Float = 13f
     val MIN_STORY_TEXT_SIZE_OFFSET: Int = -6
     const val MAX_STORY_TEXT_SIZE_OFFSET: Int = 6
@@ -107,7 +108,7 @@ object SettingsUtils {
             + MIN_STORY_TEXT_SIZE_OFFSET * STORY_TEXT_SIZE_OFFSET_STEP)
     val MAX_STORY_TEXT_SIZE: Float = (DEFAULT_STORY_TEXT_SIZE
             + MAX_STORY_TEXT_SIZE_OFFSET * STORY_TEXT_SIZE_OFFSET_STEP)
-    const val DEFAULT_COMMENT_TEXT_SIZE: Float = 15f
+    const val DEFAULT_COMMENT_TEXT_SIZE: Float = TextPreferences.DEFAULT_COMMENT_TEXT_SIZE
     val MIN_COMMENT_TEXT_SIZE_OFFSET: Int = -6
     const val MAX_COMMENT_TEXT_SIZE_OFFSET: Int = 6
     const val COMMENT_TEXT_SIZE_OFFSET_STEP: Float = 0.5f
@@ -595,19 +596,7 @@ object SettingsUtils {
     }
 
     fun sanitizeFont(font: String?): String {
-        if ("productsans" == font
-            || "googlesansflexrounded" == font
-            || "googlesans" == font
-            || "devicedefault" == font
-            || "verdana" == font
-            || "jetbrainsmono" == font
-            || "googlesanscode" == font
-            || "georgia" == font
-            || "robotoslab" == font
-        ) {
-            return font
-        }
-        return "googlesansflexrounded"
+        return TextPreferences.sanitizeFont(font)
     }
 
     fun sanitizeReaderModeFont(font: String): String {
@@ -824,7 +813,7 @@ object SettingsUtils {
     }
 
     fun clampStoryTextSize(textSize: Float): Float {
-        return max(MIN_STORY_TEXT_SIZE, min(MAX_STORY_TEXT_SIZE, textSize))
+        return TextPreferences.clampStoryTextSize(textSize)
     }
 
     fun getStoryTextSizeOffset(textSize: Float): Int {
@@ -1126,7 +1115,7 @@ object SettingsUtils {
     }
 
     fun clampCommentTextSize(textSize: Float): Float {
-        return max(MIN_COMMENT_TEXT_SIZE, min(MAX_COMMENT_TEXT_SIZE, textSize))
+        return TextPreferences.clampCommentTextSize(textSize)
     }
 
     fun getCommentTextSizeOffset(textSize: Float): Int {

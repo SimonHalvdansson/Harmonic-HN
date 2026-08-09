@@ -100,3 +100,19 @@ interface LocalSummaryEngine {
     suspend fun isAvailable(): Boolean
     suspend fun summarize(request: SummaryRequest): SummaryResult
 }
+
+/** Complete platform boundary consumed by shared presenters and platform UI composition roots. */
+data class PlatformServices(
+    val credentials: CredentialStore,
+    val bookmarks: BookmarkStore,
+    val history: HistoryStore,
+    val cache: CacheStore,
+    val files: FileStore,
+    val externalLinks: ExternalLinkOpener,
+    val sharing: ShareService,
+    val clipboard: ClipboardService,
+    val connectivity: ConnectivityService,
+    val notifications: NotificationScheduler,
+    val articles: ArticleViewer,
+    val localSummary: LocalSummaryEngine,
+)

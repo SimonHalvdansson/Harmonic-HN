@@ -6,6 +6,42 @@ import com.simon.harmonichackernews.network.StoryTextProcessor
 
 private const val HN_ITEM_URL = "https://news.ycombinator.com/item?id="
 
+fun HackerNewsItemDto.toStory(): Story? = Story().takeIf { story -> applyTo(story) }
+
+fun AlgoliaSearchHitDto.toStory(): Story? {
+    val id = objectId.toIntOrNull() ?: return null
+    val isComment = tags.firstOrNull() == "comment"
+    val author = author ?: return null
+    val itemUrl = url?.trim()?.takeUnless { it.isEmpty() || it.equals("null", true) }
+    val masterUrl = storyUrl?.trim()?.takeUnless { it.isEmpty() || it.equals("null", true) }
+    return Story().also { story ->
+        story.id = id
+        story.by = author
+        story.title = (if (isComment) storyTitle else title)
+            ?.takeUnless { it == "null" }
+            ?: if (isComment) "Comment by $author" else null
+        story.text = StoryTextProcessor.preprocessHtml(
+            if (isComment) commentText.orEmpty() else storyText,
+        )
+        story.url = itemUrl ?: "$HN_ITEM_URL$id"
+        story.score = points ?: 0
+        story.descendants = commentCount ?: 0
+        story.time = createdAt ?: 0
+        story.parentId = parentId ?: 0
+        story.isLink = if (isComment) masterUrl != null else itemUrl != null
+        story.isComment = isComment
+        if (isComment && (storyId ?: 0) > 0) {
+            story.commentMasterId = storyId ?: 0
+            story.commentMasterTitle = storyTitle
+            story.commentMasterUrl = masterUrl
+            story.commentMasterLoaded = false
+        }
+        story.loaded = true
+        story.loadingFailed = false
+        StoryTextProcessor.applyTitleBadges(story)
+    }
+}
+
 fun HackerNewsItemDto.applyTo(story: Story, preserveTime: Boolean = false): Boolean {
     val author = by ?: return false
     if (id <= 0 || deleted) return false
@@ -49,48 +85,5 @@ fun HackerNewsItemDto.toComment(): Comment? {
         comment.text = StoryTextProcessor.preprocessHtml(text).orEmpty()
         comment.children = kids.size
         comment.kidsIds = kids.takeIf(List<Int>::isNotEmpty)?.toIntArray()
-    }
-}
-
-fun AlgoliaSearchHitDto.toStory(): Story? {
-    val id = objectId.toIntOrNull() ?: return null
-    val isComment = tags.firstOrNull() == "comment"
-    val author = author ?: return null
-    val displayTitle = if (isComment) storyTitle else title
-    val itemUrl = url?.trim()?.takeUnless {
-        it.isEmpty() || it.equals("null", ignoreCase = true)
-    }
-    val masterUrl = storyUrl?.trim()?.takeUnless {
-        it.isEmpty() || it.equals("null", ignoreCase = true)
-    }
-
-    return Story().also { story ->
-        story.id = id
-        story.title = displayTitle
-        story.score = points ?: 0
-        story.by = author
-        story.descendants = commentCount ?: 0
-        story.time = createdAt ?: 0
-        story.loaded = true
-        story.loadingFailed = false
-        story.clicked = false
-        story.url = itemUrl ?: "$HN_ITEM_URL$id"
-        story.isLink = itemUrl != null
-        storyText?.takeUnless { it.equals("null", ignoreCase = true) }
-            ?.let { story.text = StoryTextProcessor.preprocessHtml(it) }
-
-        if (isComment) {
-            story.isComment = true
-            story.text = StoryTextProcessor.preprocessHtml(commentText.orEmpty())
-            story.commentMasterTitle = storyTitle
-            story.commentMasterId = storyId ?: 0
-            story.parentId = parentId ?: 0
-            story.commentMasterUrl = masterUrl
-            story.isLink = masterUrl != null
-            if (story.title.isNullOrEmpty() || story.title == "null") {
-                story.title = "Comment by $author"
-            }
-        }
-        StoryTextProcessor.applyTitleBadges(story)
     }
 }

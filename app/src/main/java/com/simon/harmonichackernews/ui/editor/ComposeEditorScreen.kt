@@ -69,8 +69,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
@@ -104,16 +102,11 @@ import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.navigation.EditorType
+import com.simon.harmonichackernews.presentation.EditorSubmission
+import com.simon.harmonichackernews.presentation.validate
 import kotlin.math.max
 import kotlin.math.min
-
-data class ComposeEditorSubmission(
-    val title: String,
-    val url: String,
-    val text: String,
-    val comment: String,
-)
 
 @Stable
 class ComposeEditorController internal constructor(
@@ -137,14 +130,15 @@ private enum class EditorDialog {
 
 @Composable
 internal fun ComposeEditorScreen(
-    type: Int,
+    type: EditorType,
     parentText: String?,
     postTitle: String?,
     user: String?,
     titleMaxLength: Int,
     submitting: Boolean,
     onClose: () -> Unit,
-    onSubmit: (ComposeEditorSubmission) -> Unit,
+    onSubmit: (EditorSubmission) -> Unit,
+    onOpenLink: (String) -> Unit = {},
 ) {
     var title by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
@@ -166,14 +160,11 @@ internal fun ComposeEditorScreen(
         if (discardConfirmed) onClose()
     }
 
-    val isPost = type == ComposeEditorContract.TYPE_POST
-    val titleTooLong = title.text.length > titleMaxLength
-    val canSubmit = if (isPost) {
-        title.text.isNotEmpty() && !titleTooLong &&
-            (url.text.isNotEmpty() || text.text.isNotEmpty())
-    } else {
-        comment.text.isNotEmpty()
-    }
+    val isPost = type == EditorType.POST
+    val submission = EditorSubmission(title.text, url.text, text.text, comment.text)
+    val validation = submission.validate(type, titleMaxLength)
+    val titleTooLong = validation.titleTooLong
+    val canSubmit = validation.canSubmit
 
     fun requestClose() {
         if (canSubmit) dialog = EditorDialog.Discard else onClose()
@@ -206,10 +197,11 @@ internal fun ComposeEditorScreen(
             onClose = ::requestClose,
         )
 
-        if (type == ComposeEditorContract.TYPE_COMMENT_REPLY) {
+        if (type == EditorType.COMMENT_REPLY) {
             ReplyPreview(
                 user = user.orEmpty(),
                 parentText = parentText.orEmpty(),
+                onOpenLink = onOpenLink,
             )
         }
 
@@ -229,7 +221,7 @@ internal fun ComposeEditorScreen(
             CommentField(
                 value = comment,
                 onValueChange = { comment = it },
-                reply = type == ComposeEditorContract.TYPE_COMMENT_REPLY,
+                reply = type == EditorType.COMMENT_REPLY,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -249,12 +241,7 @@ internal fun ComposeEditorScreen(
             onSubmit = {
                 if (canSubmit && !submitting) {
                     onSubmit(
-                        ComposeEditorSubmission(
-                            title = title.text,
-                            url = url.text,
-                            text = text.text,
-                            comment = comment.text,
-                        ),
+                        submission,
                     )
                 }
             },
@@ -339,14 +326,14 @@ private fun EditorMessageActionDialog(
 
 @Composable
 private fun ComposeEditorTopBar(
-    type: Int,
+    type: EditorType,
     subtitle: String?,
     onClose: () -> Unit,
 ) {
     val title = when (type) {
-        ComposeEditorContract.TYPE_TOP_COMMENT -> "Top level comment"
-        ComposeEditorContract.TYPE_COMMENT_REPLY -> "Posting reply"
-        else -> "New post"
+        EditorType.TOP_LEVEL_COMMENT -> "Top level comment"
+        EditorType.COMMENT_REPLY -> "Posting reply"
+        EditorType.POST -> "New post"
     }
     Row(
         modifier = Modifier
@@ -406,10 +393,11 @@ private fun ComposeEditorTopBar(
 private fun ReplyPreview(
     user: String,
     parentText: String,
+    onOpenLink: (String) -> Unit,
 ) {
-    val context = LocalContext.current
     val density = LocalDensity.current
-    val windowHeight = LocalWindowInfo.current.containerSize.height
+    val windowSize = LocalWindowInfo.current.containerSize
+    val windowHeight = windowSize.height
     val previewHeight = with(density) {
         (windowHeight / 3f).toDp().coerceIn(112.dp, 180.dp)
     }
@@ -422,10 +410,10 @@ private fun ReplyPreview(
             ),
         )
     }
-    val linkListener = remember(context) {
+    val linkListener = remember(onOpenLink) {
         LinkInteractionListener { annotation ->
             if (annotation is LinkAnnotation.Url) {
-                Utils.openLinkMaybeHN(context, annotation.url)
+                onOpenLink(annotation.url)
             }
         }
     }
@@ -448,7 +436,7 @@ private fun ReplyPreview(
         Surface(
             modifier = Modifier
                 .padding(start = 16.dp, top = 6.dp, end = 16.dp)
-                .widthIn(max = LocalConfiguration.current.screenWidthDp.dp - 32.dp)
+                .widthIn(max = with(density) { windowSize.width.toDp() } - 32.dp)
                 .testTag("compose_editor_replying_header"),
             shape = RoundedCornerShape(28.dp),
             color = HarmonicTheme.colors.overlayButton,
@@ -826,7 +814,7 @@ private val includeFontPaddingStyle = TextStyle(
 private fun NewPostPreview() {
     HarmonicTheme {
         ComposeEditorScreen(
-            type = ComposeEditorContract.TYPE_POST,
+            type = EditorType.POST,
             parentText = null,
             postTitle = null,
             user = null,
@@ -843,7 +831,7 @@ private fun NewPostPreview() {
 private fun TopCommentPreview() {
     HarmonicTheme {
         ComposeEditorScreen(
-            type = ComposeEditorContract.TYPE_TOP_COMMENT,
+            type = EditorType.TOP_LEVEL_COMMENT,
             parentText = "A sample story",
             postTitle = "A sample story",
             user = null,
@@ -860,7 +848,7 @@ private fun TopCommentPreview() {
 private fun CommentReplyPreview() {
     HarmonicTheme {
         ComposeEditorScreen(
-            type = ComposeEditorContract.TYPE_COMMENT_REPLY,
+            type = EditorType.COMMENT_REPLY,
             parentText = "This is a sample comment with an <a href=\"https://example.com\">example link</a>.",
             postTitle = "A sample story",
             user = "pg",

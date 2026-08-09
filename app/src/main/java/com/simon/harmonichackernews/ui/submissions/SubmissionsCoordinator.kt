@@ -1,13 +1,14 @@
 package com.simon.harmonichackernews.ui.submissions
 
-import android.net.Uri
-import com.simon.harmonichackernews.network.RequestQueue
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.BackgroundJSONParser
+import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.presentation.SubmissionFilter
+import com.simon.harmonichackernews.presentation.SubmissionsStore
+import com.simon.harmonichackernews.presentation.SubmissionsUiState
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.CancellationException
@@ -16,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 /** Networking and filtering state for a Compose submissions destination.  */
@@ -23,36 +25,27 @@ class SubmissionsCoordinator(
     private val activity: MainActivity,
     private val userName: String,
     private val navigator: Navigator,
+    private val algoliaRepository: AlgoliaRepository = NetworkComponent.algoliaRepository,
 ) {
     fun interface Navigator {
         fun openStory(story: Story, showWebsite: Boolean)
     }
 
-    private val submissions = mutableListOf<Story>()
-    private val allSubmissions = mutableListOf<Story>()
-    private val queue: RequestQueue = NetworkComponent.getRequestQueueInstance(activity)
+    private val store = SubmissionsStore(userName, algoliaRepository)
+    private var submissions: List<Story> = emptyList()
     private val hackerNewsRepository = NetworkComponent.hackerNewsRepository
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val composeController: SubmissionsComposeController
     private var submissionsLoadJob: Job? = null
-    private var initialLoadFinished = false
-    private var submissionsLoading = false
-    private var submissionsLoadedSuccessfully = false
-    private var submissionsRequestGeneration = 0
-    private var submissionsHitsPerPage = ALGOLIA_HITS_INCREMENT
-    private var submissionsCanLoadMore = false
-    private var submissionFilter = SubmissionFilter.BOTH
 
     init {
         composeController = SubmissionsComposeController.create(
             activity,
             userName,
-            submissionFilter,
+            store.state.value.filter,
             object : SubmissionsComposeController.Listener {
                 override fun onFilterSelected(filter: SubmissionFilter) {
-                    if (submissionFilter == filter) return
-                    submissionFilter = filter
-                    applySubmissionFilter()
+                    store.selectFilter(filter)
                 }
 
                 override fun onRefresh() {
@@ -84,42 +77,39 @@ class SubmissionsCoordinator(
                 }
 
                 override fun onLoadMore() {
-                    if (submissionsLoading || !submissionsCanLoadMore) return
-                    submissionsHitsPerPage += ALGOLIA_HITS_INCREMENT
                     loadSubmissions(false)
                 }
             })
         composeController.updateDisplaySettings(
             StoryDisplaySettings.from(AndroidUserSettings(activity).story).withShowIndex(false)
         )
+        coroutineScope.launch {
+            store.state.collect(::render)
+        }
         loadSubmissions(true)
     }
 
     fun close() {
-        submissionsRequestGeneration++
         cancelSubmissionsLoad()
         coroutineScope.cancel()
     }
 
-    private fun applySubmissionFilter() {
-        submissions.clear()
-        allSubmissions.filterTo(submissions, ::shouldShowStoryForSubmissionFilter)
+    private fun render(state: SubmissionsUiState) {
+        submissions = state.items
+        composeController.updateLoading(
+            state.loading,
+            state.showInitialLoading,
+            state.refreshing,
+        )
         composeController.updateContent(
-            submissions.toList(),
-            submissionFilter,
-            allSubmissions.isNotEmpty(),
-            submissionsCanLoadMore,
-            submissionsLoadedSuccessfully,
-            emptyViewText,
+            submissions,
+            state.filter,
+            state.hasUnfilteredItems,
+            state.canLoadMore,
+            state.loadedSuccessfully,
+            state.emptyText,
         )
     }
-
-    private fun shouldShowStoryForSubmissionFilter(story: Story): Boolean =
-        when (submissionFilter) {
-            SubmissionFilter.STORIES -> !story.isComment
-            SubmissionFilter.COMMENTS -> story.isComment
-            SubmissionFilter.BOTH -> true
-        }
 
     private fun openCommentMasterStory(story: Story) {
         val masterStory = story.toCommentMasterStory()
@@ -134,7 +124,8 @@ class SubmissionsCoordinator(
 
         coroutineScope.launch {
             try {
-                hackerNewsRepository.getStory(masterStory.id)?.let(story::updateCommentMasterFrom)
+                hackerNewsRepository.getStory(masterStory.id)
+                    ?.let(story::updateCommentMasterFrom)
                 if (submissions.contains(story)) composeController.refreshStoryRows()
                 openComments(story.toCommentMasterStory() ?: masterStory, false)
             } catch (error: CancellationException) {
@@ -152,44 +143,13 @@ class SubmissionsCoordinator(
 
     private fun loadSubmissions(resetResultLimit: Boolean) {
         cancelSubmissionsLoad()
-        if (resetResultLimit) submissionsHitsPerPage = ALGOLIA_HITS_INCREMENT
-        val requestGeneration = ++submissionsRequestGeneration
-        submissionsLoading = true
-        val showInitialLoading = !initialLoadFinished
-        composeController.updateLoading(
-            true,
-            showInitialLoading,
-            !showInitialLoading && resetResultLimit
-        )
-        updateEmptyView()
-
-        val url = Uri.parse("https://hn.algolia.com/api/v1/search_by_date")
-            .buildUpon()
-            .appendQueryParameter("tags", "author_$userName")
-            .appendQueryParameter("hitsPerPage", submissionsHitsPerPage.toString())
-            .build()
-            .toString()
-
         submissionsLoadJob = coroutineScope.launch {
-            try {
-                val response = queue.getString(url)
-                val parsedStories = BackgroundJSONParser.parseAlgoliaStories(response)
-                if (requestGeneration != submissionsRequestGeneration) return@launch
-                submissionsLoadJob = null
-                finishLoading(requestGeneration)
-                submissionsCanLoadMore = parsedStories.size >= submissionsHitsPerPage
-                submissionsLoadedSuccessfully = true
-                allSubmissions.clear()
-                allSubmissions.addAll(parsedStories)
-                applySubmissionFilter()
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                if (requestGeneration != submissionsRequestGeneration) return@launch
-                submissionsLoadJob = null
-                error?.printStackTrace()
-                finishLoading(requestGeneration)
+            if (resetResultLimit) {
+                store.refresh()
+            } else {
+                store.loadMore()
             }
+            submissionsLoadJob = null
         }
     }
 
@@ -198,34 +158,4 @@ class SubmissionsCoordinator(
         submissionsLoadJob = null
     }
 
-    private fun finishLoading(requestGeneration: Int) {
-        if (requestGeneration != submissionsRequestGeneration) return
-        submissionsLoading = false
-        initialLoadFinished = true
-        composeController.updateLoading(false, false, false)
-        updateEmptyView()
-    }
-
-    private fun updateEmptyView() {
-        composeController.updateContent(
-            submissions.toList(),
-            submissionFilter,
-            allSubmissions.isNotEmpty(),
-            submissionsCanLoadMore,
-            submissionsLoadedSuccessfully,
-            emptyViewText,
-        )
-    }
-
-    private val emptyViewText: String
-        get() = when {
-            allSubmissions.isEmpty() -> "No submissions"
-            submissionFilter == SubmissionFilter.STORIES -> "No stories"
-            submissionFilter == SubmissionFilter.COMMENTS -> "No comments"
-            else -> "No submissions"
-        }
-
-    companion object {
-        private const val ALGOLIA_HITS_INCREMENT = 200
-    }
 }

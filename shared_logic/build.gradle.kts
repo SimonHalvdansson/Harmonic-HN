@@ -19,6 +19,7 @@ kotlin {
 
     iosArm64()
     iosSimulatorArm64()
+    jvm("desktop")
 
     sourceSets {
         commonMain.dependencies {
@@ -26,6 +27,9 @@ kotlin {
             api(libs.ktor.client.core)
             api(libs.kotlinx.serialization.json)
             implementation(libs.ksoup)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
     }
 }

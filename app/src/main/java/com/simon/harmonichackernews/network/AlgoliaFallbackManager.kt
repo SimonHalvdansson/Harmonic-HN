@@ -3,8 +3,8 @@ package com.simon.harmonichackernews.network
 import android.util.Log
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.HNAPICommentLoader.CommentLoadListener
 import com.simon.harmonichackernews.settings.UserSettings
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,9 +14,11 @@ import kotlinx.coroutines.launch
 
 class AlgoliaFallbackManager(
     private val userSettings: UserSettings,
-    private val queue: RequestQueue,
-    private val filteredUsers: Set<String>, private val listener: FallbackListener
-) : CommentLoadListener {
+    private val filteredUsers: Set<String>,
+    private val listener: FallbackListener,
+    private val algoliaRepository: AlgoliaRepository = NetworkComponent.algoliaRepository,
+    private val hackerNewsRepository: HackerNewsRepository = NetworkComponent.hackerNewsRepository,
+) {
     interface FallbackListener {
         fun onAlgoliaSuccess(response: String?)
         fun onAlgoliaFailed(noInternet: Boolean)
@@ -28,8 +30,6 @@ class AlgoliaFallbackManager(
 
     private lateinit var treeBuilder: CommentTreeBuilder
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val repository = NetworkComponent.hackerNewsRepository
-    private val commentLoader = HNAPICommentLoader(repository, scope, filteredUsers, this)
     private val allCommentIds = mutableSetOf<Int>()
     private val loadedCommentIds = mutableSetOf<Int>()
     private var totalExpectedComments = 0
@@ -48,40 +48,27 @@ class AlgoliaFallbackManager(
     }
 
     private fun loadWithAlgolia(storyId: Int) {
-        val url = "https://hn.algolia.com/api/v1/items/" + storyId
-
         scope.launch {
             try {
-                val response = queue.getString(
-                    url,
-                    RetryPolicy(
-                        timeoutMillis = 15_000,
-                        maxRetries = 2,
-                        backoffMultiplier = RetryPolicy.DEFAULT_BACKOFF_MULT,
-                    ),
-                )
+                val response = algoliaRepository.getItemJson(storyId)
                 listener.onAlgoliaSuccess(response)
             } catch (error: CancellationException) {
                 throw error
-            } catch (error: NetworkError) {
+            } catch (error: Exception) {
                 Log.w(
                     TAG,
-                    "Algolia request failed for storyId=" + storyId + ": " + NetworkErrorUtils.describe(
-                        error
-                    ),
+                    "Algolia request failed for storyId=$storyId: ${error.message}",
                     error
                 )
-                // If Algolia fails, try HN API
-                val networkResponse = error?.networkResponse
-                if ((networkResponse != null &&
-                        (networkResponse.statusCode == 404 || networkResponse.statusCode >= 500)
-                    ) || error is NetworkTimeoutError
-                ) {
+                val shouldFallback = error is HttpRequestTimeoutException ||
+                    error is HttpStatusException &&
+                    (error.statusCode == 404 || error.statusCode >= 500)
+                if (shouldFallback) {
                     Log.d(TAG, "Falling back to HN API for storyId=" + storyId)
                     loadWithHNAPI(storyId)
                     listener.onUsingFallback()
                 } else {
-                    listener.onAlgoliaFailed(networkResponse == null)
+                    listener.onAlgoliaFailed(error !is HttpStatusException)
                 }
             }
         }
@@ -90,7 +77,7 @@ class AlgoliaFallbackManager(
     private fun loadWithHNAPI(storyId: Int) {
         scope.launch {
             try {
-                val story = repository.getStory(storyId)
+                val story = hackerNewsRepository.getStory(storyId)
                 if (story != null) {
                     Log.d(
                         TAG, ("HN API story loaded for storyId=" + storyId
@@ -135,13 +122,35 @@ class AlgoliaFallbackManager(
         // Discover all comment IDs by loading each comment and checking for children
         for (commentId in topLevelIds) {
             allCommentIds.add(commentId)
-            commentLoader.loadComment(commentId, 0)
+            loadComment(commentId, 0)
         }
 
         totalExpectedComments = allCommentIds.size
     }
 
-    override fun onCommentLoaded(comment: Comment) {
+    private fun loadComment(commentId: Int, depth: Int) {
+        scope.launch {
+            try {
+                val comment = hackerNewsRepository.getComment(commentId)?.also { loadedComment ->
+                    loadedComment.expanded = true
+                    loadedComment.depth = depth
+                }
+                val author = comment?.by
+                if (comment != null && author != null && author.lowercase() !in filteredUsers) {
+                    onCommentLoaded(comment)
+                } else {
+                    onCommentFailed(commentId)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.w(TAG, "HN API comment request failed, commentId=$commentId", error)
+                onCommentFailed(commentId)
+            }
+        }
+    }
+
+    private fun onCommentLoaded(comment: Comment) {
         treeBuilder.addComment(comment)
         loadedCommentIds.add(comment.id)
 
@@ -150,14 +159,14 @@ class AlgoliaFallbackManager(
         comment.kidsIds?.forEach { childId ->
             if (allCommentIds.add(childId)) {
                 totalExpectedComments++
-                commentLoader.loadComment(childId, comment.depth + 1)
+                loadComment(childId, comment.depth + 1)
             }
         }
 
         notifyIfComplete()
     }
 
-    override fun onCommentFailed(commentId: Int) {
+    private fun onCommentFailed(commentId: Int) {
         loadedCommentIds.add(commentId) // Mark as processed even if failed
         Log.w(
             TAG, ("HN API comment failed, commentId=" + commentId

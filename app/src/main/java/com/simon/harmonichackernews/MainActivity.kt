@@ -17,7 +17,10 @@ import com.simon.harmonichackernews.CommentsCoordinator.CommentsPaneCallback
 import com.simon.harmonichackernews.StoriesCoordinator.StoryClickListener
 import com.simon.harmonichackernews.data.CommentsScrollProgress
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.data.toBundle
+import com.simon.harmonichackernews.data.toEditorDestination
+import com.simon.harmonichackernews.data.toStoryDestinationOrNull
+import com.simon.harmonichackernews.navigation.StoryDestination
+import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.network.UserActions.CaptchaChallenge
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
@@ -144,6 +147,14 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         mainNavigationController?.showUserDialog(userName, onTagChanged)
     }
 
+    fun showFailureDetailDialog(
+        title: String?,
+        message: String?,
+        clipboardText: String? = null,
+    ) {
+        mainNavigationController?.showFailureDetailDialog(title, message, clipboardText)
+    }
+
     private fun applyWelcomePresetToUi() {
         storiesCoordinator?.applyWelcomePresetSettings()
     }
@@ -185,13 +196,12 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
             return
         }
 
-        val bundle = story.toBundle()
-
-        bundle.putInt(CommentsContract.EXTRA_FORWARD, pos - lastPosition)
-        bundle.putBoolean(CommentsContract.EXTRA_SHOW_WEBSITE, showWebsite)
-
+        val destination = story.toDestination(
+            relativePosition = pos - lastPosition,
+            showWebsite = showWebsite,
+        )
         lastPosition = pos
-        mainNavigationController!!.openStory(bundle)
+        mainNavigationController!!.openStory(destination)
     }
 
     private fun switchOpenStoryViewIfMatching(story: Story?, showWebsite: Boolean): Boolean {
@@ -262,14 +272,13 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         if (itemId <= 0) {
             return false
         }
-        val bundle = Bundle()
-        bundle.putInt(CommentsContract.EXTRA_ID, itemId)
-        bundle.putString(CommentsContract.EXTRA_TITLE, "")
-        bundle.putBoolean(CommentsContract.EXTRA_SHOW_WEBSITE, false)
-        if (scrollToCommentId > 0) {
-            bundle.putInt(CommentsContract.EXTRA_SCROLL_TO_COMMENT, scrollToCommentId)
-        }
-        mainNavigationController!!.openStory(bundle)
+        mainNavigationController!!.openStory(
+            StoryDestination(
+                storyId = itemId,
+                title = "",
+                scrollToCommentId = scrollToCommentId,
+            ),
+        )
         return true
     }
 
@@ -286,17 +295,12 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
 
         if (ComposeEditorContract.ACTION_OPEN_EDITOR == intent.action) {
             val editorArguments = intent.extras?.let(::Bundle) ?: Bundle()
-            val editorType = editorArguments.getInt(
-                ComposeEditorContract.EXTRA_TYPE,
-                ComposeEditorContract.TYPE_POST
-            )
-            if (editorType != ComposeEditorContract.TYPE_POST
-                && editorArguments.getInt(ComposeEditorContract.EXTRA_ID, -1) <= 0
-            ) {
+            val destination = editorArguments.toEditorDestination()
+            if (!destination.isValid) {
                 Toast.makeText(this, "Invalid comment id", Toast.LENGTH_SHORT).show()
                 return false
             }
-            navigationController.openEditor(editorArguments)
+            navigationController.openEditor(destination)
             return true
         }
 
@@ -361,7 +365,8 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
             CommentsContract.EXTRA_SHOW_WEBSITE,
             arguments.getBoolean(CommentsContract.EXTRA_SHOW_WEBSITE, false)
         )
-        navigationController.openStory(arguments)
+        val destination = arguments.toStoryDestinationOrNull() ?: return false
+        navigationController.openStory(destination)
         return true
     }
 
@@ -455,6 +460,20 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         fun showLoginPrompt(): Boolean {
             val controller = getCurrentMainActivity()?.mainNavigationController ?: return false
             controller.showLoginDialog()
+            return true
+        }
+
+        fun showFailureDetailForActiveUi(
+            title: String?,
+            message: String?,
+            clipboardText: String? = null,
+        ): Boolean {
+            val activity = getCurrentMainActivity() ?: return false
+            activity.runOnUiThread {
+                if (!activity.isFinishing && !activity.isDestroyed) {
+                    activity.showFailureDetailDialog(title, message, clipboardText)
+                }
+            }
             return true
         }
 

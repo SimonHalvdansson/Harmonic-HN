@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.editor
 
-import android.os.Bundle
 import android.widget.Toast
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
@@ -10,22 +9,22 @@ import com.simon.harmonichackernews.network.UserActions.CaptchaChallenge
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
 import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.network.HttpResponse
+import com.simon.harmonichackernews.navigation.EditorDestination
+import com.simon.harmonichackernews.navigation.EditorType
+import com.simon.harmonichackernews.presentation.EditorSubmission
 
 /** Owns submission side effects while the editor itself is a MainActivity Compose destination.  */
 class ComposeEditorCoordinator(
     private val activity: MainActivity,
-    arguments: Bundle,
+    destination: EditorDestination,
     private val onFinished: () -> Unit,
 ) {
-    private val id = arguments.getInt(ComposeEditorContract.EXTRA_ID, -1)
-    val type = arguments.getInt(
-        ComposeEditorContract.EXTRA_TYPE,
-        ComposeEditorContract.TYPE_POST,
-    )
+    private val id = destination.itemId
+    val type = destination.type
     val titleMaxLength = activity.resources.getInteger(R.integer.title_max_length)
-    val parentText: String? = arguments.getString(ComposeEditorContract.EXTRA_PARENT_TEXT)
-    val postTitle: String? = arguments.getString(ComposeEditorContract.EXTRA_POST_TITLE)
-    val user: String? = arguments.getString(ComposeEditorContract.EXTRA_USER)
+    val parentText: String? = destination.parentText
+    val postTitle: String? = destination.postTitle
+    val user: String? = destination.userName
     private var submitting = false
     private var controller: ComposeEditorController? = null
 
@@ -34,7 +33,7 @@ class ComposeEditorCoordinator(
         controller.setSubmitting(submitting)
     }
 
-    fun submit(submission: ComposeEditorSubmission) {
+    fun submit(submission: EditorSubmission) {
         submitValues(
             submission.title,
             submission.url,
@@ -51,7 +50,7 @@ class ComposeEditorCoordinator(
     ) {
         if (submitting) return
 
-        if (type == ComposeEditorContract.TYPE_POST) {
+        if (type == EditorType.POST) {
             if (submittedTitle.isEmpty() ||
                 submittedTitle.length > titleMaxLength ||
                 (submittedUrl.isEmpty() && submittedText.isEmpty())
@@ -66,13 +65,13 @@ class ComposeEditorCoordinator(
             showSubmissionFailure(
                 null,
                 null,
-                if (type == ComposeEditorContract.TYPE_POST) null else submittedComment,
+                if (type == EditorType.POST) null else submittedComment,
             )
             return
         }
 
         setSubmitting(true)
-        if (type == ComposeEditorContract.TYPE_POST) {
+        if (type == EditorType.POST) {
             submitPost(submittedTitle, submittedText, submittedUrl)
         } else {
             submitComment(submittedComment)
@@ -206,7 +205,7 @@ class ComposeEditorCoordinator(
         response: String?,
         commentDraft: String?,
     ) {
-        val isPost = type == ComposeEditorContract.TYPE_POST
+        val isPost = type == EditorType.POST
         val draftName = if (isPost) "post" else "comment"
         val (title, message) = if (!Utils.isNetworkAvailable(activity)) {
             "No internet connection" to
@@ -221,6 +220,6 @@ class ComposeEditorCoordinator(
             failureTitle to failureMessage
         }
 
-        UserActions.showFailureDetailDialog(activity, title, message, commentDraft)
+        activity.showFailureDetailDialog(title, message, commentDraft)
     }
 }

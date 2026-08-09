@@ -1,22 +1,16 @@
 package com.simon.harmonichackernews.network
 
-import android.R
 import android.content.Context
-import android.content.DialogInterface
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
-import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.core.util.Pair
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
 import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstanceWithCookies
 import com.simon.harmonichackernews.network.NetworkComponent.resetHttpClientCookieInstance
-import com.simon.harmonichackernews.platform.AndroidClipboardService
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.io.IOException
@@ -136,7 +130,7 @@ object UserActions {
             }
 
             override fun onFailure(summary: String?, response: String?) {
-                showFailureDetailDialog(ctx, summary, response)
+                MainActivity.showFailureDetailForActiveUi(summary, response)
                 Toast.makeText(
                     ctx,
                     "Vote unsuccessful, see dialog for response",
@@ -199,7 +193,7 @@ object UserActions {
             }
 
             override fun onFailure(summary: String?, response: String?) {
-                showFailureDetailDialog(ctx, summary, response)
+                MainActivity.showFailureDetailForActiveUi(summary, response)
                 Toast.makeText(ctx, "Couldn't update favorite", Toast.LENGTH_SHORT).show()
             }
         })
@@ -1282,50 +1276,6 @@ object UserActions {
         }
 
         return CaptchaChallenge(actionUrl, siteKey, formFields, cookies)
-    }
-
-    @JvmOverloads
-    fun showFailureDetailDialog(
-        ctx: Context,
-        summary: String?,
-        response: String?,
-        clipboardText: String? = null
-    ) {
-        // We need to try-catch this because it is called asynchronously and if the app has been
-        // closed we cannot show a dialog. Instead of checking for this, we can just try-catch! :)
-        try {
-            val builder = MaterialAlertDialogBuilder(ctx)
-                .setTitle(summary)
-                .setMessage(response)
-                .setPositiveButton("Done", null)
-
-            if (clipboardText != null) {
-                builder.setNeutralButton("Copy comment", object : DialogInterface.OnClickListener {
-                    override fun onClick(dialogInterface: DialogInterface?, i: Int) {
-                        AndroidClipboardService(ctx).copy(
-                            "Hacker News comment",
-                            clipboardText,
-                        )
-
-                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                            Toast.makeText(ctx, "Comment copied to clipboard", Toast.LENGTH_SHORT)
-                                .show()
-                        }
-                    }
-                })
-            }
-
-            val dialog = builder.create()
-
-            dialog.show()
-
-            val messageView = dialog.findViewById<TextView?>(R.id.message)
-            if (messageView != null) {
-                messageView.setTextIsSelectable(true)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
     }
 
     class CaptchaChallenge(

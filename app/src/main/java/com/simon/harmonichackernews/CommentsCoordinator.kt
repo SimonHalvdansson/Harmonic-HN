@@ -36,23 +36,28 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.network.AlgoliaFallbackManager
 import com.simon.harmonichackernews.network.AlgoliaFallbackManager.FallbackListener
+import com.simon.harmonichackernews.network.AlgoliaCommentsParser
+import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
+import com.simon.harmonichackernews.network.ApiDecodingException
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter
-import com.simon.harmonichackernews.network.BackgroundJSONParser
 import com.simon.harmonichackernews.network.JSONParser
-import com.simon.harmonichackernews.network.JSONParser.AlgoliaCommentsResponse
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.SummaryManager
 import com.simon.harmonichackernews.network.SummaryManager.SummaryCallback
 import com.simon.harmonichackernews.network.UserActions
 import com.simon.harmonichackernews.network.UserActions.ActionCallback
-import com.simon.harmonichackernews.platform.AndroidClipboardService
+import com.simon.harmonichackernews.navigation.StoryDestination
+import com.simon.harmonichackernews.platform.AndroidPlatformServices
+import com.simon.harmonichackernews.platform.PlatformServices
+import com.simon.harmonichackernews.presentation.CommentsSessionState
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.CommentSorter
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.ShareUtils
+import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
@@ -72,17 +77,19 @@ import kotlinx.coroutines.launch
 
 class CommentsCoordinator(
     private val activity: MainActivity,
-    arguments: Bundle,
-    savedInstanceState: Bundle?
+    private val destination: StoryDestination,
+    savedInstanceState: Bundle?,
+    private val platformServices: PlatformServices = AndroidPlatformServices.create(activity),
+    private val algoliaCommentsParser: AlgoliaCommentsParser = AlgoliaCommentsParser(),
 ) {
     private val userSettings = AndroidUserSettings(activity)
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val arguments: Bundle
     private var callback: CommentsPaneCallback?
     private var started = false
     private var destroyed = false
-    private var comments: MutableList<Comment>? = null
-    private var allComments: MutableList<Comment>? = null
+    private val sessionState = CommentsSessionState()
+    private var comments by sessionState::comments
+    private var allComments by sessionState::allComments
     private var queue: RequestQueue? = null
     private val requestTag = Any()
     private var commentsLoadGeneration = 0
@@ -98,7 +105,7 @@ class CommentsCoordinator(
     private var progressIndicator: LinearProgressIndicator? = null
     private var linkPreviewController: LinkPreviewController? = null
     private var webViewController: CommentsWebViewController? = null
-    private var showWebsite = false
+    private var showWebsite by sessionState::showWebsite
     private var integratedWebview = true
     private var prefIntegratedWebview = true
     private var preloadWebview: String? = "never"
@@ -112,22 +119,22 @@ class CommentsCoordinator(
     private var pollOptionsLoadJob: Job? = null
     private var closeWebViewOnBack = false
     private var topInset = 0
-    private var lastLoaded: Long = 0
-    private var commentsLoaded = false
-    private var commentsRefreshInProgress = false
-    private var loadingFailed = false
-    private var loadingFailedServerError = false
-    private var showUpdate = false
-    private var storyVoteLoading = false
-    private var storyFavoriteLoading = false
+    private var lastLoaded by sessionState::lastLoaded
+    private var commentsLoaded by sessionState::commentsLoaded
+    private var commentsRefreshing by sessionState::refreshInProgress
+    private var loadingFailed by sessionState::loadingFailed
+    private var loadingFailedServerError by sessionState::loadingFailedServerError
+    private var showUpdate by sessionState::showUpdate
+    private var storyVoteLoading by sessionState::storyVoteLoading
+    private var storyFavoriteLoading by sessionState::storyFavoriteLoading
     private var hasAccountDetails = false
     private var displaySettings: CommentDisplaySettings? = null
     private var backPressedCallback: OnBackPressedCallback? = null
     private var username: String? = null
-    private var story: Story? = null
+    private var story by sessionState::story
     private var filteredUsers: MutableSet<String>? = null
-    private var scrollToCommentId = -1
-    private var commentsByOpFilterActive = false
+    private var scrollToCommentId by sessionState::scrollToCommentId
+    private var byOpFilterActive by sessionState::commentsByOpFilterActive
     private var originalStatusBarColor = Color.TRANSPARENT
     private var originalStatusBarColorCaptured = false
     private var commentsPaneStatusBarColor = Color.TRANSPARENT
@@ -136,7 +143,7 @@ class CommentsCoordinator(
     private var appliedStatusBarProtectionKnown = false
     private var appliedStatusBarProtectionEnabled = false
     private var appliedStatusBarProtectionColor = Color.TRANSPARENT
-    private var currentCommentSorting: String? = null
+    private var commentSorting by sessionState::currentCommentSorting
     private var composeController: CommentsComposeController? = null
 
     // Clean fallback management
@@ -152,7 +159,6 @@ class CommentsCoordinator(
     }
 
     init {
-        this.arguments = Bundle(arguments)
         callback = activity
         initializeStory()
         webViewHost = CommentsWebViewHost(activity)
@@ -199,69 +205,41 @@ class CommentsCoordinator(
 
         story = Story()
 
-        val bundle = arguments
-        if (hasStoryHeaderArguments(bundle)) {
-            story!!.title = bundle.getString(CommentsContract.EXTRA_TITLE)
-            story!!.pdfTitle = bundle.getString(CommentsContract.EXTRA_PDF_TITLE, null)
-            story!!.videoTitle = bundle.getString(CommentsContract.EXTRA_VIDEO_TITLE, null)
-            story!!.by = bundle.getString(CommentsContract.EXTRA_BY)
-            story!!.url = bundle.getString(CommentsContract.EXTRA_URL)
-            story!!.previewImageUrl = bundle.getString(CommentsContract.EXTRA_PREVIEW_IMAGE_URL)
-            story!!.previewImageUrlLoaded = bundle.getBoolean(
-                CommentsContract.EXTRA_PREVIEW_IMAGE_URL_LOADED,
-                !TextUtils.isEmpty(story!!.previewImageUrl)
-            )
-            story!!.previewImageLoadFailed =
-                bundle.getBoolean(CommentsContract.EXTRA_PREVIEW_IMAGE_LOAD_FAILED, false)
-            story!!.previewImageTintColorLoaded =
-                bundle.getBoolean(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_COLOR_LOADED, false)
-            story!!.previewImageTintColor =
-                bundle.getInt(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_COLOR, 0)
-            story!!.previewImageTintSourceUrl =
-                bundle.getString(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL)
-            story!!.previewImageTintBaseColor = bundle.getInt(
-                CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR,
-                Color.TRANSPARENT
-            )
-            story!!.previewImageTintMode =
-                bundle.getString(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_MODE)
-            story!!.faviconTintColorLoaded =
-                bundle.getBoolean(CommentsContract.EXTRA_FAVICON_TINT_COLOR_LOADED, false)
-            story!!.faviconTintColor = bundle.getInt(CommentsContract.EXTRA_FAVICON_TINT_COLOR, 0)
-            story!!.faviconTintSourceUrl =
-                bundle.getString(CommentsContract.EXTRA_FAVICON_TINT_SOURCE_URL)
-            story!!.faviconTintBaseColor =
-                bundle.getInt(CommentsContract.EXTRA_FAVICON_TINT_BASE_COLOR, Color.TRANSPARENT)
-            story!!.faviconTintMode = bundle.getString(CommentsContract.EXTRA_FAVICON_TINT_MODE)
-            story!!.time = bundle.getInt(CommentsContract.EXTRA_TIME, 0)
-            story!!.kids = bundle.getIntArray(CommentsContract.EXTRA_KIDS)
-            story!!.pollOptions = bundle.getIntArray(CommentsContract.EXTRA_POLL_OPTIONS)
-            story!!.descendants = bundle.getInt(CommentsContract.EXTRA_DESCENDANTS, 0)
-            story!!.id = bundle.getInt(CommentsContract.EXTRA_ID, 0)
-            story!!.score = bundle.getInt(CommentsContract.EXTRA_SCORE, 0)
-            story!!.text = bundle.getString(CommentsContract.EXTRA_TEXT)
-            story!!.isLink = bundle.getBoolean(CommentsContract.EXTRA_IS_LINK, true)
-            story!!.isComment = bundle.getBoolean(CommentsContract.EXTRA_IS_COMMENT, false)
-            story!!.parentId = bundle.getInt(CommentsContract.EXTRA_PARENT_ID, 0)
-            story!!.commentMasterId = bundle.getInt(CommentsContract.EXTRA_COMMENT_MASTER_ID, 0)
-            story!!.commentMasterTitle =
-                bundle.getString(CommentsContract.EXTRA_COMMENT_MASTER_TITLE)
-            story!!.commentMasterUrl = bundle.getString(CommentsContract.EXTRA_COMMENT_MASTER_URL)
-            story!!.loaded = story!!.by != null
-
-            showWebsite = bundle.getBoolean(CommentsContract.EXTRA_SHOW_WEBSITE, false)
-            scrollToCommentId = bundle.getInt(CommentsContract.EXTRA_SCROLL_TO_COMMENT, -1)
-        } else {
-            story!!.loaded = false
-            story!!.id = -1
-        }
-    }
-
-    private fun hasStoryHeaderArguments(bundle: Bundle?): Boolean {
-        return bundle != null && bundle.getInt(
-            CommentsContract.EXTRA_ID,
-            -1
-        ) > 0 && bundle.getString(CommentsContract.EXTRA_TITLE) != null
+        story!!.title = destination.title
+        story!!.pdfTitle = destination.pdfTitle
+        story!!.videoTitle = destination.videoTitle
+        story!!.by = destination.author
+        story!!.url = destination.url
+        story!!.previewImageUrl = destination.previewImageUrl
+        story!!.previewImageUrlLoaded = destination.previewImageUrlLoaded ||
+            !destination.previewImageUrl.isNullOrEmpty()
+        story!!.previewImageLoadFailed = destination.previewImageLoadFailed
+        story!!.previewImageTintColorLoaded = destination.previewImageTintColorLoaded
+        story!!.previewImageTintColor = destination.previewImageTintColor
+        story!!.previewImageTintSourceUrl = destination.previewImageTintSourceUrl
+        story!!.previewImageTintBaseColor = destination.previewImageTintBaseColor
+        story!!.previewImageTintMode = destination.previewImageTintMode
+        story!!.faviconTintColorLoaded = destination.faviconTintColorLoaded
+        story!!.faviconTintColor = destination.faviconTintColor
+        story!!.faviconTintSourceUrl = destination.faviconTintSourceUrl
+        story!!.faviconTintBaseColor = destination.faviconTintBaseColor
+        story!!.faviconTintMode = destination.faviconTintMode
+        story!!.time = destination.createdAtEpochSeconds
+        story!!.kids = destination.childIds.takeIf(List<Int>::isNotEmpty)?.toIntArray()
+        story!!.pollOptions = destination.pollOptionIds.takeIf(List<Int>::isNotEmpty)?.toIntArray()
+        story!!.descendants = destination.descendantCount
+        story!!.id = destination.storyId
+        story!!.score = destination.score
+        story!!.text = destination.text
+        story!!.isLink = destination.isLink
+        story!!.isComment = destination.isComment
+        story!!.parentId = destination.parentId
+        story!!.commentMasterId = destination.commentMasterId
+        story!!.commentMasterTitle = destination.commentMasterTitle
+        story!!.commentMasterUrl = destination.commentMasterUrl
+        story!!.loaded = destination.author != null
+        showWebsite = destination.showWebsite
+        scrollToCommentId = destination.scrollToCommentId
     }
 
     private fun loadInitialStorySummaryFromCache() {
@@ -297,11 +275,11 @@ class CommentsCoordinator(
             adBlockDisabledForSession = savedInstanceState.getBoolean(
                 STATE_ADBLOCK_DISABLED_FOR_SESSION, false
             )
-            currentCommentSorting = savedInstanceState.getString(STATE_COMMENT_SORTING)
+            commentSorting = savedInstanceState.getString(STATE_COMMENT_SORTING)
         }
 
-        if (TextUtils.isEmpty(currentCommentSorting)) {
-            currentCommentSorting = userSettings.comments.sorting
+        if (TextUtils.isEmpty(commentSorting)) {
+            commentSorting = userSettings.comments.sorting
         }
 
         originalStatusBarColor = requireActivity().getWindow().getStatusBarColor()
@@ -827,12 +805,12 @@ class CommentsCoordinator(
             comments!!,
             displaySettings!!,
             commentsLoaded,
-            commentsRefreshInProgress,
+            commentsRefreshing,
             loadingFailed,
             loadingFailedServerError,
             showUpdate,
             lastLoaded,
-            commentsByOpFilterActive,
+            byOpFilterActive,
             hasCommentsByOp(),
             webViewController != null && webViewController!!.isBlockingAds,
             integratedWebview,
@@ -894,7 +872,7 @@ class CommentsCoordinator(
         } else if (action == CommentsComposeController.MORE_SEARCH) {
             showComposeCommentSearch()
         } else if (action == CommentsComposeController.MORE_COMMENTS_BY_OP) {
-            if (commentsByOpFilterActive) {
+            if (byOpFilterActive) {
                 resetCommentsByOpFilter()
             } else {
                 showCommentsByOp()
@@ -969,7 +947,7 @@ class CommentsCoordinator(
             return
         }
         if (action == CommentsComposeController.COMMENT_ACTION_COPY) {
-            AndroidClipboardService(ctx).copy(
+            platformServices.clipboard.copy(
                 "Hacker News comment",
                 Html.fromHtml(
                     comment.text.orEmpty(),
@@ -1042,7 +1020,7 @@ class CommentsCoordinator(
                                 comment.id, false
                             )
                         }
-                        UserActions.showFailureDetailDialog(ctx, summary, response)
+                        requireActivity().showFailureDetailDialog(summary, response)
                         Toast.makeText(
                             ctx,
                             "Couldn't update favorite",
@@ -1669,11 +1647,9 @@ class CommentsCoordinator(
         }
 
         // Initialize fallback manager
-        val requestQueue = queue ?: return -1
         fallbackManager?.dispose()
         fallbackManager = AlgoliaFallbackManager(
             userSettings,
-            requestQueue,
             filteredUsers ?: HashSet(),
             object : FallbackListener {
                 override fun onAlgoliaSuccess(response: String?) {
@@ -1839,10 +1815,10 @@ class CommentsCoordinator(
     }
 
     private fun setCommentsRefreshInProgress(refreshInProgress: Boolean) {
-        if (commentsRefreshInProgress == refreshInProgress) {
+        if (commentsRefreshing == refreshInProgress) {
             return
         }
-        commentsRefreshInProgress = refreshInProgress
+        commentsRefreshing = refreshInProgress
         syncComposeState()
     }
 
@@ -1964,10 +1940,10 @@ class CommentsCoordinator(
         pendingCommentsParse = pendingParse
         pendingParse.job = coroutineScope.launch {
             try {
-                val parsedResponse = BackgroundJSONParser.parseAlgoliaComments(
+                val parsedResponse = algoliaCommentsParser.parse(
                     response,
-                    topLevelCommentIds,
-                    filteredUsersSnapshot,
+                    topLevelCommentIds?.toList().orEmpty(),
+                    filteredUsersSnapshot.orEmpty(),
                 )
                 if (!isCurrentPendingCommentsParse(pendingParse)) return@launch
                 pendingCommentsParse = null
@@ -1985,7 +1961,7 @@ class CommentsCoordinator(
                 runPendingParseFollowUp(pendingParse)
             } catch (error: CancellationException) {
                 throw error
-            } catch (error: IOException) {
+            } catch (error: ApiDecodingException) {
                 if (!isCurrentPendingCommentsParse(pendingParse)) return@launch
                 pendingCommentsParse = null
                 error.printStackTrace()
@@ -2013,8 +1989,8 @@ class CommentsCoordinator(
             return
         }
 
-        val storyChanged =
-            parsedResponse.updateStoryInformation(story!!, forceHeaderRefresh, oldCommentCount)
+        val storyChanged = parsedResponse.updateStoryInformation(story!!, oldCommentCount)
+        if (forceHeaderRefresh) StoryUpdate.updateStory(story!!)
         val updateHeaderAfterLoad = storyChanged || forceHeaderRefresh
         if (linkPreviewController != null) {
             linkPreviewController!!.loadNetworkPreviews(requireContext())
@@ -2228,10 +2204,10 @@ class CommentsCoordinator(
         }
 
     private fun getCurrentCommentSorting(): String {
-        if (TextUtils.isEmpty(currentCommentSorting)) {
-            currentCommentSorting = userSettings.comments.sorting
+        if (TextUtils.isEmpty(commentSorting)) {
+            commentSorting = userSettings.comments.sorting
         }
-        return currentCommentSorting.orEmpty()
+        return commentSorting.orEmpty()
     }
 
     private fun updateDefaultCommentSortOrder(commentsWithHeader: MutableList<Comment>) {
@@ -2245,7 +2221,7 @@ class CommentsCoordinator(
             return
         }
 
-        currentCommentSorting = sortType
+        commentSorting = sortType
         val sourceComments = allCommentsSource
         CommentSorter.sort(sourceComments, sortType)
         applyDisplayedComments(getDisplayedCommentsForCurrentFilter(sourceComments))
@@ -2267,7 +2243,7 @@ class CommentsCoordinator(
     }
 
     private fun resetCommentsByOpFilter() {
-        if (!commentsByOpFilterActive) {
+        if (!byOpFilterActive) {
             return
         }
 
@@ -2276,13 +2252,13 @@ class CommentsCoordinator(
     }
 
     private fun setCommentsByOpFilterActive(active: Boolean) {
-        commentsByOpFilterActive = active
+        byOpFilterActive = active
     }
 
     private fun getDisplayedCommentsForCurrentFilter(
         sourceComments: List<Comment>
     ): MutableList<Comment> {
-        if (commentsByOpFilterActive) {
+        if (byOpFilterActive) {
             if (CommentThreadFilter.hasCommentsByOp(story, sourceComments)) {
                 return CommentThreadFilter.buildCommentsByOpThreadList(story, sourceComments)
             }
@@ -2443,7 +2419,7 @@ class CommentsCoordinator(
                 if (!wasFavorited) {
                     Toast.makeText(ctx, "Couldn't add favorite", Toast.LENGTH_SHORT).show()
                 } else {
-                    UserActions.showFailureDetailDialog(ctx, summary, response)
+                    requireActivity().showFailureDetailDialog(summary, response)
                     Toast.makeText(ctx, "Couldn't update favorite", Toast.LENGTH_SHORT).show()
                 }
             }

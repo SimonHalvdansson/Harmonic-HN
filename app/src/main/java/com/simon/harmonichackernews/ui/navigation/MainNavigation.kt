@@ -81,7 +81,6 @@ import androidx.navigation3.scene.SceneInfo
 import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.compose.rememberNavigationEventState
-import com.simon.harmonichackernews.CommentsContract
 import com.simon.harmonichackernews.CommentsCoordinator
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
@@ -92,6 +91,7 @@ import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsScaffold
 import com.simon.harmonichackernews.ui.common.CaptchaDialog
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
+import com.simon.harmonichackernews.ui.common.FailureDetailDialog
 import com.simon.harmonichackernews.ui.common.LoginDialog
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
 import com.simon.harmonichackernews.ui.editor.ComposeEditorController
@@ -111,8 +111,14 @@ import com.simon.harmonichackernews.ui.stories.StoriesScreen
 import com.simon.harmonichackernews.ui.stories.StoryPreviewOverlay
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.network.UserActions
+import com.simon.harmonichackernews.data.toBundle
+import com.simon.harmonichackernews.data.toEditorDestination
+import com.simon.harmonichackernews.data.toStoryDestinationOrNull
+import com.simon.harmonichackernews.navigation.EditorDestination
+import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
+import com.simon.harmonichackernews.utils.Utils
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collect
@@ -127,9 +133,9 @@ private data class CommentsDestination(
 
 internal data class MainStoryRequest(
     val serial: Int,
-    val arguments: Bundle,
+    val destination: StoryDestination,
 ) {
-    val storyId: Int = arguments.getInt(CommentsContract.EXTRA_ID, -1)
+    val storyId: Int = destination.storyId
 }
 
 internal data class MainSettingsRequest(
@@ -139,7 +145,7 @@ internal data class MainSettingsRequest(
 
 internal data class MainEditorRequest(
     val serial: Int,
-    val arguments: Bundle,
+    val destination: EditorDestination,
 )
 
 internal data class MainSubmissionsRequest(
@@ -157,6 +163,13 @@ internal data class MainUserRequest(
     val serial: Int,
     val userName: String,
     val onTagChanged: Runnable?,
+)
+
+internal data class MainFailureRequest(
+    val serial: Int,
+    val title: String?,
+    val message: String?,
+    val clipboardText: String?,
 )
 
 /**
@@ -187,6 +200,8 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         private set
     internal var userRequest by mutableStateOf<MainUserRequest?>(null)
         private set
+    internal var failureRequest by mutableStateOf<MainFailureRequest?>(null)
+        private set
     internal var editorRequest by mutableStateOf<MainEditorRequest?>(null)
         private set
     internal var lastEditorRequest: MainEditorRequest? = null
@@ -210,6 +225,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     private var submissionsRequestSerial = 0
     private var captchaRequestSerial = 0
     private var userRequestSerial = 0
+    private var failureRequestSerial = 0
     private var currentSettingsSectionRoute: String? = null
     private var settingsThemeChangedRequestSerial = -1
     private var settingsNeedsRestart = false
@@ -226,10 +242,11 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     private var adaptiveFoldable = false
 
     init {
-        val restoredArguments = savedState?.getBundle(STATE_STORY_ARGUMENTS)
-        if (restoredArguments != null) {
+        val restoredDestination = savedState?.getBundle(STATE_STORY_ARGUMENTS)
+            ?.toStoryDestinationOrNull()
+        if (restoredDestination != null) {
             requestSerial = savedState.getInt(STATE_REQUEST_SERIAL, 1).coerceAtLeast(1)
-            MainStoryRequest(requestSerial, restoredArguments).also {
+            MainStoryRequest(requestSerial, restoredDestination).also {
                 storyRequest = it
                 lastStoryRequest = it
             }
@@ -259,7 +276,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         savedState?.getBundle(STATE_EDITOR_ARGUMENTS)?.let { arguments ->
             editorRequestSerial = savedState.getInt(STATE_EDITOR_REQUEST_SERIAL, 1)
                 .coerceAtLeast(1)
-            MainEditorRequest(editorRequestSerial, arguments).also {
+            MainEditorRequest(editorRequestSerial, arguments.toEditorDestination()).also {
                 editorRequest = it
                 lastEditorRequest = it
             }
@@ -281,7 +298,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         coulombGasVisible = savedState?.getBoolean(STATE_COULOMB_GAS_VISIBLE, false) == true
     }
 
-    fun openStory(arguments: Bundle) {
+    fun openStory(destination: StoryDestination) {
         restoredCommentsState = null
         restoredCommentsRequestSerial = -1
         if (settingsRequest != null) {
@@ -293,7 +310,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         }
         editorRequest = null
         coulombGasVisible = false
-        MainStoryRequest(++requestSerial, Bundle(arguments)).also {
+        MainStoryRequest(++requestSerial, destination).also {
             lastStoryRequest = it
             storyRequest = it
         }
@@ -415,13 +432,30 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         userRequest?.onTagChanged?.run()
     }
 
-    fun openEditor(arguments: Bundle) {
+    fun showFailureDetailDialog(
+        title: String?,
+        message: String?,
+        clipboardText: String?,
+    ) {
+        failureRequest = MainFailureRequest(
+            serial = ++failureRequestSerial,
+            title = title,
+            message = message,
+            clipboardText = clipboardText,
+        )
+    }
+
+    internal fun dismissFailureDetailDialog() {
+        failureRequest = null
+    }
+
+    fun openEditor(destination: EditorDestination) {
         settingsRequest = null
         submissionsRequest = null
         storyOpenedFromSubmissions = false
         storyOpenedFromSettings = false
         coulombGasVisible = false
-        MainEditorRequest(++editorRequestSerial, Bundle(arguments)).also {
+        MainEditorRequest(++editorRequestSerial, destination).also {
             editorRequest = it
             lastEditorRequest = it
         }
@@ -537,7 +571,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     fun saveState(outState: Bundle) {
         storyRequest?.let { request ->
             outState.putInt(STATE_REQUEST_SERIAL, request.serial)
-            outState.putBundle(STATE_STORY_ARGUMENTS, Bundle(request.arguments))
+            outState.putBundle(STATE_STORY_ARGUMENTS, request.destination.toBundle())
             commentsCoordinator?.let { coordinator ->
                 val commentsState = Bundle()
                 coordinator.onSaveInstanceState(commentsState)
@@ -561,7 +595,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         }
         editorRequest?.let { request ->
             outState.putInt(STATE_EDITOR_REQUEST_SERIAL, request.serial)
-            outState.putBundle(STATE_EDITOR_ARGUMENTS, Bundle(request.arguments))
+            outState.putBundle(STATE_EDITOR_ARGUMENTS, request.destination.toBundle())
         }
         submissionsRequest?.let { request ->
             outState.putInt(STATE_SUBMISSIONS_REQUEST_SERIAL, request.serial)
@@ -1164,13 +1198,14 @@ private fun MainNavigation(
                     key(request.serial) {
                         val coordinator = remember(request.serial) {
                             SubmissionsCoordinator(
-                                activity,
-                                request.userName,
-                            ) { story, showWebsite ->
-                                controller.prepareToOpenStoryFromSubmissions()
-                                controller.closeSettings()
-                                activity.openStory(story, 0, showWebsite)
-                            }
+                                activity = activity,
+                                userName = request.userName,
+                                navigator = SubmissionsCoordinator.Navigator { story, showWebsite ->
+                                    controller.prepareToOpenStoryFromSubmissions()
+                                    controller.closeSettings()
+                                    activity.openStory(story, 0, showWebsite)
+                                },
+                            )
                         }
                         DisposableEffect(coordinator) {
                             onDispose(coordinator::close)
@@ -1227,7 +1262,7 @@ private fun MainNavigation(
                             val coordinator = remember(request.serial) {
                                 ComposeEditorCoordinator(
                                     activity,
-                                    Bundle(request.arguments),
+                                    request.destination,
                                     controller::closeEditor,
                                 )
                             }
@@ -1243,6 +1278,7 @@ private fun MainNavigation(
                                 submitting = editorController.submitting,
                                 onClose = controller::closeEditor,
                                 onSubmit = coordinator::submit,
+                                onOpenLink = { url -> Utils.openLinkMaybeHN(activity, url) },
                             )
                         }
                     }
@@ -1319,6 +1355,31 @@ private fun MainNavigation(
                     userName = request.userName,
                     onDismiss = controller::dismissUserDialog,
                     onTagChanged = controller::notifyUserTagChanged,
+                )
+            }
+        }
+
+        controller.failureRequest?.let { request ->
+            key(request.serial) {
+                FailureDetailDialog(
+                    title = request.title,
+                    message = request.message,
+                    showCopyComment = request.clipboardText != null,
+                    onCopyComment = {
+                        request.clipboardText?.let { text ->
+                            com.simon.harmonichackernews.platform.AndroidClipboardService(activity)
+                                .copy("Hacker News comment", text)
+                            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                                android.widget.Toast.makeText(
+                                    activity,
+                                    "Comment copied to clipboard",
+                                    android.widget.Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        }
+                        controller.dismissFailureDetailDialog()
+                    },
+                    onDismiss = controller::dismissFailureDetailDialog,
                 )
             }
         }
@@ -1443,14 +1504,13 @@ private fun CommentsPane(
 ) {
     val activity = LocalActivity.current as MainActivity
     val lifecycleOwner = LocalLifecycleOwner.current
-    val arguments = remember(request.serial) { Bundle(request.arguments) }
     var coordinator by remember(activity, request.serial) {
         mutableStateOf<CommentsCoordinator?>(null)
     }
     DisposableEffect(controller, activity, request.serial, lifecycleOwner) {
         val activeCoordinator = CommentsCoordinator(
             activity,
-            arguments,
+            request.destination,
             controller.consumeCommentsSavedState(request.serial),
         )
         coordinator = activeCoordinator

@@ -20,4 +20,5 @@ include ':app'
 include ':local_ai_runtime'
 include ':shared_resources'
 include ':shared_logic'
+include ':shared_ui'
 rootProject.name = "Harmonic Hacker News"

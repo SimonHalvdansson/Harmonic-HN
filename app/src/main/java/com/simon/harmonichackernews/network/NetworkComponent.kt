@@ -5,14 +5,10 @@ import android.os.Looper
 import com.simon.harmonichackernews.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.cache.storage.CacheStorage
 import io.ktor.client.plugins.cache.storage.FileStorage
 import io.ktor.client.plugins.cookies.HttpCookies
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.request.header
-import io.ktor.http.HttpHeaders
 import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +35,10 @@ object NetworkComponent {
 
     val hackerNewsRepository: HackerNewsRepository by lazy {
         DefaultHackerNewsRepository(hackerNewsApi)
+    }
+
+    val algoliaRepository: AlgoliaRepository by lazy {
+        KtorAlgoliaRepository(transportClient)
     }
 
     @Volatile
@@ -112,15 +112,7 @@ object NetworkComponent {
 
     private fun createClient(
         configure: io.ktor.client.HttpClientConfig<*>.() -> Unit = {},
-    ): HttpClient = HttpClient(CIO) {
-        expectSuccess = false
-        followRedirects = true
-        install(HttpTimeout)
-        defaultRequest {
-            header(HttpHeaders.UserAgent, USER_AGENT)
-        }
-        configure()
-    }
+    ): HttpClient = createHarmonicHttpClient(CIO.create(), USER_AGENT, configure)
 
     private const val HTTP_CACHE_DIRECTORY = "ktor_http_cache"
 }

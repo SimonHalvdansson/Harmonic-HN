@@ -19,11 +19,11 @@ import com.simon.harmonichackernews.network.NetworkError
 import com.simon.harmonichackernews.network.HttpStatusException
 import com.simon.harmonichackernews.network.HackerNewsApi
 import com.simon.harmonichackernews.network.HackerNewsRepository
+import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.RequestQueue
 import com.simon.harmonichackernews.StorySearchController.StoryFilter
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.BackgroundJSONParser
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.dto.applyTo
 import com.simon.harmonichackernews.network.UserActions
@@ -31,13 +31,10 @@ import com.simon.harmonichackernews.network.UserActions.ActionCallback
 import com.simon.harmonichackernews.network.UserActions.StoryListCallback
 import com.simon.harmonichackernews.network.UserActions.StoryRowsCallback
 import com.simon.harmonichackernews.network.UserActions.UserItemListCallback
-import com.simon.harmonichackernews.platform.AndroidConnectivityService
-import com.simon.harmonichackernews.platform.AndroidExternalLinkOpener
-import com.simon.harmonichackernews.platform.AndroidHistoryStore
-import com.simon.harmonichackernews.platform.ConnectivityService
+import com.simon.harmonichackernews.platform.AndroidPlatformServices
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
-import com.simon.harmonichackernews.platform.ExternalLinkOpener
-import com.simon.harmonichackernews.platform.HistoryStore
+import com.simon.harmonichackernews.platform.PlatformServices
+import com.simon.harmonichackernews.presentation.StoriesSessionState
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AndroidUserSettings
@@ -74,14 +71,16 @@ class StoriesCoordinator(
     private val activity: MainActivity,
     savedInstanceState: Bundle?,
     private val userSettings: UserSettings = AndroidUserSettings(activity),
-    private val connectivity: ConnectivityService = AndroidConnectivityService(activity),
-    private val externalLinks: ExternalLinkOpener = AndroidExternalLinkOpener(activity),
-    private val historyStore: HistoryStore = AndroidHistoryStore(activity),
+    private val platformServices: PlatformServices = AndroidPlatformServices.create(activity),
     private val hackerNewsApi: HackerNewsApi = NetworkComponent.hackerNewsApi,
     private val hackerNewsRepository: HackerNewsRepository =
         NetworkComponent.hackerNewsRepository,
+    private val algoliaRepository: AlgoliaRepository = NetworkComponent.algoliaRepository,
     private val clock: Clock = Clock.System,
 ) {
+    private val connectivity = platformServices.connectivity
+    private val externalLinks = platformServices.externalLinks
+    private val historyStore = platformServices.history
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var storyClickListener: StoryClickListener?
     private var started = false
@@ -99,7 +98,7 @@ class StoriesCoordinator(
     private var storyUpdateListener: StoryUpdateListener? = null
     private val searchController = StorySearchController()
     private val storiesViewModel: StoriesViewModel?
-    private var restoredState: StoriesViewModel.State? = null
+    private var restoredState: StoriesSessionState? = null
     private var restoredStateForCurrentView = false
     private var storyCacheController: StoryCacheController? = null
     private var linkSummaryBackCallback: OnBackPressedCallback? = null
@@ -751,7 +750,7 @@ class StoriesCoordinator(
         })
     }
 
-    private fun restoreStoryLists(state: StoriesViewModel.State?) {
+    private fun restoreStoryLists(state: StoriesSessionState?) {
         if (state == null) {
             return
         }
@@ -767,7 +766,7 @@ class StoriesCoordinator(
         userItemListCommentIds = HashSet<Int>(state.userItemListCommentIds)
     }
 
-    private fun restoreStoryStateAfterViewSetup(state: StoriesViewModel.State?): Boolean {
+    private fun restoreStoryStateAfterViewSetup(state: StoriesSessionState?): Boolean {
         if (state == null || mainAdapter == null || searchAdapter == null) {
             return false
         }
@@ -866,7 +865,7 @@ class StoriesCoordinator(
             return
         }
 
-        val state = StoriesViewModel.State()
+        val state = StoriesSessionState()
         state.mainStories.addAll(mainStories)
         state.searchStories.addAll(searchStories)
         state.bookmarkStories.addAll(bookmarkStories)
@@ -3629,11 +3628,9 @@ class StoriesCoordinator(
             clearStories()
         }
         updateHeader()
-        val requestQueue = queue ?: return
         algoliaLoadJob = coroutineScope.launch {
             try {
-                val response = requestQueue.getString(url.orEmpty(), shouldCache = false)
-                val parsedStories = BackgroundJSONParser.parseAlgoliaStories(response)
+                val parsedStories = algoliaRepository.search(url.orEmpty()).toMutableList()
                 if (requestGeneration != algoliaRequestGeneration) return@launch
 
                 algoliaLoadJob = null
@@ -3688,12 +3685,18 @@ class StoriesCoordinator(
                 this@StoriesCoordinator.isRefreshIndicatorShowing = false
                 error.printStackTrace()
 
-                if (error is NetworkError) {
-                    loadingFailedServerError = error.networkResponse?.statusCode == 404
-                    loadingFailedRateLimited = isRateLimitedError(error)
-                    loadingFailed = true
-                    updateHeader()
+                loadingFailedServerError = when (error) {
+                    is NetworkError -> error.networkResponse?.statusCode == 404
+                    is HttpStatusException -> error.statusCode == 404
+                    else -> false
                 }
+                loadingFailedRateLimited = when (error) {
+                    is NetworkError -> isRateLimitedError(error)
+                    is HttpStatusException -> error.statusCode == 429
+                    else -> false
+                }
+                loadingFailed = true
+                updateHeader()
             }
         }
     }

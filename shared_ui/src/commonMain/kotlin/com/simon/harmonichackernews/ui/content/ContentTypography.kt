@@ -4,11 +4,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.georgia_bold
+import com.simon.harmonichackernews.resources.georgia_regular
+import com.simon.harmonichackernews.resources.google_sans_bold
+import com.simon.harmonichackernews.resources.google_sans_code_regular
+import com.simon.harmonichackernews.resources.google_sans_flex_rounded_bold
+import com.simon.harmonichackernews.resources.google_sans_flex_rounded_regular
+import com.simon.harmonichackernews.resources.google_sans_regular
+import com.simon.harmonichackernews.resources.jetbrains_mono_bold
+import com.simon.harmonichackernews.resources.jetbrains_mono_regular
+import com.simon.harmonichackernews.resources.product_sans_bold
+import com.simon.harmonichackernews.resources.product_sans_regular
+import com.simon.harmonichackernews.resources.roboto_slab_bold
+import com.simon.harmonichackernews.resources.roboto_slab_regular
+import com.simon.harmonichackernews.resources.verdana_bold
+import com.simon.harmonichackernews.resources.verdana_regular
+import com.simon.harmonichackernews.settings.TextPreferences
 import org.jetbrains.compose.resources.Font
 
-internal data class ContentTypography(
+data class ContentTypography(
     val family: FontFamily,
     val storyTitleSize: Float,
     val storySummarySize: Float,
@@ -25,20 +40,20 @@ internal data class ContentTypography(
 )
 
 @Composable
-internal fun rememberContentTypography(
+fun rememberContentTypography(
     preferredFont: String,
-    storyTextSize: Float = SettingsUtils.DEFAULT_STORY_TEXT_SIZE,
-    commentTextSize: Float = SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE,
+    storyTextSize: Float = TextPreferences.DEFAULT_STORY_TEXT_SIZE,
+    commentTextSize: Float = TextPreferences.DEFAULT_COMMENT_TEXT_SIZE,
 ): ContentTypography {
-    val font = SettingsUtils.sanitizeFont(preferredFont)
-    val clampedStorySize = SettingsUtils.clampStoryTextSize(storyTextSize)
-    val clampedCommentSize = SettingsUtils.clampCommentTextSize(commentTextSize)
+    val font = TextPreferences.sanitizeFont(preferredFont)
+    val clampedStorySize = TextPreferences.clampStoryTextSize(storyTextSize)
+    val clampedCommentSize = TextPreferences.clampCommentTextSize(commentTextSize)
     val family = contentFontFamily(font)
     return remember(font, family, clampedStorySize, clampedCommentSize) {
         val metrics = FontMetrics.forFont(font)
-        val storyDelta = clampedStorySize - SettingsUtils.DEFAULT_STORY_TEXT_SIZE
-        val storyScale = clampedStorySize / SettingsUtils.DEFAULT_STORY_TEXT_SIZE
-        val commentDelta = clampedCommentSize - SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE
+        val storyDelta = clampedStorySize - TextPreferences.DEFAULT_STORY_TEXT_SIZE
+        val storyScale = clampedStorySize / TextPreferences.DEFAULT_STORY_TEXT_SIZE
+        val commentDelta = clampedCommentSize - TextPreferences.DEFAULT_COMMENT_TEXT_SIZE
         val explicitAdjustment = if (font == "googlesansflexrounded") -0.5f else 0f
 
         ContentTypography(

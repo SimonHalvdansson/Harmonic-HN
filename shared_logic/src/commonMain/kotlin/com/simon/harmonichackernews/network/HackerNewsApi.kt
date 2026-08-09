@@ -4,8 +4,8 @@ import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.dto.HackerNewsItemDto
-import com.simon.harmonichackernews.network.dto.applyTo
 import com.simon.harmonichackernews.network.dto.toComment
+import com.simon.harmonichackernews.network.dto.toStory
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -79,10 +79,7 @@ interface HackerNewsRepository {
 }
 
 class DefaultHackerNewsRepository(private val api: HackerNewsApi) : HackerNewsRepository {
-    override suspend fun getStory(id: Int): Story? {
-        val item = api.getItem(id) ?: return null
-        return Story().takeIf { item.applyTo(it) }
-    }
+    override suspend fun getStory(id: Int): Story? = api.getItem(id)?.toStory()
 
     override suspend fun getComment(id: Int): Comment? = api.getItem(id)?.toComment()
 
