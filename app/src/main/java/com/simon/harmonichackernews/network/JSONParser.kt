@@ -112,7 +112,7 @@ object JSONParser {
         if (url != null) {
             story.commentMasterUrl = url
         } else {
-            story.commentMasterUrl = "https://news.ycombinator.com/item?id=" + id
+            story.commentMasterUrl = "https://news.ycombinator.com/item?id=$id"
         }
         story.commentMasterLoaded = true
         return true
@@ -575,7 +575,7 @@ object JSONParser {
                 story.commentMasterTitle = item.optString("story_title", "")
                 story.commentMasterUrl = item.optString("story_url", "")
                 val urlId = if (story.commentMasterId > 0) story.commentMasterId else story.id
-                story.url = "https://news.ycombinator.com/item?id=" + urlId
+                story.url = "https://news.ycombinator.com/item?id=$urlId"
             } else {
                 story.isComment = false
                 story.title = item.optString("title", story.title)
@@ -769,7 +769,7 @@ object JSONParser {
 
         var i = 0
         while (i < inputLength) {
-            val current = input.get(i)
+            val current = input[i]
             if (current == '<' && input.startsWith("<pre>", i)) {
                 insidePreBlock = true
                 output.append("<pre>")
