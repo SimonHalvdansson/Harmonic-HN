@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoryType
+import com.simon.harmonichackernews.StoryTypeAndroid
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.content.StoryItem
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
@@ -377,7 +378,7 @@ fun StoriesSettingsScreen(
         )
 
         "starting_page" -> {
-            val options = StoryType.buildStartingPageLabels(
+            val options = StoryTypeAndroid.buildStartingPageLabels(
                 resources,
                 additionalFrontpages,
             ).map { it.toString() }

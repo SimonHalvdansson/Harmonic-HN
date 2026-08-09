@@ -1,21 +1,15 @@
 package com.simon.harmonichackernews.ui.submissions
 
 import android.net.Uri
-import com.simon.harmonichackernews.network.NetworkError
-import com.simon.harmonichackernews.network.QueueRequest as Request
 import com.simon.harmonichackernews.network.RequestQueue
-import com.simon.harmonichackernews.network.QueueResponse as Response
-import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.BackgroundJSONParser
-import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
-import com.simon.harmonichackernews.serialization.JsonException as JSONException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +31,7 @@ class SubmissionsCoordinator(
     private val submissions = mutableListOf<Story>()
     private val allSubmissions = mutableListOf<Story>()
     private val queue: RequestQueue = NetworkComponent.getRequestQueueInstance(activity)
-    private val requestTag = Any()
+    private val hackerNewsRepository = NetworkComponent.hackerNewsRepository
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val composeController: SubmissionsComposeController
     private var submissionsLoadJob: Job? = null
@@ -105,7 +99,6 @@ class SubmissionsCoordinator(
         submissionsRequestGeneration++
         cancelSubmissionsLoad()
         coroutineScope.cancel()
-        queue.cancelAll(requestTag)
     }
 
     private fun applySubmissionFilter() {
@@ -139,21 +132,18 @@ class SubmissionsCoordinator(
             return
         }
 
-        val url = "https://hacker-news.firebaseio.com/v0/item/${masterStory.id}.json"
-        val request = StringRequest(
-            Request.Method.GET, url,
-            Response.Listener { response: String? ->
-                try {
-                    JSONParser.updateCommentMasterStoryWithHNJson(story, response)
-                } catch (e: JSONException) {
-                    e.printStackTrace()
-                }
+        coroutineScope.launch {
+            try {
+                hackerNewsRepository.getStory(masterStory.id)?.let(story::updateCommentMasterFrom)
                 if (submissions.contains(story)) composeController.refreshStoryRows()
-                val refreshed = story.toCommentMasterStory()
-                openComments(refreshed ?: masterStory, false)
-            }, Response.ErrorListener { _: NetworkError? -> openComments(masterStory, false) })
-        request.tag = requestTag
-        queue.add(request)
+                openComments(story.toCommentMasterStory() ?: masterStory, false)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                error.printStackTrace()
+                openComments(masterStory, false)
+            }
+        }
     }
 
     private fun openComments(story: Story, showWebsite: Boolean) {

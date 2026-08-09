@@ -17,6 +17,7 @@ import com.simon.harmonichackernews.CommentsCoordinator.CommentsPaneCallback
 import com.simon.harmonichackernews.StoriesCoordinator.StoryClickListener
 import com.simon.harmonichackernews.data.CommentsScrollProgress
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.network.UserActions.CaptchaChallenge
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback

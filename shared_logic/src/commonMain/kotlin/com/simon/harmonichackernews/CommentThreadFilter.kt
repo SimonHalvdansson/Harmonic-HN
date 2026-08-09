@@ -3,7 +3,7 @@ package com.simon.harmonichackernews
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 
-internal object CommentThreadFilter {
+object CommentThreadFilter {
     fun hasCommentsByOp(story: Story?, sourceComments: List<Comment>?): Boolean {
         val author = story?.by
         if (author.isNullOrEmpty() || sourceComments == null) {

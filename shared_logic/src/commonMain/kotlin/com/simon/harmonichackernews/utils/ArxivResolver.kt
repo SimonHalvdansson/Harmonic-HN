@@ -1,10 +1,7 @@
 package com.simon.harmonichackernews.utils
 
-import java.util.HashMap
-import java.util.Map
-
 object ArxivResolver {
-    private val ARXIV_SUBJECTS: MutableMap<String?, String?> = HashMap<String?, String?>()
+    private val ARXIV_SUBJECTS: MutableMap<String?, String?> = mutableMapOf()
 
     init {
         // Computer Science

@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.utils
 
 /** Pure relative-time formatting that can move to commonMain without Android dependencies. */
-internal object RelativeTimeFormatter {
+object RelativeTimeFormatter {
     private const val SECOND_MILLIS = 1_000L
     private const val MINUTE_MILLIS = 60 * SECOND_MILLIS
     private const val HOUR_MILLIS = 60 * MINUTE_MILLIS

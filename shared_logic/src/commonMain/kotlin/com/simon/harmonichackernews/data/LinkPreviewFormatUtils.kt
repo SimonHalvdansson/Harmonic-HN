@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.data
 
-import java.util.Locale
+import kotlin.math.roundToLong
 
 internal object LinkPreviewFormatUtils {
     fun formatCount(count: Int, singular: String, plural: String?): String {
@@ -12,12 +12,10 @@ internal object LinkPreviewFormatUtils {
             return number.toString()
         }
 
-        val rounded = (Math.round(number.toDouble() / 100) * 100).toDouble()
-        val result = String.format(Locale.US, "%.1fk", rounded / 1000)
-        if (result.endsWith(".0k")) {
-            return result.substring(0, result.length - 3) + "k"
-        }
-        return result
+        val rounded = (number.toDouble() / 100).roundToLong() * 100
+        val whole = rounded / 1000
+        val tenths = (rounded % 1000) / 100
+        return if (tenths == 0L) "${whole}k" else "$whole.${tenths}k"
     }
 
     fun shortenUrl(url: String?): String? {

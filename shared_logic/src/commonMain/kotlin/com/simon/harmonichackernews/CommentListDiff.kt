@@ -2,7 +2,7 @@ package com.simon.harmonichackernews
 
 import com.simon.harmonichackernews.data.Comment
 
-internal object CommentListDiff {
+object CommentListDiff {
     fun updateExistingComment(existingComment: Comment, parsedComment: Comment) {
         existingComment.parent = parsedComment.parent
         existingComment.by = parsedComment.by

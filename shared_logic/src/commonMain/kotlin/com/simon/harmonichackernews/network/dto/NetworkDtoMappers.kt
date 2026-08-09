@@ -2,7 +2,7 @@ package com.simon.harmonichackernews.network.dto
 
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.JSONParser
+import com.simon.harmonichackernews.network.StoryTextProcessor
 
 private const val HN_ITEM_URL = "https://news.ycombinator.com/item?id="
 
@@ -31,8 +31,8 @@ fun HackerNewsItemDto.applyTo(story: Story, preserveTime: Boolean = false): Bool
     val linkUrl = url?.takeUnless(String::isBlank)
     story.url = linkUrl ?: "$HN_ITEM_URL$id"
     story.isLink = linkUrl != null
-    text?.let { JSONParser.updateStoryText(story, it) }
-    JSONParser.updateTitleBadgeProperties(story)
+    text?.let { story.text = StoryTextProcessor.preprocessHtml(it) }
+    StoryTextProcessor.applyTitleBadges(story)
     story.loaded = true
     story.loadingFailed = false
     return true
@@ -46,7 +46,7 @@ fun HackerNewsItemDto.toComment(): Comment? {
         comment.time = time
         comment.parent = parent
         comment.expanded = true
-        comment.text = JSONParser.preprocessHtml(text).orEmpty()
+        comment.text = StoryTextProcessor.preprocessHtml(text).orEmpty()
         comment.children = kids.size
         comment.kidsIds = kids.takeIf(List<Int>::isNotEmpty)?.toIntArray()
     }
@@ -77,11 +77,11 @@ fun AlgoliaSearchHitDto.toStory(): Story? {
         story.url = itemUrl ?: "$HN_ITEM_URL$id"
         story.isLink = itemUrl != null
         storyText?.takeUnless { it.equals("null", ignoreCase = true) }
-            ?.let { JSONParser.updateStoryText(story, it) }
+            ?.let { story.text = StoryTextProcessor.preprocessHtml(it) }
 
         if (isComment) {
             story.isComment = true
-            JSONParser.updateStoryText(story, commentText.orEmpty())
+            story.text = StoryTextProcessor.preprocessHtml(commentText.orEmpty())
             story.commentMasterTitle = storyTitle
             story.commentMasterId = storyId ?: 0
             story.parentId = parentId ?: 0
@@ -91,6 +91,6 @@ fun AlgoliaSearchHitDto.toStory(): Story? {
                 story.title = "Comment by $author"
             }
         }
-        JSONParser.updateTitleBadgeProperties(story)
+        StoryTextProcessor.applyTitleBadges(story)
     }
 }

@@ -1,7 +1,5 @@
 package com.simon.harmonichackernews
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -48,6 +46,7 @@ import com.simon.harmonichackernews.network.SummaryManager
 import com.simon.harmonichackernews.network.SummaryManager.SummaryCallback
 import com.simon.harmonichackernews.network.UserActions
 import com.simon.harmonichackernews.network.UserActions.ActionCallback
+import com.simon.harmonichackernews.platform.AndroidClipboardService
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.utils.AccountUtils
@@ -970,20 +969,15 @@ class CommentsCoordinator(
             return
         }
         if (action == CommentsComposeController.COMMENT_ACTION_COPY) {
-            val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager?
-            if (clipboard != null) {
-                clipboard.setPrimaryClip(
-                    ClipData.newPlainText(
-                        "Hacker News comment",
-                        Html.fromHtml(
-                            if (comment.text == null) "" else comment.text,
-                            Html.FROM_HTML_MODE_LEGACY
-                        )
-                    )
-                )
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    Toast.makeText(ctx, "Text copied to clipboard", Toast.LENGTH_SHORT).show()
-                }
+            AndroidClipboardService(ctx).copy(
+                "Hacker News comment",
+                Html.fromHtml(
+                    comment.text.orEmpty(),
+                    Html.FROM_HTML_MODE_LEGACY,
+                ).toString(),
+            )
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                Toast.makeText(ctx, "Text copied to clipboard", Toast.LENGTH_SHORT).show()
             }
             return
         }

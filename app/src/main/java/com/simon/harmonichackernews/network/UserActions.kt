@@ -1,8 +1,6 @@
 package com.simon.harmonichackernews.network
 
 import android.R
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.DialogInterface
 import android.os.Build
@@ -18,6 +16,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
 import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstanceWithCookies
 import com.simon.harmonichackernews.network.NetworkComponent.resetHttpClientCookieInstance
+import com.simon.harmonichackernews.platform.AndroidClipboardService
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.io.IOException
@@ -1303,10 +1302,10 @@ object UserActions {
             if (clipboardText != null) {
                 builder.setNeutralButton("Copy comment", object : DialogInterface.OnClickListener {
                     override fun onClick(dialogInterface: DialogInterface?, i: Int) {
-                        val clipboard =
-                            ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("Hacker News comment", clipboardText)
-                        clipboard.setPrimaryClip(clip)
+                        AndroidClipboardService(ctx).copy(
+                            "Hacker News comment",
+                            clipboardText,
+                        )
 
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                             Toast.makeText(ctx, "Comment copied to clipboard", Toast.LENGTH_SHORT)

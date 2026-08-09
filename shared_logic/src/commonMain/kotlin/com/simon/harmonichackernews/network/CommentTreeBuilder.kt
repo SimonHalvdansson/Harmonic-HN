@@ -43,7 +43,7 @@ class CommentTreeBuilder(private val topLevelIds: IntArray) {
             for (child in children) {
                 // Match the previous nested search, which selected the first child
                 // with a given ID if duplicate objects were ever added.
-                childrenById.putIfAbsent(child.id, child)
+                if (child.id !in childrenById) childrenById[child.id] = child
             }
 
             val orderedChildren = ArrayList<Comment>(minOf(children.size, childIds.size))

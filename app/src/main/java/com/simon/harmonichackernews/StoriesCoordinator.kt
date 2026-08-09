@@ -16,47 +16,43 @@ import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.ViewModelProvider
 import com.simon.harmonichackernews.network.NetworkError
-import com.simon.harmonichackernews.network.QueueRequest as Request
+import com.simon.harmonichackernews.network.HttpStatusException
+import com.simon.harmonichackernews.network.HackerNewsApi
+import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.network.RequestQueue
-import com.simon.harmonichackernews.network.QueueResponse as Response
-import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.StorySearchController.StoryFilter
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.BackgroundJSONParser
-import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.network.dto.applyTo
 import com.simon.harmonichackernews.network.UserActions
 import com.simon.harmonichackernews.network.UserActions.ActionCallback
 import com.simon.harmonichackernews.network.UserActions.StoryListCallback
 import com.simon.harmonichackernews.network.UserActions.StoryRowsCallback
 import com.simon.harmonichackernews.network.UserActions.UserItemListCallback
+import com.simon.harmonichackernews.platform.AndroidConnectivityService
+import com.simon.harmonichackernews.platform.AndroidExternalLinkOpener
+import com.simon.harmonichackernews.platform.AndroidHistoryStore
+import com.simon.harmonichackernews.platform.ConnectivityService
+import com.simon.harmonichackernews.platform.ExternalLinkRequest
+import com.simon.harmonichackernews.platform.ExternalLinkOpener
+import com.simon.harmonichackernews.platform.HistoryStore
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.create
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController.Companion.create
 import com.simon.harmonichackernews.ui.stories.StoryListState
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.FontUtils
-import com.simon.harmonichackernews.utils.HistoriesUtils
-import com.simon.harmonichackernews.utils.HistoriesUtils.addHistory
-import com.simon.harmonichackernews.utils.HistoriesUtils.clearHistories
-import com.simon.harmonichackernews.utils.HistoriesUtils.getChangeVersion
-import com.simon.harmonichackernews.utils.HistoriesUtils.init
-import com.simon.harmonichackernews.utils.HistoriesUtils.isHistoryExist
-import com.simon.harmonichackernews.utils.HistoriesUtils.loadHistories
-import com.simon.harmonichackernews.utils.HistoriesUtils.removeHistoryById
-import com.simon.harmonichackernews.utils.HistoriesUtils.size
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StoryUpdate.StoryUpdateListener
 import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.network.HttpResponse as ActionHttpResponse
-import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
-import com.simon.harmonichackernews.serialization.JsonException as JSONException
-import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -64,6 +60,7 @@ import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -73,8 +70,18 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 
-class StoriesCoordinator(private val activity: MainActivity, savedInstanceState: Bundle?) {
-    private val userSettings = AndroidUserSettings(activity)
+class StoriesCoordinator(
+    private val activity: MainActivity,
+    savedInstanceState: Bundle?,
+    private val userSettings: UserSettings = AndroidUserSettings(activity),
+    private val connectivity: ConnectivityService = AndroidConnectivityService(activity),
+    private val externalLinks: ExternalLinkOpener = AndroidExternalLinkOpener(activity),
+    private val historyStore: HistoryStore = AndroidHistoryStore(activity),
+    private val hackerNewsApi: HackerNewsApi = NetworkComponent.hackerNewsApi,
+    private val hackerNewsRepository: HackerNewsRepository =
+        NetworkComponent.hackerNewsRepository,
+    private val clock: Clock = Clock.System,
+) {
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var storyClickListener: StoryClickListener?
     private var started = false
@@ -237,8 +244,8 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             )
         }
 
-        init(requireContext())
-        historiesChangeVersion = getChangeVersion()
+        historyStore.initialize()
+        historiesChangeVersion = historyStore.changeVersion
         restoredState = storiesViewModel?.state
         queue = NetworkComponent.getRequestQueueInstance(requireContext())
         setupLinkSummaryBackCallback()
@@ -590,7 +597,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             )
             startActivity(submitIntent)
         } else if (action == StoriesComposeController.MORE_CLEAR_HISTORY) {
-            clearHistories(requireContext())
+            historyStore.clear()
             loadingFailed = false
             loadingFailedServerError = false
             loadingFailedRateLimited = false
@@ -641,7 +648,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         val loadingMessage: String?
         if (loadingFailedRateLimited) {
             loadingMessage = "Rate limited"
-        } else if (!Utils.isNetworkAvailable(context)) {
+        } else if (!connectivity.isOnline()) {
             loadingMessage = "No internet connection"
         } else {
             loadingMessage = "Loading failed"
@@ -665,7 +672,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             storyCacheController!!.getProgressStatus()
         val hasVisibleStories = adapter!!.visibleStoryItemCount > 0
         val canCache = hasVisibleStories
-                && !showingCached && !cacheInProgress && Utils.isNetworkAvailable(context)
+                && !showingCached && !cacheInProgress && connectivity.isOnline()
 
         controller.updateContent(
             mainStories,
@@ -711,7 +718,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             getFrontPageDayUtc().before(this.latestFrontPageDayUtc),
             !TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity())),
             canCache,
-            isHistoryType(adapter!!.type) && size() > 0,
+            isHistoryType(adapter!!.type) && historyStore.size > 0,
             cacheProgressVisible,
             cacheProgress,
             cacheProgressMax,
@@ -934,7 +941,11 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         }
 
     private fun buildTypeAdapterList(ctx: Context): java.util.ArrayList<CharSequence> {
-        return StoryType.buildAdapterLabels(this.resources, ctx, shouldShowUserItemLists(ctx))
+        return StoryTypeAndroid.buildAdapterLabels(
+            resources,
+            ctx,
+            shouldShowUserItemLists(ctx),
+        )
     }
 
     private fun shouldShowUserItemLists(ctx: Context): Boolean {
@@ -1622,7 +1633,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             if (story.isFrontpageLink) {
                 story.clicked = true
                 adapter!!.updateStoryClickedState(position)
-                Utils.launchCustomTab(requireContext(), story.url)
+                story.url?.let { externalLinks.open(ExternalLinkRequest(it)) }
                 return
             }
 
@@ -1633,7 +1644,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                 if (SettingsUtils.shouldUseIntegratedWebView(requireContext())) {
                     openComments(story, position, true)
                 } else {
-                    Utils.launchCustomTab(requireContext(), story.url)
+                    story.url?.let { externalLinks.open(ExternalLinkRequest(it)) }
                 }
             } else {
                 openComments(story, position, false)
@@ -1743,9 +1754,9 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         }
         story.clicked = !story.clicked
         if (story.clicked) {
-            addHistory(requireContext(), story.id)
+            historyStore.record(story.id, clock.now().toEpochMilliseconds())
         } else {
-            removeHistoryById(requireContext(), story.id)
+            historyStore.remove(story.id)
         }
         val currentPosition = stories!!.indexOf(story)
         if (currentPosition >= 0) {
@@ -2043,7 +2054,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     }
 
     private fun syncStoriesWithHistoriesIfNeeded() {
-        val currentHistoriesChangeVersion = getChangeVersion()
+        val currentHistoriesChangeVersion = historyStore.changeVersion
         if (historiesChangeVersion == currentHistoriesChangeVersion || adapter == null || stories == null) {
             return
         }
@@ -2081,7 +2092,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
 
         var clickedStateChanged = false
         for (story in stories) {
-            val clicked = isHistoryExist(story.id)
+            val clicked = historyStore.contains(story.id)
             if (story.clicked != clicked) {
                 story.clicked = clicked
                 clickedStateChanged = true
@@ -2098,7 +2109,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
 
         for (i in stories!!.indices.reversed()) {
             val story = stories!!.get(i)
-            if (isHistoryExist(story.id)) {
+            if (historyStore.contains(story.id)) {
                 removeStoryAt(i, storyListGeneration, false)
                 removedStories = true
             }
@@ -2196,7 +2207,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             if (story.isFrontpageLink) {
                 story.clicked = true
                 adapter!!.updateStoryClickedState(position)
-                Utils.launchCustomTab(requireContext(), story.url)
+                story.url?.let { externalLinks.open(ExternalLinkRequest(it)) }
                 return
             }
 
@@ -2227,49 +2238,29 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return
         }
 
-        val url = "https://hacker-news.firebaseio.com/v0/item/" + masterStory.id + ".json"
-        val stringRequest = StringRequest(
-            Request.Method.GET,
-            url,
-            Response.Listener { response: String? ->
-                if (!this.isAdded || adapter == null) {
-                    return@Listener
+        coroutineScope.launch {
+            try {
+                hackerNewsRepository.getStory(masterStory.id)?.let { loadedMaster ->
+                    sourceStory.updateCommentMasterFrom(loadedMaster)
                 }
-                try {
-                    JSONParser.updateCommentMasterStoryWithHNJson(sourceStory, response)
-                } catch (e: JSONException) {
-                    e.printStackTrace()
-                }
-
-                val index = stories!!.indexOf(sourceStory)
-                if (index >= 0) {
-                    adapter!!.notifyItemChanged(index)
-                }
-
-                val refreshedMasterStory = sourceStory.toCommentMasterStory()
-                openComments(
-                    if (refreshedMasterStory != null) refreshedMasterStory else masterStory,
-                    position,
-                    false
-                )
-            },
-            Response.ErrorListener { error: NetworkError? ->
-                openComments(
-                    masterStory,
-                    position,
-                    false
-                )
-            })
-
-        stringRequest.tag = requestTag
-        queue!!.add<String?>(stringRequest)
+                if (!isAdded || adapter == null) return@launch
+                val index = stories?.indexOf(sourceStory) ?: -1
+                if (index >= 0) adapter?.notifyItemChanged(index)
+                openComments(sourceStory.toCommentMasterStory() ?: masterStory, position, false)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.w(TAG, "Failed to load comment master id=${masterStory.id}", error)
+                if (isAdded) openComments(masterStory, position, false)
+            }
+        }
     }
 
     private fun markStoryClicked(story: Story) {
         if (!searchController.isOnlyClicked) {
             story.clicked = true
         }
-        addHistory(requireContext(), story.id)
+        historyStore.record(story.id, clock.now().toEpochMilliseconds())
     }
 
     private fun removeStoryAt(index: Int, loadGeneration: Int, loadVisibleReplacement: Boolean) {
@@ -2419,89 +2410,48 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
 
         val startedAt = markStoryLoadStarted(story)
 
-        val url = "https://hacker-news.firebaseio.com/v0/item/" + story.id + ".json"
-
-        val stringRequest = StringRequest(
-            Request.Method.GET, url.orEmpty(),
-            Response.Listener { response: String? ->
-                if (!isCurrentStoryLoad(story, startedAt)) {
-                    return@Listener
-                }
+        coroutineScope.launch {
+            try {
+                val item = hackerNewsApi.getItem(story.id)
+                if (!isCurrentStoryLoad(story, startedAt)) return@launch
                 clearStoryLoadState(story, startedAt)
-                if (!isCurrentStoryListGeneration(loadGeneration)) {
-                    return@Listener
+                if (!isCurrentStoryListGeneration(loadGeneration)) return@launch
+                if (stories?.indexOf(story) == -1) return@launch
+                if (item == null || !item.applyTo(story, isHistoryType(adapter!!.type))) {
+                    enqueueStoryRemoval(story, loadGeneration, false)
+                    return@launch
                 }
-                val index = stories!!.indexOf(story)
-                if (index < 0) {
-                    return@Listener
+
+                finishPaginationLoadMoreStory(story, loadGeneration)
+                if (story.isComment && currentTypeUsesCommentRows()) {
+                    loadCommentMaster(story, story.parentId, 0, loadGeneration)
                 }
-                try {
-                    if (!JSONParser.updateStoryWithHNJson(
-                            response,
-                            story,
-                            isHistoryType(adapter!!.type)
-                        )
-                    ) {
-                        enqueueStoryRemoval(story, loadGeneration, false)
-                        return@Listener
-                    }
-
-                    finishPaginationLoadMoreStory(story, loadGeneration)
-
-                    if (story.isComment && currentTypeUsesCommentRows()) {
-                        loadCommentMaster(story, story.parentId, 0, loadGeneration)
-                    }
-
-                    if (currentTypeUsesSavedItemFilter() && !shouldShowStoryForSavedItemFilter(story)) {
-                        enqueueStoryRemoval(story, loadGeneration, true)
-                        return@Listener
-                    }
-
-                    if (shouldFilterLoadedStory(story)) {
-                        enqueueStoryRemoval(story, loadGeneration, false)
-                        return@Listener
-                    }
-
-                    val context = this.context
-                    if (context != null) {
-                        requestPreviewImagePrefetch(context, story)
-                    }
-
-                    enqueueStoryRowChange(story, loadGeneration)
-                } catch (e: JSONException) {
-                    e.printStackTrace()
-                    Utils.log("Failed to load story with id: " + story.id)
-                    story.loadingFailed = true
-                    finishPaginationLoadMoreStory(story, loadGeneration)
-                    updatePreviewImagePrefetchRampCompletion()
-                    enqueueStoryRowChange(story, loadGeneration)
+                if (currentTypeUsesSavedItemFilter() && !shouldShowStoryForSavedItemFilter(story)) {
+                    enqueueStoryRemoval(story, loadGeneration, true)
+                    return@launch
                 }
-            }, Response.ErrorListener { error: NetworkError? ->
-                if (!isCurrentStoryLoad(story, startedAt)) {
-                    return@ErrorListener
+                if (shouldFilterLoadedStory(story)) {
+                    enqueueStoryRemoval(story, loadGeneration, false)
+                    return@launch
                 }
+                context?.let { requestPreviewImagePrefetch(it, story) }
+                enqueueStoryRowChange(story, loadGeneration)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                if (!isCurrentStoryLoad(story, startedAt)) return@launch
                 clearStoryLoadState(story, startedAt)
-                if (!isCurrentStoryListGeneration(loadGeneration)) {
-                    return@ErrorListener
-                }
-                if (story.loaded) {
-                    return@ErrorListener
-                }
-                error!!.printStackTrace()
+                if (!isCurrentStoryListGeneration(loadGeneration) || story.loaded) return@launch
+                Log.w(TAG, "Failed to load story id=${story.id}, attempt=$attempt", error)
                 story.loadingFailed = true
-                if (attempt >= 2) {
-                    finishPaginationLoadMoreStory(story, loadGeneration)
-                }
+                if (attempt >= 2) finishPaginationLoadMoreStory(story, loadGeneration)
                 updatePreviewImagePrefetchRampCompletion()
-                val index = stories!!.indexOf(story)
-                if (index >= 0) {
+                if (stories?.indexOf(story) != -1) {
                     enqueueStoryRowChange(story, loadGeneration)
                     loadStory(story, attempt + 1, loadGeneration)
                 }
-            })
-
-        stringRequest.tag = requestTag
-        queue!!.add<String?>(stringRequest)
+            }
+        }
     }
 
     fun attemptRefresh() {
@@ -2632,7 +2582,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         } else if (isHistoryType(adapter!!.type)) {
             val refreshedStories = java.util.ArrayList<Story>()
             showingCached = false
-            val histories = loadHistories(requireContext(), true)
+            val histories = historyStore.load()
 
             for (i in histories.indices) {
                 val s =
@@ -2658,96 +2608,37 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return
         }
 
-        // if none of the above, do a normal loading
-        val storyListUrl = currentStoryType.hackerNewsUrl
-        if (storyListUrl == null) {
-            this.isRefreshIndicatorShowing = false
-            loadingFailed = true
-            loadingFailedRateLimited = false
-            Log.w(
-                TAG,
-                ("Story list refresh failed before request: missing URL for type=" + currentStoryType.label
-                        + ", generation=" + refreshGeneration)
-            )
-            updateHeader()
-            return
-        }
-
-        val stringRequest = StringRequest(
-            Request.Method.GET, storyListUrl,
-            Response.Listener { response: String? ->
-                if (!isCurrentStoryListGeneration(refreshGeneration)) {
-                    Log.d(
-                        TAG,
-                        ("Ignoring stale story list success for type=" + currentStoryType.label
-                                + ", generation=" + refreshGeneration
-                                + ", currentGeneration=" + storyListGeneration)
-                    )
-                    return@Listener
-                }
-                this.isRefreshIndicatorShowing = false
-                try {
-                    val jsonArray = JSONArray(response)
-                    val itemIds = java.util.ArrayList<Int>()
-
-                    for (i in 0..<jsonArray.length()) {
-                        val id = jsonArray.get(i).toString().toInt()
-                        itemIds.add(id)
-                    }
-
-                    showingCached = false
-                    replaceStories(createLoadingStoriesFromIds(itemIds))
-
-                    if (loadingFailed) {
-                        loadingFailed = false
-                        loadingFailedServerError = false
-                        loadingFailedRateLimited = false
-                    }
-
-                    updateHeader()
-
-                    loadInitialVisibleStories(refreshGeneration)
-                } catch (e: JSONException) {
-                    Log.w(
-                        TAG,
-                        ("Failed to parse story list JSON for type=" + currentStoryType.label
-                                + ", generation=" + refreshGeneration
-                                + ", responseLength=" + (if (response == null) 0 else response.length)),
-                        e
-                    )
-                } catch (e: NumberFormatException) {
-                    Log.w(
-                        TAG,
-                        ("Failed to parse story id in list for type=" + currentStoryType.label
-                                + ", generation=" + refreshGeneration
-                                + ", responseLength=" + (if (response == null) 0 else response.length)),
-                        e
-                    )
-                }
-            }, Response.ErrorListener { error: NetworkError? ->
-                if (!isCurrentStoryListGeneration(refreshGeneration)) {
-                    Log.d(
-                        TAG,
-                        ("Ignoring stale story list failure for type=" + currentStoryType.label
-                                + ", generation=" + refreshGeneration
-                                + ", currentGeneration=" + storyListGeneration)
-                    )
-                    return@ErrorListener
-                }
-                this.isRefreshIndicatorShowing = false
+        val storyType = currentStoryType
+        updateHeader()
+        coroutineScope.launch {
+            try {
+                val itemIds = hackerNewsRepository.getStoryIds(storyType)
+                if (!isCurrentStoryListGeneration(refreshGeneration)) return@launch
+                isRefreshIndicatorShowing = false
+                showingCached = false
+                replaceStories(createLoadingStoriesFromIds(itemIds))
+                loadingFailed = false
+                loadingFailedServerError = false
+                loadingFailedRateLimited = false
+                updateHeader()
+                loadInitialVisibleStories(refreshGeneration)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                if (!isCurrentStoryListGeneration(refreshGeneration)) return@launch
+                isRefreshIndicatorShowing = false
                 loadingFailed = true
-                loadingFailedRateLimited = isRateLimitedError(error)
+                loadingFailedServerError = error is HttpStatusException && error.statusCode == 404
+                loadingFailedRateLimited = error is HttpStatusException && error.statusCode == 429
                 Log.w(
-                    TAG, ("Story list request failed for type=" + currentStoryType.label
-                            + ", generation=" + refreshGeneration
-                            + ", error=" + error)
+                    TAG,
+                    "Story list request failed for type=${storyType.label}, " +
+                        "generation=$refreshGeneration",
+                    error,
                 )
                 updateHeader()
-            })
-
-        updateHeader()
-        stringRequest.tag = requestTag
-        queue!!.add(stringRequest)
+            }
+        }
     }
 
     private fun loadScrapedFrontpageStories(storyType: StoryType, refreshGeneration: Int) {
@@ -2785,9 +2676,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                             + ", path=" + storyType.hackerNewsPath
                             + ", generation=" + refreshGeneration
                             + ", loadingFailed=" + loadingFailed
-                            + ", networkAvailable=" + Utils.isNetworkAvailable(
-                        this@StoriesCoordinator.requireContext()
-                    ))
+                            + ", networkAvailable=" + connectivity.isOnline())
                 )
             }
         }, 15000)
@@ -3005,7 +2894,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     }
 
     private fun isRateLimitedError(error: NetworkError?): Boolean {
-        return error != null && error.networkResponse != null && error.networkResponse.statusCode == 429
+        return error?.networkResponse?.statusCode == 429
     }
 
     private fun isRateLimitedResponse(summary: String?, response: String?): Boolean {
@@ -3038,18 +2927,18 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     }
 
     private fun createLoadingStoriesFromIds(
-        itemIds: MutableList<Int>,
-        commentIds: MutableSet<Int> = HashSet()
+        itemIds: List<Int>,
+        commentIds: Set<Int> = emptySet(),
     ): java.util.ArrayList<Story> {
         val refreshedStories = java.util.ArrayList<Story>()
         val ctx = this.context
 
         for (id in itemIds) {
-            if (hideClicked && isHistoryExist(id)) {
+            if (hideClicked && historyStore.contains(id)) {
                 continue
             }
 
-            val story = Story("Loading...", id, false, HistoriesUtils.isHistoryExist(id))
+            val story = Story("Loading...", id, false, historyStore.contains(id))
             val isComment = commentIds.contains(id)
             story.isComment = isComment
             if (Utils.loadCachedStorySummary(ctx, story) && shouldFilterLoadedStory(story)) {
@@ -3077,49 +2966,25 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return
         }
 
-        val url = "https://hacker-news.firebaseio.com/v0/item/$parentId.json"
-        val stringRequest = StringRequest(
-            Request.Method.GET, url.orEmpty(),
-            Response.Listener { response: String? ->
-                if (!isCurrentStoryListGeneration(loadGeneration)) {
-                    return@Listener
+        coroutineScope.launch {
+            try {
+                val parent = hackerNewsRepository.getStory(parentId) ?: return@launch
+                if (!isCurrentStoryListGeneration(loadGeneration)) return@launch
+                if (parent.isComment) {
+                    loadCommentMaster(story, parent.parentId, attempt + 1, loadGeneration)
+                    return@launch
                 }
-                try {
-                    if (TextUtils.isEmpty(response) || "null" == response) {
-                        return@Listener
-                    }
-
-                    val parent = JSONObject(response ?: return@Listener)
-                    val parentType = parent.optString("type")
-                    if ("comment" == parentType) {
-                        loadCommentMaster(
-                            story,
-                            parent.optInt("parent", 0),
-                            attempt + 1,
-                            loadGeneration
-                        )
-                        return@Listener
-                    }
-
-                    if (!JSONParser.updateCommentMasterStoryWithHNJson(story, response)) {
-                        return@Listener
-                    }
-
-                    val index = stories!!.indexOf(story)
-                    if (index >= 0) {
-                        enqueueStoryRowChange(story, loadGeneration)
-                    }
-                } catch (e: JSONException) {
-                    e.printStackTrace()
+                story.updateCommentMasterFrom(parent)
+                if (stories?.indexOf(story) != -1) enqueueStoryRowChange(story, loadGeneration)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.w(TAG, "Failed to load comment master parent id=$parentId", error)
+                if (attempt < 2 && isCurrentStoryListGeneration(loadGeneration)) {
+                    loadCommentMaster(story, parentId, attempt + 1, loadGeneration)
                 }
-            }) { error: NetworkError? ->
-            if (attempt < 2 && isCurrentStoryListGeneration(loadGeneration)) {
-                loadCommentMaster(story, parentId, attempt + 1, loadGeneration)
             }
         }
-
-        stringRequest.tag = requestTag
-        queue!!.add(stringRequest)
     }
 
     private fun loadUserItemListCache(): Boolean {
@@ -3644,7 +3509,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             clearStories()
         }
 
-        val histories = loadHistories(requireContext(), true)
+        val histories = historyStore.load()
         if (histories.isEmpty()) {
             completeOnlyClickedSearch(requestGeneration, java.util.ArrayList<Story>(), 0, 0)
             return
@@ -3662,50 +3527,35 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         for (i in histories.indices) {
             val history = histories.get(i)
             val storyIndex = i
-            val story = Story("Loading...", history.id, false, false)
-            val url = "https://hacker-news.firebaseio.com/v0/item/" + history.id + ".json"
-            val stringRequest = StringRequest(
-                Request.Method.GET, url,
-                Response.Listener { response: String? ->
-                    if (requestGeneration != algoliaRequestGeneration) {
-                        return@Listener
+            coroutineScope.launch {
+                try {
+                    val story = hackerNewsRepository.getStory(history.id)
+                    if (requestGeneration != algoliaRequestGeneration) return@launch
+                    if (story != null && searchController.shouldIncludeOnlyClickedStory(
+                            story,
+                            normalizedQuery,
+                            StoryFilter { thisStory -> shouldFilterLoadedStory(thisStory) },
+                        )
+                    ) {
+                        matchedStories[storyIndex] = story
                     }
-                    try {
-                        if (JSONParser.updateStoryWithHNJson(response, story, false)
-                            && searchController.shouldIncludeOnlyClickedStory(
-                                story,
-                                normalizedQuery,
-                                StoryFilter { thisStory: Story -> shouldFilterLoadedStory(thisStory) })
-                        ) {
-                            matchedStories.set(storyIndex, story)
-                        }
-                    } catch (e: JSONException) {
-                        failedRequests[0]++
-                        e.printStackTrace()
-                    }
-                    finishOnlyClickedSearchRequest(
-                        requestGeneration,
-                        pendingRequests,
-                        failedRequests,
-                        matchedStories
-                    )
-                }, Response.ErrorListener { error: NetworkError? ->
-                    if (requestGeneration != algoliaRequestGeneration) {
-                        return@ErrorListener
-                    }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    if (requestGeneration != algoliaRequestGeneration) return@launch
                     failedRequests[0]++
-                    error!!.printStackTrace()
-                    finishOnlyClickedSearchRequest(
-                        requestGeneration,
-                        pendingRequests,
-                        failedRequests,
-                        matchedStories
-                    )
-                })
-
-            stringRequest.setShouldCache(false)
-            stringRequest.tag = requestTag
-            queue!!.add<String?>(stringRequest)
+                    Log.w(TAG, "Failed to load clicked story id=${history.id}", error)
+                } finally {
+                    if (requestGeneration == algoliaRequestGeneration) {
+                        finishOnlyClickedSearchRequest(
+                            requestGeneration,
+                            pendingRequests,
+                            failedRequests,
+                            matchedStories,
+                        )
+                    }
+                }
+            }
         }
 
         updateHeader()
@@ -3796,7 +3646,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
                 val iterator = parsedStories.iterator()
                 while (iterator.hasNext()) {
                     val story = iterator.next()
-                    story.clicked = isHistoryExist(story.id)
+                    story.clicked = historyStore.contains(story.id)
                     val shouldRemove = shouldFilterLoadedStory(story) ||
                         (hideClicked && story.clicked)
                     if (shouldRemove) iterator.remove()

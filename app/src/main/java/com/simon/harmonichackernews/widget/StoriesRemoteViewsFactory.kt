@@ -12,6 +12,7 @@ import android.widget.RemoteViewsService.RemoteViewsFactory
 import com.simon.harmonichackernews.CommentsContract
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.network.JSONParser.updateStoryWithHNJson
 import com.simon.harmonichackernews.network.HttpRequest
 import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance

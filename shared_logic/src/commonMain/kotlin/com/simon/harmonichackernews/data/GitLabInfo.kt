@@ -1,7 +1,5 @@
 package com.simon.harmonichackernews.data
 
-import java.util.Locale
-
 class GitLabInfo {
     var name: String? = null
     var namespace: String? = null
@@ -19,8 +17,7 @@ class GitLabInfo {
     fun formatVisibility(): String? {
         val currentVisibility = visibility ?: return null
 
-        return currentVisibility.substring(0, 1).uppercase(Locale.getDefault()) +
-            currentVisibility.substring(1)
+        return currentVisibility.replaceFirstChar { it.uppercase() }
     }
 
     val shortenedUrl: String?

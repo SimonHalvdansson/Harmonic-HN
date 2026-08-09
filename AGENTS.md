@@ -13,6 +13,14 @@ General tips:
 - For tiny, low-risk changes such as text copy, margins, padding, font weight, other simple XML/style tweaks, or Java/Kotlin edits that only swap an existing helper call, adjust a constant, or update straightforward local control flow, do not run `assembleDebug` or `lintDebug` unless the user asks or there is a concrete reason to suspect a compile, build, resource, or API problem. Instead, inspect the diff and mention that the build was intentionally skipped.
 - If Git reports dubious ownership because Codex is running as a sandbox user, use a per-command safe-directory override such as `git -c safe.directory=C:/Users/Simon/Documents/GitHub/Harmonic-HN status --short` instead of changing global Git config.
 
+## Kotlin Multiplatform Boundaries
+
+- `shared_logic/` is the Kotlin Multiplatform module for platform-neutral models, parsing, filtering, formatting, settings contracts, and suspend-first networking. Keep `commonMain` free of Android, AndroidX, and `java.*` APIs.
+- Put platform facilities behind the contracts in `shared_logic/src/commonMain/kotlin/com/simon/harmonichackernews/platform/`; Android implementations belong in `app/src/main/java/com/simon/harmonichackernews/platform/`.
+- Prefer coroutines and suspend APIs for shared networking. Ktor engines, filesystem locations, credentials, UI, intents, and other platform behavior stay in the app shell.
+- The module currently targets Android and iOS. `iosMain` is intentionally empty, and there are no desktop or test source directories yet.
+- After changing shared code, run `./gradlew :shared_logic:compileCommonMainKotlinMetadata` in addition to the applicable Android verification below.
+
 ## Icon Guidelines
 
 When adding or replacing app icons, use **Material Symbols**, not legacy Material Icons. Prefer the **Rounded** style and the official Android vector export. Match the repo's current default symbol settings unless there is a specific selected/filled state: Fill `0`, Weight `400`, Grade `0`, Optical Size `24`, 24dp size. Use source-aligned drawable names such as `ic_thumb_up.xml`, preserve the existing tint/alpha behavior for the target context, and avoid replacing custom branded/provider/badge assets with generic symbols.

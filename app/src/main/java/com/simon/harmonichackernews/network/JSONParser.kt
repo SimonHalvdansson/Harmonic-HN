@@ -169,49 +169,7 @@ object JSONParser {
     }
 
     fun updateTitleBadgeProperties(story: Story?) {
-        if (story == null || TextUtils.isEmpty(story.url) || TextUtils.isEmpty(story.title)) {
-            return
-        }
-
-        story.pdfTitle = null
-        story.videoTitle = null
-
-        val title = story.title ?: return
-        val url = story.url ?: return
-        val lastTitleCharacter = title.last()
-        val mayHaveTitleSuffix = lastTitleCharacter == ']' || lastTitleCharacter == ')'
-        val pdfTitle = if (mayHaveTitleSuffix)
-            stripTitleSuffixOrNull(title, PDF_SUFFIXES)
-        else
-            null
-
-        if (endsWithIgnoreCase(url, ".pdf")) {
-            story.pdfTitle = pdfTitle ?: title
-        } else if (pdfTitle != null) {
-            story.pdfTitle = pdfTitle
-        } else if (mayHaveTitleSuffix) {
-            story.videoTitle = stripTitleSuffixOrNull(title, VIDEO_SUFFIXES)
-        }
-    }
-
-    private fun stripTitleSuffixOrNull(title: String, suffixes: Array<String>): String? {
-        for (suffix in suffixes) {
-            if (endsWithIgnoreCase(title, suffix)) {
-                return title.substring(0, title.length - suffix.length)
-            }
-        }
-        return null
-    }
-
-    private fun endsWithIgnoreCase(value: String, suffix: String): Boolean {
-        return value.length >= suffix.length
-                && value.regionMatches(
-            value.length - suffix.length,
-            suffix,
-            0,
-            suffix.length,
-            ignoreCase = true
-        )
+        StoryTextProcessor.applyTitleBadges(story)
     }
 
     @Throws(IOException::class)
@@ -736,62 +694,7 @@ object JSONParser {
         story.text = preprocessHtml(rawText)
     }
 
-    fun preprocessHtml(input: String?): String? {
-        if (input.isNullOrEmpty()) {
-            return input
-        }
-        // Linkify first, so we don't have to deal with &nbsp; from escapePreBlockWhitespace
-        var processed = Utils.linkify(input) ?: return null
-
-        // Standardize code blocks: handle <pre><code> first, then standalone <code>
-        if (processed.contains("code>")) {
-            processed = processed.replace("<pre><code>", "<pre><small>")
-                .replace("</code></pre>", "</small></pre>")
-                .replace("<code>", "<pre><small>")
-                .replace("</code>", "</small></pre>")
-        }
-
-        if (processed.contains("<pre>")) {
-            processed = escapePreBlockWhitespace(processed)
-        }
-        if (processed.contains("pre>")) {
-            processed = processed.replace("<pre>", "<div><tt>")
-                .replace("</pre>", "</tt></div>")
-        }
-
-        return processed
-    }
-
-    private fun escapePreBlockWhitespace(input: String): String {
-        val inputLength = input.length
-        val output = StringBuilder(inputLength)
-        var insidePreBlock = false
-
-        var i = 0
-        while (i < inputLength) {
-            val current = input[i]
-            if (current == '<' && input.startsWith("<pre>", i)) {
-                insidePreBlock = true
-                output.append("<pre>")
-                i += "<pre>".length - 1
-            } else if (current == '<' && input.startsWith("</pre>", i)) {
-                insidePreBlock = false
-                output.append("</pre>")
-                i += "</pre>".length - 1
-            } else {
-                if (insidePreBlock && current == ' ') {
-                    output.append("&nbsp;")
-                } else if (insidePreBlock && current == '\n') {
-                    output.append("<br>")
-                } else {
-                    output.append(current)
-                }
-            }
-            i++
-        }
-
-        return output.toString()
-    }
+    fun preprocessHtml(input: String?): String? = StoryTextProcessor.preprocessHtml(input)
 
     // Official HN API parsing methods for fallback
     fun updateStoryWithOfficialHNResponse(story: Story, response: String?): Boolean {

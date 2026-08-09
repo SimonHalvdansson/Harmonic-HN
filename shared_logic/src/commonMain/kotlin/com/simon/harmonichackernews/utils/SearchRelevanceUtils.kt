@@ -1,8 +1,6 @@
 package com.simon.harmonichackernews.utils
 
 import com.simon.harmonichackernews.data.Story
-import java.util.IdentityHashMap
-import java.util.Locale
 import kotlin.math.max
 
 object SearchRelevanceUtils {
@@ -12,10 +10,7 @@ object SearchRelevanceUtils {
             return
         }
 
-        val relevanceScores: MutableMap<Story, Int> = IdentityHashMap(stories.size)
-        for (story in stories) {
-            relevanceScores[story] = score(story, normalizedQuery)
-        }
+        val relevanceScores = stories.associateWith { score(it, normalizedQuery) }
 
         stories.sortWith(Comparator { left, right ->
             val leftScore = relevanceScores.getValue(left)
@@ -54,7 +49,7 @@ object SearchRelevanceUtils {
     }
 
     private fun normalize(value: String?): String =
-        value.orEmpty().trim { it <= ' ' }.lowercase(Locale.getDefault())
+        value.orEmpty().trim { it <= ' ' }.lowercase()
 
     private fun isWordBoundaryMatch(title: String, start: Int, length: Int): Boolean {
         val end = start + length

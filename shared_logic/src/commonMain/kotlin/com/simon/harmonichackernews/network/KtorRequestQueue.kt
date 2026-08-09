@@ -133,7 +133,7 @@ open class JsonObjectRequest(
     internal fun jsonBody(): String? = requestBody?.toString()
 }
 
-class RequestQueue internal constructor(
+class RequestQueue(
     private val client: HttpClient,
     private val workerScope: CoroutineScope,
     private val callbackDispatcher: CoroutineDispatcher,

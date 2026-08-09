@@ -1,12 +1,14 @@
 package com.simon.harmonichackernews
 
-import android.net.Uri
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.utils.SearchRelevanceUtils
-import java.util.Locale
+import io.ktor.http.URLBuilder
+import kotlin.time.Clock
 
-internal class StorySearchController {
-    internal fun interface StoryFilter {
+class StorySearchController(
+    private val clock: Clock = Clock.System,
+) {
+    fun interface StoryFilter {
         fun shouldFilterStory(story: Story): Boolean
     }
 
@@ -42,7 +44,7 @@ internal class StorySearchController {
         get() = minimumCommentsLabels[minimumCommentsIndex]
 
     fun getCurrentTopStoriesStartTime(storyType: StoryType?): Int {
-        val currentTime = (System.currentTimeMillis() / 1000).toInt()
+        val currentTime = nowEpochSeconds.toInt()
         return when (storyType) {
             StoryType.LAST_24_HOURS -> currentTime - 60 * 60 * 24
             StoryType.LAST_48_HOURS -> currentTime - 60 * 60 * 48
@@ -52,13 +54,11 @@ internal class StorySearchController {
     }
 
     fun buildTopStoriesUrl(startTime: Int, hitsPerPage: Int): String {
-        return Uri.parse("https://hn.algolia.com/api/v1/search")
-            .buildUpon()
-            .appendQueryParameter("tags", "story")
-            .appendQueryParameter("numericFilters", "created_at_i>$startTime")
-            .appendQueryParameter("hitsPerPage", hitsPerPage.toString())
-            .build()
-            .toString()
+        return URLBuilder("https://hn.algolia.com/api/v1/search").apply {
+            parameters.append("tags", "story")
+            parameters.append("numericFilters", "created_at_i>$startTime")
+            parameters.append("hitsPerPage", hitsPerPage.toString())
+        }.buildString()
     }
 
     fun buildSearchUrl(query: String?, hitsPerPage: Int): String {
@@ -66,16 +66,17 @@ internal class StorySearchController {
             "https://hn.algolia.com/api/v1/search"
         else
             "https://hn.algolia.com/api/v1/search_by_date"
-        val builder = Uri.parse(endpoint).buildUpon()
-            .appendQueryParameter("query", query)
-            .appendQueryParameter("tags", "story")
-            .appendQueryParameter("hitsPerPage", hitsPerPage.toString())
-            .appendQueryParameter("typoTolerance", "min")
+        val builder = URLBuilder(endpoint).apply {
+            parameters.append("query", query.orEmpty())
+            parameters.append("tags", "story")
+            parameters.append("hitsPerPage", hitsPerPage.toString())
+            parameters.append("typoTolerance", "min")
+        }
 
         val numericFilters = ArrayList<String>()
         val days = SEARCH_DATE_RANGE_DAYS[dateRangeIndex]
         if (days > 0) {
-            val startTime = (System.currentTimeMillis() / 1000L) - (days * 24L * 60L * 60L)
+            val startTime = nowEpochSeconds - (days * 24L * 60L * 60L)
             numericFilters.add("created_at_i>=$startTime")
         }
 
@@ -90,10 +91,10 @@ internal class StorySearchController {
         }
 
         if (numericFilters.isNotEmpty()) {
-            builder.appendQueryParameter("numericFilters", numericFilters.joinToString(","))
+            builder.parameters.append("numericFilters", numericFilters.joinToString(","))
         }
 
-        return builder.build().toString()
+        return builder.buildString()
     }
 
     fun canLoadMoreResults(rawParsedStoryCount: Int, hitsPerPage: Int): Boolean {
@@ -101,7 +102,7 @@ internal class StorySearchController {
     }
 
     fun normalizeQuery(query: String?): String {
-        return query.orEmpty().trim { it <= ' ' }.lowercase(Locale.getDefault())
+        return query.orEmpty().trim { it <= ' ' }.lowercase()
     }
 
     fun shouldIncludeOnlyClickedStory(
@@ -110,7 +111,7 @@ internal class StorySearchController {
         storyFilter: StoryFilter
     ): Boolean {
         val title = story.title
-        if (title == null || !title.lowercase(Locale.getDefault())
+        if (title == null || !title.lowercase()
                 .contains(normalizedQuery)
         ) {
             return false
@@ -147,8 +148,11 @@ internal class StorySearchController {
                 return 0
             }
 
-            return ((System.currentTimeMillis() / 1000L) - (days * 24L * 60L * 60L)).toInt()
+            return (nowEpochSeconds - (days * 24L * 60L * 60L)).toInt()
         }
+
+    private val nowEpochSeconds: Long
+        get() = clock.now().epochSeconds
 
     companion object {
         const val ALGOLIA_HITS_INCREMENT: Int = 200

@@ -23,11 +23,10 @@ object HistoriesUtils {
 
     fun getChangeVersion() = changeVersion
 
-    fun addHistory(context: Context, id: Int) {
+    fun addHistory(context: Context, id: Int, createdAtMillis: Long = System.currentTimeMillis()) {
         if (historyIds.add(id)) {
-            val now = System.currentTimeMillis()
-            histories.add(History(id, now))
-            addHistoryToStorage(context, id, now)
+            histories.add(History(id, createdAtMillis))
+            addHistoryToStorage(context, id, createdAtMillis)
             changeVersion++
         }
     }
