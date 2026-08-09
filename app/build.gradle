@@ -203,12 +203,6 @@ kotlin {
     }
 }
 
-// The app is Compose/Navigation 3 only. Several legacy AndroidX and Material artifacts still
-// advertise optional Fragment integrations, but no runtime code uses them.
-configurations.configureEach {
-    exclude group: "androidx.fragment"
-}
-
 dependencies {
     implementation(project(":shared_resources"))
 
