@@ -1326,8 +1326,15 @@ private fun StoriesHeader(
                 AnimatedContent(
                     targetState = controller.cacheProgressStatus,
                     transitionSpec = {
-                        fadeIn(tween(180, easing = StoriesEasing)) togetherWith
-                            fadeOut(tween(120, easing = StoriesEasing))
+                        fadeIn(
+                            tween(
+                                durationMillis = 120,
+                                delayMillis = 90,
+                                easing = StoriesEasing,
+                            ),
+                        ) togetherWith fadeOut(
+                            tween(90, easing = StoriesEasing),
+                        )
                     },
                     label = "story cache status",
                 ) { status ->
@@ -1336,6 +1343,7 @@ private fun StoriesHeader(
                         color = HarmonicTheme.colors.storyDisabled,
                         fontFamily = ProductSansFontFamily,
                         fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
                     )
