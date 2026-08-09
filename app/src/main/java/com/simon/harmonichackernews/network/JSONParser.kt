@@ -736,10 +736,8 @@ object JSONParser {
     internal fun updateStoryText(story: Story, rawText: String?) {
         val text = preprocessHtml(rawText)
         if (!TextUtils.equals(story.text, text)) {
-            story.spannedText = null
             story.collectedReferenceLinksSource = null
             story.collectedReferenceLinks = null
-            story.collectedReferenceLinksSpannedText = null
         }
         story.text = text
     }

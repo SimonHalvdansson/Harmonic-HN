@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.data
 
 import android.os.Bundle
-import android.text.Spanned
 import com.simon.harmonichackernews.CommentsContract
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.Utils
@@ -98,16 +97,11 @@ class Story {
     var text: String? = null
 
     @Transient
-    var spannedText: Spanned? = null
-
-    @Transient
     var collectedReferenceLinksSource: String? = null
 
     @Transient
     var collectedReferenceLinks: CollectedReferenceLinks.Result? = null
 
-    @Transient
-    var collectedReferenceLinksSpannedText: Spanned? = null
     var gitLabInfo: GitLabInfo? = null
     var repoInfo: RepoInfo? = null
     var stackExchangeInfo: StackExchangeInfo? = null
