@@ -641,7 +641,6 @@ object JSONParser {
             story.previewImageUrl =
                 if (TextUtils.isEmpty(previewImageUrl)) null else previewImageUrl
             story.previewImageUrlLoaded = true
-            story.previewImageUrlNeedsRefresh = true
             story.previewImageLoadFailed = item.optBoolean(
                 KEY_PREVIEW_IMAGE_LOAD_FAILED,
                 TextUtils.isEmpty(story.previewImageUrl)
@@ -734,12 +733,7 @@ object JSONParser {
     }
 
     internal fun updateStoryText(story: Story, rawText: String?) {
-        val text = preprocessHtml(rawText)
-        if (!TextUtils.equals(story.text, text)) {
-            story.collectedReferenceLinksSource = null
-            story.collectedReferenceLinks = null
-        }
-        story.text = text
+        story.text = preprocessHtml(rawText)
     }
 
     fun preprocessHtml(input: String?): String? {

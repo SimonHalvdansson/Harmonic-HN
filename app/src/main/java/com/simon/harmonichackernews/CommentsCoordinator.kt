@@ -2541,7 +2541,6 @@ class CommentsCoordinator(
         if ("local" == mode) {
             val callback: SummaryCallback = object : SummaryCallback {
                 override fun onDebugInfo(debugInfo: String?) {
-                    story!!.summaryDebugInfo = debugInfo
                     onUpdate.run()
                 }
 
@@ -2570,7 +2569,6 @@ class CommentsCoordinator(
         } else {
             val callback: SummaryCallback = object : SummaryCallback {
                 override fun onDebugInfo(debugInfo: String?) {
-                    story!!.summaryDebugInfo = debugInfo
                     onUpdate.run()
                 }
 

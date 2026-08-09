@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.data
 
 import android.os.Bundle
 import com.simon.harmonichackernews.CommentsContract
-import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.Utils
 class Story {
     var by: String? = null
@@ -32,9 +31,6 @@ class Story {
 
     @Transient
     var previewImageUrlLoading: Boolean = false
-
-    @Transient
-    var previewImageUrlNeedsRefresh: Boolean = false
 
     @Transient
     var previewImageLoaded: Boolean = false
@@ -96,12 +92,6 @@ class Story {
     var clicked: Boolean = false
     var text: String? = null
 
-    @Transient
-    var collectedReferenceLinksSource: String? = null
-
-    @Transient
-    var collectedReferenceLinks: CollectedReferenceLinks.Result? = null
-
     var gitLabInfo: GitLabInfo? = null
     var repoInfo: RepoInfo? = null
     var stackExchangeInfo: StackExchangeInfo? = null
@@ -130,9 +120,6 @@ class Story {
 
     @Transient
     var summaryGeneratedSuccessfully: Boolean = false
-
-    @Transient
-    var summaryDebugInfo: String? = null
 
     constructor()
 

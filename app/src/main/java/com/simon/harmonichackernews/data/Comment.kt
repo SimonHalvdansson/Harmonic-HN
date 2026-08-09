@@ -1,7 +1,5 @@
 package com.simon.harmonichackernews.data
 
-import android.text.Spanned
-import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.Utils
 import java.io.Serializable
 
@@ -17,17 +15,6 @@ class Comment : Serializable {
     @Transient
     private var cachedExpandedAnchorText: String? = null
 
-    @Transient
-    var spannedText: Spanned? = null
-
-    @Transient
-    var collectedReferenceLinksSource: String? = null
-
-    @Transient
-    var collectedReferenceLinks: CollectedReferenceLinks.Result? = null
-
-    @Transient
-    var collectedReferenceLinksSpannedText: Spanned? = null
     var time: Int = 0
     var expanded: Boolean = false
     var depth: Int = 0
