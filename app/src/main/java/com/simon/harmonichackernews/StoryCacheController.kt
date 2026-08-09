@@ -7,9 +7,9 @@ import com.simon.harmonichackernews.network.QueueRequest as Request
 import com.simon.harmonichackernews.network.RequestQueue
 import com.simon.harmonichackernews.network.QueueResponse as Response
 import com.simon.harmonichackernews.network.StringRequest
+import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader
 import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader.DownloadCallback
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.util.ArrayDeque
 import kotlin.math.max
@@ -26,6 +26,8 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         val requestQueue: RequestQueue?
 
         val requestTag: Any
+
+        val userSettings: UserSettings
 
         fun onCacheProgressChanged()
     }
@@ -78,9 +80,10 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
             return
         }
 
-        val storiesToCache = SettingsUtils.getStoriesToCache(context)
+        val cachePreferences = callbacks.userSettings.cache
+        val storiesToCache = cachePreferences.storiesToCache
         startProgress(storiesToCache)
-        val cacheArticles = SettingsUtils.shouldUseIntegratedWebView(context)
+        val cacheArticles = cachePreferences.cacheArticleSnapshots
         articleSnapshotDownloader = if (cacheArticles)
             ArticleSnapshotDownloader(context)
         else

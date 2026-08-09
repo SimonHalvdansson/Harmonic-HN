@@ -27,12 +27,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.preference.PreferenceManager
 import androidx.webkit.WebViewFeature
-import com.simon.harmonichackernews.network.DefaultRetryPolicy
-import com.simon.harmonichackernews.network.NetworkError
-import com.simon.harmonichackernews.network.QueueRequest as Request
 import com.simon.harmonichackernews.network.RequestQueue
-import com.simon.harmonichackernews.network.QueueResponse as Response
-import com.simon.harmonichackernews.network.StringRequest
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.CommentsWebViewController.PageTextCallback
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
@@ -43,9 +38,9 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.network.AlgoliaFallbackManager
 import com.simon.harmonichackernews.network.AlgoliaFallbackManager.FallbackListener
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter
 import com.simon.harmonichackernews.network.BackgroundJSONParser
-import com.simon.harmonichackernews.network.BackgroundJSONParser.AlgoliaCommentsParseCallback
 import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.JSONParser.AlgoliaCommentsResponse
 import com.simon.harmonichackernews.network.NetworkComponent
@@ -64,19 +59,25 @@ import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.utils.ViewUtils
 import com.simon.harmonichackernews.network.HttpResponse as ActionHttpResponse
-import com.simon.harmonichackernews.serialization.JsonException as JSONException
-import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 import java.io.IOException
-import java.util.concurrent.Future
 import java.util.regex.Pattern
 import kotlin.math.max
 import kotlin.math.min
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class CommentsCoordinator(
     private val activity: MainActivity,
     arguments: Bundle,
     savedInstanceState: Bundle?
 ) {
+    private val userSettings = AndroidUserSettings(activity)
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val arguments: Bundle
     private var callback: CommentsPaneCallback?
     private var started = false
@@ -109,6 +110,7 @@ class CommentsCoordinator(
     private var adBlockDisabledForSession = false
     private var pollOptionsLoadStarted = false
     private var pollOptionsLookupStarted = false
+    private var pollOptionsLoadJob: Job? = null
     private var closeWebViewOnBack = false
     private var topInset = 0
     private var lastLoaded: Long = 0
@@ -147,7 +149,7 @@ class CommentsCoordinator(
         var completion: Runnable?
     ) {
         var followUp: Runnable? = null
-        var future: Future<*>? = null
+        var job: Job? = null
     }
 
     init {
@@ -300,13 +302,14 @@ class CommentsCoordinator(
         }
 
         if (TextUtils.isEmpty(currentCommentSorting)) {
-            currentCommentSorting = SettingsUtils.getPreferredCommentSorting(requireContext())
+            currentCommentSorting = userSettings.comments.sorting
         }
 
         originalStatusBarColor = requireActivity().getWindow().getStatusBarColor()
         originalStatusBarColorCaptured = true
 
-        prefIntegratedWebview = SettingsUtils.shouldUseIntegratedWebView(requireContext())
+        val readingPreferences = userSettings.reading
+        prefIntegratedWebview = readingPreferences.integratedWebView
         loadInitialStorySummaryFromCache()
         uncachedStoryHeaderLoading = story!!.id > 0 && !story!!.loaded
 
@@ -317,13 +320,13 @@ class CommentsCoordinator(
         updateCommentsStatusBarAppearance()
 
         integratedWebview = prefIntegratedWebview && story!!.isLink
-        preloadWebview = SettingsUtils.shouldPreloadWebView(requireContext())
-        preloadWebviewMinimumBattery = SettingsUtils.getPreloadWebViewMinimumBattery(requireContext())
-        matchWebviewTheme = SettingsUtils.shouldMatchWebViewTheme(requireContext())
-        readerModeEnabled = SettingsUtils.shouldUseReaderMode(requireContext())
-        readerModeDefault = SettingsUtils.shouldUseReaderModeByDefault(requireContext())
-        val blockAds = SettingsUtils.shouldBlockAds(requireContext()) && !adBlockDisabledForSession
-        closeWebViewOnBack = SettingsUtils.shouldCloseWebViewOnBack(requireContext())
+        preloadWebview = readingPreferences.preloadWebViewMode
+        preloadWebviewMinimumBattery = readingPreferences.preloadWebViewMinimumBattery
+        matchWebviewTheme = readingPreferences.matchWebViewTheme
+        readerModeEnabled = readingPreferences.readerModeEnabled
+        readerModeDefault = readingPreferences.readerModeDefault
+        val blockAds = readingPreferences.blockAds && !adBlockDisabledForSession
+        closeWebViewOnBack = readingPreferences.closeWebViewOnBack
 
         progressIndicator = host.progressIndicator
         linkPreviewController = LinkPreviewController(
@@ -1276,7 +1279,7 @@ class CommentsCoordinator(
     private fun createCommentDisplaySettings(): CommentDisplaySettings {
         val context = requireContext()
         return CommentDisplaySettings.from(
-            context,
+            userSettings.comments,
             shouldShowInvertAction(),
             Utils.isTablet(this.resources),
             hasAccountDetails,
@@ -1321,7 +1324,7 @@ class CommentsCoordinator(
     fun onResume() {
         if (destroyed) return
 
-        val shouldShowUpdate = SettingsUtils.shouldAlwaysShowTapToRefresh(requireContext())
+        val shouldShowUpdate = userSettings.story.alwaysShowTapToRefresh
                 || (lastLoaded != 0L && (System.currentTimeMillis() - lastLoaded) > 1000 * 60 * 60 && !Utils.timeInSecondsMoreThanTwoHoursAgo(
             story!!.time
         ))
@@ -1520,6 +1523,8 @@ class CommentsCoordinator(
         }
         commentsLoadGeneration++
         cancelPendingCommentsParse()
+        coroutineScope.cancel()
+        fallbackManager?.dispose()
         fallbackManager = null
         if (webViewController != null) {
             webViewController!!.onDestroyView(rootView)
@@ -1671,10 +1676,10 @@ class CommentsCoordinator(
 
         // Initialize fallback manager
         val requestQueue = queue ?: return -1
+        fallbackManager?.dispose()
         fallbackManager = AlgoliaFallbackManager(
-            requireContext(),
+            userSettings,
             requestQueue,
-            requestTag,
             filteredUsers ?: HashSet(),
             object : FallbackListener {
                 override fun onAlgoliaSuccess(response: String?) {
@@ -1848,7 +1853,7 @@ class CommentsCoordinator(
     }
 
     private fun maybeLoadPollOptions() {
-        if (!this.isCommentsViewActive || pollOptionsLoadStarted || story == null || story!!.isComment || queue == null) {
+        if (!this.isCommentsViewActive || pollOptionsLoadStarted || story == null || story!!.isComment) {
             return
         }
 
@@ -1865,36 +1870,30 @@ class CommentsCoordinator(
         }
 
         pollOptionsLookupStarted = true
-        val url = "https://hacker-news.firebaseio.com/v0/item/" + story!!.id + ".json"
+        val storyId = story!!.id
+        pollOptionsLoadJob = coroutineScope.launch {
+            try {
+                val item = NetworkComponent.hackerNewsApi.getItem(storyId)
+                if (!isCommentsViewActive || story?.id != storyId) return@launch
 
-        val stringRequest = StringRequest(
-            Request.Method.GET, url,
-            Response.Listener { response: String? ->
-                if (!this.isCommentsViewActive) {
-                    return@Listener
+                val optionIds = item?.parts.orEmpty()
+                if (optionIds.isNotEmpty()) {
+                    story!!.pollOptions = optionIds.toIntArray()
+                    loadPollOptions()
                 }
-                val hnStory = Story()
-                hnStory.id = story!!.id
-                if (JSONParser.updateStoryWithOfficialHNResponse(
-                        hnStory,
-                        response
-                    ) && hnStory.pollOptions != null
-                ) {
-                    story!!.pollOptions = hnStory.pollOptions
-                    maybeLoadPollOptions()
-                }
-            }, Response.ErrorListener { error: NetworkError? ->
-                if (this.isCommentsViewActive) {
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: IOException) {
+                if (isCommentsViewActive && story?.id == storyId) {
                     pollOptionsLookupStarted = false
+                    Log.w(TAG, "Poll lookup failed for id=$storyId", error)
                 }
-            })
-
-        stringRequest.tag = requestTag
-        queue!!.add<String?>(stringRequest)
+            }
+        }
     }
 
     private fun loadPollOptions() {
-        if (!this.isCommentsViewActive || story!!.pollOptions == null || queue == null) {
+        if (!this.isCommentsViewActive || story!!.pollOptions == null) {
             return
         }
 
@@ -1909,65 +1908,32 @@ class CommentsCoordinator(
             story!!.pollOptionArrayList!!.add(pollOption)
         }
 
-        loadNextPollOption(pollOptionIds, 0)
-    }
+        val storyId = story!!.id
+        pollOptionsLoadJob = coroutineScope.launch {
+            for (optionId in pollOptionIds) {
+                if (!isCommentsViewActive || story?.id != storyId) return@launch
 
-    private fun loadNextPollOption(pollOptionIds: IntArray, index: Int) {
-        if (!this.isCommentsViewActive || queue == null || index >= pollOptionIds.size) {
-            return
-        }
-
-        val optionId = pollOptionIds[index]
-        val url = "https://hacker-news.firebaseio.com/v0/item/" + optionId + ".json"
-        val stringRequest = StringRequest(
-            Request.Method.GET, url,
-            Response.Listener { response: String? ->
-                if (!this.isCommentsViewActive) {
-                    return@Listener
-                }
-
-                val pollOption = story!!.pollOptionArrayList
+                val pollOption = story?.pollOptionArrayList
                     ?.firstOrNull { it.id == optionId }
-                if (pollOption != null) {
-                    try {
-                        val jsonObject = JSONObject(response ?: "")
-                        val text = JSONParser.preprocessHtml(jsonObject.getString("text"))
-                        if (text.isNullOrBlank()) {
-                            throw JSONException("Poll option text is empty")
-                        }
-                        pollOption.points = jsonObject.getInt("score")
-                        pollOption.text = text
-                        pollOption.loaded = true
-                    } catch (e: JSONException) {
-                        pollOption.loadFailed = true
-                        Log.w(TAG, "Poll option response was invalid for id=$optionId", e)
+                    ?: continue
+                try {
+                    val item = NetworkComponent.hackerNewsApi.getItem(optionId)
+                    val text = JSONParser.preprocessHtml(item?.text)
+                    if (item == null || text.isNullOrBlank()) {
+                        throw IOException("Poll option response was invalid")
                     }
-                    notifyHeaderChanged()
+                    pollOption.points = item.score
+                    pollOption.text = text
+                    pollOption.loaded = true
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: IOException) {
+                    pollOption.loadFailed = true
+                    Log.w(TAG, "Poll option request failed for id=$optionId", error)
                 }
-                loadNextPollOption(pollOptionIds, index + 1)
-            }, Response.ErrorListener { error: NetworkError? ->
-                if (!this.isCommentsViewActive) {
-                    return@ErrorListener
-                }
-
-                story!!.pollOptionArrayList
-                    ?.firstOrNull { it.id == optionId }
-                    ?.loadFailed = true
-                Log.w(
-                    TAG,
-                    "Poll option request failed for id=$optionId: ${error?.message}",
-                )
                 notifyHeaderChanged()
-                loadNextPollOption(pollOptionIds, index + 1)
-            },
-        )
-        stringRequest.retryPolicy = DefaultRetryPolicy(
-            10000,
-            2,
-            DefaultRetryPolicy.DEFAULT_BACKOFF_MULT,
-        )
-        stringRequest.tag = requestTag
-        queue!!.add<String?>(stringRequest)
+            }
+        }
     }
 
     private fun handleJsonResponse(
@@ -2002,44 +1968,41 @@ class CommentsCoordinator(
         val pendingParse =
             PendingCommentsParse(loadGeneration, id, completion)
         pendingCommentsParse = pendingParse
-        pendingParse.future = BackgroundJSONParser.parseAlgoliaCommentsJson(
-            response,
-            topLevelCommentIds,
-            filteredUsersSnapshot,
-            object : AlgoliaCommentsParseCallback {
-                override fun onParseSuccess(parsedResponse: AlgoliaCommentsResponse) {
-                    if (!isCurrentPendingCommentsParse(pendingParse)) {
-                        return
-                    }
-                    pendingCommentsParse = null
-                    applyParsedJsonResponse(
-                        id,
-                        response,
-                        cache,
-                        forceHeaderRefresh,
-                        restoreScroll,
-                        loadGeneration,
-                        oldCommentCount,
-                        parsedResponse
-                    )
-                    runPendingParseCompletion(pendingParse)
-                    runPendingParseFollowUp(pendingParse)
-                }
-
-                override fun onParseError(error: IOException) {
-                    if (!isCurrentPendingCommentsParse(pendingParse)) {
-                        return
-                    }
-                    pendingCommentsParse = null
-                    error.printStackTrace()
-                    loadingFailed = true
-                    loadingFailedServerError = false
-                    notifyHeaderChanged()
-                    completeCommentsLoad(false)
-                    runPendingParseCompletion(pendingParse)
-                    runPendingParseFollowUp(pendingParse)
-                }
-            })
+        pendingParse.job = coroutineScope.launch {
+            try {
+                val parsedResponse = BackgroundJSONParser.parseAlgoliaComments(
+                    response,
+                    topLevelCommentIds,
+                    filteredUsersSnapshot,
+                )
+                if (!isCurrentPendingCommentsParse(pendingParse)) return@launch
+                pendingCommentsParse = null
+                applyParsedJsonResponse(
+                    id,
+                    response,
+                    cache,
+                    forceHeaderRefresh,
+                    restoreScroll,
+                    loadGeneration,
+                    oldCommentCount,
+                    parsedResponse,
+                )
+                runPendingParseCompletion(pendingParse)
+                runPendingParseFollowUp(pendingParse)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: IOException) {
+                if (!isCurrentPendingCommentsParse(pendingParse)) return@launch
+                pendingCommentsParse = null
+                error.printStackTrace()
+                loadingFailed = true
+                loadingFailedServerError = false
+                notifyHeaderChanged()
+                completeCommentsLoad(false)
+                runPendingParseCompletion(pendingParse)
+                runPendingParseFollowUp(pendingParse)
+            }
+        }
     }
 
     private fun applyParsedJsonResponse(
@@ -2171,8 +2134,8 @@ class CommentsCoordinator(
     private fun cancelPendingCommentsParse() {
         val pendingParse = pendingCommentsParse
         pendingCommentsParse = null
-        pendingParse?.future?.cancel(true)
-        pendingParse?.future = null
+        pendingParse?.job?.cancel()
+        pendingParse?.job = null
     }
 
     private fun completeCommentsLoad(updateHeaderAfterLoad: Boolean) {
@@ -2250,7 +2213,7 @@ class CommentsCoordinator(
         updateDefaultCommentSortOrder(nextComments)
         CommentSorter.sort(nextComments, getCurrentCommentSorting())
 
-        if (SettingsUtils.shouldCollapseTopLevel(requireContext())) {
+        if (userSettings.comments.collapseTopLevel) {
             for (comment in nextComments) {
                 if (comment.depth == 0) {
                     comment.expanded = false
@@ -2272,7 +2235,7 @@ class CommentsCoordinator(
 
     private fun getCurrentCommentSorting(): String {
         if (TextUtils.isEmpty(currentCommentSorting)) {
-            currentCommentSorting = SettingsUtils.getPreferredCommentSorting(requireContext())
+            currentCommentSorting = userSettings.comments.sorting
         }
         return currentCommentSorting.orEmpty()
     }

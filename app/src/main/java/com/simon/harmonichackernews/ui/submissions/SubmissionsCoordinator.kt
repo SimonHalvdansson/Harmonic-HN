@@ -8,15 +8,21 @@ import com.simon.harmonichackernews.network.QueueResponse as Response
 import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.BackgroundJSONParser
-import com.simon.harmonichackernews.network.BackgroundJSONParser.AlgoliaParseCallback
 import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
-import java.util.concurrent.Future
 import com.simon.harmonichackernews.serialization.JsonException as JSONException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /** Networking and filtering state for a Compose submissions destination.  */
 class SubmissionsCoordinator(
@@ -32,8 +38,9 @@ class SubmissionsCoordinator(
     private val allSubmissions = mutableListOf<Story>()
     private val queue: RequestQueue = NetworkComponent.getRequestQueueInstance(activity)
     private val requestTag = Any()
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val composeController: SubmissionsComposeController
-    private var submissionsParseTask: Future<*>? = null
+    private var submissionsLoadJob: Job? = null
     private var initialLoadFinished = false
     private var submissionsLoading = false
     private var submissionsLoadedSuccessfully = false
@@ -89,14 +96,15 @@ class SubmissionsCoordinator(
                 }
             })
         composeController.updateDisplaySettings(
-            StoryDisplaySettings.from(activity).withShowIndex(false)
+            StoryDisplaySettings.from(AndroidUserSettings(activity).story).withShowIndex(false)
         )
         loadSubmissions(true)
     }
 
     fun close() {
         submissionsRequestGeneration++
-        cancelSubmissionsParseTask()
+        cancelSubmissionsLoad()
+        coroutineScope.cancel()
         queue.cancelAll(requestTag)
     }
 
@@ -153,7 +161,7 @@ class SubmissionsCoordinator(
     }
 
     private fun loadSubmissions(resetResultLimit: Boolean) {
-        cancelSubmissionsParseTask()
+        cancelSubmissionsLoad()
         if (resetResultLimit) submissionsHitsPerPage = ALGOLIA_HITS_INCREMENT
         val requestGeneration = ++submissionsRequestGeneration
         submissionsLoading = true
@@ -172,43 +180,32 @@ class SubmissionsCoordinator(
             .build()
             .toString()
 
-        val request = StringRequest(
-            Request.Method.GET, url,
-            Response.Listener { response: String? ->
-                submissionsParseTask = BackgroundJSONParser.parseAlgoliaJson(
-                    response,
-                    object : AlgoliaParseCallback {
-                        override fun onParseSuccess(parsedStories: MutableList<Story>) {
-                            if (requestGeneration != submissionsRequestGeneration) return
-                            submissionsParseTask = null
-                            finishLoading(requestGeneration)
-                            submissionsCanLoadMore =
-                                parsedStories.size >= submissionsHitsPerPage
-                            submissionsLoadedSuccessfully = true
-                            allSubmissions.clear()
-                            allSubmissions.addAll(parsedStories)
-                            applySubmissionFilter()
-                        }
-
-                        override fun onParseError(error: JSONException) {
-                            if (requestGeneration != submissionsRequestGeneration) return
-                            submissionsParseTask = null
-                            finishLoading(requestGeneration)
-                            error.printStackTrace()
-                        }
-                    })
-            },
-            Response.ErrorListener { error: NetworkError? ->
+        submissionsLoadJob = coroutineScope.launch {
+            try {
+                val response = queue.getString(url)
+                val parsedStories = BackgroundJSONParser.parseAlgoliaStories(response)
+                if (requestGeneration != submissionsRequestGeneration) return@launch
+                submissionsLoadJob = null
+                finishLoading(requestGeneration)
+                submissionsCanLoadMore = parsedStories.size >= submissionsHitsPerPage
+                submissionsLoadedSuccessfully = true
+                allSubmissions.clear()
+                allSubmissions.addAll(parsedStories)
+                applySubmissionFilter()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                if (requestGeneration != submissionsRequestGeneration) return@launch
+                submissionsLoadJob = null
                 error?.printStackTrace()
                 finishLoading(requestGeneration)
-            })
-        request.tag = requestTag
-        queue.add(request)
+            }
+        }
     }
 
-    private fun cancelSubmissionsParseTask() {
-        submissionsParseTask?.cancel(true)
-        submissionsParseTask = null
+    private fun cancelSubmissionsLoad() {
+        submissionsLoadJob?.cancel()
+        submissionsLoadJob = null
     }
 
     private fun finishLoading(requestGeneration: Int) {

@@ -35,6 +35,12 @@ object NetworkComponent {
         KtorHttpClient(transportClient, networkScope)
     }
 
+    val hackerNewsApi: HackerNewsApi by lazy { KtorHackerNewsApi(httpClientInstance) }
+
+    val hackerNewsRepository: HackerNewsRepository by lazy {
+        DefaultHackerNewsRepository(hackerNewsApi)
+    }
+
     @Volatile
     private var cookieTransportClient: HttpClient? = null
 

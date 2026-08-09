@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
@@ -220,7 +221,13 @@ private fun CommentsSearchContentPreview() {
             searchTerm = "state",
             onSearchTermChanged = {},
             visibleComments = listOf(comment),
-            settings = CommentDisplaySettings.from(context, false, false, false, false),
+            settings = CommentDisplaySettings.from(
+                AndroidUserSettings(context).comments,
+                false,
+                false,
+                false,
+                false,
+            ),
             storyAuthor = "dang",
             accountUser = null,
             onCommentSelected = {},

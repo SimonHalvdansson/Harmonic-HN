@@ -142,6 +142,7 @@ import coil3.compose.AsyncImage
 import coil3.asDrawable
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
@@ -3406,7 +3407,16 @@ private fun CommentsHeaderPreview() {
                 fontWeight = FontWeight.Bold,
                 fontSize = 30.sp,
             )
-            HeaderMeta(story, CommentDisplaySettings.from(context, true, false, true, false))
+            HeaderMeta(
+                story,
+                CommentDisplaySettings.from(
+                    AndroidUserSettings(context).comments,
+                    true,
+                    false,
+                    true,
+                    false,
+                ),
+            )
         }
     }
 }

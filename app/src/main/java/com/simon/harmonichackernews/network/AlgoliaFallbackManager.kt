@@ -1,14 +1,20 @@
 package com.simon.harmonichackernews.network
 
-import android.content.Context
 import android.util.Log
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.HNAPICommentLoader.CommentLoadListener
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.UserSettings
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class AlgoliaFallbackManager(
-    private val context: Context, private val queue: RequestQueue, private val requestTag: Any?,
+    private val userSettings: UserSettings,
+    private val queue: RequestQueue,
     private val filteredUsers: Set<String>, private val listener: FallbackListener
 ) : CommentLoadListener {
     interface FallbackListener {
@@ -21,13 +27,15 @@ class AlgoliaFallbackManager(
     }
 
     private lateinit var treeBuilder: CommentTreeBuilder
-    private val commentLoader = HNAPICommentLoader(queue, requestTag, filteredUsers, this)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val repository = NetworkComponent.hackerNewsRepository
+    private val commentLoader = HNAPICommentLoader(repository, scope, filteredUsers, this)
     private val allCommentIds = mutableSetOf<Int>()
     private val loadedCommentIds = mutableSetOf<Int>()
     private var totalExpectedComments = 0
 
     fun loadComments(storyId: Int, cachedResponse: String?) {
-        if (SettingsUtils.shouldUseAlgoliaAPI(context)) {
+        if (userSettings.reading.useAlgoliaApi) {
             Log.d(
                 TAG,
                 "Loading storyId=" + storyId + " with Algolia, hasCachedResponse=" + (cachedResponse != null)
@@ -42,12 +50,20 @@ class AlgoliaFallbackManager(
     private fun loadWithAlgolia(storyId: Int) {
         val url = "https://hn.algolia.com/api/v1/items/" + storyId
 
-        val request = StringRequest(
-            QueueRequest.Method.GET, url,
-            QueueResponse.Listener { response: String? ->
+        scope.launch {
+            try {
+                val response = queue.getString(
+                    url,
+                    RetryPolicy(
+                        timeoutMillis = 15_000,
+                        maxRetries = 2,
+                        backoffMultiplier = RetryPolicy.DEFAULT_BACKOFF_MULT,
+                    ),
+                )
                 listener.onAlgoliaSuccess(response)
-            },
-            QueueResponse.ErrorListener { error: NetworkError? ->
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: NetworkError) {
                 Log.w(
                     TAG,
                     "Algolia request failed for storyId=" + storyId + ": " + NetworkErrorUtils.describe(
@@ -67,27 +83,15 @@ class AlgoliaFallbackManager(
                 } else {
                     listener.onAlgoliaFailed(networkResponse == null)
                 }
-            })
-
-        request.tag = requestTag
-        request.setRetryPolicy(
-            DefaultRetryPolicy(
-                15000,
-                2,
-                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
-            )
-        )
-        queue.add<String?>(request)
+            }
+        }
     }
 
     private fun loadWithHNAPI(storyId: Int) {
-        val url = "https://hacker-news.firebaseio.com/v0/item/" + storyId + ".json"
-
-        val request = StringRequest(
-            QueueRequest.Method.GET, url,
-            QueueResponse.Listener { response: String? ->
-                val story = Story()
-                if (JSONParser.updateStoryWithOfficialHNResponse(story, response)) {
+        scope.launch {
+            try {
+                val story = repository.getStory(storyId)
+                if (story != null) {
                     Log.d(
                         TAG, ("HN API story loaded for storyId=" + storyId
                                 + ", topLevelComments=" + (story.kids?.size ?: 0))
@@ -104,33 +108,20 @@ class AlgoliaFallbackManager(
                         listener.onAllCommentsLoaded(mutableListOf())
                     }
                 } else {
-                    Log.w(
-                        TAG, ("HN API story parse failed for storyId=" + storyId
-                                + ", responseLength=" + (response?.length ?: 0))
-                    )
+                    Log.w(TAG, "HN API story parse failed for storyId=$storyId")
                     listener.onHNAPIFailed()
                 }
-            },
-            QueueResponse.ErrorListener { error: NetworkError? ->
-                Log.w(
-                    TAG,
-                    "HN API story request failed for storyId=" + storyId + ": " + NetworkErrorUtils.describe(
-                        error
-                    ),
-                    error
-                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.w(TAG, "HN API story request failed for storyId=$storyId", error)
                 listener.onHNAPIFailed()
-            })
+            }
+        }
+    }
 
-        request.tag = requestTag
-        request.setRetryPolicy(
-            DefaultRetryPolicy(
-                15000,
-                2,
-                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
-            )
-        )
-        queue.add<String?>(request)
+    fun dispose() {
+        scope.cancel()
     }
 
     private fun loadAllComments(topLevelIds: IntArray) {

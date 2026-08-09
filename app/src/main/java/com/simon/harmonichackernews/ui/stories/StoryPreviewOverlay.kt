@@ -97,6 +97,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.LinkSummaryLoader
@@ -353,7 +354,9 @@ private fun StoryPreviewCard(
 ) {
     val context = LocalContext.current
     val summaryState = rememberStorySummary(story, controller)
-    val fallbackSettings = remember(context) { StoryDisplaySettings.from(context) }
+    val fallbackSettings = remember(context) {
+        StoryDisplaySettings.from(AndroidUserSettings(context).story)
+    }
     val settings = controller.displaySettings ?: fallbackSettings
     val typography = rememberContentTypography(
         settings.font,

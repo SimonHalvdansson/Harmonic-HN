@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
@@ -228,7 +229,8 @@ class SubmissionsComposeController internal constructor(
             return SubmissionsComposeController(
                 userName = userName,
                 initialFilter = initialFilter,
-                initialDisplaySettings = StoryDisplaySettings.from(activity)
+                initialDisplaySettings =
+                    StoryDisplaySettings.from(AndroidUserSettings(activity).story)
                     .withShowIndex(false),
                 listener = listener,
             )
@@ -982,7 +984,9 @@ private fun SubmissionsScreenPreview() {
             loadedSuccessfully = true,
             loading = false,
             emptyText = "No submissions",
-            displaySettings = StoryDisplaySettings.from(context).withShowIndex(false),
+            displaySettings = StoryDisplaySettings.from(
+                AndroidUserSettings(context).story,
+            ).withShowIndex(false),
             contentVersion = 0,
             listState = rememberLazyListState(),
             listener = listener,

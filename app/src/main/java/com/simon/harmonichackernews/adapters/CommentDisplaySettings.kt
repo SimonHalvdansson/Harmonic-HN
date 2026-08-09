@@ -1,9 +1,8 @@
 package com.simon.harmonichackernews.adapters
 
-import android.content.Context
+import com.simon.harmonichackernews.settings.CommentPreferences
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
-import com.simon.harmonichackernews.utils.ThemeUtils
 
 class CommentDisplaySettings private constructor(
     val collapseParent: Boolean,
@@ -37,33 +36,33 @@ class CommentDisplaySettings private constructor(
 
     companion object {
         fun from(
-            context: Context,
+            preferences: CommentPreferences,
             showInvert: Boolean,
             isTablet: Boolean,
             hasAccountDetails: Boolean,
             canProvideSummary: Boolean
         ): CommentDisplaySettings {
             return CommentDisplaySettings(
-                SettingsUtils.shouldCollapseParent(context),
-                SettingsUtils.shouldShowThumbnails(context),
-                SettingsUtils.shouldShowCommentsHeaderPreviewImage(context),
-                SettingsUtils.shouldTintCommentsHeader(context),
-                SettingsUtils.getPreferredPaletteTintConfigKey(context),
-                SettingsUtils.getPreferredCommentTextSize(context),
-                SettingsUtils.getPreferredCommentDepthIndicatorMode(context).orEmpty(),
-                SettingsUtils.shouldShowNavigationButtons(context),
-                SettingsUtils.getPreferredFont(context).orEmpty(),
+                preferences.collapseParent,
+                preferences.thumbnails,
+                preferences.showHeaderPreviewImage,
+                preferences.tintHeader,
+                preferences.paletteTintConfigKey,
+                preferences.textSize,
+                preferences.depthIndicatorMode,
+                preferences.showNavigationButtons,
+                preferences.font,
                 showInvert,
-                SettingsUtils.shouldShowTopLevelDepthIndicator(context),
-                ThemeUtils.getPreferredTheme(context),
+                preferences.showTopLevelDepthIndicator,
+                preferences.theme,
                 isTablet,
-                SettingsUtils.getPreferredFaviconProvider(context),
-                SettingsUtils.shouldSwapCommentLongPressTap(context),
-                SettingsUtils.shouldUseCardCommentDisplayStyle(context),
-                SettingsUtils.shouldShowCommentCardBorder(context),
-                SettingsUtils.shouldShowCommentDividers(context),
-                SettingsUtils.shouldHighlightCommentMeta(context),
-                SettingsUtils.shouldCollectLinksInComments(context),
+                preferences.faviconProvider,
+                preferences.swapLongPressTap,
+                preferences.cardStyle,
+                preferences.cardBorder,
+                preferences.showDividers,
+                preferences.highlightMetadata,
+                preferences.collectReferenceLinks,
                 hasAccountDetails,
                 canProvideSummary
             )

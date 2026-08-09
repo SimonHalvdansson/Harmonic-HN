@@ -177,7 +177,7 @@ class HttpCall internal constructor(
         if (canceled) return
         val launchedJob = scope.launch {
             try {
-                callback.onResponse(this@HttpCall, executeInternal())
+                callback.onResponse(this@HttpCall, await())
             } catch (_: CancellationException) {
                 // Cancellation is a caller decision and intentionally has no failure callback.
             } catch (error: Throwable) {
@@ -193,7 +193,17 @@ class HttpCall internal constructor(
 
     @Throws(IOException::class)
     fun execute(): HttpResponse = try {
-        runBlocking { executeInternal() }
+        runBlocking { await() }
+    } catch (error: Throwable) {
+        throw error as? IOException ?: IOException(error.message, error)
+    }
+
+    /** Primary non-blocking execution path. Blocking and callback APIs are compatibility adapters. */
+    @Throws(IOException::class)
+    suspend fun await(): HttpResponse = try {
+        executeInternal()
+    } catch (error: CancellationException) {
+        throw error
     } catch (error: Throwable) {
         throw error as? IOException ?: IOException(error.message, error)
     }
@@ -237,6 +247,8 @@ class KtorHttpClient internal constructor(
 ) {
     fun newCall(request: HttpRequest): HttpCall =
         HttpCall(client, scope, request, readTimeoutMillis)
+
+    suspend fun execute(request: HttpRequest): HttpResponse = newCall(request).await()
 
     fun newBuilder(): Builder = Builder(client, scope, readTimeoutMillis)
 
@@ -301,14 +313,14 @@ class HttpResponseBody internal constructor(
     fun contentType(): HttpMediaType? = headers[HttpHeaders.ContentType]?.let(::HttpMediaType)
 
     @Throws(IOException::class)
-    fun string(): String = runBlocking {
-        channel.readRemaining().readText()
-    }
+    fun string(): String = runBlocking { readText() }
+
+    suspend fun readText(): String = channel.readRemaining().readText()
 
     @Throws(IOException::class)
-    fun bytes(): ByteArray = runBlocking {
-        channel.readRemaining().readByteArray()
-    }
+    fun bytes(): ByteArray = runBlocking { readBytes() }
+
+    suspend fun readBytes(): ByteArray = channel.readRemaining().readByteArray()
 
     fun source(): HttpBodySource = source
 

@@ -140,6 +140,24 @@ class RequestQueue internal constructor(
 ) {
     private val taggedJobs = mutableMapOf<Any, MutableSet<Job>>()
 
+    /** Suspend-first GET path. [add] remains as a compatibility adapter for callback callers. */
+    suspend fun getString(
+        url: String,
+        retryPolicy: RetryPolicy = RetryPolicy(),
+        shouldCache: Boolean = true,
+    ): String {
+        val request = StringRequest(
+            QueueRequest.Method.GET,
+            url,
+            QueueResponse.Listener {},
+            QueueResponse.ErrorListener {},
+        ).apply {
+            setRetryPolicy(retryPolicy)
+            setShouldCache(shouldCache)
+        }
+        return runRequest(request).getOrElse { throw it.asNetworkError() }
+    }
+
     fun <T> add(request: QueuedRequest<T>): QueuedRequest<T> {
         val job = workerScope.launch {
             val result = runRequest(request)
@@ -166,7 +184,7 @@ class RequestQueue internal constructor(
         taggedJobs.remove(tag)?.forEach(Job::cancel)
     }
 
-    private suspend fun <T> runRequest(request: QueuedRequest<T>): Result<String> {
+    private suspend fun runRequest(request: QueuedRequest<*>): Result<String> {
         val policy = request.retryPolicy
         var attempt = 0
         var timeoutMillis = policy.timeoutMillis.toLong()

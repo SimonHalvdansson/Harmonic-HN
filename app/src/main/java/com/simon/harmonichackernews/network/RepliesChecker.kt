@@ -13,8 +13,6 @@ import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.text.Html
 import android.text.TextUtils
 import androidx.core.app.NotificationCompat
@@ -24,8 +22,7 @@ import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import kotlinx.coroutines.CancellationException
 import kotlin.math.max
 import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
 import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
@@ -45,30 +42,22 @@ object RepliesChecker {
     private val CHECK_FLEX_MILLIS = 5L * 60L * 1000L
     private const val HN_API_BASE = "https://hacker-news.firebaseio.com/v0/"
 
-    private val EXECUTOR: ExecutorService = Executors.newSingleThreadExecutor()
-    private val MAIN_HANDLER = Handler(Looper.getMainLooper())
     private val HTTP_CLIENT: KtorHttpClient by lazy {
         NetworkComponent.httpClientInstance.newBuilder()
             .readTimeoutMillis(HTTP_TIMEOUT_MILLIS)
             .build()
     }
 
-    fun enable(
+    suspend fun enable(
         ctx: Context,
         username: String?,
-        callback: Callback?
-    ) {
+    ): Boolean {
         val appContext = ctx.applicationContext
         val normalizedUsername = normalizeUsername(username)
         if (TextUtils.isEmpty(normalizedUsername)) {
-            postCallback(callback, false)
-            return
+            return false
         }
-
-        EXECUTOR.execute {
-            val success = enableBlocking(appContext, normalizedUsername)
-            postCallback(callback, success)
-        }
+        return enableInternal(appContext, normalizedUsername)
     }
 
     fun disable(ctx: Context) {
@@ -87,31 +76,18 @@ object RepliesChecker {
         }
     }
 
-    fun checkNow(ctx: Context, callback: Callback?) {
-        val appContext = ctx.applicationContext
-        EXECUTOR.execute {
-            val success = checkNowBlocking(appContext)
-            postCallback(callback, success)
-        }
-    }
+    suspend fun checkNow(ctx: Context): Boolean = checkNowInternal(ctx.applicationContext)
 
-    fun sendLatestDebugNotification(
+    suspend fun sendLatestDebugNotification(
         ctx: Context,
         username: String?,
-        callback: DebugNotificationCallback?
-    ) {
+    ): DebugNotificationResult {
         val appContext = ctx.applicationContext
         val normalizedUsername = RepliesChecker.normalizeUsername(username)
         if (TextUtils.isEmpty(normalizedUsername)) {
-            RepliesChecker.postDebugCallback(callback, DebugNotificationResult.USER_NOT_FOUND)
-            return
+            return DebugNotificationResult.USER_NOT_FOUND
         }
-
-        EXECUTOR.execute {
-            val result =
-                RepliesChecker.sendLatestDebugNotificationBlocking(appContext, normalizedUsername)
-            RepliesChecker.postDebugCallback(callback, result)
-        }
+        return RepliesChecker.sendLatestDebugNotificationInternal(appContext, normalizedUsername)
     }
 
     fun notificationsAreActive(ctx: Context): Boolean {
@@ -137,7 +113,7 @@ object RepliesChecker {
         }
     }
 
-    private fun enableBlocking(
+    private suspend fun enableInternal(
         ctx: Context,
         username: String
     ): Boolean {
@@ -167,13 +143,15 @@ object RepliesChecker {
             )
             RepliesChecker.scheduleJob(ctx)
             return true
+        } catch (error: CancellationException) {
+            throw error
         } catch (e: Exception) {
             e.printStackTrace()
             return false
         }
     }
 
-    private fun checkNowBlocking(ctx: Context): Boolean {
+    private suspend fun checkNowInternal(ctx: Context): Boolean {
         val username = RepliesChecker.getConfiguredUsername(ctx)
         if (TextUtils.isEmpty(username)) {
             return true
@@ -273,13 +251,15 @@ object RepliesChecker {
                 newWatermark.toString()
             )
             return true
+        } catch (error: CancellationException) {
+            throw error
         } catch (e: Exception) {
             e.printStackTrace()
             return false
         }
     }
 
-    private fun sendLatestDebugNotificationBlocking(
+    private suspend fun sendLatestDebugNotificationInternal(
         ctx: Context,
         username: String
     ): DebugNotificationResult {
@@ -295,6 +275,8 @@ object RepliesChecker {
             RepliesChecker.createNotificationChannel(ctx)
             showNotification(ctx, reply)
             return DebugNotificationResult.SENT
+        } catch (error: CancellationException) {
+            throw error
         } catch (e: Exception) {
             e.printStackTrace()
             return DebugNotificationResult.FAILED
@@ -302,7 +284,7 @@ object RepliesChecker {
     }
 
     @Throws(Exception::class)
-    private fun findLatestReplyForUser(username: String): Reply? {
+    private suspend fun findLatestReplyForUser(username: String): Reply? {
         val user: JSONObject? = RepliesChecker.getJsonObject(
             RepliesChecker.HN_API_BASE + "user/" + Uri.encode(username) + ".json"
         )
@@ -601,7 +583,7 @@ object RepliesChecker {
         username.orEmpty().trim { it <= ' ' }
 
     @Throws(Exception::class)
-    private fun getInt(url: String?): Int {
+    private suspend fun getInt(url: String?): Int {
         val response = RepliesChecker.getString(url)
         if (TextUtils.isEmpty(response)) {
             return 0
@@ -610,7 +592,7 @@ object RepliesChecker {
     }
 
     @Throws(Exception::class)
-    private fun getJsonObject(url: String?): JSONObject? {
+    private suspend fun getJsonObject(url: String?): JSONObject? {
         val response = RepliesChecker.getString(url)
         if (TextUtils.isEmpty(response) || "null" == response.trim { it <= ' ' }) {
             return null
@@ -619,12 +601,12 @@ object RepliesChecker {
     }
 
     @Throws(Exception::class)
-    private fun getString(urlString: String?): String {
+    private suspend fun getString(urlString: String?): String {
         val request = HttpRequest.Builder()
             .url(requireNotNull(urlString) { "Reply check URL is required" })
             .get()
             .build()
-        return HTTP_CLIENT.newCall(request).execute().use { response ->
+        return HTTP_CLIENT.newCall(request).await().use { response ->
             response.body.string()
         }
     }
@@ -641,31 +623,6 @@ object RepliesChecker {
             return "Tap to view the reply."
         }
         return if (text.length > 240) text.substring(0, 237) + "..." else text
-    }
-
-    private fun postCallback(callback: Callback?, success: Boolean) {
-        if (callback == null) {
-            return
-        }
-        MAIN_HANDLER.post { callback.onComplete(success) }
-    }
-
-    private fun postDebugCallback(
-        callback: DebugNotificationCallback?,
-        result: DebugNotificationResult
-    ) {
-        if (callback == null) {
-            return
-        }
-        MAIN_HANDLER.post { callback.onComplete(result) }
-    }
-
-    fun interface Callback {
-        fun onComplete(success: Boolean)
-    }
-
-    fun interface DebugNotificationCallback {
-        fun onComplete(result: DebugNotificationResult)
     }
 
     enum class DebugNotificationResult {

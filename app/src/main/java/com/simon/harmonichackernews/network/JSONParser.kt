@@ -3,6 +3,11 @@ package com.simon.harmonichackernews.network
 import android.text.TextUtils
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.network.dto.AlgoliaSearchResponseDto
+import com.simon.harmonichackernews.network.dto.HackerNewsItemDto
+import com.simon.harmonichackernews.network.dto.applyTo
+import com.simon.harmonichackernews.network.dto.toComment
+import com.simon.harmonichackernews.network.dto.toStory
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.Utils
 import java.io.IOException
@@ -54,151 +59,30 @@ object JSONParser {
 
     @Throws(JSONException::class)
     fun algoliaJsonToStories(response: String): MutableList<Story> {
-        val parentObject = JSONObject(response)
-        val hits = parentObject.getJSONArray("hits")
-        val hitCount = hits.length()
-        val stories: MutableList<Story> = ArrayList(hitCount)
-
-        for (i in 0..<hitCount) {
-            val hit = hits.getJSONObject(i)
-
-            val story = Story()
-
-            val isComment = hit.getJSONArray("_tags").get(0) == "comment"
-
-            story.title = if (isComment) hit.getString("story_title") else hit.optString("title")
-            story.score = hit.optInt("points")
-            story.by = hit.getString("author")
-            story.descendants = hit.optInt("num_comments")
-            story.id = hit.getString("objectID").toInt()
-            story.time = hit.getInt("created_at_i")
-            story.loaded = true
-            story.loadingFailed = false
-            story.clicked = false
-
-            val url = optStringOrNull(hit, "url")
-            if (!url.isNullOrEmpty() && url != JSON_NULL_LITERAL) {
-                story.url = url
-                story.isLink = true
-            } else {
-                story.url = "https://news.ycombinator.com/item?id=" + story.id
-                story.isLink = false
-            }
-
-            val storyText = optStringOrNull(hit, "story_text")
-            if (storyText != null && storyText != JSON_NULL_LITERAL) {
-                updateStoryText(story, storyText)
-            }
-
-            if (isComment) {
-                story.isComment = true
-                updateStoryText(story, hit.optString("comment_text", ""))
-                story.commentMasterTitle = hit.getString("story_title")
-                story.commentMasterId = hit.getInt("story_id")
-                story.parentId = hit.optInt("parent_id", 0)
-                val storyUrl = optStringOrNull(hit, "story_url")
-                if (storyUrl != null && storyUrl != JSON_NULL_LITERAL) {
-                    story.commentMasterUrl = storyUrl
-                    story.isLink = true
-                } else {
-                    story.isLink = false
-                }
-                if (!TextUtils.isEmpty(story.title) && story.title == JSON_NULL_LITERAL) {
-                    story.title = "Comment by " + story.by
-                }
-            }
-
-            updateTitleBadgeProperties(story)
-
-            stories.add(story)
+        return try {
+            ALGOLIA_JSON.decodeFromString<AlgoliaSearchResponseDto>(response)
+                .hits
+                .mapNotNull { it.toStory() }
+                .toMutableList()
+        } catch (error: SerializationException) {
+            throw JSONException("Invalid Algolia search JSON", error)
+        } catch (error: IllegalArgumentException) {
+            throw JSONException("Invalid Algolia search JSON", error)
         }
-
-        return stories
     }
 
     @Throws(JSONException::class)
     fun updateStoryWithHNJson(response: String?, story: Story, isHistory: Boolean): Boolean {
-        if (TextUtils.isEmpty(response) || JSON_NULL_LITERAL == response) {
-            return false
+        if (response.isNullOrBlank() || JSON_NULL_LITERAL == response) return false
+        return try {
+            val item = ALGOLIA_JSON.decodeFromString<HackerNewsItemDto>(response)
+            if (item.type != "comment" && item.title == null) return false
+            item.applyTo(story, preserveTime = isHistory)
+        } catch (_: SerializationException) {
+            false
+        } catch (_: IllegalArgumentException) {
+            false
         }
-
-        val jsonObject = JSONObject(response)
-
-        if (hasOnlyTwoTopLevelFields(jsonObject)) {
-            return false
-        }
-
-        val by = optStringOrNull(jsonObject, "by")
-        if (by == null) {
-            return false
-        }
-
-        val type = optStringOrNull(jsonObject, "type")
-        if ("comment" == type) {
-            return updateStoryWithHNCommentJson(jsonObject, story)
-        }
-
-        story.update(
-            by,
-            jsonObject.getInt("id"),
-            jsonObject.getInt("score"),
-            if (isHistory) story.time else jsonObject.getInt("time"),
-            jsonObject.getString("title")
-        )
-
-        if (jsonObject.has("descendants")) {
-            story.descendants = jsonObject.getInt("descendants")
-        } else {
-            story.descendants = 0
-        }
-
-        if ("job" == type) {
-            story.isJob = true
-        }
-
-        if ("poll" == type && jsonObject.has("parts")) {
-            val pollOptionsJson = jsonObject.getJSONArray("parts")
-            val pollOptionCount = pollOptionsJson.length()
-            val pollOptions = IntArray(pollOptionCount)
-            for (i in 0..<pollOptionCount) {
-                pollOptions[i] = pollOptionsJson.getInt(i)
-            }
-
-            story.pollOptions = pollOptions
-        }
-
-        if (jsonObject.has("kids")) {
-            val kidsJsonArray = jsonObject.getJSONArray("kids")
-            val kidCount = kidsJsonArray.length()
-            val kids = IntArray(kidCount)
-
-            for (i in 0..<kidCount) {
-                kids[i] = kidsJsonArray.getInt(i)
-            }
-
-            story.kids = kids
-        }
-
-        val url = optStringOrNull(jsonObject, "url")
-        if (url != null) {
-            story.url = url
-            story.isLink = true
-        } else {
-            story.url = "https://news.ycombinator.com/item?id=" + story.id
-            story.isLink = false
-        }
-
-        val text = optStringOrNull(jsonObject, "text")
-        if (text != null) {
-            updateStoryText(story, text)
-        }
-
-        updateTitleBadgeProperties(story)
-
-        story.loaded = true
-        story.loadingFailed = false
-
-        return true
     }
 
     @Throws(JSONException::class)
@@ -849,7 +733,7 @@ object JSONParser {
         return count
     }
 
-    private fun updateStoryText(story: Story, rawText: String?) {
+    internal fun updateStoryText(story: Story, rawText: String?) {
         val text = preprocessHtml(rawText)
         if (!TextUtils.equals(story.text, text)) {
             story.spannedText = null
@@ -923,86 +807,11 @@ object JSONParser {
             if (TextUtils.isEmpty(response) || JSON_NULL_LITERAL == response) {
                 return false
             }
-
-            val jsonObject = JSONObject(response)
-
-
-            // Check if this is a valid story response
-            val by = optStringOrNull(jsonObject, "by")
-            if (by == null || hasOnlyTwoTopLevelFields(jsonObject)) {
-                return false
-            }
-
-            story.by = by
-            story.id = jsonObject.optInt("id", story.id)
-            story.score = jsonObject.optInt("score", 0)
-            story.time = jsonObject.optInt("time", story.time)
-            story.title = jsonObject.optString("title", story.title)
-            story.descendants = jsonObject.optInt("descendants", 0)
-
-            val type = optStringOrNull(jsonObject, "type")
-            if ("comment" == type) {
-                story.isComment = true
-                story.parentId = jsonObject.optInt("parent", 0)
-                if (TextUtils.isEmpty(story.title)) {
-                    story.title = "Comment by " + story.by
-                }
-            }
-
-            //if a story is dead, it might not have a title. Right now we only do the fallback if
-            // the story is dead (can it have no title for another reason? The example post was
-            // "flagged" but the JSON said dead=true so let's go with that). If more cases show up,
-            //let's add those in then
-            if (TextUtils.isEmpty(story.title) && jsonObject.optBoolean("dead", false)) {
-                story.title = "[deleted]"
-            }
-
-            if ("job" == type) {
-                story.isJob = true
-            }
-
-            if ("poll" == type && jsonObject.has("parts")) {
-                val pollOptionsJson = jsonObject.getJSONArray("parts")
-                val pollOptionCount = pollOptionsJson.length()
-                val pollOptions = IntArray(pollOptionCount)
-                for (i in 0..<pollOptionCount) {
-                    pollOptions[i] = pollOptionsJson.getInt(i)
-                }
-
-                story.pollOptions = pollOptions
-            }
-
-            if (jsonObject.has("kids")) {
-                val kidsArray = jsonObject.getJSONArray("kids")
-                val kidCount = kidsArray.length()
-                val kids = IntArray(kidCount)
-                for (i in 0..<kidCount) {
-                    kids[i] = kidsArray.getInt(i)
-                }
-                story.kids = kids
-            }
-
-            val url = optStringOrNull(jsonObject, "url")
-            if (url != null) {
-                story.url = url
-                story.isLink = true
-            } else {
-                story.url = "https://news.ycombinator.com/item?id=" + story.id
-                story.isLink = false
-            }
-
-            val text = optStringOrNull(jsonObject, "text")
-            if (text != null) {
-                updateStoryText(story, text)
-            }
-
-            updateTitleBadgeProperties(story)
-
-            story.loaded = true
-            story.loadingFailed = false
-
-            return true
-        } catch (e: JSONException) {
+            return ALGOLIA_JSON.decodeFromString<HackerNewsItemDto>(response.orEmpty()).applyTo(story)
+        } catch (e: SerializationException) {
+            e.printStackTrace()
+            return false
+        } catch (e: IllegalArgumentException) {
             e.printStackTrace()
             return false
         }
@@ -1010,39 +819,13 @@ object JSONParser {
 
     @Throws(JSONException::class)
     fun parseOfficialHNCommentResponse(response: String): Comment? {
-        val jsonObject = JSONObject(response)
-
-        // Check if this is a deleted comment
-        if (jsonObject.has("deleted") && jsonObject.getBoolean("deleted")) {
-            return null
+        return try {
+            ALGOLIA_JSON.decodeFromString<HackerNewsItemDto>(response).toComment()
+        } catch (error: SerializationException) {
+            throw JSONException("Invalid Hacker News comment JSON", error)
+        } catch (error: IllegalArgumentException) {
+            throw JSONException("Invalid Hacker News comment JSON", error)
         }
-
-        val comment = Comment()
-        comment.id = jsonObject.getInt("id")
-        comment.by = jsonObject.optString("by", "")
-        comment.time = jsonObject.getInt("time")
-        comment.parent = jsonObject.optInt("parent", 0)
-        comment.expanded = true
-
-        val text = optStringOrNull(jsonObject, "text")
-        comment.text = if (text == null) "" else preprocessHtml(text)
-
-        if (jsonObject.has("kids")) {
-            val kidsArray = jsonObject.getJSONArray("kids")
-            val kidCount = kidsArray.length()
-            comment.children = kidCount
-            // Store kids for later loading
-            val kidsIds = IntArray(kidCount)
-            for (i in 0..<kidCount) {
-                kidsIds[i] = kidsArray.getInt(i)
-            }
-            comment.kidsIds = kidsIds
-        } else {
-            comment.children = 0
-            comment.kidsIds = null
-        }
-
-        return comment
     }
 
     class AlgoliaCommentsResponse {

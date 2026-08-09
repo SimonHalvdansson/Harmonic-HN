@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +40,7 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.RepliesChecker
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import kotlinx.coroutines.launch
 
 private enum class DebugNotificationAction {
     Enable,
@@ -50,6 +52,7 @@ fun DebugNotificationsDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var username by remember {
         mutableStateOf(RepliesChecker.getConfiguredUsername(context))
     }
@@ -71,7 +74,8 @@ fun DebugNotificationsDialog(
     fun enableNotifications(requestedUsername: String) {
         loading = true
         status = "Setting up reply notifications..."
-        RepliesChecker.enable(context, requestedUsername) { success ->
+        coroutineScope.launch {
+            val success = RepliesChecker.enable(context, requestedUsername)
             loading = false
             if (success) {
                 username = RepliesChecker.getConfiguredUsername(context)
@@ -86,7 +90,8 @@ fun DebugNotificationsDialog(
     fun testNotification(requestedUsername: String) {
         loading = true
         status = "Looking for a recent reply..."
-        RepliesChecker.sendLatestDebugNotification(context, requestedUsername) { result ->
+        coroutineScope.launch {
+            val result = RepliesChecker.sendLatestDebugNotification(context, requestedUsername)
             loading = false
             status = when (result) {
                 RepliesChecker.DebugNotificationResult.SENT ->

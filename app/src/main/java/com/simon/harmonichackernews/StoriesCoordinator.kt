@@ -24,7 +24,6 @@ import com.simon.harmonichackernews.StorySearchController.StoryFilter
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.BackgroundJSONParser
-import com.simon.harmonichackernews.network.BackgroundJSONParser.AlgoliaParseCallback
 import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.UserActions
@@ -34,6 +33,7 @@ import com.simon.harmonichackernews.network.UserActions.StoryRowsCallback
 import com.simon.harmonichackernews.network.UserActions.UserItemListCallback
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.create
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController.Companion.create
@@ -64,9 +64,18 @@ import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.max
 import kotlin.math.min
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 
 class StoriesCoordinator(private val activity: MainActivity, savedInstanceState: Bundle?) {
+    private val userSettings = AndroidUserSettings(activity)
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var storyClickListener: StoryClickListener?
     private var started = false
     private var destroyed = false
@@ -123,6 +132,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     private var loadingFailedRateLimited = false
     private var lastSearch: String? = ""
     private var algoliaRequestGeneration = 0
+    private var algoliaLoadJob: Job? = null
     private var storyListGeneration = 0
     private val pendingStoryRowChangeGenerations = mutableMapOf<Int, Int>()
     private val pendingStoryRemovals = mutableMapOf<Int, PendingStoryRemoval>()
@@ -238,9 +248,10 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         filterWords = Utils.getFilterWords(requireContext())
         filterDomains = Utils.getFilterDomains(requireContext())
         filteredUsers = Utils.getFilteredUsers(requireContext())
-        hideJobs = SettingsUtils.shouldHideJobs(requireContext())
-        hideClicked = SettingsUtils.shouldHideClicked(requireContext())
-        alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(requireContext())
+        val storyPreferences = userSettings.story
+        hideJobs = storyPreferences.hideJobs
+        hideClicked = storyPreferences.hideClicked
+        alwaysOpenComments = storyPreferences.alwaysOpenComments
         userItemListsDropdownVisible = shouldShowUserItemLists(requireContext())
         restoreStoryLists(restoredState)
         setupAdapter()
@@ -299,6 +310,9 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
 
             override val requestTag: Any
                 get() = this@StoriesCoordinator.requestTag
+
+            override val userSettings
+                get() = this@StoriesCoordinator.userSettings
 
             override fun onCacheProgressChanged() {
                 this@StoriesCoordinator.syncComposeState()
@@ -656,7 +670,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         controller.updateContent(
             mainStories,
             searchStories,
-            StoryDisplaySettings.from(context),
+            StoryDisplaySettings.from(userSettings.story),
             stringLabels,
             mainAdapter!!.type,
             searching,
@@ -915,7 +929,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             val typeAdapterList =
                 buildTypeAdapterList(requireContext())
             val preferredIndex =
-                typeAdapterList.indexOf(SettingsUtils.getPreferredStoryType(requireContext()))
+                typeAdapterList.indexOf(userSettings.story.preferredStoryType)
             return if (preferredIndex >= 0) preferredIndex else 0
         }
 
@@ -1499,7 +1513,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     }
 
     private fun setupAdapter() {
-        paginationMode = SettingsUtils.shouldUsePaginationMode(requireContext())
+        paginationMode = userSettings.story.pagination
 
         mainAdapter = createStoryAdapter(mainStories)
         searchAdapter = createStoryAdapter(searchStories)
@@ -1569,7 +1583,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
     }
 
     private fun createStoryAdapter(adapterStories: MutableList<Story>): StoryListState {
-        return StoryDisplaySettings.from(requireContext()).createListState(
+        return StoryDisplaySettings.from(userSettings.story).createListState(
             adapterStories,
             this.preferredTypeIndex
         )
@@ -1910,9 +1924,10 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         filterWords = Utils.getFilterWords(requireContext())
         filterDomains = Utils.getFilterDomains(requireContext())
         filteredUsers = Utils.getFilteredUsers(requireContext())
-        val newHideJobs = SettingsUtils.shouldHideJobs(requireContext())
-        hideClicked = SettingsUtils.shouldHideClicked(requireContext())
-        alwaysOpenComments = SettingsUtils.shouldAlwaysOpenComments(requireContext())
+        val storyPreferences = userSettings.story
+        val newHideJobs = storyPreferences.hideJobs
+        hideClicked = storyPreferences.hideClicked
+        alwaysOpenComments = storyPreferences.alwaysOpenComments
         refreshTypeSpinnerItemsIfNeeded()
         syncVisibleUserItemListWithLocalCache()
         refreshBookmarksIfNeeded()
@@ -1920,7 +1935,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         val timeDiff = System.currentTimeMillis() - lastLoaded
 
         // if more than 1 hr
-        val shouldShowUpdateButton = SettingsUtils.shouldAlwaysShowTapToRefresh(requireContext())
+        val shouldShowUpdateButton = storyPreferences.alwaysShowTapToRefresh
                 || (timeDiff > 1000 * 60 * 60 && !searching && !isBookmarksType(adapter!!.type) && !isUserItemListType(
             adapter!!.type
         ) && !currentTypeIsAlgolia())
@@ -1930,7 +1945,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             hideUpdateButton()
         }
 
-        val displaySettings = StoryDisplaySettings.from(requireContext())
+        val displaySettings = StoryDisplaySettings.from(storyPreferences)
         val fontCacheChanged =
             TextUtils.isEmpty(FontUtils.font) || FontUtils.font != displaySettings.font
         if (fontCacheChanged) {
@@ -1952,7 +1967,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             updateHeader()
         }
 
-        val newPaginationMode = SettingsUtils.shouldUsePaginationMode(requireContext())
+        val newPaginationMode = storyPreferences.pagination
         if (paginationMode != newPaginationMode) {
             val oldItemCount = adapter!!.itemCount
             paginationMode = newPaginationMode
@@ -2004,12 +2019,13 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             return
         }
 
-        val previewImageMode = SettingsUtils.getPreferredStoryPreviewImageMode(requireContext())
+        val storyPreferences = userSettings.story
+        val previewImageMode = storyPreferences.previewImageMode
         val previewImageModeChanged = adapter!!.previewImageMode != previewImageMode
-        val tintCardUsingPreview = SettingsUtils.shouldTintCardUsingPreview(requireContext())
+        val tintCardUsingPreview = storyPreferences.tintCardUsingPreview
         val storyCardShellChanged =
             adapter!!.tintCardUsingPreview != tintCardUsingPreview && !adapter!!.cardStyle
-        val preferredFont = SettingsUtils.getPreferredFont(requireContext())
+        val preferredFont = storyPreferences.font
         val fontChanged = preferredFont != adapter!!.font
         val fontCacheChanged = TextUtils.isEmpty(FontUtils.font) || FontUtils.font != preferredFont
 
@@ -2018,7 +2034,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         }
 
         adapter!!.previewImageMode = previewImageMode
-        adapter!!.showSummary = SettingsUtils.shouldShowStorySummary(requireContext())
+        adapter!!.showSummary = storyPreferences.showSummary
         adapter!!.tintCardUsingPreview = tintCardUsingPreview
         adapter!!.font = preferredFont
 
@@ -2145,6 +2161,7 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
             invalidateAlgoliaLoad()
             queue!!.cancelAll(requestTag)
         }
+        coroutineScope.cancel()
         pendingStoryRowChangeGenerations.clear()
         pendingStoryRemovals.clear()
         clearControllerReferences()
@@ -2512,6 +2529,8 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
 
     private fun invalidateAlgoliaLoad() {
         algoliaRequestGeneration++
+        algoliaLoadJob?.cancel()
+        algoliaLoadJob = null
         algoliaLoading = false
         activeAlgoliaUrl = null
     }
@@ -3774,112 +3793,74 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         if (searching && !stories!!.isEmpty()) {
             clearStories()
         }
-        val stringRequest = StringRequest(
-            Request.Method.GET, url.orEmpty(),
-            Response.Listener { response: String? ->
-                // Parse JSON on background thread
-                BackgroundJSONParser.parseAlgoliaJson(response.orEmpty(), object : AlgoliaParseCallback {
-                    override fun onParseSuccess(parsedStories: MutableList<Story>) {
-                        if (requestGeneration != algoliaRequestGeneration) {
-                            return
-                        }
+        updateHeader()
+        val requestQueue = queue ?: return
+        algoliaLoadJob = coroutineScope.launch {
+            try {
+                val response = requestQueue.getString(url.orEmpty(), shouldCache = false)
+                val parsedStories = BackgroundJSONParser.parseAlgoliaStories(response)
+                if (requestGeneration != algoliaRequestGeneration) return@launch
 
-                        algoliaLoading = false
-                        activeAlgoliaUrl = null
-                        this@StoriesCoordinator.isRefreshIndicatorShowing = false
-                        val preservePaginationForLoadMore = algoliaLoadMoreInProgress
-                        val rawParsedStoryCount = parsedStories.size
+                algoliaLoadJob = null
+                algoliaLoading = false
+                activeAlgoliaUrl = null
+                this@StoriesCoordinator.isRefreshIndicatorShowing = false
+                val preservePaginationForLoadMore = algoliaLoadMoreInProgress
+                val rawParsedStoryCount = parsedStories.size
 
-                        val iterator: MutableIterator<Story> = parsedStories.iterator()
-                        while (iterator.hasNext()) {
-                            val story = iterator.next()
-                            if (story == null) {
-                                iterator.remove()
-                                continue
-                            }
-                            story.clicked = isHistoryExist(story.id)
-                            var shouldRemove = shouldFilterLoadedStory(story)
-
-                            if (!shouldRemove && hideClicked && story.clicked) {
-                                shouldRemove = true
-                            }
-
-                            if (shouldRemove) {
-                                iterator.remove()
-                            }
-                        }
-
-                        loadingFailed = false
-                        loadingFailedServerError = false
-                        loadingFailedRateLimited = false
-                        showingCached = false
-
-                        if (preservePaginationForLoadMore) {
-                            replaceAlgoliaLoadMoreStories(
-                                parsedStories,
-                                canLoadMoreAlgoliaResults(rawParsedStoryCount)
-                            )
-                            loadedTo = stories!!.size - 1
-                            scheduleLoadedPreviewImagePrefetchNearViewport()
-                        } else {
-                            replaceStories(
-                                parsedStories,
-                                false,
-                                canLoadMoreAlgoliaResults(rawParsedStoryCount)
-                            )
-                            loadedTo = stories!!.size - 1
-                            scheduleLoadedPreviewImagePrefetchNearViewport()
-                        }
-                        algoliaLoadMoreInProgress = false
-                        adapter!!.setLoadMoreLoading(false)
-                        algoliaLoadMoreVisibleStoryCount = -1
-                        updateHeader()
-                    }
-
-                    override fun onParseError(error: JSONException) {
-                        if (requestGeneration != algoliaRequestGeneration) {
-                            return
-                        }
-
-                        algoliaLoading = false
-                        activeAlgoliaUrl = null
-                        algoliaLoadMoreInProgress = false
-                        if (adapter != null) {
-                            adapter!!.setLoadMoreLoading(false)
-                        }
-                        algoliaLoadMoreVisibleStoryCount = -1
-                        this@StoriesCoordinator.isRefreshIndicatorShowing = false
-                        error.printStackTrace()
-                    }
-                })
-            }, Response.ErrorListener { error: NetworkError? ->
-                if (requestGeneration != algoliaRequestGeneration) {
-                    return@ErrorListener
+                val iterator = parsedStories.iterator()
+                while (iterator.hasNext()) {
+                    val story = iterator.next()
+                    story.clicked = isHistoryExist(story.id)
+                    val shouldRemove = shouldFilterLoadedStory(story) ||
+                        (hideClicked && story.clicked)
+                    if (shouldRemove) iterator.remove()
                 }
+
+                loadingFailed = false
+                loadingFailedServerError = false
+                loadingFailedRateLimited = false
+                showingCached = false
+
+                if (preservePaginationForLoadMore) {
+                    replaceAlgoliaLoadMoreStories(
+                        parsedStories,
+                        canLoadMoreAlgoliaResults(rawParsedStoryCount),
+                    )
+                } else {
+                    replaceStories(
+                        parsedStories,
+                        false,
+                        canLoadMoreAlgoliaResults(rawParsedStoryCount),
+                    )
+                }
+                loadedTo = stories!!.size - 1
+                scheduleLoadedPreviewImagePrefetchNearViewport()
+                algoliaLoadMoreInProgress = false
+                adapter!!.setLoadMoreLoading(false)
+                algoliaLoadMoreVisibleStoryCount = -1
+                updateHeader()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                if (requestGeneration != algoliaRequestGeneration) return@launch
+                algoliaLoadJob = null
                 algoliaLoading = false
                 activeAlgoliaUrl = null
                 algoliaLoadMoreInProgress = false
-                if (adapter != null) {
-                    adapter!!.setLoadMoreLoading(false)
-                }
+                adapter?.setLoadMoreLoading(false)
                 algoliaLoadMoreVisibleStoryCount = -1
-
-                if (error!!.networkResponse != null && error.networkResponse.statusCode == 404) {
-                    loadingFailedServerError = true
-                }
-                loadingFailedRateLimited = isRateLimitedError(error)
-
+                this@StoriesCoordinator.isRefreshIndicatorShowing = false
                 error.printStackTrace()
-                this.isRefreshIndicatorShowing = false
-                loadingFailed = true
-                updateHeader()
-            })
 
-        updateHeader()
-
-        stringRequest.setShouldCache(false)
-        stringRequest.tag = requestTag
-        queue!!.add<String?>(stringRequest)
+                if (error is NetworkError) {
+                    loadingFailedServerError = error.networkResponse?.statusCode == 404
+                    loadingFailedRateLimited = isRateLimitedError(error)
+                    loadingFailed = true
+                    updateHeader()
+                }
+            }
+        }
     }
 
     private fun registerStoryAdapterDataObservers() {

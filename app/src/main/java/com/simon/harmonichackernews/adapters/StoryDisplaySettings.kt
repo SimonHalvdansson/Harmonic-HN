@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.adapters
 
-import android.content.Context
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.settings.StoryPreferences
 import com.simon.harmonichackernews.ui.stories.StoryListState
 import com.simon.harmonichackernews.utils.SettingsUtils
 
@@ -180,29 +180,29 @@ class StoryDisplaySettings private constructor(
     )
 
     companion object {
-        fun from(context: Context): StoryDisplaySettings {
+        fun from(preferences: StoryPreferences): StoryDisplaySettings {
             return StoryDisplaySettings(
-                SettingsUtils.shouldShowPoints(context),
-                SettingsUtils.shouldUseCompactPoints(context),
-                SettingsUtils.shouldIncludeTopLevelDomain(context),
-                SettingsUtils.shouldShowCommentsCount(context),
-                SettingsUtils.shouldUseCompactView(context),
-                SettingsUtils.shouldShowThumbnails(context),
-                SettingsUtils.getPreferredStoryPreviewImageMode(context),
-                SettingsUtils.shouldUseBorderlessLargeStoryPreviewImage(context),
-                SettingsUtils.shouldShowStorySummary(context),
-                SettingsUtils.getPreferredStoryTextSize(context),
-                SettingsUtils.shouldShowIndex(context),
-                SettingsUtils.shouldUseCompactHeader(context),
-                SettingsUtils.shouldUseLeftAlign(context),
-                SettingsUtils.shouldUseCardStoryDisplayStyle(context),
-                SettingsUtils.shouldTintCardUsingPreview(context),
-                SettingsUtils.getPreferredPaletteTintConfigKey(context),
-                SettingsUtils.shouldGrayOutClicked(context),
-                SettingsUtils.getPreferredHotness(context),
-                SettingsUtils.getPreferredFaviconProvider(context),
-                SettingsUtils.getPreferredFont(context),
-                SettingsUtils.getPreferredCommentTextSize(context)
+                preferences.showPoints,
+                preferences.compactPoints,
+                preferences.includeTopLevelDomain,
+                preferences.showCommentsCount,
+                preferences.compactView,
+                preferences.thumbnails,
+                preferences.previewImageMode,
+                preferences.borderlessLargePreviewImage,
+                preferences.showSummary,
+                preferences.storyTextSize,
+                preferences.showIndex,
+                preferences.compactHeader,
+                preferences.leftAlign,
+                preferences.cardStyle,
+                preferences.tintCardUsingPreview,
+                preferences.paletteTintConfigKey,
+                preferences.grayOutClicked,
+                preferences.hotness,
+                preferences.faviconProvider,
+                preferences.font,
+                preferences.commentTextSize
             )
         }
 

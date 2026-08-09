@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -70,6 +71,7 @@ import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 import java.util.Calendar
 import java.util.Date
+import kotlinx.coroutines.launch
 
 private data class ComposeUserInfo(
     val id: String,
@@ -275,6 +277,7 @@ private fun UserLoadedContent(
     onBlockedChanged: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val ownProfile = user.id.equals(
         AccountUtils.getAccountUsername(context),
         ignoreCase = true,
@@ -294,7 +297,8 @@ private fun UserLoadedContent(
     fun activateNotifications() {
         notificationLoading = true
         notificationStatus = ""
-        RepliesChecker.enable(context, user.id) { success ->
+        coroutineScope.launch {
+            val success = RepliesChecker.enable(context, user.id)
             notificationLoading = false
             notificationsActive = success &&
                 user.id.equals(
