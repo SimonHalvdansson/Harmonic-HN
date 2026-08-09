@@ -62,9 +62,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.Font
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -77,6 +76,8 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.network.AiModelCatalog
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.network.NetworkComponent
@@ -88,11 +89,14 @@ import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.simon.harmonichackernews.network.HttpCall
+import org.jetbrains.compose.resources.Font
 
-private val AiMonoFontFamily = FontFamily(
-    Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
-    Font(R.font.jetbrains_mono_bold, FontWeight.Bold),
-)
+private val AiMonoFontFamily: FontFamily
+    @Composable get() {
+        val regular = Font(Res.font.jetbrains_mono_regular, FontWeight.Normal)
+        val bold = Font(Res.font.jetbrains_mono_bold, FontWeight.Bold)
+        return remember(regular, bold) { FontFamily(regular, bold) }
+    }
 
 private val AiFreeTitleSuffix = Regex("\\s*\\(free\\)\\s*$", RegexOption.IGNORE_CASE)
 
@@ -164,9 +168,7 @@ fun AiSummaryTextDialog(
                     .then(
                         if (maxLines <= 1) {
                             Modifier.height(
-                                androidx.compose.ui.res.dimensionResource(
-                                    R.dimen.compose_settings_dialog_single_line_field_height,
-                                ),
+                                HarmonicDimens.compose_settings_dialog_single_line_field_height,
                             )
                         } else {
                             Modifier
@@ -415,7 +417,7 @@ fun AiModelSelectorDialog(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
-    val requiredModelMessage = stringResource(R.string.ai_model_required)
+    val requiredModelMessage = stringResource(Res.string.ai_model_required)
     var dismissing by remember { mutableStateOf(false) }
 
     fun saveSelection(): Boolean {
@@ -554,7 +556,7 @@ fun AiModelSelectorDialog(
                 .fillMaxHeight(0.92f),
         ) {
             Text(
-                text = stringResource(R.string.ai_model_choose_title),
+                text = stringResource(Res.string.ai_model_choose_title),
                 modifier = Modifier.padding(start = 24.dp, top = 18.dp, end = 24.dp),
                 color = HarmonicTheme.colors.storyNormal,
                 fontFamily = ProductSansFontFamily,
@@ -562,7 +564,7 @@ fun AiModelSelectorDialog(
                 fontSize = 26.sp,
             )
             Text(
-                text = stringResource(R.string.ai_model_catalog_subtitle),
+                text = stringResource(Res.string.ai_model_catalog_subtitle),
                 modifier = Modifier.padding(start = 24.dp, top = 2.dp, end = 24.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp,
@@ -578,11 +580,9 @@ fun AiModelSelectorDialog(
                     .fillMaxWidth()
                     .padding(start = 24.dp, top = 18.dp, end = 24.dp, bottom = 10.dp)
                     .height(
-                        androidx.compose.ui.res.dimensionResource(
-                            R.dimen.compose_settings_dialog_single_line_field_height,
-                        ),
+                        HarmonicDimens.compose_settings_dialog_single_line_field_height,
                     ),
-                label = { Text(stringResource(R.string.ai_model_id_hint)) },
+                label = { Text(stringResource(Res.string.ai_model_id_hint)) },
                 isError = modelError != null,
                 supportingText = modelError?.let { message ->
                     {
@@ -613,8 +613,8 @@ fun AiModelSelectorDialog(
                 val count = (catalogState as? AiModelCatalogState.Loaded)?.models?.size
                 Text(
                     text = count?.let {
-                        pluralStringResource(R.plurals.ai_model_count, it, it)
-                    } ?: stringResource(R.string.ai_model_suggestions),
+                        pluralStringResource(Res.plurals.ai_model_count, it, it)
+                    } ?: stringResource(Res.string.ai_model_suggestions),
                     modifier = Modifier.weight(1f),
                     color = HarmonicTheme.colors.storyNormal,
                     fontFamily = ProductSansFontFamily,
@@ -637,11 +637,11 @@ fun AiModelSelectorDialog(
                             Text(
                                 when (option) {
                                     AiModelFilter.Popular -> stringResource(
-                                        R.string.ai_model_sort_popular,
+                                        Res.string.ai_model_sort_popular,
                                     )
-                                    AiModelFilter.Free -> stringResource(R.string.ai_model_sort_free)
+                                    AiModelFilter.Free -> stringResource(Res.string.ai_model_sort_free)
                                     AiModelFilter.Price -> stringResource(
-                                        R.string.ai_model_sort_price,
+                                        Res.string.ai_model_sort_price,
                                     )
                                 },
                             )
@@ -689,7 +689,7 @@ fun AiModelSelectorDialog(
                         }
 
                         is AiModelCatalogState.Loaded if state.models.isEmpty() ->
-                            Text(stringResource(R.string.ai_model_no_free))
+                            Text(stringResource(Res.string.ai_model_no_free))
 
                         is AiModelCatalogState.Loaded -> LazyColumn(
                             modifier = Modifier
@@ -735,7 +735,7 @@ fun AiModelSelectorDialog(
                         .height(56.dp)
                         .widthIn(min = 94.dp),
                 ) {
-                    Text(stringResource(R.string.ai_model_cancel))
+                    Text(stringResource(Res.string.ai_model_cancel))
                 }
                 Spacer(Modifier.width(8.dp))
                 Button(
@@ -745,7 +745,7 @@ fun AiModelSelectorDialog(
                         .widthIn(min = 123.dp),
                     shapes = ButtonDefaults.shapes(),
                 ) {
-                    Text(stringResource(R.string.ai_model_save))
+                    Text(stringResource(Res.string.ai_model_save))
                 }
             }
         }
@@ -904,7 +904,7 @@ private fun AiModelRow(
                 } else {
                     Text(
                         text = stringResource(
-                            R.string.ai_model_row_price_format,
+                            Res.string.ai_model_row_price_format,
                             model.formattedInputPrice(),
                             model.formattedOutputPrice(),
                         ),

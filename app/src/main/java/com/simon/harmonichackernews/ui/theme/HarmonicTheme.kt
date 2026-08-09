@@ -10,9 +10,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -22,18 +22,30 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.utils.ThemeUtils
+import org.jetbrains.compose.resources.Font
 
-val ProductSansFontFamily = FontFamily(
-    Font(R.font.product_sans_regular, FontWeight.Normal),
-    Font(R.font.product_sans_bold, FontWeight.SemiBold),
-    Font(R.font.product_sans_italic, FontWeight.Normal, FontStyle.Italic),
-)
+val ProductSansFontFamily: FontFamily
+    @Composable get() {
+        val regular = Font(Res.font.product_sans_regular, FontWeight.Normal)
+        val semibold = Font(Res.font.product_sans_bold, FontWeight.SemiBold)
+        val italic = Font(
+            Res.font.product_sans_italic,
+            FontWeight.Normal,
+            FontStyle.Italic,
+        )
+        return remember(regular, semibold, italic) {
+            FontFamily(regular, semibold, italic)
+        }
+    }
 
-val GoogleSansFlexRoundedFontFamily = FontFamily(
-    Font(R.font.google_sans_flex_rounded_regular, FontWeight.Normal),
-    Font(R.font.google_sans_flex_rounded_bold, FontWeight.Bold),
-)
+val GoogleSansFlexRoundedFontFamily: FontFamily
+    @Composable get() {
+        val regular = Font(Res.font.google_sans_flex_rounded_regular, FontWeight.Normal)
+        val bold = Font(Res.font.google_sans_flex_rounded_bold, FontWeight.Bold)
+        return remember(regular, bold) { FontFamily(regular, bold) }
+    }
 
 @Immutable
 data class HarmonicColors(

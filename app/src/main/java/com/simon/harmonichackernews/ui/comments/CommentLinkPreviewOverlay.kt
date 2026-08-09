@@ -71,8 +71,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
@@ -89,6 +89,7 @@ import coil3.asDrawable
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.LinkSummaryLoader
 import com.simon.harmonichackernews.network.NetworkComponent
@@ -192,7 +193,10 @@ internal fun CommentLinkPreviewOverlay(controller: CommentsComposeController) {
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .padding(
+                    horizontal = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
+                    vertical = HarmonicDimens.compose_comment_action_screen_padding_vertical,
+                ),
             contentAlignment = Alignment.Center,
         ) {
             val cardColor = when (state) {
@@ -202,13 +206,11 @@ internal fun CommentLinkPreviewOverlay(controller: CommentsComposeController) {
             Surface(
                 modifier = Modifier
                     .widthIn(
-                        max = dimensionResource(
-                            if (tablet) {
-                                R.dimen.compose_comment_action_tablet_max_width
-                            } else {
-                                R.dimen.compose_comment_action_max_width
-                            },
-                        ),
+                        max = if (tablet) {
+                            HarmonicDimens.compose_comment_action_tablet_max_width
+                        } else {
+                            HarmonicDimens.compose_comment_action_max_width
+                        },
                     )
                     .fillMaxWidth()
                     .onGloballyPositioned { targetBounds = it.boundsInWindow() }
@@ -366,7 +368,11 @@ private fun ReferenceCardContent(
     var imageRatio by remember(url, imageUrl) { mutableFloatStateOf(1f) }
     val offline = summary.error != null && !Utils.isNetworkAvailable(context)
     val retryable = summary.error?.let(::isRetryableReferenceError) == true
-    val errorMessage = summary.error?.let { referenceErrorMessage(context, it) }
+    val offlineMessage = stringResource(Res.string.link_summary_offline_message)
+    val genericErrorMessage = stringResource(Res.string.link_summary_error_message)
+    val errorMessage = summary.error?.let {
+        referenceErrorMessage(offline, it, offlineMessage, genericErrorMessage)
+    }
     val showImage = (summary.loading && !summary.showFallback) || imageUrl != null
 
     Column(
@@ -499,13 +505,13 @@ private fun ReferenceCardContent(
                 ),
             ) {
                 Icon(
-                    painterResource(R.drawable.ic_link),
+                    painterResource(Res.drawable.ic_link),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    stringResource(R.string.link_summary_open_short),
+                    stringResource(Res.string.link_summary_open_short),
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                 )
@@ -560,9 +566,9 @@ private fun ReferencePreviewImage(
                     .build(),
                 contentDescription = stringResource(
                     if (expanded) {
-                        R.string.link_summary_collapse_image
+                        Res.string.link_summary_collapse_image
                     } else {
-                        R.string.link_summary_expand_image
+                        Res.string.link_summary_expand_image
                     },
                 ),
                 modifier = Modifier.fillMaxSize(),
@@ -593,8 +599,8 @@ private fun ReferenceMetadata(
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
                 model = favicon,
-                fallback = painterResource(R.drawable.ic_public),
-                error = painterResource(R.drawable.ic_public),
+                fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
+                error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
                 contentDescription = null,
                 modifier = Modifier.size(17.dp),
             )
@@ -650,7 +656,7 @@ private fun ReferenceErrorContent(
     errorTextSize: Float,
     onRetry: () -> Unit,
 ) {
-    val retryingDescription = stringResource(R.string.link_summary_retrying)
+    val retryingDescription = stringResource(Res.string.link_summary_retrying)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -658,14 +664,14 @@ private fun ReferenceErrorContent(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(
-            painterResource(R.drawable.ic_cloud_off),
+            painterResource(Res.drawable.ic_cloud_off),
             contentDescription = null,
             modifier = Modifier.size(44.dp),
             tint = HarmonicTheme.colors.drawable,
         )
         Text(
             text = stringResource(
-                if (offline) R.string.link_summary_offline_title else R.string.link_summary_error_title,
+                if (offline) Res.string.link_summary_offline_title else Res.string.link_summary_error_title,
             ),
             modifier = Modifier.padding(top = 12.dp),
             color = HarmonicTheme.colors.storyNormal,
@@ -704,13 +710,13 @@ private fun ReferenceErrorContent(
                         shapes = ButtonDefaults.shapes(),
                     ) {
                         Icon(
-                            painterResource(R.drawable.ic_refresh),
+                            painterResource(Res.drawable.ic_refresh),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            stringResource(R.string.link_summary_retry),
+                            stringResource(Res.string.link_summary_retry),
                             fontFamily = ProductSansFontFamily,
                             fontWeight = FontWeight.Bold,
                         )
@@ -795,9 +801,14 @@ private data class ReferenceSummaryUiState(
 private fun isRetryableReferenceError(message: String): Boolean =
     !message.startsWith("This link contains ")
 
-private fun referenceErrorMessage(context: android.content.Context, loaderMessage: String): String {
-    if (!Utils.isNetworkAvailable(context)) {
-        return context.getString(R.string.link_summary_offline_message)
+private fun referenceErrorMessage(
+    offline: Boolean,
+    loaderMessage: String,
+    offlineMessage: String,
+    genericErrorMessage: String,
+): String {
+    if (offline) {
+        return offlineMessage
     }
     return if (
         loaderMessage.startsWith("The page returned HTTP ") ||
@@ -807,7 +818,7 @@ private fun referenceErrorMessage(context: android.content.Context, loaderMessag
     ) {
         loaderMessage
     } else {
-        context.getString(R.string.link_summary_error_message)
+        genericErrorMessage
     }
 }
 

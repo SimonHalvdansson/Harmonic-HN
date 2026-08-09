@@ -64,7 +64,6 @@ abstract class GenerateAdblocklistTask extends DefaultTask {
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -152,22 +151,22 @@ android {
 
     sourceSets {
         debug {
-            java.srcDirs += "src/foss/java"
+            kotlin.srcDirs += "src/foss/java"
         }
         debugFast {
-            java.srcDirs += "src/foss/java"
+            kotlin.srcDirs += "src/foss/java"
         }
         debugLLM {
-            java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/java"
         }
         debugLLMFast {
-            java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/java"
         }
         fossRelease {
-            java.srcDirs += "src/foss/java"
+            kotlin.srcDirs += "src/foss/java"
         }
         playRelease {
-            java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/java"
         }
     }
 
@@ -210,6 +209,8 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation(project(":shared_resources"))
+
     implementation(libs.bundles.androidx.lifecycle)
 
     implementation(libs.androidx.appcompat)
@@ -231,7 +232,6 @@ dependencies {
     implementation(libs.coil.network.ktor3)
     implementation(libs.coil.svg)
     implementation(libs.ksoup)
-    implementation(libs.kmpalette.androidx.palette)
     debugLLMImplementation(libs.mlkit.genai.summarization)
     debugLLMImplementation(libs.play.feature.delivery)
     debugLLMFastImplementation(libs.mlkit.genai.summarization)

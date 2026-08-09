@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.resources.*
+
 import android.text.Html
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,7 +26,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -155,7 +157,7 @@ private fun CommentsSearchContent(
             placeholder = { Text("Search comments") },
             leadingIcon = {
                 Icon(
-                    painter = painterResource(R.drawable.ic_search),
+                    painter = painterResource(Res.drawable.ic_search),
                     contentDescription = null,
                 )
             },

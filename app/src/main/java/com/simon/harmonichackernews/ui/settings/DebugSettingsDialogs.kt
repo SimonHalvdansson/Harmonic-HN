@@ -2,10 +2,14 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+import org.jetbrains.compose.resources.DrawableResource
+
+
+import com.simon.harmonichackernews.resources.*
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.annotation.DrawableRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -26,7 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -181,21 +185,21 @@ fun DebugNotificationsDialog(
                 }
                 DebugNotificationButton(
                     label = "Test notification",
-                    icon = R.drawable.ic_notifications,
+                    icon = Res.drawable.ic_notifications,
                     enabled = username.isNotBlank() && !loading,
                     onClick = { runWithNotificationPermission(DebugNotificationAction.Test) },
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 DebugNotificationButton(
                     label = "Activate",
-                    icon = R.drawable.ic_notifications,
+                    icon = Res.drawable.ic_notifications,
                     enabled = username.isNotBlank() && !loading,
                     onClick = { runWithNotificationPermission(DebugNotificationAction.Enable) },
                 )
                 if (notificationsActive) {
                     DebugNotificationButton(
                         label = "Turn off",
-                        icon = R.drawable.ic_close,
+                        icon = Res.drawable.ic_close,
                         enabled = !loading,
                         onClick = {
                             RepliesChecker.disable(context)
@@ -214,7 +218,7 @@ fun DebugNotificationsDialog(
 @Composable
 private fun DebugNotificationButton(
     label: String,
-    @DrawableRes icon: Int,
+    icon: DrawableResource,
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

@@ -1,7 +1,10 @@
 package com.simon.harmonichackernews.ui.settings
 
+import org.jetbrains.compose.resources.DrawableResource
+
+import com.simon.harmonichackernews.resources.*
+
 import androidx.activity.ComponentActivity
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -41,7 +44,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -239,17 +242,17 @@ private fun BookmarkTransferAnimation() {
         val arrival = (1f - abs(progress - 0.88f) / 0.12f).coerceAtLeast(0f)
 
         TransferTarget(
-            icon = R.drawable.ic_bookmark,
+            icon = Res.drawable.ic_bookmark,
             modifier = Modifier.align(Alignment.CenterStart),
         )
         TransferTarget(
-            icon = R.drawable.ic_star_filled,
+            icon = Res.drawable.ic_star_filled,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .scale(1f + 0.08f * arrival),
         )
         Icon(
-            painter = painterResource(R.drawable.ic_newspaper),
+            painter = painterResource(Res.drawable.ic_newspaper),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier
@@ -263,7 +266,7 @@ private fun BookmarkTransferAnimation() {
 
 @Composable
 private fun TransferTarget(
-    @DrawableRes icon: Int,
+    icon: DrawableResource,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -305,7 +308,7 @@ private fun BookmarkFavoriteResultsDialog(
                     ) {
                         Icon(
                             painter = painterResource(
-                                if (result.successful) R.drawable.ic_check else R.drawable.ic_close,
+                                if (result.successful) Res.drawable.ic_check else Res.drawable.ic_close,
                             ),
                             contentDescription = null,
                             tint = if (result.successful) {

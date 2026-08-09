@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.content
 
+import com.simon.harmonichackernews.resources.*
+
 import android.text.Html
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -48,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.RectangleShape
@@ -61,7 +64,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.AnnotatedString
@@ -800,8 +803,8 @@ private fun RuntimeReferenceRow(
                     SettingsUtils.getPreferredFaviconProvider(context),
                 )
             }.getOrNull(),
-            fallback = painterResource(R.drawable.ic_public),
-            error = painterResource(R.drawable.ic_public),
+            fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
+            error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
             contentDescription = null,
             modifier = Modifier
                 .padding(end = 8.dp)
@@ -1060,11 +1063,12 @@ private fun CollectedReferenceRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
-            painter = painterResource(R.drawable.ic_public),
+            painter = painterResource(Res.drawable.ic_public),
             contentDescription = null,
             modifier = Modifier
                 .padding(end = 8.dp)
                 .size(17.dp),
+            colorFilter = ColorFilter.tint(colors.drawable),
         )
         Text(
             text = model.referenceMarker,

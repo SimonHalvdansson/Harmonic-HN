@@ -2,6 +2,9 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+
+import com.simon.harmonichackernews.resources.*
+
 import android.content.Context
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -25,7 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
@@ -217,7 +220,7 @@ fun AiSummarySettingsScreen(
                 SettingRow(
                     title = "Base URL",
                     summary = baseUrl,
-                    icon = R.drawable.ic_link,
+                    icon = Res.drawable.ic_link,
                     enabled = cloudMode,
                     onClick = { dialog = "base_url" },
                 )
@@ -229,7 +232,7 @@ fun AiSummarySettingsScreen(
                     } else {
                         apiKey.take(8) + "…"
                     },
-                    icon = R.drawable.ic_key,
+                    icon = Res.drawable.ic_key,
                     enabled = cloudMode,
                     onClick = { dialog = "api_key" },
                 )
@@ -237,7 +240,7 @@ fun AiSummarySettingsScreen(
                 SettingRow(
                     title = "Model",
                     summary = model.ifBlank { "Finding a recommended model…" },
-                    icon = R.drawable.ic_hard_drive,
+                    icon = Res.drawable.ic_hard_drive,
                     enabled = cloudMode,
                     onClick = { dialog = "model" },
                 )
@@ -245,7 +248,7 @@ fun AiSummarySettingsScreen(
                 SettingRow(
                     title = "System prompt",
                     summary = systemPrompt,
-                    icon = R.drawable.ic_subject,
+                    icon = Res.drawable.ic_subject,
                     summaryFontSizeSp = 13f,
                     summaryLineHeightSp = 17f,
                     summaryMaxLines = 10,
@@ -255,7 +258,7 @@ fun AiSummarySettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Stream responses",
-                    icon = R.drawable.ic_stream,
+                    icon = Res.drawable.ic_stream,
                     checked = prefs.getBoolean(KeyAiStream, true),
                     enabled = cloudMode,
                     onCheckedChange = {
@@ -349,7 +352,8 @@ private fun LocalModelsPanel(
             SettingRow(
                 title = model.displayName,
                 summary = summary,
-                icon = model.iconResId,
+                icon = null,
+                androidIcon = model.iconResId,
                 enabled = supported && (!isNano || nanoAvailabilityResolved),
                 onClick = {
                     if (selectable) {
@@ -361,7 +365,7 @@ private fun LocalModelsPanel(
                     if (isNano) {
                         if (selectable && selectedModel.id == model.id) {
                             Icon(
-                                painter = painterResource(R.drawable.ic_check),
+                                painter = painterResource(Res.drawable.ic_check),
                                 contentDescription = "Selected",
                             )
                         }
@@ -417,22 +421,22 @@ private fun LocalModelAction(
         modelStatus.state == LocalModelManager.State.DOWNLOADING ||
             modelStatus.state == LocalModelManager.State.WAITING
     val icon = when {
-        runtimeActiveForModel || modelDownloadActive -> R.drawable.ic_close
+        runtimeActiveForModel || modelDownloadActive -> Res.drawable.ic_close
         modelStatus.state == LocalModelManager.State.DOWNLOADED &&
-            runtimeInstalled -> R.drawable.ic_delete
+            runtimeInstalled -> Res.drawable.ic_delete
 
-        else -> R.drawable.ic_file_download
+        else -> Res.drawable.ic_file_download
     }
     val description = when (icon) {
-        R.drawable.ic_close -> "Cancel download"
-        R.drawable.ic_delete -> "Delete model"
+        Res.drawable.ic_close -> "Cancel download"
+        Res.drawable.ic_delete -> "Delete model"
         else -> "Download model"
     }
 
     Column {
         if (selected) {
             Icon(
-                painter = painterResource(R.drawable.ic_check),
+                painter = painterResource(Res.drawable.ic_check),
                 contentDescription = "Selected",
             )
         }

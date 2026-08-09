@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.resources.*
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -99,7 +101,7 @@ fun DataSettingsScreen(
             SettingsCategory("Bookmarks") {
                 SwitchSettingRow(
                     title = "Enable bookmarks",
-                    icon = R.drawable.ic_bookmark,
+                    icon = Res.drawable.ic_bookmark,
                     checked = bookmarksEnabled,
                     onCheckedChange = {
                         prefs.edit()
@@ -115,7 +117,7 @@ fun DataSettingsScreen(
                         !loggedIn -> "Login needed"
                         else -> formatBookmarkCount(bookmarkCount)
                     },
-                    icon = R.drawable.ic_star,
+                    icon = Res.drawable.ic_star,
                     enabled = bookmarksEnabled && hasBookmarks && loggedIn,
                     onClick = {
                         favoriteIds = Utils.loadBookmarks(context, true)
@@ -127,7 +129,7 @@ fun DataSettingsScreen(
                 SettingRow(
                     title = "Export bookmarks",
                     summary = "Save newline separated .txt file with IDs",
-                    icon = R.drawable.ic_bookmark,
+                    icon = Res.drawable.ic_bookmark,
                     enabled = bookmarksEnabled,
                     onClick = {
                         if (!hasBookmarks) {
@@ -144,7 +146,7 @@ fun DataSettingsScreen(
                 SettingsDivider()
                 SettingRow(
                     title = "Import bookmarks",
-                    icon = R.drawable.ic_bookmark_filled,
+                    icon = Res.drawable.ic_bookmark_filled,
                     enabled = bookmarksEnabled,
                     onClick = { dialog = "import" },
                 )
@@ -155,7 +157,7 @@ fun DataSettingsScreen(
             SettingsCategory("Storage") {
                 SettingRow(
                     title = "Clear clicked stories (${HistoriesUtils.loadHistories(context, false).size})",
-                    icon = R.drawable.ic_close,
+                    icon = Res.drawable.ic_close,
                     onClick = {
                         val oldCount = HistoriesUtils.loadHistories(context, false).size
                         HistoriesUtils.clearHistories(context)
@@ -171,7 +173,7 @@ fun DataSettingsScreen(
                 SettingsDivider()
                 SettingRow(
                     title = "Clear post cache (${Utils.getCachedPostCount(context)})",
-                    icon = R.drawable.ic_cached,
+                    icon = Res.drawable.ic_cached,
                     onClick = {
                         val oldCount = Utils.clearPostCache(context)
                         localRefresh++
@@ -189,7 +191,7 @@ fun DataSettingsScreen(
                     title = "Clear tint cache (" +
                         StoryPreviewImageLoader.getCachedPreviewImageTintColorCount(context) +
                         ")",
-                    icon = R.drawable.ic_palette,
+                    icon = Res.drawable.ic_palette,
                     onClick = {
                         PreviewImageTintUtils.clearTintColorCaches(context)
                         localRefresh++
@@ -203,19 +205,19 @@ fun DataSettingsScreen(
             SettingsCategory("Other") {
                 SettingRow(
                     title = "Open Hacker News links in Harmonic",
-                    icon = R.drawable.ic_web_asset,
+                    icon = Res.drawable.ic_web_asset,
                     onClick = { dialog = "links" },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Reset all settings",
-                    icon = R.drawable.ic_refresh,
+                    icon = Res.drawable.ic_refresh,
                     onClick = { dialog = "reset" },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Show update changelogs",
-                    icon = R.drawable.ic_system_update_alt,
+                    icon = Res.drawable.ic_system_update_alt,
                     checked = prefs.getBoolean("pref_show_changelog", true),
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_show_changelog", it).apply()

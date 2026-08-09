@@ -5,6 +5,9 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+
+import com.simon.harmonichackernews.resources.*
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,9 +54,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -68,6 +70,8 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.FontUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
+import org.jetbrains.compose.resources.Font
+import org.jetbrains.compose.resources.stringArrayResource
 import com.simon.harmonichackernews.utils.Utils
 
 private val PreloadWebViewOptions = listOf(
@@ -82,13 +86,8 @@ fun FontSelectionDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val resources = LocalResources.current
-    val labels = remember(resources) {
-        resources.getStringArray(R.array.font_entries).toList()
-    }
-    val values = remember(resources) {
-        resources.getStringArray(R.array.font_values).toList()
-    }
+    val labels = stringArrayResource(Res.array.font_entries)
+    val values = stringArrayResource(Res.array.font_values)
     val options = remember(labels, values) { labels.zip(values) }
     val selected = if (readerMode) {
         SettingsUtils.getPreferredReaderModeFont(context)
@@ -454,7 +453,7 @@ private fun StringListEditorDialog(
                         shapes = IconButtonDefaults.shapes(),
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_add),
+                            painter = painterResource(Res.drawable.ic_add),
                             contentDescription = "Add",
                             tint = HarmonicTheme.colors.drawable,
                         )
@@ -505,7 +504,7 @@ private fun StringListEditorDialog(
                                     shapes = IconButtonDefaults.shapes(),
                                 ) {
                                     Icon(
-                                        painter = painterResource(R.drawable.ic_close),
+                                        painter = painterResource(Res.drawable.ic_close),
                                         contentDescription = "Remove $item",
                                         tint = HarmonicTheme.colors.drawable,
                                     )
@@ -575,14 +574,10 @@ fun UserTagDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(
-                        horizontal = dimensionResource(
-                            R.dimen.compose_settings_dialog_content_padding,
-                        ),
+                        horizontal = HarmonicDimens.compose_settings_dialog_content_padding,
                     )
                     .padding(
-                        bottom = dimensionResource(
-                            R.dimen.compose_settings_dialog_content_padding,
-                        ),
+                        bottom = HarmonicDimens.compose_settings_dialog_content_padding,
                     ),
             ) {
                 OutlinedTextField(
@@ -591,9 +586,7 @@ fun UserTagDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(
-                            dimensionResource(
-                                R.dimen.compose_settings_dialog_single_line_field_height,
-                            ),
+                            HarmonicDimens.compose_settings_dialog_single_line_field_height,
                         )
                         .focusRequester(focusRequester),
                     label = { Text("Tag") },
@@ -605,9 +598,7 @@ fun UserTagDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            top = dimensionResource(
-                                R.dimen.compose_settings_tag_field_button_gap,
-                            ),
+                            top = HarmonicDimens.compose_settings_tag_field_button_gap,
                         ),
                     horizontalArrangement = Arrangement.End,
                 ) {
@@ -615,37 +606,27 @@ fun UserTagDialog(
                         onClick = onDismiss,
                         modifier = Modifier
                             .height(
-                                dimensionResource(
-                                    R.dimen.compose_settings_tag_button_height,
-                                ),
+                                HarmonicDimens.compose_settings_tag_button_height,
                             )
                             .widthIn(
-                                min = dimensionResource(
-                                    R.dimen.compose_settings_tag_cancel_button_min_width,
-                                ),
+                                min = HarmonicDimens.compose_settings_tag_cancel_button_min_width,
                             ),
                     ) {
                         Text("Cancel")
                     }
                     Spacer(
                         Modifier.width(
-                            dimensionResource(
-                                R.dimen.compose_settings_tag_button_gap,
-                            ),
+                            HarmonicDimens.compose_settings_tag_button_gap,
                         ),
                     )
                     SettingsDialogOutlinedButton(
                         onClick = { saveTag() },
                         modifier = Modifier
                             .height(
-                                dimensionResource(
-                                    R.dimen.compose_settings_tag_button_height,
-                                ),
+                                HarmonicDimens.compose_settings_tag_button_height,
                             )
                             .widthIn(
-                                min = dimensionResource(
-                                    R.dimen.compose_settings_tag_button_min_width,
-                                ),
+                                min = HarmonicDimens.compose_settings_tag_button_min_width,
                             ),
                     ) {
                         Text("Set")
@@ -666,39 +647,40 @@ private fun parseCommaSeparatedItems(value: String): List<String> {
         .distinctBy(String::lowercase)
 }
 
+@Composable
 private fun fontFamilyForSetting(value: String): FontFamily {
     return when (value) {
         "googlesansflexrounded" -> FontFamily(
-            Font(R.font.google_sans_flex_rounded_regular, FontWeight.Normal),
-            Font(R.font.google_sans_flex_rounded_bold, FontWeight.Bold),
+            Font(Res.font.google_sans_flex_rounded_regular, FontWeight.Normal),
+            Font(Res.font.google_sans_flex_rounded_bold, FontWeight.Bold),
         )
         "googlesans" -> FontFamily(
-            Font(R.font.google_sans_regular, FontWeight.Normal),
-            Font(R.font.google_sans_bold, FontWeight.Bold),
+            Font(Res.font.google_sans_regular, FontWeight.Normal),
+            Font(Res.font.google_sans_bold, FontWeight.Bold),
         )
         "productsans" -> FontFamily(
-            Font(R.font.product_sans_regular, FontWeight.Normal),
-            Font(R.font.product_sans_bold, FontWeight.Bold),
+            Font(Res.font.product_sans_regular, FontWeight.Normal),
+            Font(Res.font.product_sans_bold, FontWeight.Bold),
         )
         "verdana" -> FontFamily(
-            Font(R.font.verdana_regular, FontWeight.Normal),
-            Font(R.font.verdana_bold, FontWeight.Bold),
+            Font(Res.font.verdana_regular, FontWeight.Normal),
+            Font(Res.font.verdana_bold, FontWeight.Bold),
         )
         "jetbrainsmono" -> FontFamily(
-            Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
-            Font(R.font.jetbrains_mono_bold, FontWeight.Bold),
+            Font(Res.font.jetbrains_mono_regular, FontWeight.Normal),
+            Font(Res.font.jetbrains_mono_bold, FontWeight.Bold),
         )
         "googlesanscode" -> FontFamily(
-            Font(R.font.google_sans_code_regular, FontWeight.Normal),
-            Font(R.font.google_sans_code_bold, FontWeight.Bold),
+            Font(Res.font.google_sans_code_regular, FontWeight.Normal),
+            Font(Res.font.google_sans_code_regular, FontWeight.Bold),
         )
         "georgia" -> FontFamily(
-            Font(R.font.georgia_regular, FontWeight.Normal),
-            Font(R.font.georgia_bold, FontWeight.Bold),
+            Font(Res.font.georgia_regular, FontWeight.Normal),
+            Font(Res.font.georgia_bold, FontWeight.Bold),
         )
         "robotoslab" -> FontFamily(
-            Font(R.font.roboto_slab_regular, FontWeight.Normal),
-            Font(R.font.roboto_slab_bold, FontWeight.Bold),
+            Font(Res.font.roboto_slab_regular, FontWeight.Normal),
+            Font(Res.font.roboto_slab_bold, FontWeight.Bold),
         )
         else -> FontFamily.SansSerif
     }

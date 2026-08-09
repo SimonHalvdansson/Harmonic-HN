@@ -2,6 +2,9 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+
+import com.simon.harmonichackernews.resources.*
+
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -14,7 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.Utils
@@ -46,26 +49,26 @@ fun FiltersTagsSettingsScreen(
             SettingsCategory("Filters") {
                 SettingRow(
                     title = "Filter by story title",
-                    icon = R.drawable.ic_title,
+                    icon = Res.drawable.ic_title,
                     onClick = { filterDialog = "title" },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Filter by domain",
-                    icon = R.drawable.ic_public,
+                    icon = Res.drawable.ic_public,
                     onClick = { filterDialog = "domain" },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Blocked users",
-                    icon = R.drawable.ic_person,
+                    icon = Res.drawable.ic_person,
                     onClick = { filterDialog = "users" },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Hide job posts",
                     summary = "Includes \"Who is hiring\" posts",
-                    icon = R.drawable.ic_action_work_off,
+                    icon = Res.drawable.ic_action_work_off,
                     checked = prefs.getBoolean("pref_hide_jobs", false),
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_hide_jobs", it).apply()
@@ -91,7 +94,7 @@ fun FiltersTagsSettingsScreen(
                             } else {
                                 "${entry.key} (${entry.value})"
                             },
-                            icon = R.drawable.ic_person,
+                            icon = Res.drawable.ic_person,
                             onClick = { profileUser = entry.key },
                             trailing = {
                                 Row {
@@ -100,7 +103,7 @@ fun FiltersTagsSettingsScreen(
                                         shapes = IconButtonDefaults.shapes(),
                                     ) {
                                         Icon(
-                                            painter = painterResource(R.drawable.ic_edit),
+                                            painter = painterResource(Res.drawable.ic_edit),
                                             contentDescription = "Edit tag",
                                         )
                                     }
@@ -112,7 +115,7 @@ fun FiltersTagsSettingsScreen(
                                         shapes = IconButtonDefaults.shapes(),
                                     ) {
                                         Icon(
-                                            painter = painterResource(R.drawable.ic_delete),
+                                            painter = painterResource(Res.drawable.ic_delete),
                                             contentDescription = "Delete tag",
                                         )
                                     }

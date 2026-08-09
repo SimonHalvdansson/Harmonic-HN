@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.resources.*
+
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
@@ -117,7 +119,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Borderless large image",
-                    icon = R.drawable.ic_fullscreen,
+                    icon = Res.drawable.ic_fullscreen,
                     checked = borderlessLarge,
                     enabled = previewImageMode == SettingsUtils.STORY_PREVIEW_IMAGE_LARGE,
                     onCheckedChange = {
@@ -166,7 +168,7 @@ fun StoriesSettingsScreen(
                 SwitchSettingRow(
                     title = "Tint",
                     summary = "Uses preview or favicon",
-                    icon = R.drawable.ic_palette,
+                    icon = Res.drawable.ic_palette,
                     checked = tint,
                     onCheckedChange = {
                         prefs.edit()
@@ -178,7 +180,7 @@ fun StoriesSettingsScreen(
                 SwitchSettingRow(
                     title = "Compact stories",
                     summary = "Hides points, domain and time",
-                    icon = R.drawable.ic_view_agenda,
+                    icon = Res.drawable.ic_view_agenda,
                     checked = compact,
                     onCheckedChange = {
                         prefs.edit().putBoolean(KeyCompactView, it).apply()
@@ -187,7 +189,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Show summary",
-                    icon = R.drawable.ic_subject,
+                    icon = Res.drawable.ic_subject,
                     checked = showSummary,
                     onCheckedChange = {
                         prefs.edit()
@@ -198,7 +200,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Show story thumbnails",
-                    icon = R.drawable.ic_public,
+                    icon = Res.drawable.ic_public,
                     checked = showThumbnails,
                     enabled = !compact,
                     onCheckedChange = {
@@ -208,7 +210,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Show story points",
-                    icon = R.drawable.ic_thumbs_up_down,
+                    icon = Res.drawable.ic_thumbs_up_down,
                     checked = showPoints,
                     enabled = !compact,
                     onCheckedChange = {
@@ -218,7 +220,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Compact points",
-                    icon = R.drawable.ic_thumb_up,
+                    icon = Res.drawable.ic_thumb_up,
                     checked = compactPoints,
                     enabled = !compact && showPoints,
                     onCheckedChange = {
@@ -230,7 +232,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Include top level domain",
-                    icon = R.drawable.ic_public,
+                    icon = Res.drawable.ic_public,
                     checked = includeTld,
                     enabled = !compact,
                     onCheckedChange = {
@@ -243,7 +245,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Show comment count",
-                    icon = R.drawable.ic_comment,
+                    icon = Res.drawable.ic_comment,
                     checked = showComments,
                     enabled = !compact,
                     onCheckedChange = {
@@ -253,7 +255,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Show story indices",
-                    icon = R.drawable.ic_format_list_numbered,
+                    icon = Res.drawable.ic_format_list_numbered,
                     checked = showIndex,
                     onCheckedChange = {
                         prefs.edit().putBoolean(KeyShowIndex, it).apply()
@@ -263,7 +265,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Left align comments button",
-                    icon = R.drawable.ic_pan_tool,
+                    icon = Res.drawable.ic_pan_tool,
                     checked = leftAlign,
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_left_align", it).apply()
@@ -273,7 +275,7 @@ fun StoriesSettingsScreen(
                 SettingRow(
                     title = "Highlight hot stories",
                     summary = hotnessLabel(hotness),
-                    icon = R.drawable.ic_whatshot,
+                    icon = Res.drawable.ic_whatshot,
                     onClick = { dialog = "hotness" },
                 )
             }
@@ -284,7 +286,7 @@ fun StoriesSettingsScreen(
                 SettingRow(
                     title = "Starting page",
                     summary = prefs.getString("pref_default_story_type", "Top Stories"),
-                    icon = R.drawable.ic_bookmark,
+                    icon = Res.drawable.ic_bookmark,
                     onClick = { dialog = "starting_page" },
                 )
                 SettingsDivider()
@@ -293,14 +295,14 @@ fun StoriesSettingsScreen(
                     summary = SettingsUtils.summarizeAdditionalFrontpages(
                         additionalFrontpages,
                     ),
-                    icon = R.drawable.ic_library_books,
+                    icon = Res.drawable.ic_library_books,
                     onClick = { dialog = "frontpages" },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Always open comments",
                     summary = "Clicking a story takes you directly to the comments view",
-                    icon = R.drawable.ic_keyboard_double_arrow_right,
+                    icon = Res.drawable.ic_keyboard_double_arrow_right,
                     checked = prefs.getBoolean("pref_always_open_comments", false),
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_always_open_comments", it).apply()
@@ -310,7 +312,7 @@ fun StoriesSettingsScreen(
                 SwitchSettingRow(
                     title = "Use pagination",
                     summary = "Load 30 stories at a time",
-                    icon = R.drawable.ic_swipe_vertical,
+                    icon = Res.drawable.ic_swipe_vertical,
                     checked = prefs.getBoolean("pref_pagination_mode", false),
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_pagination_mode", it).apply()
@@ -319,7 +321,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Hide clicked posts",
-                    icon = R.drawable.ic_visibility_off,
+                    icon = Res.drawable.ic_visibility_off,
                     checked = hideClicked,
                     onCheckedChange = {
                         prefs.edit()
@@ -331,7 +333,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Gray out clicked posts",
-                    icon = R.drawable.ic_visibility,
+                    icon = Res.drawable.ic_visibility,
                     checked = prefs.getBoolean(SettingsUtils.PREF_GRAY_OUT_CLICKED, true),
                     enabled = !hideClicked,
                     onCheckedChange = {
@@ -344,7 +346,8 @@ fun StoriesSettingsScreen(
                 SettingRow(
                     title = "Favicon provider",
                     summary = SettingsUtils.getPreferredFaviconProvider(context),
-                    icon = SettingsUtils.getFaviconProviderIconResource(
+                    icon = null,
+                    androidIcon = SettingsUtils.getFaviconProviderIconResource(
                         SettingsUtils.getPreferredFaviconProvider(context),
                     ),
                     iconTint = Color.Unspecified,

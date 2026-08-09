@@ -16,12 +16,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
@@ -47,25 +48,23 @@ fun CacheStoriesDialog(
         mutableFloatStateOf(SettingsUtils.sanitizeStoriesToCache(initialStoryCount).toFloat())
     }
     val sanitizedStoryCount = SettingsUtils.sanitizeStoriesToCache(storyCount.toInt())
-    val sliderDescription = stringResource(R.string.cache_stories_slider_content_description)
+    val sliderDescription = stringResource(Res.string.cache_stories_slider_content_description)
 
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
-        title = { SettingsDialogTitle(stringResource(R.string.cache_stories_title)) },
+        title = { SettingsDialogTitle(stringResource(Res.string.cache_stories_title)) },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(
-                        top = dimensionResource(R.dimen.cache_stories_explanation_top_padding),
+                        top = HarmonicDimens.cache_stories_explanation_top_padding,
                     ),
             ) {
                 Text(
-                    text = stringResource(R.string.cache_stories_explanation),
+                    text = stringResource(Res.string.cache_stories_explanation),
                     modifier = Modifier.padding(
-                        bottom = dimensionResource(
-                            R.dimen.cache_stories_explanation_bottom_padding,
-                        ),
+                        bottom = HarmonicDimens.cache_stories_explanation_bottom_padding,
                     ),
                     color = HarmonicTheme.colors.textPrimary,
                     style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
@@ -76,7 +75,7 @@ fun CacheStoriesDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = stringResource(R.string.cache_stories_count_label),
+                        text = stringResource(Res.string.cache_stories_count_label),
                         modifier = Modifier.weight(1f),
                         color = HarmonicTheme.colors.textPrimary,
                         style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
@@ -84,7 +83,7 @@ fun CacheStoriesDialog(
                     )
                     Spacer(
                         Modifier.width(
-                            dimensionResource(R.dimen.cache_stories_value_start_spacing),
+                            HarmonicDimens.cache_stories_value_start_spacing,
                         ),
                     )
                     Text(
@@ -103,7 +102,7 @@ fun CacheStoriesDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            top = dimensionResource(R.dimen.cache_stories_slider_top_padding),
+                            top = HarmonicDimens.cache_stories_slider_top_padding,
                         )
                         .semantics { contentDescription = sliderDescription },
                     valueRange = minimum.toFloat()..maximum.toFloat(),
@@ -113,14 +112,14 @@ fun CacheStoriesDialog(
         },
         dismissButton = {
             SettingsDialogTextButton(onClick = onDismiss) {
-                Text(stringResource(android.R.string.cancel))
+                Text(stringResource(Res.string.common_cancel))
             }
         },
         confirmButton = {
             SettingsDialogTextButton(
                 onClick = { onConfirm(sanitizedStoryCount) },
             ) {
-                Text(stringResource(R.string.cache_stories_action))
+                Text(stringResource(Res.string.cache_stories_action))
             }
         },
     )

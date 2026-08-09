@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.about
 
+import com.simon.harmonichackernews.resources.*
+
 import android.graphics.Bitmap
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.foundation.Image
@@ -39,7 +41,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -146,22 +148,22 @@ fun AboutScreen(
 
             AboutActionButton(
                 text = "Harmonic on GitHub",
-                icon = painterResource(R.drawable.ic_link_preview_github),
+                icon = painterResource(Res.drawable.ic_link_preview_github),
                 onClick = onOpenGithub,
             )
             AboutActionButton(
                 text = "Changelog",
-                icon = painterResource(R.drawable.ic_system_update_alt),
+                icon = painterResource(Res.drawable.ic_system_update_alt),
                 onClick = onOpenChangelog,
             )
             AboutActionButton(
                 text = "Licenses",
-                icon = painterResource(R.drawable.ic_attribution),
+                icon = painterResource(Res.drawable.ic_attribution),
                 onClick = onOpenLicenses,
             )
             AboutActionButton(
                 text = "Privacy policy",
-                icon = painterResource(R.drawable.ic_policy),
+                icon = painterResource(Res.drawable.ic_policy),
                 onClick = onOpenPrivacy,
             )
         }
@@ -242,7 +244,7 @@ private fun FeedbackCard() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
-            painter = painterResource(R.drawable.ic_link_preview_github),
+            painter = painterResource(Res.drawable.ic_link_preview_github),
             contentDescription = null,
             modifier = Modifier
                 .size(24.dp)

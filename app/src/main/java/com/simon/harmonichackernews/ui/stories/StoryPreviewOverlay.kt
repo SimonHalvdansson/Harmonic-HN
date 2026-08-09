@@ -5,6 +5,11 @@
 
 package com.simon.harmonichackernews.ui.stories
 
+import org.jetbrains.compose.resources.DrawableResource
+
+
+import com.simon.harmonichackernews.resources.*
+
 import android.text.Html
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
@@ -76,7 +81,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
@@ -278,7 +283,10 @@ internal fun StoryPreviewOverlay(controller: StoriesComposeController) {
                 modifier = Modifier
                     .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(horizontal = 20.dp, vertical = 24.dp)
+                    .padding(
+                        horizontal = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
+                        vertical = HarmonicDimens.compose_comment_action_screen_padding_vertical,
+                    )
                     .graphicsLayer(alpha = pageAlpha),
                 contentAlignment = Alignment.Center,
             ) {
@@ -287,16 +295,14 @@ internal fun StoryPreviewOverlay(controller: StoriesComposeController) {
                     story = state.stories[page],
                     page = page,
                     cardColor = Color(state.cardColors[page]),
-                    modifier = Modifier
-                        .widthIn(
-                            max = dimensionResource(
-                                if (Utils.isTablet(context.resources)) {
-                                    R.dimen.compose_comment_action_tablet_max_width
+                        modifier = Modifier
+                            .widthIn(
+                                max = if (Utils.isTablet(context.resources)) {
+                                    HarmonicDimens.compose_comment_action_tablet_max_width
                                 } else {
-                                    R.dimen.compose_comment_action_max_width
+                                    HarmonicDimens.compose_comment_action_max_width
                                 },
-                            ),
-                        )
+                            )
                         .fillMaxWidth()
                         .then(
                             if (page == pagerState.currentPage) {
@@ -485,9 +491,18 @@ private fun StoryPreviewCard(
                                 model = faviconUrl,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
-                                placeholder = painterResource(R.drawable.ic_public),
-                                error = painterResource(R.drawable.ic_public),
-                                fallback = painterResource(R.drawable.ic_public),
+                                placeholder = tintedPainterResource(
+                                    Res.drawable.ic_public,
+                                    HarmonicTheme.colors.drawable,
+                                ),
+                                error = tintedPainterResource(
+                                    Res.drawable.ic_public,
+                                    HarmonicTheme.colors.drawable,
+                                ),
+                                fallback = tintedPainterResource(
+                                    Res.drawable.ic_public,
+                                    HarmonicTheme.colors.drawable,
+                                ),
                             )
                             Spacer(Modifier.width(6.dp))
                         }
@@ -543,24 +558,24 @@ private fun StoryPreviewCard(
                 ) {
                     if (hasAccount) {
                         StoryPreviewActionIcon(
-                            icon = if (upvoted) R.drawable.ic_thumb_up_filled else R.drawable.ic_thumb_up,
+                            icon = if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up,
                             description = if (upvoted) "Remove upvote" else "Upvote",
                             loading = voteLoading,
                         ) { controller.onStoryPreviewAction(page, StoriesComposeController.STORY_PREVIEW_ACTION_VOTE) }
                     }
                     StoryPreviewActionIcon(
-                        icon = if (story.clicked) R.drawable.ic_visibility_off else R.drawable.ic_visibility,
+                        icon = if (story.clicked) Res.drawable.ic_visibility_off else Res.drawable.ic_visibility,
                         description = if (story.clicked) "Mark as unread" else "Mark as read",
                     ) { controller.onStoryPreviewAction(page, StoriesComposeController.STORY_PREVIEW_ACTION_READ) }
                     if (bookmarksEnabled) {
                         StoryPreviewActionIcon(
-                            icon = if (bookmarked) R.drawable.ic_bookmark_filled else R.drawable.ic_bookmark,
+                            icon = if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark,
                             description = if (bookmarked) "Remove bookmark" else "Bookmark",
                         ) { controller.onStoryPreviewAction(page, StoriesComposeController.STORY_PREVIEW_ACTION_BOOKMARK) }
                     }
                     if (hasAccount) {
                         StoryPreviewActionIcon(
-                            icon = if (favorited) R.drawable.ic_star_filled else R.drawable.ic_star,
+                            icon = if (favorited) Res.drawable.ic_star_filled else Res.drawable.ic_star,
                             description = if (favorited) "Remove favorite" else "Favorite",
                             loading = favoriteLoading,
                         ) { controller.onStoryPreviewAction(page, StoriesComposeController.STORY_PREVIEW_ACTION_FAVORITE) }
@@ -581,7 +596,7 @@ private fun StoryPreviewCard(
                         ),
                     ) {
                         Icon(
-                            painterResource(R.drawable.ic_comment),
+                            painterResource(Res.drawable.ic_comment),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
                         )
@@ -601,7 +616,7 @@ private fun StoryPreviewCard(
 
 @Composable
 private fun RowScope.StoryPreviewActionIcon(
-    icon: Int,
+    icon: DrawableResource,
     description: String,
     loading: Boolean = false,
     onClick: () -> Unit,
@@ -635,7 +650,7 @@ private fun RowScope.StoryPreviewActionIcon(
 }
 
 private data class StoryPreviewActionVisual(
-    val icon: Int,
+    val icon: DrawableResource,
     val description: String,
     val loading: Boolean,
 )

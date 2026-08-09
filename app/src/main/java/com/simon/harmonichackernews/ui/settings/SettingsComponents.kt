@@ -2,9 +2,12 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+import org.jetbrains.compose.resources.DrawableResource
+
+
+import com.simon.harmonichackernews.resources.*
+
 import android.view.WindowManager
-import androidx.annotation.DimenRes
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -74,7 +77,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.painterResource as androidPainterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -83,6 +87,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -96,19 +101,19 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 private data class SettingsListEntry(
     val section: SettingsSection,
-    @DrawableRes val icon: Int,
+    val icon: DrawableResource,
 )
 
 private val MainSettingsEntries = listOf(
-    SettingsListEntry(SettingsSection.Appearance, R.drawable.ic_style),
-    SettingsListEntry(SettingsSection.Stories, R.drawable.ic_newspaper),
-    SettingsListEntry(SettingsSection.Comments, R.drawable.ic_comment),
-    SettingsListEntry(SettingsSection.WebLinks, R.drawable.ic_web_asset),
-    SettingsListEntry(SettingsSection.FiltersTags, R.drawable.ic_filter_list),
-    SettingsListEntry(SettingsSection.AiSummary, R.drawable.ic_auto_awesome),
-    SettingsListEntry(SettingsSection.Data, R.drawable.ic_library_books),
-    SettingsListEntry(SettingsSection.Debug, R.drawable.ic_api),
-    SettingsListEntry(SettingsSection.About, R.drawable.ic_info),
+    SettingsListEntry(SettingsSection.Appearance, Res.drawable.ic_style),
+    SettingsListEntry(SettingsSection.Stories, Res.drawable.ic_newspaper),
+    SettingsListEntry(SettingsSection.Comments, Res.drawable.ic_comment),
+    SettingsListEntry(SettingsSection.WebLinks, Res.drawable.ic_web_asset),
+    SettingsListEntry(SettingsSection.FiltersTags, Res.drawable.ic_filter_list),
+    SettingsListEntry(SettingsSection.AiSummary, Res.drawable.ic_auto_awesome),
+    SettingsListEntry(SettingsSection.Data, Res.drawable.ic_library_books),
+    SettingsListEntry(SettingsSection.Debug, Res.drawable.ic_api),
+    SettingsListEntry(SettingsSection.About, Res.drawable.ic_info),
 )
 
 @Composable
@@ -132,13 +137,11 @@ internal fun SettingsAlertDialog(
     val longEdge = maxOf(configuration.screenWidthDp, configuration.screenHeightDp)
     val usesTabletDialogWidth = configuration.smallestScreenWidthDp >= 600 &&
         longEdge >= shortEdge * 1.3f
-    val dialogMaxWidth = dimensionResource(
-        if (usesTabletDialogWidth) {
-            R.dimen.compose_settings_dialog_tablet_max_width
-        } else {
-            R.dimen.compose_settings_dialog_max_width
-        },
-    )
+    val dialogMaxWidth = if (usesTabletDialogWidth) {
+        HarmonicDimens.compose_settings_dialog_tablet_max_width
+    } else {
+        HarmonicDimens.compose_settings_dialog_max_width
+    }
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
@@ -178,12 +181,8 @@ internal fun SettingsAlertDialog(
                     .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(
-                        horizontal = dimensionResource(
-                            R.dimen.compose_settings_dialog_horizontal_margin,
-                        ),
-                        vertical = dimensionResource(
-                            R.dimen.compose_settings_dialog_vertical_margin,
-                        ),
+                        horizontal = HarmonicDimens.compose_settings_dialog_horizontal_margin,
+                        vertical = HarmonicDimens.compose_settings_dialog_vertical_margin,
                     ),
                 contentAlignment = Alignment.Center,
             ) {
@@ -206,15 +205,9 @@ internal fun SettingsAlertDialog(
                     title?.let { titleContent ->
                         Box(
                             modifier = Modifier.padding(
-                                start = dimensionResource(
-                                    R.dimen.compose_settings_dialog_content_padding,
-                                ),
-                                top = dimensionResource(
-                                    R.dimen.compose_settings_dialog_content_padding,
-                                ),
-                                end = dimensionResource(
-                                    R.dimen.compose_settings_dialog_content_padding,
-                                ),
+                                start = HarmonicDimens.compose_settings_dialog_content_padding,
+                                top = HarmonicDimens.compose_settings_dialog_content_padding,
+                                end = HarmonicDimens.compose_settings_dialog_content_padding,
                                 bottom = 0.dp,
                             ),
                         ) {
@@ -236,23 +229,17 @@ internal fun SettingsAlertDialog(
                                     start = if (edgeToEdgeContent) {
                                         0.dp
                                     } else {
-                                        dimensionResource(
-                                            R.dimen.compose_settings_dialog_content_padding,
-                                        )
+                                        HarmonicDimens.compose_settings_dialog_content_padding
                                     },
                                     top = if (title == null) {
-                                        dimensionResource(
-                                            R.dimen.compose_settings_dialog_content_padding,
-                                        )
+                                        HarmonicDimens.compose_settings_dialog_content_padding
                                     } else {
                                         0.dp
                                     },
                                     end = if (edgeToEdgeContent) {
                                         0.dp
                                     } else {
-                                        dimensionResource(
-                                            R.dimen.compose_settings_dialog_content_padding,
-                                        )
+                                        HarmonicDimens.compose_settings_dialog_content_padding
                                     },
                                     bottom = if (edgeToEdgeContent) 0.dp else 8.dp,
                                 ),
@@ -265,12 +252,8 @@ internal fun SettingsAlertDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(
-                                    horizontal = dimensionResource(
-                                        R.dimen.compose_settings_dialog_content_padding,
-                                    ),
-                                    vertical = dimensionResource(
-                                        R.dimen.compose_settings_dialog_action_vertical_padding,
-                                    ),
+                                    horizontal = HarmonicDimens.compose_settings_dialog_content_padding,
+                                    vertical = HarmonicDimens.compose_settings_dialog_action_vertical_padding,
                                 ),
                             horizontalArrangement = Arrangement.spacedBy(
                                 8.dp,
@@ -303,7 +286,7 @@ internal fun SettingsRadioButton(
 ) {
     Box(
         modifier = modifier.size(
-            dimensionResource(R.dimen.compose_settings_dialog_option_control_size),
+            HarmonicDimens.compose_settings_dialog_option_control_size,
         ),
         contentAlignment = Alignment.Center,
     ) {
@@ -321,7 +304,7 @@ private fun SettingsCheckbox(
 ) {
     Box(
         modifier = modifier.size(
-            dimensionResource(R.dimen.compose_settings_dialog_option_control_size),
+            HarmonicDimens.compose_settings_dialog_option_control_size,
         ),
         contentAlignment = Alignment.Center,
     ) {
@@ -341,7 +324,7 @@ fun SettingsListScreen(
     modifier: Modifier = Modifier,
 ) {
     val settingsCardShape = RoundedCornerShape(
-        dimensionResource(R.dimen.settings_list_segment_corner_radius),
+        HarmonicDimens.settings_list_segment_corner_radius,
     )
     val visibleEntries = MainSettingsEntries.filter {
         it.section != SettingsSection.Debug || BuildConfig.DEBUG_SETTINGS_ENABLED
@@ -367,10 +350,10 @@ fun SettingsListScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = dimensionResource(R.dimen.settings_list_segment_horizontal_margin),
-                top = dimensionResource(R.dimen.settings_list_first_segment_top_margin),
-                end = dimensionResource(R.dimen.settings_list_segment_horizontal_margin),
-                bottom = dimensionResource(R.dimen.settings_list_segment_bottom_margin) +
+                start = HarmonicDimens.settings_list_segment_horizontal_margin,
+                top = HarmonicDimens.settings_list_first_segment_top_margin,
+                end = HarmonicDimens.settings_list_segment_horizontal_margin,
+                bottom = HarmonicDimens.settings_list_segment_bottom_margin +
                     navigationBarPadding,
             ),
         ) {
@@ -403,7 +386,7 @@ fun SettingsListScreen(
 @Composable
 private fun SettingsNavigationRow(
     title: String,
-    @DrawableRes icon: Int,
+    icon: DrawableResource,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -411,7 +394,7 @@ private fun SettingsNavigationRow(
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(
-                minHeight = dimensionResource(R.dimen.compose_settings_row_min_height),
+                minHeight = HarmonicDimens.compose_settings_row_min_height,
             )
             .background(
                 if (selected) {
@@ -422,9 +405,7 @@ private fun SettingsNavigationRow(
             )
             .clickable(role = Role.Button, onClick = onClick)
             .padding(
-                horizontal = dimensionResource(
-                    R.dimen.compose_settings_row_horizontal_padding,
-                ),
+                horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -432,13 +413,13 @@ private fun SettingsNavigationRow(
             painter = painterResource(icon),
             contentDescription = null,
             modifier = Modifier.size(
-                dimensionResource(R.dimen.compose_settings_row_icon_size),
+                HarmonicDimens.compose_settings_row_icon_size,
             ),
             tint = HarmonicTheme.colors.drawable,
         )
         Spacer(
             modifier = Modifier.width(
-                dimensionResource(R.dimen.compose_settings_row_icon_end_space),
+                HarmonicDimens.compose_settings_row_icon_end_space,
             ),
         )
         Text(
@@ -519,16 +500,10 @@ fun SettingsCategory(
             modifier = Modifier
                 .semantics { heading() }
                 .padding(
-                    start = dimensionResource(
-                        R.dimen.compose_settings_category_padding_start,
-                    ),
-                    top = dimensionResource(R.dimen.compose_settings_category_padding_top),
-                    end = dimensionResource(
-                        R.dimen.settings_list_segment_horizontal_margin,
-                    ),
-                    bottom = dimensionResource(
-                        R.dimen.compose_settings_category_padding_bottom,
-                    ),
+                    start = HarmonicDimens.compose_settings_category_padding_start,
+                    top = HarmonicDimens.compose_settings_category_padding_top,
+                    end = HarmonicDimens.settings_list_segment_horizontal_margin,
+                    bottom = HarmonicDimens.compose_settings_category_padding_bottom,
                 ),
             color = HarmonicTheme.colors.storyDisabled,
             fontFamily = ProductSansFontFamily,
@@ -538,7 +513,7 @@ fun SettingsCategory(
         )
         Spacer(
             modifier = Modifier.height(
-                dimensionResource(R.dimen.compose_settings_category_segment_gap),
+                HarmonicDimens.compose_settings_category_segment_gap,
             ),
         )
         SettingsCard(content = content)
@@ -554,13 +529,11 @@ fun SettingsCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(
-                horizontal = dimensionResource(
-                    R.dimen.settings_list_segment_horizontal_margin,
-                ),
+                horizontal = HarmonicDimens.settings_list_segment_horizontal_margin,
             )
             .clip(
                 RoundedCornerShape(
-                    dimensionResource(R.dimen.settings_list_segment_corner_radius),
+                    HarmonicDimens.settings_list_segment_corner_radius,
                 ),
             ),
         content = { content() },
@@ -578,9 +551,9 @@ fun SettingsMainToggle(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
-                start = dimensionResource(R.dimen.settings_list_segment_horizontal_margin),
-                top = dimensionResource(R.dimen.settings_list_first_segment_top_margin),
-                end = dimensionResource(R.dimen.settings_list_segment_horizontal_margin),
+                start = HarmonicDimens.settings_list_segment_horizontal_margin,
+                top = HarmonicDimens.settings_list_first_segment_top_margin,
+                end = HarmonicDimens.settings_list_segment_horizontal_margin,
                 bottom = 16.dp,
             )
             .height(72.dp)
@@ -617,7 +590,8 @@ fun SettingsMainToggle(
 fun SettingRow(
     title: String,
     summary: String? = null,
-    @DrawableRes icon: Int?,
+    icon: DrawableResource?,
+    @androidx.annotation.DrawableRes androidIcon: Int? = null,
     summaryFontSizeSp: Float = 14f,
     summaryLineHeightSp: Float = 18f,
     summaryMaxLines: Int = Int.MAX_VALUE,
@@ -628,11 +602,16 @@ fun SettingRow(
     iconTint: Color? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
+    val iconPainter = when {
+        icon != null -> painterResource(icon)
+        androidIcon != null -> androidPainterResource(androidIcon)
+        else -> null
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(
-                minHeight = dimensionResource(R.dimen.compose_settings_row_min_height),
+                minHeight = HarmonicDimens.compose_settings_row_min_height,
             )
             .background(HarmonicTheme.colors.settingsSegment)
             .alpha(if (enabled) 1f else 0.38f)
@@ -653,24 +632,22 @@ fun SettingRow(
                 },
             )
             .padding(
-                horizontal = dimensionResource(
-                    R.dimen.compose_settings_row_horizontal_padding,
-                ),
+                horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) {
+        if (iconPainter != null) {
             Icon(
-                painter = painterResource(icon),
+                painter = iconPainter,
                 contentDescription = null,
                 modifier = Modifier.size(
-                    dimensionResource(R.dimen.compose_settings_row_icon_size),
+                    HarmonicDimens.compose_settings_row_icon_size,
                 ),
                 tint = iconTint ?: HarmonicTheme.colors.drawable,
             )
             Spacer(
                 modifier = Modifier.width(
-                    dimensionResource(R.dimen.compose_settings_row_icon_end_space),
+                    HarmonicDimens.compose_settings_row_icon_end_space,
                 ),
             )
         } else {
@@ -680,9 +657,7 @@ fun SettingRow(
             modifier = Modifier
                 .weight(1f)
                 .padding(
-                    vertical = dimensionResource(
-                        R.dimen.compose_settings_row_text_vertical_padding,
-                    ),
+                    vertical = HarmonicDimens.compose_settings_row_text_vertical_padding,
                 ),
         ) {
             Text(
@@ -707,7 +682,7 @@ fun SettingRow(
         trailing?.let {
             Spacer(
                 modifier = Modifier.width(
-                    dimensionResource(R.dimen.compose_settings_row_trailing_start_space),
+                    HarmonicDimens.compose_settings_row_trailing_start_space,
                 ),
             )
             it()
@@ -719,7 +694,7 @@ fun SettingRow(
 fun SwitchSettingRow(
     title: String,
     summary: String? = null,
-    @DrawableRes icon: Int,
+    icon: DrawableResource,
     checked: Boolean,
     enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit,
@@ -782,7 +757,7 @@ fun SettingsDivider() {
     Spacer(
         modifier = Modifier
             .fillMaxWidth()
-            .height(dimensionResource(R.dimen.settings_list_segment_internal_gap))
+            .height(HarmonicDimens.settings_list_segment_internal_gap)
             .background(HarmonicTheme.colors.background),
     )
 }
@@ -798,7 +773,7 @@ fun SegmentedSetting(
     options: List<Pair<String, String>>,
     selected: String,
     enabled: Boolean = true,
-    @DimenRes buttonHeightRes: Int = R.dimen.compose_settings_segmented_button_height,
+    buttonHeight: Dp = HarmonicDimens.compose_settings_segmented_button_height,
     onSelected: (String) -> Unit,
 ) {
     Column(
@@ -807,12 +782,8 @@ fun SegmentedSetting(
             .background(HarmonicTheme.colors.settingsSegment)
             .alpha(if (enabled) 1f else 0.38f)
             .padding(
-                horizontal = dimensionResource(
-                    R.dimen.compose_settings_row_horizontal_padding,
-                ),
-                vertical = dimensionResource(
-                    R.dimen.compose_settings_inline_control_padding,
-                ),
+                horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
+                vertical = HarmonicDimens.compose_settings_inline_control_padding,
             ),
     ) {
         Text(
@@ -826,9 +797,7 @@ fun SegmentedSetting(
             Text(
                 text = summary,
                 modifier = Modifier.padding(
-                    top = dimensionResource(
-                        R.dimen.compose_settings_inline_control_summary_top_margin,
-                    ),
+                    top = HarmonicDimens.compose_settings_inline_control_summary_top_margin,
                 ),
                 color = HarmonicTheme.colors.storyDisabled,
                 fontFamily = ProductSansFontFamily,
@@ -841,23 +810,15 @@ fun SegmentedSetting(
                 .fillMaxWidth()
                 .selectableGroup()
                 .padding(
-                    top = dimensionResource(
-                        R.dimen.compose_settings_inline_control_top_margin,
-                    ),
+                    top = HarmonicDimens.compose_settings_inline_control_top_margin,
                 ),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             options.forEachIndexed { index, (value, label) ->
                 val isSelected = selected == value
-                val outerCorner = dimensionResource(
-                    R.dimen.compose_settings_segmented_button_corner_radius,
-                )
-                val defaultInnerCorner = dimensionResource(
-                    R.dimen.compose_settings_segmented_button_inner_corner_radius,
-                )
-                val pressedInnerCorner = dimensionResource(
-                    R.dimen.compose_settings_segmented_button_pressed_inner_corner_radius,
-                )
+                val outerCorner = HarmonicDimens.compose_settings_segmented_button_corner_radius
+                val defaultInnerCorner = HarmonicDimens.compose_settings_segmented_button_inner_corner_radius
+                val pressedInnerCorner = HarmonicDimens.compose_settings_segmented_button_pressed_inner_corner_radius
                 val interactionSource = remember(value) { MutableInteractionSource() }
                 val isPressed by interactionSource.collectIsPressedAsState()
                 val innerCorner by animateDpAsState(
@@ -884,7 +845,7 @@ fun SegmentedSetting(
                     modifier = Modifier
                         .weight(1f)
                         .height(
-                            dimensionResource(buttonHeightRes),
+                            buttonHeight,
                         )
                         .background(
                             if (isSelected) {
@@ -948,12 +909,8 @@ fun SliderSetting(
             .background(HarmonicTheme.colors.settingsSegment)
             .alpha(if (enabled) 1f else 0.38f)
             .padding(
-                horizontal = dimensionResource(
-                    R.dimen.compose_settings_row_horizontal_padding,
-                ),
-                vertical = dimensionResource(
-                    R.dimen.compose_settings_inline_control_padding,
-                ),
+                horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
+                vertical = HarmonicDimens.compose_settings_inline_control_padding,
             ),
     ) {
         Row(
@@ -1119,9 +1076,7 @@ fun ItemsDialog(
                     .fillMaxWidth()
                     .heightIn(max = 480.dp),
                 contentPadding = PaddingValues(
-                    top = dimensionResource(
-                        R.dimen.compose_settings_dialog_item_top_padding,
-                    ),
+                    top = HarmonicDimens.compose_settings_dialog_item_top_padding,
                 ),
             ) {
                 itemsIndexed(options) { index, option ->
@@ -1314,7 +1269,7 @@ fun EditableStringListDialog(
                                     shapes = IconButtonDefaults.shapes(),
                                 ) {
                                     Icon(
-                                        painter = painterResource(R.drawable.ic_close),
+                                        painter = painterResource(Res.drawable.ic_close),
                                         contentDescription = "Remove $item",
                                     )
                                 }

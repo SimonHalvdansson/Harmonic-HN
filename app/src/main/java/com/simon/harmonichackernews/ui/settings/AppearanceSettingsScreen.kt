@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.resources.*
+
 import android.content.Context
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
@@ -62,13 +64,13 @@ fun AppearanceSettingsScreen(
                 SettingRow(
                     title = "Theme",
                     summary = composeThemeLabel(theme),
-                    icon = R.drawable.ic_style,
+                    icon = Res.drawable.ic_style,
                     onClick = { dialog = "theme" },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Special nighttime theme",
-                    icon = R.drawable.ic_nights_stay,
+                    icon = Res.drawable.ic_nights_stay,
                     checked = specialNighttime,
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_special_nighttime", it).apply()
@@ -79,7 +81,7 @@ fun AppearanceSettingsScreen(
                 SettingRow(
                     title = "Timed range",
                     summary = formatNighttimeRange(context),
-                    icon = R.drawable.ic_schedule,
+                    icon = Res.drawable.ic_schedule,
                     enabled = specialNighttime,
                     onClick = { dialog = "nighttime_range" },
                 )
@@ -90,7 +92,7 @@ fun AppearanceSettingsScreen(
                         nighttimeTheme,
                         SettingsUtils.DEFAULT_NIGHTTIME_THEME,
                     ),
-                    icon = R.drawable.ic_dark_mode,
+                    icon = Res.drawable.ic_dark_mode,
                     enabled = specialNighttime,
                     onClick = { dialog = "nighttime_theme" },
                 )
@@ -102,7 +104,7 @@ fun AppearanceSettingsScreen(
                 SettingRow(
                     title = "Title and comment font",
                     summary = SettingsUtils.getPreferredFontLabel(context),
-                    icon = R.drawable.ic_font_download,
+                    icon = Res.drawable.ic_font_download,
                     onClick = { dialog = "font" },
                 )
                 SettingsDivider()
@@ -113,7 +115,7 @@ fun AppearanceSettingsScreen(
                     } else {
                         "Enable in Stories settings"
                     },
-                    icon = R.drawable.ic_palette,
+                    icon = Res.drawable.ic_palette,
                     enabled = SettingsUtils.shouldTintCardUsingPreview(context),
                     onClick = { dialog = "palette_tint" },
                 )
@@ -121,7 +123,7 @@ fun AppearanceSettingsScreen(
                     SettingsDivider()
                     SwitchSettingRow(
                         title = "Transparent status bar",
-                        icon = R.drawable.ic_visibility,
+                        icon = Res.drawable.ic_visibility,
                         checked = transparentStatusBar,
                         onCheckedChange = {
                             prefs.edit()
@@ -135,7 +137,7 @@ fun AppearanceSettingsScreen(
                 SwitchSettingRow(
                     title = "Compact header",
                     summary = "Smaller margins for 'Top stories' header",
-                    icon = R.drawable.ic_horizontal_split,
+                    icon = Res.drawable.ic_horizontal_split,
                     checked = compactHeader,
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_compact_header", it).apply()
@@ -148,19 +150,19 @@ fun AppearanceSettingsScreen(
             SettingsCategory("Style") {
                 SettingRow(
                     title = "General style",
-                    icon = R.drawable.ic_design_services,
+                    icon = Res.drawable.ic_design_services,
                     onClick = { dialog = "style" },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Stories settings",
-                    icon = R.drawable.ic_open_in_new,
+                    icon = Res.drawable.ic_open_in_new,
                     onClick = { onNavigate(SettingsSection.Stories) },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Comments settings",
-                    icon = R.drawable.ic_open_in_new,
+                    icon = Res.drawable.ic_open_in_new,
                     onClick = { onNavigate(SettingsSection.Comments) },
                 )
             }

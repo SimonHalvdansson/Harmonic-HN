@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.resources.*
+import org.jetbrains.compose.resources.stringArrayResource
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,7 +83,7 @@ fun CommentsSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Border",
-                    icon = R.drawable.ic_select,
+                    icon = Res.drawable.ic_select,
                     checked = showBorder,
                     enabled = displayStyle == SettingsUtils.COMMENT_DISPLAY_STYLE_CARD,
                     onCheckedChange = {
@@ -119,7 +122,7 @@ fun CommentsSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Collect links in comments",
-                    icon = R.drawable.ic_link,
+                    icon = Res.drawable.ic_link,
                     checked = prefs.getBoolean(
                         SettingsUtils.PREF_COLLECT_LINKS_IN_COMMENTS,
                         true,
@@ -133,7 +136,7 @@ fun CommentsSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Emphasize meta",
-                    icon = R.drawable.ic_dropdown_menu,
+                    icon = Res.drawable.ic_dropdown_menu,
                     checked = emphasizeMeta,
                     onCheckedChange = {
                         prefs.edit()
@@ -145,13 +148,13 @@ fun CommentsSettingsScreen(
                 SettingRow(
                     title = "Thread depth indicators",
                     summary = CommentDepthIndicatorUtils.getModeLabel(depthMode),
-                    icon = R.drawable.ic_palette,
+                    icon = Res.drawable.ic_palette,
                     onClick = { dialog = "thread_depth" },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Dividers",
-                    icon = R.drawable.ic_horizontal_rule,
+                    icon = Res.drawable.ic_horizontal_rule,
                     checked = prefs.getBoolean(SettingsUtils.PREF_COMMENT_DIVIDERS, false),
                     onCheckedChange = {
                         prefs.edit()
@@ -163,7 +166,7 @@ fun CommentsSettingsScreen(
                 SwitchSettingRow(
                     title = "Show top level thread indicators",
                     summary = "Makes it easier to separate top level comments",
-                    icon = R.drawable.ic_format_align_left,
+                    icon = Res.drawable.ic_format_align_left,
                     checked = prefs.getBoolean("pref_top_level_thread_indicators", false),
                     onCheckedChange = {
                         prefs.edit()
@@ -174,7 +177,7 @@ fun CommentsSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Show scrollbar",
-                    icon = R.drawable.ic_swipe_vertical,
+                    icon = Res.drawable.ic_swipe_vertical,
                     checked = prefs.getBoolean("pref_comments_scrollbar", false),
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_comments_scrollbar", it).apply()
@@ -183,7 +186,7 @@ fun CommentsSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Animate comment expand/collapse",
-                    icon = R.drawable.ic_animation,
+                    icon = Res.drawable.ic_animation,
                     checked = prefs.getBoolean("pref_comments_animation", true),
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_comments_animation", it).apply()
@@ -197,7 +200,7 @@ fun CommentsSettingsScreen(
                 SwitchSettingRow(
                     title = "Background tint",
                     summary = if (storyTintEnabled) null else "Disabled because story tint is off",
-                    icon = R.drawable.ic_palette,
+                    icon = Res.drawable.ic_palette,
                     checked = prefs.getBoolean(
                         SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_TINT,
                         true,
@@ -212,7 +215,7 @@ fun CommentsSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Preview image",
-                    icon = R.drawable.ic_image,
+                    icon = Res.drawable.ic_image,
                     checked = prefs.getBoolean(
                         SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE,
                         true,
@@ -234,7 +237,7 @@ fun CommentsSettingsScreen(
             SettingsCategory("Interactions") {
                 SwitchSettingRow(
                     title = "Hide text of collapsed comments",
-                    icon = R.drawable.ic_comment,
+                    icon = Res.drawable.ic_comment,
                     checked = prefs.getBoolean("pref_collapse_parent", false),
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_collapse_parent", it).apply()
@@ -243,7 +246,7 @@ fun CommentsSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Auto-collapse top level comments",
-                    icon = R.drawable.ic_minimize,
+                    icon = Res.drawable.ic_minimize,
                     checked = prefs.getBoolean("pref_collapse_top_level", false),
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_collapse_top_level", it).apply()
@@ -272,7 +275,7 @@ fun CommentsSettingsScreen(
                 SettingRow(
                     title = "Comment sorting",
                     summary = prefs.getString("pref_comment_sorting", "Default"),
-                    icon = R.drawable.ic_filter_list,
+                    icon = Res.drawable.ic_filter_list,
                     onClick = { dialog = "sorting" },
                 )
                 SettingsDivider()
@@ -284,7 +287,7 @@ fun CommentsSettingsScreen(
                         "official" -> "Official Hacker News API"
                         else -> "Algolia API"
                     },
-                    icon = R.drawable.ic_api,
+                    icon = Res.drawable.ic_api,
                     onClick = { dialog = "provider" },
                 )
             }
@@ -295,7 +298,7 @@ fun CommentsSettingsScreen(
                 SwitchSettingRow(
                     title = "Show navigation buttons",
                     summary = "Navigate between top level comments",
-                    icon = R.drawable.ic_explore,
+                    icon = Res.drawable.ic_explore,
                     checked = prefs.getBoolean("pref_scroll_navigation", false),
                     onCheckedChange = {
                         prefs.edit().putBoolean("pref_scroll_navigation", it).apply()
@@ -311,13 +314,13 @@ fun CommentsSettingsScreen(
                         "all" -> "All comments"
                         else -> "Disabled"
                     },
-                    icon = R.drawable.ic_swipe_vertical,
+                    icon = Res.drawable.ic_swipe_vertical,
                     onClick = { dialog = "volume" },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Smooth scroll comments",
-                    icon = R.drawable.ic_comments_animation_navigation,
+                    icon = Res.drawable.ic_comments_animation_navigation,
                     checked = prefs.getBoolean(
                         "pref_comments_animation_navigation",
                         true,
@@ -335,7 +338,7 @@ fun CommentsSettingsScreen(
     when (dialog) {
         "sorting" -> SingleChoiceDialog(
             title = "Comment sorting",
-            options = resources.getStringArray(R.array.comment_sorting)
+            options = stringArrayResource(Res.array.comment_sorting)
                 .map { it to it },
             selected = prefs.getString("pref_comment_sorting", "Default") ?: "Default",
             onDismiss = { dialog = null },

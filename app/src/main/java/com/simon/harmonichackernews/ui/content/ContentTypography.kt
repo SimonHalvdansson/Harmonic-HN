@@ -2,11 +2,11 @@ package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.utils.SettingsUtils
+import org.jetbrains.compose.resources.Font
 
 internal data class ContentTypography(
     val family: FontFamily,
@@ -33,7 +33,8 @@ internal fun rememberContentTypography(
     val font = SettingsUtils.sanitizeFont(preferredFont)
     val clampedStorySize = SettingsUtils.clampStoryTextSize(storyTextSize)
     val clampedCommentSize = SettingsUtils.clampCommentTextSize(commentTextSize)
-    return remember(font, clampedStorySize, clampedCommentSize) {
+    val family = contentFontFamily(font)
+    return remember(font, family, clampedStorySize, clampedCommentSize) {
         val metrics = FontMetrics.forFont(font)
         val storyDelta = clampedStorySize - SettingsUtils.DEFAULT_STORY_TEXT_SIZE
         val storyScale = clampedStorySize / SettingsUtils.DEFAULT_STORY_TEXT_SIZE
@@ -41,7 +42,7 @@ internal fun rememberContentTypography(
         val explicitAdjustment = if (font == "googlesansflexrounded") -0.5f else 0f
 
         ContentTypography(
-            family = contentFontFamily(font),
+            family = family,
             storyTitleSize = metrics.storyTitle + storyDelta,
             storySummarySize = maxOf(12f, clampedStorySize - 3.5f),
             storyMetaSize = metrics.storyMeta * storyScale,
@@ -84,38 +85,39 @@ private data class FontMetrics(
     }
 }
 
+@Composable
 private fun contentFontFamily(font: String): FontFamily = when (font) {
     "productsans" -> FontFamily(
-        Font(R.font.product_sans_regular, FontWeight.Normal),
-        Font(R.font.product_sans_bold, FontWeight.Bold),
+        Font(Res.font.product_sans_regular, FontWeight.Normal),
+        Font(Res.font.product_sans_bold, FontWeight.Bold),
     )
     "googlesans" -> FontFamily(
-        Font(R.font.google_sans_regular, FontWeight.Normal),
-        Font(R.font.google_sans_bold, FontWeight.Bold),
+        Font(Res.font.google_sans_regular, FontWeight.Normal),
+        Font(Res.font.google_sans_bold, FontWeight.Bold),
     )
     "devicedefault" -> FontFamily.SansSerif
     "verdana" -> FontFamily(
-        Font(R.font.verdana_regular, FontWeight.Normal),
-        Font(R.font.verdana_bold, FontWeight.Bold),
+        Font(Res.font.verdana_regular, FontWeight.Normal),
+        Font(Res.font.verdana_bold, FontWeight.Bold),
     )
     "jetbrainsmono" -> FontFamily(
-        Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
-        Font(R.font.jetbrains_mono_bold, FontWeight.Bold),
+        Font(Res.font.jetbrains_mono_regular, FontWeight.Normal),
+        Font(Res.font.jetbrains_mono_bold, FontWeight.Bold),
     )
     "googlesanscode" -> FontFamily(
-        Font(R.font.google_sans_code_regular, FontWeight.Normal),
-        Font(R.font.google_sans_code_bold, FontWeight.Bold),
+        Font(Res.font.google_sans_code_regular, FontWeight.Normal),
+        Font(Res.font.google_sans_code_regular, FontWeight.Bold),
     )
     "georgia" -> FontFamily(
-        Font(R.font.georgia_regular, FontWeight.Normal),
-        Font(R.font.georgia_bold, FontWeight.Bold),
+        Font(Res.font.georgia_regular, FontWeight.Normal),
+        Font(Res.font.georgia_bold, FontWeight.Bold),
     )
     "robotoslab" -> FontFamily(
-        Font(R.font.roboto_slab_regular, FontWeight.Normal),
-        Font(R.font.roboto_slab_bold, FontWeight.Bold),
+        Font(Res.font.roboto_slab_regular, FontWeight.Normal),
+        Font(Res.font.roboto_slab_bold, FontWeight.Bold),
     )
     else -> FontFamily(
-        Font(R.font.google_sans_flex_rounded_regular, FontWeight.Normal),
-        Font(R.font.google_sans_flex_rounded_bold, FontWeight.Bold),
+        Font(Res.font.google_sans_flex_rounded_regular, FontWeight.Normal),
+        Font(Res.font.google_sans_flex_rounded_bold, FontWeight.Bold),
     )
 }

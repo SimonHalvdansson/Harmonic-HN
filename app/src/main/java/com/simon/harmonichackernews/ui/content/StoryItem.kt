@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.content
 
+import com.simon.harmonichackernews.resources.*
+
 import android.graphics.drawable.Drawable
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.animation.AnimatedContent
@@ -56,7 +58,8 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.painterResource as androidPainterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -855,9 +858,9 @@ private fun StoryFavicon(
     )
     AsyncImage(
         model = model,
-        placeholder = painterResource(fallbackRes),
-        fallback = painterResource(fallbackRes),
-        error = painterResource(fallbackRes),
+        placeholder = androidPainterResource(fallbackRes),
+        fallback = androidPainterResource(fallbackRes),
+        error = androidPainterResource(fallbackRes),
         contentDescription = null,
         modifier = Modifier
             .padding(end = 4.dp)
@@ -944,7 +947,7 @@ private fun StoryCommentRail(
 @Composable
 private fun StoryCommentIcon(hot: Boolean, dimmed: Boolean) {
     Icon(
-        painter = painterResource(if (hot) R.drawable.ic_whatshot else R.drawable.ic_comment),
+        painter = painterResource(if (hot) Res.drawable.ic_whatshot else Res.drawable.ic_comment),
         contentDescription = null,
         modifier = Modifier.size(24.dp),
         tint = HarmonicTheme.colors.drawable.let { drawable ->

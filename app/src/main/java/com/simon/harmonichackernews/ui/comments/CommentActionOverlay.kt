@@ -2,6 +2,11 @@
 
 package com.simon.harmonichackernews.ui.comments
 
+import org.jetbrains.compose.resources.DrawableResource
+
+
+import com.simon.harmonichackernews.resources.*
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -59,7 +64,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
@@ -154,7 +159,7 @@ internal fun CommentActionOverlay(
     val backTranslationY = with(density) {
         PREDICTIVE_BACK_MAX_TRANSLATION_Y_DP.dp.toPx()
     } * predictiveEased
-    val cardRadius = dimensionResource(R.dimen.compose_comment_action_corner_radius)
+    val cardRadius = HarmonicDimens.compose_comment_action_corner_radius
     val cardColor = if (settings.cardStyle) {
         HarmonicTheme.colors.surfaceContainerHigh
     } else {
@@ -180,25 +185,19 @@ internal fun CommentActionOverlay(
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(
-                    horizontal = dimensionResource(
-                        R.dimen.compose_comment_action_screen_padding_horizontal,
-                    ),
-                    vertical = dimensionResource(
-                        R.dimen.compose_comment_action_screen_padding_vertical,
-                    ),
+                    horizontal = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
+                    vertical = HarmonicDimens.compose_comment_action_screen_padding_vertical,
                 ),
             contentAlignment = Alignment.Center,
         ) {
             Surface(
                 modifier = Modifier
                     .widthIn(
-                        max = dimensionResource(
-                            if (settings.isTablet) {
-                                R.dimen.compose_comment_action_tablet_max_width
-                            } else {
-                                R.dimen.compose_comment_action_max_width
-                            },
-                        ),
+                        max = if (settings.isTablet) {
+                            HarmonicDimens.compose_comment_action_tablet_max_width
+                        } else {
+                            HarmonicDimens.compose_comment_action_max_width
+                        },
                     )
                     .fillMaxWidth()
                     .onGloballyPositioned { targetBounds = it.boundsInWindow() }
@@ -285,7 +284,7 @@ private fun CommentActionCardContent(
     Column(
         modifier = Modifier
             .verticalScroll(rememberScrollState())
-            .padding(dimensionResource(R.dimen.compose_comment_action_card_padding)),
+            .padding(HarmonicDimens.compose_comment_action_card_padding),
     ) {
         Button(
             onClick = {
@@ -302,7 +301,7 @@ private fun CommentActionCardContent(
             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
             modifier = Modifier.height(48.dp),
         ) {
-            Icon(painterResource(R.drawable.ic_account_circle), contentDescription = null)
+            Icon(painterResource(Res.drawable.ic_account_circle), contentDescription = null)
             Text(
                 userLabel,
                 modifier = Modifier.padding(start = 8.dp),
@@ -316,7 +315,7 @@ private fun CommentActionCardContent(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = dimensionResource(R.dimen.compose_comment_action_text_max_height))
+                    .heightIn(max = HarmonicDimens.compose_comment_action_text_max_height)
                     .verticalScroll(rememberScrollState())
                     .padding(start = 6.dp, top = 14.dp, end = 6.dp, bottom = 14.dp),
             ) {
@@ -341,7 +340,7 @@ private fun CommentActionCardContent(
         ) {
             if (hasAccount) {
                 CommentActionIcon(
-                    icon = if (upvoted) R.drawable.ic_thumb_up_filled else R.drawable.ic_thumb_up,
+                    icon = if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up,
                     description = if (upvoted) "Upvoted" else "Vote up",
                     loading = voteLoading &&
                         controller.commentActionVoteLoadingAction ==
@@ -354,7 +353,7 @@ private fun CommentActionCardContent(
                     )
                 }
                 CommentActionIcon(
-                    icon = if (downvoted) R.drawable.ic_thumb_down_filled else R.drawable.ic_thumb_down,
+                    icon = if (downvoted) Res.drawable.ic_thumb_down_filled else Res.drawable.ic_thumb_down,
                     description = if (downvoted) "Downvoted" else "Vote down",
                     loading = voteLoading &&
                         controller.commentActionVoteLoadingAction ==
@@ -367,7 +366,7 @@ private fun CommentActionCardContent(
                     )
                 }
                 CommentActionIcon(
-                    icon = R.drawable.ic_thumbs_up_down_unvote,
+                    icon = Res.drawable.ic_thumbs_up_down_unvote,
                     description = "Unvote",
                     loading = voteLoading &&
                         controller.commentActionVoteLoadingAction ==
@@ -382,7 +381,7 @@ private fun CommentActionCardContent(
             }
             if (bookmarksEnabled) {
                 CommentActionIcon(
-                    icon = if (bookmarked) R.drawable.ic_bookmark_filled else R.drawable.ic_bookmark,
+                    icon = if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark,
                     description = if (bookmarked) "Remove bookmark" else "Bookmark",
                 ) {
                     controller.listener.onCommentAction(
@@ -393,7 +392,7 @@ private fun CommentActionCardContent(
             }
             if (hasAccount) {
                 CommentActionIcon(
-                    icon = if (favorited) R.drawable.ic_star_filled else R.drawable.ic_star,
+                    icon = if (favorited) Res.drawable.ic_star_filled else Res.drawable.ic_star,
                     description = if (favorited) "Remove favorite" else "Favorite",
                     loading = favoriteLoading,
                     enabled = !favoriteLoading,
@@ -404,13 +403,13 @@ private fun CommentActionCardContent(
                     )
                 }
             }
-            CommentActionIcon(R.drawable.ic_content_copy, "Copy text") {
+            CommentActionIcon(Res.drawable.ic_content_copy, "Copy text") {
                 controller.listener.onCommentAction(
                     comment,
                     CommentsComposeController.COMMENT_ACTION_COPY,
                 )
             }
-            CommentActionIcon(R.drawable.ic_share, "Share link") {
+            CommentActionIcon(Res.drawable.ic_share, "Share link") {
                 controller.listener.onCommentAction(
                     comment,
                     CommentsComposeController.COMMENT_ACTION_SHARE,
@@ -436,7 +435,7 @@ private fun CommentActionCardContent(
                     .fillMaxWidth()
                     .height(56.dp),
             ) {
-                Icon(painterResource(R.drawable.ic_reply), contentDescription = null)
+                Icon(painterResource(Res.drawable.ic_reply), contentDescription = null)
                 Text(
                     "Reply",
                     modifier = Modifier.padding(start = 8.dp),
@@ -451,7 +450,7 @@ private fun CommentActionCardContent(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun RowScope.CommentActionIcon(
-    icon: Int,
+    icon: DrawableResource,
     description: String,
     loading: Boolean = false,
     enabled: Boolean = true,
@@ -490,7 +489,7 @@ private fun RowScope.CommentActionIcon(
 }
 
 private data class CommentActionVisual(
-    val icon: Int,
+    val icon: DrawableResource,
     val description: String,
     val loading: Boolean,
 )
@@ -511,7 +510,7 @@ private fun CommentActionCardPreview() {
         Surface(color = HarmonicTheme.colors.surfaceContainerHigh) {
             Column(Modifier.padding(18.dp)) {
                 Button(onClick = {}, shapes = ButtonDefaults.shapes()) {
-                    Icon(painterResource(R.drawable.ic_account_circle), null)
+                    Icon(painterResource(Res.drawable.ic_account_circle), null)
                     Text("alephnerd", Modifier.padding(start = 8.dp))
                 }
                 Text(
@@ -524,13 +523,13 @@ private fun CommentActionCardPreview() {
                 HorizontalDivider()
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     listOf(
-                        R.drawable.ic_thumb_up,
-                        R.drawable.ic_thumb_down,
-                        R.drawable.ic_thumbs_up_down_unvote,
-                        R.drawable.ic_bookmark,
-                        R.drawable.ic_star,
-                        R.drawable.ic_content_copy,
-                        R.drawable.ic_share,
+                        Res.drawable.ic_thumb_up,
+                        Res.drawable.ic_thumb_down,
+                        Res.drawable.ic_thumbs_up_down_unvote,
+                        Res.drawable.ic_bookmark,
+                        Res.drawable.ic_star,
+                        Res.drawable.ic_content_copy,
+                        Res.drawable.ic_share,
                     ).forEach { icon -> Icon(painterResource(icon), null, Modifier.padding(10.dp)) }
                 }
             }

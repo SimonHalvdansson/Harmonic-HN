@@ -2,6 +2,11 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+import org.jetbrains.compose.resources.DrawableResource
+
+
+import com.simon.harmonichackernews.resources.*
+
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -33,7 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -51,39 +56,39 @@ private const val OpenWithoutCacheStoryId = 49089500
 
 private data class DebugLink(
     val title: String,
-    val icon: Int,
+    val icon: DrawableResource,
     val url: String,
 )
 
 private val SampleContentLinks = listOf(
     DebugLink(
         "Link post",
-        R.drawable.ic_ballot,
+        Res.drawable.ic_ballot,
         "https://news.ycombinator.com/item?id=47938725",
     ),
     DebugLink(
         "Reference links post",
-        R.drawable.ic_link,
+        Res.drawable.ic_link,
         "https://news.ycombinator.com/item?id=48352939",
     ),
     DebugLink(
         "YouTube comment",
-        R.drawable.ic_link,
+        Res.drawable.ic_link,
         "https://news.ycombinator.com/item?id=34225887",
     ),
     DebugLink(
         "Very long comment",
-        R.drawable.ic_comment,
+        Res.drawable.ic_comment,
         "https://news.ycombinator.com/item?id=49103136",
     ),
     DebugLink(
         "Poll",
-        R.drawable.ic_comment,
+        Res.drawable.ic_comment,
         "https://news.ycombinator.com/item?id=39572682",
     ),
     DebugLink(
         "Internal HN link",
-        R.drawable.ic_link,
+        Res.drawable.ic_link,
         "https://news.ycombinator.com/item?id=30676384",
     ),
 )
@@ -91,32 +96,32 @@ private val SampleContentLinks = listOf(
 private val PreviewLinks = listOf(
     DebugLink(
         "arXiv",
-        R.drawable.ic_link_preview_arxiv,
+        Res.drawable.ic_link_preview_arxiv,
         "https://news.ycombinator.com/item?id=42788451",
     ),
     DebugLink(
         "GitHub",
-        R.drawable.ic_link_preview_github,
+        Res.drawable.ic_link_preview_github,
         "https://news.ycombinator.com/item?id=49070029",
     ),
     DebugLink(
         "GitLab",
-        R.drawable.ic_link_preview_gitlab,
+        Res.drawable.ic_link_preview_gitlab,
         "https://news.ycombinator.com/item?id=18798209",
     ),
     DebugLink(
         "Stack Exchange",
-        R.drawable.ic_link_preview_stack_exchange,
+        Res.drawable.ic_link_preview_stack_exchange,
         "https://news.ycombinator.com/item?id=21113344",
     ),
     DebugLink(
         "Wikipedia",
-        R.drawable.ic_link_preview_wikipedia,
+        Res.drawable.ic_link_preview_wikipedia,
         "https://news.ycombinator.com/item?id=21699011",
     ),
     DebugLink(
         "Twitter/X",
-        R.drawable.ic_link_preview_x,
+        Res.drawable.ic_link_preview_x,
         "https://news.ycombinator.com/item?id=48012735",
     ),
 )
@@ -143,7 +148,7 @@ fun DebugSettingsScreen(
             SettingsCategory("Debug tools") {
                 SwitchSettingRow(
                     title = "Always show tap to refresh",
-                    icon = R.drawable.ic_refresh,
+                    icon = Res.drawable.ic_refresh,
                     checked = prefs.getBoolean("pref_always_show_tap_to_refresh", false),
                     onCheckedChange = {
                         prefs.edit()
@@ -154,7 +159,7 @@ fun DebugSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Additional AI summary debug info",
-                    icon = R.drawable.ic_info,
+                    icon = Res.drawable.ic_info,
                     checked = prefs.getBoolean("pref_debug_show_llm_summary_info", false),
                     onCheckedChange = {
                         prefs.edit()
@@ -171,7 +176,7 @@ fun DebugSettingsScreen(
                 SettingsDivider()
                 SettingRow(
                     title = "Open without cache",
-                    icon = R.drawable.ic_cached,
+                    icon = Res.drawable.ic_cached,
                     onClick = {
                         Utils.removeStoryFromCaches(context, OpenWithoutCacheStoryId)
                         NetworkComponent.removeCachedStoryResponses(
@@ -204,19 +209,19 @@ fun DebugSettingsScreen(
             SettingsCategory("Dialogs") {
                 SettingRow(
                     title = "Welcome dialog",
-                    icon = R.drawable.ic_explore,
+                    icon = Res.drawable.ic_explore,
                     onClick = { dialog = "welcome" },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Changelog",
-                    icon = R.drawable.ic_history,
+                    icon = Res.drawable.ic_history,
                     onClick = { dialog = "changelog" },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Debug notifications",
-                    icon = R.drawable.ic_notifications,
+                    icon = Res.drawable.ic_notifications,
                     onClick = { dialog = "notifications" },
                 )
             }
@@ -227,7 +232,7 @@ fun DebugSettingsScreen(
                 SettingRow(
                     title = "App version",
                     summary = BuildConfig.VERSION_NAME,
-                    icon = R.drawable.ic_deployed_code,
+                    icon = Res.drawable.ic_deployed_code,
                     onClick = {
                         val now = SystemClock.elapsedRealtime()
                         versionTapCount = if (now - lastVersionTapTime < 800L) {
@@ -249,21 +254,21 @@ fun DebugSettingsScreen(
                 SettingRow(
                     title = "App build",
                     summary = BuildConfig.VERSION_CODE.toString(),
-                    icon = R.drawable.ic_tag,
+                    icon = Res.drawable.ic_tag,
                     onClick = null,
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Build version",
                     summary = BuildConfig.BUILD_TYPE,
-                    icon = R.drawable.ic_build,
+                    icon = Res.drawable.ic_build,
                     onClick = null,
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Android version",
                     summary = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
-                    icon = R.drawable.ic_android,
+                    icon = Res.drawable.ic_android,
                     onClick = null,
                 )
             }
@@ -322,7 +327,7 @@ private fun DebugHnIdSetting(
     ) {
         Row {
             Icon(
-                painterResource(R.drawable.ic_open_in_new),
+                painterResource(Res.drawable.ic_open_in_new),
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
                 tint = HarmonicTheme.colors.drawable,
@@ -371,7 +376,7 @@ private fun DebugHnIdSetting(
                 modifier = Modifier.size(56.dp),
             ) {
                 Icon(
-                    painterResource(R.drawable.ic_chevron_right),
+                    painterResource(Res.drawable.ic_chevron_right),
                     contentDescription = "Open HN ID",
                     tint = HarmonicTheme.colors.drawable,
                 )

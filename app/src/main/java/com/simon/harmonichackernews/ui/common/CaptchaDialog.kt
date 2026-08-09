@@ -30,7 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.network.UserActions
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
@@ -71,8 +72,8 @@ fun CaptchaDialog(
 
     var loading by remember(challenge) { mutableStateOf(true) }
     var error by remember(challenge) { mutableStateOf<String?>(null) }
-    val webDescription = stringResource(R.string.captcha_dialog_web_content_description)
-    val incompleteError = stringResource(R.string.captcha_dialog_complete_error)
+    val webDescription = stringResource(Res.string.captcha_dialog_web_content_description)
+    val incompleteError = stringResource(Res.string.captcha_dialog_complete_error)
     val webView = remember(challenge) {
         WebView(context).apply webView@ {
             settings.javaScriptEnabled = true
@@ -144,7 +145,7 @@ private fun CaptchaDialogLayout(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = stringResource(R.string.captcha_dialog_title),
+                text = stringResource(Res.string.captcha_dialog_title),
                 color = HarmonicTheme.colors.textPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
@@ -156,16 +157,14 @@ private fun CaptchaDialogLayout(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(dimensionResource(R.dimen.captcha_dialog_content_height)),
+                        .height(HarmonicDimens.captcha_dialog_content_height),
                     contentAlignment = Alignment.Center,
                 ) {
                     webContent()
                     if (loading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(
-                                dimensionResource(
-                                    R.dimen.captcha_dialog_loading_indicator_size,
-                                ),
+                                HarmonicDimens.captcha_dialog_loading_indicator_size,
                             ),
                         )
                     }
@@ -174,9 +173,7 @@ private fun CaptchaDialogLayout(
                     Text(
                         text = message,
                         modifier = Modifier.padding(
-                            top = dimensionResource(
-                                R.dimen.captcha_dialog_error_top_spacing,
-                            ),
+                            top = HarmonicDimens.captcha_dialog_error_top_spacing,
                         ),
                         color = MaterialTheme.colorScheme.error,
                         fontFamily = ProductSansFontFamily,
@@ -187,12 +184,12 @@ private fun CaptchaDialogLayout(
         },
         dismissButton = {
             SettingsDialogTextButton(onClick = onDismiss) {
-                Text(stringResource(android.R.string.cancel))
+                Text(stringResource(Res.string.common_cancel))
             }
         },
         confirmButton = {
             SettingsDialogTextButton(onClick = onContinue) {
-                Text(stringResource(R.string.captcha_dialog_continue))
+                Text(stringResource(Res.string.captcha_dialog_continue))
             }
         },
     )

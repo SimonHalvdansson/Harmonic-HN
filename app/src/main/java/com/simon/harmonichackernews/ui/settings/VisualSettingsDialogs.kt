@@ -2,6 +2,9 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+
+import com.simon.harmonichackernews.resources.*
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandHorizontally
@@ -38,7 +41,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.painterResource as androidPainterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -106,7 +110,7 @@ fun FaviconProviderDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Image(
-                            painter = painterResource(
+                            painter = androidPainterResource(
                                 SettingsUtils.getFaviconProviderIconResource(provider.value),
                             ),
                             contentDescription = null,
@@ -246,7 +250,7 @@ fun ThreadDepthIndicatorsDialog(
                     ) {
                         if (selected) {
                             Icon(
-                                painter = painterResource(R.drawable.ic_check),
+                                painter = painterResource(Res.drawable.ic_check),
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
                             )

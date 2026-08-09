@@ -83,12 +83,20 @@ object PreviewImageTintUtils {
             return baseColor
         }
 
-        val paletteTintConfigKey = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
         val pixels = IntArray(bitmap.width * bitmap.height)
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
         val palette = Palette.Builder(pixels, bitmap.width, bitmap.height)
             .maximumColorCount(16)
             .generate()
+        return calculateCardTint(baseColor, palette, paletteTintMode)
+    }
+
+    fun calculateCardTint(baseColor: Int, palette: Palette?, paletteTintMode: String?): Int {
+        if (palette == null) {
+            return baseColor
+        }
+
+        val paletteTintConfigKey = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
         val swatch = chooseCardTintSwatch(palette, paletteTintConfigKey)
         if (swatch == null) {
             return baseColor

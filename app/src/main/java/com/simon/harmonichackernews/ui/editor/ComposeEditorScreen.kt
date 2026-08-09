@@ -2,6 +2,11 @@
 
 package com.simon.harmonichackernews.ui.editor
 
+import org.jetbrains.compose.resources.DrawableResource
+
+
+import com.simon.harmonichackernews.resources.*
+
 import android.os.Looper
 import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
@@ -70,7 +75,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
@@ -358,7 +363,7 @@ private fun ComposeEditorTopBar(
                 .testTag("compose_editor_close"),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_close),
+                painter = painterResource(Res.drawable.ic_close),
                 contentDescription = "Close",
                 modifier = Modifier.size(24.dp),
                 tint = HarmonicTheme.colors.storyNormal,
@@ -610,9 +615,9 @@ private fun ComposeEditorBottomBar(
             expandedShadowElevation = 4.dp,
             collapsedShadowElevation = 4.dp,
         ) {
-            FormattingButton(R.drawable.ic_format_italic, "Italic", onItalic)
-            FormattingButton(R.drawable.ic_code_blocks, "Code block", onCode)
-            FormattingButton(R.drawable.ic_info, "Information", onInformation)
+            FormattingButton(Res.drawable.ic_format_italic, "Italic", onItalic)
+            FormattingButton(Res.drawable.ic_code_blocks, "Code block", onCode)
+            FormattingButton(Res.drawable.ic_info, "Information", onInformation)
         }
         SubmitButton(
             enabled = enabled,
@@ -625,7 +630,7 @@ private fun ComposeEditorBottomBar(
 
 @Composable
 private fun FormattingButton(
-    icon: Int,
+    icon: DrawableResource,
     description: String,
     onClick: () -> Unit,
 ) {
@@ -702,7 +707,7 @@ private fun SubmitButton(
                     LoadingIndicator(modifier = Modifier.size(34.dp), color = content)
                 } else {
                     Icon(
-                        painter = painterResource(R.drawable.ic_send),
+                        painter = painterResource(Res.drawable.ic_send),
                         contentDescription = "Submit",
                         modifier = Modifier.size(30.dp),
                         tint = content,
@@ -804,12 +809,13 @@ private fun informationMessage(isPost: Boolean): String = buildString {
 
 private val editorFieldShape = RoundedCornerShape(4.dp)
 
-private val editorTextStyle = TextStyle(
-    fontFamily = ProductSansFontFamily,
-    fontSize = 16.sp,
-    lineHeight = 20.sp,
-    platformStyle = PlatformTextStyle(includeFontPadding = true),
-)
+private val editorTextStyle: TextStyle
+    @Composable get() = TextStyle(
+        fontFamily = ProductSansFontFamily,
+        fontSize = 16.sp,
+        lineHeight = 20.sp,
+        platformStyle = PlatformTextStyle(includeFontPadding = true),
+    )
 
 private val includeFontPaddingStyle = TextStyle(
     platformStyle = PlatformTextStyle(includeFontPadding = true),

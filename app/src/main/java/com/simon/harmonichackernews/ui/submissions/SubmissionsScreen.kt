@@ -1,5 +1,9 @@
 package com.simon.harmonichackernews.ui.submissions
 
+import org.jetbrains.compose.resources.DrawableResource
+
+import com.simon.harmonichackernews.resources.*
+
 import android.text.Html
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
@@ -52,7 +56,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -749,14 +753,14 @@ private fun SubmissionCommentItem(
         ) {
             SubmissionActionButton(
                 label = "Story",
-                icon = R.drawable.ic_newspaper,
+                icon = Res.drawable.ic_newspaper,
                 onClick = onStoryClick,
                 enabled = story.commentMasterId > 0 || story.parentId > 0,
                 modifier = Modifier.weight(1f),
             )
             SubmissionActionButton(
                 label = "Replies",
-                icon = R.drawable.ic_reply,
+                icon = Res.drawable.ic_reply,
                 onClick = onRepliesClick,
                 modifier = Modifier.weight(1f),
             )
@@ -836,7 +840,7 @@ private fun SubmissionCommentBody(
 @Composable
 private fun SubmissionActionButton(
     label: String,
-    icon: Int,
+    icon: DrawableResource,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -882,7 +886,7 @@ private fun LoadMoreButton(
             enabled = !loading,
             shapes = ButtonDefaults.shapes(),
         ) {
-            Icon(painterResource(R.drawable.ic_add), contentDescription = null)
+            Icon(painterResource(Res.drawable.ic_add), contentDescription = null)
             Text(
                 text = "Load more",
                 modifier = Modifier.padding(start = 8.dp),
@@ -908,10 +912,10 @@ private fun EmptySubmissions(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(
-            painter = painterResource(R.drawable.ic_subject),
+            painter = painterResource(Res.drawable.ic_subject),
             contentDescription = null,
             modifier = Modifier.size(48.dp),
-            tint = Color.Unspecified,
+            tint = HarmonicTheme.colors.drawable,
         )
         Text(
             text = text,

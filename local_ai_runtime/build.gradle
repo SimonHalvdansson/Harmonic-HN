@@ -2,7 +2,6 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
     alias(libs.plugins.android.dynamic.feature)
-    alias(libs.plugins.kotlin.android)
 }
 
 android {
@@ -54,13 +53,13 @@ android {
 
     sourceSets {
         debugLLM {
-            java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/java"
         }
         debugLLMFast {
-            java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/java"
         }
         playRelease {
-            java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/java"
         }
     }
 

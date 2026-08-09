@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.resources.HarmonicDimens
+
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
@@ -17,11 +19,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -48,13 +50,14 @@ internal fun SettingsChangelogDialog(
     onDismiss: () -> Unit,
     onOpenGithub: (() -> Unit)? = null,
 ) {
-    val context = LocalContext.current
-    val markdown = remember(context) { Changelog.getMarkdown(context).orEmpty() }
+    val markdown by produceState(initialValue = "") {
+        value = Changelog.getMarkdown()
+    }
     val scrollState = rememberScrollState()
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.heightIn(
-            max = dimensionResource(R.dimen.compose_settings_changelog_max_height),
+            max = HarmonicDimens.compose_settings_changelog_max_height,
         ),
         title = {
             SettingsDialogTitle("Changelog")
@@ -92,23 +95,17 @@ private fun ChangelogMarkdown(
     val blocks = remember(markdown) { parseChangelogMarkdown(markdown) }
     Column(
         modifier = modifier.padding(
-            top = dimensionResource(
-                R.dimen.compose_settings_changelog_content_top_padding,
-            ),
+            top = HarmonicDimens.compose_settings_changelog_content_top_padding,
         ),
     ) {
         blocks.forEachIndexed { index, block ->
             if (index > 0) {
                 val previous = blocks[index - 1]
                 val spacing = when {
-                    block is ChangelogBlock.Heading -> dimensionResource(
-                        R.dimen.compose_settings_changelog_heading_spacing,
-                    )
+                    block is ChangelogBlock.Heading -> HarmonicDimens.compose_settings_changelog_heading_spacing
 
                     block is ChangelogBlock.Bullet && previous is ChangelogBlock.Bullet -> 0.dp
-                    else -> dimensionResource(
-                        R.dimen.compose_settings_changelog_block_spacing,
-                    )
+                    else -> HarmonicDimens.compose_settings_changelog_block_spacing
                 }
                 Spacer(Modifier.height(spacing))
             }
@@ -160,7 +157,7 @@ private fun ChangelogBullet(text: String) {
     ) {
         Box(
             modifier = Modifier.width(
-                dimensionResource(R.dimen.compose_settings_changelog_bullet_width),
+                HarmonicDimens.compose_settings_changelog_bullet_width,
             ),
             contentAlignment = Alignment.TopCenter,
         ) {
@@ -168,7 +165,7 @@ private fun ChangelogBullet(text: String) {
         }
         Spacer(
             Modifier.width(
-                dimensionResource(R.dimen.compose_settings_changelog_bullet_gap),
+                HarmonicDimens.compose_settings_changelog_bullet_gap,
             ),
         )
         Box(Modifier.weight(1f)) {

@@ -2,6 +2,11 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+import org.jetbrains.compose.resources.DrawableResource
+
+
+import com.simon.harmonichackernews.resources.*
+
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -11,7 +16,6 @@ import android.text.Html
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -46,7 +50,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringArrayResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -86,10 +91,7 @@ fun UserSettingsDialog(
     onTagChanged: () -> Unit,
 ) {
     val context = LocalContext.current
-    val resources = LocalResources.current
-    val monthNames = remember(resources) {
-        resources.getStringArray(R.array.months).toList()
-    }
+    val monthNames = stringArrayResource(Res.array.months)
     var state by remember(userName) {
         mutableStateOf<ComposeUserState>(ComposeUserState.Loading)
     }
@@ -250,7 +252,7 @@ private fun UserLoadError(
             modifier = Modifier.height(56.dp),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_refresh),
+                painter = painterResource(Res.drawable.ic_refresh),
                 contentDescription = null,
             )
             Text(
@@ -339,7 +341,7 @@ private fun UserLoadedContent(
         if (user.hasSubmissions) {
             UserOutlinedAction(
                 label = "Submissions",
-                icon = R.drawable.ic_forum,
+                icon = Res.drawable.ic_forum,
                 onClick = {
                     onDismiss()
                     context.startActivity(
@@ -357,7 +359,7 @@ private fun UserLoadedContent(
                 } else {
                     "Activate notifications"
                 },
-                icon = R.drawable.ic_notifications,
+                icon = Res.drawable.ic_notifications,
                 enabled = !notificationLoading,
                 onClick = {
                     if (notificationsActive) {
@@ -406,13 +408,13 @@ private fun UserLoadedContent(
         } else {
             UserTextAction(
                 label = "Set tag" + if (tag.isBlank()) "" else " ($tag)",
-                icon = R.drawable.ic_sell,
+                icon = Res.drawable.ic_sell,
                 onClick = onEditTag,
                 modifier = Modifier.padding(top = 8.dp),
             )
             UserTextAction(
                 label = if (blocked) "Unblock" else "Block",
-                icon = R.drawable.ic_block,
+                icon = Res.drawable.ic_block,
                 onClick = {
                     if (blocked) {
                         if (Utils.removeFilteredUser(context, user.id)) {
@@ -435,7 +437,7 @@ private fun UserLoadedContent(
             )
             UserTextAction(
                 label = "Report (email HN)",
-                icon = R.drawable.ic_flag,
+                icon = Res.drawable.ic_flag,
                 onClick = {
                     val intent = Intent(
                         Intent.ACTION_SENDTO,
@@ -456,7 +458,7 @@ private fun UserLoadedContent(
 @Composable
 private fun UserOutlinedAction(
     label: String,
-    @DrawableRes icon: Int,
+    icon: DrawableResource,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -487,7 +489,7 @@ private fun UserOutlinedAction(
 @Composable
 private fun UserTextAction(
     label: String,
-    @DrawableRes icon: Int,
+    icon: DrawableResource,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {

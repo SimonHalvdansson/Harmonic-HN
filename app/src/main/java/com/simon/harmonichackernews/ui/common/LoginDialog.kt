@@ -29,8 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -40,6 +40,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.network.UserActions
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
@@ -66,9 +67,9 @@ fun LoginDialog(
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var captchaChallenge by remember { mutableStateOf<UserActions.CaptchaChallenge?>(null) }
-    val loginFailure = stringResource(R.string.login_dialog_failure)
-    val loginSuccess = stringResource(R.string.login_dialog_success)
-    val captchaCancelled = stringResource(R.string.login_dialog_captcha_cancelled)
+    val loginFailure = stringResource(Res.string.login_dialog_failure)
+    val loginSuccess = stringResource(Res.string.login_dialog_success)
+    val captchaCancelled = stringResource(Res.string.login_dialog_captcha_cancelled)
     val credentialsValid = username.isNotBlank() && password.isNotEmpty()
 
     fun finishLogin(response: HttpResponse) {
@@ -131,7 +132,7 @@ fun LoginDialog(
         },
         title = {
             Text(
-                text = stringResource(R.string.login_dialog_title),
+                text = stringResource(Res.string.login_dialog_title),
                 color = HarmonicTheme.colors.textPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
@@ -150,10 +151,10 @@ fun LoginDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            top = dimensionResource(R.dimen.login_dialog_section_spacing),
+                            top = HarmonicDimens.login_dialog_section_spacing,
                         ),
                     enabled = !loading,
-                    label = { Text(stringResource(R.string.login_dialog_username)) },
+                    label = { Text(stringResource(Res.string.login_dialog_username)) },
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = KeyboardType.Text,
                         imeAction = ImeAction.Next,
@@ -166,10 +167,10 @@ fun LoginDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            top = dimensionResource(R.dimen.login_dialog_field_spacing),
+                            top = HarmonicDimens.login_dialog_field_spacing,
                         ),
                     enabled = !loading,
-                    label = { Text(stringResource(R.string.login_dialog_password)) },
+                    label = { Text(stringResource(Res.string.login_dialog_password)) },
                     visualTransformation = if (passwordVisible) {
                         VisualTransformation.None
                     } else {
@@ -183,9 +184,9 @@ fun LoginDialog(
                             Icon(
                                 painter = painterResource(
                                     if (passwordVisible) {
-                                        R.drawable.ic_visibility_off
+                                        Res.drawable.ic_visibility_off
                                     } else {
-                                        R.drawable.ic_visibility
+                                        Res.drawable.ic_visibility
                                     },
                                 ),
                                 contentDescription = null,
@@ -202,10 +203,10 @@ fun LoginDialog(
                     singleLine = true,
                 )
                 Text(
-                    text = stringResource(R.string.login_dialog_local_information),
+                    text = stringResource(Res.string.login_dialog_local_information),
                     modifier = Modifier.padding(
-                        top = dimensionResource(R.dimen.login_dialog_section_spacing),
-                        bottom = dimensionResource(R.dimen.login_dialog_small_spacing),
+                        top = HarmonicDimens.login_dialog_section_spacing,
+                        bottom = HarmonicDimens.login_dialog_small_spacing,
                     ),
                     color = HarmonicTheme.colors.textPrimary,
                     fontFamily = ProductSansFontFamily,
@@ -217,12 +218,12 @@ fun LoginDialog(
                         shapes = ButtonDefaults.shapes(),
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_info),
+                            painter = painterResource(Res.drawable.ic_info),
                             contentDescription = null,
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = stringResource(R.string.login_dialog_how_it_works),
+                            text = stringResource(Res.string.login_dialog_how_it_works),
                             lineHeight = 16.sp,
                         )
                     }
@@ -230,18 +231,18 @@ fun LoginDialog(
                 AnimatedVisibility(visible = showInformation) {
                     Column {
                         Text(
-                            text = stringResource(R.string.login_dialog_information),
+                            text = stringResource(Res.string.login_dialog_information),
                             modifier = Modifier.padding(
-                                top = dimensionResource(R.dimen.login_dialog_small_spacing),
+                                top = HarmonicDimens.login_dialog_small_spacing,
                             ),
                             color = HarmonicTheme.colors.textPrimary,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 13.sp,
                         )
                         Text(
-                            text = stringResource(R.string.login_dialog_troubleshooting),
+                            text = stringResource(Res.string.login_dialog_troubleshooting),
                             modifier = Modifier.padding(
-                                top = dimensionResource(R.dimen.login_dialog_info_spacing),
+                                top = HarmonicDimens.login_dialog_info_spacing,
                             ),
                             color = HarmonicTheme.colors.textPrimary,
                             fontFamily = ProductSansFontFamily,
@@ -250,10 +251,10 @@ fun LoginDialog(
                     }
                 }
                 Text(
-                    text = stringResource(R.string.login_dialog_create_account_explanation),
+                    text = stringResource(Res.string.login_dialog_create_account_explanation),
                     modifier = Modifier.padding(
-                        top = dimensionResource(R.dimen.login_dialog_info_spacing),
-                        bottom = dimensionResource(R.dimen.login_dialog_small_spacing),
+                        top = HarmonicDimens.login_dialog_info_spacing,
+                        bottom = HarmonicDimens.login_dialog_small_spacing,
                     ),
                     color = HarmonicTheme.colors.textPrimary,
                     fontFamily = ProductSansFontFamily,
@@ -264,33 +265,31 @@ fun LoginDialog(
                     shapes = ButtonDefaults.shapes(),
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_open_in_browser),
+                        painter = painterResource(Res.drawable.ic_open_in_browser),
                         contentDescription = null,
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.login_dialog_create_account))
+                    Text(stringResource(Res.string.login_dialog_create_account))
                 }
                 AnimatedVisibility(visible = loading) {
                     Row(
                         modifier = Modifier.padding(
-                            top = dimensionResource(R.dimen.login_dialog_section_spacing),
+                            top = HarmonicDimens.login_dialog_section_spacing,
                         ),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         LoadingIndicator(
                             modifier = Modifier.size(
-                                dimensionResource(
-                                    R.dimen.login_dialog_loading_indicator_size,
-                                ),
+                                HarmonicDimens.login_dialog_loading_indicator_size,
                             ),
                         )
                         Spacer(
                             Modifier.width(
-                                dimensionResource(R.dimen.cache_stories_value_start_spacing),
+                                HarmonicDimens.cache_stories_value_start_spacing,
                             ),
                         )
                         Text(
-                            text = stringResource(R.string.login_dialog_loading),
+                            text = stringResource(Res.string.login_dialog_loading),
                             color = HarmonicTheme.colors.textPrimary,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 14.sp,
@@ -301,7 +300,7 @@ fun LoginDialog(
                     Text(
                         text = message,
                         modifier = Modifier.padding(
-                            top = dimensionResource(R.dimen.login_dialog_section_spacing),
+                            top = HarmonicDimens.login_dialog_section_spacing,
                         ),
                         color = MaterialTheme.colorScheme.error,
                         fontFamily = ProductSansFontFamily,
@@ -316,7 +315,7 @@ fun LoginDialog(
                 onClick = onDismiss,
                 enabled = !loading,
             ) {
-                Text(stringResource(android.R.string.cancel))
+                Text(stringResource(Res.string.common_cancel))
             }
         },
         confirmButton = {
@@ -324,7 +323,7 @@ fun LoginDialog(
                 onClick = { attemptLogin() },
                 enabled = credentialsValid && !loading,
             ) {
-                Text(stringResource(R.string.login_dialog_action))
+                Text(stringResource(Res.string.login_dialog_action))
             }
         },
     )

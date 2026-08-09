@@ -2,9 +2,15 @@
 
 package com.simon.harmonichackernews.ui.comments
 
+import org.jetbrains.compose.resources.DrawableResource
+
+
+import com.simon.harmonichackernews.resources.*
+
 import android.annotation.SuppressLint
 import android.graphics.drawable.Drawable
 import android.text.Html
+import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -109,7 +115,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringArrayResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -156,6 +163,7 @@ import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import java.util.Date
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -186,6 +194,8 @@ class CommentsComposeController private constructor(
     internal var loadingFailedServerError by mutableStateOf(false)
         private set
     internal var showUpdate by mutableStateOf(false)
+        private set
+    internal var lastRefreshed by mutableStateOf(0L)
         private set
     internal var commentsByOpFilterActive by mutableStateOf(false)
         private set
@@ -300,6 +310,7 @@ class CommentsComposeController private constructor(
         loadingFailed: Boolean,
         loadingFailedServerError: Boolean,
         showUpdate: Boolean,
+        lastRefreshed: Long,
         commentsByOpFilterActive: Boolean,
         hasCommentsByOp: Boolean,
         adBlockActive: Boolean,
@@ -321,6 +332,7 @@ class CommentsComposeController private constructor(
         this.loadingFailed = loadingFailed
         this.loadingFailedServerError = loadingFailedServerError
         this.showUpdate = showUpdate
+        this.lastRefreshed = lastRefreshed
         this.commentsByOpFilterActive = commentsByOpFilterActive
         this.hasCommentsByOp = hasCommentsByOp
         this.adBlockActive = adBlockActive
@@ -1340,7 +1352,7 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
                 },
                 icon = {
                     Icon(
-                        painterResource(R.drawable.ic_arrow_upward),
+                        painterResource(Res.drawable.ic_arrow_upward),
                         contentDescription = null,
                         tint = Color.White.copy(alpha = 0.8f),
                     )
@@ -1437,12 +1449,12 @@ internal fun EmptyCommentsScreen() {
         verticalArrangement = Arrangement.Center,
     ) {
         Icon(
-            painterResource(R.drawable.ic_newspaper),
+            painterResource(Res.drawable.ic_newspaper),
             contentDescription = null,
             modifier = Modifier
                 .padding(bottom = 6.dp)
                 .size(48.dp),
-            tint = Color.Unspecified,
+            tint = HarmonicTheme.colors.drawable,
         )
         Text(
             "Open a story",
@@ -1811,18 +1823,18 @@ private fun SheetControls(
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SheetButtonSlot(R.drawable.ic_refresh, "Refresh website") {
+            SheetButtonSlot(Res.drawable.ic_refresh, "Refresh website") {
                 onAction(CommentsComposeController.SHEET_REFRESH)
             }
-            SheetButtonSlot(R.drawable.ic_arrow_upward, "Show comments") {
+            SheetButtonSlot(Res.drawable.ic_arrow_upward, "Show comments") {
                 onAction(CommentsComposeController.SHEET_EXPAND)
             }
-            SheetButtonSlot(R.drawable.ic_public, "Open in browser") {
+            SheetButtonSlot(Res.drawable.ic_public, "Open in browser") {
                 onAction(CommentsComposeController.SHEET_BROWSER)
             }
             if (readerModeAvailable) {
                 SheetButtonSlot(
-                    R.drawable.ic_chrome_reader_mode,
+                    Res.drawable.ic_chrome_reader_mode,
                     if (readerModeEnabled) "Reader mode on" else "Reader mode",
                     tint = if (readerModeEnabled) MaterialTheme.colorScheme.secondary else colors.drawable,
                 ) {
@@ -1830,7 +1842,7 @@ private fun SheetControls(
                 }
             }
             if (showInvert) {
-                SheetButtonSlot(R.drawable.ic_invert_colors, "Invert colors") {
+                SheetButtonSlot(Res.drawable.ic_invert_colors, "Invert colors") {
                     onAction(CommentsComposeController.SHEET_INVERT)
                 }
             }
@@ -1840,7 +1852,7 @@ private fun SheetControls(
 
 @Composable
 private fun RowScope.SheetButtonSlot(
-    icon: Int,
+    icon: DrawableResource,
     description: String,
     tint: Color = HarmonicTheme.colors.drawable,
     onClick: () -> Unit,
@@ -1855,7 +1867,7 @@ private fun RowScope.SheetButtonSlot(
 
 @Composable
 private fun SheetButton(
-    icon: Int,
+    icon: DrawableResource,
     description: String,
     tint: Color = HarmonicTheme.colors.drawable,
     onClick: () -> Unit,
@@ -2024,8 +2036,8 @@ private fun HeaderLinkInfo(story: Story, settings: CommentDisplaySettings) {
         if (settings.showThumbnail) {
             AsyncImage(
                 model = favicon,
-                fallback = painterResource(R.drawable.ic_public),
-                error = painterResource(R.drawable.ic_public),
+                fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
+                error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
                 contentDescription = null,
                 modifier = Modifier
                     .padding(end = 4.dp)
@@ -2157,8 +2169,8 @@ private fun HeaderReferenceRow(
             model = runCatching {
                 FaviconLoader.getFaviconUrl(link.url, settings.faviconProvider)
             }.getOrNull(),
-            fallback = painterResource(R.drawable.ic_public),
-            error = painterResource(R.drawable.ic_public),
+            fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
+            error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
             contentDescription = null,
             modifier = Modifier
                 .padding(end = 8.dp)
@@ -2287,7 +2299,7 @@ private fun PreviewBody(
 
 @Composable
 private fun PreviewInfoRow(
-    icon: Int,
+    icon: DrawableResource,
     text: String?,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
@@ -2345,16 +2357,16 @@ private fun GitHubPreview(story: Story) {
         PreviewBody(info.about.orEmpty())
         PreviewInfoColumns(
             left = {
-                PreviewInfoRow(R.drawable.ic_star, info.formatStars())
-                PreviewInfoRow(R.drawable.ic_visibility, info.formatWatching())
-                PreviewInfoRow(R.drawable.ic_fork_right, info.formatForks())
+                PreviewInfoRow(Res.drawable.ic_star, info.formatStars())
+                PreviewInfoRow(Res.drawable.ic_visibility, info.formatWatching())
+                PreviewInfoRow(Res.drawable.ic_fork_right, info.formatForks())
             },
             right = {
-                PreviewInfoRow(R.drawable.ic_link, info.shortenedUrl) {
+                PreviewInfoRow(Res.drawable.ic_link, info.shortenedUrl) {
                     Utils.openLinkMaybeHN(context, info.website)
                 }
-                PreviewInfoRow(R.drawable.ic_attribution, info.license)
-                PreviewInfoRow(R.drawable.ic_library_books, info.language)
+                PreviewInfoRow(Res.drawable.ic_attribution, info.license)
+                PreviewInfoRow(Res.drawable.ic_library_books, info.language)
             },
         )
     }
@@ -2369,15 +2381,15 @@ private fun GitLabPreview(story: Story) {
         PreviewBody(info.description.orEmpty())
         PreviewInfoColumns(
             left = {
-                PreviewInfoRow(R.drawable.ic_star, info.formatStars())
-                PreviewInfoRow(R.drawable.ic_fork_right, info.formatForks())
+                PreviewInfoRow(Res.drawable.ic_star, info.formatStars())
+                PreviewInfoRow(Res.drawable.ic_fork_right, info.formatForks())
             },
             right = {
-                PreviewInfoRow(R.drawable.ic_link, info.shortenedUrl) {
+                PreviewInfoRow(Res.drawable.ic_link, info.shortenedUrl) {
                     Utils.openLinkMaybeHN(context, info.website)
                 }
-                PreviewInfoRow(R.drawable.ic_visibility, info.formatVisibility())
-                PreviewInfoRow(R.drawable.ic_library_books, info.language)
+                PreviewInfoRow(Res.drawable.ic_visibility, info.formatVisibility())
+                PreviewInfoRow(Res.drawable.ic_library_books, info.language)
             },
         )
     }
@@ -2397,14 +2409,14 @@ private fun StackExchangePreview(story: Story) {
         PreviewBody(info.formatBy().orEmpty(), maxLines = 20, topPadding = 0.dp)
         PreviewInfoColumns(
             left = {
-                PreviewInfoRow(R.drawable.ic_star, info.formatScore())
-                PreviewInfoRow(R.drawable.ic_comment, info.formatAnswerCount())
-                PreviewInfoRow(R.drawable.ic_visibility, info.formatViewCount())
+                PreviewInfoRow(Res.drawable.ic_star, info.formatScore())
+                PreviewInfoRow(Res.drawable.ic_comment, info.formatAnswerCount())
+                PreviewInfoRow(Res.drawable.ic_visibility, info.formatViewCount())
             },
             right = {
-                PreviewInfoRow(R.drawable.ic_check, info.formatAnswerState())
-                PreviewInfoRow(R.drawable.ic_library_books, info.formatTags())
-                PreviewInfoRow(R.drawable.ic_person, info.formatAuthor())
+                PreviewInfoRow(Res.drawable.ic_check, info.formatAnswerState())
+                PreviewInfoRow(Res.drawable.ic_library_books, info.formatTags())
+                PreviewInfoRow(Res.drawable.ic_person, info.formatAuthor())
             },
         )
     }
@@ -2430,16 +2442,16 @@ private fun ArxivPreview(story: Story, settings: CommentDisplaySettings) {
             fontSize = abstractTextSize,
             lineHeight = 18f,
         )
-        PreviewInfoRow(R.drawable.ic_calendar_today, runCatching(info::formatDate).getOrNull())
+        PreviewInfoRow(Res.drawable.ic_calendar_today, runCatching(info::formatDate).getOrNull())
         PreviewInfoRow(
             when (info.authors?.size ?: 0) {
-                1 -> R.drawable.ic_person
-                2 -> R.drawable.ic_group
-                else -> R.drawable.ic_groups
+                1 -> Res.drawable.ic_person
+                2 -> Res.drawable.ic_group
+                else -> Res.drawable.ic_groups
             },
             runCatching(info::concatNames).getOrNull(),
         )
-        PreviewInfoRow(R.drawable.ic_library_books, runCatching(info::formatSubjects).getOrNull())
+        PreviewInfoRow(Res.drawable.ic_library_books, runCatching(info::formatSubjects).getOrNull())
         Button(
             onClick = { Utils.downloadPDF(context, info.pDFURL) },
             shapes = ButtonDefaults.shapes(),
@@ -2448,7 +2460,7 @@ private fun ArxivPreview(story: Story, settings: CommentDisplaySettings) {
                 .padding(top = 8.dp)
                 .height(56.dp),
         ) {
-            Icon(painterResource(R.drawable.ic_file_download), contentDescription = null)
+            Icon(painterResource(Res.drawable.ic_file_download), contentDescription = null)
             Text(
                 "Download PDF",
                 modifier = Modifier.padding(start = 8.dp),
@@ -2526,12 +2538,12 @@ private fun NitterPreview(story: Story) {
             Column(Modifier.weight(1f).padding(bottom = 12.dp)) {
                 Row {
                     PreviewCompactInfo(
-                        icon = R.drawable.ic_calendar_today,
+                        icon = Res.drawable.ic_calendar_today,
                         text = info.date,
                         iconWidth = 14.dp,
                     )
                     PreviewCompactInfo(
-                        icon = R.drawable.ic_reply,
+                        icon = Res.drawable.ic_reply,
                         text = info.replyCount,
                         startPadding = 1.dp,
                         endPadding = 7.dp,
@@ -2539,12 +2551,12 @@ private fun NitterPreview(story: Story) {
                 }
                 Row {
                     PreviewCompactInfo(
-                        icon = R.drawable.ic_action_retweet,
+                        icon = Res.drawable.ic_action_retweet,
                         text = info.reposts,
                         startPadding = 1.dp,
                     )
                     PreviewCompactInfo(
-                        icon = R.drawable.ic_thumb_up,
+                        icon = Res.drawable.ic_thumb_up,
                         text = info.likes,
                         iconWidth = 12.dp,
                         endPadding = 4.dp,
@@ -2562,7 +2574,7 @@ private fun NitterPreview(story: Story) {
                     contentColor = Color.White,
                 ),
             ) {
-                Icon(painterResource(R.drawable.ic_link_preview_x), contentDescription = null)
+                Icon(painterResource(Res.drawable.ic_link_preview_x), contentDescription = null)
                 Text(
                     "Open on X",
                     modifier = Modifier.padding(start = 8.dp),
@@ -2576,7 +2588,7 @@ private fun NitterPreview(story: Story) {
 
 @Composable
 private fun PreviewCompactInfo(
-    icon: Int,
+    icon: DrawableResource,
     text: String?,
     iconWidth: Dp = 15.dp,
     startPadding: Dp = 2.dp,
@@ -2663,7 +2675,7 @@ private fun StorySummary(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    painterResource(R.drawable.ic_auto_awesome),
+                    painterResource(Res.drawable.ic_auto_awesome),
                     contentDescription = null,
                     modifier = Modifier
                         .padding(end = 4.dp)
@@ -2708,22 +2720,22 @@ private fun HeaderMeta(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (!story.isComment) {
-                HeaderMetaItem(R.drawable.ic_thumb_up, story.score.toString(), typography)
+                HeaderMetaItem(Res.drawable.ic_thumb_up, story.score.toString(), typography)
             }
-            HeaderMetaItem(R.drawable.ic_comment, story.descendants.toString(), typography)
-            HeaderMetaItem(R.drawable.ic_schedule, story.timeFormatted, typography)
+            HeaderMetaItem(Res.drawable.ic_comment, story.descendants.toString(), typography)
+            HeaderMetaItem(Res.drawable.ic_schedule, story.timeFormatted, typography)
             val posterLabel = buildString {
                 append(story.by.orEmpty())
                 if (storyPosterTag.isNotBlank()) {
                     append(" (").append(storyPosterTag).append(')')
                 }
             }
-            HeaderMetaItem(R.drawable.ic_account_circle, posterLabel, typography)
+            HeaderMetaItem(Res.drawable.ic_account_circle, posterLabel, typography)
         }
         Spacer(Modifier.weight(1f))
         if (story.isLink) {
             Icon(
-                painterResource(R.drawable.ic_link),
+                painterResource(Res.drawable.ic_link),
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
                 tint = HarmonicTheme.colors.drawable,
@@ -2733,7 +2745,7 @@ private fun HeaderMeta(
 }
 
 @Composable
-private fun HeaderMetaItem(icon: Int, label: String, typography: com.simon.harmonichackernews.ui.content.ContentTypography) {
+private fun HeaderMetaItem(icon: DrawableResource, label: String, typography: com.simon.harmonichackernews.ui.content.ContentTypography) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             painterResource(icon),
@@ -2774,12 +2786,12 @@ private fun HeaderActions(
         Utils.isBookmarked(context, story.id)
     }
     val actions = buildList {
-        add(HeaderAction(R.drawable.ic_account_circle, "User", CommentsComposeController.HEADER_ACTION_USER))
-        if (canReply) add(HeaderAction(R.drawable.ic_comment, if (story.isComment) "Reply to comment" else "Reply to post", CommentsComposeController.HEADER_ACTION_REPLY))
-        if (hasAccount) add(HeaderAction(if (upvoted) R.drawable.ic_thumb_up_filled else R.drawable.ic_thumb_up, if (upvoted) "Remove vote" else "Vote", CommentsComposeController.HEADER_ACTION_VOTE, controller.storyVoteLoading))
-        if (hasAccount) add(HeaderAction(if (favorited) R.drawable.ic_star_filled else R.drawable.ic_star, if (favorited) "Remove favorite" else "Favorite", CommentsComposeController.HEADER_ACTION_FAVORITE, controller.storyFavoriteLoading))
-        if (bookmarksEnabled && !hasAccount) add(HeaderAction(if (bookmarked) R.drawable.ic_bookmark_filled else R.drawable.ic_bookmark, if (bookmarked) "Remove bookmark" else "Bookmark", CommentsComposeController.HEADER_ACTION_BOOKMARK))
-        if (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully) add(HeaderAction(R.drawable.ic_auto_awesome, "Summarize", CommentsComposeController.HEADER_ACTION_SUMMARIZE, controller.storySummaryLoading))
+        add(HeaderAction(Res.drawable.ic_account_circle, "User", CommentsComposeController.HEADER_ACTION_USER))
+        if (canReply) add(HeaderAction(Res.drawable.ic_comment, if (story.isComment) "Reply to comment" else "Reply to post", CommentsComposeController.HEADER_ACTION_REPLY))
+        if (hasAccount) add(HeaderAction(if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up, if (upvoted) "Remove vote" else "Vote", CommentsComposeController.HEADER_ACTION_VOTE, controller.storyVoteLoading))
+        if (hasAccount) add(HeaderAction(if (favorited) Res.drawable.ic_star_filled else Res.drawable.ic_star, if (favorited) "Remove favorite" else "Favorite", CommentsComposeController.HEADER_ACTION_FAVORITE, controller.storyFavoriteLoading))
+        if (bookmarksEnabled && !hasAccount) add(HeaderAction(if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark, if (bookmarked) "Remove bookmark" else "Bookmark", CommentsComposeController.HEADER_ACTION_BOOKMARK))
+        if (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully) add(HeaderAction(Res.drawable.ic_auto_awesome, "Summarize", CommentsComposeController.HEADER_ACTION_SUMMARIZE, controller.storySummaryLoading))
     }
     FlowRow(
         modifier = Modifier
@@ -2803,7 +2815,7 @@ private fun HeaderActions(
                     shapes = IconButtonDefaults.shapes(),
                 ) {
                     Icon(
-                        painterResource(R.drawable.ic_share),
+                        painterResource(Res.drawable.ic_share),
                         contentDescription = "Share",
                         modifier = Modifier.size(24.dp),
                         tint = HarmonicTheme.colors.drawable,
@@ -2825,7 +2837,7 @@ private fun HeaderActions(
                     modifier = Modifier.size(width = 48.dp, height = 58.dp),
                 ) {
                     Icon(
-                        painterResource(R.drawable.ic_refresh),
+                        painterResource(Res.drawable.ic_refresh),
                         contentDescription = "Refresh",
                         modifier = Modifier.size(24.dp),
                         tint = HarmonicTheme.colors.drawable,
@@ -2843,7 +2855,7 @@ private fun HeaderActions(
                     shapes = IconButtonDefaults.shapes(),
                 ) {
                     Icon(
-                        painterResource(R.drawable.ic_more_vert),
+                        painterResource(Res.drawable.ic_more_vert),
                         contentDescription = "More options",
                         modifier = Modifier.size(24.dp),
                         tint = HarmonicTheme.colors.drawable,
@@ -2875,14 +2887,14 @@ private fun HeaderActions(
 }
 
 private data class HeaderAction(
-    val icon: Int,
+    val icon: DrawableResource,
     val label: String,
     val action: Int,
     val loading: Boolean = false,
 )
 
 private data class HeaderActionVisual(
-    val icon: Int,
+    val icon: DrawableResource,
     val label: String,
     val loading: Boolean,
 )
@@ -3007,7 +3019,7 @@ private fun MoreMenu(
                 },
                 leadingIcon = {
                     Icon(
-                        painterResource(R.drawable.ic_arrow_back),
+                        painterResource(Res.drawable.ic_arrow_back),
                         contentDescription = null,
                         tint = HarmonicTheme.colors.drawable,
                     )
@@ -3018,7 +3030,7 @@ private fun MoreMenu(
         }
 
         if (sortExpanded) {
-            val options = context.resources.getStringArray(R.array.comment_sorting)
+            val options = stringArrayResource(Res.array.comment_sorting)
             options.forEach { option ->
                 DropdownMenuItem(
                     text = {
@@ -3051,7 +3063,7 @@ private fun MoreMenu(
             return@HarmonicDropdownMenu
         }
 
-        @Composable fun action(label: String, icon: Int, id: Int) {
+        @Composable fun action(label: String, icon: DrawableResource, id: Int) {
             DropdownMenuItem(
                 text = { CommentsMenuText(label) },
                 leadingIcon = {
@@ -3067,30 +3079,30 @@ private fun MoreMenu(
                 },
             )
         }
-        if (settings.hasAccountDetails) action("Refresh", R.drawable.ic_refresh, CommentsComposeController.MORE_REFRESH)
-        if (story.isComment && story.parentId > 0) action("Open parent", R.drawable.ic_reply, CommentsComposeController.MORE_OPEN_PARENT)
-        if (story.isComment && story.commentMasterId > 0) action("Open top level", R.drawable.ic_arrow_upward, CommentsComposeController.MORE_OPEN_TOP_LEVEL)
+        if (settings.hasAccountDetails) action("Refresh", Res.drawable.ic_refresh, CommentsComposeController.MORE_REFRESH)
+        if (story.isComment && story.parentId > 0) action("Open parent", Res.drawable.ic_reply, CommentsComposeController.MORE_OPEN_PARENT)
+        if (story.isComment && story.commentMasterId > 0) action("Open top level", Res.drawable.ic_arrow_upward, CommentsComposeController.MORE_OPEN_TOP_LEVEL)
         if (settings.hasAccountDetails && bookmarksEnabled) {
             action(
                 if (bookmarked) "Remove bookmark" else "Bookmark",
-                if (bookmarked) R.drawable.ic_bookmark_filled else R.drawable.ic_bookmark,
+                if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark,
                 CommentsComposeController.MORE_TOGGLE_BOOKMARK,
             )
         }
-        if (commentsCount > 1) action("Search comments", R.drawable.ic_search, CommentsComposeController.MORE_SEARCH)
+        if (commentsCount > 1) action("Search comments", Res.drawable.ic_search, CommentsComposeController.MORE_SEARCH)
         if (commentsCount > 2) {
             DropdownMenuItem(
                 text = { CommentsMenuText("Sort comments") },
                 leadingIcon = {
                     Icon(
-                        painterResource(R.drawable.ic_filter_list),
+                        painterResource(Res.drawable.ic_filter_list),
                         contentDescription = null,
                         tint = HarmonicTheme.colors.drawable,
                     )
                 },
                 trailingIcon = {
                     Icon(
-                        painterResource(R.drawable.ic_chevron_right),
+                        painterResource(Res.drawable.ic_chevron_right),
                         contentDescription = null,
                         tint = HarmonicTheme.colors.drawable,
                     )
@@ -3099,25 +3111,25 @@ private fun MoreMenu(
             )
         }
         if (!controller.commentsByOpFilterActive && controller.hasCommentsByOp) {
-            action("Comments by OP", R.drawable.ic_person, CommentsComposeController.MORE_COMMENTS_BY_OP)
+            action("Comments by OP", Res.drawable.ic_person, CommentsComposeController.MORE_COMMENTS_BY_OP)
         }
-        action("Open in browser", R.drawable.ic_open_in_browser, CommentsComposeController.MORE_OPEN_BROWSER)
+        action("Open in browser", Res.drawable.ic_open_in_browser, CommentsComposeController.MORE_OPEN_BROWSER)
         if (controller.adBlockActive) {
-            action("Disable AdBlock", R.drawable.ic_block, CommentsComposeController.MORE_DISABLE_ADBLOCK)
+            action("Disable AdBlock", Res.drawable.ic_block, CommentsComposeController.MORE_DISABLE_ADBLOCK)
         }
         if (story.isLink) {
             DropdownMenuItem(
                 text = { CommentsMenuText("View on archive") },
                 leadingIcon = {
                     Icon(
-                        painterResource(R.drawable.ic_history),
+                        painterResource(Res.drawable.ic_history),
                         contentDescription = null,
                         tint = HarmonicTheme.colors.drawable,
                     )
                 },
                 trailingIcon = {
                     Icon(
-                        painterResource(R.drawable.ic_chevron_right),
+                        painterResource(Res.drawable.ic_chevron_right),
                         contentDescription = null,
                         tint = HarmonicTheme.colors.drawable,
                     )
@@ -3161,7 +3173,7 @@ private fun OpFilterBanner(controller: CommentsComposeController) {
                     onClick = { controller.listener.onMoreAction(CommentsComposeController.MORE_COMMENTS_BY_OP) },
                     shapes = IconButtonDefaults.shapes(),
                 ) {
-                    Icon(painterResource(R.drawable.ic_close), contentDescription = "Show all comments")
+                    Icon(painterResource(Res.drawable.ic_close), contentDescription = "Show all comments")
                 }
             }
         }
@@ -3192,7 +3204,12 @@ private fun HeaderStatus(controller: CommentsComposeController) {
             else -> HeaderStatusState.None
         },
         transitionSpec = {
-            (fadeIn() + expandVertically()).togetherWith(fadeOut() + shrinkVertically())
+            val exitFade = if (initialState == HeaderStatusState.Loading) {
+                fadeOut(tween(durationMillis = 90))
+            } else {
+                fadeOut()
+            }
+            (fadeIn() + expandVertically()).togetherWith(exitFade + shrinkVertically())
         },
         label = "comments header status",
     ) { state ->
@@ -3209,7 +3226,7 @@ private fun HeaderStatus(controller: CommentsComposeController) {
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Icon(painterResource(R.drawable.ic_cloud_off), null, Modifier.size(40.dp))
+                Icon(painterResource(Res.drawable.ic_cloud_off), null, Modifier.size(40.dp))
                 Text(
                     if (controller.loadingFailedServerError) "Loading failed" else "No internet connection",
                     modifier = Modifier.padding(top = 6.dp),
@@ -3228,7 +3245,7 @@ private fun HeaderStatus(controller: CommentsComposeController) {
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Icon(painterResource(R.drawable.ic_comment), null, Modifier.size(42.dp))
+                Icon(painterResource(Res.drawable.ic_comment), null, Modifier.size(42.dp))
                 Text(
                     if (controller.story.isComment) "No replies" else "No comments",
                     modifier = Modifier.padding(top = 4.dp),
@@ -3237,15 +3254,44 @@ private fun HeaderStatus(controller: CommentsComposeController) {
                     fontSize = 20.sp,
                 )
             }
-            HeaderStatusState.Refresh -> OutlinedButton(
-                onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
-                shapes = ButtonDefaults.shapes(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            HeaderStatusState.Refresh -> Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Icon(painterResource(R.drawable.ic_refresh), null)
-                Text("Tap to refresh", Modifier.padding(start = 8.dp))
+                if (controller.lastRefreshed > 0L) {
+                    val context = LocalContext.current
+                    Text(
+                        text = "Last refreshed: " + DateFormat.getTimeFormat(context)
+                            .format(Date(controller.lastRefreshed)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        color = HarmonicTheme.colors.textSecondary,
+                        fontFamily = ProductSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
+                ExtendedFloatingActionButton(
+                    onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
+                    modifier = Modifier
+                        .padding(top = 10.dp, bottom = 16.dp)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = HarmonicTheme.colors.overlayButton,
+                    contentColor = Color.White,
+                    icon = {
+                        Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
+                    },
+                    text = {
+                        Text(
+                            "Tap to refresh",
+                            fontFamily = ProductSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    },
+                )
             }
             HeaderStatusState.None -> Spacer(Modifier.height(0.dp))
         }
@@ -3272,7 +3318,7 @@ private fun CommentNavigationButtons(
                 .combinedClickable(onClick = onPrevious, onLongClick = onFirst),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(painterResource(R.drawable.ic_keyboard_arrow_up_dark), "Previous top-level comment", tint = Color.Unspecified)
+            Icon(painterResource(Res.drawable.ic_keyboard_arrow_up_dark), "Previous top-level comment", tint = Color.Unspecified)
         }
         Box(
             modifier = Modifier
@@ -3288,7 +3334,7 @@ private fun CommentNavigationButtons(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                painterResource(R.drawable.ic_explore_dark),
+                painterResource(Res.drawable.ic_explore_dark),
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
                 tint = Color.Unspecified,
@@ -3300,7 +3346,7 @@ private fun CommentNavigationButtons(
                 .combinedClickable(onClick = onNext, onLongClick = onLast),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(painterResource(R.drawable.ic_keyboard_arrow_down_dark), "Next top-level comment", tint = Color.Unspecified)
+            Icon(painterResource(Res.drawable.ic_keyboard_arrow_down_dark), "Next top-level comment", tint = Color.Unspecified)
         }
     }
 }

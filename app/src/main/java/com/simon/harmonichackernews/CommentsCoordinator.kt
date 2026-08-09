@@ -829,6 +829,7 @@ class CommentsCoordinator(
             loadingFailed,
             loadingFailedServerError,
             showUpdate,
+            lastLoaded,
             commentsByOpFilterActive,
             hasCommentsByOp(),
             webViewController != null && webViewController!!.isBlockingAds,

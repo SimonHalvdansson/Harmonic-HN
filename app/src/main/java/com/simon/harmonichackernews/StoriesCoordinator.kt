@@ -33,6 +33,7 @@ import com.simon.harmonichackernews.network.UserActions.StoryListCallback
 import com.simon.harmonichackernews.network.UserActions.StoryRowsCallback
 import com.simon.harmonichackernews.network.UserActions.UserItemListCallback
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
+import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.create
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController.Companion.create
@@ -63,6 +64,7 @@ import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.max
 import kotlin.math.min
+import org.jetbrains.compose.resources.DrawableResource
 
 class StoriesCoordinator(private val activity: MainActivity, savedInstanceState: Bundle?) {
     private var storyClickListener: StoryClickListener?
@@ -1195,17 +1197,17 @@ class StoriesCoordinator(private val activity: MainActivity, savedInstanceState:
         historyType: Boolean,
         favoritesType: Boolean,
         upvotedType: Boolean
-    ): Int {
+    ): DrawableResource {
         if (historyType) {
-            return R.drawable.ic_history
+            return Res.drawable.ic_history
         }
         if (favoritesType) {
-            return R.drawable.ic_star
+            return Res.drawable.ic_star
         }
         if (upvotedType) {
-            return R.drawable.ic_thumb_up_filled
+            return Res.drawable.ic_thumb_up_filled
         }
-        return R.drawable.ic_bookmark
+        return Res.drawable.ic_bookmark
     }
 
     private fun updateSearchOptionChips(animate: Boolean = true) {

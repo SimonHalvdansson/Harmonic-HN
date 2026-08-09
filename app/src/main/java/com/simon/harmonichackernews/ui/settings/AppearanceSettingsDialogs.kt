@@ -5,9 +5,13 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+import org.jetbrains.compose.resources.DrawableResource
+
+
+import com.simon.harmonichackernews.resources.*
+
 import android.graphics.Bitmap
 import android.text.format.DateFormat
-import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -50,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,7 +69,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -75,8 +80,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import androidx.preference.PreferenceManager
-import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
+import com.kmpalette.extensions.resource.rememberResourcePaletteState
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.AiModelCatalog
@@ -871,7 +876,7 @@ private fun WelcomeStoryPreviewContent(
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painter = painterResource(R.drawable.quanta),
+                    painter = painterResource(Res.drawable.quanta),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                 )
@@ -891,7 +896,7 @@ private fun WelcomeStoryPreviewContent(
         }
         if (expressive) {
             Image(
-                painter = painterResource(R.drawable.palette1),
+                painter = painterResource(Res.drawable.palette1),
                 contentDescription = null,
                 modifier = Modifier
                     .padding(start = 12.dp)
@@ -906,7 +911,7 @@ private fun WelcomeStoryPreviewContent(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_comment),
+                painter = painterResource(Res.drawable.ic_comment),
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
             )
@@ -926,18 +931,18 @@ private fun WelcomeStoryPreviewContent(
 }
 
 private data class PalettePreviewSample(
-    @DrawableRes val drawable: Int,
+    val drawable: DrawableResource,
     val title: String,
     val meta: String,
 )
 
 private val PalettePreviewSamples = listOf(
-    PalettePreviewSample(R.drawable.palette1, "Compiler release", "143 points"),
-    PalettePreviewSample(R.drawable.palette2, "Design notes", "89 points"),
-    PalettePreviewSample(R.drawable.palette3, "Database internals", "311 points"),
-    PalettePreviewSample(R.drawable.palette4, "Ask HN", "54 comments"),
-    PalettePreviewSample(R.drawable.palette5, "Launch write-up", "217 points"),
-    PalettePreviewSample(R.drawable.web_preview, "Website preview", "example.com"),
+    PalettePreviewSample(Res.drawable.palette1, "Compiler release", "143 points"),
+    PalettePreviewSample(Res.drawable.palette2, "Design notes", "89 points"),
+    PalettePreviewSample(Res.drawable.palette3, "Database internals", "311 points"),
+    PalettePreviewSample(Res.drawable.palette4, "Ask HN", "54 comments"),
+    PalettePreviewSample(Res.drawable.palette5, "Launch write-up", "217 points"),
+    PalettePreviewSample(Res.drawable.web_preview, "Website preview", "example.com"),
 )
 
 @Composable
@@ -1238,20 +1243,22 @@ private fun PalettePreviewCard(
     configKey: String,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val baseColor = HarmonicTheme.colors.surfaceContainerHigh
-    val targetColor = remember(context, sample.drawable, configKey, baseColor) {
-        ContextCompat.getDrawable(context, sample.drawable)?.let { drawable ->
-            runCatching {
-                Color(
-                    PreviewImageTintUtils.calculateCardTint(
-                        baseColor.toArgb(),
-                        drawable,
-                        configKey,
-                    ),
-                )
-            }.getOrNull()
-        } ?: baseColor
+    val paletteState = rememberResourcePaletteState {
+        maximumColorCount(16)
+    }
+    LaunchedEffect(sample.drawable) {
+        paletteState.generate(sample.drawable)
+    }
+    val palette = paletteState.palette
+    val targetColor = remember(palette, configKey, baseColor) {
+        Color(
+            PreviewImageTintUtils.calculateCardTint(
+                baseColor.toArgb(),
+                palette,
+                configKey,
+            ),
+        )
     }
     val cardColor by animateColorAsState(
         targetValue = targetColor,

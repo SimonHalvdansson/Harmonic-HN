@@ -5,6 +5,11 @@
 
 package com.simon.harmonichackernews.ui.stories
 
+import org.jetbrains.compose.resources.DrawableResource
+
+
+import com.simon.harmonichackernews.resources.*
+
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -43,6 +48,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListState
@@ -114,7 +120,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -209,7 +215,7 @@ class StoriesComposeController private constructor(
         private set
     internal var emptySavedListText by mutableStateOf("No saved stories")
         private set
-    internal var emptySavedListIcon by mutableIntStateOf(R.drawable.ic_bookmark)
+    internal var emptySavedListIcon by mutableStateOf(Res.drawable.ic_bookmark)
         private set
     internal var showEmptySearch by mutableStateOf(false)
         private set
@@ -323,7 +329,7 @@ class StoriesComposeController private constructor(
         showCachedAction: Boolean,
         showEmptySavedList: Boolean,
         emptySavedListText: String,
-        emptySavedListIcon: Int,
+        emptySavedListIcon: DrawableResource,
         showEmptySearch: Boolean,
         showUpdate: Boolean,
         lastUpdatedText: String?,
@@ -890,16 +896,23 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .zIndex(2f)
-                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp),
+                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 8.dp),
         ) {
             ExtendedFloatingActionButton(
                 onClick = controller.listener::onRefresh,
+                modifier = Modifier.widthIn(min = 189.dp),
                 containerColor = HarmonicTheme.colors.overlayButton,
                 contentColor = Color.White,
                 icon = {
-                    Icon(painterResource(R.drawable.ic_refresh), contentDescription = null)
+                    Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
                 },
-                text = { Text("Tap to update", fontWeight = FontWeight.Bold) },
+                text = {
+                    Text(
+                        "Tap to update",
+                        fontFamily = ProductSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
             )
         }
     }
@@ -1243,7 +1256,7 @@ private fun StoriesHeader(
                     contentPadding = PaddingValues(0.dp),
                     modifier = Modifier.size(56.dp),
                 ) {
-                    Icon(painterResource(R.drawable.ic_chevron_left), "Previous front page day")
+                    Icon(painterResource(Res.drawable.ic_chevron_left), "Previous front page day")
                 }
                 OutlinedButton(
                     onClick = controller.listener::onPickFrontDate,
@@ -1253,7 +1266,7 @@ private fun StoriesHeader(
                         .padding(horizontal = 8.dp)
                         .height(56.dp),
                 ) {
-                    Icon(painterResource(R.drawable.ic_calendar_today), null)
+                    Icon(painterResource(Res.drawable.ic_calendar_today), null)
                     Spacer(Modifier.width(8.dp))
                     Text(controller.frontDateLabel, maxLines = 1)
                 }
@@ -1264,7 +1277,7 @@ private fun StoriesHeader(
                     contentPadding = PaddingValues(0.dp),
                     modifier = Modifier.size(56.dp),
                 ) {
-                    Icon(painterResource(R.drawable.ic_chevron_right), "Next front page day")
+                    Icon(painterResource(Res.drawable.ic_chevron_right), "Next front page day")
                 }
             }
         }
@@ -1400,7 +1413,7 @@ private fun MainHeader(
                 )
                 Spacer(Modifier.width(40.dp))
                 Icon(
-                    painterResource(R.drawable.ic_keyboard_arrow_down),
+                    painterResource(Res.drawable.ic_keyboard_arrow_down),
                     contentDescription = "Choose story list",
                     modifier = Modifier.size(24.dp),
                     tint = HarmonicTheme.colors.drawable,
@@ -1436,7 +1449,7 @@ private fun MainHeader(
                 shapes = IconButtonDefaults.shapes(),
             ) {
                 Icon(
-                    painterResource(R.drawable.ic_search),
+                    painterResource(Res.drawable.ic_search),
                     "Search",
                     tint = HarmonicTheme.colors.drawable,
                 )
@@ -1449,7 +1462,7 @@ private fun MainHeader(
                     shapes = IconButtonDefaults.shapes(),
                 ) {
                     Icon(
-                        painterResource(R.drawable.ic_more_vert),
+                        painterResource(Res.drawable.ic_more_vert),
                         "More options",
                         tint = HarmonicTheme.colors.drawable,
                     )
@@ -1535,7 +1548,7 @@ private fun SearchHeader(
                 shapes = IconButtonDefaults.shapes(),
             ) {
                 Icon(
-                    painterResource(R.drawable.ic_close),
+                    painterResource(Res.drawable.ic_close),
                     "Close search",
                     tint = HarmonicTheme.colors.drawable,
                 )
@@ -1573,7 +1586,7 @@ private fun SearchHeader(
                     selected = controller.searchOnlyClicked,
                     onClick = controller.listener::onToggleOnlyClicked,
                     label = { Text("From history") },
-                    leadingIcon = { Icon(painterResource(R.drawable.ic_history), null, Modifier.size(18.dp)) },
+                    leadingIcon = { Icon(painterResource(Res.drawable.ic_history), null, Modifier.size(18.dp)) },
                 )
             }
         }
@@ -1696,7 +1709,7 @@ private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boole
             Modifier.fillMaxWidth().padding(top = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(painterResource(R.drawable.ic_cloud_off), null, Modifier.size(40.dp))
+            Icon(painterResource(Res.drawable.ic_cloud_off), null, Modifier.size(40.dp))
             Text(
                 if (controller.loadingFailedServerError) "Server error" else controller.loadingFailedMessage,
                 fontWeight = FontWeight.Bold,
@@ -1728,12 +1741,12 @@ private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boole
         enter = fadeIn(tween(180, easing = StoriesEasing)),
         exit = fadeOut(tween(140, easing = StoriesEasing)),
     ) {
-        EmptyState("No stories found", R.drawable.ic_search)
+        EmptyState("No stories found", Res.drawable.ic_search)
     }
 }
 
 @Composable
-private fun SavedEmptyState(text: String, icon: Int) {
+private fun SavedEmptyState(text: String, icon: DrawableResource) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -1758,7 +1771,7 @@ private fun SavedEmptyState(text: String, icon: Int) {
 }
 
 @Composable
-private fun EmptyState(text: String, icon: Int) {
+private fun EmptyState(text: String, icon: DrawableResource) {
     Column(
         Modifier.fillMaxWidth().padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1830,7 +1843,7 @@ private fun SavedCommentStoryItem(
                 OutlinedButton(onClick = onStory, shapes = ButtonDefaults.shapes()) { Text("Story") }
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = onReplies, shapes = ButtonDefaults.shapes()) {
-                    Icon(painterResource(R.drawable.ic_comment), null)
+                    Icon(painterResource(Res.drawable.ic_comment), null)
                     Spacer(Modifier.width(6.dp))
                     Text("Replies")
                 }
